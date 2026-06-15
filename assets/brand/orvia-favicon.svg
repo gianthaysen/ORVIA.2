@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ORVIA">
+  <!-- ORVIA favicon · bolder strokes for legibility at 16-32px, flat gold on obsidian -->
+  <rect x="0" y="0" width="512" height="512" rx="108" fill="#08090B"/>
+  <g transform="translate(256,260) scale(.84) translate(-256,-256)" fill="none" stroke="#D8B777" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M399.3 228.1 A146 146 0 1 1 322.3 125.9" stroke-width="36"/>
+    <path d="M168 246 L236 360 L432 122" stroke-width="38"/>
+  </g>
+</svg>
