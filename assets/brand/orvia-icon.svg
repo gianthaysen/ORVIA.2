@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ORVIA app icon">
+  <!-- ORVIA premium app icon · matte obsidian tile + champagne-gold O/V mark -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#15171C"/>
+      <stop offset="1" stop-color="#08090B"/>
+    </linearGradient>
+    <radialGradient id="tileGlow" cx="256" cy="200" r="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D8B777" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#D8B777" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="150" y1="135" x2="395" y2="385" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E7CF9A"/>
+      <stop offset=".5" stop-color="#D8B777"/>
+      <stop offset="1" stop-color="#9F7A36"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="114" fill="url(#tile)"/>
+  <rect x="0" y="0" width="512" height="512" rx="114" fill="url(#tileGlow)"/>
+  <rect x="2" y="2" width="508" height="508" rx="112" fill="none" stroke="#ffffff" stroke-opacity=".05" stroke-width="2"/>
+  <g transform="translate(256,260) scale(.82) translate(-256,-256)">
+    <g fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M399.3 228.1 A146 146 0 1 1 322.3 125.9" stroke-width="30"/>
+      <path d="M168 246 L236 360 L432 122" stroke-width="32"/>
+    </g>
+  </g>
+</svg>
