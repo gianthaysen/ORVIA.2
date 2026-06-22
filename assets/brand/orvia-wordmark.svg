@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 150" role="img" aria-label="ORVIA">
-  <!-- ORVIA wordmark · geometric sans, wide premium tracking. fill uses currentColor so it can be themed in-app; default light for dark backgrounds. -->
-  <text x="310" y="104" text-anchor="middle"
-        font-family="'Inter','SF Pro Display','Manrope',system-ui,-apple-system,sans-serif"
-        font-size="96" font-weight="600" letter-spacing="20" fill="#F5F2EA">ORVIA</text>
-</svg>
