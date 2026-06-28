@@ -1,0 +1,10 @@
+import fs from 'fs';
+let pass=0,fail=0;const ok=(n,c)=>{console.log((c?'✅':'❌')+' '+n);c?pass++:fail++;};
+(0,eval)(fs.readFileSync(new URL('../../js/calc.js',import.meta.url),'utf8'));
+const P=globalThis.Calc.swimPace100;
+ok('1000m in 1200s → 120s/100m',P(1000,1200)===120);
+ok('distM<=0 → null',P(0,600)===null);
+ok('durSec<=0 → null',P(500,0)===null);
+ok('null-Eingaben → null',P(null,null)===null);
+ok('endlich & positiv',isFinite(P(800,1000))&&P(800,1000)>0);
+console.log('\nErgebnis: '+pass+' bestanden, '+fail+' fehlgeschlagen.');process.exit(fail?1:0);
