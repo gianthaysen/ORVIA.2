@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 560" role="img" aria-label="ORVIA — Know your state. Move with precision.">
+  <!-- ORVIA stacked lockup · mark over wordmark + claim. Default styled for dark backgrounds. -->
+  <defs>
+    <linearGradient id="gold" x1="180" y1="60" x2="360" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E7CF9A"/>
+      <stop offset=".5" stop-color="#D8B777"/>
+      <stop offset="1" stop-color="#9F7A36"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(10,20) scale(.66)" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M399.3 228.1 A146 146 0 1 1 322.3 125.9" stroke-width="30"/>
+    <path d="M168 246 L236 360 L432 122" stroke-width="32"/>
+  </g>
+  <text x="260" y="450" text-anchor="middle"
+        font-family="'Inter','SF Pro Display','Manrope',system-ui,-apple-system,sans-serif"
+        font-size="92" font-weight="600" letter-spacing="18" fill="#F5F2EA">ORVIA</text>
+  <text x="260" y="500" text-anchor="middle"
+        font-family="'Inter','SF Pro Display','Manrope',system-ui,-apple-system,sans-serif"
+        font-size="21" font-weight="500" letter-spacing="5" fill="#D8B777">KNOW YOUR STATE. MOVE WITH PRECISION.</text>
+</svg>
