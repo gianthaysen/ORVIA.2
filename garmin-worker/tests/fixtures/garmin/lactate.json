@@ -1,0 +1,6 @@
+{
+  "__note": "FIXTURE-ANNAHME: heartRate bpm + speed m/s — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-14",
+  "heartRate": 171,
+  "speed": 3.42
+}

@@ -1,0 +1,22 @@
+# ============================================================
+# ORVIA · Root-.gitignore
+# ============================================================
+
+# macOS
+.DS_Store
+
+# Abhängigkeiten (werden aus package.json / requirements.txt wiederhergestellt)
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Persönliche Daten — gehören nicht ins Repo (auch nicht in ein privates)
+orvia-strava-import.json
+
+# Sicherheitsnetz: echte Secrets niemals committen
+# (app/env.js ist bewusst NICHT gelistet — enthält nur den öffentlichen anon key)
+.env
+.env.*
+!.env.example

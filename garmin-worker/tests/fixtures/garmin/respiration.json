@@ -1,0 +1,6 @@
+{
+  "__note": "FIXTURE-ANNAHME: avgSleepRespirationValue — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-16",
+  "avgSleepRespirationValue": 14.2,
+  "avgWakingRespirationValue": 15.8
+}

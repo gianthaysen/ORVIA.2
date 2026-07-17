@@ -1,0 +1,17 @@
+# Secrets – NIEMALS committen
+# Hinweis: env.js enthält bewusst NUR die Supabase-URL + den anon PUBLIC key
+# (durch RLS abgesichert, laut Datei-Header öffentlich) und MUSS committet werden,
+# damit GitHub Pages die App konfigurieren kann. Daher hier NICHT ausgeschlossen.
+# Echte Secrets (service_role key, SMTP, DB-Passwort) gehören niemals ins Frontend.
+.env
+.env.*
+
+# Dependencies (per `npm install` regenerierbar)
+node_modules/
+
+# Betriebssystem-/Editor-Müll
+.DS_Store
+*.log
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,17 @@
+{
+  "__note": "FIXTURE-ANNAHME: latestTrainingStatusData device-keyed mit trainingStatusFeedbackPhrase + acuteTrainingLoadDTO — gegen Live-API verifizieren",
+  "userId": 90000001,
+  "mostRecentTrainingStatus": {
+    "latestTrainingStatusData": {
+      "3499633930": {
+        "calendarDate": "2026-07-16",
+        "trainingStatus": 4,
+        "trainingStatusFeedbackPhrase": "PRODUCTIVE_1",
+        "acuteTrainingLoadDTO": {
+          "acuteTrainingLoad": 548,
+          "dailyAcuteChronicWorkloadRatio": 1.12
+        }
+      }
+    }
+  }
+}

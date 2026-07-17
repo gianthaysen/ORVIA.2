@@ -1,0 +1,11 @@
+[
+  {
+    "__note": "FIXTURE-ANNAHME: runningTolerance km/Woche — gegen Live-API verifizieren",
+    "calendarDate": "2026-07-13",
+    "runningTolerance": 38
+  },
+  {
+    "calendarDate": "2026-07-16",
+    "runningTolerance": 42
+  }
+]

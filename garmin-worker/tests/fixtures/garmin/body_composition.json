@@ -1,0 +1,17 @@
+{
+  "__note": "FIXTURE-ANNAHME: totalAverage-Feldnamen bodyFat/bodyWater/boneMass/muscleMass/visceralFat — gegen Live-API verifizieren",
+  "startDate": "2026-07-16",
+  "endDate": "2026-07-16",
+  "totalAverage": {
+    "from": 1784160000000,
+    "until": 1784246400000,
+    "weight": 76400.0,
+    "bmi": 22.9,
+    "bodyFat": 15.8,
+    "bodyWater": 58.4,
+    "boneMass": 3400.0,
+    "muscleMass": 36200.0,
+    "visceralFat": 6.0,
+    "metabolicAge": 29.0
+  }
+}

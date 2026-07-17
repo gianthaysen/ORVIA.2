@@ -1,0 +1,22 @@
+[
+  {
+    "deviceId": 3499633930,
+    "unitId": 3499633930,
+    "productNumber": "006-B4315-00",
+    "displayName": "Forerunner 965",
+    "productDisplayName": "Forerunner 965",
+    "model": "Forerunner 965",
+    "softwareVersion": 20.26,
+    "primaryActivityTrackerIndicator": true
+  },
+  {
+    "deviceId": 3311224455,
+    "unitId": 3311224455,
+    "productNumber": "010-02428-00",
+    "displayName": "Index S2",
+    "productDisplayName": "Index S2 Smart Scale",
+    "model": "Index S2",
+    "softwareVersion": 3.1,
+    "primaryActivityTrackerIndicator": false
+  }
+]

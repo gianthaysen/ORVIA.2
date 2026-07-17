@@ -1,0 +1,30 @@
+[
+  {
+    "__note": "FIXTURE-ANNAHME: bodyBatteryValuesArray-Punktstruktur — gegen Live-API verifizieren",
+    "date": "2026-07-16",
+    "charged": 62,
+    "drained": 55,
+    "startTimestampGMT": "2026-07-16T00:00:00.0",
+    "endTimestampGMT": "2026-07-17T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1784162400000,
+        "MEASURED",
+        74,
+        1
+      ],
+      [
+        1784166000000,
+        "MEASURED",
+        81,
+        1
+      ],
+      [
+        1784169600000,
+        "MEASURED",
+        79,
+        1
+      ]
+    ]
+  }
+]

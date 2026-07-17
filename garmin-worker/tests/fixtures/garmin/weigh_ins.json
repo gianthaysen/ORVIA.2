@@ -1,0 +1,16 @@
+{
+  "startDate": "2026-07-16",
+  "endDate": "2026-07-16",
+  "dateWeightList": [
+    {
+      "samplePk": 1720000000001,
+      "calendarDate": "2026-07-16",
+      "weight": 76400.0,
+      "timestampGMT": 1784180700000,
+      "sourceType": "INDEX_SCALE"
+    }
+  ],
+  "totalAverage": {
+    "weight": 76400.0
+  }
+}

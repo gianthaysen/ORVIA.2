@@ -1,0 +1,45 @@
+[
+  {
+    "activityId": 19788811001,
+    "activityName": "Abendlauf",
+    "activityType": {
+      "typeId": 1,
+      "typeKey": "running"
+    },
+    "startTimeLocal": "2026-07-16 18:03:00",
+    "startTimeGMT": "2026-07-16 16:03:00",
+    "duration": 2705.0,
+    "distance": 8940.0,
+    "calories": 512.0,
+    "averageHR": 152.0,
+    "maxHR": 176.0,
+    "elevationGain": 84.0,
+    "averageSpeed": 3.3,
+    "activityTrainingLoad": 148.2
+  },
+  {
+    "activityId": 19788811002,
+    "activityName": "Krafttraining",
+    "activityType": {
+      "typeId": 13,
+      "typeKey": "strength_training"
+    },
+    "startTimeLocal": "2026-07-15 07:10:00",
+    "startTimeGMT": "2026-07-15 05:10:00",
+    "duration": 3600.0,
+    "calories": 310.0,
+    "averageHR": 112.0
+  },
+  {
+    "activityId": 19788811003,
+    "activityName": "Eishockey",
+    "activityType": {
+      "typeId": 87,
+      "typeKey": "ice_hockey"
+    },
+    "startTimeLocal": "2026-07-14 20:00:00",
+    "startTimeGMT": "2026-07-14 18:00:00",
+    "duration": 4500.0,
+    "calories": 640.0
+  }
+]

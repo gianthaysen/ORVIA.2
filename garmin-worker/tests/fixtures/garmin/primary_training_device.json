@@ -1,0 +1,6 @@
+{
+  "__note": "FIXTURE-ANNAHME: primaryTrainingDevice.deviceId — gegen Live-API verifizieren",
+  "primaryTrainingDevice": {
+    "deviceId": 3499633930
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "__note": "FIXTURE-ANNAHME: floorsAscended (Tag) — gegen Live-API verifizieren",
+  "startTimestampGMT": "2026-07-16T00:00:00.0",
+  "endTimestampGMT": "2026-07-17T00:00:00.0",
+  "floorsAscended": 12,
+  "floorsDescended": 11
+}

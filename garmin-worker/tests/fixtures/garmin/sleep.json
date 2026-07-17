@@ -1,0 +1,22 @@
+{
+  "__note": "FIXTURE-ANNAHME: sleepNeed.actual in Minuten — gegen Live-API verifizieren",
+  "dailySleepDTO": {
+    "calendarDate": "2026-07-16",
+    "sleepTimeSeconds": 26100,
+    "napTimeSeconds": 0,
+    "deepSleepSeconds": 5400,
+    "lightSleepSeconds": 14700,
+    "remSleepSeconds": 6000,
+    "awakeSleepSeconds": 900,
+    "sleepScores": {
+      "overall": {
+        "value": 82,
+        "qualifierKey": "GOOD"
+      }
+    },
+    "sleepNeed": {
+      "actual": 480,
+      "baseline": 480
+    }
+  }
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "__note": "FIXTURE-ANNAHME: recoveryTime in Minuten — gegen Live-API verifizieren",
+    "calendarDate": "2026-07-16",
+    "score": 68,
+    "level": "READY",
+    "feedbackShort": "READY_TO_GO",
+    "recoveryTime": 840
+  }
+]

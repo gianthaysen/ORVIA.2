@@ -1,0 +1,6 @@
+{
+  "__note": "FIXTURE-ANNAHME: Tages-Feldnamen moderate/vigorousIntensityMinutes — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-16",
+  "moderateIntensityMinutes": 25,
+  "vigorousIntensityMinutes": 18
+}

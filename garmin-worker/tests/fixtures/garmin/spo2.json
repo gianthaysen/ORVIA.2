@@ -1,0 +1,6 @@
+{
+  "__note": "FIXTURE-ANNAHME: avgSleepSpO2 — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-16",
+  "avgSleepSpO2": 95,
+  "lowestSpO2": 90
+}

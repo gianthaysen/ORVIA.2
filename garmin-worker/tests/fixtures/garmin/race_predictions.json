@@ -1,0 +1,8 @@
+{
+  "__note": "FIXTURE-ANNAHME: time5K/time10K/timeHalfMarathon/timeMarathon in Sekunden — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-16",
+  "time5K": 1245.0,
+  "time10K": 2601.0,
+  "timeHalfMarathon": 5893.0,
+  "timeMarathon": 12602.0
+}

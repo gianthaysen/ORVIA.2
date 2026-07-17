@@ -1,0 +1,7 @@
+{
+  "__note": "FIXTURE-ANNAHME: fitnessAge Jahre — gegen Live-API verifizieren",
+  "calendarDate": "2026-07-16",
+  "fitnessAge": 27.8,
+  "achievableFitnessAge": 24.5,
+  "chronologicalAge": 33
+}
