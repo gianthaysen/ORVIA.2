@@ -7,7 +7,10 @@
      - Modell (normalizeGoal) liefert {category, unit, id, priority:1..4, metricType}
      Rollen-Mapping 1..4 → primary/secondary/maintain/longterm; Status durchgereicht
      (DB-CHECK ug_enums seit Migration 0012 erweitert — VOR einem Live-Goals-Sync
-     ausführen). categoryData/milestones/sports bleiben bewusst Blob-Detail. */
+     ausführen). Goal-G1c: category_data/milestones/sports/motivation/time_horizon/
+     custom_category sind ab Migration 0027 KEIN reines Blob-Detail mehr — die Cloud
+     ist dafür SSOT (goalToRowFull sendet immer einen klaren Wert, s. u.); ein lokaler
+     Fallback greift dort NUR noch bei fehlender Spalte (un-migrierte/Legacy-Zeile). */
   const ROLE_TO_DB = { 1: 'primary', 2: 'secondary', 3: 'maintain', 4: 'longterm' };
   function goalToRow(goal) {
     const numPr = typeof goal.priority === 'number';
@@ -28,6 +31,20 @@
     const row = goalToRow(goal);
     if (goal.metricType) row.metric_type = goal.metricType;
     if (goal.currentValue != null && typeof goal.currentValue === 'number') row.current_value = goal.currentValue;
+    // Goal-G1c (Migration 0027 ist ab hier VORAUSSETZUNG für den Client-Deploy, keine
+    // optionale "falls belegt"-Erweiterung mehr — s. Migrationsreihenfolge in 0027 und
+    // im Batch-Bericht): die 6 Detailfelder werden IMMER mit einem klaren Wert gesendet,
+    // auch wenn leer/gelöscht. Ein weggelassenes Feld könnte ein bewusstes Leeren
+    // (Motivation entfernt, Meilenstein gelöscht, categoryData zurückgesetzt) NICHT von
+    // "nichts geändert" unterscheiden und würde den alten Cloud-Wert stehen lassen.
+    // WICHTIG: läuft dieser Code gegen eine Instanz OHNE Migration 0027, schlägt der
+    // Upsert mit "unknown column" fehl — Migration MUSS vor diesem Client-Deploy live sein.
+    row.time_horizon = goal.timeHorizon || null;
+    row.custom_category = goal.customCategory || null;
+    row.motivation = goal.motivation || '';
+    row.sports = Array.isArray(goal.sports) ? goal.sports.slice() : [];
+    row.category_data = (goal.categoryData && typeof goal.categoryData === 'object' && !Array.isArray(goal.categoryData)) ? goal.categoryData : {};
+    row.milestones = Array.isArray(goal.milestones) ? goal.milestones : [];
     return row;
   }
 

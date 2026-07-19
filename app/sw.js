@@ -1,4 +1,4 @@
-const C = 'orvia-v8-187';
+const C = 'orvia-v8-195';
 try { console.log('[ORVIA SW]', C); } catch (e) {}
 const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
   './assets/icons/icon-192.png','./assets/icons/icon-512.png','./assets/icons/apple-touch-icon.png',

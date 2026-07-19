@@ -482,8 +482,11 @@
     }
   });
 
-  /* ---------- P9 · goals ↔ user_goals (Kernfelder; categoryData/milestones/
-     sports/motivation/timeHorizon bleiben Ebene B — beim Apply je Ziel-ID erhalten). ---------- */
+  /* ---------- P9 · goals ↔ user_goals. Goal-G1c: Cloud ist SSOT für category_data/
+     milestones/sports/motivation/timeHorizon/customCategory (goalToRowFull sendet
+     immer einen klaren Wert — s. goalRepository.js). Der lokale prev-Fallback unten
+     greift NUR noch, wenn die Cloud-Spalte fehlt (un-migrierte Instanz / Legacy-Zeile
+     ohne Migration 0027), NICHT mehr generell "bleibt Ebene B". ---------- */
   var _DB_PRIO = { primary: 1, secondary: 2, maintain: 3, longterm: 4, optional: 3 };
   var _goalsCycle = _makeSectionCycle({
     section: 'goals', table: 'user_goals', onConflict: 'user_id,client_goal_id',
@@ -517,7 +520,20 @@
           targetDate: r.target_date || null,
           priority: _DB_PRIO[r.priority] || prev.priority || 2,
           status: r.status === 'completed' ? 'achieved' : (r.status || prev.status || 'active'),
-          description: r.description != null ? r.description : (prev.description || '')
+          description: r.description != null ? r.description : (prev.description || ''),
+          /* Goal-G1: Detailfelder explizit aus der Cloud-Zeile zurückholen. Fehlt die
+             Spalte (un-migrierte Instanz / nicht belegt), bleibt der lokale prev-Wert
+             erhalten — kein Datenverlust auf dem GLEICHEN Gerät. Auf einem frischen
+             Gerät ohne prev kommen die Cloud-Werte vollständig an (behebt Goal-G1). */
+          // Goal-G1c: !== undefined statt != null — eine Cloud-Spalte mit explizitem
+          // NULL (bewusst geleert) muss als NULL ankommen, nicht mit "Spalte fehlt"
+          // (Legacy-Zeile ohne Migration 0027) verwechselt und durch prev ersetzt werden.
+          timeHorizon: r.time_horizon !== undefined ? r.time_horizon : (prev.timeHorizon || null),
+          customCategory: r.custom_category !== undefined ? r.custom_category : (prev.customCategory || null),
+          motivation: r.motivation != null ? r.motivation : (prev.motivation || ''),
+          sports: Array.isArray(r.sports) ? r.sports : (Array.isArray(prev.sports) ? prev.sports : []),
+          categoryData: (r.category_data && typeof r.category_data === 'object' && !Array.isArray(r.category_data)) ? r.category_data : (prev.categoryData || {}),
+          milestones: Array.isArray(r.milestones) ? r.milestones : (Array.isArray(prev.milestones) ? prev.milestones : [])
         });
       });
       PROFILE.goals = M.normalizeGoals(incoming);
