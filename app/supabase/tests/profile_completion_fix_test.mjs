@@ -8,6 +8,8 @@
      kein „Ich habe keine Beschwerden"-Weg im Editor.
    - Plus-Button: `.tabbar button` (0,1,1) überschrieb `.nav-plus` (0,1,0)
      → Form/Gold-Verlauf verloren, Glow-Artefakt.
+     (Seit Shell-v3 liegt der Plus-Button als `#navPlus.fab` außerhalb der Bar;
+      die Absicherung läuft heute über die ID-Spezifität — siehe Abschnitt 6.)
    Verträge dieses Pakets:
    1. profileModel.ESSENTIAL_FIELD_LABELS benennt JEDEN required-Key deutsch.
    2. Sportprofil-Editor schreibt die kanonischen Trainingsstand-Felder
@@ -16,7 +18,8 @@
       _profileSave(['constraints']) → Completion vollständig, Event feuert.
    4. Profil-Center nennt fehlende Angaben konkret (nicht nur „x fehlen").
    5. Editoren zeigen einen Fehlt-Hinweis (pur testbar) + Quelltext-Vertrag.
-   6. styles.css: Plus-Regeln mit Spezifität ≥ `.tabbar button.nav-plus`.
+   6. styles.css: Plus-Regeln mit einer Spezifität, die die Tabbar-Kaskade nicht
+      überstimmen kann (seit Shell-v3/GM7: `#navPlus.fab`, 1,1,0).
    node supabase/tests/profile_completion_fix_test.mjs
    ============================================================ */
 import { readFileSync } from 'node:fs';
@@ -161,15 +164,66 @@ function makeApp() {
   ok('H7 Beschwerden-Editor bindet Hinweis ein', /_missingHintHTML\(\s*'constraints'\s*\)/.test(src));
 }
 
-/* ---------- 6) Plus-Button: CSS-Spezifität ≥ .tabbar button ---------- */
+/* ---------- 6) Plus-Button: verbindliche Größen-/Kreis-/Gold-Regel ----------
+   Vertragsgeschichte:
+   Der Vertrag entstand, als der Plus-Button noch ein Kind der Tabbar war und
+   `.tabbar button` (0,1,1) die schwächere Regel `.nav-plus` (0,1,0) überschrieb.
+   Die Absicherung war deshalb `.tabbar button.nav-plus` (0,2,1).
+   Mit der Shell-v3-Migration ist der Plus-Button aus der Bar herausgelöst worden:
+   index.html führt ihn als `<button id="navPlus" class="fab">` AUSSERHALB der
+   `.tabbar` (shell_v3_migration_test.mjs prüft genau das als Invariante). Seither
+   trägt kein Element im gesamten Laufzeitcode die Klasse `nav-plus` mehr — die
+   `.tabbar button.nav-plus`-Regeln konnten kein Element mehr treffen und wurden in
+   GM7 (Legacy-Deaktivierung + Gesamtabgleich) als toter Bestand entfernt.
+   Die INHALTLICHE Invariante bleibt unverändert in Kraft und wird hier auf das
+   heute wirksame Element gedreht: der Plus-Button ist 52px, kreisrund, trägt den
+   Gold-Verlauf, hat eine eigene Icon-Größe und eine Größen-/Positionsregel, die
+   von der Tabbar-Kaskade nicht überstimmt werden kann. Statt EINER Bedingung prüft
+   jede Assertion jetzt MEHRERE — die Prüfung ist strikt strenger, nicht schwächer. */
 {
   const css = readFileSync(new URL('../../styles.css', import.meta.url), 'utf8');
-  ok('B1 Hauptregel mit .tabbar button.nav-plus', /\.tabbar button\.nav-plus\s*\{[^}]*width:\s*52px[^}]*height:\s*52px[^}]*border-radius:\s*50%/.test(css));
-  ok('B2 Gold-Verlauf in der spezifischen Regel', /\.tabbar button\.nav-plus\s*\{[^}]*linear-gradient/.test(css));
-  ok('B3 Icon-Regel spezifisch (.tabbar button.nav-plus .ic)', /\.tabbar button\.nav-plus \.ic\s*\{[^}]*width:\s*24px/.test(css));
-  ok('B4 320px-Media-Query spezifisch', /@media \(max-width:\s*340px\)\s*\{\s*\.tabbar button\.nav-plus\s*\{[^}]*width:\s*48px[^}]*height:\s*48px/.test(css));
+  const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const bar = (html.match(/<div class="tabbar">[\s\S]*?<\/div><\/div>/) || [''])[0];
+
+  /* B1: die maßgebliche Regel trägt die ID-Spezifität (1,1,0) und kann damit von
+     KEINER Klassen-/Elementregel der Tabbar-Kaskade überstimmt werden. */
+  const _b1Regel  = /#navPlus\.fab\{[^}]*width:52px[^}]*height:52px[^}]*border-radius:50%/.test(css);
+  const _b1Markup = /<button[^>]*id="navPlus"[^>]*class="fab"|<button[^>]*class="fab"[^>]*id="navPlus"/.test(html);
+  const _b1Frei   = !bar.includes('id="navPlus"');   /* nicht im Tabbar-Fluss */
+  ok('B1 Hauptregel 52px/Kreis mit ID-Spezifität (#navPlus.fab), Button außerhalb der Bar',
+     _b1Regel && _b1Markup && _b1Frei,
+     'regel=' + _b1Regel + ' markup=' + _b1Markup + ' ausserhalb=' + _b1Frei);
+
+  /* B2: Gold-Verlauf — über das Designtoken, das selbst ein linear-gradient sein muss. */
+  const _b2Token = /--gold-grad:\s*linear-gradient/.test(css);
+  const _b2Nutz  = /\.fab\{[^}]*background:var\(--gold-grad\)/.test(css);
+  ok('B2 Gold-Verlauf am wirksamen Button (--gold-grad = linear-gradient)',
+     _b2Token && _b2Nutz, 'token=' + _b2Token + ' genutzt=' + _b2Nutz);
+
+  /* B3: eigene Icon-Regel (das Icon darf nicht die generische Tabbar-Icon-Größe erben). */
+  ok('B3 Icon-Regel spezifisch (.fab .ic)', /\.fab \.ic\{[^}]*width:2[45]px/.test(css));
+
+  /* B4: Schmalviewport. Die alte 340px-Query verkleinerte den Button, weil er in der
+     Flexzeile der Bar mitlief und diese sonst überlief. Der FAB liegt heute fixed am
+     Viewportrand — die Überlaufursache existiert nicht mehr. Geprüft wird deshalb der
+     Mechanismus, der an ihre Stelle getreten ist: fixed-Positionierung mit festem
+     Randabstand plus die 430px-Breitenbindung von Bar UND FAB. */
+  const _b4Fixed = /\.fab\{position:fixed[^}]*right:18px/.test(css);
+  const _b4Cap   = /\.tabbar,\.fab\{max-width:430px\}/.test(css);
+  const _b4Zentr = /@media\(min-width:431px\)\{[\s\S]{0,160}?\.fab\{right:calc\(50% - 215px \+ 18px\)\}/.test(css);
+  ok('B4 Schmalviewport: FAB fixed am Rand, 430px-Bindung und Zentrierung ≥431px',
+     _b4Fixed && _b4Cap && _b4Zentr,
+     'fixed=' + _b4Fixed + ' cap=' + _b4Cap + ' zentriert=' + _b4Zentr);
+
   // Keine schwache 52px-Regel mehr, die stillschweigend verliert:
   ok('B5 keine unterlegene .nav-plus-Größenregel übrig', !/(^|\})\s*\.nav-plus\s*\{[^}]*width:\s*52px/.test(css));
+
+  /* B6 (neu, GM7): der entfernte Legacy-Bestand darf nicht zurückkehren — weder als
+     Größen-/Gold-Regel noch als Klasse im Laufzeit-Markup. */
+  const _b6Css  = !/\.tabbar button\.nav-plus\{/.test(css);
+  const _b6Html = !/nav-plus/.test(html);
+  ok('B6 Legacy-Plus (.tabbar button.nav-plus) bleibt entfernt — CSS und Markup',
+     _b6Css && _b6Html, 'css-frei=' + _b6Css + ' markup-frei=' + _b6Html);
 }
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');

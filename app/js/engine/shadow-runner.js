@@ -9,6 +9,12 @@
    - Fehlende Inputs werden ehrlich als missingData geloggt, nie erfunden.
    - Gate-Kriterium (ENGINE-V2-DESIGN §5): ≥14 reale Tage protokolliert, Differenzen
      fachlich bewertet → erst dann Umschalt-Entscheidung.
+   PHASE 8 (2026-07-18): der v2-Input wird nicht mehr hier ad-hoc gebaut,
+   sondern zentral vom TrainingInputResolver (training-input-resolver.js) —
+   inkl. der Vertrags-Fixes (soreness statt doms, rhrBaseline+Days statt
+   restingHrBaseline, hrvBaselineLn/hrvSd28/hrvBaselineDays statt
+   hrvBaselineLn7, safetyFlags als Objekt statt Array, kein Phantom m.pain)
+   und des Garmin-Metric-Store-Fallbacks für objektive Werte.
    Debug: ORVIA.engineShadow.report() in der Konsole.
    ============================================================ */
 (function (root) {
@@ -21,94 +27,18 @@
   }
   function _writeLog(a) { try { if (root.localStorage) root.localStorage.setItem(_key(), JSON.stringify(a.slice(-90))); } catch (e) {} }
 
-  /* v1-Welt → v2-Input. DEFENSIV: alles optional, fehlendes wird ausgewiesen. */
+  /* v1-Welt → v2-Input: delegiert an den TrainingInputResolver (Phase 8,
+     EINE Input-Logik). Batch 0 — FAIL CLOSED: Ohne Resolver (Ladefehler)
+     wird KEIN Ersatz-Input gebaut. Der frühere leere Fallback setzte
+     illness:false/safetyFlags:{} und verwandelte damit Krankheit/Red Flags
+     in ein scheinbar sicheres GREEN (Regression S6–S8). Ein fehlendes
+     Sicherheits-Eingangsmodul darf nie eine optimistische Bewertung
+     erzeugen ⇒ buildInput() liefert null, run() protokolliert BLOCKED. */
   function buildInput() {
-    var missing = [];
-    var today = (typeof root.todayStr === 'function') ? root.todayStr() : null;
-    var e = (today && typeof root.DB !== 'undefined' && root.DB) ? (root.DB[today] || {}) : {};
-    var m = e.morning || null;
-    if (!m) missing.push('morning_checkin');
-
-    // Readiness: v1-Score als Eingang (Shadow vergleicht die ENTSCHEIDUNGS-Logik;
-    // der Readiness-Engine-v2-Vergleich läuft separat über readinessEngineV2, wenn Inputs da sind).
-    var readiness = { score: null, confidence: 'low', warnings: [], missingData: [] };
-    try {
-      if (m && O.readinessEngineV2 && typeof O.readinessEngineV2.evaluate === 'function') {
-        var ctx = (typeof root.recoveryCtx === 'function') ? root.recoveryCtx(today) : {};
-        readiness = O.readinessEngineV2.evaluate({
-          sleepMinutes: m.sleepMin != null ? m.sleepMin : null,
-          sleepQuality: m.sleepQ != null ? m.sleepQ : null,
-          feel: m.feel != null ? m.feel : null,
-          doms: m.doms != null ? m.doms : null,
-          stress: m.stress || null,
-          restingHr: m.rhr != null ? m.rhr : null,
-          restingHrBaseline: ctx && ctx.rhrBase != null ? ctx.rhrBase : null,
-          hrvMs: m.hrvMs != null ? m.hrvMs : null,
-          hrvBaselineLn7: ctx && ctx.hrvBase7 != null ? ctx.hrvBase7 : null,
-          bodyBattery: m.bb != null ? m.bb : null
-        }) || readiness;
-      } else if (typeof root.readinessOf === 'function') {
-        var sc = root.readinessOf(today);
-        readiness = { score: sc != null ? sc : null, confidence: 'low', warnings: [], missingData: ['v2_readiness_unavailable'] };
-      }
-    } catch (err) { missing.push('readiness_error'); }
-
-    // Geplante Einheit heute (aus dem aktiven Wochenplan; deutsche Typen → kanonisch).
-    var planned = null;
-    try {
-      var wd = today ? (new Date(today + 'T12:00').getDay() + 6) % 7 : null;
-      var plan = (typeof root.activeWeekPlan === 'function') ? root.activeWeekPlan() : null;
-      var item = (plan && wd != null && plan[wd] && plan[wd][0]) || null;
-      if (item) {
-        var sport = 'other';
-        try { if (O.trainingDomain && O.trainingDomain.normSport) sport = O.trainingDomain.normSport(item.t) || 'other'; } catch (e2) {}
-        var d = String(item.d || '') + ' ' + String(item.l || '');
-        var intensity = /iv|Intervalle|tempo|Tempo|race/i.test(d) ? 'hard' : (/lr|Long/i.test(d) ? 'long' : 'easy');
-        planned = { sport: sport, intensity: intensity, label: item.l || '' };
-      }
-    } catch (err) { missing.push('planned_error'); }
-
-    // Belastung der letzten 7/28 Tage aus sRPE-Lasten.
-    var recentLoad = { acute7: null, chronic28PerWeek: null, dataDays: 0, hardYesterday: false, hardStreak: 0 };
-    try {
-      if (typeof root.DB !== 'undefined' && root.DB && root.Calc && root.Calc.sessionLoad && typeof root.todayStr === 'function') {
-        var acute = 0, chronic = 0, dataDays = 0;
-        for (var i = 0; i < 28; i++) {
-          var dte = new Date(); dte.setDate(dte.getDate() - i);
-          var k = root.todayStr(dte);
-          var L = root.Calc.sessionLoad(root.DB[k]);
-          if (L > 0) dataDays++;
-          if (i < 7) acute += L;
-          chronic += L;
-        }
-        var y = new Date(); y.setDate(y.getDate() - 1);
-        var ky = root.todayStr(y);
-        var sy = root.DB[ky] && root.DB[ky].sessions;
-        var hardY = false;
-        if (sy) Object.keys(sy).forEach(function (t) { if (t === '_ts') return; var x = sy[t]; if ((x.rpe || 0) >= 7 || (x.dist || 0) >= 14) hardY = true; });
-        recentLoad = { acute7: Math.round(acute), chronic28PerWeek: Math.round(chronic / 4), dataDays: dataDays, hardYesterday: hardY, hardStreak: hardY ? 1 : 0 };
-      } else missing.push('load_data');
-    } catch (err) { missing.push('load_error'); }
-
-    var input = {
-      readiness: readiness,
-      safetyFlags: (m && m.pain >= 8) ? ['severe_pain'] : [],
-      illness: !!(m && m.ill),
-      constraints: (typeof PROFILE !== 'undefined' && PROFILE && Array.isArray(PROFILE.constraintsList)) ? PROFILE.constraintsList : [],
-      plannedSession: planned,
-      recentLoad: recentLoad,
-      goalContext: { daysToEvent: (typeof root.daysTo === 'function' && typeof root.RACE !== 'undefined' && root.RACE && root.RACE.date) ? root.daysTo(root.RACE.date) : null },
-      availabilityToday: (function () {
-        try {
-          var cfg = O.profileModel && O.profileModel.effectiveTrainingConfig ? O.profileModel.effectiveTrainingConfig(PROFILE) : null;
-          if (!cfg || !cfg.availableDayIdx || !cfg.availableDayIdx.length) return null;
-          var wd2 = (new Date().getDay() + 6) % 7;
-          return cfg.availableDayIdx.indexOf(wd2) >= 0;
-        } catch (e3) { return null; }
-      })(),
-      _shadowMissing: missing
-    };
-    return input;
+    if (O.trainingInputResolver && typeof O.trainingInputResolver.collect === 'function') {
+      return O.trainingInputResolver.collect();
+    }
+    return null;
   }
 
   /* Ein Shadow-Lauf: v1 lesen, v2 rechnen, Tages-Eintrag schreiben (ersetzt Vorlauf desselben Tages). */
@@ -127,14 +57,27 @@
       var _ti = P.now();
       var input = buildInput();
       P.mark('engineShadow.run: buildInput (incl. own 28d load loop)', _ti);
+      var entry;
+      if (input === null) {
+        /* Batch 0 — FAIL CLOSED: Resolver fehlt ⇒ keine v2-Bewertung, ehrlicher
+           BLOCKED-Eintrag (state null, nicht vergleichbar). Niemals GREEN raten. */
+        entry = {
+          date: today, ts: Date.now(),
+          v1: v1 ? { state: v1.state || v1.dayState || null, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
+          v2: { state: null, action: null, confidence: null, blocked: 'training_input_resolver_missing', reasons: [] },
+          agree: null,
+          missing: ['training_input_resolver_missing']
+        };
+      } else {
       var v2 = O.decisionEngineV2.evaluate(input);
-      var entry = {
+      entry = {
         date: today, ts: Date.now(),
         v1: v1 ? { state: v1.state || v1.dayState || null, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
         v2: { state: v2.dayState || null, action: v2.action || null, confidence: v2.confidence || null, reasons: (v2.reasons || []).slice(0, 4) },
         agree: (v1 && v1.state && v2.dayState) ? (v1.state === v2.dayState) : null,
         missing: (input._shadowMissing || []).concat(v2.missingData || []).slice(0, 6)
       };
+      }
       var _tlog = P.now();
       var log = _readLog().filter(function (x) { return x && x.date !== today; });
       log.push(entry);
@@ -156,6 +99,7 @@
     return {
       days: log.length,
       comparableDays: withBoth.length,
+      blockedDays: log.filter(function (x) { return x && x.v2 && x.v2.blocked; }).length,
       agreementRate: withBoth.length ? Math.round((agrees / withBoth.length) * 100) : null,
       gateReady: withBoth.length >= 14,
       diffs: withBoth.filter(function (x) { return !x.agree; }).map(function (x) {

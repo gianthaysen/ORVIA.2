@@ -231,6 +231,9 @@ class FakeGarminApi:
     def get_activities_by_date(self, start, end=None, *a, **k):
         return self._get("activities.json", "get_activities_by_date")
 
+    def get_activity_details(self, activity_id, *a, **k):
+        return self._get("activity_details.json", "get_activity_details")
+
 
 @pytest.fixture
 def fake_garmin_api():

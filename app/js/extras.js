@@ -17,8 +17,10 @@ function goalConflict(){
 /* ---- Zielprognose + Fehlerdiagnose ---- */
 function forecastCauses(){
   var c=[];
-  try{var wk=(typeof weekRunKm==='function')?weekRunKm(0):0,wp=(typeof weekRunKm==='function')?weekRunKm(1):0;
-    if(wp>0&&wk<wp*0.6)c.push('Trainingsumfang zuletzt deutlich gesunken — Konsistenz erhöhen.');}catch(e){}
+  try{var wk=(typeof weekRunKm==='function')?weekRunKm(0):null,wp=(typeof weekRunKm==='function')?weekRunKm(1):null;
+    // I2b: nur bei BEKANNTEN Wochen-km vergleichen — sonst würde eine unbekannte Woche
+    // (null→0 durch Typkoerzion) fälschlich als "Umfang gesunken" gemeldet.
+    if(wk!=null&&wp!=null&&wp>0&&wk<wp*0.6)c.push('Trainingsumfang zuletzt deutlich gesunken — Konsistenz erhöhen.');}catch(e){}
   try{var days=Object.keys(DB).filter(isDay).sort().reverse().slice(0,7);
     var sl=days.map(function(k){return DB[k].morning&&DB[k].morning.sleepMin;}).filter(function(x){return x;});
     if(sl.length>=3&&Calc.avg(sl)<360)c.push('Schlaf im Schnitt unter 6 h — limitiert Anpassung.');}catch(e){}

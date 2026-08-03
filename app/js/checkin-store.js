@@ -31,6 +31,22 @@
   function isDay(k) { return /^\d{4}-\d{2}-\d{2}$/.test(k); }
   function isValidType(t) { return VALID_TYPES.indexOf(t) >= 0; }
 
+  /* GM6.2-Fallback-Wächter — greift NUR, wenn ui-refresh.js fehlt (Teil-Load,
+     defektes SW-Cache-Update). Gleiche Semantik wie uiRefresh.hasOpenInput,
+     bewusst ohne Abhängigkeit und ohne Datenzugriff: rein lesende DOM-Prüfung,
+     kein Store-, Fach- oder Netzwerkbezug. #morningForm ist ausdrücklich
+     abgedeckt — ein geöffnetes Morgenformular darf nie überschrieben werden. */
+  function _gm62InputOpen() {
+    try {
+      const d = window.document; if (!d) return false;
+      const a = d.activeElement; if (!a) return false;
+      const tag = String(a.tagName || '').toUpperCase();
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && a.isContentEditable !== true) return false;
+      if (typeof a.closest !== 'function') return false;
+      return !!(a.closest('#morningForm') || a.closest('#checkinCard') || a.closest('#tab-heute'));
+    } catch (e) { return false; }
+  }
+
   // daily_checkins-Zeile → Check-in-Objekt (Umkehrung von checkinRepository.toRow).
   // Vollständig: illness + komplettes complaints-Array (kopiert), Knie-Kompatibilität
   // zusätzlich (ersetzt das Array nicht). Keine Referenzteilung.
@@ -51,9 +67,17 @@
       rhr: row.resting_hr ?? null, hrvMs: row.hrv_ms ?? null, hrv: row.hrv_status ?? null,
       bb: row.body_battery ?? null, stress: row.stress ?? null, feel: row.feel ?? null,
       legs: row.leg_strength ?? null, doms: row.doms ?? null,
-      illness: row.illness ?? null, complaints: complaints
+      /* P6-Vorbedingung (a): UI/Blob-Welt liest `m.ill` (Chips, _mvHasComplaintToday,
+         Engine-Mapping) — beide Namen liefern, sonst ist Krankheit nach Hydration
+         lokal "weg", obwohl sie in der Tabelle steht. */
+      illness: row.illness ?? null, ill: row.illness ?? null, complaints: complaints
     };
     if (knee != null) m.knee = knee;
+    /* Phase 6: Feld-Herkunft (auto_sources, Migration 0021) zurück in die Blob-Welt. */
+    if (row.auto_sources && typeof row.auto_sources === 'object') m.autoSources = Object.assign({}, row.auto_sources);
+    /* Batch 0: Red Flags (Migration 0024) zurück in die Blob-Welt — sonst wäre
+       ein gemeldetes Warnzeichen nach Cross-Device-Hydration lokal „weg". */
+    if (row.red_flags && typeof row.red_flags === 'object') m.redFlags = Object.assign({}, row.red_flags);
     if (row.recorded_at) { const t = Date.parse(row.recorded_at); if (!isNaN(t)) m.ts = t; }
     return m;
   }
@@ -95,12 +119,33 @@
           ts: row.recorded_at ? Date.parse(row.recorded_at) : prev.ts
         });
       } else {
-        DB[row.local_date][key] = rowToCheckin(row);   // Tabelle gewinnt
+        /* P6-Vorbedingung (b) (2026-07-17, Audit-Befund 2): Merge statt Vollersatz.
+           Die Tabelle gewinnt weiterhin für JEDES von ihr abgebildete Feld (auch mit
+           null), aber Blob-only-Morgenfelder ohne Tabellenspalte (weight, ankle,
+           domsRegion) überleben die Hydration — vorher gingen Gewichtstrend-/
+           Nutrition-Daten bei jedem Login verloren. */
+        DB[row.local_date][key] = Object.assign({}, DB[row.local_date][key] || {}, rowToCheckin(row));
       }
       applied++;
     });
     O.checkinMorningMigrated = true;
-    try { if (typeof renderDay === 'function') renderDay(); } catch (e) {}
+    /* GM6.2 (2026-07-27): Hier stand ein ungeschütztes renderDay(). Die Login-
+       Hydration läuft asynchron weiter, während der Nutzer die Check-in-Karte
+       bereits ausfüllt — renderMorning() ersetzt #morningForm per innerHTML
+       komplett und hätte die laufende Eingabe verworfen.
+       Ersetzt wird AUSSCHLIESSLICH der Darstellungsaufruf: gleicher Anlass,
+       gleiche Fläche, jetzt über den vorhandenen zentralen UI-Refresh mit
+       Eingabeschutz. Keine Änderung an Hydration, Daten, Store-API oder
+       Persistenz; kein zusätzlicher Netzwerkaufruf (schedule() zeichnet nur
+       bereits geladene Daten neu).
+       Fallback ausschließlich für den Fall, dass ui-refresh.js nicht geladen ist:
+       dann rendert der Altpfad weiter, aber niemals über eine fokussierte
+       Eingabe hinweg. */
+    try {
+      const _uiR = window.ORVIA && window.ORVIA.uiRefresh;
+      if (_uiR && typeof _uiR.schedule === 'function') _uiR.schedule(['day'], { protectInput: true });
+      else if (typeof renderDay === 'function' && !_gm62InputOpen()) renderDay();
+    } catch (e) {}
     return res(true, { applied: applied }, null, applied ? 'supabase' : 'empty', 'synced');
   }
   // Rückwärtskompatibel: nur Morgen (Teilblock 1 / bestehende Tests).

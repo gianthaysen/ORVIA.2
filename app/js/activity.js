@@ -22,8 +22,15 @@ function decodePolyline(str, precision) {
 }
 
 /* ---- ORVIA-eigene Streckenkarte als SVG (Gold-Linie, dunkel, ohne Tiles) ---- */
-function routeSVG(pts) {
+/* opts (optional, rein darstellend — Geometrie der Strecke bleibt unveraendert):
+     aspect:'auto'  viewBox uebernimmt das echte Seitenverhaeltnis der Strecke, statt sie
+                    in eine feste 320x180-Kachel zu setzen (Story-Cover nutzt so die volle
+                    Seitenhoehe formtreu).
+     noBg:true      ohne Hintergrundflaeche (freistehende Route).
+   Ohne opts verhaelt sich die Funktion exakt wie bisher. */
+function routeSVG(pts, opts) {
   if (!pts || pts.length < 2) return '';
+  opts = opts || {};
   var lats = pts.map(function (p) { return p[0]; }), lngs = pts.map(function (p) { return p[1]; });
   var minLat = Math.min.apply(null, lats), maxLat = Math.max.apply(null, lats);
   var midLat = (minLat + maxLat) / 2, cos = Math.cos(midLat * Math.PI / 180);
@@ -33,6 +40,14 @@ function routeSVG(pts) {
   var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
   var W = 320, H = 180, pad = 20;
   var spanX = (maxX - minX) || 1e-6, spanY = (maxY - minY) || 1e-6;
+  if (opts.aspect === 'auto') {
+    /* Laengere Achse auf 320 normieren, kuerzere proportional — dadurch bleibt die Form
+       exakt erhalten und das SVG fuellt den verfuegbaren Raum ohne Leerraender. */
+    var ratio = spanY / spanX;
+    if (ratio >= 1) { H = 320; W = Math.max(120, Math.round(320 / ratio)); }
+    else { W = 320; H = Math.max(120, Math.round(320 * ratio)); }
+    pad = 16;
+  }
   var scale = Math.min((W - 2 * pad) / spanX, (H - 2 * pad) / spanY);
   var offX = (W - spanX * scale) / 2, offY = (H - spanY * scale) / 2;
   var px = function (i) { return (offX + (xs[i] - minX) * scale).toFixed(1); };
@@ -40,12 +55,17 @@ function routeSVG(pts) {
   var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + px(i) + ' ' + py(i); }).join(' ');
   var last = pts.length - 1;
   return '<svg class="rmap" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
-    '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="16" fill="#0b121d"/>' +
+    (opts.noBg ? '' : '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="16" fill="#0b121d"/>') +
     '<path d="' + d + '" fill="none" stroke="url(#orviaMarkGrad)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" filter="drop-shadow(0 0 5px rgba(201,174,124,.45))"/>' +
     '<circle cx="' + px(0) + '" cy="' + py(0) + '" r="4.5" fill="#34c77b"/>' +
     '<circle cx="' + px(last) + '" cy="' + py(last) + '" r="4.5" fill="#e5556a"/></svg>';
 }
 
+/* GM7.8: geschlossener Legacy-Typsatz der DB-Sessions (deutsche Schluessel) -> kanonische
+   Sport-ID. Dient AUSSCHLIESSLICH als letzte Aufloesung im Verknuepfungs-Guard, damit der
+   Schutz nicht an einem optionalen Modul haengt. Keine Anzeige-Logik. */
+var LEGACY_TYPE_SPORT = { 'Laufen': 'running', 'Rad': 'cycling', 'Radfahren': 'cycling', 'Schwimmen': 'swimming',
+  'Gym': 'gym', 'Krafttraining': 'gym', 'Mobilität': 'mobility', 'Mobilitaet': 'mobility', 'Wandern': 'hiking', 'Gehen': 'walking' };
 /* ---- Aktivität-Helfer ---- */
 var ACT_TYPES = { Laufen: { ic: 'run', unit: 'km' }, Rad: { ic: 'bike', unit: 'km' }, Schwimmen: { ic: 'swim', unit: 'm' }, Gym: { ic: 'dumbbell', unit: '' }, 'Mobilität': { ic: 'stretch', unit: '' } };
 function actRoute(s) { if (!s) return null; if (Array.isArray(s.route) && s.route.length > 1) return s.route; if (s.polyline) { try { var p = decodePolyline(s.polyline); return p.length > 1 ? p : null; } catch (e) {} } return null; }
@@ -108,18 +128,14 @@ function workoutCardHTML(date, typ, s) {
 
 /* ---- Aktivität-Detail als Sheet ---- */
 function openActivity(date, typ) {
+  // AD1b-Legacy-Adapter: löst (Datum, Typ) auf die kanonische Legacy-Activity-ID auf und
+  // öffnet den EINEN Renderer. Kein eigenes Overlay, keine Datum-only-Blind-Auswahl.
   if (date && typeof date === 'object' && date.dataset) { typ = date.dataset.t; date = date.dataset.d; }
-  var e = DB[date]; if (!e || !e.sessions || !e.sessions[typ]) return;
-  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
-  var hasRoute = actRoute(e.sessions[typ]);
-  wrap.innerHTML = '<div class="orvia-modal wcard-modal">' + workoutCardHTML(date, typ, e.sessions[typ]) +
-    (hasRoute ? '<button class="btn" style="margin-top:14px" onclick="closeActivity();openStory(\'' + date + '\',\'' + typ + '\')">▶ Story ansehen</button>' : '') +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeActivity();openEditActivity(\'' + date + '\',\'' + escH(typ) + '\')">Aktivität bearbeiten</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeActivity()">Schließen</button></div>';
-  document.body.appendChild(wrap); window._actModal = wrap;
-  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeActivity(); });
+  if (!date || !typ) return openActivityDetail(null, 'legacy_adapter');
+  var leg = null; try { leg = _legacyActivities().find(function (x) { return x._legacy && x._legacy.date === date && x._legacy.type === typ; }); } catch (e) {}
+  return openActivityDetail(leg ? leg.clientRecordId : ('legacy:' + date + ':' + typ), 'legacy_adapter');
 }
-function closeActivity() { if (window._actModal) { try { window._actModal.remove(); } catch (e) {} window._actModal = null; } }
+function closeActivity() { if (window._actModal) { try { window._actModal.remove(); } catch (e) {} window._actModal = null; } closeActivityDetail(); }
 
 /* ---- Aktivität bearbeiten (Phase 4.4): Sportart/Datum/Werte korrigieren, atomar neu berechnen ---- */
 var EDIT_TYPES = ['Laufen', 'Rad', 'Schwimmen', 'Gym', 'Mobilität', 'Wandern'];
@@ -216,17 +232,10 @@ function saveEditActivity(origDate, origType) {
   _confirmTypeChange();
 }
 function deleteActivity(date, typ) {
-  function _doDelete() {
-    try { var e = DB[date]; if (e && e.sessions) { delete e.sessions[typ]; e.sessions._ts = Date.now(); } } catch (e2) {}
-    closeEditActivity();
-    _mvRerender();
-    if (typeof toast === 'function') toast('Aktivität gelöscht');
-  }
-  if (typeof orviaConfirm === 'function') {
-    orviaConfirm({ title: 'Aktivität löschen?', text: 'Aktivität „' + typ + '" am ' + date + ' löschen? Zugehörige Statistiken werden entfernt.', okLabel: 'Endgültig löschen', danger: true, onOk: _doDelete });
-    return;
-  }
-  _doDelete();
+  // AD1b-Legacy-Adapter: löst (Datum, Typ) auf die kanonische Legacy-ID auf und löscht über
+  // den EINEN Pfad (deleteActivityCanonical → activityStore.deleteActivity + DB-Spiegel).
+  var leg = null; try { leg = _legacyActivities().find(function (x) { return x._legacy && x._legacy.date === date && x._legacy.type === typ; }); } catch (e) {}
+  return deleteActivityCanonical(leg ? leg.clientRecordId : ('legacy:' + date + ':' + typ));
 }
 
 /* ---- Aktivität-Tab (Inkrement 2A: kanonische Quelle + klar abgegrenzter Legacy-Adapter) ---- */
@@ -292,7 +301,12 @@ function listActivitiesUnified(limit) {
     : local.concat(legacy);
   return limit ? merged.slice(0, limit) : merged;
 }
-function renderAkt() {
+/* GM7-Fix: Legacy-Renderer umbenannt (vorher `function renderAkt()`). Die gehoistete
+   Deklaration überschrieb die kanonische GM3-Zuweisung in ui.js (Ladereihenfolge
+   index.html:422→423) und rendert nur in das ausgeblendete #aktBox (styles.css §GM3).
+   Kein produktiver Aufrufer mehr; bewusst behalten, bis der Legacy-Pfad komplett
+   abgebaut ist (Regressionstest: tools/collision_scan.mjs). */
+function renderAktLegacy() {
   var el = document.getElementById('aktBox'); if (!el) return;
   _fetchServerActivities();   // cross-device Serverdaten asynchron nachladen (Guard verhindert Loop)
   var acts = listActivitiesUnified(40);
@@ -335,69 +349,240 @@ function _resolveActivity(aid) {
 }
 // Zentraler Detail-Einstieg (beide Verläufe). Auflösung NUR über stabile ID.
 function openActivityDetails(idOrEl) {
+  // AD1b-Adapter: EIN kanonischer Einstieg, Auflösung ausschließlich über die stabile Activity-ID.
   var aid = (idOrEl && idOrEl.dataset) ? idOrEl.dataset.aid : idOrEl;
-  var a = _resolveActivity(aid);
-  // Workout-Snapshot NUR bei orvia_workout (manuelle Activity nie an den Workout-Resolver).
-  if (a && a.source === 'orvia_workout' && (a.workoutSnapshot || a.workoutSessionId || a.sourceRecordId)) {
-    if (ORVIA.workoutUI && ORVIA.workoutUI.openDetails) { ORVIA.workoutUI.openDetails(a.sourceRecordId || a.workoutSessionId, a.clientRecordId || a.id); return; }
-  }
-  // Manuelle/importierte/sonstige kanonische Activity → allgemeine Detailansicht (summary+metrics).
-  if (a) { renderGeneralActivityDetails(a); return; }
-  // Legacy-Aktivität → bestehende Workout-Karte über date/type.
-  if (aid && aid.indexOf('legacy:') === 0) { var parts = aid.split(':'); var date = parts[1]; var legacy = _legacyActivities().find(function (x) { return x.clientRecordId === aid; }); var typ = legacy && legacy._legacy && legacy._legacy.type; if (date && typ) { openActivity(date, typ); return; } }
-  if (typeof toast === 'function') toast('Details konnten nicht geladen werden');
+  return openActivityDetail(aid, 'training');
 }
-// Allgemeine Detailansicht (kein Workout-Satzprotokoll): sportartspezifische Felder aus summary+metrics.
-function renderGeneralActivityDetails(a) {
-  var cfg = ORVIA.activityConfig, an = ORVIA.activityNormalize;
-  var label = cfg.sportLabel(a.sportId);
-  var date = a.startedAt ? a.startedAt.slice(0, 10) : '';
-  var time = a.startedAt && a.startedAt.length >= 16 ? a.startedAt.slice(11, 16) : ((a.metrics && a.metrics.time) || '');
-  var s = a.summary || {}, m = a.metrics || {};
-  var rows = [];
-  function row(k, v) { if (v != null && v !== '') rows.push([k, v]); }
-  row('Sportart', label);
-  if (date) row('Datum', (typeof fmtDate === 'function') ? fmtDate(date) : date);
-  if (time) row('Uhrzeit', time);
-  row('Dauer', an ? an.fmtDurationSeconds(a.durationSeconds) : (a.durationSeconds != null ? Math.round(a.durationSeconds / 60) + ' min' : 'Dauer nicht erfasst'));
-  if (s.distanceM != null) { row('Distanz', s.distanceM + ' m'); if (a.durationSeconds) row('Pace', _pace100(a.durationSeconds, s.distanceM)); }
-  else if (s.distanceKm != null) { row('Distanz', s.distanceKm + ' km'); }
-  if (m.environment) row('Umgebung', cfg.enumLabel('environment', m.environment, a.sportId));
-  if (m.poolLengthM != null) row('Beckenlänge', m.poolLengthM + ' m');
-  if (m.stroke) row('Schwimmstil', m.stroke);
-  if (m.sessionKind) row('Art', cfg.enumLabel('sessionKind', m.sessionKind, a.sportId));
-  if (m.format) row('Format', cfg.enumLabel('format', m.format, a.sportId));
-  if (m.discipline) row('Disziplin', cfg.enumLabel('discipline', m.discipline, a.sportId));
-  if (m.result) row('Ergebnis', m.result);
-  if (s.elevationM != null) row('Höhenmeter', s.elevationM + ' m');
-  if (s.avgHr != null) row('HF Ø', s.avgHr + ' bpm');
-  if (s.rpe != null) row('RPE', s.rpe + '/10');
-  if (m.name) row('Name', m.name);
-  var note = (a.summary && a.summary.note) || m.note; if (note) row('Notiz', note);
-  var aid = a.clientRecordId || a.id;
-  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
-  wrap.innerHTML = '<div class="orvia-modal wcard-modal"><div class="wcard"><div class="wc-title">' + escH(label) + '</div>' +
-    '<div class="wc-stats">' + rows.map(function (r) { return '<div class="wc-stat"><span class="wc-sv">' + escH(r[1]) + '</span><span class="wc-sk">' + escH(r[0]) + '</span></div>'; }).join('') + '</div></div>' +
-    '<button class="btn sec danger-btn" style="margin-top:12px" onclick="confirmDeleteActivity(\'' + escH(aid) + '\')">Aktivität löschen</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeActivity()">Schließen</button></div>';
-  document.body.appendChild(wrap); window._actModal = wrap;
-  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeActivity(); });
-}
+// AD1b: Kompatibilitäts-Adapter — baut das kanonische View-Model und rendert über den EINEN Renderer.
+function renderGeneralActivityDetails(a) { return renderActivityDetail(activityDetailViewModel(a), (a && a._detailContext) || 'import_review'); }
 function _pace100(sec, meters) { if (!sec || !meters) return '–'; var p = sec / (meters / 100); var mm = Math.floor(p / 60), ss = Math.round(p % 60); return mm + ':' + String(ss).padStart(2, '0') + '/100 m'; }
 
-// ---- Löschen (manuell/Workout/Legacy) mit Bestätigung, offline-fest ----
-function confirmDeleteActivity(aid) {
-  var a = _resolveActivity(aid);
-  var isWorkout = a && a.source === 'orvia_workout';
-  var title = isWorkout ? 'Workout wirklich löschen?' : 'Aktivität wirklich löschen?';
-  var msg = isWorkout ? 'Das Workout inkl. Übungen und Sätzen wird dauerhaft entfernt.' : 'Diese Aktivität und ihre zugehörigen Daten werden dauerhaft entfernt.';
-  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg'; window._delModal = wrap;
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + escH(title) + '</h3><p class="modtext" style="margin:0 0 14px">' + escH(msg) + '</p>' +
-    '<button class="btn sec" onclick="_closeDelModal()">Abbrechen</button>' +
-    '<button class="btn danger-btn" style="margin-top:10px" onclick="doDeleteActivity(\'' + escH(aid) + '\')">Endgültig löschen</button></div>';
-  document.body.appendChild(wrap);
-  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) _closeDelModal(); });
+/* ============================================================
+   AD1b · Kanonischer Activity-Detail-Vertrag: EINE ID, EIN reines View-Model,
+   EIN Renderer, EIN Overlay-Owner, EIN Löschpfad. Alle Alt-Einstiege sind ab
+   hier dünne Adapter (s. openActivityDetails/openActivity/renderGeneralActivityDetails).
+   ============================================================ */
+// Auflösung inkl. Legacy-Adapter-IDs (legacy:date:sportId). Kein Blind-Matching, kein Datum-only-Pick.
+function _resolveActivityAny(aid) {
+  if (!aid) return null;
+  var a = _resolveActivity(aid); if (a) return a;
+  if (String(aid).indexOf('legacy:') === 0) { try { return _legacyActivities().find(function (x) { return x.clientRecordId === aid; }) || null; } catch (e) {} }
+  return null;
 }
+// Reines Detail-View-Model (Summary-Umfang; ehrliche Missingness; keine erfundenen Defaults).
+function activityDetailViewModel(a) {
+  a = a || {};
+  var cfg = window.ORVIA && ORVIA.activityConfig, an = window.ORVIA && ORVIA.activityNormalize;
+  var s = a.summary || {}, m = a.metrics || {};
+  var id = a.clientRecordId || a.id || null;
+  var sportId = a.sportId || null;
+  var startedAt = a.startedAt || null;
+  var date = startedAt ? startedAt.slice(0, 10) : null;
+  var time = (startedAt && startedAt.length >= 16) ? startedAt.slice(11, 16) : (m.time || null);
+  var dm = (an && typeof an.activityDetailModel === 'function') ? an.activityDetailModel(sportId, s, a.durationSeconds, m) : null;
+  var vm = {
+    id: id, sportId: sportId, sportLabel: cfg ? cfg.sportLabel(sportId) : sportId,
+    title: (dm && dm.name) || s.name || m.name || null,
+    startedAt: startedAt, date: date, time: time,
+    durationSeconds: (a.durationSeconds != null ? a.durationSeconds : null),
+    durationLabel: (an && a.durationSeconds != null) ? an.fmtDurationSeconds(a.durationSeconds) : null,
+    distanceLabel: dm ? dm.distanceLabel : null,
+    paceLabel: dm ? dm.paceLabel : null,
+    elevationM: dm ? dm.elevationM : (s.elevationM != null ? s.elevationM : null),
+    avgHr: dm ? dm.avgHr : (s.avgHr != null ? s.avgHr : null),
+    maxHr: dm ? dm.maxHr : (s.maxHr != null ? s.maxHr : null),
+    caloriesKcal: dm ? dm.caloriesKcal : (s.caloriesKcal != null ? s.caloriesKcal : null),
+    source: a.source || null,
+    sourceRecordId: a.sourceRecordId || null,
+    workoutSessionId: a.workoutSessionId || null,
+    planLink: a.plannedSessionId || (m && m.plannedSessionId) || null,
+    workoutDetail: null, workoutDetailState: null, storyRef: null, missing: {},
+    /* GM7.3: kanonische Route direkt aus dem Activity-Record (metrics.route) — überlebt
+       ohne Legacy-Blob und ist cloud-/geräteübergreifend. Fallback bleibt storyRef→Blob. */
+    canonicalRoute: (a.metrics && Array.isArray(a.metrics.route) && a.metrics.route.length > 1) ? a.metrics.route : null,
+    /* GM7.4.1: kanonische Garmin-Detail-Streams (metrics.streams, aus
+       get_activity_details geparst) — HF/Kadenz/Höhe/Geschwindigkeit/Distanz je
+       Aktivität; rohe Werte-Arrays (keine Neuberechnung, keine Tempo-Ableitung). */
+    canonicalStreams: (a.metrics && a.metrics.streams && typeof a.metrics.streams === 'object') ? a.metrics.streams : null,
+    canonicalStreamUnits: (a.metrics && a.metrics.stream_units && typeof a.metrics.stream_units === 'object') ? a.metrics.stream_units : null,
+    /* GM7.7: kanonische Garmin-Runden (metrics.splits — der Worker speichert sie bereits
+       aus splitSummaries/laps, das Frontend hat sie bisher NIE gelesen; Splits kamen nur
+       aus dem Legacy-Blob). Defensive Normalisierung auf {km, sec, hr}: ausschliesslich
+       echte Felder des Rohobjekts, keine Interpolation, keine erfundene Runde. */
+    canonicalSplits: (function () {
+      var raw = a.metrics && a.metrics.splits;
+      if (!Array.isArray(raw) || !raw.length) return null;
+      var num = function (v) { return (typeof v === 'number' && isFinite(v)) ? v : null; };
+      var out = [];
+      raw.forEach(function (r) {
+        if (!r || typeof r !== 'object') return;
+        var distM = num(r.distance) != null ? num(r.distance) : num(r.distanceInMeters);
+        var sec = num(r.duration) != null ? num(r.duration) : (num(r.elapsedDuration) != null ? num(r.elapsedDuration) : num(r.movingDuration));
+        if (distM == null || sec == null || sec <= 0) return;
+        out.push({ km: Math.round(distM / 1000 * 100) / 100, sec: Math.round(sec),
+          hr: num(r.averageHR) != null ? Math.round(num(r.averageHR)) : (num(r.avgHr) != null ? Math.round(num(r.avgHr)) : null) });
+      });
+      return out.length >= 2 ? out : null;
+    })()
+  };
+  ['title', 'distanceLabel', 'paceLabel', 'elevationM', 'avgHr', 'maxHr', 'caloriesKcal'].forEach(function (k) { vm.missing[k] = (vm[k] == null || vm[k] === ''); });
+  try {
+    var store = window.ORVIA && ORVIA.activityStore;
+    if (a.source === 'orvia_workout' && store && store.getWorkoutDetailsForActivity && id) {
+      var det = store.getWorkoutDetailsForActivity(id);
+      if (det && det.ok && det.hasDetails) vm.workoutDetail = det.exercises || null;
+    }
+  } catch (e) {}
+  // AD1c: Story nur bei EINDEUTIGER Legacy-Verknüpfung (genau diese eine Session mit Route/Splits).
+  try {
+    if (a.source === 'import' && !a._legacy && typeof DB !== 'undefined') {
+      /* GM7: Datei-Importe schreiben Route/Splits in den Legacy-Blob desselben Tages —
+         Verknuepfung ueber Datum + Sportart (eindeutig: max. 1 Session je Typ/Tag). */
+      var _d0 = a.startedAt ? String(a.startedAt).slice(0, 10) : null;
+      var _e0 = _d0 && DB[_d0]; var _ss = _e0 && _e0.sessions;
+      if (_ss) Object.keys(_ss).some(function (t) {
+        if (t === '_ts') return false; var sess0 = _ss[t]; if (!sess0) return false;
+        var has0 = (typeof actRoute === 'function' && actRoute(sess0)) || (sess0.splits && sess0.splits.length);
+        if (!has0) return false;
+        /* GM7.8-Fix (fail-closed): Der Sportart-Guard haengte an einem OPTIONALEN Modul —
+           fehlte ORVIA.trainingDomain, wurde die Sportart gar nicht geprueft und ein
+           Rad-Import konnte die Route einer LAUF-Session erben (Blind-Zuordnung).
+           Jetzt wird zusaetzlich ueber das kanonische Sport-Label aufgeloest; laesst sich
+           die Sportart mit KEINER Quelle bestimmen, wird bewusst NICHT verknuepft. */
+        var sid0 = null, lbl0 = null;
+        try { sid0 = (ORVIA.trainingDomain && ORVIA.trainingDomain.normSport) ? ORVIA.trainingDomain.normSport(t) : null; } catch (e0) {}
+        try { var _cfg0 = ORVIA.activityConfig; lbl0 = (_cfg0 && _cfg0.sportLabel && a.sportId) ? _cfg0.sportLabel(a.sportId) : null; } catch (e1) {}
+        if (!sid0) sid0 = LEGACY_TYPE_SPORT[String(t)] || null;   /* letzte Aufloesung ueber den geschlossenen Legacy-Typsatz */
+        var sameSport = (sid0 && a.sportId) ? (sid0 === a.sportId)
+          : ((lbl0 && lbl0 !== 'Aktivität') ? (String(lbl0) === String(t)) : false);
+        if (!sameSport) return false;
+        vm.storyRef = { date: _d0, typ: t }; return true;
+      });
+    }
+    if (a.source === 'legacy_local' && a._legacy && typeof DB !== 'undefined') {
+      var _e = DB[a._legacy.date]; var _sess = _e && _e.sessions && _e.sessions[a._legacy.type];
+      if (_sess && ((typeof actRoute === 'function' && actRoute(_sess)) || (_sess.splits && _sess.splits.length))) vm.storyRef = { date: a._legacy.date, typ: a._legacy.type };
+    }
+  } catch (e) {}
+  return vm;
+}
+function _adRow(k, v) { return '<div class="wc-stat"><span class="wc-sv">' + escH(v) + '</span><span class="wc-sk">' + escH(k) + '</span></div>'; }
+// EIN Overlay-Owner: window._activityDetailOverlay. Erneutes Öffnen ersetzt, nie dupliziert.
+function closeActivityDetail() { if (window._activityDetailOverlay) { try { window._activityDetailOverlay.remove(); } catch (e) {} window._activityDetailOverlay = null; } }
+// AD1c: EIN Renderer, EIN Overlay — Inhalt wird über _activityDetailHtml gebaut und bei
+// asynchron nachgeladenen Cloud-Workoutdetails IN DEMSELBEN Overlay aktualisiert (kein zweites Overlay).
+function _workoutDetailHtml(vm) {
+  if (vm.source !== 'orvia_workout') return '';
+  var ex = vm.workoutDetail;
+  if (ex && ex.length) {
+    var names = ex.map(function (x) { return (x && (x.n || (x.exercise && x.exercise.name) || x.exerciseNameSnapshot || (x.workoutExercise && x.workoutExercise.exercise_name_snapshot))) || 'Übung'; });
+    return '<div class="wc-ex"><div class="wc-ex-h">Übungen (' + ex.length + ')</div>' + names.map(function (n) { return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(n) + '</span></div>'; }).join('') + '</div>';
+  }
+  if (vm.workoutDetailState === 'loading') return '<div class="wc-ex"><div class="wc-ex-h">Übungen werden geladen …</div></div>';
+  if (vm.workoutDetailState === 'error') return '<div class="wc-nomap">Übungsdetails konnten nicht geladen werden.</div>';
+  if (vm.workoutDetailState === 'missing') return '<div class="wc-nomap">Für diese Einheit sind keine Satzdetails hinterlegt.</div>';
+  return '';
+}
+function _activityDetailHtml(vm, context) {
+  var rows = [];
+  if (vm.date) rows.push(_adRow('Datum', (typeof fmtDate === 'function') ? fmtDate(vm.date) : vm.date));
+  if (vm.time) rows.push(_adRow('Uhrzeit', vm.time));
+  if (vm.durationLabel) rows.push(_adRow('Dauer', vm.durationLabel));
+  if (vm.distanceLabel) rows.push(_adRow('Distanz', vm.distanceLabel));
+  if (vm.paceLabel) rows.push(_adRow('Pace', vm.paceLabel));
+  if (vm.elevationM != null) rows.push(_adRow('Höhenmeter', vm.elevationM + ' m'));
+  if (vm.avgHr != null) rows.push(_adRow('HF Ø', vm.avgHr + ' bpm'));
+  if (vm.maxHr != null) rows.push(_adRow('HF max', vm.maxHr + ' bpm'));
+  if (vm.caloriesKcal != null) rows.push(_adRow('Kalorien', vm.caloriesKcal + ' kcal'));
+  if (vm.source) rows.push(_adRow('Quelle', vm.source));
+  var wd = _workoutDetailHtml(vm);
+  var story = vm.storyRef ? '<button class="btn" style="margin-top:12px" onclick="closeActivityDetail();openStory(\'' + escH(vm.storyRef.date) + '\',\'' + escH(vm.storyRef.typ) + '\')">▶ Story ansehen</button>' : '';
+  return '<div class="orvia-modal wcard-modal" role="dialog" aria-modal="true"><div class="wcard">' +
+    '<div class="wc-title">' + escH(vm.title || vm.sportLabel || 'Aktivität') + '</div>' +
+    '<div class="wc-day">' + escH(vm.sportLabel || '') + '</div>' +
+    '<div class="wc-stats">' + rows.join('') + '</div>' + wd + '</div>' + story +
+    '<button class="btn sec danger-btn" style="margin-top:12px" onclick="deleteActivityCanonical(\'' + escH(vm.id) + '\')">Aktivität löschen</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">Schließen</button></div>';
+}
+function renderActivityDetail(vm, context) {
+  if (!vm || !vm.id) return renderActivityUnavailable(null, context);
+  closeActivityDetail();
+  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
+  wrap.dataset.activityId = vm.id; wrap.dataset.context = context || ''; wrap._vm = vm; wrap._context = context;
+  wrap.innerHTML = _activityDetailHtml(vm, context);
+  document.body.appendChild(wrap); window._activityDetailOverlay = wrap;
+  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeActivityDetail(); });
+  // Cloud-only-Workout ohne lokalen Snapshot: Satzdetails asynchron über die bestehende
+  // loadWorkoutTree-Logik nachladen und IN DIESES Overlay einsetzen.
+  if (vm.source === 'orvia_workout' && !(vm.workoutDetail && vm.workoutDetail.length)) _loadWorkoutDetailInto(wrap, vm);
+  return wrap;
+}
+function _loadWorkoutDetailInto(overlay, vm) {
+  var repos = window.ORVIA && ORVIA.repos && ORVIA.repos.workout;
+  var sid = vm.sourceRecordId || vm.workoutSessionId || vm.id;
+  var reRender = function () { if (window._activityDetailOverlay === overlay) overlay.innerHTML = _activityDetailHtml(vm, overlay._context); };
+  if (!repos || !repos.loadWorkoutTree || !sid) { vm.workoutDetailState = 'missing'; reRender(); return; }
+  vm.workoutDetailState = 'loading'; reRender();
+  try {
+    Promise.resolve(repos.loadWorkoutTree(sid)).then(function (r) {
+      if (window._activityDetailOverlay !== overlay) return;   // Overlay ersetzt → nichts tun (kein zweites Overlay)
+      if (r && r.success && r.data && Array.isArray(r.data.exercises) && r.data.exercises.length) { vm.workoutDetail = r.data.exercises; vm.workoutDetailState = 'loaded'; }
+      else if (r && r.success) { vm.workoutDetailState = 'missing'; }
+      else { vm.workoutDetailState = 'error'; }
+      reRender();
+    }).catch(function () { if (window._activityDetailOverlay === overlay) { vm.workoutDetailState = 'error'; reRender(); } });
+  } catch (e) { vm.workoutDetailState = 'error'; reRender(); }
+}
+function renderActivityUnavailable(activityId, context) {
+  closeActivityDetail();
+  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
+  wrap.dataset.activityId = ''; wrap.dataset.unavailable = '1'; wrap.dataset.context = context || '';
+  wrap.innerHTML = '<div class="orvia-modal wcard-modal" role="dialog" aria-modal="true"><div class="wcard">' +
+    '<div class="wc-title">Aktivität nicht verfügbar</div>' +
+    '<p class="wc-nomap">Zu dieser Auswahl ist keine eindeutige Aktivität hinterlegt.</p></div>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">Schließen</button></div>';
+  document.body.appendChild(wrap); window._activityDetailOverlay = wrap;
+  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeActivityDetail(); });
+  return wrap;
+}
+// Einziger öffentlicher Detail-Einstieg. context steuert Navigation, nie die Daten.
+function openActivityDetail(activityId, context) {
+  context = context || 'training';
+  var a = _resolveActivityAny(activityId);
+  if (!a) { renderActivityUnavailable(activityId, context); return { ok: false, code: 'activity_not_found', id: activityId || null, context: context }; }
+  var vm = activityDetailViewModel(a);
+  renderActivityDetail(vm, context);
+  return { ok: true, id: vm.id, context: context };
+}
+// Plan-Actual-Auflösung: eindeutig / keiner / mehrdeutig — NIE Blind-Auswahl.
+function resolvePlannedActivity(occurrenceId) {
+  if (!occurrenceId) return { status: 'none' };
+  var list = []; try { list = listActivitiesUnified(200) || []; } catch (e) { list = []; }
+  var hits = list.filter(function (a) { return a && (a.plannedSessionId === occurrenceId || (a.metrics && a.metrics.plannedSessionId === occurrenceId)); });
+  if (hits.length === 1) return { status: 'unique', id: hits[0].clientRecordId || hits[0].id };
+  if (hits.length > 1) return { status: 'ambiguous', ids: hits.map(function (h) { return h.clientRecordId || h.id; }) };
+  return { status: 'none' };
+}
+// EIN Löschpfad: genau eine Bestätigung, dann der bestehende Store-/Tombstone-Pfad (doDeleteActivity).
+// Legacy-only (kein kanonischer Store-Record): klar abgegrenzter Adapter entfernt zusätzlich den DB-Spiegel.
+function deleteActivityCanonical(activityId) {
+  var a = _resolveActivityAny(activityId) || { clientRecordId: activityId };
+  var isWk = a && a.source === 'orvia_workout';
+  var run = function () {
+    if (a && a.source === 'legacy_local' && a._legacy) {
+      try { var e = DB[a._legacy.date]; if (e && e.sessions) { delete e.sessions[a._legacy.type]; e.sessions._ts = Date.now(); } if (typeof save === 'function') save(); } catch (_) {}
+    }
+    doDeleteActivity(a.clientRecordId || a.id || activityId);
+  };
+  var title = isWk ? 'Workout wirklich löschen?' : 'Aktivität wirklich löschen?';
+  var text = isWk ? 'Das Workout inkl. Übungen und Sätzen wird dauerhaft entfernt.' : 'Diese Aktivität und ihre zugehörigen Daten werden dauerhaft entfernt.';
+  if (typeof orviaConfirm === 'function') { orviaConfirm({ title: title, text: text, okLabel: 'Endgültig löschen', danger: true, onOk: run }); return; }
+  run();
+}
+
+// ---- Löschen (manuell/Workout/Legacy) mit Bestätigung, offline-fest ----
+// AD1b: Kompatibilitäts-Adapter → EIN Löschpfad (deleteActivityCanonical, genau eine Bestätigung).
+function confirmDeleteActivity(aid) { return deleteActivityCanonical(aid); }
 function _closeDelModal() { if (window._delModal) { try { window._delModal.remove(); } catch (e) {} window._delModal = null; } }
 function doDeleteActivity(aid) {
   _closeDelModal();
@@ -436,16 +621,28 @@ function _removeLegacyFor(a) {
 }
 // Nach Workout-Abschluss/Activity-Änderung den Aktivität-Tab neu rendern (kein App-Reload nötig).
 if (typeof window !== 'undefined' && window.addEventListener) {
-  window.addEventListener('orvia:activity-updated', function () { try { if (document.getElementById('aktBox')) renderAkt(); } catch (e) {} });
+  window.addEventListener('orvia:activity-updated', function () { try { if (document.getElementById('gmAkt')) renderAkt(); } catch (e) {} });
   // Inkrement 4d: Profil-Sportänderung → Schnellaktionen/Aktivitäts-Picker ohne App-Neustart aktualisieren.
   window.addEventListener('orvia:profile-updated', function (ev) {
     try { if (ev && ev.detail && ev.detail.changedSections && ev.detail.changedSections.indexOf('sports') < 0) return; } catch (e) {}
-    try { if (document.getElementById('aktBox')) renderAkt(); } catch (e) {}
+    try { if (document.getElementById('gmAkt')) renderAkt(); } catch (e) {}
     try { if (typeof renderDay === 'function' && document.getElementById('dayQuick')) renderDay(); } catch (e) {}
   });
 }
 // Hook für den Gym-Shadow-Report: aktuell geladene Server-Activities (cross-device) ohne Netzwerkzugriff.
 if (typeof window !== 'undefined') { window.ORVIA = window.ORVIA || {}; window.ORVIA.activityServerCache = function () { try { return (_serverActivities || []).slice(); } catch (e) { return []; } }; }
+// AD1b: kanonischer Activity-Detail-Namespace (für Plan-Klick, Workout-Sheet-Adapter u. a.).
+if (typeof window !== 'undefined') {
+  window.ORVIA = window.ORVIA || {};
+  window.ORVIA.activityUI = {
+    decodePolyline: decodePolyline,
+    openActivityDetail: openActivityDetail,
+    activityDetailViewModel: activityDetailViewModel,
+    resolvePlannedActivity: resolvePlannedActivity,
+    closeActivityDetail: closeActivityDetail,
+    deleteActivityCanonical: deleteActivityCanonical
+  };
+}
 
 /* ============================================================
    GPX/TCX-Datei-Import → Aktivität mit Route. Modular für Lauf/Rad/
@@ -528,7 +725,7 @@ function _importToCanonical(arr){
         sourceRecordId:'import:'+a.date+':'+(sportId)+':'+(durSec!=null?durSec:'x'),
         startedAt:a.date+'T'+(a.time&&/^\d{2}:\d{2}/.test(a.time)?a.time.slice(0,5):'00:00')+':00',
         endedAt:null,durationSeconds:durSec,summary:summary,
-        metrics:a.polyline?{hasRoute:true}:{}
+        metrics:(window.ORVIA&&ORVIA.activityNormalize&&ORVIA.activityNormalize.buildImportMetrics)?ORVIA.activityNormalize.buildImportMetrics(a):((a.polyline||a.route)?{hasRoute:true}:{})  /* GM7.3: Route verlustfrei in metrics (jsonb, cloud-synchron) */
       });
       if(r&&r.ok)n++;
     });
@@ -738,6 +935,32 @@ function showActivityDuplicate(date, typ, prior, dup) {
 }
 function _closeDup() { if (window._maDup) { try { window._maDup.remove(); } catch (e) {} window._maDup = null; } }
 function dupCancel() { _closeDup(); }
+// GM7.5d: Cross-Source-Duplikatschutz (manuell vs. bereits kanonisch synchronisiert, z.B. Garmin).
+// Reine Erkennung anhand vorhandener kanonischer Felder (source, sportId, startedAt) -- keine
+// neue Aggregations-/Engine-Logik, kein neues Speicherformat.
+function gmFindCrossSourceDuplicateActivity(date, sportId) {
+  try {
+    var st = window.ORVIA && ORVIA.activityStore; if (!st || !st.listActivities) return null;
+    var acts = st.listActivities({ sportId: sportId }) || [];
+    for (var i = 0; i < acts.length; i++) {
+      var a = acts[i];
+      if (a && a.source && a.source !== 'manual' && String(a.startedAt || '').slice(0, 10) === date) return a;
+    }
+  } catch (e) {}
+  return null;
+}
+function showCrossSourceDuplicate(date, typ, act) {
+  var src = ({ garmin: 'Garmin', strava: 'Strava', apple_health: 'Apple Health' })[String(act.source || '').toLowerCase()] || act.source || 'einer anderen Quelle';
+  var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg'; window._maCrossDup = wrap;
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Bereits synchronisiert?</h3>' +
+    '<p class="modtext" style="margin:0 0 12px">Für <b>' + escH(typ) + '</b> am ' + escH(date) + ' liegt bereits eine Aktivität aus ' + escH(src) + ' vor. Doppelte Erfassung kann Wochenumfang und Belastung verfälschen.</p>' +
+    '<button class="btn sec" onclick="_closeCrossDup()">Abbrechen</button>' +
+    '<button class="btn" style="margin-top:10px" onclick="_crossDupForceSave()">Trotzdem speichern</button></div>';
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', function (ev) { if (ev.target === wrap) _closeCrossDup(); });
+}
+function _closeCrossDup() { if (window._maCrossDup) { try { window._maCrossDup.remove(); } catch (e) {} window._maCrossDup = null; } }
+function _crossDupForceSave() { _closeCrossDup(); window._maForce = true; saveManualActivity(); }
 function dupOpenExisting(date, typ) { _closeDup(); closeManualActivity(); if (typeof openWorkoutCard === 'function') openWorkoutCard(date, typ); }
 function dupMerge() { _closeDup(); window._maForce = true; saveManualActivity(); }        // Felder feldweise mergen
 function dupReplace(date, typ) { _closeDup(); try { var e = entry(date); if (e.sessions) delete e.sessions[typ]; } catch (e2) {} window._maForce = true; saveManualActivity(); } // Slot ersetzen
@@ -761,6 +984,14 @@ function saveManualActivity() {
   if (hasPrior && !window._maForce && typeof Calc !== 'undefined' && Calc.activityDuplicate) {
     var dup = Calc.activityDuplicate({ type: typ, date: date, dur: dur, dist: distKm != null ? distKm : (distM != null ? distM / 1000 : null) }, prior);
     if (dup && dup.match) { showActivityDuplicate(date, typ, prior, dup); return; }
+  }
+  // GM7.5d: Calc.activityDuplicate prueft ausschliesslich den Legacy-DB-Slot (e.sessions[typ]).
+  // Eine bereits kanonisch vorhandene Aktivitaet aus einer ANDEREN Quelle (Garmin-/Server-Sync)
+  // fuer denselben Tag+Sportart hat dort keinen Eintrag und wurde bislang gar nicht geprueft --
+  // Duplikatschutz griff nur zwischen zwei manuellen/legacy Eingaben, nie Server<->manuell.
+  if (!window._maForce) {
+    var crossDup = gmFindCrossSourceDuplicateActivity(date, sportId);
+    if (crossDup) { showCrossSourceDuplicate(date, typ, crossDup); return; }
   }
   window._maForce = false;
   // Schema → DB-Session (nur reale Werte; sportfremde Felder existieren dank Strip gar nicht erst).

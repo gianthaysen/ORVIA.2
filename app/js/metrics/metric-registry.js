@@ -97,6 +97,13 @@
     m('sleep_duration_min', 'Schlafdauer', 'sleep', 'min', OVERRIDE, [0, 960], { staleDays: 2 }),
     m('sleep_score', 'Sleep Score', 'sleep', 'Score', LOCKED, [0, 100], { staleDays: 2 }),
     m('sleep_need_min', 'Schlafbedarf', 'sleep', 'min', LOCKED, [300, 720], { staleDays: 2 }),
+    // GM7.4: Schlafphasen als Skalar-Minuten (Garmin liefert Sekunden in
+    // dailySleepDTO.deep/light/rem/awakeSleepSeconds). Gerätemessung, keine
+    // Zeitreihe — das Hypnogramm (Zeitverlauf) braucht separaten Serien-Speicher.
+    m('sleep_deep_min', 'Tiefschlaf', 'sleep', 'min', LOCKED, [0, 480], { staleDays: 2 }),
+    m('sleep_light_min', 'Leichtschlaf', 'sleep', 'min', LOCKED, [0, 720], { staleDays: 2 }),
+    m('sleep_rem_min', 'REM-Schlaf', 'sleep', 'min', LOCKED, [0, 480], { staleDays: 2 }),
+    m('sleep_awake_min', 'Wachphasen', 'sleep', 'min', LOCKED, [0, 300], { staleDays: 2 }),
 
     // ---- Tagesaktivität ----------------------------------------------
     m('steps', 'Schritte', 'daily_activity', 'Schritte', LOCKED, [0, 100000], { staleDays: 2 }),
@@ -105,6 +112,9 @@
     m('total_kcal_provider', 'Gesamtkalorien (Provider)', 'daily_activity', 'kcal', LOCKED, [1000, 12000], { staleDays: 2 }),
     m('intensity_minutes', 'Intensitätsminuten', 'daily_activity', 'min', LOCKED, [0, 600], { staleDays: 2 }),
     m('stress_avg', 'Stress (Tag)', 'daily_activity', 'Score', LOCKED, [0, 100], { staleDays: 2 }),
+    // GM7.4: Tages-Höchststress (Garmin maxStressLevel). Skalar, im Fixture belegt.
+    // Die Intraday-KURVE (stressValuesArray) ist eine Zeitreihe → separater Speicher.
+    m('stress_max', 'Stress-Maximum (Tag)', 'daily_activity', 'Score', LOCKED, [0, 100], { staleDays: 2 }),
     m('body_battery', 'Body Battery', 'daily_activity', 'Score', LOCKED, [0, 100], { staleDays: 2 }),
     m('spo2_avg', 'SpO₂ (Nacht)', 'daily_activity', '%', LOCKED, [70, 100], { staleDays: 2 }),
     m('respiration_avg', 'Atemfrequenz', 'daily_activity', 'Atemzüge/min', LOCKED, [6, 30], { decimals: 1, staleDays: 2 }),

@@ -740,10 +740,20 @@ function gwSave(){_gwCollect();var M=pmModel();var d=window._gw.draft;var id=win
   var wasMain=id&&(listGoals().filter(function(x){return x.id===id;})[0]||{}).priority===1;
   var becomesMain=patch.priority===1;
   var reason=(becomesMain||wasMain)?'Hauptziel geändert':(d.targetDate?'Zieldatum geändert':null);
-  if(id)goalUpdate(id,patch,reason);else goalAdd(patch,reason);
+  // G0: ehrlicher Speicherstatus. Erfolgstoast NUR bei erfolgreichem kanonischem
+  // lokalem Save; ein geworfener Save darf keinen Erfolg vortäuschen.
+  var _saved=false;
+  try{ if(id)goalUpdate(id,patch,reason);else goalAdd(patch,reason); _saved=true; }
+  catch(e){ try{console.warn('[ORVIA] Ziel-Speichern fehlgeschlagen:',e&&e.message);}catch(_){}}
+  if(!_saved){ if(typeof toast==='function')toast('Speichern fehlgeschlagen – bitte erneut versuchen'); return; }
   window._gw=null;_closeM('_goalEd');renderGoalsList();
   if(reason)maybePlanImpact(reason);
-  if(typeof toast==='function')toast('Ziel gespeichert');}
+  if(typeof toast==='function')toast(_goalSaveToast());}
+/* Ehrliche Toast-Formulierung: lokaler Save ist abgeschlossen; ist das Gerät
+   offline, läuft die Cloud-Synchronisierung noch (bestehende offlineQueue/Retry). */
+function _goalSaveToast(){
+  try{ if(typeof navigator!=='undefined'&&navigator&&('onLine'in navigator)&&navigator.onLine===false)return 'Gespeichert · Synchronisierung läuft'; }catch(e){}
+  return 'Ziel gespeichert';}
 
 /* Ziel-Detailansicht: alle Felder inkl. Spezialdaten, Meilensteine, Konflikte, Plan-Auswirkung. */
 function openGoalDetail(id){var M=pmModel();var g=listGoals().filter(function(x){return x.id===id;})[0];if(!g)return;

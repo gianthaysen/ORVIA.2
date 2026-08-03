@@ -81,7 +81,12 @@
       // werden auf den nächsten Online-Lauf verschoben — kein Scheinerfolg dafür.
       if (!O.offlineQueue) return res(false, null, { message: 'Offline-Queue nicht verfügbar' }, 'indexeddb', 'failed');
       const status = (O.baselineState && O.baselineState.status) || 'insufficient';
-      const row = { user_id: O.user.id, local_date: date, score: headlineR.score, confidence: confFromStatus(status), engine_version: 'v2' };
+      /* ENGINE-LABEL-FIX (Phase-8-Vorbedingung, Audit): headlineR ist der
+         Calc.readiness-Score (v1) — er wurde fälschlich unter engine_version
+         'v2' persistiert. Ab jetzt ehrlich 'v1'; Altzeilen werden per
+         Migration 0023 umetikettiert. Die echte v2-Persistenz kommt erst mit
+         der Engine-Aktivierung (Gate C8). */
+      const row = { user_id: O.user.id, local_date: date, score: headlineR.score, confidence: confFromStatus(status), engine_version: 'v1' };
       try {
         const q = await O.offlineQueue.enqueue('readiness_scores', row, 'user_id,local_date,engine_version');
         if (q && q.success === false) return res(false, null, q.error || { message: 'Queue-Schreiben fehlgeschlagen' }, 'indexeddb', 'failed');
@@ -101,7 +106,7 @@
 
     const components = buildComponents(headlineR.parts, morning, ctx);
     let r;
-    try { r = await O.repos.readiness.saveScore(date, { score: headlineR.score, confidence: confFromStatus(status), engine: 'v2' }, components); }
+    try { r = await O.repos.readiness.saveScore(date, { score: headlineR.score, confidence: confFromStatus(status), engine: 'v1' }, components); }
     catch (e) { return res(false, null, { message: String(e && e.message || e) }, 'supabase', 'failed'); }
 
     if (r && r.success) {

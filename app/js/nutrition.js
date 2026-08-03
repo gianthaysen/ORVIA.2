@@ -12,7 +12,11 @@ function nutProfile() {
        realistisch wirkende Fake-Zahlen). Fehlt etwas, liefert nutToday() null und
        die Karte zeigt den ehrlichen Leerzustand mit Profil-Hinweis. */
     sex: n.sex || p.sex || 'm', age: p.age || null, heightCm: p.heightCm || null, weightKg: p.weightKg || null,
-    goal: n.goal || 'maintain', activity: n.activity || 'moderate',
+    /* Phase 7 (2026-07-18, Audit-Befund 4 — Double Counting): activity ist die
+       ALLTAGSAKTIVITÄT OHNE Training (NEAT); Training wird separat als trainingBurn
+       addiert. Default deshalb 'light' statt 'moderate' — vorher steckte das
+       Training implizit im Faktor UND wurde nochmal addiert. */
+    goal: n.goal || 'maintain', activity: n.activity || 'light',
     deficitKcal: n.deficitKcal || 400, surplusKcal: n.surplusKcal || 250,
     proteinPerKg: n.proteinPerKg || 1.9, targetWeightKg: n.targetWeightKg || null
   };
@@ -39,12 +43,89 @@ function dayTypeToday() {
   if (L || s.Rad || s.Schwimmen) return 'easy';
   return 'rest';
 }
+/* Phase 7: heutige Energie-Metriken aus dem Resolver-Cache (befüllt von
+   _ciAutoLoad in ui.js). NUR heutige, nicht-stale Werte — alles andere null. */
+function nutMetricsToday() {
+  var out = { steps: null, activeKcal: null, restingKcal: null, totalKcalProvider: null };
+  try {
+    var s = window._metricsResolved;
+    var t = todayStr();
+    if (!s || s.date !== t || !s.resolved) return out;
+    function pick(id) {
+      var r = s.resolved[id];
+      if (!r || r.stale || r.metricDate !== t) return null;   // TDEE nur aus Tageswerten
+      if (r.source !== 'automatic' && r.source !== 'override') return null;
+      return (typeof r.value === 'number' && isFinite(r.value)) ? r.value : null;
+    }
+    out.steps = pick('steps');
+    out.activeKcal = pick('active_kcal');
+    out.restingKcal = pick('resting_kcal');
+    out.totalKcalProvider = pick('total_kcal_provider');
+  } catch (e) {}
+  return out;
+}
+/* Morgengewichte der letzten 28 Tage für die adaptive Korrektur. */
+function nutWeightSeries() {
+  var out = [];
+  try {
+    for (var i = 27; i >= 0; i--) {
+      var k = dkey(-i); var e = DB[k]; var w = e && e.morning && e.morning.weight;
+      if (typeof w === 'number' && isFinite(w) && w > 0) out.push({ date: k, kg: w });
+    }
+  } catch (e) {}
+  return out;
+}
+function nutBodyFat() {
+  try {
+    var b = PROFILE && PROFILE.performance && PROFILE.performance.body && PROFILE.performance.body.bodyFat;
+    return (b && typeof b.value === 'number' && isFinite(b.value)) ? b.value : null;
+  } catch (e) { return null; }
+}
 function nutToday() {
   var np = nutProfile();
   if (!np.weightKg || !np.heightCm || !np.age) return null;
   np.dayType = dayTypeToday();
   np.trainingBurn = trainingBurnToday();
+  /* Phase 7: dynamischer TDEE (Provider- oder ORVIA-Modus) ersetzt den
+     statischen Aktivitätsfaktor, wenn der Resolver rechnen kann. Fällt er aus
+     (kein Modul/keine Körperdaten), rechnet nutritionTargets wie bisher. */
+  try {
+    var ER = window.ORVIA && ORVIA.energyResolver;
+    if (ER) {
+      var mx = nutMetricsToday();
+      var E = ER.computeDay({
+        weightKg: np.weightKg, heightCm: np.heightCm, age: np.age, sex: np.sex,
+        bodyFatPct: nutBodyFat(),
+        steps: mx.steps, activeKcal: mx.activeKcal, restingKcal: mx.restingKcal,
+        totalKcalProvider: mx.totalKcalProvider,
+        trainingKcal: np.trainingBurn, weightSeries: nutWeightSeries()
+      });
+      if (E) { np.tdee = E.tdee; np.energy = E; _nutPersistEnergy(E); }
+    }
+  } catch (e) {}
   return Calc.nutritionTargets(np);
+}
+/* Tagesergebnis idempotent in daily_energy_expenditure sichern (Migration 0022).
+   Gedrosselt: nur wenn sich der gewählte Wert für heute geändert hat. */
+function _nutPersistEnergy(E) {
+  try {
+    if (!E || !(window.ORVIA && ORVIA.repos && ORVIA.repos.energy)) return;
+    var t = todayStr();
+    var key = t + ':' + E.mode + ':' + E.tdee;
+    if (window._nutEnergySaved === key) return;
+    window._nutEnergySaved = key;
+    ORVIA.repos.energy.saveDay(t, {
+      mode: E.mode, bmr_kcal: E.bmr, bmr_method: E.bmrMethod,
+      step_kcal: E.orvia ? E.orvia.stepKcal : null,
+      training_kcal: E.orvia ? E.orvia.trainingKcal : null,
+      tef_kcal: E.orvia ? E.orvia.tefKcal : null,
+      adaptive_adj_kcal: E.adaptive ? E.adaptive.adjKcal : null,
+      trend_kg_28d: E.adaptive ? E.adaptive.trendKgPer28d : null,
+      tdee_orvia: E.orvia ? E.orvia.tdee : null,
+      tdee_provider: E.provider ? E.provider.tdee : null,
+      tdee_chosen: E.tdee
+    }).catch(function () {});
+  } catch (e) {}
 }
 function nutRecommendation(dayType) {
   if (dayType === 'long') return 'Long-Run-Tag: Kohlenhydrate hoch — vorher Carb-reiches Frühstück, danach zügig auffüllen.';

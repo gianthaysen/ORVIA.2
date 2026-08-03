@@ -66,14 +66,43 @@
     };
   }
 
+  /* Ziel-SSOT/Analytics (2026-07-18): PULL-Pfad — Server-Aktivitäten (Garmin-
+     Worker, andere Geräte) in den lokalen Store holen. Vorher war dieses Modul
+     reine Outbox: synchronisierte Läufe erreichten den Client nie und fehlten
+     in Prognose (buildGoal/runsWindow) und Insights. Single-Flight + 5-Minuten-
+     Throttle; nach neuen Datensätzen Goal-Cache invalidieren + Event. */
+  var _pulling = false, _pulledAt = 0;
+  async function pullServerActivities(opts) {
+    opts = opts || {};
+    var store = O.activityStore, repo = O.repos && O.repos.activity;
+    if (!store || !store.mergeServerActivities || !repo || !repo.list) return { ok: false, error: 'unavailable' };
+    if (!online() || !(O.user && O.user.id)) return { ok: false, error: 'offline_or_no_user' };
+    if (_pulling) return { ok: true, busy: true };
+    if (!opts.force && Date.now() - _pulledAt < 5 * 60 * 1000) return { ok: true, throttled: true };
+    _pulling = true;
+    try {
+      var r = await repo.list({ limit: opts.limit || 200 });
+      if (!r || !r.success) return { ok: false, error: (r && r.error && r.error.code) || 'list_failed' };
+      var res = store.mergeServerActivities(r.data || []);
+      _pulledAt = Date.now();
+      if (res.merged || res.updated) {
+        try { if (typeof window !== 'undefined' && window.orviaGoalCacheInvalidate) window.orviaGoalCacheInvalidate(); } catch (e) {}
+        try { if (typeof window !== 'undefined' && window.dispatchEvent && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('orvia:activities-pulled', { detail: res })); } catch (e) {}
+      }
+      return { ok: true, merged: res.merged, updated: res.updated, skipped: res.skipped };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    } finally { _pulling = false; }
+  }
+
   // Auto-Trigger: online-Event + verzögerter Start-Flush (nach Auth), wenn ein Nutzer vorhanden ist.
-  function _autoFlush() { try { if (O.user && O.user.id) flushPendingActivities(); } catch (e) {} }
+  function _autoFlush() { try { if (O.user && O.user.id) { flushPendingActivities(); pullServerActivities(); } } catch (e) {} }
   if (typeof window !== 'undefined' && window.addEventListener) {
     window.addEventListener('online', _autoFlush);
     window.addEventListener('orvia:auth-ready', _autoFlush);   // falls Auth ein solches Event feuert
     try { setTimeout(_autoFlush, 1500); } catch (e) {}          // App-Start nach Auth-Init (defensiv)
   }
 
-  O.activitySync = { flushPendingActivities: flushPendingActivities, _autoFlush: _autoFlush };
+  O.activitySync = { flushPendingActivities: flushPendingActivities, pullServerActivities: pullServerActivities, _autoFlush: _autoFlush };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.activitySync;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

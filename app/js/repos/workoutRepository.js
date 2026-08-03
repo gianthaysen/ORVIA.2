@@ -12,7 +12,7 @@
     // ---- Session ----
     async createSession(s) {
       const sportKey = (O.trainingDomain && O.trainingDomain.normSport) ? O.trainingDomain.normSport(s.sportKey || s.sport) : (s.sportKey || s.sport || null);
-      return B.upsert('workout_sessions', {
+      const row = {
         plan_id: s.planId || null, plan_day_id: s.planDayId || null, planned_session_id: s.plannedSessionId || null,
         local_date: s.localDate, started_at: s.startedAt || null, finished_at: s.finishedAt || null,
         status: s.status || 'planned', sport: s.sport || null, sport_key: sportKey || null, session_type: s.sessionType || null,
@@ -21,7 +21,11 @@
         paused_at: s.pausedAt || null, total_paused_seconds: s.totalPausedSeconds != null ? s.totalPausedSeconds : 0,
         notes: s.notes || null, readiness_snapshot: s.readinessSnapshot || null, decision_snapshot: s.decisionSnapshot || null,
         source: s.source || 'manual', client_session_id: s.clientSessionId || null
-      }, s.clientSessionId ? 'user_id,client_session_id' : undefined);
+      };
+      /* Batch 2d (H3-Muster): unveränderlicher Plan-Snapshot (Occurrence) NUR
+         senden wenn belegt — kompatibel mit Instanzen ohne Migration 0025. */
+      if (s.plannedSessionSnapshot) row.planned_session_snapshot = s.plannedSessionSnapshot;
+      return B.upsert('workout_sessions', row, s.clientSessionId ? 'user_id,client_session_id' : undefined);
     },
     async getSession(id) {
       const g = B.requireAuth(); if (g) return g; if (!B.online()) return offline();

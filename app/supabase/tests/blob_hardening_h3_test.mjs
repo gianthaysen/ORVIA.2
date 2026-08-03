@@ -4,7 +4,9 @@
        evening-Rekonstruktion beim Hydrat mit Ernährungs-Feld-Erhalt).
    (b) GPX/TCX-/JSON-Import wird kanonisch gespiegelt (activityStore, source import).
    (c) issues.js läuft über den kanonischen Constraints-Pfad (kein Direkt-Write).
-   (d) sync.js: fremde Cloud-Rev ⇒ migratePrompt statt Blind-Push (Clobber-Schutz).
+   (d) sync.js: fremde neuere Cloud-Rev ⇒ kein Blind-Push; GM7.6 Cloud-Autoload:
+       ohne lokale Aenderungen automatisch laden, mit lokalen Aenderungen erst sichern
+       dann neu laden, syncErrorPrompt nur bei echtem technischem Fehler.
    node supabase/tests/blob_hardening_h3_test.mjs
    ============================================================ */
 import { readFileSync } from 'node:fs';
@@ -87,15 +89,18 @@ const base = new URL('../../js/', import.meta.url);
   ok('C7 kein direkter PROFILE.issues.push + saveProfile mehr', !/PROFILE\.issues\.push\([^)]*\);.*saveProfile/.test(isrc.replace(/\n/g, ' ')));
 }
 
-/* ---------- (d) sync.js Zweitgeräte-Merge ---------- */
+/* ---------- (d) sync.js Zweitgeräte-Merge (GM7.6 Cloud-Autoload) ---------- */
 {
   const sy = readFileSync(new URL('sync.js', base), 'utf8');
-  const startBlock = sy.split('async function start')[1] ? sy.split('async function start')[1].split('window.orviaSyncStart')[0] : sy;
   // Incident-Fix v8-183: Regel verschärft — numerisch neuer UND fremdes Gerät.
   ok('D1 kein Blind-Push mehr: fremde NEUERE Cloud-Rev wird vor push() geprüft', /remoteRev > knownRev/.test(sy) && /isOwnDevice/.test(sy));
-  ok('D2 migratePrompt ist verdrahtet (kein toter Code mehr)', /migratePrompt\(remote0\.data\)/.test(sy));
-  ok('D3 Fremd-Owner-Schutz bleibt (kein A→B-Push)', /owner && owner !== u\.id/.test(sy));
-  ok('D4 offline/Fehler ⇒ weiter push-Versuch (kein Hänger)', /offline\/Fehler/.test(sy) || /lokal weiterarbeiten/.test(sy));
+  ok('D2 ohne lokale Aenderungen: Cloud automatisch geladen (kein Dialog)', /if \(!isLocalDirty\(\)\) \{/.test(sy) && /Punkt 1:/.test(sy));
+  ok('D3a Fremd-Owner-Schutz bleibt (kein A→B-Push)', /owner && owner !== u\.id/.test(sy));
+  ok('D3b mit lokalen Aenderungen: erst push() (sichern), danach frisch geladen', /Punkt 2\+3/.test(sy) && (sy.match(/await push\(\);/g) || []).length >= 2);
+  ok('D4 offline/Fehler ⇒ kein Haenger, ehrlicher Zustand statt Blind-Push', /offline\/Fehler/.test(sy) || /lokal weiterarbeiten/.test(sy));
+  ok('D5 Dialog nur noch bei echtem technischem Fehler (syncErrorPrompt), kein Routine-Dialog', /function syncErrorPrompt/.test(sy) && !/function migratePrompt/.test(sy) && /syncErrorPrompt\(\)/.test(sy));
+  ok('D6 lokale Aenderungen werden nie blind verworfen: dirty-Flag treibt die Entscheidung', /isLocalDirty\(\)/.test(sy) && /markDirty/.test(sy) && /markClean/.test(sy));
+  ok('D7 online-Reconnect prueft vollstaendig neu statt blind zu pushen', /addEventListener\(\s*'online'.*start\(\)/.test(sy.replace(/\n/g,' ')));
 }
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');

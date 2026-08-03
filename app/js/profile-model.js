@@ -20,7 +20,11 @@
     endurance: ['run_5k', 'run_10k', 'half_marathon', 'marathon', 'triathlon', 'ironman', 'cycling_race', 'swim_goal', 'base_endurance', 'vo2max'],
     strength: ['get_stronger', 'hypertrophy', 'lift_pr', 'strength_endurance', 'functional_strength', 'explosive_strength'],
     team_sport: ['football', 'handball', 'basketball', 'volleyball', 'tennis', 'padel', 'hockey', 'rugby', 'other_team'],
-    sport_performance: ['sprint_speed', 'change_of_direction', 'jump', 'game_endurance', 'repeated_sprints', 'duel_strength', 'mobility_perf', 'technique', 'robustness', 'injury_prevention'],
+    /* 3a.2 (Katalogkohärenz): 'ftp' ist eine BEKANNTE Sport-Performance-Kategorie —
+       goalMetricTypeFor unterstützte sie bereits als Power-Ziel, der Katalog kannte
+       sie aber nicht (isKnownGoalCategory('ftp') war false ⇒ Portfolio behandelte
+       FTP fälschlich als unknown). */
+    sport_performance: ['sprint_speed', 'change_of_direction', 'jump', 'game_endurance', 'repeated_sprints', 'duel_strength', 'mobility_perf', 'technique', 'robustness', 'injury_prevention', 'ftp'],
     health: ['reduce_complaints', 'stabilize_knee', 'strengthen_back', 'improve_mobility', 'pain_free', 'increase_robustness', 'return_after_break', 'improve_recovery', 'improve_sleep', 'reduce_stress'],
     general: ['train_regularly', 'keep_fit', 'active_daily', 'long_term_health', 'wellbeing', 'custom']
   };
@@ -37,15 +41,33 @@
   /* R1.2 · EIN kanonischer Ziel-ID-Namespace (= GOAL_CATEGORIES). Legacy-IDs aus dem
      alten Race-Editor werden beim LESEN normalisiert (id/targetValue bleiben stabil
      ⇒ keine Dubletten); GESCHRIEBEN wird nur noch kanonisch. */
-  var GOAL_ID_ALIASES = { halfmarathon: 'half_marathon', fast5k: 'run_5k', fast10k: 'run_10k', cycling_event: 'cycling_race' };
+  /* 3a.2: 'body_fat' ist LEGACY und wird ausschließlich über diesen dokumentierten
+     Alias auf die kanonische Kategorie 'target_bodyfat' normalisiert. */
+  var GOAL_ID_ALIASES = { halfmarathon: 'half_marathon', fast5k: 'run_5k', fast10k: 'run_10k', cycling_event: 'cycling_race', body_fat: 'target_bodyfat' };
   function canonGoalCategory(t) { if (t == null) return t; var k = String(t).trim(); return GOAL_ID_ALIASES[k] || k; }
   var TIME_GOAL_CATEGORIES = ['half_marathon', 'marathon', 'run_5k', 'run_10k', 'ironman', 'half_ironman', 'triathlon', 'sprint_triathlon', 'olympic_triathlon', 'rowing2k'];
+  /* Batch 3a.1 · KANONISCHE Katalogfrage: ist eine Zielkategorie bekannt?
+     EINE Quelle = GOAL_CATEGORIES (alle Gruppen) + TIME_GOAL_CATEGORIES (deckt
+     die dokumentierte Lücke half_ironman/sprint_/olympic_triathlon/rowing2k),
+     nach Alias-Normalisierung. Konsumenten (z. B. goal-portfolio) fragen diese
+     Quelle, statt eigene Katalogwahrheiten aufzubauen. Hintergrund: categoryOf()
+     setzt unbekannte Kategorien auf group 'general' — group allein ist deshalb
+     KEIN Bekanntheitsnachweis. */
+  function isKnownGoalCategory(cat) {
+    if (cat == null) return false;
+    var c = canonGoalCategory(cat);
+    if (TIME_GOAL_CATEGORIES.indexOf(c) >= 0) return true;
+    for (var grp in GOAL_CATEGORIES) if (GOAL_CATEGORIES[grp].indexOf(c) >= 0) return true;
+    return false;
+  }
   function goalMetricTypeFor(category) {
     category = canonGoalCategory(category);
     if (TIME_GOAL_CATEGORIES.indexOf(category) >= 0) return 'time';
     if (category === 'ftp') return 'power';
     if (category === 'vo2max') return 'count';
-    if (['weight_loss', 'weight_gain', 'muscle_gain', 'shredded', 'body_fat'].indexOf(category) >= 0) return 'weight';
+    /* 3a.2: kanonisch 'target_bodyfat' (Weight-Ziel); Legacy 'body_fat' kommt nur
+       noch normalisiert (Alias) hier an. */
+    if (['weight_loss', 'weight_gain', 'muscle_gain', 'shredded', 'target_bodyfat'].indexOf(category) >= 0) return 'weight';
     return null;
   }
   /* Werte defensiv normalisieren: 'time' akzeptiert „1:50:00"-Strings (→ Sekunden). */
@@ -1500,7 +1522,7 @@
     ESSENTIAL_FIELD_LABELS: ESSENTIAL_FIELD_LABELS,
     effectiveTrainingConfig: effectiveTrainingConfig,
     GOAL_METRIC_TYPES: GOAL_METRIC_TYPES, goalMetricTypeFor: goalMetricTypeFor,
-    canonGoalCategory: canonGoalCategory,
+    canonGoalCategory: canonGoalCategory, isKnownGoalCategory: isKnownGoalCategory,
     normalizeLevelKey: normalizeLevelKey, primarySportLevel: primarySportLevel,
     FRESHNESS_CONFIG: FRESHNESS_CONFIG, getSectionFreshness: getSectionFreshness, goalDateNeedsReview: goalDateNeedsReview,
     ESSENTIAL_SECTION_IDS: ESSENTIAL_SECTION_IDS,

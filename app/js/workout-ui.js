@@ -82,14 +82,12 @@
   }
   // Planerfüllung für HEUTE: geplante Sportarten (Wochenplan) vs. tatsächlich absolvierte.
   function planFulfillmentToday(logged) {
+    // I3b.1 FAIL-CLOSED: ausschließlich der kanonische Resolver-Adapter (SSOT). KEIN Rückfall
+    // auf Tag+Sport/planStatus. Fehlt oder wirft der Adapter ⇒ ehrlich 'nicht bestimmbar'.
     try {
-      if (typeof Calc === 'undefined' || !Calc.planStatus || typeof activeWeekPlan !== 'function' || typeof todayStr !== 'function') return null;
-      const idx = (new Date(todayStr() + 'T12:00').getDay() + 6) % 7;
-      const planned = (activeWeekPlan()[idx] || []).map(it => it.t).filter(Boolean);
-      const done = (logged || []).map(a => a.type);
-      const s = st().session; if (s && s.status === 'active' && s.sport) done.push(s.sport);
-      return Calc.planStatus(planned, done, { isPast: false });
-    } catch (e) { return null; }
+      if (typeof planActualToday === 'function') return planActualToday();
+    } catch (e) {}
+    return { key: 'unbestimmt', label: 'Nicht bestimmbar', assessable: false };
   }
   // Heute-Seite: EINE kompakte Tageszusammenfassung + genau zwei Wege (Starten / Erfassen).
   O.workoutUI.renderEntry = function () {
@@ -270,42 +268,14 @@
       return '<div class="wo-det-ex"><div class="wo-det-exname">' + esc(name) + '</div>' + (sets || '<div class="muted">Keine Sätze</div>') + '</div>';
     }).join('');
   }
-  O.workoutUI.openDetails = async function (sessionId) {
-    openSheet('<h3 class="wo-sheet-t">Workout-Details</h3><p class="wo-sheet-p">Wird geladen …</p>');
-    // 1) Lokaler Snapshot (offline-fest, überlebt Reload) — über stabile source_record_id.
-    try {
-      const AS = O.activityStore;
-      const act = AS && AS.getActivityBySource('orvia_workout', sessionId);
-      if (act) {
-        const det = AS.getWorkoutDetailsForActivity(act.clientRecordId);
-        if (det.ok && det.hasDetails) {
-          const head = detHead(act.startedAt ? act.startedAt.slice(0, 10) : '', act.sportId, durationLabel({ duration_seconds: act.durationSeconds }), null) + detSummary(act.summary);
-          const body = detExercises(det.exercises, ex => ex.exerciseNameSnapshot || 'Übung') || '<p class="muted">Keine Übungen.</p>';
-          detSheet(head, body, sessionId); return;
-        }
-      }
-    } catch (e) { try { console.error('[ORVIA workout] lokaler Detail-Snapshot fehlgeschlagen', e); } catch (_) {} }
-    // 2) Supabase-Tree.
-    if (O.repos && O.repos.workout && O.repos.workout.loadWorkoutTree) {
-      const r = await O.repos.workout.loadWorkoutTree(sessionId);
-      if (r.success && r.data && r.data.session) {
-        const s = r.data.session;
-        const head = detHead(s.local_date, s.sport, durationLabel(s), s.session_rpe);
-        const body = detExercises(r.data.exercises || [], ex => (ex.exercise && ex.exercise.name) || 'Übung') || '<p class="muted">Keine Übungen.</p>';
-        detSheet(head, body, sessionId); return;
-      }
-    }
-    // 3) Allgemeine Activity-Daten (ohne Satzdetails) statt pauschalem Fehler.
-    try {
-      const AS = O.activityStore;
-      const act = AS && AS.getActivityBySource('orvia_workout', sessionId);
-      if (act) {
-        const head = detHead(act.startedAt ? act.startedAt.slice(0, 10) : '', act.sportId, durationLabel({ duration_seconds: act.durationSeconds }), null) + detSummary(act.summary);
-        detSheet(head, "<p class=\"muted\">Für diese Einheit sind keine Satzdetails gespeichert.</p>", sessionId); return;
-      }
-    } catch (e) {}
-    // 4) Kontrollierter Fehlerzustand (echter Ladefehler).
-    detSheet('', '<p class="wo-sheet-p">Details konnten nicht geladen werden (DETAIL_LOAD_FAILED).</p>');
+  O.workoutUI.openDetails = function (sessionId, canonicalId) {
+    // AD1b-Adapter: eigener Workout-Sheet-Renderer retired. Auflösung auf die kanonische
+    // Activity-ID (über getActivityBySource), dann der EINE Detailrenderer. Der lokale
+    // Satz-/Übungsblock erscheint dort über das View-Model (getWorkoutDetailsForActivity).
+    var au = O.activityUI; if (!au || !au.openActivityDetail) return;
+    var id = canonicalId || null;
+    if (!id) { try { var AS = O.activityStore; var act = AS && AS.getActivityBySource && AS.getActivityBySource('orvia_workout', sessionId); id = act && (act.clientRecordId || act.id); } catch (e) {} }
+    return au.openActivityDetail(id || sessionId, 'training');
   };
   // Aktive Session (auch wenn nur serverseitig bekannt) hydrieren und Overlay öffnen.
   O.workoutUI.resumeActive = async function () {
@@ -337,7 +307,8 @@
     // Erst hydrieren: existiert (auch serverseitig) eine aktive Session → diese öffnen statt neu anlegen.
     const ex = await ensureActiveWorkoutLoaded();
     if (ex.active) { _busy = false; O.workoutUI._planNote = null; O.workoutUI._planLabel = null; toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); return; }
-    const r = await WS().startFreeWorkout({ sport: sport || 'Gym' }); _busy = false;
+    // Batch 2b/2d: Occurrence-ID + unveränderlicher Plan-Snapshot an die Session durchreichen.
+    const r = await WS().startFreeWorkout({ sport: sport || 'Gym', plannedSessionId: (opts && opts.plannedSessionId) || null, planSnapshot: (opts && opts.planSnapshot) || null, sessionType: (opts && opts.plannedSessionId) ? 'planned' : null }); _busy = false;
     if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
     if (r.sync_status === 'pending') toastIt('Offline gestartet – wird synchronisiert ⏳');
     O.workoutUI.open();

@@ -58,6 +58,8 @@ ON_CONFLICT: dict[str, str] = {
     "user_metrics": "user_id,metric_type,source_record_id",
     "profile_metric_settings": "user_id,metric_type",
     "daily_energy_expenditure": "user_id,metric_date",
+    # GM7.4: Tages-Zeitreihen (Migration 0028). Eine Serie je Nutzer+Metrik+Tag.
+    "user_metric_series": "user_id,metric_type,metric_date",
 }
 
 

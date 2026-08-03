@@ -33,6 +33,7 @@
     Object.keys(data.keys).forEach(k => { try { localStorage.setItem(k, data.keys[k]); } catch (e) {} });
     try { if (typeof load === 'function') DB = load(); } catch (e) {}
     try { if (typeof loadProfile === 'function') { const p = loadProfile(); if (p) PROFILE = p; } } catch (e) {}
+    markClean();
     rerender();
   }
 
@@ -69,6 +70,15 @@
 
   /* ---- Push (debounced, an save() gehängt) ---- */
   function markRev(r) { try { if (r != null) localStorage.setItem('orvia_sync_rev', String(r)); } catch (e) {} }
+  /* GM7.6 Cloud-Autoload: 'orvia_local_dirty' markiert lokale Aenderungen seit dem letzten
+     bestaetigten Sync-Punkt. Nur damit kann start() beim naechsten Login unterscheiden
+     zwischen 'nichts Offenes -> Cloud automatisch laden' und 'lokal hat Vorrang -> zuerst
+     sichern'. Wird bei jedem Save gesetzt (schedulePush) und erst nach einem BESTAETIGTEN
+     push()/pull() wieder geloescht. */
+  function markDirty() { try { localStorage.setItem('orvia_local_dirty', '1'); } catch (e) {} }
+  function markClean() { try { localStorage.removeItem('orvia_local_dirty'); } catch (e) {} }
+  function isLocalDirty() { try { return localStorage.getItem('orvia_local_dirty') === '1'; } catch (e) { return false; } }
+  window.orviaIsLocalDirty = isLocalDirty;
 
   async function push() {
     const sb = O.sb, u = O.user;
@@ -81,6 +91,7 @@
         { user_id: u.id, data: snap, device_id: deviceId() }, { onConflict: 'user_id' });
       if (error) throw error;
       markRev(snap.savedAt);
+      markClean();
       // Eigentümer der lokalen Daten festschreiben → verhindert, dass beim nächsten
       // Login eines ANDEREN Nutzers diese Daten in dessen Konto gepusht werden.
       try { localStorage.setItem('orvia_data_owner', u.id); } catch (e) {}
@@ -88,6 +99,7 @@
     } catch (e) { console.error('[ORVIA sync] push', e); setState('error'); }
   }
   function schedulePush() {
+    markDirty();
     if (!O.sb || !O.user) return;
     clearTimeout(pushTimer); setState('pending');
     pushTimer = setTimeout(push, 1500);
@@ -143,9 +155,13 @@
   }
   async function _startInner(sb, u) {
     setState('pending');
-    // Lokale Daten sind für das aktive Gerät MASSGEBLICH und werden nie durch Cloud
-    // überschrieben → kein Datenverlust. Cloud wird nur geladen, wenn lokal LEER ist
-    // (frisches Gerät / nach Logout / nach localStorage-Eviction durch iOS).
+    // Lokale Daten sind fuer das aktive Geraet MASSGEBLICH, solange nicht klar ist, ob die
+    // Cloud einen ECHTEN neueren Stand von einem anderen Geraet hat. Cloud wird ohne
+    // Rueckfrage geladen, wenn lokal LEER ist ODER lokal keine unuebertragenen Aenderungen
+    // hat (Punkt 1 der Cloud-Autoload-Regel). Gibt es lokale Aenderungen, werden sie ZUERST
+    // ueber den bestehenden kanonischen Push gesichert, dann wird frisch geladen (Punkt 2+3).
+    // Ein Dialog erscheint nur noch bei einem technischen Fehler waehrend dieses Ablaufs
+    // (Punkt 4) — nie mehr routinemaessig bei jedem Start.
     if (countLocalDays() > 0) {
       var owner = null; try { owner = localStorage.getItem('orvia_data_owner'); } catch (e) {}
       if (owner && owner !== u.id) {
@@ -156,26 +172,53 @@
         /* INCIDENT-FIX (2026-07-11): Die reine Rev-Ungleichheit erzeugte auf iOS einen
            DAUER-DIALOG — beim App-Schliessen stirbt der JS-Kontext oft, bevor markRev
            nach dem letzten Push gespeichert ist; die App hielt dann ihre EIGENEN
-           Cloud-Daten fuer fremd. Neue, robuste Regel:
-           - remote.device_id === dieses Geraet  → NIE Dialog (eigener Stand), push.
-           - remote NUMERISCH neuer als knownRev UND fremdes Geraet → Merge-Dialog.
+           Cloud-Daten fuer fremd. Robuste Regel bleibt:
+           - remote.device_id === dieses Geraet  → kein fremder Stand, push.
+           - remote NUMERISCH neuer als knownRev UND fremdes Geraet → echter Abgleich noetig.
            - sonst (Cloud aelter/gleich = eigener alter/haengender Push) → push. */
         let remote0 = null;
         try {
           const { data, error } = await sb.from('app_state').select('data,updated_at,device_id').eq('user_id', u.id).maybeSingle();
           if (error) throw error;
           remote0 = data;
-        } catch (e) { /* offline/Fehler → lokal weiterarbeiten, Push versucht es */ }
+        } catch (e) {
+          // offline/Fehler → lokal weiterarbeiten, kein Datenverlust; naechster Online-Trigger versucht erneut.
+          setState(navigator.onLine ? 'error' : 'offline');
+          return;
+        }
         const remoteHas0 = remote0 && remote0.data && remote0.data.keys && remote0.data.keys[DB_KEY];
         let knownRev = 0; try { knownRev = Number(localStorage.getItem('orvia_sync_rev') || 0) || 0; } catch (e) {}
         const remoteRev = remoteHas0 ? (Number(remote0.data.savedAt || 0) || 0) : 0;
         const remoteDevice = remote0 && remote0.device_id ? String(remote0.device_id) : null;
         const isOwnDevice = remoteDevice && remoteDevice === deviceId();
-        if (remoteHas0 && !isOwnDevice && remoteRev > knownRev) {
-          migratePrompt(remote0.data);
+        const cloudIsNewer = remoteHas0 && !isOwnDevice && remoteRev > knownRev;
+
+        if (!cloudIsNewer) { await push(); return; }
+
+        if (!isLocalDirty()) {
+          // Punkt 1: keine unuebertragenen lokalen Aenderungen -> neueren Cloud-Stand
+          // automatisch laden, ohne Rueckfrage.
+          applySnapshot(remote0.data); markRev(String(remote0.data.savedAt || '')); setState('synced');
           return;
         }
-        await push();
+
+        // Punkt 2+3: lokale Aenderungen vorhanden UND Cloud ist von einem anderen Geraet
+        // neuer. Zuerst verlustfrei ueber den bestehenden kanonischen Push sichern, danach
+        // den aktuellen Cloud-Stand erneut laden und die UI vollstaendig aktualisieren.
+        try {
+          await push();
+          const { data: data2, error: err2 } = await sb.from('app_state').select('data,updated_at').eq('user_id', u.id).maybeSingle();
+          if (err2) throw err2;
+          if (data2 && data2.data && data2.data.keys && data2.data.keys[DB_KEY]) {
+            applySnapshot(data2.data); markRev(String(data2.data.savedAt || ''));
+          }
+          setState('synced');
+        } catch (e) {
+          // Punkt 4: tatsaechlich nicht automatisch loesbar (technischer Fehler beim
+          // Zusammenfuehren) -> ehrlicher Hinweis statt stillem Datenverlust in eine Richtung.
+          console.error('[ORVIA sync] auto-merge', e);
+          syncErrorPrompt();
+        }
         return;
       }
     }
@@ -193,33 +236,35 @@
   // Sofortiger Push (ohne Debounce) — beim App-Schließen/Backgrounden aufrufen.
   window.orviaFlushSync = function () { try { clearTimeout(pushTimer); } catch (e) {} if (O.sb && O.user && navigator.onLine) push(); };
 
-  /* ---- Migrationsdialog (lokale Daten vs. Cloud) ---- */
-  function migratePrompt(remoteData) {
-    // INCIDENT-FIX: SINGLETON — ein zweiter Aufruf ersetzt den Dialog, statt ihn zu stapeln
-    // (gestapelte Fullscreen-Backdrops blockierten Tabs und wirkten wie ein Freeze).
-    if (window._orviaMergeModal) { try { window._orviaMergeModal.remove(); } catch (e) {} window._orviaMergeModal = null; }
-    setState('pending', 'Entscheidung nötig');
-    const n = countLocalDays();
+  /* ---- Fehleranzeige: automatisches Zusammenfuehren technisch fehlgeschlagen ----
+     GM7.6 Cloud-Autoload: kein Routine-Dialog mehr bei jedem Start (Punkt 1–3 laufen
+     automatisch). Dieser Dialog erscheint NUR noch, wenn der automatische Push-dann-
+     Neuladen-Ablauf technisch scheitert (Punkt 4) — lokale Daten bleiben in jedem Fall
+     unangetastet, es wird nichts blind ueberschrieben. */
+  function syncErrorPrompt() {
+    // SINGLETON — ein zweiter Aufruf ersetzt den Dialog, statt ihn zu stapeln.
+    if (window._orviaSyncErrModal) { try { window._orviaSyncErrModal.remove(); } catch (e) {} window._orviaSyncErrModal = null; }
+    setState('error', 'Sync-Fehler');
     const wrap = document.createElement('div');
     wrap.className = 'orvia-modal-bg';
     wrap.innerHTML =
       '<div class="orvia-modal">' +
-        '<div class="om-ic">↯</div>' +
-        '<h3>Lokale Daten gefunden</h3>' +
-        '<p>Auf diesem Gerät liegen <b>' + n + ' Tage</b> mit Daten, und dein Account hat bereits Cloud-Daten. Was möchtest du tun?</p>' +
-        '<button class="btn" id="omLocal">Lokale Daten übernehmen</button>' +
-        '<button class="btn sec" id="omCloud" style="margin-top:10px">Cloud-Daten laden</button>' +
-        '<p class="om-note">„Lokale übernehmen" überschreibt die Cloud mit diesem Gerät. „Cloud laden" ersetzt die lokalen Daten. Vorher liegt automatisch ein lokales Backup im Profil-Export.</p>' +
+        '<div class="om-ic">⚠</div>' +
+        '<h3>Automatisches Zusammenführen nicht möglich</h3>' +
+        '<p>Deine lokalen Daten bleiben unverändert und sicher. Der automatische Abgleich mit der Cloud ist gerade technisch fehlgeschlagen (z. B. Netzwerk).</p>' +
+        '<button class="btn" id="oeRetry">Erneut versuchen</button>' +
+        '<button class="btn sec" id="oeDismiss" style="margin-top:10px">Später — lokal weiterarbeiten</button>' +
       '</div>';
     document.body.appendChild(wrap);
-    window._orviaMergeModal = wrap;
-    const close = () => { try { wrap.remove(); } catch (e) {} window._orviaMergeModal = null; };
-    const lock = () => { try { wrap.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '.6'; }); } catch (e) {} };
-    wrap.querySelector('#omLocal').onclick = async () => { lock(); close(); setState('pending', 'Übertrage …'); await push(); };
-    wrap.querySelector('#omCloud').onclick = () => { lock(); close(); setState('pending', 'Lade Cloud …'); applySnapshot(remoteData); markRev(String(remoteData.savedAt || '')); setState('synced'); };
+    window._orviaSyncErrModal = wrap;
+    const close = () => { try { wrap.remove(); } catch (e) {} window._orviaSyncErrModal = null; };
+    wrap.querySelector('#oeRetry').onclick = () => { close(); start(); };
+    wrap.querySelector('#oeDismiss').onclick = () => { close(); setState('error'); };
   }
 
   /* ---- Netzstatus ---- */
-  window.addEventListener('online',  () => { if (O.sb && O.user) push(); });
+  // Voller Abgleich statt Blind-Push: nach einer Offline-Phase koennte die Cloud von einem
+  // anderen Geraet aus neuer sein — start() prueft das (Punkt 1–4), statt blind zu pushen.
+  window.addEventListener('online',  () => { if (O.sb && O.user) start(); });
   window.addEventListener('offline', () => { if (O.sb && O.user) setState('offline'); });
 })();

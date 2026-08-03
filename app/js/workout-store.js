@@ -92,6 +92,11 @@
     const sessionRow = {
       localDate: today(), status: 'active', startedAt: startedAtISO, sport: opts.sport || null,
       sessionType: opts.sessionType || null, notes: opts.notes || null, totalPausedSeconds: 0,
+      /* Batch 2b/2d: Plan-Actual-Link — planned_session_id trägt die OCCURRENCE-ID
+         (konkrete datierte Instanz); der unveränderliche Plan-Snapshot (tiefe Kopie,
+         Migration 0025) sichert die Vorgabe für den späteren Plan-Ist-Vergleich. */
+      plannedSessionId: opts.plannedSessionId || null,
+      plannedSessionSnapshot: opts.planSnapshot ? JSON.parse(JSON.stringify(opts.planSnapshot)) : null,
       readinessSnapshot: snap.readiness, decisionSnapshot: snap.decision, source: 'manual', clientSessionId: localId
     };
     let r;
@@ -209,9 +214,21 @@
     O.workout.startedAt = null; O.workout.dirty = false; O.workout.syncStatus = 'synced';
   }
 
-  // Offline-Terminalzustand (kein Server zum atomaren Abschluss): dedup-sicher queuen.
+  /* Offline-Terminalzustand (kein Server zum atomaren Abschluss): dedup-sicher queuen.
+     Batch 2e: Der Folge-Upsert übernimmt die BESTEHENDEN Session-Felder — vorher
+     baute er eine fast leere Zeile und hätte u. a. planned_session_id/
+     planned_session_snapshot, sport und started_at serverseitig auf null gesetzt
+     (Upsert schreibt jede MITGESCHICKTE Spalte, auch explizite nulls). */
   async function offlineTerminal(s, targetStatus, extraPatch) {
-    const row = Object.assign(buildSessionRow({ localDate: s.local_date, clientSessionId: s.client_session_id, status: targetStatus }), extraPatch || {});
+    const row = Object.assign(buildSessionRow({
+      localDate: s.local_date, clientSessionId: s.client_session_id, status: targetStatus,
+      startedAt: s.started_at || null, sport: s.sport || null, sessionType: s.session_type || null,
+      notes: s.notes || null, source: s.source || null,
+      totalPausedSeconds: s.total_paused_seconds != null ? s.total_paused_seconds : 0,
+      readinessSnapshot: s.readiness_snapshot || null, decisionSnapshot: s.decision_snapshot || null,
+      plannedSessionId: s.planned_session_id || null,
+      plannedSessionSnapshot: s.planned_session_snapshot || null
+    }), extraPatch || {});
     return offlineUpsert('workout_sessions', row, 'user_id,client_session_id', { clientId: s.client_session_id });
   }
 
@@ -257,7 +274,8 @@
           id: s.id || null, client_session_id: s.client_session_id, sport: sport, sport_key: sportKey,
           status: 'completed', local_date: localDate, started_at: s.started_at,
           finished_at: s.finished_at || new Date(_nowMs()).toISOString(),
-          duration_min: durationMin, total_paused_seconds: s.total_paused_seconds || 0, session_rpe: rpe
+          duration_min: durationMin, total_paused_seconds: s.total_paused_seconds || 0, session_rpe: rpe,
+          planned_session_id: s.plannedSessionId || s.planned_session_id || null   // AD1c: Plan-Actual-Link an die Activity weiterreichen
         };
         const ar = O.activityStore.upsertActivityFromWorkout(sessionForActivity, O.workout.exercises, { syncStatus: 'pending' });
         if (ar && ar.ok) activityLocal = ar.activity;
@@ -460,6 +478,10 @@
     const sportKey = (O.trainingDomain && O.trainingDomain.normSport) ? O.trainingDomain.normSport(s.sport) : (s.sport || null);
     return { user_id: uid(), local_date: s.localDate, status: s.status || 'active', started_at: s.startedAt || s.started_at || null, finished_at: s.finishedAt || s.finished_at || null,
       sport: s.sport || null, sport_key: sportKey || null, session_type: s.sessionType || null, notes: s.notes || null,
+      planned_session_id: s.plannedSessionId || s.planned_session_id || null,   // Batch 2b: Offline-Queue-Parität zum Repository-Mapping
+      /* Batch 2d (H3-Muster): planned_session_snapshot NUR senden wenn belegt —
+         kompatibel mit Instanzen, auf denen Migration 0025 noch nicht läuft. */
+      ...(s.plannedSessionSnapshot ? { planned_session_snapshot: s.plannedSessionSnapshot } : {}),
       paused_at: s.pausedAt || s.paused_at || null, total_paused_seconds: s.totalPausedSeconds != null ? s.totalPausedSeconds : (s.total_paused_seconds != null ? s.total_paused_seconds : 0),
       readiness_snapshot: s.readinessSnapshot || null, decision_snapshot: s.decisionSnapshot || null, source: s.source || 'manual', client_session_id: s.clientSessionId || null };
   }

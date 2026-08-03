@@ -43,6 +43,7 @@
     // Struktur (jede Plan-Ausgabe ist erklärbar — C7)
     plan_structure: { severity: 'info', title: 'Wochenaufbau', explanation: 'Die Woche ist aus deiner Verfügbarkeit, deinem Trainingsstand und deinem Ziel abgeleitet.' },
     // Datenqualität
+    insufficient_chronic_history: { severity: 'info', title: 'Zu wenig Trainingshistorie', explanation: 'Für einen Belastungsvergleich fehlt eine ausreichende ältere Historie — die letzte Woche allein ist keine chronische Basis.' },
     missing_baseline: { severity: 'info', title: 'Basislinie fehlt noch', explanation: 'Für diesen Marker gibt es noch zu wenig Daten für einen persönlichen Vergleich.' },
     missing_checkin: { severity: 'info', title: 'Kein Check-in', explanation: 'Ohne Morgen-Check-in ist die Tagesbewertung nur eingeschränkt möglich.' },
     low_data_confidence: { severity: 'info', title: 'Begrenzte Datenlage', explanation: 'Die Empfehlung beruht auf wenigen Datenpunkten und ist entsprechend vorsichtig.' }
@@ -98,7 +99,62 @@
       && CONFIDENCE.indexOf(r.confidence) >= 0;
   }
 
+
+  /* ===== GM7: fehlende Datenvertraege — jetzt EXPLIZIT als Schema-Validatoren =====
+     Diese Vertraege sind der Grund, warum Planvarianten, Planqualitaets-Subscores,
+     Zielprognose, Tagesziele und Max. Tagesbelastung im UI ehrlich leer sind.
+     Das UI darf diese Bereiche erst fuellen, wenn ein Produzent (Engine/Provider)
+     Objekte liefert, die diese Validatoren bestehen. KEIN UI-Ersatzmodell. */
+
+  // planQuality: {total:0-100, subscores:{goalCoverage,recoveryDistribution,loadBalance,
+  //   timeFeasibility,sportBalance,dataQuality: {value:0-100, rating:string}}, limitingFactors:[], ruleVersion}
+  var PQ_KEYS = ['goalCoverage','recoveryDistribution','loadBalance','timeFeasibility','sportBalance','dataQuality'];
+  function isPlanQuality(r) {
+    if (!r || typeof r !== 'object') return false;
+    if (!(typeof r.total === 'number' && r.total >= 0 && r.total <= 100)) return false;
+    if (!r.subscores || typeof r.subscores !== 'object') return false;
+    for (var i = 0; i < PQ_KEYS.length; i++) { var sc = r.subscores[PQ_KEYS[i]];
+      if (!sc || typeof sc.value !== 'number' || sc.value < 0 || sc.value > 100 || typeof sc.rating !== 'string') return false; }
+    return Array.isArray(r.limitingFactors) && typeof r.ruleVersion === 'string';
+  }
+
+  // forecast: Zielprognose-Korridor — konservativ/realistisch/optimistisch in Sekunden.
+  function isForecast(r) {
+    return !!(r && typeof r === 'object'
+      && typeof r.goalId === 'string' && typeof r.metric === 'string'
+      && [r.conservative, r.realistic, r.optimistic].every(function (v) { return typeof v === 'number' && v > 0; })
+      && r.conservative >= r.realistic && r.realistic >= r.optimistic
+      && r.uncertainty && typeof r.uncertainty.plusMinusSec === 'number'
+      && CONFIDENCE.indexOf(r.confidence) >= 0 && typeof r.asOf === 'string');
+  }
+
+  // planVariants: A/B/C mit echter Wochenstruktur + Auswirkung.
+  function isPlanVariants(r) {
+    if (!r || !Array.isArray(r.variants) || r.variants.length < 2) return false;
+    if (typeof r.recommendedVariantId !== 'string') return false;
+    return r.variants.every(function (v) {
+      return v && typeof v.id === 'string' && typeof v.name === 'string'
+        && typeof v.timeBudgetHours === 'number' && typeof v.loadLevel === 'string'
+        && typeof v.coreSessions === 'number' && typeof v.restDays === 'number'
+        && Array.isArray(v.week) && v.week.length === 7;
+    });
+  }
+
+  // dailyTargets: Tagesziele (Schritte/kcal/Wasser/Schlaf) mit Quelle.
+  function isDailyTargets(r) {
+    return !!(r && typeof r === 'object'
+      && ['steps','activeKcal','waterMl','sleepMin'].every(function (k) { return r[k] === null || (typeof r[k] === 'number' && r[k] >= 0); })
+      && typeof r.source === 'string' && typeof r.updatedAt === 'string');
+  }
+
+  // loadCap: maximale Tagesbelastung.
+  function isLoadCap(r) {
+    return !!(r && typeof r === 'object' && typeof r.mode === 'string'
+      && (r.value === null || typeof r.value === 'number') && typeof r.unit === 'string');
+  }
+
   O.engineContracts = {
+
     RULE_VERSION: RULE_VERSION,
     REASONS: REASONS,
     reason: reason,
@@ -108,7 +164,12 @@
     CONFIDENCE: CONFIDENCE,
     isReadinessResult: isReadinessResult,
     isDecisionResult: isDecisionResult,
-    isPlanResult: isPlanResult
+    isPlanResult: isPlanResult,
+    isPlanQuality: isPlanQuality,
+    isForecast: isForecast,
+    isPlanVariants: isPlanVariants,
+    isDailyTargets: isDailyTargets,
+    isLoadCap: isLoadCap
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.engineContracts;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

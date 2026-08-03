@@ -24,6 +24,10 @@
   window.ORVIA_CFG = {
     SUPABASE_URL: pick('SUPABASE_URL', 'VITE_SUPABASE_URL', 'ORVIA_SUPABASE_URL') || previous.SUPABASE_URL || '',
     SUPABASE_ANON_KEY: pick('SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'ORVIA_SUPABASE_ANON_KEY') || previous.SUPABASE_ANON_KEY || '',
+    /* Oeffentliche Basis-URL des produktiven Garmin-Workers (Railway). Kein Secret — der
+       Worker prueft ausschliesslich den Supabase-Bearer-Token pro Anfrage. Default = das
+       bereits live erreichbare Ziel (siehe garmin-worker/scripts/local_login.py). */
+    GARMIN_WORKER_URL: pick('GARMIN_WORKER_URL', 'VITE_GARMIN_WORKER_URL', 'ORVIA_GARMIN_WORKER_URL') || previous.GARMIN_WORKER_URL || 'https://orvia-garmin-worker-production.up.railway.app',
     enableDemoData: env.ORVIA_ENABLE_DEMO_DATA === true || env.ORVIA_ENABLE_DEMO_DATA === 'true'
   };
 

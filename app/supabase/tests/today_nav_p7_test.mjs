@@ -2,7 +2,8 @@
    ORVIA · P7 — Navigation + Routinen-Kuration.
    Verträge:
    - CSS: KEINE permanente tab-train-Hervorhebung mehr (Ring/Gold nur .on);
-     .nav-plus bleibt einzige Dauer-Sonderaktion.
+     der Plus-Button bleibt einzige Dauer-Sonderaktion (seit Shell-v3/GM7 als
+     `#navPlus.fab` außerhalb der Bar, nicht mehr als `.tabbar button.nav-plus`).
    - Routinen: Roll-up openRoutineTasks (pur nachvollziehbar), Karte nur bei
      offenen Aufgaben heute (Vergangenheit nur mit Bestandseinträgen),
      „x offen"-Badge, ssRepsIn-Guard.
@@ -21,7 +22,20 @@ const base = new URL('../../js/', import.meta.url);
   ok('N1 kein tab-train-Ring mehr (weder permanent noch .on)', !/\.tab-train(\.on)?::before/.test(css));
   ok('N2 keine permanente Gold-Icon-Regel (.tab-train .ic ohne .on)', !/\.tabbar button\.tab-train \.ic\{/.test(css));
   ok('N3 keine tab-train-Sonderregel für den aktiven Zustand (Standard .on gilt)', !/\.tabbar button\.tab-train\.on \.ic\{/.test(css));
-  ok('N4 .nav-plus bleibt Sonderaktion (Gold-Verlauf)', /\.tabbar button\.nav-plus\{[^}]*linear-gradient/.test(css));
+  /* GM7 (Legacy-Deaktivierung + Gesamtabgleich): Seit der Shell-v3-Migration liegt der
+     Plus-Button als `#navPlus.fab` AUSSERHALB der Tabbar; die Klasse `nav-plus` kommt im
+     gesamten Laufzeitcode nicht mehr vor, die Regel `.tabbar button.nav-plus` konnte also
+     kein Element mehr treffen und wurde in GM7 als toter Bestand entfernt. Die Invariante
+     „der Plus-Button ist die einzige goldene Dauer-Sonderaktion der Bottom-Nav" bleibt
+     unverändert in Kraft und wird auf das wirksame Element gedreht — geprüft werden jetzt
+     DREI Bedingungen statt einer: der FAB trägt den Gold-Verlauf, das Token ist wirklich
+     ein linear-gradient, und kein Tab-Button trägt einen Dauer-Gold-Verlauf. */
+  const _n4Fab   = /\.fab\{[^}]*background:var\(--gold-grad\)/.test(css);
+  const _n4Token = /--gold-grad:\s*linear-gradient/.test(css);
+  const _n4Solo  = !/\.tabbar button(?!\.on)[^{,]*\{[^}]*linear-gradient/.test(css);
+  ok('N4 Plus-Button bleibt einzige goldene Dauer-Sonderaktion (#navPlus.fab)',
+     _n4Fab && _n4Token && _n4Solo,
+     'fab-gold=' + _n4Fab + ' token=' + _n4Token + ' solo=' + _n4Solo);
   ok('N5 Badge-Stil vorhanden (leer ⇒ unsichtbar)', /\.acc-badge:empty\{display:none\}/.test(css));
 }
 

@@ -107,9 +107,38 @@
     (readiness.warnings || []).forEach(function (w) {
       if (['poor_sleep', 'elevated_resting_hr', 'low_hrv'].indexOf(w.code) >= 0) reasons.push(w);
     });
-    /* 5 · Last (Invarianten: Belastungssprung + harte Tage in Folge). */
+    /* 5 · Last (Invarianten: Belastungssprung + harte Tage in Folge).
+       Batch 2c/2d: Ratio-Gates NUR über die KOMBINIERTE ratioConfidence
+       (Qualität BEIDER Quotienten-Fenster acute7 UND chronic28 — eine stark
+       geschätzte chronische Basis disqualifiziert den Quotienten genauso wie
+       eine geschätzte Akutwoche). Bei 'low' feuern load_spike/
+       high_recent_load NICHT — stattdessen ehrlicher Datenqualitäts-Hinweis.
+       KONSERVATIV (Batch 2d): ist die Belastungshistorie nicht zuverlässig
+       beurteilbar, darf eine geplante HARTE Einheit nicht als GREEN/KEEP
+       erscheinen (mind. YELLOW + Intensität raus); eine lockere Einheit
+       bleibt bestehen — mit sichtbar gesenkter Confidence. Geschätzte Last
+       kann Warnungen weiterhin nie UNTERDRÜCKEN, nur keine erzeugen.
+       Fehlt das Feld (Alt-Input), bleibt das Bestandsverhalten unverändert. */
     var load = input.recentLoad || {};
-    if (load.dataDays != null && load.dataDays >= 7 && load.acute7 != null && load.chronic28PerWeek != null && load.chronic28PerWeek > 0) {
+    var _rc = load.ratioConfidence != null ? load.ratioConfidence : load.loadConfidence;
+    if (_rc === 'low') {
+      missing.push('load_quality');
+      var _q = load.quality || {};
+      // Batch 2e: fehlende Historienreife ist ein EIGENER, verständlicher Grund.
+      var _code = _q.insufficientChronicHistory ? 'insufficient_chronic_history' : 'low_data_confidence';
+      reasons.push(CT.reason(_code, {
+        marker: 'load_quality',
+        acuteConfidence: _q.acuteConfidence || null, priorConfidence: _q.priorConfidence || null, chronicConfidence: _q.chronicConfidence || null,
+        historySpanDays: _q.historySpanDays != null ? _q.historySpanDays : null,
+        estimatedShare: load.estimatedShare != null ? load.estimatedShare : null,
+        unknownUnits: load.unknownUnits != null ? load.unknownUnits : null,
+        ambiguousUnits: load.ambiguousUnits != null ? load.ambiguousUnits : null
+      }));
+      if (sessionIsHard(planned)) {
+        escalate('YELLOW'); limitAction('REDUCE_INTENSITY');
+        safeguards.push('Die Belastungshistorie ist aktuell nicht zuverlässig beurteilbar — heute keine volle Intensität auf unsicherer Basis.');
+      }
+    } else if (load.dataDays != null && load.dataDays >= 7 && load.acute7 != null && load.chronic28PerWeek != null && load.chronic28PerWeek > 0) {
       var ratio = load.acute7 / load.chronic28PerWeek;
       if (ratio > 1.5) {
         escalate('ORANGE'); if (sessionIsHard(planned)) limitAction('REDUCE_INTENSITY'); else limitAction('REDUCE_VOLUME');

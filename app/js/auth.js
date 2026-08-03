@@ -279,6 +279,14 @@
     } catch (e) {}
     _P.mark('onAuthed: TOTAL login-init chain', _loginT0);
 
+    // GM6.1 (2026-07-27): Hydration abgeschlossen. Die letzten vier Schritte
+    // (avatar/checkin/readiness/workout) melden sich nicht selbst — readinessStore
+    // rendert gar nichts. Genau ein bereits erwartetes Signal am tatsächlichen
+    // Ende der Kette; Konsumenten sind ORVIA.uiRefresh (sichtbarer Tab) und der
+    // vorhandene Listener in activity-sync.js. Einmaligkeit garantiert der Latch
+    // onAuthed._initFor oben — kein neues Feld, kein paralleler Ready-State.
+    try { if (typeof CustomEvent === 'function' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:auth-ready')); } catch (e) {}
+
     try {
       // Onboarding nur bei pending öffnen. Dispatcher (onboarding-ui) öffnet AUSSCHLIESSLICH v2 (kein Legacy).
       // Pending-Key ERST nach erfolgreichem Öffnen entfernen (bei Fehler/fehlendem v2 behalten).

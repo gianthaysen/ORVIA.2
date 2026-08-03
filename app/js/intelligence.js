@@ -21,7 +21,7 @@ function intelCtx(){
   var rhrDev=(ctx.rhrBase!=null&&m.rhr!=null)?m.rhr-ctx.rhrBase:null;
   var hrv7=ctx.hrvBase7,hrvToday=m.hrvMs!=null?Math.log(m.hrvMs):null;
   var hrvDevPct=(hrv7&&hrvToday)?((Math.exp(hrvToday)-Math.exp(hrv7))/Math.exp(hrv7))*100:null;
-  var wk=(typeof weekRunKm==='function')?weekRunKm(0):0;
+  var wk=(typeof weekRunKm==='function')?weekRunKm(0):null;   // I2b: unbekannt bleibt null, keine erfundene 0
   var target=(typeof Calc!=='undefined'&&typeof daysTo==='function')?Calc.weekKmTarget(daysTo(RACE.date),0):0;
   var issueMax=0,issueLabels=[];
   if(typeof activeModuleKeys==='function'){activeModuleKeys().forEach(function(k){var v=issueScore(k,cur);if(v!=null&&v>issueMax)issueMax=v;if(v!=null&&v>=3)issueLabels.push((ORVIA_MODULES[k]||{}).label||k);});}
@@ -49,7 +49,7 @@ function baselineRows(){
   if(ctx.hrvDevPct!=null)rows.push(['HRV',(ctx.hrvDevPct>=0?'+':'')+ctx.hrvDevPct.toFixed(0)+'% vs. 7T-Schnitt',ctx.hrvDevPct<=-8?'r':ctx.hrvDevPct<0?'y':'g']);
   else rows.push(['HRV',c.hrvN+'/14 Werte für stabile Baseline','grey']);
   if(ctx.sleepDebt!=null)rows.push(['Schlaf-Konto (7T)',(ctx.sleepDebt>0?'−':'+')+Math.abs(ctx.sleepDebt).toFixed(1)+' h',ctx.sleepDebt>=4?'r':ctx.sleepDebt>=2?'y':'g']);
-  rows.push(['Wochen-km',ctx.weekKm.toFixed(0)+(ctx.targetKm?' / '+ctx.targetKm+' Soll':''),ctx.targetKm&&ctx.weekKm>ctx.targetKm*1.1?'y':'g']);
+  rows.push(['Wochen-km',(ctx.weekKm!=null?ctx.weekKm.toFixed(0):'–')+(ctx.targetKm?' / '+ctx.targetKm+' Soll':''),ctx.targetKm&&ctx.weekKm!=null&&ctx.weekKm>ctx.targetKm*1.1?'y':'g']);
   return rows;
 }
 function renderBaselines(){
@@ -145,7 +145,7 @@ function renderTipEngine(){
     '<div class="tiphead"><span class="tiptitle">'+escH(t.title)+'</span><span class="conf conf-'+(t.conf==='hoch'?'g':t.conf==='mittel'?'y':'r')+'">'+escH(t.conf)+'</span></div>'+
     '<div class="tipreason">'+escH(t.reason)+'</div>'+
     '<div class="tiprec">'+escH(t.rec)+'</div></div>';}).join('');
-  el.innerHTML='<div class="card"><h2><svg class="ic"><use href="#i-zap"/></svg>ORVIA Insights</h2>'+rows+'</div>';
+  el.innerHTML='<div class="card"><h2><svg class="ic"><use href="#i-zap"/></svg>Was ORVIA daraus macht</h2>'+rows+'</div>';
 }
 
 /* ============ Sammelaufruf Analytics ============ */

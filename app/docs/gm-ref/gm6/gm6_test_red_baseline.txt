@@ -1,0 +1,409 @@
+
+── A · Quellverträge (js/ui.js, styles.css) ──────────────────────────
+✅ Golden-Master-Domspec unverändert (md5 der Referenz)  — 1b93e15e23054318c8848d5cb10e6bcb
+✅ kein Legacy-Zustandsmarkup .occ mehr in js/ui.js  — 0 Treffer
+❌ kein Legacy-Check-in-Markup .cic- mehr in js/ui.js  — 7 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: <p class="note">Check-in-Modul nicht geladen  — 2 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: Legacy-Retry-Button .btn.sec „Erneut versuchen"  — 4 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: <p class="muted">Diagramm-Modul nicht geladen  — 1 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: <p class="muted">Metrik-Modul nicht geladen  — 1 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: _rcvError als .muted-Absatz  — 1 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: Legacy-Ladezeile „… werden geladen …" als .muted  — 1 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: Legacy-Empty „Noch keine …" als .muted-Absatz  — 5 Treffer
+❌ Legacy-Zustandsrenderer ersetzt: Legacy-Fehlerzeile .mv-note statt GM-.errbar  — 1 Treffer
+❌ GM-Zustandskomponenten stehen systemweit zur Verfügung (gmStateLoading/Empty/Error)
+✅ gmDashState() existiert
+❌ gmDashState() wertet navigator.onLine als produktives Offline-Signal aus
+✅ gmDashState(): Offline/Fehler wird VOR der noData-Prüfung entschieden
+❌ gmDashState(): Fehlerzweig ist NICHT mehr an noData gekoppelt (Offline mit Cache)
+✅ gmDashState(): sync-Zustände local/pending gelten NICHT als Fehler
+❌ gmLoadingMods() erzeugt stufenabhängig 2 bzw. 4 Skeleton-Kacheln
+✅ Retry-Button ruft nur den bestehenden Re-Render (renderDay) auf
+✅ Retry löst keine Engine-, Plan-, Persistenz- oder Löschaktion aus
+❌ Retry-Button ist fokussierbar und identifizierbar (id=gmRetryBtn)
+❌ renderModules(): eduhint wird im Empty-Zweig nicht ausgegeben
+❌ renderCheckinCompact(): GM-Stimmungsauswahl .ci-simple für Stufe a vorhanden
+✅ renderCheckinCompact(): Stimmungsauswahl ruft nur bestehende sichere Aktion
+❌ styles.css: .sk-Shimmer wird bei prefers-reduced-motion abgeschaltet
+✅ keine Demo-Hardcodes im GM1-Block (07:14 / 9:41 / feste Beispielwerte)
+✅ keine neue fachliche Bewertung im UI (kein Score-/ACWR-Nachrechnen)
+
+── B1 · GM-DOM-Reihenfolge je Zustand (430 px) ───────────────────────
+✅ loading/a: Sequenz identisch zum GM-Zustand „loading"
+✅ loading/f: Sequenz identisch zum GM-Zustand „loading"
+✅ loading/p: Sequenz identisch zum GM-Zustand „loading"
+❌ empty/a: Sequenz identisch zum GM-Zustand „empty"  — GM ["hdr","sync","hero.gap","gapnote","card","sectlabel","card","addmod"]
+            PROD ["hdr","sync","hero.gap","gapnote","card.tight","eduhint","sectlabel","card","addmod"]
+✅ empty/f: Sequenz identisch zum GM-Zustand „empty"
+✅ empty/p: Sequenz identisch zum GM-Zustand „empty"
+❌ offline_cache/a: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero.simple","card.tight","eduhint","sectlabel","card","card","card.tap","card.tap","card","addmod"]
+❌ offline_cache/f: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","kgrid","card.tap","kcard.tap","card","kgrid","card","addmod"]
+❌ offline_cache/p: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","card.tap","card.mod-wide.tap","kgrid","card.tap","card.tap","card","card","kgrid","card","addmod"]
+❌ offline_cache_nav/a: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero.simple","card.tight","eduhint","sectlabel","card","card","card.tap","card.tap","card","addmod"]
+❌ offline_cache_nav/f: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","kgrid","card.tap","kcard.tap","card","kgrid","card","addmod"]
+❌ offline_cache_nav/p: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","card.tap","card.mod-wide.tap","kgrid","card.tap","card.tap","card","card","kgrid","card","addmod"]
+❌ offline_cache_sync/a: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero.simple","card.tight","eduhint","sectlabel","card","card","card.tap","card.tap","card","addmod"]
+❌ offline_cache_sync/f: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","kgrid","card.tap","kcard.tap","card","kgrid","card","addmod"]
+❌ offline_cache_sync/p: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","card.tap","card.mod-wide.tap","kgrid","card.tap","card.tap","card","card","kgrid","card","addmod"]
+✅ offline_nodata/a: Sequenz identisch zum GM-Zustand „error"
+✅ offline_nodata/f: Sequenz identisch zum GM-Zustand „error"
+✅ offline_nodata/p: Sequenz identisch zum GM-Zustand „error"
+❌ error/a: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero.simple","card.tight","eduhint","sectlabel","card","card","card.tap","card.tap","card","addmod"]
+❌ error/f: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","kgrid","card.tap","kcard.tap","card","kgrid","card","addmod"]
+❌ error/p: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","card.tap","card.mod-wide.tap","kgrid","card.tap","card.tap","card","card","kgrid","card","addmod"]
+✅ error_nodata/a: Sequenz identisch zum GM-Zustand „error"
+✅ error_nodata/f: Sequenz identisch zum GM-Zustand „error"
+✅ error_nodata/p: Sequenz identisch zum GM-Zustand „error"
+✅ good/a: Sequenz identisch zum GM-Zustand „good"
+✅ good/f: Sequenz identisch zum GM-Zustand „good"
+✅ good/p: Sequenz identisch zum GM-Zustand „good"
+✅ attention/a: Sequenz identisch zum GM-Zustand „attention"
+✅ attention/f: Sequenz identisch zum GM-Zustand „attention"
+✅ attention/p: Sequenz identisch zum GM-Zustand „attention"
+✅ crit/a: Sequenz identisch zum GM-Zustand „crit"
+✅ crit/f: Sequenz identisch zum GM-Zustand „crit"
+✅ crit/p: Sequenz identisch zum GM-Zustand „crit"
+✅ partial/a: Sequenz identisch zum GM-Zustand „good"
+✅ partial/f: Sequenz identisch zum GM-Zustand „good"
+✅ partial/p: Sequenz identisch zum GM-Zustand „good"
+✅ local_only/a: Sequenz identisch zum GM-Zustand „good"
+✅ local_only/f: Sequenz identisch zum GM-Zustand „good"
+✅ local_only/p: Sequenz identisch zum GM-Zustand „good"
+✅ pending/a: Sequenz identisch zum GM-Zustand „good"
+✅ pending/f: Sequenz identisch zum GM-Zustand „good"
+✅ pending/p: Sequenz identisch zum GM-Zustand „good"
+
+── B1b · GM-DOM-Reihenfolge je Zustand (390 px) ──────────────────────
+✅ 390 loading/a: Sequenz identisch zum GM-Zustand „loading"
+✅ 390 loading/f: Sequenz identisch zum GM-Zustand „loading"
+✅ 390 loading/p: Sequenz identisch zum GM-Zustand „loading"
+❌ 390 empty/a: Sequenz identisch zum GM-Zustand „empty"  — GM ["hdr","sync","hero.gap","gapnote","card","sectlabel","card","addmod"]
+            PROD ["hdr","sync","hero.gap","gapnote","card.tight","eduhint","sectlabel","card","addmod"]
+✅ 390 empty/f: Sequenz identisch zum GM-Zustand „empty"
+✅ 390 empty/p: Sequenz identisch zum GM-Zustand „empty"
+❌ 390 offline_cache/a: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero.simple","card.tight","eduhint","sectlabel","card","card","card.tap","card.tap","card","addmod"]
+❌ 390 offline_cache/f: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","kgrid","card.tap","kcard.tap","card","kgrid","card","addmod"]
+❌ 390 offline_cache/p: Sequenz identisch zum GM-Zustand „error"  — GM ["hdr","sync","errbar","hero"]
+            PROD ["hdr","sync","hero","card.tight","sectlabel","card.tap","card.mod-wide.tap","kgrid","card.tap","card.tap","card","card","kgrid","card","addmod"]
+✅ 390 offline_nodata/a: Sequenz identisch zum GM-Zustand „error"
+✅ 390 offline_nodata/f: Sequenz identisch zum GM-Zustand „error"
+✅ 390 offline_nodata/p: Sequenz identisch zum GM-Zustand „error"
+✅ 390 partial/a: Sequenz identisch zum GM-Zustand „good"
+✅ 390 partial/f: Sequenz identisch zum GM-Zustand „good"
+✅ 390 partial/p: Sequenz identisch zum GM-Zustand „good"
+✅ 390 good/a: Sequenz identisch zum GM-Zustand „good"
+✅ 390 good/f: Sequenz identisch zum GM-Zustand „good"
+✅ 390 good/p: Sequenz identisch zum GM-Zustand „good"
+
+── B2 · Klassen- und Slotanzahlen ────────────────────────────────────
+❌ loading/a: Skeleton-Anzahl exakt wie GM (14)  — prod 20
+❌ loading/a: kcard-Anzahl exakt wie GM (2)  — prod 4
+✅ loading/a: keine Empty-/Error-Komponente sichtbar
+✅ loading/f: Skeleton-Anzahl exakt wie GM (20)  — prod 20
+✅ loading/f: kcard-Anzahl exakt wie GM (4)  — prod 4
+✅ loading/f: keine Empty-/Error-Komponente sichtbar
+✅ loading/p: Skeleton-Anzahl exakt wie GM (20)  — prod 20
+✅ loading/p: kcard-Anzahl exakt wie GM (4)  — prod 4
+✅ loading/p: keine Empty-/Error-Komponente sichtbar
+✅ empty/a: empty/e-ic/et/ed/eb exakt wie GM  — prod 2/2/2/2/2 · GM 2/2/2/2/2
+✅ empty/a: genau eine gapnote wie GM  — prod 1
+❌ empty/a: kein eduhint (GM zeigt eduhint nur im Normalzweig)  — prod 1
+✅ empty/a: keine Skeletons
+✅ empty/f: empty/e-ic/et/ed/eb exakt wie GM  — prod 2/2/2/2/2 · GM 2/2/2/2/2
+✅ empty/f: genau eine gapnote wie GM  — prod 1
+✅ empty/f: kein eduhint (GM zeigt eduhint nur im Normalzweig)  — prod 0
+✅ empty/f: keine Skeletons
+✅ empty/p: empty/e-ic/et/ed/eb exakt wie GM  — prod 2/2/2/2/2 · GM 2/2/2/2/2
+✅ empty/p: genau eine gapnote wie GM  — prod 1
+✅ empty/p: kein eduhint (GM zeigt eduhint nur im Normalzweig)  — prod 0
+✅ empty/p: keine Skeletons
+❌ offline_cache/a: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring1/cta1/ghost0
+❌ offline_cache/a: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid0
+❌ offline_cache/f: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring1/cta2/ghost0
+❌ offline_cache/f: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid2
+❌ offline_cache/p: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring2/cta2/ghost0
+❌ offline_cache/p: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid2
+✅ offline_nodata/a: errbar + hero + Retry-CTA exakt wie GM  — prod errbar1/hero1/ring1/cta1/ghost1
+✅ offline_nodata/a: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel0/addmod0/kgrid0
+✅ offline_nodata/f: errbar + hero + Retry-CTA exakt wie GM  — prod errbar1/hero1/ring1/cta1/ghost1
+✅ offline_nodata/f: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel0/addmod0/kgrid0
+✅ offline_nodata/p: errbar + hero + Retry-CTA exakt wie GM  — prod errbar1/hero1/ring1/cta1/ghost1
+✅ offline_nodata/p: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel0/addmod0/kgrid0
+❌ error/a: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring1/cta1/ghost0
+❌ error/a: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid0
+❌ error/f: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring1/cta2/ghost0
+❌ error/f: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid2
+❌ error/p: errbar + hero + Retry-CTA exakt wie GM  — prod errbar0/hero1/ring2/cta2/ghost0
+❌ error/p: nach dem Hero folgt nichts (GM-Errorview endet dort)  — sectlabel1/addmod1/kgrid2
+
+── B2b · Level-a-Check-in (GM-Struktur .ci-simple) ───────────────────
+❌ ciopen/a: Check-in als .card > .ci-simple (GM), nicht .card.tight  — {"cls":"card tight","simple":0,"moods":0,"q":0}
+❌ ciopen/a: genau drei .mood-Optionen wie im GM  — prod 0
+❌ empty/a: Check-in als .card > .ci-simple (GM), nicht .card.tight  — {"cls":"card tight","simple":0,"moods":0,"q":0}
+❌ empty/a: genau drei .mood-Optionen wie im GM  — prod 0
+✅ good/a: erledigter Check-in bleibt .card.tight (GM)  — {"cls":"card tight","simple":0}
+
+── B3 · Zustandswahrheit über alle Erklärtiefen identisch ────────────
+✅ loading: Zustand + Score über a/f/p identisch  — [{"state":"loading","score":null,"sync":"synced"},{"state":"loading","score":null,"sync":"synced"},{"state":"loading","score":null,"sync":"synced"}]
+✅ empty: Zustand + Score über a/f/p identisch  — [{"state":"empty","score":null,"sync":"synced"},{"state":"empty","score":null,"sync":"synced"},{"state":"empty","score":null,"sync":"synced"}]
+✅ offline_cache: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"offline"},{"state":"normal","score":"82","sync":"offline"},{"state":"normal","score":"82","sync":"offline"}]
+✅ offline_cache_nav: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"}]
+✅ offline_cache_sync: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"offline"},{"state":"normal","score":"82","sync":"offline"},{"state":"normal","score":"82","sync":"offline"}]
+✅ offline_nodata: Zustand + Score über a/f/p identisch  — [{"state":"error","score":"—","sync":"offline"},{"state":"error","score":"—","sync":"offline"},{"state":"error","score":"—","sync":"offline"}]
+✅ error: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"error"},{"state":"normal","score":"82","sync":"error"},{"state":"normal","score":"82","sync":"error"}]
+✅ error_nodata: Zustand + Score über a/f/p identisch  — [{"state":"error","score":"—","sync":"error"},{"state":"error","score":"—","sync":"error"},{"state":"error","score":"—","sync":"error"}]
+✅ good: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"}]
+✅ attention: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"58","sync":"synced"},{"state":"normal","score":"58","sync":"synced"},{"state":"normal","score":"58","sync":"synced"}]
+✅ crit: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"34","sync":"synced"},{"state":"normal","score":"34","sync":"synced"},{"state":"normal","score":"34","sync":"synced"}]
+✅ partial: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"}]
+✅ ciopen: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"},{"state":"normal","score":"82","sync":"synced"}]
+✅ local_only: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"local"},{"state":"normal","score":"82","sync":"local"},{"state":"normal","score":"82","sync":"local"}]
+✅ pending: Zustand + Score über a/f/p identisch  — [{"state":"normal","score":"82","sync":"pending"},{"state":"normal","score":"82","sync":"pending"},{"state":"normal","score":"82","sync":"pending"}]
+
+── B4 · Missingness wird nie als 0 dargestellt ───────────────────────
+✅ partial/a: kein fehlender Wert als „0" gerendert
+✅ partial/f: kein fehlender Wert als „0" gerendert
+✅ partial/p: kein fehlender Wert als „0" gerendert
+✅ empty/a: kein fehlender Wert als „0" gerendert
+✅ empty/f: kein fehlender Wert als „0" gerendert
+✅ empty/p: kein fehlender Wert als „0" gerendert
+✅ partial/f: fehlende Einzelwerte erscheinen als GM-Missingness (—)  — Treffer 4
+
+── B5 · Partial-Zustand behält die Seitenstruktur ────────────────────
+✅ partial/a: Modulplätze bleiben vollständig erhalten
+✅ partial/f: Modulplätze bleiben vollständig erhalten
+✅ partial/p: Modulplätze bleiben vollständig erhalten
+
+── B6 · Offline-/Fehlersignale → GM-Errorview mit zwischengespeichertem Wert 
+❌ offline_cache: gmDashState() liefert 'error' (GM-Offline-/Fehlerdarstellung)  — {"state":"normal","errbar":0,"score":"82","unit":"ORVIA-SCORE ","dim":"1"}
+✅ offline_cache: zwischengespeicherter Wert bleibt sichtbar (kein erfundener Wert)  — score 82
+❌ offline_cache: Ring gedimmt + Einheit „ZULETZT" wie im GM  — 1 / ORVIA-SCORE 
+❌ offline_cache_nav: gmDashState() liefert 'error' (GM-Offline-/Fehlerdarstellung)  — {"state":"normal","errbar":0,"score":"82","unit":"ORVIA-SCORE ","dim":"1"}
+✅ offline_cache_nav: zwischengespeicherter Wert bleibt sichtbar (kein erfundener Wert)  — score 82
+❌ offline_cache_nav: Ring gedimmt + Einheit „ZULETZT" wie im GM  — 1 / ORVIA-SCORE 
+❌ offline_cache_sync: gmDashState() liefert 'error' (GM-Offline-/Fehlerdarstellung)  — {"state":"normal","errbar":0,"score":"82","unit":"ORVIA-SCORE ","dim":"1"}
+✅ offline_cache_sync: zwischengespeicherter Wert bleibt sichtbar (kein erfundener Wert)  — score 82
+❌ offline_cache_sync: Ring gedimmt + Einheit „ZULETZT" wie im GM  — 1 / ORVIA-SCORE 
+❌ error: gmDashState() liefert 'error' (GM-Offline-/Fehlerdarstellung)  — {"state":"normal","errbar":0,"score":"82","unit":"ORVIA-SCORE ","dim":"1"}
+✅ error: zwischengespeicherter Wert bleibt sichtbar (kein erfundener Wert)  — score 82
+❌ error: Ring gedimmt + Einheit „ZULETZT" wie im GM  — 1 / ORVIA-SCORE 
+✅ offline_nodata: ehrlicher Zustand ohne erfundenen Wert (— statt 0)  — {"state":"error","score":"—","errbar":1}
+
+── B6b · Negativkontrolle: local/pending sind kein Fehlerzustand ─────
+✅ local_only: bleibt 'normal' (kein Fehler-Fehlalarm)  — normal
+✅ pending: bleibt 'normal' (kein Fehler-Fehlalarm)  — normal
+
+── B7 · Retry-Vertrag ────────────────────────────────────────────────
+❌ Retry-Button existiert im Fehlerzustand
+✅ kein funktionsloser Retry-Button ausserhalb des Fehlerzustands  — Treffer 0
+
+── B8 · Fokusvertrag ─────────────────────────────────────────────────
+❌ Retry-Button ist per Tastatur fokussierbar
+❌ nach erfolgreicher Aktion landet der Fokus im #command-Host, nicht auf <body>  — {"inBody":true,"host":false,"tag":"BODY"}
+
+── B9 · Idempotenz über sechs Re-Renders ─────────────────────────────
+✅ good: DOM-Knotenzahl nach 6 Re-Renders unverändert  — 233 → 233
+✅ good: keine neuen globalen Listener nach 6 Re-Renders  — 0 → 0
+✅ good: Markup nach 6 Re-Renders identisch lang  — 9744 → 9744
+✅ partial: DOM-Knotenzahl nach 6 Re-Renders unverändert  — 223 → 223
+✅ partial: keine neuen globalen Listener nach 6 Re-Renders  — 0 → 0
+✅ partial: Markup nach 6 Re-Renders identisch lang  — 8899 → 8899
+✅ empty: DOM-Knotenzahl nach 6 Re-Renders unverändert  — 74 → 74
+✅ empty: keine neuen globalen Listener nach 6 Re-Renders  — 0 → 0
+✅ empty: Markup nach 6 Re-Renders identisch lang  — 2237 → 2237
+✅ offline_cache: DOM-Knotenzahl nach 6 Re-Renders unverändert  — 233 → 233
+✅ offline_cache: keine neuen globalen Listener nach 6 Re-Renders  — 0 → 0
+✅ offline_cache: Markup nach 6 Re-Renders identisch lang  — 9744 → 9744
+✅ loading: DOM-Knotenzahl nach 6 Re-Renders unverändert  — 68 → 68
+✅ loading: keine neuen globalen Listener nach 6 Re-Renders  — 0 → 0
+✅ loading: Markup nach 6 Re-Renders identisch lang  — 1472 → 1472
+
+── B10 · Übergänge ───────────────────────────────────────────────────
+✅ Loading → Daten: Skeletons verschwinden, Module erscheinen  — [{"state":"loading","sk":20,"errbar":0,"empty":0,"mods":2},{"state":"normal","sk":0,"errbar":0,"empty":0,"mods":8}]
+✅ Loading → Empty: GM-Empty-Komponente statt Skeletons  — [{"state":"loading","sk":20,"errbar":0,"empty":0,"mods":2},{"state":"empty","sk":0,"errbar":0,"empty":2,"mods":3}]
+❌ Daten → Offline mit Cache: Errorbar erscheint, Daten bleiben erhalten  — [{"state":"normal","sk":0,"errbar":0,"empty":0,"mods":8},{"state":"normal","sk":0,"errbar":0,"empty":0,"mods":8}]
+✅ Offline → wieder online: Rückkehr in den vollständigen Normalzustand  — {"state":"normal","sk":0,"errbar":0,"empty":0,"mods":8}
+✅ Error → erfolgreicher Retry: vollständige Seite kehrt zurück  — {"state":"normal","sk":0,"errbar":0,"empty":0,"mods":8}
+
+── B11 · Escape und Sheet-Verhalten ──────────────────────────────────
+✅ Score-Sheet öffnet über den GM-Ring  — offen 1
+✅ Escape schliesst das Sheet und führt den Fokus zurück  — {"on":0,"focus":"ring-wrap"}
+
+── B12 · Reduced Motion der Skeletons ────────────────────────────────
+✅ ohne Präferenz behält .sk den GM-Shimmer  — sh
+❌ bei prefers-reduced-motion:reduce ist der .sk-Shimmer abgeschaltet  — sh
+
+── B13 · Layoutintegrität ────────────────────────────────────────────
+✅ 430 loading/a: kein horizontaler Überlauf
+✅ 430 loading/f: kein horizontaler Überlauf
+✅ 430 loading/p: kein horizontaler Überlauf
+✅ 430 empty/a: kein horizontaler Überlauf
+✅ 430 empty/f: kein horizontaler Überlauf
+✅ 430 empty/p: kein horizontaler Überlauf
+✅ 430 offline_cache/a: kein horizontaler Überlauf
+✅ 430 offline_cache/f: kein horizontaler Überlauf
+✅ 430 offline_cache/p: kein horizontaler Überlauf
+✅ 430 offline_cache_nav/a: kein horizontaler Überlauf
+✅ 430 offline_cache_nav/f: kein horizontaler Überlauf
+✅ 430 offline_cache_nav/p: kein horizontaler Überlauf
+✅ 430 offline_cache_sync/a: kein horizontaler Überlauf
+✅ 430 offline_cache_sync/f: kein horizontaler Überlauf
+✅ 430 offline_cache_sync/p: kein horizontaler Überlauf
+✅ 430 offline_nodata/a: kein horizontaler Überlauf
+✅ 430 offline_nodata/f: kein horizontaler Überlauf
+✅ 430 offline_nodata/p: kein horizontaler Überlauf
+✅ 430 error/a: kein horizontaler Überlauf
+✅ 430 error/f: kein horizontaler Überlauf
+✅ 430 error/p: kein horizontaler Überlauf
+✅ 430 error_nodata/a: kein horizontaler Überlauf
+✅ 430 error_nodata/f: kein horizontaler Überlauf
+✅ 430 error_nodata/p: kein horizontaler Überlauf
+✅ 430 good/a: kein horizontaler Überlauf
+✅ 430 good/f: kein horizontaler Überlauf
+✅ 430 good/p: kein horizontaler Überlauf
+✅ 430 attention/a: kein horizontaler Überlauf
+✅ 430 attention/f: kein horizontaler Überlauf
+✅ 430 attention/p: kein horizontaler Überlauf
+✅ 430 crit/a: kein horizontaler Überlauf
+✅ 430 crit/f: kein horizontaler Überlauf
+✅ 430 crit/p: kein horizontaler Überlauf
+✅ 430 partial/a: kein horizontaler Überlauf
+✅ 430 partial/f: kein horizontaler Überlauf
+✅ 430 partial/p: kein horizontaler Überlauf
+✅ 430 ciopen/a: kein horizontaler Überlauf
+✅ 430 ciopen/f: kein horizontaler Überlauf
+✅ 430 ciopen/p: kein horizontaler Überlauf
+✅ 430 local_only/a: kein horizontaler Überlauf
+✅ 430 local_only/f: kein horizontaler Überlauf
+✅ 430 local_only/p: kein horizontaler Überlauf
+✅ 430 pending/a: kein horizontaler Überlauf
+✅ 430 pending/f: kein horizontaler Überlauf
+✅ 430 pending/p: kein horizontaler Überlauf
+✅ 390 loading/a: kein horizontaler Überlauf
+✅ 390 loading/f: kein horizontaler Überlauf
+✅ 390 loading/p: kein horizontaler Überlauf
+✅ 390 empty/a: kein horizontaler Überlauf
+✅ 390 empty/f: kein horizontaler Überlauf
+✅ 390 empty/p: kein horizontaler Überlauf
+✅ 390 offline_cache/a: kein horizontaler Überlauf
+✅ 390 offline_cache/f: kein horizontaler Überlauf
+✅ 390 offline_cache/p: kein horizontaler Überlauf
+✅ 390 offline_cache_nav/a: kein horizontaler Überlauf
+✅ 390 offline_cache_nav/f: kein horizontaler Überlauf
+✅ 390 offline_cache_nav/p: kein horizontaler Überlauf
+✅ 390 offline_cache_sync/a: kein horizontaler Überlauf
+✅ 390 offline_cache_sync/f: kein horizontaler Überlauf
+✅ 390 offline_cache_sync/p: kein horizontaler Überlauf
+✅ 390 offline_nodata/a: kein horizontaler Überlauf
+✅ 390 offline_nodata/f: kein horizontaler Überlauf
+✅ 390 offline_nodata/p: kein horizontaler Überlauf
+✅ 390 error/a: kein horizontaler Überlauf
+✅ 390 error/f: kein horizontaler Überlauf
+✅ 390 error/p: kein horizontaler Überlauf
+✅ 390 error_nodata/a: kein horizontaler Überlauf
+✅ 390 error_nodata/f: kein horizontaler Überlauf
+✅ 390 error_nodata/p: kein horizontaler Überlauf
+✅ 390 good/a: kein horizontaler Überlauf
+✅ 390 good/f: kein horizontaler Überlauf
+✅ 390 good/p: kein horizontaler Überlauf
+✅ 390 attention/a: kein horizontaler Überlauf
+✅ 390 attention/f: kein horizontaler Überlauf
+✅ 390 attention/p: kein horizontaler Überlauf
+✅ 390 crit/a: kein horizontaler Überlauf
+✅ 390 crit/f: kein horizontaler Überlauf
+✅ 390 crit/p: kein horizontaler Überlauf
+✅ 390 partial/a: kein horizontaler Überlauf
+✅ 390 partial/f: kein horizontaler Überlauf
+✅ 390 partial/p: kein horizontaler Überlauf
+✅ 390 ciopen/a: kein horizontaler Überlauf
+✅ 390 ciopen/f: kein horizontaler Überlauf
+✅ 390 ciopen/p: kein horizontaler Überlauf
+✅ 390 local_only/a: kein horizontaler Überlauf
+✅ 390 local_only/f: kein horizontaler Überlauf
+✅ 390 local_only/p: kein horizontaler Überlauf
+✅ 390 pending/a: kein horizontaler Überlauf
+✅ 390 pending/f: kein horizontaler Überlauf
+✅ 390 pending/p: kein horizontaler Überlauf
+
+── B14 · keine Legacy-Komponenten sichtbar ───────────────────────────
+✅ loading/a: keine Legacy-Komponente sichtbar
+✅ loading/f: keine Legacy-Komponente sichtbar
+✅ loading/p: keine Legacy-Komponente sichtbar
+✅ empty/a: keine Legacy-Komponente sichtbar
+✅ empty/f: keine Legacy-Komponente sichtbar
+✅ empty/p: keine Legacy-Komponente sichtbar
+✅ offline_cache/a: keine Legacy-Komponente sichtbar
+✅ offline_cache/f: keine Legacy-Komponente sichtbar
+✅ offline_cache/p: keine Legacy-Komponente sichtbar
+✅ offline_cache_nav/a: keine Legacy-Komponente sichtbar
+✅ offline_cache_nav/f: keine Legacy-Komponente sichtbar
+✅ offline_cache_nav/p: keine Legacy-Komponente sichtbar
+✅ offline_cache_sync/a: keine Legacy-Komponente sichtbar
+✅ offline_cache_sync/f: keine Legacy-Komponente sichtbar
+✅ offline_cache_sync/p: keine Legacy-Komponente sichtbar
+✅ offline_nodata/a: keine Legacy-Komponente sichtbar
+✅ offline_nodata/f: keine Legacy-Komponente sichtbar
+✅ offline_nodata/p: keine Legacy-Komponente sichtbar
+✅ error/a: keine Legacy-Komponente sichtbar
+✅ error/f: keine Legacy-Komponente sichtbar
+✅ error/p: keine Legacy-Komponente sichtbar
+✅ error_nodata/a: keine Legacy-Komponente sichtbar
+✅ error_nodata/f: keine Legacy-Komponente sichtbar
+✅ error_nodata/p: keine Legacy-Komponente sichtbar
+✅ good/a: keine Legacy-Komponente sichtbar
+✅ good/f: keine Legacy-Komponente sichtbar
+✅ good/p: keine Legacy-Komponente sichtbar
+✅ attention/a: keine Legacy-Komponente sichtbar
+✅ attention/f: keine Legacy-Komponente sichtbar
+✅ attention/p: keine Legacy-Komponente sichtbar
+✅ crit/a: keine Legacy-Komponente sichtbar
+✅ crit/f: keine Legacy-Komponente sichtbar
+✅ crit/p: keine Legacy-Komponente sichtbar
+✅ partial/a: keine Legacy-Komponente sichtbar
+✅ partial/f: keine Legacy-Komponente sichtbar
+✅ partial/p: keine Legacy-Komponente sichtbar
+✅ ciopen/a: keine Legacy-Komponente sichtbar
+✅ ciopen/f: keine Legacy-Komponente sichtbar
+✅ ciopen/p: keine Legacy-Komponente sichtbar
+✅ local_only/a: keine Legacy-Komponente sichtbar
+✅ local_only/f: keine Legacy-Komponente sichtbar
+✅ local_only/p: keine Legacy-Komponente sichtbar
+✅ pending/a: keine Legacy-Komponente sichtbar
+✅ pending/f: keine Legacy-Komponente sichtbar
+✅ pending/p: keine Legacy-Komponente sichtbar
+
+── B15 · Shell-Invarianz ─────────────────────────────────────────────
+✅ loading: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ empty: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ offline_cache: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ offline_cache_nav: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ offline_cache_sync: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ offline_nodata: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ error: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ error_nodata: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ good: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ attention: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ crit: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ partial: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ ciopen: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ local_only: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+✅ pending: Tabbar (5), FAB und Header bleiben erhalten  — {"tabs":5,"tabbar":"flex","fab":"flex","hdr":1}
+
+── B16 · Konsole ─────────────────────────────────────────────────────
+✅ keine Konsolen-/Laufzeitfehler über den gesamten Durchlauf
+
+66 FAILED (284 ok)

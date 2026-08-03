@@ -156,8 +156,32 @@ function buildStoryCards(date,typ,s){
 var _story={i:0,n:0};
 function openStory(date,typ){
   if(date&&typeof date==='object'&&date.dataset){ typ=date.dataset.t; date=date.dataset.d; }
+  /* GM7.8: Diese Legacy-Story erzaehlte mit FEST EINPROGRAMMIERTEN Texten
+     („Ein perfektes Training.", „kraeftiger Endspurt", Strava-Puls-Hinweis) — das
+     verletzt die Regel „keine erfundenen Inhalte" und war fachlich veraltet.
+     Der Einstieg bleibt erhalten, zeigt aber die kanonische GM-Story aus echten
+     Aktivitaetsdaten (Route/Streams/Runden/Debrief/Lastmodell). Findet sich keine
+     kanonische Aktivitaet, wird bewusst NICHTS gezeigt statt einer erfundenen. */
+  try{
+    if(typeof gmOpenStory==='function'&&typeof listActivitiesUnified==='function'){
+      var want=String(typ||'').toLowerCase();
+      var list=listActivitiesUnified(60)||[];
+      var cfg=window.ORVIA&&ORVIA.activityConfig;
+      for(var i=0;i<list.length;i++){
+        var a=list[i];if(!a)continue;
+        if(String(a.startedAt||'').slice(0,10)!==date)continue;
+        var lbl=cfg&&cfg.sportLabel?String(cfg.sportLabel(a.sportId)||'').toLowerCase():'';
+        if(want&&lbl&&lbl!==want)continue;
+        var id=a.clientRecordId||a.id;
+        if(id&&gmOpenStory(id))return;
+      }
+    }
+  }catch(_){ }
   var e=DB[date]; if(!e||!e.sessions||!e.sessions[typ])return;
   var s=e.sessions[typ];
+  if(typeof toast==='function')toast('Für diese Einheit liegen keine auswertbaren Daten für eine Story vor.');
+  return;
+  /* eslint-disable no-unreachable */
   _story={i:0,date:date,typ:typ,cards:buildStoryCards(date,typ,s)};
   _story.n=_story.cards.length;
   var wrap=document.createElement('div'); wrap.className='story-bg'; wrap.id='storyBg';

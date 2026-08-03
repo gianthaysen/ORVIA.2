@@ -26,8 +26,12 @@ const base = new URL('../../js/', import.meta.url);
   ok('S2 eigenes Gerät ⇒ nie Dialog', /!isOwnDevice && remoteRev > knownRev/.test(s));
   ok('S3 Rev-Vergleich NUMERISCH (> statt !==)', /remoteRev > knownRev/.test(s) && !/remoteRev !== knownRev/.test(s));
   ok('S4 start-Reentrancy-Guard (kein Doppel-Dialog)', /start\._busy/.test(s) && /_startInner/.test(s));
-  ok('S5 Dialog-Singleton (ersetzt statt stapelt)', /_orviaMergeModal\) \{ try \{ window\._orviaMergeModal\.remove/.test(s));
-  ok('S6 Buttons sperren + Sofort-Feedback', /lock\(\); close\(\); setState\('pending', 'Übertrage/.test(s));
+  /* GM7.6 Cloud-Autoload: der Merge-Dialog wurde durch automatisches Zusammenfuehren
+     ersetzt; ein Dialog (syncErrorPrompt) erscheint nur noch bei echtem technischem
+     Fehler. Das Singleton-/Sofort-Feedback-Prinzip aus dem Incident-Fix bleibt erhalten,
+     nur am neuen, selteneren Dialog. */
+  ok('S5 Dialog-Singleton (ersetzt statt stapelt)', /_orviaSyncErrModal\) \{ try \{ window\._orviaSyncErrModal\.remove/.test(s));
+  ok('S6 Dialog nur bei echtem Fehler, kein Routine-Dialog mehr', /function syncErrorPrompt/.test(s) && /setState\('error', 'Sync-Fehler'\)/.test(s));
   ok('S7 markRev nach eigenem Push bleibt', /markRev\(snap\.savedAt\)/.test(s));
   ok('S8 Fremd-Owner-Schutz unverändert', /owner && owner !== u\.id/.test(s));
 }

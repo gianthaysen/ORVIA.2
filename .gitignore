@@ -15,8 +15,21 @@ __pycache__/
 # Persönliche Daten — gehören nicht ins Repo (auch nicht in ein privates)
 orvia-strava-import.json
 
+# Session-Arbeitsverzeichnisse (Batch 2d): Inhalte geleert, Löschung nur manuell
+# möglich (Cowork-Bridge darf nicht unlinken) — bis dahin aus dem Git-Status raus.
+_claude_session_tmp/
+_to_delete/
+
 # Sicherheitsnetz: echte Secrets niemals committen
 # (app/env.js ist bewusst NICHT gelistet — enthält nur den öffentlichen anon key)
 .env
 .env.*
 !.env.example
+
+# Sync-Archive und Sitzungs-Zwischenstaende (reproduzierbar, gehoeren nicht ins Repo)
+orvia_app_sync*.tgz
+_gm62_dev/
+sync17/
+Upload-ORVIA.2-*/
+.g1g_sw_blob_tmp.js
+orvia_app_sync*/

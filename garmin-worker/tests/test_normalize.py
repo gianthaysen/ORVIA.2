@@ -83,6 +83,22 @@ def test_negative_stress_not_emitted():
     assert _norm(None, "stress", raw={"avgStressLevel": -1}) == []
 
 
+def test_stress_max_scalar_emitted(fixture):
+    # GM7.4: maxStressLevel ist im Fixture belegt (nicht die Intraday-Kurve).
+    out = _norm(fixture, "stress")
+    by_id = {m.metric_type: m for m in out}
+    assert by_id["stress_max"].value_numeric == 87
+    assert by_id["stress_avg"].value_numeric == 31
+    assert by_id["stress_max"].unit == "Score"
+
+
+def test_stress_max_no_data_not_emitted():
+    # -1/-2 (keine Daten) und fehlend ⇒ keine Emission (kein 0-Platzhalter).
+    assert _norm(None, "stress", raw={"avgStressLevel": 20, "maxStressLevel": -1})[0].metric_type == "stress_avg"
+    out2 = _norm(None, "stress", raw={"avgStressLevel": 20, "maxStressLevel": -1})
+    assert "stress_max" not in {m.metric_type for m in out2}
+
+
 # -- Einheiten ---------------------------------------------------------------
 
 def test_weight_grams_to_kg(fixture):
@@ -110,6 +126,36 @@ def test_sleep_seconds_to_minutes(fixture):
     assert by_id["sleep_score"].value_numeric == 82
     assert by_id["sleep_duration_min"].source_type == "device_measurement"
     assert by_id["sleep_score"].source_type == "provider_calculation"
+
+
+def test_sleep_phase_seconds_to_minutes(fixture):
+    # GM7.4 · Group-2-Verlust: die Phasen-Sekunden (deep/light/rem/awake) kommen
+    # in dailySleepDTO an (siehe fixtures/garmin/sleep.json), wurden aber von
+    # _norm_sleep NIE gelesen. Vertrag: verlustfrei als Skalar-Minuten emittieren.
+    out = _norm(fixture, "sleep")
+    by_id = {m.metric_type: m for m in out}
+    assert by_id["sleep_deep_min"].value_numeric == 90     # 5400 s
+    assert by_id["sleep_light_min"].value_numeric == 245   # 14700 s
+    assert by_id["sleep_rem_min"].value_numeric == 100     # 6000 s
+    assert by_id["sleep_awake_min"].value_numeric == 15    # 900 s
+    assert by_id["sleep_deep_min"].unit == "min"
+    # Phasen sind gerätemessung, nicht provider-berechnet.
+    assert by_id["sleep_deep_min"].source_type == "device_measurement"
+    # Summe der Kern-Schlafphasen (ohne Wach) ~ Schlafdauer (Konsistenz-Sanity).
+    assert by_id["sleep_deep_min"].value_numeric + by_id["sleep_light_min"].value_numeric \
+        + by_id["sleep_rem_min"].value_numeric == by_id["sleep_duration_min"].value_numeric
+
+
+def test_sleep_phases_absent_emit_nothing():
+    # Alte/knappe Antworten ohne Phasen: keine Phasen-Metrik (kein 0-Platzhalter),
+    # Rückwärtskompatibilität für Datensätze ohne die neuen Felder.
+    raw = {"dailySleepDTO": {"sleepTimeSeconds": 26100,
+                             "sleepScores": {"overall": {"value": 82}}}}
+    out = _norm(None, "sleep", raw=raw)
+    ids = {m.metric_type for m in out}
+    assert "sleep_deep_min" not in ids
+    assert "sleep_light_min" not in ids
+    assert "sleep_duration_min" in ids  # Vorhandenes bleibt unberührt
 
 
 def test_race_predictions_seconds(fixture):

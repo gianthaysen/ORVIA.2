@@ -36,6 +36,10 @@ DEVICE_MEASURED: frozenset[str] = frozenset({
     "resting_hr",
     "hrv_ms",
     "sleep_duration_min",
+    "sleep_deep_min",
+    "sleep_light_min",
+    "sleep_rem_min",
+    "sleep_awake_min",
     "steps",
     "floors_climbed",
     "spo2_avg",
@@ -211,6 +215,19 @@ def _norm_sleep(e: _Emitter, raw: Any) -> None:
     e.num("sleep_score", _get(dto, "sleepScores", "overall", "value"))
     # FIXTURE-ANNAHME: gegen Live-API verifizieren — sleepNeed.actual in Minuten.
     e.num("sleep_need_min", _get(dto, "sleepNeed", "actual"))
+    # GM7.4: Schlafphasen-DAUERN (Skalar). Kamen in dailySleepDTO an, wurden
+    # aber nie gelesen (Group-2-Verlust). Garmin liefert Sekunden -> Minuten.
+    # Fehlende Phase => keine Emission (§28: kein 0-Platzhalter); alte Antworten
+    # ohne die Felder bleiben damit rückwärtskompatibel.
+    for src_key, metric_id in (
+        ("deepSleepSeconds", "sleep_deep_min"),
+        ("lightSleepSeconds", "sleep_light_min"),
+        ("remSleepSeconds", "sleep_rem_min"),
+        ("awakeSleepSeconds", "sleep_awake_min"),
+    ):
+        secs = _num(_get(dto, src_key))
+        if secs is not None:
+            e.num(metric_id, secs / 60.0)
 
 
 def _norm_stress(e: _Emitter, raw: Any) -> None:
@@ -218,6 +235,13 @@ def _norm_stress(e: _Emitter, raw: Any) -> None:
     v = _num(_get(raw, "avgStressLevel"))
     if v is not None and v >= 0:
         e.num("stress_avg", v)
+    # GM7.4: Tages-Höchststress (maxStressLevel, im Fixture belegt). Skalar-Rettung
+    # eines bislang verworfenen Provider-Felds; -1/-2 = keine Daten. Die Intraday-
+    # KURVE (stressValuesArray) bleibt bewusst ungenutzt (Zeitreihe → separater
+    # Speicher); KEINE Interpolation eines Tagesmittels zu einer Kurve.
+    mx = _num(_get(raw, "maxStressLevel"))
+    if mx is not None and mx >= 0:
+        e.num("stress_max", mx)
 
 
 def _norm_body_battery(e: _Emitter, raw: Any) -> None:
@@ -426,8 +450,10 @@ DAILY_CATEGORIES: dict[str, tuple] = {
     "summary": (_norm_summary, ["steps", "active_kcal", "resting_kcal", "total_kcal_provider"]),
     "rhr": (_norm_rhr, ["resting_hr"]),
     "hrv": (_norm_hrv, ["hrv_ms", "hrv_status"]),
-    "sleep": (_norm_sleep, ["sleep_duration_min", "sleep_score", "sleep_need_min"]),
-    "stress": (_norm_stress, ["stress_avg"]),
+    "sleep": (_norm_sleep, ["sleep_duration_min", "sleep_score", "sleep_need_min",
+                            "sleep_deep_min", "sleep_light_min", "sleep_rem_min",
+                            "sleep_awake_min"]),
+    "stress": (_norm_stress, ["stress_avg", "stress_max"]),
     "body_battery": (_norm_body_battery, ["body_battery"]),
     "spo2": (_norm_spo2, ["spo2_avg"]),
     "respiration": (_norm_respiration, ["respiration_avg"]),

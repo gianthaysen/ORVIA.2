@@ -70,7 +70,11 @@ const base = new URL('../../js/', import.meta.url);
   sb.daysTo = () => 60; sb.RACE = { date: '2026-09-10' };
   sb.Calc = { sessionLoad: e => (e && e.sessions && e.sessions.Laufen ? 300 : 0) };
   vm.createContext(sb);
-  ['engine/engine-contracts.js', 'engine/readiness-engine-v2.js', 'engine/decision-engine-v2.js', 'engine/shadow-runner.js'].forEach(f =>
+  /* Batch 0: REALER Script-Order wie index.html (contracts → readiness →
+     decision → training-input-resolver → shadow-runner). Vorher fehlte der
+     Resolver im Test ⇒ der Runner fiel auf den (inzwischen entfernten)
+     optimistischen Leer-Input zurück und verlor das Krankheitssignal. */
+  ['engine/engine-contracts.js', 'engine/readiness-engine-v2.js', 'engine/decision-engine-v2.js', 'engine/training-input-resolver.js', 'engine/shadow-runner.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
   const S = sb.ORVIA.engineShadow;
   ok('S1 Shadow-Runner exportiert', S && typeof S.run === 'function' && typeof S.report === 'function');
@@ -93,8 +97,34 @@ const base = new URL('../../js/', import.meta.url);
   ok('S9 Shadow steuert nichts (nur run()-Hook in renderDecision)', /engineShadow\)window\.ORVIA\.engineShadow\.run\(\)/.test(ui.replace(/\s/g, '')) && !/engineShadow\.(report|buildInput)/.test(ui));
   const html = readFileSync(new URL('../index.html', base), 'utf8');
   ok('S10 Engine-Dateien + Runner eingebunden (Shadow-Kommentar)', /engine\/shadow-runner\.js/.test(html) && /SHADOW-MODE/.test(html));
+  ok('S10b Resolver VOR Runner geladen (realer Script-Order)',
+    html.indexOf('engine/training-input-resolver.js') >= 0 && html.indexOf('engine/training-input-resolver.js') < html.indexOf('engine/shadow-runner.js'));
   const sw = readFileSync(new URL('../sw.js', base), 'utf8');
-  ok('S11 Engine-Dateien in sw-ASSETS', /engine\/decision-engine-v2\.js/.test(sw) && /engine\/shadow-runner\.js/.test(sw));
+  ok('S11 Engine-Dateien in sw-ASSETS', /engine\/decision-engine-v2\.js/.test(sw) && /engine\/shadow-runner\.js/.test(sw) && /engine\/training-input-resolver\.js/.test(sw));
+}
+
+/* ---------- Batch 0: FAIL CLOSED ohne TrainingInputResolver ---------- */
+{
+  const store = {};
+  const sb = {}; sb.window = sb; sb.self = sb; sb.globalThis = sb;
+  sb.console = { log() {}, warn() {}, error() {} };
+  sb.Date = Date; sb.Math = Math; sb.JSON = JSON; sb.Array = Array; sb.Object = Object; sb.String = String; sb.Number = Number;
+  sb.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+  sb.ORVIA = { user: { id: 'user-B' } };
+  sb.todayStr = () => '2026-07-18';
+  sb.currentDecision = () => ({ state: 'GREEN', todayAction: 'KEEP', score: 84 });
+  vm.createContext(sb);
+  // Bewusst OHNE training-input-resolver.js — Ladefehler-Szenario.
+  ['engine/engine-contracts.js', 'engine/readiness-engine-v2.js', 'engine/decision-engine-v2.js', 'engine/shadow-runner.js'].forEach(f =>
+    vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
+  const S = sb.ORVIA.engineShadow;
+  ok('F1 buildInput ohne Resolver ⇒ null (kein optimistischer Ersatz-Input)', S.buildInput() === null);
+  const e = S.run();
+  ok('F2 BLOCKED-Eintrag statt v2-Bewertung (nie GREEN raten)',
+    !!e && e.v2.state === null && e.v2.action === null && e.v2.blocked === 'training_input_resolver_missing', JSON.stringify(e && e.v2));
+  ok('F3 nicht vergleichbar (agree=null) + missing dokumentiert', e.agree === null && e.missing.indexOf('training_input_resolver_missing') >= 0);
+  const rep = S.report();
+  ok('F4 Report: blocked zählt nicht als vergleichbarer Tag', rep.days === 1 && rep.comparableDays === 0 && rep.blockedDays === 1, JSON.stringify(rep));
 }
 
 /* ---------- E3: loadModel (pur) ---------- */

@@ -1,0 +1,174 @@
+{
+ "prof_a": {
+  "pct": 0.66,
+  "px": 3594
+ },
+ "prof_f": {
+  "pct": 0.66,
+  "px": 3594
+ },
+ "prof_p": {
+  "pct": 0.66,
+  "px": 3596
+ },
+ "page_settings": {
+  "pct": 1.18,
+  "px": 6183
+ },
+ "page_appearance": {
+  "pct": 0.28,
+  "px": 1066
+ },
+ "page_notifications": {
+  "pct": 0.13,
+  "px": 518
+ },
+ "page_privacy": {
+  "pct": 0.03,
+  "px": 122
+ },
+ "page_goals": {
+  "pct": 0.03,
+  "px": 98
+ },
+ "page_dailyGoals": {
+  "pct": 0,
+  "px": 18
+ },
+ "page_planSettings": {
+  "pct": 0.59,
+  "px": 2264
+ },
+ "page_health": {
+  "pct": 0.37,
+  "px": 1425
+ },
+ "page_connections": {
+  "pct": 0.65,
+  "px": 2523
+ },
+ "page_units": {
+  "pct": 0.19,
+  "px": 716
+ },
+ "page_data": {
+  "pct": 0.53,
+  "px": 2048
+ },
+ "page_account": {
+  "pct": 0.21,
+  "px": 823
+ },
+ "page_about": {
+  "pct": 0.19,
+  "px": 726
+ },
+ "page_bestTimes": {
+  "pct": 1.41,
+  "px": 5453
+ },
+ "page_medals": {
+  "pct": 0,
+  "px": 2
+ },
+ "page_milestones": {
+  "pct": 1.11,
+  "px": 4294
+ },
+ "page_paceCalc": {
+  "pct": 0.45,
+  "px": 1731
+ },
+ "page_milestones_full": {
+  "pct": 1.19,
+  "px": 4590
+ },
+ "page_milestones_none": {
+  "pct": 1.09,
+  "px": 4217
+ },
+ "page_bestTimes_none": {
+  "pct": 1.41,
+  "px": 5471
+ },
+ "prof_a390": {
+  "pct": 0.73,
+  "px": 3590
+ },
+ "prof_f390": {
+  "pct": 0.73,
+  "px": 3590
+ },
+ "prof_p390": {
+  "pct": 0.73,
+  "px": 3590
+ },
+ "page_settings390": {
+  "pct": 1.44,
+  "px": 7193
+ },
+ "page_appearance390": {
+  "pct": 0.33,
+  "px": 1141
+ },
+ "page_notifications390": {
+  "pct": 0.15,
+  "px": 527
+ },
+ "page_privacy390": {
+  "pct": 0.05,
+  "px": 172
+ },
+ "page_goals390": {
+  "pct": 0.03,
+  "px": 97
+ },
+ "page_dailyGoals390": {
+  "pct": 0.01,
+  "px": 31
+ },
+ "page_planSettings390": {
+  "pct": 1,
+  "px": 3519
+ },
+ "page_health390": {
+  "pct": 0.41,
+  "px": 1425
+ },
+ "page_connections390": {
+  "pct": 0.72,
+  "px": 2523
+ },
+ "page_units390": {
+  "pct": 0.2,
+  "px": 716
+ },
+ "page_data390": {
+  "pct": 0.58,
+  "px": 2048
+ },
+ "page_account390": {
+  "pct": 0.23,
+  "px": 823
+ },
+ "page_about390": {
+  "pct": 0.21,
+  "px": 726
+ },
+ "page_bestTimes390": {
+  "pct": 1.55,
+  "px": 5453
+ },
+ "page_medals390": {
+  "pct": 0,
+  "px": 0
+ },
+ "page_milestones390": {
+  "pct": 1.22,
+  "px": 4294
+ },
+ "page_paceCalc390": {
+  "pct": 0.32,
+  "px": 1119
+ }
+}

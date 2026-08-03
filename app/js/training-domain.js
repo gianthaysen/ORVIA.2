@@ -85,11 +85,11 @@
   // (session_type='mobility') und wird sportartlich der Kraftkategorie zugeordnet → sport_key='gym'.
   // Dadurch liefert normSport() nur Keys, die valid.sport() akzeptiert (kein 'mobility' als Sport).
   const SPORT_ALIASES = {
-    gym: 'gym', krafttraining: 'gym', kraft: 'gym', strength: 'gym', 'strength training': 'gym',
+    gym: 'gym', krafttraining: 'gym', kraft: 'gym', strength: 'gym', 'strength training': 'gym', traditional_strength_training: 'gym',
     // Mobility ist eine EIGENE kanonische Sportart (NICHT 'gym'): darf nie in Gym-Statistik/Muskelvolumen fließen.
     'mobilität': 'mobility', mobilitaet: 'mobility', mobility: 'mobility', 'mobility training': 'mobility',
     laufen: 'running', lauf: 'running', run: 'running', running: 'running',
-    rad: 'cycling', radsport: 'cycling', radfahren: 'cycling', bike: 'cycling', cycling: 'cycling',
+    rad: 'cycling', radsport: 'cycling', radfahren: 'cycling', bike: 'cycling', cycling: 'cycling', ride: 'cycling',
     schwimmen: 'swimming', swim: 'swimming', swimming: 'swimming',
     'fußball': 'football', fussball: 'football', football: 'football', soccer: 'football',
     handball: 'handball', padel: 'padel', paddel: 'padel', tennis: 'tennis', triathlon: 'triathlon',

@@ -194,12 +194,20 @@
   // Server-Activity-Zeile (snake_case) → kanonische Client-Form.
   function normalizeServerActivity(r) {
     r = r || {};
+    var sportId = r.sport_id || 'other';
+    /* Batch 3b.1b: Summary über DIESELBE zentrale Normalisierung wie
+       activityNormalize.normalizeActivityRecord (Garmin snake_case → camelCase),
+       damit beide Serverpfade byte-identische kanonische Felder liefern. */
+    var an = AN();
+    var summary = (an && typeof an.normalizeActivitySummary === 'function')
+      ? an.normalizeActivitySummary(r.summary || {}, sportId)
+      : (r.summary || {});
     return {
       id: r.id || null, clientRecordId: r.client_record_id || null, userId: r.user_id || null,
-      sportId: r.sport_id || 'other', source: r.source || 'manual', sourceRecordId: r.source_record_id || null,
+      sportId: sportId, source: r.source || 'manual', sourceRecordId: r.source_record_id || null,
       workoutSessionId: r.workout_session_id || null, startedAt: r.started_at || null, endedAt: r.ended_at || null,
       durationSeconds: r.duration_seconds != null ? r.duration_seconds : null, status: r.status || 'completed',
-      summary: r.summary || {}, metrics: r.metrics || {}, workoutSnapshot: null, syncStatus: 'synced', _server: true
+      summary: summary, metrics: r.metrics || {}, workoutSnapshot: null, syncStatus: 'synced', _server: true
     };
   }
   // Dedup-Schlüssel einer Activity (mehrere stabile Identitäten).
@@ -212,6 +220,22 @@
     return ks;
   }
   function dayOfAct(a) { return (a && a.startedAt) ? a.startedAt.slice(0, 10) : (a && a._legacy && a._legacy.date) || null; }
+  /* Batch 2c: timezone-sichere Tageszuordnung. startedAt ist UTC-ISO; der
+     TRAININGSTAG ist das LOKALE Datum (Europe/Vienna: 22:30Z = nächster Tag).
+     timeZone wird injiziert (deterministisch/testbar); ungültige Zone oder
+     fehlendes Intl ⇒ dokumentierter UTC-Fallback (Bestandsverhalten). */
+  var _dtfCache = {};
+  function dayOfActLocal(a, timeZone) {
+    var iso = a && a.startedAt;
+    if (!iso) return (a && a._legacy && a._legacy.date) || null;
+    if (!timeZone) return iso.slice(0, 10);
+    try {
+      var f = _dtfCache[timeZone] || (_dtfCache[timeZone] = new Intl.DateTimeFormat('en-CA', { timeZone: timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }));
+      var t = Date.parse(iso);
+      if (!isFinite(t)) return iso.slice(0, 10);
+      return f.format(new Date(t));                                   // en-CA ⇒ YYYY-MM-DD
+    } catch (e) { return iso.slice(0, 10); }
+  }
   // „Leer": keine Dauer UND keine Inhalte (Distanz/Sätze/Übungen/Snapshot). Für Dubletten-Unterdrückung.
   function isEmptyActivity(a) {
     if (a && a.isEmpty) return true;
@@ -338,12 +362,463 @@
     return { key: raw || 'Aktivität', sportId: 'other' };
   }
 
+  /* ============================================================
+     Batch 2a/2b (2026-07-18) · Kanonische Tageslast (sRPE) — PURE.
+     Ziel: EINE Lastwahrheit je Tag aus kanonischen Activities + Legacy-
+     Sessions OHNE Doppelzählung (Prompt §6; Gap-Analyse P0).
+
+     VERBINDLICHER DEDUPE-VERTRAG (Batch-2b-Freigabe, 2026-07-18 —
+     ausführlich: docs/ACTIVITY-DEDUPE-GROUPING-CONTRACT.md):
+       P1  Stabile explizite Verknüpfungen haben Vorrang:
+           derivedFromActivity=true (Manual-Projektion, activity.js:798)
+           sowie workoutSessionId/clientSessionId/canonicalActivityId-
+           Referenz auf eine vorhandene Activity (Live-Spiegel,
+           workout-ui:669) ⇒ Legacy-Eintrag ist DERSELBE Vorgang.
+       P2  Danach source+source_record_id bzw. stabile Client-IDs
+           (activityKeys: id/crid/src/wsid — bereits im Store/Merge
+           erzwungen; Eingabeliste ist darüber eindeutig).
+       P3  Fingerprint (ähnliche Dauer/Distanz) ist OHNE stabile Referenz
+           oder ausreichend genaue Zeitidentität KEIN Duplikat, sondern
+           nur AMBIGUITÄT (Batch 2c): Legacy-Sessions tragen keine
+           Startzeit ⇒ beide Beiträge zählen, beide werden als
+           ambiguity 'possible_duplicate' markiert und die Ambiguität
+           senkt die Load-Confidence (Gates feuern darauf nicht).
+           KEIN automatischer RPE-Transfer bei bloß ähnlicher
+           Dauer/Distanz.
+       P4  Gleicher Tag + gleiche Sportart allein sind NIEMALS ein
+           Duplikat — zwei echte Einheiten zählen beide.
+       P5  Rohaktivitäten bleiben unverändert erhalten (reine Leselogik).
+       P6  Gruppierung (groupActivitySessions) und Deduplizierung sind
+           GETRENNTE Konzepte: Gruppen fassen echte, einzeln gezählte
+           Aktivitäten zusammen, sie dedupen nie.
+
+     LAST-AUSWEIS je Beitrag (Bedingung 4 der Freigabe): source,
+     Berechnungsweg (loadBasis), Einheiten (durationUnit/loadUnit),
+     Confidence und Dedupe-Entscheidung. Fehlende Belastungsdaten sind
+     'unknown' (load null) — kein stilles 0, kein pauschaler Default.
+     Ohne RPE wird KEIN RPE-Wert erfunden (rpe bleibt null); eine Last-
+     SCHÄTZUNG über die dokumentierte Intensitätsannahme (Faktor 5,
+     mobility 2 — identisch zur historischen Calc.sessionLoad-Konvention)
+     wird als loadBasis 'duration_default_intensity' mit confidence 'low'
+     ausgewiesen, damit Garmin-Einheiten nicht lastblind bleiben.
+
+     HÄRTE-SIGNALE (Batch 2c — ersetzt die globale distKm≥14-Regel, die
+     eine lockere 40-km-Radfahrt fälschlich als hochintensiv wertete).
+     Getrennt ausgewiesen je Beitrag:
+       intensityHard  gemessene/notierte Intensität (RPE ≥ 7)
+       longSession    sportartspezifischer Umfang (LONG_SESSION_RULES)
+       mechanicalImpact  Impact-/Stoßbelastung der Sportart
+       hardDay        tatsächlicher harter Tag = intensityHard ODER
+                      (longSession UND mechanicalImpact) — ein langer
+                      Lauf ist mechanisch hart, eine lange lockere
+                      Radfahrt nicht automatisch.
+     Schwellen sind versionierte Heuristiken (keine Naturgesetze).
+     ============================================================ */
+  var LOAD_INTENSITY_DEFAULT = 5, LOAD_INTENSITY_MOBILITY = 2;
+  var FP_DUR_TOL_MIN = 5, FP_DUR_TOL_PCT = 0.15, FP_DIST_TOL_PCT = 0.10;
+  var IMPACT_SPORTS = { running: 1, football: 1, handball: 1, basketball: 1, athletics: 1, tennis: 1, padel: 1, volleyball: 1, hyrox: 1 };
+  var LONG_SESSION_RULES = {
+    running: { distKm: 14, minutes: 90 },
+    cycling: { distKm: 80, minutes: 150 },
+    swimming: { distM: 3000, minutes: 90 },
+    _default: { minutes: 120 }
+  };
+  function _longSession(sportId, minutes, distKm, distM) {
+    var r = LONG_SESSION_RULES[sportId] || LONG_SESSION_RULES._default;
+    if (r.distKm != null && distKm != null && distKm >= r.distKm) return true;
+    if (r.distM != null && distM != null && distM >= r.distM) return true;
+    if (r.minutes != null && minutes != null && minutes >= r.minutes) return true;
+    return false;
+  }
+  function _defaultIntensity(sportId) { return sportId === 'mobility' ? LOAD_INTENSITY_MOBILITY : LOAD_INTENSITY_DEFAULT; }
+  function _distKmOf(sportId, distKm, distM) {
+    if (distKm != null) return distKm;
+    if (distM != null) return distM / 1000;
+    return null;
+  }
+  /* PURE · konservativer Fingerprint (Vertrag P3). */
+  function _fingerprintMatch(legacyMin, legacyDistKm, actMin, actDistKm) {
+    if (!(legacyMin > 0) || !(actMin > 0)) return false;                 // beide Dauern Pflicht
+    var tol = Math.max(FP_DUR_TOL_MIN, Math.max(legacyMin, actMin) * FP_DUR_TOL_PCT);
+    if (Math.abs(legacyMin - actMin) > tol) return false;
+    if (legacyDistKm != null && actDistKm != null) {
+      var dtol = Math.max(legacyDistKm, actDistKm) * FP_DIST_TOL_PCT;
+      if (Math.abs(legacyDistKm - actDistKm) > dtol) return false;
+    }
+    return true;
+  }
+  /* PURE · dailyLoadUnits(activities, sessions):
+     activities = kanonische Activities EINES Tages (Tombstones vorher
+     ausfiltern), sessions = DB[date].sessions ({} erlaubt).
+     Rückgabe { load, loadUnit, units[], excluded[], unknownUnits,
+     estimatedShare } — deterministisch, nicht-mutierend.
+     unit = { kind, sportId, source, minutes, durationUnit, rpe, rpeSource,
+              loadBasis, load, loadUnit, confidence, hard, dedupe }. */
+  function dailyLoadUnits(activities, sessions) {
+    activities = Array.isArray(activities) ? activities : [];
+    sessions = (sessions && typeof sessions === 'object') ? sessions : {};
+    var canonRefs = {};
+    activities.forEach(function (a) { if (a) activityKeys(a).forEach(function (k) { canonRefs[k] = true; }); });
+    var excluded = [];
+    // Kanonische Beiträge vorbereiten (P2: Liste ist über activityKeys eindeutig).
+    var canonUnits = activities.filter(Boolean).map(function (a) {
+      var sp = normSport(a.sportId);
+      var min = a.durationSeconds != null ? Math.round(a.durationSeconds / 60) : null;
+      var rpe = (a.summary && a.summary.rpe != null && a.summary.rpe > 0) ? a.summary.rpe : null;
+      return {
+        kind: 'activity', sportId: sp, source: a.source || 'unknown',
+        minutes: min, durationUnit: 'min',
+        rpe: rpe, rpeSource: rpe != null ? 'measured' : null,
+        distKm: _distKmOf(sp, a.summary && a.summary.distanceKm, a.summary && a.summary.distanceM),
+        _a: a
+      };
+    });
+    // Legacy-Sessions gegen den Vertrag prüfen.
+    var legacyCounted = [];
+    Object.keys(sessions).forEach(function (t) {
+      if (t === '_ts') return;
+      var s = sessions[t];
+      if (!s || typeof s !== 'object') return;
+      var sp = normSport(s.sportId || t);
+      var base = { kind: 'legacy_session', sportId: sp, source: s.source || 'legacy_db' };
+      if (s.derivedFromActivity === true) {                                          // P1
+        excluded.push(Object.assign({}, base, { dedupe: { decision: 'excluded_projection', rule: 'derivedFromActivity' } }));
+        return;
+      }
+      var refs = [s.workoutSessionId, s.clientSessionId, s.canonicalActivityId];
+      for (var i = 0; i < refs.length; i++) {
+        var r = refs[i];
+        if (r && (canonRefs['wsid:' + r] || canonRefs['crid:' + r] || canonRefs['id:' + r] || canonRefs['src:orvia_workout|' + r])) {
+          excluded.push(Object.assign({}, base, { dedupe: { decision: 'excluded_mirror', rule: 'explicit_link', matchedBy: String(r) } }));   // P1
+          return;
+        }
+      }
+      var dur = s.dur != null && s.dur > 0 ? Math.round(s.dur) : null;
+      var rpe = (s.rpe && s.rpe > 0) ? s.rpe : null;                                 // ||-Semantik wie Calc.sessionLoad
+      var distKm = (s.dist != null && sp !== 'swimming') ? s.dist : null;
+      var distM = (s.dist != null && sp === 'swimming') ? s.dist : null;
+      if (dur == null && rpe == null && distKm == null && distM == null) {           // datenlos (z. B. plan_done)
+        excluded.push(Object.assign({}, base, { dedupe: { decision: 'excluded_no_data', rule: 'no_load_evidence' } }));
+        return;
+      }
+      /* P3 (Batch 2c): Fingerprint OHNE stabile Referenz/Zeitidentität dedupliziert
+         NICHT — er markiert nur Ambiguität. Beide Beiträge zählen; die Ambiguität
+         senkt die Load-Confidence (Konsument: recentLoad/Decision-Gates). */
+      var ambiguousWith = null;
+      for (var c = 0; c < canonUnits.length; c++) {
+        var cu = canonUnits[c];
+        if (cu.sportId !== sp || cu._fpMatched) continue;
+        if (_fingerprintMatch(dur, distKm, cu.minutes, cu.distKm)) {
+          cu._fpMatched = true;
+          cu.ambiguity = 'possible_duplicate';
+          ambiguousWith = cu._a.clientRecordId || cu._a.id || cu._a.sourceRecordId || null;
+          break;
+        }
+      }
+      legacyCounted.push({ kind: 'legacy_session', sportId: sp, source: base.source, minutes: dur, durationUnit: 'min', rpe: rpe, rpeSource: rpe != null ? 'measured' : null, distKm: distKm, distM: distM, ambiguity: ambiguousWith ? 'possible_duplicate' : null, ambiguousWith: ambiguousWith });   // P4
+    });
+    // Beiträge finalisieren: Berechnungsweg, Confidence, Härte-Signale, Last.
+    function finalize(u) {
+      var out = {
+        kind: u.kind, sportId: u.sportId, source: u.source,
+        minutes: u.minutes, durationUnit: 'min',
+        rpe: u.rpe != null ? u.rpe : null, rpeSource: u.rpeSource || null,
+        loadBasis: null, load: null, loadUnit: 'srpe_au', confidence: null,
+        intensityHard: false, longSession: false, mechanicalImpact: !!IMPACT_SPORTS[u.sportId], hardDay: false,
+        ambiguity: u.ambiguity || null, ambiguousWith: u.ambiguousWith || null,
+        dedupe: { decision: 'counted', rule: null }
+      };
+      if (u.minutes != null && u.minutes > 0) {
+        if (u.rpe != null) {
+          out.loadBasis = 'srpe_measured';
+          out.load = Math.round(u.minutes * u.rpe);
+          out.loadUnit = 'srpe_au';                                                  // echt gemessene sRPE-Last
+          out.confidence = u.ambiguity ? 'low' : 'high';
+        } else {
+          out.loadBasis = 'duration_default_intensity';                              // dokumentierte Annahme, KEIN erfundenes RPE
+          out.load = Math.round(u.minutes * _defaultIntensity(u.sportId));
+          out.loadUnit = 'est_load_au';                                              // Batch 2d: Schätz-Proxy, KEINE gemessene srpe_au
+          out.confidence = 'low';
+        }
+      } else {
+        out.loadBasis = 'unknown';                                                    // Belastungsdaten fehlen ⇒ unknown, nicht 0
+        out.load = null;
+        out.confidence = 'unknown';
+      }
+      // Batch 2c: getrennte Härte-Signale statt globaler Distanzregel.
+      out.intensityHard = u.rpe != null && u.rpe >= 7;
+      var _dM = u.distM != null ? u.distM : (u.distKm != null ? u.distKm * 1000 : null);
+      out.longSession = _longSession(u.sportId, u.minutes, u.distKm != null ? u.distKm : null, _dM);
+      out.hardDay = out.intensityHard || (out.longSession && out.mechanicalImpact);
+      out.distKm = u.distKm != null ? u.distKm : null;   // DT1: Distanz im Unit-Vertrag exponieren (Wochen-Aggregation)
+      out.distM = u.distM != null ? u.distM : null;
+      return out;
+    }
+    var units = canonUnits.map(finalize).concat(legacyCounted.map(finalize));
+    var load = 0, est = 0, unknown = 0, ambiguous = 0, measuredLoad = 0, estimatedLoad = 0;
+    units.forEach(function (u) {
+      if (u.load != null) {
+        load += u.load;
+        if (u.loadBasis === 'srpe_measured') measuredLoad += u.load; else estimatedLoad += u.load;
+      } else unknown++;
+      if (u.loadBasis === 'duration_default_intensity') est++;
+      if (u.ambiguity) ambiguous++;
+    });
+    /* Batch 2d: die GEMISCHTE Aggregation ist keine gemessene sRPE-Größe.
+       Ehrliche Einheit 'orvia_load_au' + vollständiger Methodenanteil;
+       gemessene (srpe_au) und geschätzte (est_load_au) Last stehen getrennt. */
+    return {
+      load: load, loadUnit: 'orvia_load_au', units: units, excluded: excluded,
+      unknownUnits: unknown, ambiguousUnits: ambiguous,
+      measuredLoad: measuredLoad, measuredLoadUnit: 'srpe_au',
+      estimatedLoad: estimatedLoad, estimatedLoadUnit: 'est_load_au',
+      methodShare: load > 0 ? { measured: Math.round(measuredLoad / load * 100) / 100, estimated: Math.round(estimatedLoad / load * 100) / 100 } : { measured: null, estimated: null },
+      estimatedShare: units.length ? Math.round(est / units.length * 100) / 100 : 0
+    };
+  }
+
+  /* ============================================================
+     Batch 2b · Session-GRUPPIERUNG (getrennt von Dedupe, Vertrag P6) — PURE.
+     Fasst direkt aufeinanderfolgende ECHTE Aktivitäten zusammen (z. B. ein
+     in Segmente geteilter Long Run oder ein Brick), ohne Rohaktivitäten zu
+     verändern und ohne Last zu verdoppeln (Last zählt je Aktivität, die
+     Gruppe ist reine Sicht). gapMinutes default 15. Aktivitäten ohne
+     startedAt sind nicht gruppierbar und bleiben ungruppiert außen vor. */
+  function groupActivitySessions(dayActivities, opts) {
+    opts = opts || {};
+    var gapMs = (opts.gapMinutes != null ? opts.gapMinutes : 15) * 60000;
+    var acts = (Array.isArray(dayActivities) ? dayActivities : [])
+      .filter(function (a) { return a && a.startedAt; })
+      .slice()
+      .sort(function (a, b) { return String(a.startedAt).localeCompare(String(b.startedAt)); });
+    function endOf(a) {
+      if (a.endedAt) return Date.parse(a.endedAt);
+      var st = Date.parse(a.startedAt);
+      return a.durationSeconds != null ? st + a.durationSeconds * 1000 : st;
+    }
+    function refOf(a) { return a.clientRecordId || a.id || (a.source + '|' + a.sourceRecordId); }
+    var groups = [];
+    var cur = null, lastEnd = null;
+    acts.forEach(function (a) {
+      var sp = normSport(a.sportId);
+      var st = Date.parse(a.startedAt);
+      var contiguous = lastEnd != null && isFinite(st) && (st - lastEnd) <= gapMs && (st - lastEnd) >= -60000;
+      if (cur && contiguous && cur.sportId === sp) {
+        cur.activityRefs.push(refOf(a)); cur.segments++;
+        cur._acts.push(a);
+      } else {
+        var g = { groupId: 'grp:' + refOf(a), sportId: sp, brickId: null, activityRefs: [refOf(a)], segments: 1, _acts: [a] };
+        // Brick-Verkettung: direkt anschließende Gruppe ANDERER Sportart (Vertrag P6).
+        if (cur && contiguous && cur.sportId !== sp) {
+          var bid = cur.brickId || ('brick:' + cur.groupId);
+          cur.brickId = bid; g.brickId = bid;
+        }
+        groups.push(g); cur = g;
+      }
+      var e = endOf(a);
+      lastEnd = isFinite(e) ? e : st;
+    });
+    // Aggregation je Gruppe (Rohaktivitäten bleiben unangetastet).
+    groups.forEach(function (g) {
+      var durS = 0, hasDur = false, km = 0, hasKm = false, m = 0, hasM = false;
+      var first = g._acts[0], last = g._acts[g._acts.length - 1];
+      g.startedAt = first.startedAt;
+      g.endedAt = last.endedAt || null;
+      g._acts.forEach(function (a) {
+        if (a.durationSeconds != null) { durS += a.durationSeconds; hasDur = true; }
+        var s = a.summary || {};
+        if (s.distanceKm != null) { km += s.distanceKm; hasKm = true; }
+        if (s.distanceM != null) { m += s.distanceM; hasM = true; }
+      });
+      g.totalDurationSeconds = hasDur ? durS : null;
+      g.totalDistanceKm = hasKm ? Math.round(km * 100) / 100 : null;
+      g.totalDistanceM = hasM ? Math.round(m) : null;
+      delete g._acts;
+    });
+    return { groups: groups, gapMinutes: gapMs / 60000 };
+  }
+
+  /* ============================================================
+     DT1 · Kanonischer Wochen-Vertrag (PURE, deterministisch). EIN Wochen-Aggregator
+     als dünner Wrapper über dailyLoadUnits (bestehender Per-Tag-Dedupe+Last-Vertrag,
+     P1–P4). KEINE zweite Aggregations-/Dedupe-Logik. Kalenderwoche Mo–So in der
+     lokalen Zeitzone (Default Europe/Vienna); Distanz nur für Distanz-Sportarten;
+     fehlende Last transparent (missingFields), kein erfundenes RPE, kein 0-statt-unbekannt.
+     ============================================================ */
+  var _WEEK_DIST_SPORTS = { running: 1, cycling: 1, swimming: 1, triathlon: 1, rowing: 1, hiking: 1, walking: 1 };
+  function _weekBounds(ref) {
+    var d = new Date(ref + 'T12:00:00Z');
+    var wd = (d.getUTCDay() + 6) % 7;                                  // Mo = 0
+    var mon = new Date(d.getTime()); mon.setUTCDate(d.getUTCDate() - wd);
+    var days = []; for (var i = 0; i < 7; i++) { var x = new Date(mon.getTime()); x.setUTCDate(mon.getUTCDate() + i); days.push(x.toISOString().slice(0, 10)); }
+    return { weekStart: days[0], weekEnd: days[6], days: days };
+  }
+  // activities: kanonische, über activityKeys eindeutige Store-Liste. sessions: DB (Legacy-Blob).
+  // opts: { weekRef:'YYYY-MM-DD' (lokales Datum), timezone, isTombstoned(a) }.
+  function weeklyActivityTotals(activities, sessions, opts) {
+    activities = Array.isArray(activities) ? activities : [];
+    sessions = (sessions && typeof sessions === 'object') ? sessions : {};
+    opts = opts || {};
+    // DT1b: KEIN stiller Europe/Vienna-Default. Neutraler, dokumentierter UTC-Fallback; die
+    // produktiven Konsumenten injizieren die effektive Nutzerzeitzone (profileStore.effectiveTimezone).
+    var tz = opts.timezone || 'UTC';
+    var ref = opts.weekRef;
+    if (!ref) return null;                                             // deterministisch: Wochenbezug ist Pflicht
+    var isTomb = typeof opts.isTombstoned === 'function' ? opts.isTombstoned : function () { return false; };
+    var acts = activities.filter(function (a) { return a && !isTomb(a); });   // gelöscht/tombstoned zählt nicht
+    var bounds = _weekBounds(ref);
+    var bySport = {};
+    var prov = { activityIds: [], excludedDuplicateIds: [], missingFields: [] };
+    function bkt(sp) {
+      return bySport[sp] || (bySport[sp] = {
+        sessionCount: 0, knownDurationMin: 0, knownDistanceKm: 0, knownLoadUnits: 0, longestKm: null,
+        _durComplete: true, _distComplete: true, _loadComplete: true, _distSport: !!_WEEK_DIST_SPORTS[sp]
+      });
+    }
+    bounds.days.forEach(function (day) {
+      var dayActs = acts.filter(function (a) { return dayOfActLocal(a, tz) === day; });
+      var daySessions = (sessions[day] && sessions[day].sessions) || {};
+      var r = dailyLoadUnits(dayActs, daySessions);                    // P1–P4-Dedupe + Last je Tag
+      (r.units || []).forEach(function (u) {
+        var sp = u.sportId; var b = bkt(sp);
+        b.sessionCount++;
+        // Dauer: fehlend ⇒ unvollständig, NICHT 0.
+        if (u.minutes != null) b.knownDurationMin += u.minutes; else { b._durComplete = false; prov.missingFields.push({ sport: sp, field: 'duration' }); }
+        // Distanz: nur für Distanz-Sportarten; fehlend ⇒ unvollständig (distanceKm=null), Teilsumme in knownDistanceKm.
+        if (b._distSport) {
+          var dk = u.distKm != null ? u.distKm : (u.distM != null ? u.distM / 1000 : null);
+          if (dk != null) { b.knownDistanceKm += dk; if (b.longestKm == null || dk > b.longestKm) b.longestKm = dk; }
+          else { b._distComplete = false; prov.missingFields.push({ sport: sp, field: 'distance' }); }
+        }
+        // Last: NUR gemessene sRPE gilt als bekannt. Schätzung (kein RPE) oder unbekannt ⇒ unvollständig,
+        // KEINE erfundene Garmin-Last (loadUnits=null statt geschätzter Zahl).
+        if (u.loadBasis === 'srpe_measured' && u.load != null) b.knownLoadUnits += u.load;
+        else { b._loadComplete = false; prov.missingFields.push({ sport: sp, field: 'load', basis: u.loadBasis || 'unknown' }); }
+      });
+      dayActs.forEach(function (a) { var id = a.clientRecordId || a.id; if (id) prov.activityIds.push(id); });
+      (r.excluded || []).forEach(function (x) { prov.excludedDuplicateIds.push({ sport: x.sportId || null, decision: (x.dedupe && x.dedupe.decision) || null, rule: (x.dedupe && x.dedupe.rule) || null }); });
+    });
+    var totals = { sessionCount: 0, durationMin: 0, knownDurationMin: 0, distanceKm: 0, knownDistanceKm: 0, loadUnits: 0, knownLoadUnits: 0, completeness: { duration: true, distance: true, load: true } };
+    Object.keys(bySport).forEach(function (sp) {
+      var b = bySport[sp];
+      b.knownDurationMin = Math.round(b.knownDurationMin);
+      b.knownDistanceKm = Math.round(b.knownDistanceKm * 100) / 100;
+      b.knownLoadUnits = Math.round(b.knownLoadUnits);
+      if (b.longestKm != null) b.longestKm = Math.round(b.longestKm * 100) / 100;
+      b.completeness = { duration: b._durComplete, distance: b._distComplete, load: b._loadComplete };
+      b.durationMin = b._durComplete ? b.knownDurationMin : null;      // vollständig → Zahl, sonst null (nicht 0)
+      b.distanceKm = b._distComplete ? b.knownDistanceKm : null;
+      b.loadUnits = b._loadComplete ? b.knownLoadUnits : null;
+      delete b._durComplete; delete b._distComplete; delete b._loadComplete; delete b._distSport;
+      totals.sessionCount += b.sessionCount;
+      totals.knownDurationMin += b.knownDurationMin; if (!b.completeness.duration) totals.completeness.duration = false;
+      totals.knownDistanceKm += b.knownDistanceKm; if (!b.completeness.distance) totals.completeness.distance = false;
+      totals.knownLoadUnits += b.knownLoadUnits; if (!b.completeness.load) totals.completeness.load = false;
+    });
+    totals.knownDistanceKm = Math.round(totals.knownDistanceKm * 100) / 100;
+    totals.durationMin = totals.completeness.duration ? totals.knownDurationMin : null;
+    totals.distanceKm = totals.completeness.distance ? totals.knownDistanceKm : null;
+    totals.loadUnits = totals.completeness.load ? totals.knownLoadUnits : null;
+    return { weekStart: bounds.weekStart, weekEnd: bounds.weekEnd, days: bounds.days, timezone: tz, totals: totals, bySport: bySport, provenance: prov };
+  }
+
+  /* ============================================================
+     I3 · Teil A — Kanonische Tageslast-SERIE für CTL/ATL/TSB (PURE).
+     Baut STRIKT auf dailyLoadUnits auf (KEINE neue Lastformel): reiht je LOKALEM
+     Tag auf, trennt Herkunft (measured/estimated/unknown), weist unbekannte Tage
+     aus (nie 0=Ruhe), zählt bekannte Wochen der jüngsten Historie (letzte 4 Wo)
+     und blockiert bei nicht endlicher/negativer Last. Ersetzt den Snapshot-/
+     recentLoad-Qualitätsvertrag NICHT — spiegelt dieselbe Semantik in Tagesauflösung.
+     opts: { days, endDay:'YYYY-MM-DD' (lokaler Bezugstag), timezone, isTombstoned }. */
+  function _shiftDayISO(day, delta) {
+    var d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + delta);
+    return d.toISOString().slice(0, 10);
+  }
+  function dailyLoadSeries(activities, sessions, opts) {
+    activities = Array.isArray(activities) ? activities : [];
+    sessions = (sessions && typeof sessions === 'object') ? sessions : {};
+    opts = opts || {};
+    var tz = opts.timezone || 'UTC';
+    var days = (opts.days != null && opts.days > 0) ? Math.floor(opts.days) : 42;
+    var endDay = opts.endDay;
+    if (!endDay) return null;                                    // deterministisch: Bezugstag ist Pflicht
+    var isTomb = typeof opts.isTombstoned === 'function' ? opts.isTombstoned : function () { return false; };
+    var acts = activities.filter(function (a) { return a && !isTomb(a); });
+    var actsByDay = {};
+    acts.forEach(function (a) { var k = dayOfActLocal(a, tz); if (!k) return; (actsByDay[k] || (actsByDay[k] = [])).push(a); });
+    var out = [], loads = [], measuredLoads = [], knownMask = [];
+    var totalLoad = 0, measuredSum = 0, estimatedSum = 0, activeDays = 0, knownDays = 0, unknownDays = 0;
+    var valid = true, invalidReason = null;
+    for (var i = days - 1; i >= 0; i--) {
+      var day = _shiftDayISO(endDay, -i);
+      var dayActs = actsByDay[day] || [];
+      var daySessions = (sessions[day] && sessions[day].sessions) || {};
+      var r = dailyLoadUnits(dayActs, daySessions);
+      var dayLoad = r.load || 0;
+      var measured = r.measuredLoad || 0, estimated = r.estimatedLoad || 0;
+      var unknownUnits = r.unknownUnits || 0;
+      var active = !!(r.units && r.units.length > 0);
+      var known = active ? (unknownUnits === 0) : true;         // Ruhetag ist bekannt (0); Aktivität mit unknown-Unit ist unbekannt
+      var basis = !active ? 'rest' : (unknownUnits > 0 ? 'unknown' : (measured > 0 && estimated > 0 ? 'mixed' : (estimated > 0 ? 'estimated' : 'measured')));
+      // I3a.1: AUTORITATIVE (gemessene) Last strikt von Schätzung/Unbekannt trennen. Ein Tag ist
+      // nur dann safety-bekannt, wenn er ruht ODER ausschließlich gemessene sRPE-Last trägt.
+      // Geschätzte (duration_default_intensity) oder unbekannte Anteile ⇒ knownForSafety=false,
+      // authoritativeLoad=null (die Schätzung bleibt separat in estimatedLoad).
+      var knownForSafety = active ? (estimated === 0 && unknownUnits === 0) : true;
+      var authoritativeLoad = knownForSafety ? measured : null;
+      if (!isFinite(dayLoad) || dayLoad < 0) { valid = false; invalidReason = invalidReason || ('nicht endliche/negative Last am ' + day + ' (' + dayLoad + ')'); }
+      out.push({ day: day, load: dayLoad, authoritativeLoad: authoritativeLoad, knownForSafety: knownForSafety, measuredLoad: measured, estimatedLoad: estimated, unknownUnits: unknownUnits, active: active, known: known, basis: basis });
+      loads.push(dayLoad); measuredLoads.push(measured); knownMask.push(known);
+      if (isFinite(dayLoad) && dayLoad >= 0) totalLoad += dayLoad;
+      measuredSum += measured; estimatedSum += estimated;
+      if (active) activeDays++;
+      if (active && unknownUnits > 0) unknownDays++;
+      if (active && unknownUnits === 0) knownDays++;
+    }
+    // Jüngste Historie: letzte bis zu 4 Wochen. Bekannte Woche = ≥1 Tag mit bekannter Last (>0).
+    var weeksAvail = Math.min(4, Math.ceil(days / 7));
+    var knownWeeks = 0;
+    for (var w = 0; w < weeksAvail; w++) {
+      var wk = false;
+      for (var dd = 0; dd < 7; dd++) {
+        var idx = out.length - 1 - (w * 7 + dd);
+        if (idx < 0) break;
+        var od = out[idx];
+        if (od.active && od.unknownUnits === 0 && od.load > 0) { wk = true; break; }
+      }
+      if (wk) knownWeeks++;
+    }
+    // I3a.1: akutes 7-Tage-Fenster ist safety-assessable NUR, wenn jeder Tag darin safety-bekannt
+    // ist (kein geschätzter/unbekannter Tag) und die Serie gültig ist. Kein Legacy-Fallback.
+    var acuteN = Math.min(7, out.length);
+    var acuteAssessable = valid;
+    for (var ai = 0; ai < acuteN && acuteAssessable; ai++) { if (!out[out.length - 1 - ai].knownForSafety) acuteAssessable = false; }
+    var estimatedShare = totalLoad > 0 ? Math.round(estimatedSum / totalLoad * 100) / 100 : 0;
+    var confidence;
+    if (!valid) confidence = 'not_assessable';
+    else if (knownWeeks < 2) confidence = 'not_assessable';       // Regel 12 (I2c-Historienregel)
+    else if (knownWeeks < weeksAvail || unknownDays > 0 || estimatedShare > 0.25) confidence = 'reduziert';  // Regel 10/11
+    else confidence = 'hoch';
+    return {
+      timezone: tz, endDay: endDay, days: out, loads: loads, measuredLoads: measuredLoads, knownMask: knownMask,
+      acuteAssessable: acuteAssessable, acuteWindowDays: acuteN,
+      completeness: {
+        totalDays: days, activeDays: activeDays, knownDays: knownDays, unknownDays: unknownDays,
+        measuredLoad: Math.round(measuredSum), estimatedLoad: Math.round(estimatedSum), totalLoad: Math.round(totalLoad),
+        estimatedShare: estimatedShare, knownWeeks: knownWeeks, totalWeeks: weeksAvail
+      },
+      confidence: confidence, valid: valid, invalidReason: invalidReason
+    };
+  }
+
   var api = {
     ACTIVITY_FORM_SCHEMAS: ACTIVITY_FORM_SCHEMAS, formSchemaForSport: formSchemaForSport, allowedFieldKeys: allowedFieldKeys,
     ENUM_LABELS: ENUM_LABELS, enumLabel: enumLabel, activityTitle: activityTitle, moreActivityGroups: moreActivityGroups,
     normalizeServerActivity: normalizeServerActivity, mergeAllActivities: mergeAllActivities, activityKeys: activityKeys,
     stripForeignFields: stripForeignFields, sportLabel: sportLabel, sportIcon: sportIcon, userSportTiles: userSportTiles, activeSportTilesFromProfile: activeSportTilesFromProfile,
-    legacySessionToActivity: legacySessionToActivity, legacySessionKey: legacySessionKey, mergeActivities: mergeActivities, summaryLine: summaryLine
+    legacySessionToActivity: legacySessionToActivity, legacySessionKey: legacySessionKey, mergeActivities: mergeActivities, summaryLine: summaryLine,
+    dayOfAct: dayOfAct, dayOfActLocal: dayOfActLocal, dailyLoadUnits: dailyLoadUnits, dailyLoadSeries: dailyLoadSeries, weeklyActivityTotals: weeklyActivityTotals, groupActivitySessions: groupActivitySessions,
+    LONG_SESSION_RULES: LONG_SESSION_RULES
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.activityConfig = api;

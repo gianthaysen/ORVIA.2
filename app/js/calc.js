@@ -94,6 +94,24 @@ function loadModel(loads){
     acwr:ac.ratio,acwrReliable:!!ac.enough,acute:ac.acute,chronic:ac.chronic,
     dataDays:loads.filter(x=>x>0).length};
 }
+/* I3a.2: Last-Anzeige-/Semantikvertrag (nur Text/Sichtbarkeit, KEINE neue Lastformel, KEIN
+   Safety-Gate). CTL/ATL aus measured+estimated ist ein modellierter Schätzwert (eine Schätzung
+   kann über oder unter der wahren Last liegen) und darf NIE als "Untergrenze" bezeichnet werden.
+   Eine echte Untergrenze ("bekannte Teilsumme") besteht ausschließlich aus measuredLoad (siehe
+   ui.js renderACWRCard: Calc.loadSeries(measuredLoads) - dieselbe EWMA-Formel, nur auf der
+   gemessenen Teilserie). confidence: 'hoch' | 'reduziert' | 'not_assessable' (dailyLoadSeries). */
+function loadConfidenceContract(confidence){
+  if(confidence==='not_assessable')return{
+    tier:'not_assessable',suppressNumbers:true,
+    ctlAtlNote:'CTL/ATL nicht belastbar (Lastserie unvollständig oder nur geschätzt/unbekannt).',
+    acwrTsbNote:'ACWR/TSB nicht belastbar (Lastserie unvollständig).'};
+  if(confidence&&confidence!=='hoch')return{
+    tier:'reduziert',suppressNumbers:false,
+    ctlAtlNote:'CTL/ATL sind ein modellierter Schätzwert (geschätzt), keine Untergrenze, da Lastdaten teils geschätzt/unvollständig sind.',
+    acwrTsbNote:'ACWR/TSB nicht exakt (Lastdaten teils geschätzt/unvollständig).'};
+  return{tier:'hoch',suppressNumbers:false,ctlAtlNote:null,acwrTsbNote:null};
+}
+
 /* ---- Wochen-km-Rampe (Fix: Vorzeichen; neu: Entlastungswochen) ----
    weeksAhead: 0=diese Woche, 1=nächste, ... Deload alle 4 Planwochen (-28%). */
 function weekKmTarget(daysToRace,weeksAhead){
@@ -137,6 +155,196 @@ function planStatus(planned, done, opts){
 /* ---- Duplikaterkennung (F3): Kandidat vs. bestehende Einheit ----
    a=Kandidat {type,date,dur,dist,externalId}, b=bestehende {dur,dist,source,externalId,...}.
    Liefert {match,reason,confidence} oder null (kein Treffer). */
+/* ============================================================
+   I3 Part B — Kanonischer Plan-Ist-Resolver (PUR, deterministisch, reihenfolgeunabhängig).
+   Beantwortet ZWEI getrennte Fragen:
+     (1) LINKAGE  — gehört eine tatsächliche Aktivität zu einer geplanten Einheit?
+     (2) ERFÜLLUNG — via bestehendem Calc.planStatus-Vertrag (KEINE neuen Schwellen).
+   VERKNÜPFUNG — nur PLANBEZOGENE, EINDEUTIGE IDENTITÄT verbindet automatisch:
+     • explizite stabile Referenz: activity.plannedSessionId === planned.occurrenceId
+       (Projektion von workout_sessions.planned_session_id ins metrics-jsonb, activity-store.js:64;
+        bzw. der vom Nutzer markierte plan_done-Occurrence — beides plan-eigene Identität).
+   KEIN Metrik-/Tag-/Sport-Fallback: gleicher Tag, gleiche Sportart oder ähnliche Dauer/Distanz
+   sind Aktivitäts-Ähnlichkeit (Herkunft: Dedup, Calc.activityDuplicate) und liefern KEINE
+   plan-eigene Identität — sie erzeugen daher NIE eine automatische Erfüllung. Solche schwachen
+   Kandidaten führen ausschließlich zu 'ambiguous' (Konkurrenz) oder 'unknown' (einzeln,
+   unbelegbar). Im Zweifel kein automatischer Link.
+   ERFÜLLUNG (nur NACH Linkage): Calc.planStatus (calc.js:141) ist der EINZIGE dokumentierte
+   Erfüllungsvertrag (präsenzbasiert). 'partial' entsteht ausschließlich über planStatus
+   'teilweise' auf Tages-/Set-Ebene (byDay) — es gibt KEINE dokumentierte Pro-Einheit-
+   Metrikschwelle; eine solche zu erfinden ist per Auftrag §6 verboten. Fehlen Ist-Metriken ⇒
+   missingFields; der Zustand bleibt presence-completed bzw. unknown (nie künstlich partial).
+   Unverhandelbar: jede Aktivität HÖCHSTENS einer Einheit; fehlende Quelle ⇒ unknown (nie
+   missed/0); Ruhetag nie missed; Zukunft/heute nie missed; keine Mutation der Eingaben;
+   gleiche Eingaben ⇒ gleiches Ergebnis; Array-Reihenfolge irrelevant.
+   ------------------------------------------------------------
+   planned[]:   { occurrenceId|null, sportId, localDate, plannedDurationMin?, plannedDistanceKm?, plannedLoad?, isRest? }
+   activities[]:{ activityId, sportId, localDate, plannedSessionId?, durationMin?, distanceKm?, load?, loadKnown?, externalId?, source? }
+   opts:        { today:'YYYY-MM-DD'|null, activitiesLoaded:true, planLoaded:true }
+   ============================================================ */
+function resolvePlanActual(planned, activities, opts){
+  var o = opts || {};
+  var today = o.today || null;
+  var activitiesLoaded = (o.activitiesLoaded !== false);
+  var planLoaded = (o.planLoaded !== false);
+
+  var rawP = (Array.isArray(planned) ? planned : []).filter(Boolean);
+  var rawA = (Array.isArray(activities) ? activities : []).filter(Boolean);
+
+  // ---- Missingness-/Fail-closed-Guards (§8) ----
+  if (!activitiesLoaded) {
+    // Fehlende Activity-Quelle ⇒ nichts ist beweisbar absolviert ODER verpasst.
+    var resU = rawP.filter(function(p){ return !p.isRest; }).map(function(p){
+      return _unit(p, null, 'unknown', 'none', null, false,
+        ['activities_not_loaded'], _plannedMissing(p), [], 'source_missing');
+    });
+    return { results: resU, unmatched: [], byDay: _byDayFromResults(resU, today),
+      provenance: { activitiesLoaded: false, planLoaded: planLoaded, today: today } };
+  }
+  if (!planLoaded) {
+    // Fehlende Planquelle ⇒ tatsächliche Aktivitäten bleiben unmatched (nie missed).
+    var unm0 = rawA.slice().sort(_byAct).map(function(a){ return _unmatched(a, 'plan_not_loaded'); });
+    return { results: [], unmatched: unm0, byDay: {},
+      provenance: { activitiesLoaded: true, planLoaded: false, today: today } };
+  }
+
+  // Ruhetage sind keine erfüllbaren Einheiten (case M): aus der Planmenge nehmen.
+  var P = rawP.filter(function(p){ return !p.isRest; }).slice().sort(_byPlan);
+  var A = rawA.slice().sort(_byAct);
+
+  var used = {};                    // activityId -> true (One-to-one)
+  var candidateActIds = {};         // activityId -> true (irgendwo Kandidat ⇒ nicht 'unmatched')
+  var link = {};                    // occKey -> { act, method, confidence }
+  var ambig = {};                   // occKey -> [activityIds]
+  var weak = {};                    // occKey -> [activityIds]  (gleicher Tag+Sport, KEIN Link)
+
+  var occKey = function(p, i){ return p.occurrenceId != null ? ('occ:' + p.occurrenceId) : ('idx:' + i + ':' + p.localDate + ':' + p.sportId); };
+
+  // ---- PASS 1: explizite stabile Referenz (EINZIGE automatische Verknüpfung), One-to-one erzwungen ----
+  var actByPlannedId = {};
+  A.forEach(function(a){ if (a.plannedSessionId != null) { var k = String(a.plannedSessionId); (actByPlannedId[k] = actByPlannedId[k] || []).push(a); } });
+  var planByOcc = {};
+  P.forEach(function(p){ if (p.occurrenceId != null) { var k = String(p.occurrenceId); (planByOcc[k] = planByOcc[k] || []).push(p); } });
+
+  P.forEach(function(p, i){
+    if (p.occurrenceId == null) return;
+    var k = String(p.occurrenceId);
+    var claimants = (actByPlannedId[k] || []).filter(function(a){ return !used[a.activityId]; });
+    if (!claimants.length) return;
+    claimants.forEach(function(a){ candidateActIds[a.activityId] = true; });
+    var occurrencesForThisId = planByOcc[k] || [];
+    // Eindeutig NUR wenn genau EINE Aktivität diese occ beansprucht UND diese occ eindeutig ist.
+    if (claimants.length === 1 && occurrencesForThisId.length === 1) {
+      var a = claimants[0];
+      used[a.activityId] = true;
+      link[occKey(p, i)] = { act: a, method: 'explicit_occurrence_id', confidence: 'hoch' };
+    } else {
+      ambig[occKey(p, i)] = claimants.map(function(a){ return a.activityId; }).sort();
+    }
+  });
+
+  // ---- Schwache Kandidaten SAMMELN (nur zur Klassifikation, NIE zum automatischen Verlinken) ----
+  // Gleicher lokaler Tag + gleiche Sportart = Aktivitäts-Ähnlichkeit, KEINE plan-eigene Identität.
+  P.forEach(function(p, i){
+    var ok = occKey(p, i);
+    if (link[ok] || ambig[ok]) return;
+    var weakC = A.filter(function(a){ return !used[a.activityId] && a.sportId === p.sportId && a.localDate === p.localDate; });
+    if (weakC.length) { weak[ok] = weakC.map(function(a){ return a.activityId; }).sort(); weakC.forEach(function(a){ candidateActIds[a.activityId] = true; }); }
+  });
+  // Konkurrenz auf schwacher Ebene (dieselbe Aktivität ist schwacher Kandidat mehrerer Einheiten).
+  var weakClaims = {};
+  Object.keys(weak).forEach(function(ok){ weak[ok].forEach(function(id){ (weakClaims[id] = weakClaims[id] || []).push(ok); }); });
+
+  // ---- Klassifikation je geplanter Einheit ----
+  var results = P.map(function(p, i){
+    var ok = occKey(p, i);
+    if (link[ok]) {
+      var a = link[ok].act;
+      var ps = (typeof planStatus === 'function') ? planStatus([p.sportId], [a.sportId], {}) : { key: 'erfuellt' };
+      var reasons = ['linked_' + link[ok].method];
+      if (ps.key === 'alternativ') reasons.push('sport_swap');
+      return _unit(p, a, 'completed', link[ok].method, link[ok].confidence, true, reasons, _actualMissing(a), [], 'linked');
+    }
+    if (ambig[ok]) {
+      return _unit(p, null, 'ambiguous', 'none', null, false,
+        ['competing_explicit_claims'], _plannedMissing(p), ambig[ok], 'ambiguous_explicit');
+    }
+    if (weak[ok] && weak[ok].length) {
+      // Konkurrenz (≥2 schwache Kandidaten ODER ein schwacher Kandidat wird von mehreren
+      // Einheiten geteilt) ⇒ ambiguous (case C). Genau EIN exklusiver schwacher Kandidat ohne
+      // plan-eigene Identität (Datum+Sport allein) ⇒ unknown (case D/E) — NIE automatisch completed.
+      var shared = weak[ok].some(function(id){ return (weakClaims[id] || []).length > 1; });
+      if (weak[ok].length >= 2 || shared) {
+        return _unit(p, null, 'ambiguous', 'none', null, false,
+          ['competing_candidates_weak'], _plannedMissing(p), weak[ok], 'ambiguous_weak');
+      }
+      return _unit(p, null, 'unknown', 'none', null, false,
+        ['weak_same_day_sport_only_no_plan_identity'], _plannedMissing(p), weak[ok], 'weak_candidate');
+    }
+    // Keine Kandidaten: Zeitlage entscheidet.
+    if (!today) return _unit(p, null, 'unknown', 'none', null, false, ['today_unknown'], _plannedMissing(p), [], 'no_reference_date');
+    if (p.localDate > today) return _unit(p, null, 'unknown', 'none', null, false, ['future'], _plannedMissing(p), [], 'future');
+    if (p.localDate === today) return _unit(p, null, 'unknown', 'none', null, false, ['today_still_possible'], _plannedMissing(p), [], 'today');
+    return _unit(p, null, 'missed', 'none', null, true, ['no_matching_activity_past'], _plannedMissing(p), [], 'past_complete');
+  });
+
+  // ---- byDay-Aggregat (I3b.1): SESSION-GENAU je geplanter Occurrence, NICHT via Sportarten-Menge.
+  // planStatus (Sportarten-Set) kann mehrere Einheiten derselben Sportart nicht unterscheiden und
+  // wird daher NICHT zur finalen Tages-Aggregation verwendet (bleibt fuer Kompatibilitaet unveraendert).
+  var byDay = _byDayFromResults(results, today);
+
+  // ---- Ungeplante Aktivitäten: kein Link, nirgends Kandidat (case I/M) ----
+  var unmatched = A.filter(function(a){ return !used[a.activityId] && !candidateActIds[a.activityId]; })
+    .sort(_byAct).map(function(a){ return _unmatched(a, 'no_planned_unit'); });
+
+  return { results: results, unmatched: unmatched, byDay: byDay,
+    provenance: { activitiesLoaded: true, planLoaded: true, today: today } };
+
+  // ---------- Helpers (rein, keine Mutation der Eingaben) ----------
+  function _byPlan(a, b){ return String(a.occurrenceId != null ? a.occurrenceId : ('~' + a.localDate + '|' + a.sportId)).localeCompare(String(b.occurrenceId != null ? b.occurrenceId : ('~' + b.localDate + '|' + b.sportId))); }
+  function _byAct(a, b){ return String(a.activityId).localeCompare(String(b.activityId)); }
+  function _plannedBlock(p){ return { sportId: p.sportId, localDate: p.localDate, durationMin: (p.plannedDurationMin != null ? p.plannedDurationMin : null), distanceKm: (p.plannedDistanceKm != null ? p.plannedDistanceKm : null), load: (p.plannedLoad != null ? p.plannedLoad : null) }; }
+  function _actualBlock(a){ if (!a) return null; return { sportId: a.sportId, localDate: a.localDate, durationMin: (a.durationMin != null ? a.durationMin : null), distanceKm: (a.distanceKm != null ? a.distanceKm : null), load: (a.load != null ? a.load : null), loadKnown: (a.loadKnown === true), missingness: _actualMissing(a) }; }
+  function _plannedMissing(p){ var m = []; if (p.plannedDurationMin == null) m.push('planned.durationMin'); if (p.plannedDistanceKm == null) m.push('planned.distanceKm'); return m; }
+  function _actualMissing(a){ var m = []; if (!a) return m; if (a.durationMin == null) m.push('actual.durationMin'); if (a.distanceKm == null) m.push('actual.distanceKm'); if (a.load == null || a.loadKnown !== true) m.push('actual.load'); return m; }
+  // I3b.1: Tagesstatus SESSION-GENAU aus den bereits aufgeloesten Occurrence-Zustaenden.
+  // Zaehlt Occurrence-IDs, dedupliziert NICHT nach Sportart; Unsicherheit wird nie zu completed.
+  function _byDayFromResults(results, today){
+    var out = {}, days = {};
+    results.forEach(function(r){ var d = r.planned && r.planned.localDate; if (!d) return; (days[d] = days[d] || []).push(r); });
+    Object.keys(days).sort().forEach(function(day){
+      var us = days[day];
+      var total = us.length;
+      var comp = us.filter(function(r){ return r.state === "completed"; }).length;
+      var uncertain = us.some(function(r){ return r.state === "ambiguous" || r.state === "unknown"; });
+      var status;
+      if (total === 0) status = "none";
+      else if (comp === total) status = "completed";
+      else if (comp >= 1) status = "partial";
+      else if (us.every(function(r){ return r.state === "missed"; })) status = "missed";
+      else if (us.some(function(r){ return r.state === "ambiguous"; })) status = "ambiguous";
+      else status = "unknown";
+      out[day] = { plannedCount: total, completedCount: comp, status: status, assessable: !uncertain, uncertain: uncertain };
+    });
+    return out;
+  }
+  function _unit(p, a, state, method, confidence, assessable, reasons, missingFields, ambiguousCandidateIds, prov){
+    return {
+      plannedSessionId: (p.occurrenceId != null ? p.occurrenceId : null),
+      activityId: (a ? a.activityId : null),
+      state: state, linkMethod: method, confidence: (confidence || null), assessable: !!assessable,
+      planned: _plannedBlock(p), actual: _actualBlock(a),
+      reasons: reasons.slice(), missingFields: missingFields.slice(),
+      ambiguousCandidateIds: (ambiguousCandidateIds || []).slice(), provenance: prov
+    };
+  }
+  function _unmatched(a, reason){
+    return { activityId: a.activityId, state: 'unmatched', sportId: a.sportId, localDate: a.localDate,
+      load: (a.load != null ? a.load : null), loadKnown: (a.loadKnown === true),
+      reason: reason, assessable: true, provenance: 'unmatched_activity' };
+  }
+}
+
 function activityDuplicate(a, b){
   if(!a||!b)return null;
   if(a.type&&b.type&&a.type!==b.type)return null;
@@ -414,7 +622,15 @@ function ampel(m,r,ctx){
 /* ============ GOAL ENGINE — HM <Ziel, ehrlich ============
    runs42: chronologisch, letzte 42 Tage [{date,sub,dist,dur,hr}]
    opts: {daysToRace, targetMin, avg4WeekKm, targetWeekKm, lrMax28, ctlNow, ctlPrev28, trackingWeeks} */
-function riegelHM(distKm,durMin){if(!(distKm>0)||!(durMin>0))return null;return durMin*Math.pow(HM_KM/distKm,1.06);} // E2: keine Division durch 0 / kein NaN
+/* GM7.9i: Riegel fuer eine BELIEBIGE Zieldistanz — additive Verallgemeinerung der bereits
+   vorhandenen Halbmarathon-Variante. Identische Formel, identischer Exponent (1.06);
+   riegelHM() besteht ab jetzt aus dieser Funktion und verhaelt sich unveraendert
+   (riegelHM(d,t) === riegel(d,t,HM_KM), per Test belegt). Keine neue Fachlogik. */
+function riegel(distKm,durMin,targetKm){
+  if(!(distKm>0)||!(durMin>0)||!(targetKm>0))return null;   // E2: keine Division durch 0 / kein NaN
+  return durMin*Math.pow(targetKm/distKm,1.06);
+}
+function riegelHM(distKm,durMin){return riegel(distKm,durMin,HM_KM);}
 function goalEngine(runs42,opts){
   const o=opts||{};const target=o.targetMin||TARGET_MIN_DEFAULT;
   const valid=runs42.filter(r=>r.dist>0&&r.dur>0);
@@ -445,15 +661,55 @@ function goalEngine(runs42,opts){
   const d=o.daysToRace??99;
   const lrNeed=d>28?14:d>14?17:0;
   if(lrNeed&&(o.lrMax28||0)<lrNeed)vetos.push('Long Run: max. '+(o.lrMax28||0).toFixed(0)+' km in 28T, nötig ≥'+lrNeed+' km');
-  if(o.targetWeekKm&&(o.avg4WeekKm||0)<0.75*o.targetWeekKm)vetos.push('Volumen: Ø '+(o.avg4WeekKm||0).toFixed(0)+' km/Wo unter 75% des Solls');
-  if(o.ctlNow!=null&&o.ctlPrev28!=null&&o.ctlNow<=o.ctlPrev28)vetos.push('Fitness (CTL) seit 4 Wochen nicht steigend');
+  // I2c: Volumen-Veto NUR bei bekanntem avg4WeekKm. Unbekannt ⇒ kein erfundener Mangel,
+  // stattdessen not_assessable + reduzierte Confidence (Missingness bis zur Prognose).
+  var _volKnown=(o.avg4WeekKm!=null&&isFinite(o.avg4WeekKm));
+  var notAssessable=[];
+  if(!_volKnown)notAssessable.push('Volumen (Ø 4 Wochen)');
+  if(o.targetWeekKm&&_volKnown&&o.avg4WeekKm<0.75*o.targetWeekKm)vetos.push('Volumen: Ø '+o.avg4WeekKm.toFixed(0)+' km/Wo unter 75% des Solls');
+  // I3a.3: CTL-Trend-Veto nur als HARTES Veto, wenn die zugrunde liegende Lastserie
+  // ausreichend belastbar ist (Wiederverwendung der bestehenden Last-Confidence aus
+  // allLoads()/dailyLoadSeries via ui.js buildGoal() -> opts.loadConfidence; KEINE
+  // zweite parallele Confidence-Logik). 'hoch' (oder fehlend = Rückwärtskompatibilität):
+  // bisheriges Verhalten. 'reduziert': kein hartes Veto, nur strukturierter Hinweis
+  // ctl_trend_estimated. 'not_assessable': Vergleich wird ausgelassen, Missingness-Grund
+  // ctl_trend_not_assessable. Unbekannte/nicht belastbare Last wird NIE zu 0 oder zu
+  // einem erfundenen 'Fitness sinkt'.
+  // I3a.4: CTL-Trend-Veto FAIL-CLOSED. Nur EXPLIZIT gültige Last-Confidence wird akzeptiert;
+  // fehlendes, unbekanntes oder ungültiges loadConfidence wird NICHT als 'hoch' behandelt
+  // (kein `||'hoch'`-Null-Koaleszenz-Fallback), sondern konservativ als nicht belastbar mit
+  // strukturiertem Reason-Code. Nur 'hoch' erlaubt das harte CTL-Trend-Veto; 'reduziert' nur
+  // den geschätzten Hinweis (ctl_trend_estimated); 'not_assessable' kein Veto
+  // (ctl_trend_not_assessable). Wiederverwendung der bestehenden Last-Confidence aus
+  // allLoads()/dailyLoadSeries via ui.js buildGoal() -> opts.loadConfidence; KEINE zweite
+  // parallele Confidence-Logik, keine erfundenen Werte.
+  var _lcRaw=o.loadConfidence;
+  var _confValid=(_lcRaw==='hoch'||_lcRaw==='reduziert'||_lcRaw==='not_assessable');
+  var _ctlHave=(o.ctlNow!=null&&o.ctlPrev28!=null);
+  var ctlTrend={status:(_confValid?_lcRaw:'not_assessable'),reason:null};
+  if(_ctlHave){
+    if(!_confValid){
+      ctlTrend.reason=(_lcRaw==null?'load_confidence_missing':'load_confidence_invalid');
+      notAssessable.push('Fitness (CTL) — Last-Confidence fehlt/ungültig, nicht belastbar');
+    }else if(_lcRaw==='not_assessable'){
+      ctlTrend.reason='ctl_trend_not_assessable';
+      notAssessable.push('Fitness (CTL) — Lastserie nicht belastbar');
+    }else if(_lcRaw!=='hoch'){
+      ctlTrend.reason='ctl_trend_estimated';
+      if(o.ctlNow<=o.ctlPrev28)notAssessable.push('Fitness (CTL) seit 4 Wochen nicht steigend (geschätzt, kein hartes Veto)');
+    }else{
+      if(o.ctlNow<=o.ctlPrev28)vetos.push('Fitness (CTL) seit 4 Wochen nicht steigend');
+    }
+  }
   // Bänder
   const delta=(target-tPred)/target;
   let state='ontrack';
   if(delta<-0.03||vetos.length>=2)state='risk';
   else if(delta<0.02||vetos.length===1)state='border';
   return{state,tPred:+tPred.toFixed(1),tRiegel:+tRiegel.toFixed(1),tEF:tEF?+tEF.toFixed(1):null,
-    delta:+(delta*100).toFixed(1),vetos,nRuns:valid.length,nQuality:usable.length,target};
+    delta:+(delta*100).toFixed(1),vetos,notAssessable:notAssessable,ctlTrend:ctlTrend,
+    assessable:{volume:_volKnown},confidence:notAssessable.length?'reduziert':'hoch',
+    nRuns:valid.length,nQuality:usable.length,target};
 }
 
 /* ============ RUNNING ANALYTICS ============ */
@@ -961,6 +1217,12 @@ function buildTrainingDecision(input){
     state=ds.state;
     if(n.illness&&state==='RED'){var ds2=dayStateEngine(Object.assign({},stateInput,{illness:false}));state=(ds2.state==='RED')?'RED':'ORANGE';}
   }
+  // I3a.1: Last-Wirksamkeit (fail-closed). Ist die AKUTE Last nicht belastbar (unbekannt oder
+  // nur geschätzt, oder kanonischer Provider fehlt ⇒ acuteAssessable===false), wird die
+  // lastabhängige Entscheidung konservativ: KEIN GREEN, kein Peak, keine Intensitätssteigerung.
+  // Nur herabstufen, nie herauf; gemessene/vollständige Last (true/undefined) bleibt unberührt.
+  var _loadNotAssessable=(L.acuteAssessable===false);
+  if(_loadNotAssessable&&state==='GREEN')state='YELLOW';
   // Session-Anpassung
   var sess=adaptSessionPlan(Object.assign({},planned||{},{kind:tt.type}),{state:state,flags:ds.flags},{region:n.painRegion,doms:n.doms});
   if(matchConflict&&planned&&(tt.hard||tt.legLoad)&&(state==='GREEN'||state==='YELLOW')){
@@ -1010,6 +1272,7 @@ function buildTrainingDecision(input){
     matchConflictRisk:!!matchConflict,safetyRisk:safety.level==='red'
   };
   var reasons=ds.reasons.slice();
+  if(_loadNotAssessable)reasons.unshift('Akute Last nicht belastbar (nur geschätzt/unbekannt) — konservativ bewertet');
   if(matchConflict)reasons.unshift('Fester Termin in '+matchConflict.days+' Tag(en)');
   if(safety.redFlags.length)reasons=safety.redFlags.concat(reasons);
   var DECISION={GREEN:'Trainieren',YELLOW:'Reduzieren',ORANGE:'Ersetzen',RED:'Pausieren'};
@@ -1026,6 +1289,7 @@ function buildTrainingDecision(input){
     recovery:rec,painDoms:pdm,load:load,
     userMessage:userMessage,coachSummary:coachSummary,
     confidence:dq.confidence||'mittel',dataQuality:dq,
+    loadAssessable:!_loadNotAssessable,loadMissingness:(L.missingness||null),
     safety:safety,sportProfile:sportProfileFor(i.goal||(i.profile&&i.profile.primaryGoal)),
     deficits:detectDeficits(i.deficitContext||{})
   };
@@ -1148,10 +1412,20 @@ function bmr(sex,age,heightCm,weightKg){
 function nutritionTargets(p){
   // p: {sex,age,heightCm,weightKg, goal, activity, deficitKcal, surplusKcal, proteinPerKg, dayType, trainingBurn}
   var b=bmr(p.sex,p.age,p.heightCm,p.weightKg);if(!b||!p.weightKg)return null;
-  var actF={sedentary:1.25,light:1.35,moderate:1.45,high:1.55}[p.activity||'light']||1.35;
-  var base=Math.round(b*actF);                          // Grundbedarf ohne Training
   var burn=Math.max(0,Math.round(p.trainingBurn||0));
-  var maint=base+burn;                                  // Erhaltung für den Tag
+  var base,maint;
+  if(p.tdee!=null&&isFinite(p.tdee)&&p.tdee>0){
+    /* Phase 7 (2026-07-18): dynamischer Gesamtumsatz aus dem energy-expenditure-
+       resolver — enthält Schritte/Training/TEF bereits. Double-Counting-Matrix:
+       hier wird NICHTS mehr addiert; base ist nur die Anzeige "ohne Training". */
+    maint=Math.round(p.tdee);base=maint-burn;
+  }else{
+    /* Fallback ohne Resolver (Audit-Befund 4): Aktivitätsfaktor = ALLTAG OHNE
+       Training (NEAT); Training kommt ausschließlich separat als burn dazu. */
+    var actF={sedentary:1.25,light:1.35,moderate:1.45,high:1.55}[p.activity||'light']||1.35;
+    base=Math.round(b*actF);                            // Grundbedarf ohne Training
+    maint=base+burn;                                    // Erhaltung für den Tag
+  }
   var goal=p.goal||'maintain';
   var hard=(p.dayType==='long'||p.dayType==='quality');
   var adj=0;
@@ -1165,7 +1439,7 @@ function nutritionTargets(p){
   return {kcal:kcal,protein:protein,carbs:carbs,fat:fat,base:base,burn:burn,maint:maint,ea:ea,bmr:b,hard:hard,goal:goal,dayType:p.dayType};
 }
 const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,paceZones,bmr,nutritionTargets,ewma,sessionLoad,acwr,
-  loadModel,loadSeries,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegelHM,goalEngine,
+  loadModel,loadSeries,loadConfidenceContract,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,resolvePlanActual,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegel,riegelHM,goalEngine,
   easyShare,weeklyJump,lrTarget,hrSpread,easyTooHard,efSeries,nextRunRec,heavyLegs,sleepDebt,weightHint,
   recentRunStats,calculateRecommendedWeeklyRunVolume,
   dayStateEngine,adaptSessionPlan,adaptWeekPlan,

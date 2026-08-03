@@ -33,7 +33,10 @@
       feel: m.feel != null ? m.feel : null,
       leg_strength: m.legs != null ? m.legs : null,
       doms: m.doms != null ? m.doms : null,
-      illness: m.illness != null ? !!m.illness : null,
+      /* P6-Vorbedingung (a) (2026-07-17, Audit-Befund 1): gatherMorning schreibt das
+         Feld `ill` (Blob-/UI-Welt), die Tabellenspalte heißt `illness`. Ohne diesen
+         Fallback wurde Morgen-Krankheit NIE persistiert. Beide Namen akzeptieren. */
+      illness: m.illness != null ? !!m.illness : (m.ill != null ? !!m.ill : null),
       complaints: complaints,
       source: m.source || 'manual'
     };
@@ -46,6 +49,21 @@
     m = m || {};
     if (m.energy != null) row.energy = m.energy;
     if (m.note) row.note = m.note;
+    /* Phase 6 (2026-07-17): je Feld übernommene Garmin-Werte kennzeichnen.
+       H3-Muster: NUR senden wenn belegt — kompatibel mit Instanzen, auf denen
+       Migration 0021 (auto_sources jsonb) noch nicht ausgeführt wurde.
+       Zeilen-source wird 'mixed' (manuell + automatisch gemischt); die
+       Spalte hat keinen CHECK-Constraint (0002: text default 'manual'). */
+    if (m.autoSources && typeof m.autoSources === 'object' && Object.keys(m.autoSources).length) {
+      row.auto_sources = m.autoSources;
+      if (!m.source) row.source = 'mixed';
+    }
+    /* Batch 0 (2026-07-18): Red Flags (morning.redFlags, kanonische Codes) →
+       Spalte red_flags (Migration 0024). H3-Muster: NUR senden wenn belegt —
+       kompatibel mit Instanzen, auf denen 0024 noch nicht ausgeführt wurde. */
+    if (m.redFlags && typeof m.redFlags === 'object' && Object.keys(m.redFlags).length) {
+      row.red_flags = m.redFlags;
+    }
     return row;
   };
 

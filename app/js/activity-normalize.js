@@ -107,16 +107,162 @@
     return out;
   }
 
+  /* ============================================================
+     Batch 3b.1b · ZENTRALE kanonische Summary-Normalisierung (pure, idempotent,
+     NICHT mutierend). EINE Quelle für beide Server-Pfade (normalizeActivityRecord
+     hier + activityConfig.normalizeServerActivity, das hierher delegiert), damit
+     Store-Merge, Serverliste, Anzeige und Engine-Gruppierung dieselben
+     kanonischen Felder erhalten. Garmin liefert snake_case; wir mappen auf
+     camelCase, ohne Meter ohne Sportkontext still zu Kilometern umzudeuten. ---- */
+  var _METER_BASED_SPORTS = { swimming: true, rowing: true };   // Distanz kanonisch in METERN
+  function _round(x, p) { var f = Math.pow(10, p || 0); return Math.round(x * f) / f; }
+  function _canonSport(sportId) {
+    if (root.ORVIA && root.ORVIA.trainingDomain && typeof root.ORVIA.trainingDomain.normSport === 'function') {
+      try { var c = root.ORVIA.trainingDomain.normSport(sportId); if (c) return c; } catch (e) {}
+    }
+    var s = String(sportId == null ? '' : sportId).trim().toLowerCase();
+    if (s === 'run' || s === 'laufen') return 'running';
+    if (s === 'bike' || s === 'rad' || s === 'radfahren') return 'cycling';
+    if (s === 'swim' || s === 'schwimmen') return 'swimming';
+    return s;
+  }
+  // 'meter' (distanceM) | 'km' (distanceKm) | 'unknown' (kein Unit-Umschlag ohne Kontext)
+  function _sportDistanceKind(sportId) {
+    var sp = _canonSport(sportId);
+    if (!sp) return 'unknown';
+    if (_METER_BASED_SPORTS[sp]) return 'meter';
+    return 'km';
+  }
+  /* STRIKTE Zahl (Batch 3b.1c): number nur endlich; String nur, wenn der GESAMTE
+     getrimmte String eine endliche Zahl ist (kein parseFloat('100abc')→100). */
+  function _strictNum(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    if (typeof v === 'string') { var t = v.trim(); if (t === '') return null; var n = Number(t); return isFinite(n) ? n : null; }
+    return null;
+  }
+  // Physisch mögliche, nicht-negative Größe (Distanz/HF/Kalorien/Höhengewinn/Geschwindigkeit).
+  function _nonNegNum(v) { var n = _strictNum(v); return (n != null && n >= 0) ? n : null; }
+  // Gültiger camelCase-Wert gewinnt vor snake_case; ungültige/negative Werte ⇒ null (nicht clampen, nicht erfinden).
+  function _preferNonNeg(camelV, snakeV) { var c = _nonNegNum(camelV); if (c != null) return c; return _nonNegNum(snakeV); }
+
+  function normalizeActivitySummary(summary, sportId) {
+    if (!summary || typeof summary !== 'object' || Array.isArray(summary)) summary = {};
+    var out = {};
+    // 1) unbekannte Felder NICHT verlieren — alles durchkopieren (Eingabe unberührt).
+    Object.keys(summary).forEach(function (k) { out[k] = summary[k]; });
+    // 2) snake_case-Rohschlüssel entfernen; kanonische camelCase-Felder setzen.
+    ['distance_m', 'distance_km', 'avg_hr', 'max_hr', 'elevation_gain_m', 'elevation_m', 'calories_kcal', 'avg_speed_mps'].forEach(function (k) { delete out[k]; });
+
+    var kind = _sportDistanceKind(sportId);
+    // Ungültige/negative Distanzen werden ENTFERNT (nicht kanonisiert/angezeigt), nicht geclampt.
+    var distM = _preferNonNeg(summary.distanceM, summary.distance_m);
+    var distKm = _preferNonNeg(summary.distanceKm, summary.distance_km);
+    if (kind === 'meter') {
+      var m = (distM != null) ? distM : (distKm != null ? distKm * 1000 : null);
+      if (m != null) out.distanceM = _round(m, 1); else delete out.distanceM;
+      delete out.distanceKm;                                   // meterbasierte Sportart trägt keine km
+    } else if (kind === 'km') {
+      var km = (distKm != null) ? distKm : (distM != null ? distM / 1000 : null);
+      if (km != null) out.distanceKm = _round(km, 3); else delete out.distanceKm;
+      delete out.distanceM;                                    // km-Sportart trägt kein distanceM (kein /100-m-Schwimm-Pace-Fehlgriff)
+    } else {
+      // Unbekannter Sportkontext: keine Meter⇄km-Umdeutung; nur Umbenennung snake→camel.
+      if (distM != null) out.distanceM = distM; else delete out.distanceM;
+      if (distKm != null) out.distanceKm = distKm; else delete out.distanceKm;
+    }
+
+    var avgHr = _preferNonNeg(summary.avgHr, summary.avg_hr); if (avgHr != null) out.avgHr = Math.round(avgHr); else delete out.avgHr;
+    var maxHr = _preferNonNeg(summary.maxHr, summary.max_hr); if (maxHr != null) out.maxHr = Math.round(maxHr); else delete out.maxHr;
+    var elev = (_nonNegNum(summary.elevationM) != null) ? _nonNegNum(summary.elevationM) : _preferNonNeg(summary.elevation_gain_m, summary.elevation_m);
+    if (elev != null) out.elevationM = Math.round(elev); else delete out.elevationM;   // Höhengewinn nie negativ
+    var cal = _preferNonNeg(summary.caloriesKcal, summary.calories_kcal); if (cal != null) out.caloriesKcal = Math.round(cal); else delete out.caloriesKcal;
+    var spd = _preferNonNeg(summary.avgSpeedMps, summary.avg_speed_mps);
+    if (spd != null) { out.avgSpeedMps = spd; if (_nonNegNum(summary.avgSpeedKmh) == null) out.avgSpeedKmh = _round(spd * 3.6, 2); else out.avgSpeedKmh = _nonNegNum(summary.avgSpeedKmh); }
+    else { delete out.avgSpeedMps; if (_nonNegNum(summary.avgSpeedKmh) != null) out.avgSpeedKmh = _nonNegNum(summary.avgSpeedKmh); else delete out.avgSpeedKmh; }
+    if (typeof summary.name === 'string' && summary.name !== '') out.name = summary.name; else delete out.name;
+    return out;
+  }
+
+  // Reine Pace-Helfer (testbar, DOM-frei). Rückgabe: Sekunden pro Einheit oder null.
+  function runPacePerKm(durationSeconds, distanceKm) { var s = _strictNum(durationSeconds), km = _strictNum(distanceKm); if (s == null || km == null || km <= 0 || s <= 0) return null; return s / km; }
+  function swimPacePer100m(durationSeconds, distanceM) { var s = _strictNum(durationSeconds), m = _strictNum(distanceM); if (s == null || m == null || m <= 0 || s <= 0) return null; return s / (m / 100); }
+  function fmtPaceSeconds(secPerUnit) { if (secPerUnit == null || !isFinite(secPerUnit) || secPerUnit <= 0) return null; var mm = Math.floor(secPerUnit / 60), ss = Math.round(secPerUnit % 60); if (ss === 60) { ss = 0; mm += 1; } return mm + ':' + String(ss).padStart(2, '0'); }
+  // Sekunden pro km aus gültiger Geschwindigkeit (Fallback). mps > kmh.
+  function _paceSecPerKmFromSpeed(summary) {
+    var mps = _nonNegNum(summary.avgSpeedMps); if (mps != null && mps > 0) return 1000 / mps;
+    var kmh = _nonNegNum(summary.avgSpeedKmh); if (kmh != null && kmh > 0) return 3600 / kmh;
+    return null;
+  }
+  function _paceSecPer100mFromSpeed(summary) { var perKm = _paceSecPerKmFromSpeed(summary); return perKm != null ? perKm / 10 : null; }
+
+  /* Sport-bewusste Distanz-/Pace-Anzeige aus KANONISCHEN Feldern. Lauf ⇒ Pace/km,
+     Schwimmen ⇒ Pace/100 m; ein Lauf mit distanceM wird NIE als /100-m-Pace gezeigt.
+     Pace primär aus Dauer/Distanz; fehlt diese Kombination, aber gültige
+     Geschwindigkeit liegt vor ⇒ Pace aus Geschwindigkeit ableiten. Nie negativ. */
+  function activityDistancePace(sportId, summary, durationSeconds) {
+    summary = (summary && typeof summary === 'object' && !Array.isArray(summary)) ? summary : {};
+    var kind = _sportDistanceKind(sportId);
+    var km = _nonNegNum(summary.distanceKm), m = _nonNegNum(summary.distanceM);
+    var out = { distanceLabel: null, paceLabel: null, paceUnit: null };
+    /* GM7.2: DISPLAY-Label deutsch formatieren (behebt „15.009 km" = engl. Punkt/3 Dezimalen).
+       Reine Darstellungs-Formatierung des Labels — keine Datensemantik/kein Vertrag geändert. */
+    function _kmLbl(k){ var r=Math.round(k*100)/100; return r.toLocaleString('de-DE',{minimumFractionDigits:(r>=100?0:1),maximumFractionDigits:2})+' km'; }
+    function _mLbl(mm){ return Math.round(mm).toLocaleString('de-DE')+' m'; }
+    if (kind === 'meter' && m != null && m > 0) {
+      out.distanceLabel = _mLbl(m);
+      var p = swimPacePer100m(durationSeconds, m); if (p == null) p = _paceSecPer100mFromSpeed(summary);
+      if (p != null) { var f = fmtPaceSeconds(p); if (f != null) { out.paceLabel = f + '/100 m'; out.paceUnit = '/100 m'; } }
+    } else if (km != null && km > 0) {
+      out.distanceLabel = _kmLbl(km);
+      var p2 = runPacePerKm(durationSeconds, km); if (p2 == null) p2 = _paceSecPerKmFromSpeed(summary);
+      if (p2 != null) { var f2 = fmtPaceSeconds(p2); if (f2 != null) { out.paceLabel = f2 + '/km'; out.paceUnit = '/km'; } }
+    } else if (m != null && m > 0 && kind === 'km') {
+      var km2 = _round(m / 1000, 3);
+      out.distanceLabel = _kmLbl(km2);
+      var p3 = runPacePerKm(durationSeconds, km2); if (p3 == null) p3 = _paceSecPerKmFromSpeed(summary);
+      if (p3 != null) { var f3 = fmtPaceSeconds(p3); if (f3 != null) { out.paceLabel = f3 + '/km'; out.paceUnit = '/km'; } }
+    } else {
+      // keine gültige Distanz: Pace ggf. nur aus Geschwindigkeit (sport-bewusst), keine Distanzzeile.
+      if (kind === 'meter') { var ps = _paceSecPer100mFromSpeed(summary); if (ps != null) { var fs = fmtPaceSeconds(ps); if (fs != null) { out.paceLabel = fs + '/100 m'; out.paceUnit = '/100 m'; } } }
+      else { var pk = _paceSecPerKmFromSpeed(summary); if (pk != null) { var fk = fmtPaceSeconds(pk); if (fk != null) { out.paceLabel = fk + '/km'; out.paceUnit = '/km'; } } }
+    }
+    return out;
+  }
+
+  /* PURE Detail-Datenaufbereitung, die der Renderer TATSÄCHLICH konsumiert
+     (DOM-frei, testbar). Name aus summary.name, Fallback metrics.name; alle
+     numerischen Felder sanitisiert (nie negativ/ungültig). */
+  function activityDetailModel(sportId, summary, durationSeconds, metrics) {
+    summary = (summary && typeof summary === 'object' && !Array.isArray(summary)) ? summary : {};
+    metrics = (metrics && typeof metrics === 'object' && !Array.isArray(metrics)) ? metrics : {};
+    var dp = activityDistancePace(sportId, summary, durationSeconds);
+    var name = (typeof summary.name === 'string' && summary.name !== '') ? summary.name
+      : ((typeof metrics.name === 'string' && metrics.name !== '') ? metrics.name : null);
+    return {
+      name: name,
+      distanceLabel: dp.distanceLabel,
+      paceLabel: dp.paceLabel,
+      paceUnit: dp.paceUnit,
+      avgHr: _nonNegNum(summary.avgHr),
+      maxHr: _nonNegNum(summary.maxHr),
+      caloriesKcal: _nonNegNum(summary.caloriesKcal),
+      elevationM: _nonNegNum(summary.elevationM),
+      avgSpeedKmh: _nonNegNum(summary.avgSpeedKmh)
+    };
+  }
+
   // Kanonische Aktivität (defensiv). source/sourceRecordId tragen die Idempotenz
   // (Upsert-Schlüssel: user_id, source, source_record_id) — keine Doppel-Activities.
   function normalizeActivityRecord(raw) {
     raw = raw || {};
     var seconds = durationSecondsOf(raw);
     var plaus = durationPlausibility(seconds);
+    var sportId = raw.sportId || raw.sport_id || null;
+    var rawSummary = (raw.summary && typeof raw.summary === 'object' && !Array.isArray(raw.summary)) ? raw.summary : {};
     return {
       id: raw.id || null,
       userId: raw.userId || raw.user_id || null,
-      sportId: raw.sportId || raw.sport_id || null,
+      sportId: sportId,
       source: raw.source || null,
       sourceRecordId: raw.sourceRecordId || raw.source_record_id || null,
       workoutSessionId: raw.workoutSessionId || raw.workout_session_id || null,
@@ -125,7 +271,13 @@
       durationSeconds: plaus.state === 'unknown' ? null : plaus.seconds,
       durationState: plaus.state,
       status: raw.status || 'completed',
-      summary: (raw.summary && typeof raw.summary === 'object') ? raw.summary : {}
+      /* Batch 3b.1b: Summary zentral kanonisieren (Garmin snake_case → camelCase). */
+      summary: normalizeActivitySummary(rawSummary, sportId),
+      /* Batch 2b (2026-07-18): metrics wurde bisher NICHT gemappt — Server-
+         metrics (z. B. Garmin source_sport_raw, avgSpeedKmh, Rohdetails)
+         gingen clientseitig verloren (Batch-2-Scout-Befund). Durchreichen,
+         nichts erfinden: fehlend ⇒ {}. */
+      metrics: (raw.metrics && typeof raw.metrics === 'object') ? raw.metrics : {}
     };
   }
 
@@ -145,13 +297,41 @@
     };
   }
 
+  /* GM7.3: verlustfreie Import-Metrik. Die Route wird vom GPX/TCX-Parser geliefert und ging
+     bisher im kanonischen Pfad verloren (nur ein hasRoute-Flag wurde gespiegelt). metrics ist
+     eine jsonb-Spalte, die Store + Sync unverändert durchreichen — die Punkte hier mitzuführen
+     ist rückwärtskompatibel und synchronisiert die Route cloud-/geräteübergreifend. KEINE
+     Engine-Berechnung, keine erfundenen Daten: fehlt eine Route, bleibt metrics leer. */
+  function buildImportMetrics(a) {
+    a = a || {};
+    var out = {};
+    var pts = null;
+    if (Array.isArray(a.route) && a.route.length > 1) pts = a.route;
+    else if (a.polyline && root.ORVIA && root.ORVIA.activityUI && typeof root.ORVIA.activityUI.decodePolyline === 'function') {
+      try { var dp = root.ORVIA.activityUI.decodePolyline(a.polyline); if (dp && dp.length > 1) pts = dp; } catch (e) {}
+    }
+    if (pts && pts.length > 1) {
+      var MAX = 600;
+      if (pts.length > MAX) { var step = Math.ceil(pts.length / MAX), ds = []; for (var i = 0; i < pts.length; i += step) ds.push(pts[i]); if (ds[ds.length - 1] !== pts[pts.length - 1]) ds.push(pts[pts.length - 1]); pts = ds; }
+      out.route = pts; out.hasRoute = true;
+    }
+    return out;
+  }
+
   var api = {
     MAX_PLAUSIBLE_SECONDS: MAX_PLAUSIBLE_SECONDS,
+    buildImportMetrics: buildImportMetrics,
     durationSecondsOf: durationSecondsOf,
     durationPlausibility: durationPlausibility,
     fmtDurationSeconds: fmtDurationSeconds,
     normalizeWorkoutSession: normalizeWorkoutSession,
     normalizeActivityRecord: normalizeActivityRecord,
+    normalizeActivitySummary: normalizeActivitySummary,
+    runPacePerKm: runPacePerKm,
+    swimPacePer100m: swimPacePer100m,
+    fmtPaceSeconds: fmtPaceSeconds,
+    activityDistancePace: activityDistancePace,
+    activityDetailModel: activityDetailModel,
     summarizeWorkout: summarizeWorkout,
     activityRowFromSession: activityRowFromSession
   };

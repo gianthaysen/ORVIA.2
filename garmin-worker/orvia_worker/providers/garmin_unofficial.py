@@ -341,6 +341,23 @@ class GarminUnofficialProvider:
             category, raw, provider=self.provider_type, metric_date=metric_date
         )
 
+    def get_activity_details(self, activity_id: Any) -> Any:
+        """Roh-Detailantwort EINER Aktivität (Route/Streams). Read-only; wird nur
+        im bounded, idempotenten Backfill für noch undetaillierte Aktivitäten
+        aufgerufen (sync.py 7b), NICHT bei jedem Sync für den Gesamtbestand."""
+        api = self._require_api()
+        return self._call(api.get_activity_details, activity_id)
+
+    def get_sleep_raw(self, metric_date: str) -> Any:
+        """Roh-Schlafantwort (inkl. sleepLevels/Nachtserien) für die Serien-Pipeline."""
+        api = self._require_api()
+        return self._call(api.get_sleep_data, metric_date)
+
+    def get_stress_raw(self, metric_date: str) -> Any:
+        """Roh-Stressantwort (inkl. stressValuesArray) für die Serien-Pipeline."""
+        api = self._require_api()
+        return self._call(api.get_stress_data, metric_date)
+
     def get_activities(self, start_date: str, end_date: str) -> list[NormalizedActivity]:
         api = self._require_api()
         raw = self._call(api.get_activities_by_date, start_date, end_date)

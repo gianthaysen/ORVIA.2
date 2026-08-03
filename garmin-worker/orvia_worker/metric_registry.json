@@ -312,6 +312,74 @@
       "dailySingleton": true
     },
     {
+      "id": "sleep_deep_min",
+      "label": "Tiefschlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        480
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_light_min",
+      "label": "Leichtschlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        720
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_rem_min",
+      "label": "REM-Schlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        480
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_awake_min",
+      "label": "Wachphasen",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        300
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
       "id": "steps",
       "label": "Schritte",
       "category": "daily_activity",
@@ -399,6 +467,23 @@
     {
       "id": "stress_avg",
       "label": "Stress (Tag)",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "stress_max",
+      "label": "Stress-Maximum (Tag)",
       "category": "daily_activity",
       "valueKind": "numeric",
       "unit": "Score",

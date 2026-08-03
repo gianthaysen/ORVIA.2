@@ -111,7 +111,13 @@ function makeSb(opts) {
   h.els.navPlus.onclick();
   ok('N2 Klick öffnet das Sheet', h.sheetCalls.length === 1);
   const uiSrc = readFileSync(new URL('../../js/ui.js', import.meta.url), 'utf8');
-  ok('N3 ui.js bindet nur [data-tab]-Buttons (Plus nie showTab)', uiSrc.indexOf(".tabbar button[data-tab]').forEach(b=>b.onclick") >= 0);
+  /* v3-Shell: Bindung ist jetzt delegiert + idempotent (dataset.bound). Die Invariante bleibt:
+     ALLE Navigationspfade filtern auf [data-tab]; der Plus-/FAB-Button (ohne data-tab) wird nie zu showTab. */
+  ok('N3 ui.js bindet nur [data-tab]-Buttons (Plus nie showTab)',
+    uiSrc.indexOf("closest('button[data-tab]')") >= 0 &&
+    uiSrc.indexOf("dataset.bound") >= 0 &&
+    uiSrc.indexOf(".tabwrap button[data-tab]") >= 0 &&
+    uiSrc.indexOf(".tabbar button[data-tab]').forEach(b=>b.onclick") < 0);
   const idx = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
   ok('N4 Plus-Button im Markup (aria-label, haspopup, kein data-tab)', /id="navPlus"[^>]*aria-label="Schnellaktionen öffnen"/.test(idx) && /id="navPlus"[^>]*aria-haspopup="dialog"/.test(idx) && !/id="navPlus"[^>]*data-tab/.test(idx));
 }

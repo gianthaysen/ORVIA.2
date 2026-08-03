@@ -410,6 +410,42 @@ async def sync_user(
         result["errors"].append("activities_store_failed")
         result["steps"]["activities"] = "failed"
 
+    # -- 7b) Aktivitätsdetails-Backfill (bounded, idempotent) + Tagesserien ----
+    # Reine Zusatzstufe: nur neue/undetaillierte Aktivitäten; Teilfehler isoliert;
+    # fehlt user_metric_series ⇒ kontrolliert übersprungen (kein Loop). Engine
+    # unberührt. Bricht den übrigen Sync nie ab.
+    try:
+        from .detail_sync import sync_activity_details, sync_day_series
+        limit = int(getattr(settings, "detail_backfill_limit", 10) or 10)
+        if hasattr(provider, "get_activity_details"):
+            det = await sync_activity_details(
+                db, user_id,
+                lambda aid: provider.get_activity_details(aid),
+                limit=limit,
+            )
+            result["steps"]["activity_details"] = (
+                f"ok:{det['updated']} selected:{len(det['selected'])} failed:{len(det['failed'])}"
+            )
+        tz = getattr(settings, "timezone", None) or "Europe/Berlin"
+        ser_total = 0
+        skipped = False
+        for d in date_strs:
+            sraw = provider.get_sleep_raw(d) if hasattr(provider, "get_sleep_raw") else None
+            straw = provider.get_stress_raw(d) if hasattr(provider, "get_stress_raw") else None
+            r = await sync_day_series(db, user_id, provider_id, d, tz,
+                                      sleep_raw=sraw, stress_raw=straw)
+            ser_total += r.get("upserted", 0)
+            if r.get("skipped"):
+                skipped = True
+        result["steps"]["series"] = (
+            "skipped:user_metric_series_missing" if skipped else f"ok:{ser_total}"
+        )
+    except ProviderError as e:
+        result["errors"].append(f"details:{e.code}")
+        result["steps"]["activity_details"] = "failed"
+    except Exception:
+        result["errors"].append("details_series_failed")
+
     # -- 8) Capabilities ------------------------------------------------------
     cap_count = 0
     try:

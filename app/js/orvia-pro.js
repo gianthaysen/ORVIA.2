@@ -122,17 +122,31 @@ function renderPatterns(){
 function renderWeekly(){
   var el=document.getElementById('weeklyBox');if(!el)return;
   if(dataDays()<3){el.innerHTML='<p class="muted">Wochen-Review erscheint nach einigen Check-ins.</p>';return;}
-  var runs=0,kmW=0,gym=0,ready=[],sleeps=[],issues=[],best=null,worst=null,bV=-1,wV=999;
-  for(var i=0;i<7;i++){var k=dkey(-i);var e=DB[k];if(!e)continue;var s=e.sessions||{};
-    if(s.Laufen){runs++;kmW+=s.Laufen.dist||0;}if(s.Gym)gym++;
+  // DT1: Trainings-Istwerte aus dem EINEN kanonischen Wochen-Vertrag (Store+Legacy dedupliziert),
+  // nicht mehr aus dem reinen DB-Blob. Readiness/Schlaf laufen über dieselben Mo–So-Wochentage.
+  var _acts=(window.ORVIA&&ORVIA.activityStore)?ORVIA.activityStore.listActivities():[];
+  var _ts=(window.ORVIA&&ORVIA.activityStore&&ORVIA.activityStore.isTombstoned)?ORVIA.activityStore.isTombstoned:null;
+  // DT1b: effektive Nutzerzeitzone (profileStore.effectiveTimezone) statt fester Konstante; weekRef = heutiges LOKALES Datum in DIESER tz.
+  var _tz=(window.ORVIA&&ORVIA.profileStore&&ORVIA.profileStore.effectiveTimezone)?ORVIA.profileStore.effectiveTimezone():'UTC';
+  var _ref=(window.ORVIA&&ORVIA.activityConfig&&ORVIA.activityConfig.dayOfActLocal)?ORVIA.activityConfig.dayOfActLocal({startedAt:new Date().toISOString()},_tz):todayStr();
+  var _wk=(window.ORVIA&&ORVIA.activityConfig&&ORVIA.activityConfig.weeklyActivityTotals)?ORVIA.activityConfig.weeklyActivityTotals(_acts,DB,{weekRef:_ref,timezone:_tz,isTombstoned:_ts}):null;
+  var _runB=_wk&&_wk.bySport&&_wk.bySport.running;
+  var runs=(_runB&&_runB.sessionCount)||0;
+  var _kmComplete=!!(_runB&&_runB.completeness&&_runB.completeness.distance);
+  var kmW=_runB?(_kmComplete?(_runB.distanceKm||0):(_runB.knownDistanceKm||0)):0;   // numerisch für Empfehlung (Teilsumme wenn unvollständig)
+  var kmLabel; if(!runs)kmLabel='0'; else if(_kmComplete)kmLabel=(_runB.distanceKm||0).toFixed(0); else if(_runB.knownDistanceKm>0)kmLabel='mind. '+_runB.knownDistanceKm.toFixed(0); else kmLabel='–';
+  var gym=(_wk&&_wk.bySport.gym&&_wk.bySport.gym.sessionCount)||0;
+  var ready=[],sleeps=[],issues=[],best=null,worst=null,bV=-1,wV=999;
+  var _wkDays=(_wk&&_wk.days)?_wk.days:(function(){var a=[];for(var i=0;i<7;i++)a.push(dkey(-i));return a;})();
+  _wkDays.forEach(function(k){var e=DB[k];if(!e)return;
     var r=(typeof readinessOf==='function')?readinessOf(k):null;if(r!=null){ready.push(r);if(r>bV){bV=r;best=k;}if(r<wV){wV=r;worst=k;}}
-    if(e.morning){if(e.morning.sleepMin)sleeps.push(e.morning.sleepMin/60);if(e.morning.knee!=null)issues.push(e.morning.knee);}}
+    if(e.morning){if(e.morning.sleepMin)sleeps.push(e.morning.sleepMin/60);if(e.morning.knee!=null)issues.push(e.morning.knee);}});
   var target=(typeof Calc!=='undefined'&&typeof daysTo==='function')?Calc.weekKmTarget(daysTo(RACE.date),0):0;
   var rd=(typeof recoveryDebt==='function')?recoveryDebt():{state:{l:'–'}};
   function fmtD(k){return k?new Date(k+'T12:00').toLocaleDateString('de-DE',{weekday:'short'}):'–';}
   var rec=(wV<60?'Achte auf die schwächeren Tage. ':'')+(target&&kmW>target?'Volumen nächste Woche maximal +5–10 % steigern; keine zweite harte Einheit, wenn HRV fällt.':'Konstanz halten, eine Qualitätseinheit einplanen, wenn Readiness es zulässt.');
   var rows=[
-    ['Läufe / Wochen-km',runs+' · '+kmW.toFixed(0)+(target?' / '+target+' km Soll':'')],
+    ['Läufe / Wochen-km',runs+' · '+kmLabel+(target?' / '+target+' km Soll':'')],
     ['Krafttraining',gym+''],
     ['Ø Readiness',ready.length?Math.round(Calc.avg(ready))+'%':'–'],
     ['Ø Schlaf',sleeps.length?Calc.avg(sleeps).toFixed(1)+' h':'–'],

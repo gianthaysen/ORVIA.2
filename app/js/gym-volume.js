@@ -332,7 +332,12 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
         var s = db[k] && db[k].sessions; var g = s && s.Gym; if (!g) return;
         if (g.derivedFromActivity) return;                  // Projektion → kanonisch existiert
-        var log = (g.exLog && g.exLog.length) ? g.exLog : null; if (!log) return;
+        var log = (g.exLog && g.exLog.length) ? g.exLog : null;
+        /* GM7: numerisches sessions.Gym.sets ohne exLog nicht mehr verwerfen — die Session
+           zaehlt als Workout, die Saetze laufen bewusst als „nicht zugeordnete Uebung"
+           (kein erfundenes Muskel-Mapping; Konfidenz-Reason: unclassified_exercises). */
+        if (!log && g.sets != null && g.sets > 0) log = [{ n: 'Krafttraining (ohne Übungsdetail)', sets: g.sets, reps: null, kg: null }];
+        if (!log) return;
         var exercises = log.map(function (x) {
           var n = (x.sets != null && x.sets > 0) ? x.sets : ((x.reps != null || x.kg != null) ? 1 : 0);
           var sets = []; for (var i = 0; i < n; i++) sets.push({ set_type: 'working', completed: true, reps: (x.reps != null ? x.reps : 1), weight: (x.kg != null ? x.kg : null) });
@@ -628,7 +633,7 @@
   // Produktives Modell für die Muskelübersicht/Body-Map. Nutzt dieselbe getestete Pipeline/Berechnung.
   async function getProductiveVolumeModel(opts) {
     opts = opts || {};
-    var r = await buildShadowReport({ days: opts.days || 28, refresh: opts.refresh !== false });
+    var r = await buildShadowReport({ days: opts.days || 28, refresh: opts.refresh !== false, goal: opts.goal, experience: opts.experience });
     var muscles = r.muscles.map(function (m) {
       var st = (m.targetRange && m.targetRange.displayStatus === 'insufficient_data')
         ? { key: 'insufficient_data', label: 'Noch nicht ausreichend bewertet' }

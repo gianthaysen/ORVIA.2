@@ -61,6 +61,11 @@
     var existing = null, idx = -1;
     for (var i = 0; i < all.length; i++) { if (all[i].source === source && all[i].sourceRecordId === srcId) { existing = all[i]; idx = i; break; } }
     var snap = snapshot != null ? snapshotExercises(snapshot) : (existing && existing.workoutSnapshot) || null;
+    // AD1c: Plan-Actual-Link (SSOT = workout_sessions.planned_session_id) als Projektion ins
+    // metrics-jsonb — überlebt localStorage-Reload UND Cloud-Roundtrip (Batch-2b-metrics-Vertrag).
+    var _pj = session.planned_session_id || session.plannedSessionId || (opts && opts.plannedSessionId) || null;
+    var _baseMetrics = (existing && existing.metrics) || {};
+    var _metrics = _pj ? Object.assign({}, _baseMetrics, { plannedSessionId: _pj }) : _baseMetrics;
     var rec = {
       id: (existing && existing.id) || null,
       clientRecordId: (existing && existing.clientRecordId) || cid(),
@@ -74,7 +79,7 @@
       durationSeconds: row.duration_seconds,
       status: row.status,
       summary: row.summary || {},
-      metrics: (existing && existing.metrics) || {},
+      metrics: _metrics,
       workoutSnapshot: snap,
       syncStatus: opts.syncStatus || 'pending',
       createdAt: (existing && existing.createdAt) || now(),
@@ -186,6 +191,61 @@
     return false;
   }
 
+  /* Ziel-SSOT/Analytics (2026-07-18): Server-Aktivitäten (Garmin-Worker, andere
+     Geräte) in den lokalen Store mergen — bisher war der Store reine Outbox und
+     synchronisierte Läufe erreichten den Client NIE (unsichtbar für Prognose/
+     Insights). Idempotent über (source, source_record_id); Tombstones gewinnen
+     (gelöschte tauchen nicht wieder auf); LOKALE pending-Datensätze werden nie
+     überschrieben (Outbox-Vorrang). Rückgabe: {merged, updated, skipped}. */
+  function mergeServerActivities(rows) {
+    rows = Array.isArray(rows) ? rows : [];
+    var all = readAll();
+    var byKey = {};
+    for (var i = 0; i < all.length; i++) {
+      var a = all[i];
+      if (a.source && a.sourceRecordId) byKey[a.source + ' ' + a.sourceRecordId] = i;
+      if (a.id) byKey['id ' + a.id] = i;
+    }
+    var merged = 0, updated = 0, skipped = 0;
+    for (var r = 0; r < rows.length; r++) {
+      var n = AN() && AN().normalizeActivityRecord ? AN().normalizeActivityRecord(rows[r]) : null;
+      if (!n || !n.id) { skipped++; continue; }
+      if (isTombstoned(n)) { skipped++; continue; }
+      var idx = (n.source && n.sourceRecordId && byKey[n.source + ' ' + n.sourceRecordId] != null)
+        ? byKey[n.source + ' ' + n.sourceRecordId]
+        : (byKey['id ' + n.id] != null ? byKey['id ' + n.id] : -1);
+      if (idx >= 0) {
+        var ex = all[idx];
+        if (ex.syncStatus === 'pending') { skipped++; continue; }   // Outbox-Vorrang
+        ex.id = n.id; ex.sportId = n.sportId || ex.sportId; ex.startedAt = n.startedAt || ex.startedAt;
+        ex.endedAt = n.endedAt || ex.endedAt;
+        if (n.durationSeconds != null) ex.durationSeconds = n.durationSeconds;
+        if (n.summary && Object.keys(n.summary).length) ex.summary = n.summary;
+        /* Batch 2b/2c: Server-metrics erhalten. AUTORITÄTSREGEL (Batch 2c):
+           Merge JE SCHLÜSSEL — der Server gewinnt pro geliefertem Key,
+           lokale Zusatz-Keys bleiben erhalten (ein partielles Serverobjekt
+           löscht nie unbeteiligte lokale Metrics); leeres Serverobjekt
+           ändert nichts. */
+        if (n.metrics && Object.keys(n.metrics).length) ex.metrics = Object.assign({}, ex.metrics || {}, n.metrics);
+        ex.status = n.status || ex.status; ex.syncStatus = 'synced'; ex.updatedAt = now();
+        updated++;
+      } else {
+        all.push({
+          id: n.id, clientRecordId: cid(), userId: uid(),
+          sportId: n.sportId || 'other', source: n.source || 'server', sourceRecordId: n.sourceRecordId || null,
+          workoutSessionId: n.workoutSessionId || null,
+          startedAt: n.startedAt, endedAt: n.endedAt, durationSeconds: n.durationSeconds,
+          status: n.status || 'completed', summary: n.summary || {},
+          metrics: n.metrics || {},   // Batch 2b: Server-metrics erhalten (vorher hart {})
+          workoutSnapshot: null, syncStatus: 'synced', createdAt: now(), updatedAt: now()
+        });
+        merged++;
+      }
+    }
+    if (merged || updated) writeAll(all);
+    return { merged: merged, updated: updated, skipped: skipped };
+  }
+
   // Logout/Kontowechsel: nur den eigenen Key leeren (kein Fremddaten-Übertrag).
   function clearForUserSwitch() { try { localStorage.removeItem(key()); localStorage.removeItem(tkey()); } catch (e) {} }
 
@@ -194,6 +254,7 @@
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,
+    mergeServerActivities: mergeServerActivities,
     deleteActivity: deleteActivity, isTombstoned: isTombstoned, tombstones: tombstones,
     pendingDeletes: pendingDeletes, removeTombstone: removeTombstone, markDeleteSynced: markDeleteSynced,
     snapshotExercises: snapshotExercises, clearForUserSwitch: clearForUserSwitch

@@ -121,9 +121,21 @@
   function buildContext(nowDate) {
     var d = nowDate instanceof Date ? nowDate : new Date();
     var ctx = { hour: d.getHours(), morningDone: false, eveningDone: false, activeWorkout: false, profileIncomplete: false, activeConstraint: false, online: true };
+    /* GM7.9j — Fehlerbehebung: Der Tagesspeicher ist in js/data.js als `let DB` deklariert.
+       Eine let-Deklaration erzeugt zwar eine globale Bindung, aber KEINE Eigenschaft von
+       window — `root.DB` war damit immer undefined, die Abfrage wurde stillschweigend
+       uebersprungen und morningDone/eveningDone blieben dauerhaft false. Folge: der
+       Kontext meldete den Morgen-Check-in vormittags und den Abend-Check-in abends
+       IMMER als offen, auch wenn beide laengst ausgefuellt waren.
+       Gelesen wird jetzt zuerst die window-Eigenschaft und sonst die globale Bindung
+       (typeof-geschuetzt, damit ohne beides kein ReferenceError entsteht). */
     try {
-      if (typeof root.DB !== 'undefined' && typeof root.todayStr === 'function') {
-        var e = root.DB[root.todayStr()];
+      var _db = (typeof root.DB !== 'undefined') ? root.DB
+              : ((typeof DB !== 'undefined') ? DB : null);
+      var _today = (typeof root.todayStr === 'function') ? root.todayStr
+                 : ((typeof todayStr === 'function') ? todayStr : null);
+      if (_db && _today) {
+        var e = _db[_today()];
         ctx.morningDone = !!(e && e.morning);
         ctx.eveningDone = !!(e && e.eve);
       }
