@@ -8,8 +8,11 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const HERE = path.dirname(fileURLToPath(import.meta.url)); // app/supabase/tests
-const R = require(path.join(HERE, '..', '..', '..', 'app', 'js', 'metrics', 'metric-registry.js'));
+const HERE = path.dirname(fileURLToPath(import.meta.url)); // <root>/supabase/tests
+/* Zwei Checkout-Layouts: Cloud (js/ unter ../../) und Geraet (App unter ../../../app). */
+const _flat = path.join(HERE, '..', '..');
+const APPROOT = fs.existsSync(path.join(_flat, 'index.html')) ? _flat : path.join(_flat, '..', 'app');
+const R = require(path.join(APPROOT, 'js', 'metrics', 'metric-registry.js'));
 
 let n = 0;
 function t(name, fn) {
@@ -115,10 +118,27 @@ t('OVERRIDE_REASONS vorhanden und nicht leer', () => {
 // ---------- (b) SSOT-Sync mit dem Worker-JSON ----------------------
 // Pfad: app/supabase/tests → app/supabase → app → <root>/garmin-worker/…
 
-t('Worker-JSON existiert und ist identisch mit registry.toJSON()', () => {
+/* KF-015-Fix: Der SSOT-Vertrag haengt nicht mehr am Checkout-Layout. Primaer
+   wird gegen den REPO-INTERNEN Snapshot docs/gm-ref/metric-registry.snapshot.json
+   geprueft (immer vorhanden). Liegt zusaetzlich das Schwesterverzeichnis
+   garmin-worker/ vor (Entwicklungs-Layout), wird auch dessen Kopie verglichen;
+   fehlt es, wird das EXPLIZIT gemeldet statt still uebersprungen. */
+t('Repo-Snapshot existiert und ist identisch mit registry.toJSON()', () => {
+  const snapPath = path.join(HERE, '..', '..', 'docs', 'gm-ref', 'metric-registry.snapshot.json');
+  const HINT = '\nRegenerieren (aus app/): node js/metrics/export-registry.mjs > docs/gm-ref/metric-registry.snapshot.json';
+  assert.ok(fs.existsSync(snapPath), 'Repo-Snapshot fehlt: ' + snapPath + HINT);
+  const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+  assert.deepStrictEqual(snap, JSON.parse(JSON.stringify(R.toJSON())), 'Snapshot weicht von der Registry ab.' + HINT);
+});
+
+t('Worker-JSON (falls im Checkout) ist identisch mit registry.toJSON()', () => {
   const jsonPath = path.join(HERE, '..', '..', '..', 'garmin-worker', 'orvia_worker', 'metric_registry.json');
   const HINT = '\nRegenerieren (aus app/): node js/metrics/export-registry.mjs > ../garmin-worker/orvia_worker/metric_registry.json';
-  assert.ok(fs.existsSync(jsonPath), 'Worker-JSON fehlt: ' + jsonPath + HINT);
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  HINWEIS: garmin-worker/ liegt nicht in diesem Checkout — Worker-Kopie nicht pruefbar. '
+      + 'Der Registry-Vertrag ist durch den Repo-Snapshot weiterhin abgedeckt.');
+    return;
+  }
   let parsed;
   try {
     parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));

@@ -15,7 +15,10 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
-const base = new URL('../../../app/js/', import.meta.url);
+/* Zwei Checkout-Layouts: Cloud (App unter ../../) und Geraet (App unter ../../../app). */
+import { existsSync } from 'node:fs';
+const _flatJs = new URL('../../js/', import.meta.url);
+const base = existsSync(_flatJs) ? _flatJs : new URL('../../../app/js/', import.meta.url);
 
 function model() {
   const sb = { window: null, console }; sb.window = sb; sb.ORVIA = {};
@@ -75,7 +78,12 @@ function model() {
 /* ---------- 4) profile.js-Verträge ---------- */
 {
   const src = readFileSync(new URL('profile.js', base), 'utf8');
-  ok('P1 Verschleiß-View liest devices.equipment (_wearItems)', /_wearItems\(\)/.test(src.split('function renderEquipment')[1].slice(0, 400)));
+  /* Phase 3 Block 2 (2026-08-05): View-Inhalt nach equipmentHTML() extrahiert
+     (speist Legacy-Box UND GM-Sheet) — renderEquipment ist nur noch Wrapper.
+     Der Vertrag (Verschleiss-View liest devices.equipment via _wearItems) gilt
+     jetzt fuer die extrahierte Quelle. */
+  ok('P1 Verschleiß-View liest devices.equipment (_wearItems)', /_wearItems\(\)/.test(src.split('function equipmentHTML')[1].slice(0, 400)));
+  ok('P1b renderEquipment delegiert an equipmentHTML (EINE Quelle)', /el\.innerHTML=equipmentHTML\(\)/.test(src.split('function renderEquipment')[1].slice(0, 400)));
   ok('P2 Migration-Hook vorhanden (_eqEnsureMigrated)', /migrateGearToEquipment\(PROFILE\)/.test(src));
   ok('P3 saveGear schreibt kanonisch (kein PROFILE.gear.push mehr)', !/PROFILE\.gear\.push/.test(src));
   ok('P4 Editor filtert Katalog nach aktiven Sportarten', /equipmentCatalogFor\(actIds\)/.test(src));

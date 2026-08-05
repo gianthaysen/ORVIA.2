@@ -9,8 +9,10 @@
 import fs from 'fs';
 let pass=0,fail=0;
 const ok=(n,c,i)=>{console.log((c?'✅':'❌')+' '+n+(i?'  — '+i:''));c?pass++:fail++;};
-const R=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const html=R('../../../app/index.html'), ui=R('../../../app/js/ui.js'), css=R('../../../app/styles.css'), sw=R('../../../app/sw.js');
+/* Zwei Checkout-Layouts (Cloud: ../../, Geraet: App unter ../../../app/). */
+const APPPFX=fs.existsSync(new URL('../../index.html',import.meta.url))?'../../':'../../../app/';
+const R=p=>fs.readFileSync(new URL(p.replace(/^\.\.\/\.\.\/(js\/|styles\.css|index\.html|sw\.js)/,APPPFX+'$1'),import.meta.url),'utf8');
+const html=R('../../index.html'), ui=R('../../js/ui.js'), css=R('../../styles.css'), sw=R('../../sw.js');
 
 const fi=ui.indexOf('/* ====== GM3:');
 const fe=ui.indexOf('/* ====== GM3-ENDE');
@@ -18,7 +20,13 @@ const blk=(fi>=0&&fe>fi)?ui.slice(fi,fe):'';
 ok('GM3-Markerblock mit renderGMActivity existiert', fi>=0&&/function renderGMActivity\(/.test(blk));
 ok('#gmAkt-Host im Aktivitäten-Tab, #gmActPage-Overlay vorhanden', html.includes('id="gmAkt"')&&html.includes('id="gmActPage"'));
 ok('Aktivitäten-Legacy per Kaskade deaktiviert (#tab-akt>*:not(#gmAkt))', /#tab-akt>:not\(#gmAkt\):not\(#gmActPage\)\{display:none/.test(css.replace(/\s/g,'')));
-ok('SW unverändert v8-198, genau einmal', /const C = 'orvia-v8-219'/.test(sw)&&(sw.match(/orvia-v8-\d+/g)||[]).length===1);
+ok('SW-Version genau einmal definiert und nicht zurueckgedreht (>= v8-219)',
+   (function(){var m=sw.match(/const C = 'orvia-v8-(\d+)'/);
+    return !!m && parseInt(m[1],10) >= 219 && (sw.match(/orvia-v8-\d+/g)||[]).length===1;})(),
+   /* Vorher war die Versionsnummer als Literal verdrahtet. Jeder Release-Bump brach
+      dadurch zehn Tests auf einmal, ohne dass ein echter Vertrag verletzt war. Der
+      Vertrag ist: GENAU EINE Version im sw.js (keine Altreferenz) und kein Rueckschritt.
+      Muster uebernommen aus profile_editor_bugfix_test.mjs, das es bereits so macht. */);
 ok('renderAkt-Override: GM3 übernimmt den aktiven Pfad UI-seitig', /renderAkt\s*=\s*function/.test(blk)&&/renderGMActivity\(\)/.test(blk));
 /* Nur die FINALE activityView: keine alte Summary/as-grid, kein act-actions-Toolbar-Markup */
 ok('keine überschriebene Altansicht (activity-summary/as-grid/act-actions)', !/activity-summary|as-grid|act-actions/.test(blk));
@@ -182,10 +190,24 @@ if(blk){
     ok('Start-Sheet: Titel/Untertitel/sport-grid mit 7 Kacheln', /Training starten/.test(S)&&/sh-sub/.test(S)&&(S.match(/sport-tile/g)||[]).length===7);
     gmStartSport('Laufen');
     const P=els['detailSheet'].innerHTML;
-    ok('Pre-Start: Segmente + prestart-Karte + 6 ps-rows + Hinweis + Start-CTA + Wearable-CTA', /subtabs/.test(P)&&/prestart/.test(P)&&(P.match(/ps-row/g)||[]).length===6&&/mode-hint/.test(P)&&/Laufen starten/.test(P)&&/Uhr/.test(P));
+    /* Phase 1b (KF-007): Die Regel hat sich GEAENDERT. Vorher galt „Attrappe
+   sichtbar, aber deaktiviert"; die Assertion zaehlte deshalb disabled-
+   Vorkommen. Seit docs/ENTSCHEIDUNGEN-2026-08.md 1.1 gilt: kein sichtbares
+   BEDIENELEMENT ohne funktionierenden Endzustand. Die ZEILEN bleiben
+   (Anzeigeslot), das Schein-Bedienelement ist weg. Geprueft wird jetzt die
+   neue Regel — die Absicht (nicht bedienbar, ehrlich beschriftet) ist
+   unveraendert, nur der Nachweis. */
+    /* AKTUALISIERT (Phase 3, E-21 · 2026-08-05): Das Start-Sheet traegt jetzt
+       zusaetzlich DREI gemessene Vor-Start-Zeilen (Body Battery / Stress /
+       Readiness aus Garmin-/Check-in-Daten) — die App stellt keine Fragen,
+       deren Antwort bereits gemessen vorliegt. 6 Basiszeilen + 3 Messzeilen = 9;
+       fehlende Messwerte bleiben ehrlich „—" (Zeile 199 prueft das weiter). */
+    ok('Pre-Start: Segmente + prestart-Karte + 9 ps-rows (6 Basis + 3 Vor-Start-Messwerte) + Hinweis + Start-CTA',
+       /subtabs/.test(P)&&/prestart/.test(P)&&(P.match(/ps-row/g)||[]).length===9&&/Vor-Start-Werte \(gemessen\)/.test(P)&&/mode-hint/.test(P)&&/Laufen starten/.test(P)&&/Wearable/.test(P));
     ok('Pre-Start Missingness bleibt — (keine erfundene Ausrüstung/Readiness/kein Wearable-Fake)', !/Uhr \+ Brustgurt|Garmin verbunden|Readiness 82/.test(P)&&(P.match(/>—</g)||[]).length>=3);
     ok('Safety-/Readiness-Hinweis aus kanonischer Ausgabe, nie ausgeblendet', /mode-hint/.test(P)&&/Heute wie geplant trainieren\.|Keine kanonische/.test(P));
-    ok('Wearable-CTA ohne Handler: sichtbar deaktiviert + NA', /disabled/.test(P.slice(P.indexOf('Uhr')-300))||/Noch nicht verfügbar/.test(P));
+    ok('Wearable-Uebergabe ohne Endzustand ist entfernt, die Zeile bleibt (Phase 1b)',
+       !/Nur an Uhr übergeben/.test(P)&&/Wearable/.test(P));
     /* Start-CTA nutzt bestehenden produktiven Handler, kein Plan-/Fixture-Mutieren */
     gmStartFromPreStart&&gmStartFromPreStart();
     ok('Start nutzt produktiven Handler (workoutUI.startSport/startPlannedUnit), Plan unverändert',

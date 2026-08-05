@@ -8,8 +8,10 @@
 import fs from 'fs';
 let pass=0,fail=0;
 const ok=(n,c,i)=>{console.log((c?'✅':'❌')+' '+n+(i?'  — '+i:''));c?pass++:fail++;};
-const R=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const html=R('../../../app/index.html'), ui=R('../../../app/js/ui.js'), css=R('../../../app/styles.css'), sw=R('../../../app/sw.js');
+/* Zwei Checkout-Layouts (Cloud: ../../, Geraet: App unter ../../../app/). */
+const APPPFX=fs.existsSync(new URL('../../index.html',import.meta.url))?'../../':'../../../app/';
+const R=p=>fs.readFileSync(new URL(p.replace(/^\.\.\/\.\.\/(js\/|styles\.css|index\.html|sw\.js)/,APPPFX+'$1'),import.meta.url),'utf8');
+const html=R('../../index.html'), ui=R('../../js/ui.js'), css=R('../../styles.css'), sw=R('../../sw.js');
 
 const fi=ui.indexOf('/* ====== GM5:');
 const fe=ui.indexOf('/* ====== GM5-ENDE');
@@ -17,7 +19,13 @@ const blk=(fi>=0&&fe>fi)?ui.slice(fi,fe):'';
 ok('GM5-Markerblock mit renderGMProfile existiert', fi>=0&&/function renderGMProfile\(/.test(blk));
 ok('#gmProf-Host + #gmProfPage-Overlay im Profil-Tab', html.includes('id="gmProf"')&&html.includes('id="gmProfPage"'));
 ok('Profil-Legacy per Kaskade deaktiviert (#tab-mehr>*:not(#gmProf))', /#tab-mehr>:not\(#gmProf\):not\(#gmProfPage\)\{display:none/.test(css.replace(/\s/g,'')));
-ok('SW unverändert v8-198, genau einmal', /const C = 'orvia-v8-219'/.test(sw)&&(sw.match(/orvia-v8-\d+/g)||[]).length===1);
+ok('SW-Version genau einmal definiert und nicht zurueckgedreht (>= v8-219)',
+   (function(){var m=sw.match(/const C = 'orvia-v8-(\d+)'/);
+    return !!m && parseInt(m[1],10) >= 219 && (sw.match(/orvia-v8-\d+/g)||[]).length===1;})(),
+   /* Vorher war die Versionsnummer als Literal verdrahtet. Jeder Release-Bump brach
+      dadurch zehn Tests auf einmal, ohne dass ein echter Vertrag verletzt war. Der
+      Vertrag ist: GENAU EINE Version im sw.js (keine Altreferenz) und kein Rueckschritt.
+      Muster uebernommen aus profile_editor_bugfix_test.mjs, das es bereits so macht. */);
 ok('openProfile-Override: GM5 übernimmt den aktiven Pfad UI-seitig', /openProfile\s*=\s*function/.test(blk)&&/renderGMProfile\(\)/.test(blk));
 /* Demo-Verbote */
 ok('keine Demo-Namen/-Handles/-Bio/-E-Mails/-Geräte/-Version', !/Gian Thaysen|gian\.moves|gian@example|Hybrid-Athlet|vívoactive|iPhone · MacBook|v0\.9|Version 0\.9|2FA aktiv/.test(blk));
@@ -93,7 +101,20 @@ if(blk){
   globalThis.Calc={loadSeries:()=>({ctl:[38,39,40,41,41,42,41,41,42,41,42,41,42,41,41],atl:[],tsb:[]}),
     loadConfidenceContract:()=>({tier:'hoch',suppressNumbers:false}),
     fmtPace:s=>{const m=Math.floor(s/60),x=Math.round(s%60);return m+':'+String(x).padStart(2,'0');}};
-  globalThis.bestTimes=()=>({t1:232,t5:1583,t10:3380,real:{k1:false,k5:true,k10:false},estPace:315,estDist:6.5,n:9});
+  /* KF-021: das Bestzeitenmodell fuehrt jetzt je Distanz die QUELLE mit (src) und bei
+     Messungen deren Belege (meas). Die Fixture bildet den erweiterten Vertrag ab:
+     5 km gemessen aus Uhrenrunden, 1/10 km weiterhin geschaetzt. */
+  globalThis.bestTimes=()=>({t1:232,t5:1583,t10:3380,real:{k1:false,k5:true,k10:false},
+    src:{k1:'estimate',k5:'lap_window',k10:'estimate'},
+    meas:{k1:null,k10:null,k5:{sec:1583,km:5,laps:5,fromLap:1,method:'lap_window',targetKm:5,date:'2026-07-20',activityId:'a1'}},
+    estPace:315,estDist:6.5,n:9});
+  /* KF-021: gmBtSrcLabel/gmBtSrcShort gehoeren zu bestTimes() und liegen damit
+     AUSSERHALB des GM5-Blocks — wie orviaThemePref weiter oben. Sie werden hier
+     NICHT nachgebildet (eine Kopie wuerde vom Original wegdriften), sondern als
+     echter Quelltext aus js/ui.js mitgezogen. */
+  const _btHelpers=ui.slice(ui.indexOf('var GM_BT_SRC='),ui.indexOf('function renderBestTimes()'));
+  if(!_btHelpers||!/function gmBtSrcLabel\(/.test(_btHelpers))throw new Error('KF-021-Helferblock in js/ui.js nicht gefunden');
+  (0,eval)(_btHelpers);
   globalThis.fmtPace=s=>Calc.fmtPace(s);
   globalThis.DB={_lastBackup:'2026-07-25T08:14:00'};
   globalThis.gmOpenSheet=()=>{};globalThis.gmCloseSheets=()=>{};
@@ -160,10 +181,17 @@ if(blk){
     /* Benachrichtigungen / Datenschutz */
     gmOpenProfPage('notifications');
     const N=els['gmProfPage'].innerHTML;
-    ok('Benachrichtigungen: Kategorien sichtbar deaktiviert, kein Schein-Toggle', (N.match(/setting-item/g)||[]).length>=6&&(N.match(/disabled/g)||[]).length>=5&&!/togglePref/.test(N));
+    /* Phase 1b (KF-007): Die Regel hat sich GEAENDERT. Vorher galt „Attrappe
+   sichtbar, aber deaktiviert"; die Assertion zaehlte deshalb disabled-
+   Vorkommen. Seit docs/ENTSCHEIDUNGEN-2026-08.md 1.1 gilt: kein sichtbares
+   BEDIENELEMENT ohne funktionierenden Endzustand. Die ZEILEN bleiben
+   (Anzeigeslot), das Schein-Bedienelement ist weg. Geprueft wird jetzt die
+   neue Regel — die Absicht (nicht bedienbar, ehrlich beschriftet) ist
+   unveraendert, nur der Nachweis. */
+    ok('Benachrichtigungen: Kategorien sichtbar, kein Schein-Toggle', (N.match(/setting-item/g)||[]).length>=6&&!/class="toggle/.test(N)&&!/togglePref/.test(N)&&/setting-value/.test(N));
     gmOpenProfPage('privacy');
     const PR=els['gmProfPage'].innerHTML;
-    ok('Datenschutz: Safety-Regeln immer aktiv, Controls deaktiviert', /Safety-Regeln/.test(PR)&&/Immer aktiv/.test(PR)&&(PR.match(/disabled/g)||[]).length>=3);
+    ok('Datenschutz: Safety-Regeln immer aktiv, keine Schein-Controls', /Safety-Regeln/.test(PR)&&/Immer aktiv/.test(PR)&&!/class="toggle/.test(PR));
     /* Ziele */
     gmOpenProfPage('goals');
     const G=els['gmProfPage'].innerHTML;
@@ -199,7 +227,7 @@ if(blk){
     /* Tagesziele */
     gmOpenProfPage('dailyGoals');
     const D=els['gmProfPage'].innerHTML;
-    ok('Tagesziele: 4 Stepperzeilen, ohne Vertrag deaktiviert + —', (D.match(/stepper-row/g)||[]).length===4&&(D.match(/disabled/g)||[]).length>=8&&(D.match(/>—</g)||[]).length>=4&&!/adjustDaily/.test(D));
+    ok('Tagesziele: 4 Zeilen bleiben, ohne Vertrag „—" und ohne tote ±-Knoepfe', (D.match(/stepper-row/g)||[]).length===4&&(D.match(/>—</g)||[]).length>=4&&!/adjustDaily/.test(D)&&!/stepper"><button disabled/.test(D));
     /* Konto */
     gmOpenProfPage('account');
     const K=els['gmProfPage'].innerHTML;
@@ -212,7 +240,10 @@ if(blk){
     gmOpenProfPage('bestTimes');
     const B=els['gmProfPage'].innerHTML;
     ok('Bestzeiten: 6 bt-row-Slots, Werte aus bestTimes()-Modell, Rest neutral', (B.match(/bt-row/g)||[]).length===6&&/26:23/.test(B)&&/56:20/.test(B)&&(B.match(/>—</g)||[]).length>=3);
-    ok('Bestzeiten: echte/geschätzte Kennzeichnung aus Modell, kein Aktivitätslink ohne ID', /geschätzt|Import/.test(B)&&!/onclick="toast/.test(B));
+    /* KF-021: die Zeile muss Messung und Schaetzung UNTERSCHEIDBAR ausweisen —
+       „Import" pauschal fuer alles Echte war die alte, unpraezise Formulierung. */
+    ok('Bestzeiten: Messung und Schätzung getrennt gekennzeichnet, kein Schein-Handler',
+       /gemessen/.test(B)&&/geschätzt/.test(B)&&!/onclick="toast/.test(B));
     /* GM5.3-Strukturvertrag: identischer Elementtyp wie im Golden Master, kein inertes div mehr. */
     ok('Bestzeiten: Strukturvertrag — 6× <button type="button" class="bt-row…">, keine div.bt-row',
        (B.match(/<button type="button" class="bt-row(?: bt-empty)?"/g)||[]).length===6

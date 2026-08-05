@@ -6,8 +6,10 @@
 import fs from 'fs';
 let pass=0,fail=0;
 const ok=(n,c,i)=>{console.log((c?'✅':'❌')+' '+n+(i?'  — '+i:''));c?pass++:fail++;};
-const R=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const html=R('../../../app/index.html'), ui=R('../../../app/js/ui.js'), css=R('../../../app/styles.css'), sw=R('../../../app/sw.js');
+/* Zwei Checkout-Layouts (Cloud: ../../, Geraet: App unter ../../../app/). */
+const APPPFX=fs.existsSync(new URL('../../index.html',import.meta.url))?'../../':'../../../app/';
+const R=p=>fs.readFileSync(new URL(p.replace(/^\.\.\/\.\.\/(js\/|styles\.css|index\.html|sw\.js)/,APPPFX+'$1'),import.meta.url),'utf8');
+const html=R('../../index.html'), ui=R('../../js/ui.js'), css=R('../../styles.css'), sw=R('../../sw.js');
 
 const fi=ui.indexOf('/* ====== GM2:');
 const fe=ui.indexOf('/* ====== GM2-ENDE');
@@ -15,7 +17,13 @@ const blk=(fi>=0&&fe>fi)?ui.slice(fi,fe):'';
 ok('GM2-Markerblock mit renderGMPlan existiert', fi>=0&&/function renderGMPlan\(/.test(blk));
 ok('#gmPlan-Host als erstes Element im Plan-Tab', /id="tab-plan"[^>]*>\s*<div id="gmPlan">/.test(html.replace(/<!--[\s\S]*?-->/g,'').replace(/\s+/g,' ').replace(/> </g,'><').replace(/></g,'>\n<').replace(/\n/g,'')) || (html.indexOf('id="gmPlan"')>0&&html.indexOf('id="gmPlan"')<html.indexOf('id="raceHeader"')));
 ok('Plan-Legacy per Kaskade deaktiviert (#tab-plan>*:not(#gmPlan))', /#tab-plan>:not\(#gmPlan\):not\(#gmPage\)\{display:none/.test(css.replace(/\s/g,'')));
-ok('SW unverändert v8-198, genau einmal', /const C = 'orvia-v8-219'/.test(sw)&&(sw.match(/orvia-v8-\d+/g)||[]).length===1);
+ok('SW-Version genau einmal definiert und nicht zurueckgedreht (>= v8-219)',
+   (function(){var m=sw.match(/const C = 'orvia-v8-(\d+)'/);
+    return !!m && parseInt(m[1],10) >= 219 && (sw.match(/orvia-v8-\d+/g)||[]).length===1;})(),
+   /* Vorher war die Versionsnummer als Literal verdrahtet. Jeder Release-Bump brach
+      dadurch zehn Tests auf einmal, ohne dass ein echter Vertrag verletzt war. Der
+      Vertrag ist: GENAU EINE Version im sw.js (keine Altreferenz) und kein Rueckschritt.
+      Muster uebernommen aus profile_editor_bugfix_test.mjs, das es bereits so macht. */);
 ok('keine UI-Variantenberechnung/Planmutation im Block', !/generateWeekPlan|savePlanEdit|PROFILE\.weekPlan=|saveProfile\(/.test(blk));
 ok('keine Demo-Zahlen (86/79\\/100/1:52/19\\/34)', !/Gesamt 79|86,|'19\/34'|1:5[24]/.test(blk));
 ok('kein Tagebuch/week-days im Block (plan-hero nur in der Session-Vollseite)', !/tb-strip|week-days|Tagebuch/.test(blk));
@@ -54,6 +62,12 @@ if(blk){
     effectiveKmTarget:(cal,l3)=>33};
   globalThis.weekRunKm=off=>({0:19.4,1:27,2:30}[off]!==undefined?{0:19.4,1:27,2:30}[off]:null);
   globalThis.planEntryClick=()=>{};
+  /* Planvarianten (2026-08-04): unitPriority ist eine produktive Funktion AUSSERHALB
+     des GM2-Blocks (ui.js) — hier als Fixture am selben Vertrag nachgestellt, exakt
+     wie planQualityChecks/activeWeekPlan weiter oben. Fixture-Woche: s1 Intervalle
+     (Kern A), s2 Gym (Aufbau B), s3 Long Run (Kern A). localStorage fehlt bewusst —
+     die Auswahl muss dann fail-safe auf Variante A stehen. */
+  globalThis.unitPriority=it=>it.t==='Laufen'?'A':it.t==='Gym'?'B':'C';
   let evalOk=true,err='';
   try{(0,eval)(blk);}catch(e){evalOk=false;err=String(e);}
   ok('Block evaluiert mit Fixtures', evalOk, err);
@@ -66,8 +80,25 @@ if(blk){
     ok('F: exakte GM-Sektionsfolge', seq(out.fortgeschritten).join('|')===F.join('|'), seq(out.fortgeschritten).join('|'));
     ok('P: identisch zu F', seq(out.profi).join('|')===F.join('|'));
     ok('A: Prognose/Phasen/Wochen-km ausgeblendet wie im GM', seq(out.anfaenger).join('|')===A.join('|'), seq(out.anfaenger).join('|'));
-    ok('pvar A/B/C, B ausgewählt, keine aktivierten A/C-Inhalte', (out.fortgeschritten.match(/<button class="pvar/g)||[]).length===3&&/pvar on"[^>]*><b>B<\/b>|class="pvar on"/.test(out.fortgeschritten)&&/gmOpenVariantSheet/.test(out.fortgeschritten));
-    ok('Variantenkarte: 4 KPI-Zellen mit —', (out.fortgeschritten.match(/class="wp"/g)||[]).length===4&&/ZEITBEDARF/.test(out.fortgeschritten)&&(out.fortgeschritten.match(/<b>—<\/b>/g)||[]).length>=4);
+    /* AKTUALISIERT (2026-08-04, Produktentscheidung — analog KF-018): Die alten
+       Assertions verlangten den ATTRAPPEN-Zustand (B fest „ausgewählt" + „Empfohlen"
+       ohne Funktion, 4 Zellen hart „—"). Neuer Vertrag: A/B/C sind echte, waehlbare
+       Teilmengen des realen Plans; Standard ist A (Optimal); die Zellen zeigen echte
+       Zahlen aus dem Fixture-Plan (A: 3 Einheiten, 3 Trainingstage, 2 Kernreize,
+       4 Ruhetage); keine Zeit-/Belastungsprognose (ZEITBEDARF/BELASTUNG entfernt). */
+    ok('pvar A/B/C waehlbar, Standard A, echte Zaehler, Sheet erreichbar',
+       (out.fortgeschritten.match(/<button class="pvar/g)||[]).length===3
+       &&/class="pvar on"[^>]*gmSetPlanVariant\('A'\)/.test(out.fortgeschritten)
+       &&(out.fortgeschritten.match(/gmSetPlanVariant\('/g)||[]).length===3
+       &&/gmOpenVariantSheet/.test(out.fortgeschritten));
+    ok('Variantenkarte: echte Zellen EINHEITEN/TRAININGSTAGE/KERNREIZE/RUHETAGE, kein Schein-Zustand',
+       (out.fortgeschritten.match(/class="wp"/g)||[]).length===4
+       &&/<b>3<\/b><span>EINHEITEN/.test(out.fortgeschritten)
+       &&/<b>3<\/b><span>TRAININGSTAGE/.test(out.fortgeschritten)
+       &&/<b>2<\/b><span>KERNREIZE/.test(out.fortgeschritten)
+       &&/<b>4<\/b><span>RUHETAGE/.test(out.fortgeschritten)
+       &&!/ZEITBEDARF|BELASTUNG<|Empfohlen/.test(out.fortgeschritten)
+       &&/Variante A · Optimal/.test(out.fortgeschritten));
     ok('Wochenliste: exakt Fixture-Sessions in Reihenfolge + Ruhetage', (()=>{const s=[...out.fortgeschritten.matchAll(/data-sid="([^"]*)"/g)].map(x=>x[1]);return s.join(',')==='s1,s2,s3'&&(out.fortgeschritten.match(/session-card rest/g)||[]).length===4;})());
     ok('Completed nur aus Resolver (s1 Erledigt), sonst neutral —', /data-sid="s1"[\s\S]{0,400}?Erledigt/.test(out.fortgeschritten)&&!/data-sid="s2"[\s\S]{0,400}?Erledigt/.test(out.fortgeschritten.split('data-sid="s3"')[0].split('data-sid="s2"')[1]||''));
     ok('keine Kern/Geschützt/Flexibel-Ableitung', !/Kern<|Geschützt|Flexibel/.test(out.fortgeschritten));

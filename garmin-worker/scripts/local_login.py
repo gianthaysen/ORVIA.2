@@ -39,26 +39,55 @@ def main() -> None:
     if not email or not password:
         _fail("E-Mail und Passwort sind erforderlich.")
 
-    # Versionskontrolle: der Worker läuft mit garminconnect 0.3.2. Nur diese
-    # Version erzeugt ein Token, das der Worker unverändert laden kann.
+    # Versionskontrolle (gelockert 2026-08-03).
+    #
+    # Vorher war exakt 0.3.2 erzwungen. Begruendung damals: "Nur diese Version
+    # erzeugt ein Token, das der Worker unveraendert laden kann." Das ist eine
+    # Vorsichtsmassnahme, keine nachgewiesene Inkompatibilitaet — der Token
+    # stammt aus garth (garmin.client.dumps()), dessen Format ueber die
+    # 0.3.x-Reihe stabil ist. Gekoppelt ist nur die Rueckgabeform von login().
+    #
+    # Notwendig wurde die Lockerung, weil Garmin seit Maerz 2026 Cloudflare vor
+    # den SSO-Login gesetzt hat und den mobilen Pfad IP-unabhaengig mit 429
+    # blockt. Der Widget-Pfad umgeht das, ist in 0.3.2 aber gegen die aktuelle
+    # Garmin-Seite kaputt ("unexpected title"). 0.3.6 bringt die mehrstufige
+    # Strategie mit.
+    #
+    # WICHTIG: Laedt der Worker (0.3.2) den erzeugten Token nicht, muss dort
+    # ebenfalls auf 0.3.6 gehoben und neu deployt werden.
+    SUPPORTED = ("0.3.2", "0.3.6")
     try:
         from importlib.metadata import version as _pkg_version
         ver = _pkg_version("garminconnect")
     except Exception:
         ver = "unbekannt"
+    if ver not in SUPPORTED:
+        _fail(f"Nicht unterstuetzte garminconnect-Version ({ver}). "
+              f"Getestet: {' oder '.join(SUPPORTED)}. Installieren mit:\n"
+              "  pip install 'garminconnect==0.3.6'")
     if ver != "0.3.2":
-        _fail(f"Falsche garminconnect-Version installiert ({ver}). Der Worker "
-              "braucht 0.3.2. Bitte ausführen:\n"
-              "  pip3 install --user 'garminconnect==0.3.2'\n"
-              "und das Skript erneut starten.")
+        print(f"Hinweis: Anmeldung laeuft mit garminconnect {ver}, "
+              "der Worker nutzt 0.3.2. Sollte der Worker den Token ablehnen, "
+              "dort ebenfalls auf {ver} heben und neu deployen.")
 
     print("Melde bei Garmin an … (kann 15–60 s dauern)")
     try:
         garmin = Garmin(email=email, password=password, return_on_mfa=True)
         result = garmin.login()
     except Exception as e:  # keine Payloads/Credentials ausgeben
-        _fail(f"Garmin-Login fehlgeschlagen ({type(e).__name__}). "
-              "Zugangsdaten auf connect.garmin.com prüfen.")
+        # Frueher stand hier pauschal "Zugangsdaten pruefen". Das ist bei einem
+        # 429 oder einem Titel-Mismatch schlicht falsch und schickt in die
+        # falsche Richtung. Jetzt nach Ursache getrennt.
+        msg = str(e)
+        if "429" in msg or "rate limit" in msg.lower():
+            _fail("Garmin blockt die Anmeldung derzeit (429). Das ist KEIN Problem "
+                  "mit deinen Zugangsdaten: Garmin blockt programmatische Logins "
+                  "seit Maerz 2026 IP-unabhaengig ueber Cloudflare. Spaeter erneut "
+                  "versuchen; wiederholte Versuche verlaengern die Sperre.")
+        if "title" in msg.lower():
+            _fail(f"Der Login-Pfad kennt die aktuelle Garmin-Seite nicht ({msg}). "
+                  "Neuere garminconnect-Version noetig, nicht andere Zugangsdaten.")
+        _fail(f"Garmin-Login fehlgeschlagen ({type(e).__name__}: {msg}).")
 
     # login() gibt bei 0.3.2 (mfa_status, client_state) zurück.
     status = result[0] if isinstance(result, tuple) else None

@@ -27,11 +27,13 @@ import fs from 'fs';
 let pass = 0, fail = 0;
 const ok  = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 66 - t.length)));
-const R   = p => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+/* Zwei Checkout-Layouts (Cloud: ../../, Geraet: App unter ../../../app/). */
+const APPPFX = fs.existsSync(new URL('../../index.html', import.meta.url)) ? '../../' : '../../../app/';
+const R   = p => fs.readFileSync(new URL(p.replace(/^\.\.\/\.\.\/(js\/|styles\.css|index\.html|sw\.js)/, APPPFX + '$1'), import.meta.url), 'utf8');
 
-const uiSrc = R('../../../app/js/ui.js');
-const html  = R('../../../app/index.html');
-const css   = R('../../../app/styles.css');
+const uiSrc = R('../../js/ui.js');
+const html  = R('../../index.html');
+const css   = R('../../styles.css');
 const uiL   = uiSrc.split('\n');
 
 /* ---- Produktionsslice-Extraktion (liest, veraendert nichts) -------------- */
@@ -578,7 +580,9 @@ const _pw = await (async () => {
   catch (_) { return await import('/tmp/node_modules/playwright/index.js'); }
 })();
 const chromium = _pw.chromium || (_pw.default && _pw.default.chromium);
-const HARNESS = 'file:///tmp/gm6h.html';
+/* KF-013-Nachtrag (2026-08-04): Harness repo-intern erzeugt statt /tmp. */
+const { buildHarness } = await import(new URL('../../tools/build_gm6_harness.mjs', import.meta.url));
+const HARNESS = 'file://' + buildHarness();
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 try {

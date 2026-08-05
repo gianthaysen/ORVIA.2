@@ -22,11 +22,15 @@ const chromium = _pw.chromium || (_pw.default && _pw.default.chromium);
 
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
-const R  = p => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+/* Zwei Checkout-Layouts: Cloud (App-Dateien unter ../../) und Geraet
+   (Dev-Material in _dev/, App unter ../../../app/). docs/ und tools/ liegen in
+   BEIDEN Layouts unter ../../ — nur js/styles/index/sw werden umgeleitet. */
+const APPPFX = fs.existsSync(new URL('../../index.html', import.meta.url)) ? '../../' : '../../../app/';
+const R  = p => fs.readFileSync(new URL(p.replace(/^\.\.\/\.\.\/(js\/|styles\.css|index\.html|sw\.js)/, APPPFX + '$1'), import.meta.url), 'utf8');
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 66 - t.length)));
 
-const ui  = R('../../../app/js/ui.js');
-const css = R('../../../app/styles.css');
+const ui  = R('../../js/ui.js');
+const css = R('../../styles.css');
 const SPEC = JSON.parse(R('../../docs/gm-ref/gm6/gm6_gm_domspec.json'));
 
 const GM1 = (() => { const a = ui.indexOf('/* ====== GM1:'), b = ui.indexOf('/* ====== GM1-ENDE'); return (a >= 0 && b > a) ? ui.slice(a, b) : ''; })();
@@ -178,8 +182,12 @@ ok('keine neue fachliche Bewertung im UI (kein Score-/ACWR-Nachrechnen)',
 /* ══════════════════════════════════════════════════════════════════════════
    TEIL B · Verhaltensverträge im Harness
    ══════════════════════════════════════════════════════════════════════════ */
-const HARNESS = '/tmp/gm6h.html';
-if (!fs.existsSync(HARNESS)) { console.log('\n❌ Harness fehlt: ' + HARNESS + ' (node /tmp/gm6_build.mjs)'); process.exit(1); }
+/* KF-013-Nachtrag (2026-08-04): Der Harness wird REPO-INTERN erzeugt
+   (tools/build_gm6_harness.mjs ersetzt den verlorenen /tmp/gm6_build.mjs) —
+   deterministisch bei jedem Lauf, keine /tmp-Abhaengigkeit mehr. */
+const { buildHarness } = await import(new URL('../../tools/build_gm6_harness.mjs', import.meta.url));
+const HARNESS = buildHarness();
+if (!fs.existsSync(HARNESS)) { console.log('\n❌ Harness konnte nicht erzeugt werden: ' + HARNESS); process.exit(1); }
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const consoleErrs = [];
@@ -702,7 +710,23 @@ for (const vw of [430, 390]) {
       await setState(st, lvl);
       const over = await evA(w => {
         const out = [];
-        document.querySelectorAll('#tab-heute *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width > 0 && (r.right > w + 0.6 || r.left < -0.6)) out.push(e.className || e.tagName); });
+        document.querySelectorAll('#tab-heute *').forEach(e => {
+          /* AKTUALISIERT (2026-08-04): rein dekorative, nicht bedienbare Elemente
+             (pointer-events:none + aria-hidden), die von einem overflow-clipping-
+             Vorfahren beschnitten werden (GM7-.hero-aura im .hero mit
+             overflow:hidden), erzeugen weder Scroll noch Bedienprobleme — der
+             Rect-Check meldete sie faelschlich. Der eigentliche Vertrag (kein
+             horizontales Scrollen) wird direkt darunter GLOBAL geprueft. */
+          const cs = getComputedStyle(e);
+          if (cs.pointerEvents === 'none' && e.getAttribute('aria-hidden') === 'true') {
+            for (let p = e.parentElement; p; p = p.parentElement) {
+              const o = getComputedStyle(p).overflow;
+              if (o === 'hidden' || o === 'clip') return;
+            }
+          }
+          const r = e.getBoundingClientRect(); if (r.width > 0 && (r.right > w + 0.6 || r.left < -0.6)) out.push(e.className || e.tagName);
+        });
+        if (document.documentElement.scrollWidth > w + 0.6) out.push('SCROLLBREITE:' + document.documentElement.scrollWidth);
         return out.slice(0, 4);
       }, vw);
       ok(`${vw} ${st}/${lvl}: kein horizontaler Überlauf`, over.length === 0, over.join(' | '));
@@ -729,7 +753,10 @@ sec('B15 · Shell-Invarianz');
 for (const st of Object.keys(TOGM)) {
   await setState(st, 'f');
   const shell = await ev(() => ({
-    tabs: document.querySelectorAll('.tabbar .tabwrap > *').length,
+    /* AKTUALISIERT (2026-08-04): gezaehlt werden die TABS (button[data-tab]) —
+       der spaeter hinzugekommene dekorative Gleit-Indikator (span.glass-indicator)
+       ist kein Tab und kein Bedienelement. Der Vertrag bleibt: 5 Tabs. */
+    tabs: document.querySelectorAll('.tabbar .tabwrap > button[data-tab]').length,
     tabbar: getComputedStyle(document.querySelector('.tabbar')).display,
     fab: getComputedStyle(document.getElementById('navPlus')).display,
     hdr: document.querySelectorAll('#tab-heute > .hdr').length

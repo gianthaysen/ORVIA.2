@@ -2,11 +2,13 @@
 /* GM7 · format_utils_test.mjs — reine Helfer (Datum/relative Zeit/Zustandsmodell).
    Enthält die Regressionstests für den „2953 Wo"-Fehler (new Date(null) → 1970)
    und für die Täuschungsklasse „— gilt als echter Wert". */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const APP = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'app');
+/* Zwei Checkout-Layouts: Cloud (App unter ../../) und Geraet (App unter ../../../app). */
+const _flat = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const APP = existsSync(join(_flat, 'index.html')) ? _flat : join(_flat, '..', 'app');
 const src = readFileSync(join(APP, 'js', 'format-utils.js'), 'utf8');
 const g = {}; new Function('window', 'globalThis', src)(g, g);
 const F = g.ORVIA.fmt;
@@ -72,6 +74,21 @@ ok("REGRESSION: '—' ist nie gleichwertig mit einem ready-Wert",
 ok('Mo 2026-07-27 → selbe Woche', F.mondayKey('2026-07-27') === '2026-07-27');
 ok('So 2026-07-26 → Montag 2026-07-20', F.mondayKey('2026-07-26') === '2026-07-20');
 ok('ungültig → null', F.mondayKey('x') === null);
+
+/* --- dayLabel (Phase 4 · P2-4): EIN Tages-Label-Formatierer, todayKey injizierbar ---
+   Referenz-„heute": Mi 2026-08-05 (Woche Mo 03.08.–So 09.08.). */
+const T = '2026-08-05';
+ok('dayLabel: heute', F.dayLabel('2026-08-05', T) === 'Heute');
+ok('dayLabel: gestern', F.dayLabel('2026-08-04', T) === 'Gestern');
+ok('dayLabel: morgen', F.dayLabel('2026-08-06', T) === 'Morgen');
+ok('dayLabel: laufende Woche → Wochentagsname (Mo 03.08.)', F.dayLabel('2026-08-03', T) === 'Montag');
+ok('dayLabel: laufende Woche → Wochentagsname (So 09.08.)', F.dayLabel('2026-08-09', T) === 'Sonntag');
+ok('dayLabel: Vorwoche (So 02.08.) → null (Aufrufer zeigt absolut)', F.dayLabel('2026-08-02', T) === null);
+ok('dayLabel: Folgewoche (Mo 10.08.) → null', F.dayLabel('2026-08-10', T) === null);
+ok('dayLabel: weit entfernt → null', F.dayLabel('2026-01-01', T) === null);
+ok('dayLabel: ungültiger Key → null (nie 1970-Arithmetik)', F.dayLabel(null, T) === null && F.dayLabel('2026-08-05', '') === null);
+/* Negativkontrolle: 'Gestern' ueber die Wochengrenze — So ist 'Gestern', obwohl Vorwoche */
+ok('dayLabel: So 2026-08-02 von Mo 2026-08-03 aus → Gestern (Relation schlägt Woche)', F.dayLabel('2026-08-02', '2026-08-03') === 'Gestern');
 
 console.log(`\nformat_utils_test: ${n - fail}/${n} bestanden`);
 process.exit(fail ? 1 : 0);
