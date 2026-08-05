@@ -47,13 +47,76 @@
 
   // ---- Kompakte Vorschau auf „Heute" (KEINE separate Live-Workout-Karte mehr) ----
   O.workoutUI = {};
-  function openTrainingTab() { try { const b = document.querySelector('.tabbar button[data-tab="training"]'); if (b) b.click(); } catch (e) {} }
+  /* ==========================================================================
+     Phase 1 · KF-001/KF-002 — Einstieg „Training starten".
+
+     Vorher suchte diese Funktion `.tabbar button[data-tab="training"]`. Diesen
+     Button gibt es in index.html NICHT (die Tabbar fuehrt heute/plan/akt/dash/
+     mehr). Der Handler lief also ins Leere, lieferte undefined, und
+     runAction meldete trotzdem Erfolg — der Hero-CTA und die wichtigste
+     Quick-Action taten nichts, ohne Fehler, ohne Toast.
+
+     Kanonischer Einstieg ist jetzt das GM-Start-Sheet (gmOpenStartSheet,
+     js/ui.js). Der Legacy-Tab bleibt als erster Zweig erhalten, falls er in
+     einer aelteren Fassung doch existiert.
+
+     E-14: Kernaktionen melden ihren FACHLICHEN Endzustand, nicht nur, ob ein
+     Handler aufgeloest werden konnte.
+     ========================================================================== */
+  function openTrainingTab() {
+    try {
+      const b = document.querySelector('.tabbar button[data-tab="training"]');
+      if (b) { b.click(); return { ok: true, outcome: 'training_tab_opened' }; }
+    } catch (e) {}
+    try {
+      const g = (typeof window !== 'undefined') ? window.gmOpenStartSheet : null;
+      if (typeof g === 'function') {
+        g();
+        const sh = document.getElementById('detailSheet');
+        const open = !!(sh && sh.classList.contains('on'));
+        return open ? { ok: true, outcome: 'start_sheet_opened' }
+                    : { ok: false, reason: 'start_sheet_did_not_open' };
+      }
+    } catch (e) {
+      return { ok: false, reason: 'start_sheet_threw' };
+    }
+    return { ok: false, reason: 'no_training_entry_point' };
+  }
   O.workoutUI.openTrainingTab = openTrainingTab;
-  // Entscheidet je nach Zustand: aktiv → Overlay direkt; sonst Training-Tab (Schnellstart/geplant).
+
+  /* Phase 1 · KF-003 — Wiedereinstieg in ein LAUFENDES Workout.
+
+     Vorher zeigte die Aktion „Training fortsetzen" auf denselben (toten)
+     Entry-Point wie „Training starten". Wer das Live-Overlay schloss, hatte
+     keinen sichtbaren Weg zurueck: alle Wiedereinstiege lagen in
+     #todaySummary (styles.css, display:none) und im Tab #tab-training
+     (kein Tabbar-Button).
+
+     Bewusst SYNCHRON: die Aktion erscheint nur, wenn buildContext()
+     activeWorkout meldet (quick-actions.js) — und das liest denselben
+     In-Memory-Store. Eine aktive Session liegt an dieser Stelle also bereits
+     vor; ein await wuerde den fachlichen Endzustand nur unpruefbar machen.
+     Fuer den nicht-hydrierten Fall gibt es weiterhin openFromToday(). */
+  O.workoutUI.resumeActiveSync = function () {
+    let s = null;
+    try { s = st().session; } catch (e) {}
+    if (!(s && s.status === 'active')) {
+      try { ensureActiveWorkoutLoaded(); } catch (e) {}   // Hydrierung anstossen, nicht abwarten
+      return { ok: false, reason: 'no_active_workout' };
+    }
+    try { O.workoutUI.open(); } catch (e) { return { ok: false, reason: 'open_threw' }; }
+    const ov = document.getElementById('workoutOverlay');
+    if (!ov) return { ok: false, reason: 'overlay_missing' };
+    return ov.classList.contains('hide')
+      ? { ok: false, reason: 'overlay_stayed_hidden' }
+      : { ok: true, outcome: 'workout_overlay_opened' };
+  };
+
+  // Entscheidet je nach Zustand: aktiv → Overlay direkt; sonst Start-Sheet.
   O.workoutUI.openFromToday = async function () {
     const res = await O.workoutUI.ensureActiveWorkoutLoaded();
-    if (res.active) { O.workoutUI.open(); return; }
-    openTrainingTab();
+    if (res.active) return O.workoutUI.resumeActiveSync();
+    return openTrainingTab();
   };
   function overlayFlagKey() { return 'orvia_wo_overlay_' + ((O.user && O.user.id) || 'x'); }
 
@@ -91,6 +154,7 @@
   }
   // Heute-Seite: EINE kompakte Tageszusammenfassung + genau zwei Wege (Starten / Erfassen).
   O.workoutUI.renderEntry = function () {
+    try { O.workoutUI.renderResumeBanner && O.workoutUI.renderResumeBanner(); } catch (e) {}
     const host = document.getElementById('todaySummary'); if (!host) return;
     const s = st().session; const active = s && s.status === 'active';
     const logged = todaysLogged();
@@ -106,6 +170,45 @@
   };
   // „Training erfassen" → Aktivität-Tab (manuell eintragen / importieren) — derselbe Datenfluss.
   O.workoutUI.openCapture = function () { try { showTab('akt'); } catch (e) {} };
+
+  /* P0 2026-08-05: Sichtbarer Wiedereinstieg auf dem Heute-Tab (#resumeBanner).
+     Vorher war der einzige Fortsetzen-Einstieg der versteckte Legacy-Host
+     #todaySummary — nach App-Neustart musste man Training → Krafttraining
+     antippen, um das im Hintergrund laufende Workout wiederzufinden.
+     Der Banner erscheint NUR bei aktiver/pausierter Session (sonst leer,
+     keine Strukturaenderung im Normalzustand). */
+  O.workoutUI.renderResumeBanner = function () {
+    const host = document.getElementById('resumeBanner'); if (!host) return;
+    const s = st().session;
+    const activeish = s && (s.status === 'active' || s.status === 'paused');
+    if (!activeish) { if (host.innerHTML) host.innerHTML = ''; return; }
+    const mins = hubMinutes(s);
+    const paused = !!s.paused_at;
+    const retro = !!st().retroPaused;
+    const sub = retro
+      ? 'Pausiert seit deiner letzten Aktion — die Wartezeit zählt nicht als Trainingszeit.'
+      : (paused ? 'Pausiert · bisher ' + mins + ' min trainiert' : 'Läuft · ' + mins + ' min');
+    host.innerHTML = '<div class="card resume-banner" role="button" tabindex="0" ' +
+      'onclick="ORVIA.workoutUI.resumeActiveSync()" onkeydown="if(event.key===\'Enter\')ORVIA.workoutUI.resumeActiveSync()">' +
+      '<span class="rb-ic"><svg class="ic"><use href="#i-dumbbell"/></svg></span>' +
+      '<span class="rb-b"><b>' + esc(s.sport || 'Training') + ' läuft noch</b><span>' + esc(sub) + '</span></span>' +
+      '<span class="rb-cta">Fortsetzen</span></div>';
+  };
+  /* Boot-Hydrierung: aktives Workout beim App-Start laden und den Einstieg zeigen —
+     nicht erst, wenn der Nutzer zufaellig den Training-Tab oeffnet. */
+  try {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          ensureActiveWorkoutLoaded().then(function () {
+            try { O.workoutUI.renderResumeBanner(); } catch (e) {}
+            try { O.workoutUI.renderEntry(); } catch (e) {}
+          });
+        }, 900);
+      });
+      window.addEventListener('orvia:activity-updated', function () { try { O.workoutUI.renderResumeBanner(); } catch (e) {} });
+    }
+  } catch (e) {}
 
   // ---- Zentraler Trainings-Hub (Tab „Training") ----
   // Single-Flight-Hydrierung: lokaler Store ⇄ Supabase werden zusammengeführt, KEINE parallelen Restores.

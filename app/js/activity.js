@@ -409,20 +409,15 @@ function activityDetailViewModel(a) {
        aus splitSummaries/laps, das Frontend hat sie bisher NIE gelesen; Splits kamen nur
        aus dem Legacy-Blob). Defensive Normalisierung auf {km, sec, hr}: ausschliesslich
        echte Felder des Rohobjekts, keine Interpolation, keine erfundene Runde. */
+    /* KF-021: die Normalisierung liegt jetzt EINMAL in js/run-bests.js, weil die
+       Bestzeiten dieselben Runden lesen muessen. Zwei Kopien derselben Regel
+       waeren zwei Wahrheiten. Die >=2-Schwelle bleibt hier lokal: die
+       Detailansicht zeigt erst ab zwei Runden eine sinnvolle Rundentabelle,
+       die Bestzeiten dagegen werten auch eine einzelne Runde aus. */
     canonicalSplits: (function () {
-      var raw = a.metrics && a.metrics.splits;
-      if (!Array.isArray(raw) || !raw.length) return null;
-      var num = function (v) { return (typeof v === 'number' && isFinite(v)) ? v : null; };
-      var out = [];
-      raw.forEach(function (r) {
-        if (!r || typeof r !== 'object') return;
-        var distM = num(r.distance) != null ? num(r.distance) : num(r.distanceInMeters);
-        var sec = num(r.duration) != null ? num(r.duration) : (num(r.elapsedDuration) != null ? num(r.elapsedDuration) : num(r.movingDuration));
-        if (distM == null || sec == null || sec <= 0) return;
-        out.push({ km: Math.round(distM / 1000 * 100) / 100, sec: Math.round(sec),
-          hr: num(r.averageHR) != null ? Math.round(num(r.averageHR)) : (num(r.avgHr) != null ? Math.round(num(r.avgHr)) : null) });
-      });
-      return out.length >= 2 ? out : null;
+      var rb = window.ORVIA && ORVIA.runBests;
+      var out = (rb && rb.normalizeSplits) ? rb.normalizeSplits(a.metrics && a.metrics.splits) : null;
+      return (out && out.length >= 2) ? out : null;
     })()
   };
   ['title', 'distanceLabel', 'paceLabel', 'elevationM', 'avgHr', 'maxHr', 'caloriesKcal'].forEach(function (k) { vm.missing[k] = (vm[k] == null || vm[k] === ''); });

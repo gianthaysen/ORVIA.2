@@ -96,6 +96,24 @@
     };
   };
 
+  /* Phase 4 (2026-08-05, P2-4): EIN Tages-Label-Formatierer statt drei divergenter
+     Ad-hoc-Loesungen. Liefert 'Heute'/'Gestern'/'Morgen', innerhalb der LAUFENDEN
+     Woche (Mo–So, deutsche Wochenlogik via mondayKey) den Wochentagsnamen — sonst
+     null: der Aufrufer faellt auf sein absolutes Datumsformat zurueck.
+     todayKey ist injizierbar (Node-Tests ohne Systemuhr-Kopplung). */
+  F.dayLabel = function (key, todayKey) {
+    if (!F.isValidDateInput(key) || !F.isValidDateInput(todayKey)) return null;
+    var diff = F.daysBetween(todayKey, key);   /* >0 = Zukunft */
+    if (diff === 0) return 'Heute';
+    if (diff === -1) return 'Gestern';
+    if (diff === 1) return 'Morgen';
+    if (F.mondayKey(key) != null && F.mondayKey(key) === F.mondayKey(todayKey)) {
+      try { return new Date(String(key).slice(0, 10) + 'T12:00').toLocaleDateString('de-DE', { weekday: 'long' }); }
+      catch (e) { return null; }
+    }
+    return null;
+  };
+
   /* Wochenstart (Montag) als ISO-Key für ein Datum/Key — deutsche Wochenlogik. */
   F.mondayKey = function (key) {
     if (!F.isValidDateInput(key)) return null;

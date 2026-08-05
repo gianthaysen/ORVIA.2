@@ -409,14 +409,50 @@
       var waited = 0;
       (function poll() {
         var r = gymDataReadiness();
-        if (r.localStoreReady && (r.authReady || waited >= 3000) || waited >= maxMs) { r.timedOut = waited >= maxMs; resolve(r); return; }
+        /* Phase 4 (2026-08-05): timedOut heisst „aufgegeben OHNE erreichte Bereitschaft" —
+           nicht „das Warten hat maxMs erreicht". Vorher wurde eine im letzten Poll doch
+           noch bereite Datenlage als timedOut klassifiziert und der Report faelschlich
+           auf data_unavailable gekippt, obwohl lokale Daten vorhanden waren. */
+        var authGraceMs = Math.min(3000, maxMs);   /* Auth-Wartefrist nie laenger als das Gesamtbudget */
+        var ready = r.localStoreReady && (r.authReady || waited >= authGraceMs);
+        if (ready || waited >= maxMs) { r.timedOut = !ready; resolve(r); return; }
         waited += step; setTimeout(poll, step);
       })();
     });
   }
 
   // Asynchrone Quellensammlung: Server-Repo (bei refresh) + Workout-Detail-Nachladen für Server-Gym ohne Snapshot.
+  /* Phase 4 (2026-08-05, Perf): Kurzzeit-Cache. renderMuscleVolume() (Dashboard) und
+     gmAnaBodyModel() (Analyse-Koerperkarte) verdrahten beide refresh:true — vorher lief
+     die volle Server-Quellensammlung bei JEDEM Tab-Wechsel erneut. Der Cache haelt das
+     Pipeline-Ergebnis 60 s bzw. bis ein Workout gespeichert/geaendert wird
+     (orvia:activity-updated → Invalidierung). Jeder Aufrufer erhaelt eine eigene
+     diagnostics-Kopie (buildShadowReport mutiert sie nachtraeglich). */
+  var _gymPipeCache = null;                       // { key, at, promise }
+  var GYM_PIPE_TTL_MS = 60000;
+  function invalidateGymPipelineCache() { _gymPipeCache = null; }
+  try { if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('orvia:activity-updated', invalidateGymPipelineCache); } catch (e) {}
   async function gymPipelineAsync(opts) {
+    opts = opts || {};
+    /* Nur der teure refresh-Pfad (Server-Round-Trips) wird gecacht. Ohne refresh liest
+       die Pipeline rein lokal/synchron — Cachen braechte nichts und wuerde Aenderungen
+       am Store verschleiern (z. B. in Umgebungen ohne window/Event-Invalidierung). */
+    if (!opts.refresh || opts.force) {
+      var direct = await _gymPipelineFetch(opts);
+      return { snapshots: direct.snapshots, diagnostics: Object.assign({}, direct.diagnostics) };
+    }
+    var key = (opts.days || 28) + '|refresh';
+    if (_gymPipeCache && _gymPipeCache.key === key && (Date.now() - _gymPipeCache.at) < GYM_PIPE_TTL_MS) {
+      var cached = await _gymPipeCache.promise;
+      return { snapshots: cached.snapshots, diagnostics: Object.assign({ fromCache: true }, cached.diagnostics) };
+    }
+    var p = _gymPipelineFetch(opts);
+    _gymPipeCache = { key: key, at: Date.now(), promise: p };
+    p.catch(function () { if (_gymPipeCache && _gymPipeCache.promise === p) _gymPipeCache = null; });
+    var pipe = await p;
+    return { snapshots: pipe.snapshots, diagnostics: Object.assign({}, pipe.diagnostics) };
+  }
+  async function _gymPipelineFetch(opts) {
     opts = opts || {}; var days = opts.days || 28; var calls = [];
     // PERF-INSTRUMENTIERUNG (Audit 2026-07-15): dieser Pfad ist Hauptverdächtiger für die
     // gemeldeten 5-10s-Navigationsverzögerungen (Dashboard/Insights-Tab, refresh:true).
@@ -441,21 +477,26 @@
     if (opts.refresh && O.repos && O.repos.workout && O.repos.workout.loadWorkoutTree) {
       var need = server.filter(function (a) { return isGymSport(a) && a.workoutSessionId && !exercisesOf(a); });
       var loadedIds = {}; var detailFails = 0;
+      var uniqueIds = [];
+      need.forEach(function (a) { var sid = a.workoutSessionId; if (!loadedIds[sid]) { loadedIds[sid] = true; uniqueIds.push(sid); } });
       var _tLoop = P.now();
-      for (var i = 0; i < need.length; i++) {
-        var sid = need[i].workoutSessionId; if (loadedIds[sid]) continue; loadedIds[sid] = true;
-        try {
-          var tr = await O.repos.workout.loadWorkoutTree(sid);
-          if (tr && tr.success && tr.data && tr.data.session) {
-            var exs = (tr.data.exercises || []).map(function (ex) { return { exerciseNameSnapshot: (ex.exercise && ex.exercise.name) || null, sets: (ex.sets || []) }; });
-            workoutSessions.push({ source: 'workout_session', sportId: 'gym', status: 'completed', startedAt: tr.data.session.started_at || tr.data.session.local_date, workoutSessionId: sid, exercises: exs });
-          } else detailFails++;
-        } catch (e) { detailFails++; }
-      }
-      // SUSPECTED ROOT CAUSE: sequentielle await-Schleife, EINE Round-Trip PRO fehlendem
-      // Snapshot, nicht parallelisiert (kein Promise.all). Läuft bei jedem Dashboard-Öffnen
-      // (refresh:true ist in ui.js renderMuscleVolume() hart verdrahtet, kein Cache).
-      P.mark('gymPipelineAsync: sequential loadWorkoutTree loop (' + need.length + ' round-trips, NOT parallelized)', _tLoop);
+      /* Phase 4 (2026-08-05, Perf): vorher EINE sequentielle await-Round-Trip PRO fehlendem
+         Snapshot — im Code selbst als Ursache der 5–10 s-Verzoegerung markiert. Jetzt
+         Promise.all: Wall-Clock = langsamster Einzelabruf statt Summe aller Abrufe.
+         Fehler je Abruf bleiben einzeln gezaehlt (WORKOUT_DETAILS_FAILED wie zuvor). */
+      var loaded = await Promise.all(uniqueIds.map(function (sid) {
+        return O.repos.workout.loadWorkoutTree(sid)
+          .then(function (tr) { return { sid: sid, tr: tr }; })
+          .catch(function () { return { sid: sid, tr: null }; });
+      }));
+      loaded.forEach(function (r) {
+        var tr = r.tr;
+        if (tr && tr.success && tr.data && tr.data.session) {
+          var exs = (tr.data.exercises || []).map(function (ex) { return { exerciseNameSnapshot: (ex.exercise && ex.exercise.name) || null, sets: (ex.sets || []) }; });
+          workoutSessions.push({ source: 'workout_session', sportId: 'gym', status: 'completed', startedAt: tr.data.session.started_at || tr.data.session.local_date, workoutSessionId: r.sid, exercises: exs });
+        } else detailFails++;
+      });
+      P.mark('gymPipelineAsync: parallel loadWorkoutTree (' + uniqueIds.length + ' round-trips via Promise.all)', _tLoop);
       call('workoutRepository.loadWorkoutTree', need.length > 0, detailFails === 0, workoutSessions.length, detailFails ? 'WORKOUT_DETAILS_FAILED' : null);
     }
     var pipe = gymPipeline({ days: days, serverActivities: server, legacyActivities: legacy, workoutSessions: workoutSessions });
@@ -598,10 +639,22 @@
     var exclusionsByReason = {}; res.exclusions.forEach(function (e) { exclusionsByReason[e.reason] = (exclusionsByReason[e.reason] || 0) + 1; });
     var dg = pipe.diagnostics;
     var anyRaw = (dg.rawLocalActivityCount + dg.rawServerActivityCount + dg.rawWorkoutSessionCount + dg.rawLegacySessionCount) > 0;
-    var anyFail = (dg.sourceCalls || []).some(function (c) { return c.attempted && !c.success; });
+    /* KF-005: erwartbare Nicht-Verfuegbarkeit ist KEIN Fehler. offline, keine
+       Session und ein leerer Legacy-Blob (NO_DATA_SOURCE) sind Normalzustaende —
+       ein reiner Garmin-/Cloud-Nutzer hat schlicht keinen Tages-Blob, und offline
+       ist ein Zustand, kein Defekt. Vorher kippte jeder dieser Normalzustaende
+       die Muskelkarte in „konnte nicht geladen werden". Echte Fehler (Store kaputt,
+       Server-Liste fehlgeschlagen, Workout-Details fehlgeschlagen) bleiben Fehler. */
+    var EXPECTED_UNAVAILABLE = { offline: true, no_session: true, NO_DATA_SOURCE: true };
+    var anyFail = (dg.sourceCalls || []).some(function (c) {
+      return c.attempted && !c.success && !EXPECTED_UNAVAILABLE[c.errorCode];
+    });
     var visGym = dg.visibleActivityPipeline && dg.visibleActivityPipeline.gymResultCount;
     var reportStatus;
-    if (!readiness.localStoreReady || readiness.timedOut) reportStatus = 'data_unavailable';
+    /* Phase 4: massgeblich ist der Store — timedOut impliziert nach der neuen Semantik
+       !localStoreReady; ein bereiter Store mit vorhandenen Daten wird nie mehr allein
+       wegen einer abgelaufenen Wartefrist als data_unavailable fehlklassifiziert. */
+    if (!readiness.localStoreReady) reportStatus = 'data_unavailable';
     else if (snaps.length > 0) reportStatus = anyFail ? 'partial_data' : 'ok';
     else if (!anyRaw) reportStatus = 'data_unavailable';
     else reportStatus = anyFail ? 'load_error' : 'no_gym_workouts';
@@ -734,7 +787,8 @@
     computeMuscleVolume: computeMuscleVolume, weeklyEquivalent: weeklyEquivalent,
     targetCorridor: targetCorridor, confidenceOf: confidenceOf, statusFor: statusFor,
     explainMuscleVolume: explainMuscleVolume, compareToLegacy: compareToLegacy, snapshotsFromStore: snapshotsFromStore,
-    gymPipeline: gymPipeline, volumeAdvice: volumeAdvice, CORRIDORS: CORRIDORS
+    gymPipeline: gymPipeline, volumeAdvice: volumeAdvice, CORRIDORS: CORRIDORS,
+    invalidateGymPipelineCache: invalidateGymPipelineCache
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.gymVolume = api;

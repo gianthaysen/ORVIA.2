@@ -118,6 +118,76 @@
         if (failed) return B.fail('partial_delete', 'Lösch-Sync teilweise fehlgeschlagen', { source: 'supabase', sync_status: 'failed', deleted: deleted, failed: failed, errors: errors });
         return B.ok({ deleted: deleted, failed: 0, errors: [] });
       } catch (e) { return B.fail('exception', String(e && e.message || e)); }
+    },
+
+    /* ============================================================
+       Phase 5B (2026-08-05) · KANONISCHES LOAD-READ-MODELL
+       ------------------------------------------------------------
+       Ableitungsvertrag Intensität (E-11, Dimension A — subjektive
+       Session-Intensität aus RPE; die HF-basierte easyShare bleibt als
+       getrennte Dimension B in calc.js, KEINE dritte Definition):
+         RPE 1–4  ⇒ easy · RPE 5–6 ⇒ moderate · RPE 7–10 ⇒ hard
+         RPE fehlt ⇒ unknown (Entscheidung ③: markieren, NIE raten/löschen)
+       ACHTUNG Altlast: die Spalte `intensity` enthält die Ø-HERZFREQUENZ
+       (Zahl), keine Kategorie — sie fließt hier bewusst NICHT ein.
+       bySport: kanonische Sport-IDs (running/cycling/gym/…); unbekannte
+       Sportarten laufen als 'other' mit, verschwinden nicht.
+       completeness: Anteil der Sessions des Tages mit belastbarer Last
+       (duration_min vorhanden UND computed_load > 0).
+       deriveCanonicalDays ist PUR (Node-testbar); readCanonicalRange ist
+       die I/O-Huelle. Konsumenten werden erst NACH dem 5A-Audit umgestellt.
+       ============================================================ */
+    intensityBandOf(rpe) {
+      if (rpe == null || isNaN(+rpe)) return 'unknown';
+      const r = +rpe;
+      if (r <= 4) return 'easy';
+      if (r <= 6) return 'moderate';
+      return 'hard';
+    },
+    canonicalSportOf(sport) {
+      const raw = String(sport == null ? '' : sport).trim();
+      try { if (O.trainingDomain && O.trainingDomain.normSport) { const n = O.trainingDomain.normSport(raw); if (n) return n; } } catch (e) {}
+      const MAP = { laufen: 'running', running: 'running', rad: 'cycling', cycling: 'cycling', bike: 'cycling',
+        gym: 'gym', kraft: 'gym', krafttraining: 'gym', strength: 'gym',
+        schwimmen: 'swimming', swimming: 'swimming', 'mobilität': 'mobility', 'mobilitaet': 'mobility', mobility: 'mobility' };
+      return MAP[raw.toLowerCase()] || (raw ? 'other' : 'unknown');
+    },
+    deriveCanonicalDays(rows) {
+      const byDay = {};
+      (rows || []).forEach(x => {
+        if (!x || !x.local_date) return;
+        const d = byDay[x.local_date] || (byDay[x.local_date] = {
+          date: x.local_date, totalLoad: 0, bySport: {}, byIntensity: { easy: 0, moderate: 0, hard: 0, unknown: 0 },
+          sessionCount: 0, usableSessions: 0
+        });
+        const load = (x.computed_load != null && isFinite(+x.computed_load)) ? +x.computed_load : null;
+        const sport = this.canonicalSportOf(x.sport);
+        const band = this.intensityBandOf(x.session_rpe);
+        d.sessionCount++;
+        if (load != null && load > 0 && x.duration_min != null) d.usableSessions++;
+        if (load != null && load > 0) {
+          d.totalLoad += load;
+          d.bySport[sport] = (d.bySport[sport] || 0) + load;
+          d.byIntensity[band] += load;
+        } else {
+          /* Session ohne belastbare Last: zaehlt fuer completeness, traegt aber
+             keine erfundenen Load-Punkte bei (kein 0-als-Wert-Etikett). */
+          if (d.bySport[sport] == null) d.bySport[sport] = 0;
+        }
+      });
+      return Object.keys(byDay).sort().map(k => {
+        const d = byDay[k];
+        d.totalLoad = Math.round(d.totalLoad);
+        Object.keys(d.bySport).forEach(s => { d.bySport[s] = Math.round(d.bySport[s]); });
+        Object.keys(d.byIntensity).forEach(b => { d.byIntensity[b] = Math.round(d.byIntensity[b]); });
+        d.completeness = d.sessionCount ? Math.round(d.usableSessions / d.sessionCount * 100) / 100 : 0;
+        return d;
+      });
+    },
+    async readCanonicalRange(fromDate, toDate) {
+      const r = await this.listRange(fromDate, toDate);
+      if (!r.success) return r;
+      return B.ok(this.deriveCanonicalDays(r.data || []), { source: 'supabase' });
     }
   };
 })();

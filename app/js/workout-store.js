@@ -48,8 +48,11 @@
   }
 
   // Lokale aktive Kopie (für Reload/Offline-Restore). User-scoped.
+  // P0-Fix 2026-08-05: lastActionAt = Zeitpunkt der letzten echten Nutzeraktion.
+  // Grundlage der Retro-Pause beim Restore: wird die App mitten im Training
+  // beendet, zaehlt die Abwesenheit sonst als Trainingszeit (6-h-Workout-Bug).
   function saveLocal() {
-    try { localStorage.setItem(cacheKey(), JSON.stringify({ session: O.workout.session, exercises: O.workout.exercises, currentIndex: O.workout.currentIndex, timer: O.workout.timer })); } catch (e) {}
+    try { localStorage.setItem(cacheKey(), JSON.stringify({ session: O.workout.session, exercises: O.workout.exercises, currentIndex: O.workout.currentIndex, timer: O.workout.timer, lastActionAt: _nowMs() })); } catch (e) {}
   }
   function loadLocal() {
     try { const raw = localStorage.getItem(cacheKey()); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
@@ -135,18 +138,111 @@
     return res(true, { session: O.workout.session, exercises: O.workout.exercises }, null, free.source, free.sync_status);
   }
 
+  /* P0-Fix 2026-08-05 (Datenverlust nach App-Neustart) — drei Regeln:
+
+     1. MERGE STATT CLOBBER. Vorher ueberschrieb der Restore den lokalen Stand
+        bitweise mit der Server-Sicht und persistierte das sofort (saveLocal).
+        Lieferte der Baum-Lader weniger (Teilausfall, Embed-Fehler, Latenz),
+        waren lokal geloggte Saetze unwiederbringlich weg — genau der gemeldete
+        Vorfall „Workout leer nach App-Neustart". Jetzt wird je Uebung/Satz
+        ueber die stabilen client-IDs zusammengefuehrt: Server gewinnt bei
+        Treffern (hat Server-IDs), lokale Zusatzdaten BLEIBEN.
+
+     2. KEIN BLINDES clearLocal. Meldet der Server „keine aktive Session",
+        waehrend lokal eine aktive Session mit Saetzen liegt, wird der lokale
+        Stand nur geloescht, wenn der Server die Session NACHWEISLICH terminal
+        kennt. Unbekannt/nie synchronisiert ⇒ lokal behalten (pending).
+
+     3. RETRO-PAUSE. Liegt die letzte echte Aktion (lastActionAt) mehr als
+        RETRO_PAUSE_MIN zurueck und die Session ist aktiv ohne Pause, wird die
+        Abwesenheit rueckwirkend als Pause markiert (paused_at = lastActionAt,
+        sofort zum Server synchronisiert). Die Abschluss-RPC zieht Pausenzeit
+        ab — das 6-Stunden-Workout aus 45 Minuten Training entsteht nicht mehr.
+        Loggt der Nutzer wieder einen Satz, endet die Pause automatisch. */
+  const RETRO_PAUSE_MIN = 15;
+
+  function mergeTrees(server, lc) {
+    if (!lc || !lc.session || !server || !server.session) return server;
+    const sids = [server.session.client_session_id, server.session.id].filter(Boolean);
+    const lids = [lc.session.client_session_id, lc.session.id].filter(Boolean);
+    if (!sids.some(x => lids.indexOf(x) >= 0)) return server;   // andere Session → Server-Sicht
+    const out = { session: server.session, exercises: [], currentIndex: lc.currentIndex || 0, timer: lc.timer || null };
+    const localByCid = {};
+    (lc.exercises || []).forEach(le => { const k = le.workoutExercise && le.workoutExercise.client_exercise_id; if (k) localByCid[k] = le; });
+    const seen = {};
+    (server.exercises || []).forEach(se => {
+      const k = se.workoutExercise && se.workoutExercise.client_exercise_id;
+      const le = k ? localByCid[k] : null;
+      if (k) seen[k] = true;
+      const merged = { workoutExercise: se.workoutExercise,
+        exercise: se.exercise || (le && le.exercise) || null, sets: (se.sets || []).slice() };
+      if (le && le.sets && le.sets.length) {
+        const have = {}; merged.sets.forEach(x => { if (x.client_set_id) have[x.client_set_id] = true; });
+        le.sets.forEach(x => { if (!x.client_set_id || !have[x.client_set_id]) merged.sets.push(x); });
+      }
+      out.exercises.push(merged);
+    });
+    (lc.exercises || []).forEach(le => {
+      const k = le.workoutExercise && le.workoutExercise.client_exercise_id;
+      if (k && !seen[k]) out.exercises.push(le);                 // lokal geloggt, Server (noch) ohne
+    });
+    return out;
+  }
+
+  /* Uebungsnamen nachschlagen, wo der Katalog-Join fehlte (Fallback-Restore lieferte
+     exercise:null → die Story zeigte Saetze OHNE Uebungsnamen). EIN Katalog-Query. */
+  async function resolveExerciseNames() {
+    try {
+      const missing = (O.workout.exercises || []).filter(e => !e.exercise && e.workoutExercise && e.workoutExercise.exercise_id);
+      if (!missing.length || !online() || !O.repos || !O.repos.exercise || !O.repos.exercise.list) return;
+      const r = await O.repos.exercise.list();
+      if (!r || !r.success) return;
+      const byId = {}; (r.data || []).forEach(x => { if (x && x.id) byId[x.id] = x; });
+      missing.forEach(e => { const hit = byId[e.workoutExercise.exercise_id]; if (hit) e.exercise = hit; });
+    } catch (e) {}
+  }
+
+  function applyRetroPause(lc) {
+    try {
+      const s = O.workout.session;
+      if (!s || s.status !== 'active' || s.paused_at) return;
+      if (!lc || !lc.lastActionAt) return;
+      const gapMin = (_nowMs() - lc.lastActionAt) / 60000;
+      if (gapMin < RETRO_PAUSE_MIN) return;
+      s.paused_at = new Date(lc.lastActionAt).toISOString();
+      O.workout.retroPaused = true;   // fuer die UI: „Pause seit letzter Aktion erkannt"
+      if (online() && s.id && O.repos && O.repos.workout) { try { O.repos.workout.updateSession(s.id, { paused_at: s.paused_at }); } catch (e) {} }
+    } catch (e) {}
+  }
+
   async function restoreActiveWorkout() {
     if (!uid()) return res(false, null, { message: 'keine Sitzung' }, 'empty', 'failed');
+    const lc = loadLocal();
     if (online() && O.repos && O.repos.workout) {
       const act = await O.repos.workout.getActiveSession();
-      if (!act.success) { const lc = loadLocal(); if (lc && lc.session) { applyTree(lc); return res(true, lc, null, 'indexeddb', 'pending'); } return act; }
-      if (!act.data) { clearLocal(); O.workout.session = null; O.workout.exercises = []; return res(true, { session: null }, null, 'empty', 'synced'); }
+      if (!act.success) { if (lc && lc.session) { applyTree(lc); applyRetroPause(lc); saveLocal(); return res(true, lc, null, 'indexeddb', 'pending'); } return act; }
+      if (!act.data) {
+        // Server kennt KEINE aktive Session. Lokalen Stand nur zerstoeren, wenn
+        // die Session serverseitig nachweislich terminal/geloescht ist.
+        const ls = lc && lc.session;
+        const lActive = !!(ls && (ls.status === 'active' || ls.status === 'paused'));
+        if (lActive && (lc.exercises || []).some(e => (e.sets || []).length)) {
+          let confirmedGone = false;
+          if (ls.id) { try { confirmedGone = await confirmSessionGone(ls, false); } catch (e) {} }
+          if (!ls.id || !confirmedGone) {                       // nie synchronisiert ODER unbestaetigt
+            applyTree(lc); applyRetroPause(lc); saveLocal();
+            return res(true, lc, null, 'indexeddb', 'pending');
+          }
+        }
+        clearLocal(); O.workout.session = null; O.workout.exercises = [];
+        return res(true, { session: null }, null, 'empty', 'synced');
+      }
       // WICHTIG: Selbst wenn der Baum-Lader (mit exercises(*)-Embed) fehlschlägt, MUSS die
       // aktive Session hydriert werden — sonst zeigt der Verlauf „aktiv", der Hub aber „kein
       // aktives Workout" und der Nutzer steckt fest (kann weder fortsetzen noch neu starten).
       const tree = await O.repos.workout.loadWorkoutTree(act.data.id);
       if (tree.success && tree.data && tree.data.session) {
-        applyTree({ session: tree.data.session, exercises: tree.data.exercises || [], currentIndex: 0 });
+        applyTree(mergeTrees({ session: tree.data.session, exercises: tree.data.exercises || [], currentIndex: 0 }, lc));
       } else {
         // Fallback 1: Übungen separat laden (einfache Queries, kein Embed).
         let exercises = [];
@@ -160,14 +256,16 @@
             }
           }
         } catch (e) {}
-        // Fallback 2: zumindest die nackte Session (Nutzer kann fortsetzen oder verwerfen).
-        applyTree({ session: act.data, exercises: exercises, currentIndex: 0 });
+        // Fallback 2: zumindest die nackte Session — ZUSAMMENGEFUEHRT mit dem
+        // lokalen Stand (vorher ueberschrieb dieser Zweig lokal geloggte Saetze).
+        applyTree(mergeTrees({ session: act.data, exercises: exercises, currentIndex: 0 }, lc));
       }
+      await resolveExerciseNames();
+      applyRetroPause(lc);
       saveLocal();
       return res(true, { session: O.workout.session, exercises: O.workout.exercises }, null, 'supabase', 'synced');
     }
-    const lc = loadLocal();
-    if (lc && lc.session) { applyTree(lc); return res(true, lc, null, 'indexeddb', 'pending'); }
+    if (lc && lc.session) { applyTree(lc); applyRetroPause(lc); saveLocal(); return res(true, lc, null, 'indexeddb', 'pending'); }
     return res(true, { session: null }, null, 'empty', 'synced');
   }
 
@@ -190,6 +288,7 @@
   }
   function resumeWorkout() {
     const s = O.workout.session; if (!s) return res(true, { skipped: true }, null, 'empty', 'synced');
+    O.workout.retroPaused = false;
     if (s.paused_at) {
       const add = Math.max(0, (_nowMs() - new Date(s.paused_at).getTime()) / 1000);
       s.total_paused_seconds = (s.total_paused_seconds || 0) + add;
@@ -241,6 +340,12 @@
     let durationMin;
     // 1) ATOMARER Abschluss in Supabase (eine RPC) — BEVOR lokal etwas gelöscht wird.
     if (online() && s.id) {
+      // P0-Fix 2026-08-05: Eine lokal bekannte (Retro-)Pause MUSS vor dem Abschluss
+      // serverseitig stehen — die RPC rechnet duration = now − started_at − Pausen.
+      // Ohne diesen Sync zaehlte die Abwesenheit (App beendet) als Trainingszeit.
+      if (s.paused_at || (s.total_paused_seconds || 0) > 0) {
+        try { await O.repos.workout.updateSession(s.id, { paused_at: s.paused_at || null, total_paused_seconds: Math.round(s.total_paused_seconds || 0) }); } catch (e2) {}
+      }
       const r = await O.repos.workout.closeActiveSession(s.id, 'completed', { sessionRpe: rpe });
       if (!r.success) return r;                 // Store bleibt aktiv, Overlay offen (UI)
       durationMin = r.data.duration_min;
@@ -403,6 +508,8 @@
   async function addSet(exerciseIndex, set) {
     const e = O.workout.exercises[exerciseIndex]; if (!e) return res(false, null, { message: 'Übung nicht gefunden' }, 'empty', 'failed');
     const errs = validateSet(set || {}); if (errs.length) return res(false, null, { code: 'validation', message: errs.join(', ') }, 'empty', 'failed');
+    // Ein geloggter Satz IST Training: eine laufende (auch Retro-)Pause endet damit.
+    try { if (isPaused()) resumeWorkout(); } catch (e2) {}
     // Satznummern stabil halten: nächste Nummer = max(vorhandene)+1 (kollidiert nicht mit gelöschten).
     const clientSetId = cid('set');
     const setNumber = (e.sets || []).reduce((mx, x) => Math.max(mx, x.set_number || 0), 0) + 1;
@@ -497,8 +604,43 @@
     return row;
   }
 
+  /* P0-Nachtrag 2026-08-05: nachtraegliche Dauer-Korrektur (Nutzerentscheidung —
+     KEINE automatische Obergrenze; korrigierbar statt gedeckelt).
+     Korrigiert konsistent in allen drei Wahrheiten:
+       1. kanonische Activity (activityStore, mit Korrektur-Protokoll)
+       2. Server-Session (workout_sessions.duration_min)
+       3. Trainingslast (training_load_daily; Last = Dauer × RPE — nur wenn die
+          Session ein RPE hat; Upsert ueber denselben client_session_id-Schluessel
+          wie beim Abschluss, es entsteht keine zweite Zeile). */
+  async function correctFinishedDuration(activityId, newMin) {
+    const a = O.activityStore && O.activityStore.getActivityById ? O.activityStore.getActivityById(activityId) : null;
+    if (!a) return res(false, null, { message: 'Aktivitaet nicht gefunden' }, 'empty', 'failed');
+    if (!(a.source === 'orvia_workout' || a.source === 'live')) return res(false, null, { message: 'nur ORVIA-Workouts korrigierbar' }, 'empty', 'failed');
+    const lr = O.activityStore.correctActivityDuration(a.clientRecordId || a.id, newMin);
+    if (!lr.ok) return res(false, null, { message: lr.error }, 'indexeddb', 'failed');
+    let serverPatched = false, loadPatched = false;
+    if (online() && O.repos && O.repos.workout && a.workoutSessionId) {
+      try {
+        const u = await O.repos.workout.updateSession(a.workoutSessionId, { duration_min: Math.round(newMin) });
+        serverPatched = !!(u && u.success);
+        const g = await O.repos.workout.getSession(a.workoutSessionId);
+        if (g && g.success && g.data && g.data.session_rpe != null && O.repos.trainingLoad) {
+          const loadKey = 'workout_session:' + (a.workoutSessionId || a.sourceRecordId);
+          const ld = await O.repos.trainingLoad.save(g.data.local_date, g.data.sport || 'Gym',
+            { dur: Math.round(newMin), rpe: g.data.session_rpe, source: 'workout', client_session_id: loadKey });
+          loadPatched = !!(ld && ld.success);
+        }
+      } catch (e) {}
+    }
+    try { if (O.activitySync && O.activitySync.flushPendingActivities) O.activitySync.flushPendingActivities(); } catch (e) {}
+    try { if (typeof window !== 'undefined' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { activityId: a.clientRecordId } })); } catch (e) {}
+    return res(true, { corrected: true, fromMin: lr.fromMin, toMin: lr.toMin, serverPatched: serverPatched, loadPatched: loadPatched }, null,
+      serverPatched ? 'supabase' : 'indexeddb', serverPatched ? 'synced' : 'pending');
+  }
+
   O.workoutStore = {
     startFreeWorkout, startPlannedWorkout, restoreActiveWorkout, pauseWorkout, resumeWorkout, finishWorkout, cancelWorkout,
+    correctFinishedDuration,
     addExercise, replaceExercise, removeExercise, reorderExercises,
     addSet, updateSet, deleteSet, completeSet, validateSet,
     setCurrentExercise, getCurrentExercise, getPreviousPerformance,

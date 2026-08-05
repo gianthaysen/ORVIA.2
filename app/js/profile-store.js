@@ -15,7 +15,8 @@
     'hfMaxMeasured', 'restingHrMeasured', 'hfMax', 'rhrBaseline', 'sleepGoalH', 'timezone',
     'constraintsAcknowledgedAt',
     'location', 'avatarPath',    // 0016: Ort + Avatar-Pfad — vorher OHNE Sync-Kanal (Geräte-Divergenz)
-    'recovery', 'preferences'];  // 0018: Regeneration & Alltag + Trainingspräferenzen (vorher Blob-only)
+    'recovery', 'preferences',   // 0018: Regeneration & Alltag + Trainingspräferenzen (vorher Blob-only)
+    'handle', 'bio'];            // 0029: Anzeige-Handle + Bio (Phase 4 / P2-5)
 
   /* 0016 · Nutzergebundener Athletenprofil-Cache (reiner OFFLINE-Fallback der Anzeige).
      Server hat online IMMER Vorrang; der Cache wird bei jedem erfolgreichen Hydrate/Persist
@@ -95,6 +96,10 @@
     PROFILE.constraintsAcknowledgedAt = row.constraints_acknowledged_at ?? null;   // P9 (Spalte ab 0013; vorher undefined→null)
     PROFILE.location = row.location ?? null;        // 0016: Server-SoT für Ort (vorher nur Geräte-Blob)
     PROFILE.avatarPath = row.avatar_path ?? null;   // 0016: Storage-Pfad; Anzeige via avatarStore
+    /* 0029: Handle + Bio — Server gewinnt; fehlende Spalte (Instanz ohne 0029) → lokaler
+       Stand bleibt (gleiches Schutzmuster wie recovery/preferences aus 0018). */
+    if (row.handle !== undefined) PROFILE.handle = row.handle ?? null;
+    if (row.bio !== undefined) PROFILE.bio = row.bio ?? null;
     /* 0018: strukturierte Sektionen — Server gewinnt; fehlende Zeile/Spalte → lokaler Stand
        bleibt (kein ?? null: sonst würde eine Instanz ohne 0018 lokale Eingaben löschen). */
     if (row.recovery !== undefined && row.recovery !== null) PROFILE.recovery = row.recovery;
@@ -149,7 +154,9 @@
       location: PROFILE.location ?? null,                // 0016
       avatarPath: PROFILE.avatarPath ?? null,            // 0016
       recovery: PROFILE.recovery ?? null,                // 0018
-      preferences: PROFILE.preferences ?? null           // 0018
+      preferences: PROFILE.preferences ?? null,          // 0018
+      handle: PROFILE.handle ?? null,                    // 0029
+      bio: PROFILE.bio ?? null                           // 0029
     };
 
     if (O.repoBase && O.repoBase.online()) {
@@ -168,7 +175,8 @@
       height_cm: profilePayload.heightCm, weight_kg: profilePayload.weightKg,
       hf_max: profilePayload.hfMaxMeasured, resting_hr: profilePayload.restingHrMeasured,
       sleep_goal_h: profilePayload.sleepGoalH, timezone: profilePayload.timezone,
-      location: profilePayload.location, avatar_path: profilePayload.avatarPath   // 0016
+      location: profilePayload.location, avatar_path: profilePayload.avatarPath,   // 0016
+      handle: profilePayload.handle, bio: profilePayload.bio                       // 0029
     };
     if (profilePayload.constraintsAcknowledgedAt != null) row.constraints_acknowledged_at = profilePayload.constraintsAcknowledgedAt;   // P9 (0013)
     try {

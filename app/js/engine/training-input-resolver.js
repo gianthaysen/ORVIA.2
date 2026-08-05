@@ -307,10 +307,42 @@
 
   /* I/O · EINZIGER Globals-Leser: liest DB/PROFILE/recoveryCtx/Plan/Stash und
      liefert das rohe raw-Objekt für buildSnapshot (Logik aus dem alten collect). */
+  /* ============================================================
+     BEFUND 2026-08-05 (Phase 8, beim Bau der Gate-Auswertung entdeckt):
+     `DB` ist in js/data.js als `let DB = load()` deklariert, `RACE` in js/ui.js als
+     `const RACE = {...}`. Eine let/const-Deklaration auf oberster Skriptebene
+     erzeugt eine globale LEXIKALISCHE Bindung, aber KEINE Eigenschaft von window.
+     `root.DB` und `root.RACE` waren damit im Browser IMMER undefined.
+
+     Im Browser gemessen: typeof globalThis.DB === 'undefined', typeof DB === 'object'.
+
+     Folge (nicht theoretisch): der Resolver hat den Morgen-Check-in NIE gesehen.
+     Jeder Shadow-Lauf protokollierte `missing_checkin`, `illness:false` und
+     verlor die Legacy-Lastreihe aus DB — die Invariante „Krankheit ⇒ nie GREEN"
+     konnte im echten Browser gar nicht auslösen (im Sandbox-Test schon, weil dort
+     `morning` direkt injiziert wird). Damit war die gesamte Beweisgrundlage des
+     Shadow-Gates unbrauchbar: 14 gesammelte Tage hätten 14 wertlose Einträge ergeben.
+
+     Derselbe Fehler wurde in js/quick-actions.js bereits gefunden und dort
+     behoben (GM7.9j) — hier nie. Gleiche Lösung, typeof-geschützt in beide
+     Richtungen (in Node existiert weder das eine noch das andere).
+     ============================================================ */
+  function _globalDB() {
+    if (typeof root.DB !== 'undefined' && root.DB) return root.DB;
+    try { if (typeof DB !== 'undefined' && DB) return DB; } catch (e) {}
+    return null;
+  }
+  function _globalRACE() {
+    if (typeof root.RACE !== 'undefined' && root.RACE) return root.RACE;
+    try { if (typeof RACE !== 'undefined' && RACE) return RACE; } catch (e) {}
+    return null;
+  }
+
   function collectRaw() {
     var errors = [];
     var today = (typeof root.todayStr === 'function') ? root.todayStr() : null;
-    var e = (today && typeof root.DB !== 'undefined' && root.DB) ? (root.DB[today] || {}) : {};
+    var _db0 = _globalDB();
+    var e = (today && _db0) ? (_db0[today] || {}) : {};
     var m = e.morning || null;
     var autoMap = today ? autoMapFromStash(today) : null;
     var ctx = null;
@@ -356,7 +388,7 @@
           if (d) (actsByDay[d] = actsByDay[d] || []).push(a);
         });
       }
-      var hasDB = typeof root.DB !== 'undefined' && root.DB;
+      var hasDB = _globalDB();
       var legacyOk = hasDB && root.Calc && root.Calc.sessionLoad;
       if ((canonical || legacyOk) && typeof root.todayStr === 'function') {
         var acute = 0, chronic = 0, dataDays = 0;
@@ -381,7 +413,7 @@
           var k = root.todayStr(dte);
           var L, hardDay = false;
           if (canonical) {
-            var du = AC.dailyLoadUnits(actsByDay[k] || [], (hasDB && root.DB[k] && root.DB[k].sessions) || {});
+            var du = AC.dailyLoadUnits(actsByDay[k] || [], (hasDB && hasDB[k] && hasDB[k].sessions) || {});
             L = du.load;
             hardDay = du.units.some(function (u) { return u.hardDay; });
             var active = L > 0 || du.unknownUnits > 0;
@@ -394,8 +426,8 @@
             w.unknownUnits += du.unknownUnits; w.ambiguousUnits += du.ambiguousUnits;
             if (active) w.activeLoadDays++;
           } else {
-            L = root.Calc.sessionLoad(root.DB[k]);
-            var sy = root.DB[k] && root.DB[k].sessions;
+            L = root.Calc.sessionLoad(hasDB[k]);
+            var sy = hasDB[k] && hasDB[k].sessions;
             // Legacy-Fallback (Batch 2c): Härte = notiertes RPE ≥ 7 oder langer LAUF
             // (dist ≥ 14 km nur für Laufen) — keine globale Distanzregel mehr.
             if (sy) Object.keys(sy).forEach(function (t) { if (t === '_ts') return; var x = sy[t]; if ((x.rpe || 0) >= 7 || (t === 'Laufen' && (x.dist || 0) >= 14)) hardDay = true; });
@@ -492,7 +524,7 @@
       fixedCommitments: null,
       plannedSession: planned,
       recentLoad: recentLoad,
-      goalDaysToEvent: (typeof root.daysTo === 'function' && typeof root.RACE !== 'undefined' && root.RACE && root.RACE.date) ? root.daysTo(root.RACE.date) : null,
+      goalDaysToEvent: (function () { var R = _globalRACE(); return (typeof root.daysTo === 'function' && R && R.date) ? root.daysTo(R.date) : null; })(),
       collectErrors: errors
     };
   }

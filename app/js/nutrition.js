@@ -173,14 +173,18 @@ function renderNutritionToday() {
   if (cur !== todayStr()) { el.innerHTML = ''; return; }
   var t = nutToday();
   if (!t) {
+    /* Phase 3 (E-23): kontextueller Einstieg DIREKT aus der Karte — der Verweis
+       „im Profil" war eine Sackgasse ohne Link. */
     el.innerHTML = '<div class="card"><h2><svg class="ic"><use href="#i-nutrition"/></svg>Energie &amp; Ernährung</h2>' +
-      '<p class="muted" style="margin:0">Hinterlege Körperdaten und Ziel im Profil (Avatar → „Energie &amp; Ernährung"), dann berechnet ORVIA deine Tageskalorien und Makros.</p></div>';
+      '<p class="muted" style="margin:0 0 10px">Hinterlege Körperdaten und Ziel, dann berechnet ORVIA deine Tageskalorien und Makros — angepasst an den Trainingstag.</p>' +
+      '<button class="btn sec" onclick="openNutritionEditor()">Jetzt einrichten</button></div>';
     return;
   }
   var dt = { rest: 'Ruhetag', easy: 'Lockerer Tag', quality: 'Intensiver Tag', long: 'Long-Run-Tag', strength: 'Krafttag' }[t.dayType] || '';
   var eaWarn = (t.ea < 32 && t.burn >= 250 && t.goal === 'fatloss') ? '<div class="nut-warn">Energieverfügbarkeit niedrig (~' + t.ea + ' kcal/kg) für die heutige Trainingsbelastung. Defizit reduzieren — vor allem Kohlenhydrate anheben.</div>' : '';
   var wk = nutWeekly();
-  el.innerHTML = '<div class="card nutcard"><h2><svg class="ic"><use href="#i-nutrition"/></svg>Energie &amp; Ernährung<span class="nut-day">' + escH(dt) + '</span></h2>' +
+  el.innerHTML = '<div class="card nutcard"><h2><svg class="ic"><use href="#i-nutrition"/></svg>Energie &amp; Ernährung<span class="nut-day">' + escH(dt) + '</span>' +
+    '<button class="iconbtn" style="margin-left:auto" aria-label="Ernährung konfigurieren" onclick="openNutritionEditor()"><svg class="ic sm"><use href="#i-gear"/></svg></button></h2>' +
     '<div class="nut-kcal"><span class="nut-knum">' + t.kcal + '</span><span class="nut-klab">kcal Tagesziel' + (t.burn ? ' · inkl. ~' + t.burn + ' kcal Training' : '') + '</span></div>' +
     '<div class="nut-macros">' +
       macroCell('Protein', t.protein, t.protein * 4, 'p') +

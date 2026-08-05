@@ -119,9 +119,11 @@ function renderPatterns(){
 }
 
 /* ============ WEEKLY REVIEW ============ */
-function renderWeekly(){
-  var el=document.getElementById('weeklyBox');if(!el)return;
-  if(dataDays()<3){el.innerHTML='<p class="muted">Wochen-Review erscheint nach einigen Check-ins.</p>';return;}
+/* Phase 3 · Block 2 (2026-08-05): Inhalt als Funktion extrahiert — derselbe
+   kanonische Wochen-Review speist jetzt AUCH das GM-Sheet auf dem Plan-Tab
+   (gmOpenWeekReviewSheet). EINE Berechnung, zwei Darstellungen, kein Doppelweg. */
+function weeklyReviewHTML(){
+  if(dataDays()<3)return '<p class="muted">Wochen-Review erscheint nach einigen Check-ins.</p>';
   // DT1: Trainings-Istwerte aus dem EINEN kanonischen Wochen-Vertrag (Store+Legacy dedupliziert),
   // nicht mehr aus dem reinen DB-Blob. Readiness/Schlaf laufen über dieselben Mo–So-Wochentage.
   var _acts=(window.ORVIA&&ORVIA.activityStore)?ORVIA.activityStore.listActivities():[];
@@ -154,8 +156,12 @@ function renderWeekly(){
     ['Stärkster / schwächster Tag',fmtD(best)+' / '+fmtD(worst)],
     ['Regenerationsdefizit',rd.state.l]
   ];
-  el.innerHTML=rows.map(function(r){return '<div class="blrow"><span class="blk">'+escH(r[0])+'</span><span class="blv">'+escH(r[1])+'</span></div>';}).join('')+
+  return rows.map(function(r){return '<div class="blrow"><span class="blk">'+escH(r[0])+'</span><span class="blv">'+escH(r[1])+'</span></div>';}).join('')+
     '<p class="modtext" style="margin-top:12px"><b>Empfehlung:</b> '+escH(rec)+'</p>';
+}
+function renderWeekly(){
+  var el=document.getElementById('weeklyBox');if(!el)return;
+  el.innerHTML=weeklyReviewHTML();
 }
 
 /* ============ DATA HUB ============ */
@@ -209,7 +215,7 @@ function openLegal(){
     '<button class="legalitem" onclick="exportData()">Datenexport</button>'+
     '<button class="legalitem danger" onclick="confirmDelete()">Alle Daten löschen</button>'+
     '</div>'+
-    '<p class="note" style="text-align:left;margin-top:12px">Sprache: Deutsch · Region: EU. Datenmodell v4. Rechtstexte sind Platzhalter und müssen vor Veröffentlichung juristisch geprüft werden.</p>');
+    '<p class="note" style="text-align:left;margin-top:12px">Sprache: Deutsch · Region: EU. Datenmodell v4. Die Rechtstexte sind inhaltlich zutreffende Entwürfe und müssen vor Veröffentlichung juristisch geprüft werden (Anschrift im Impressum offen).</p>');
 }
 /* ---- Versteckter Diagnosezugang: 7 Taps auf die sichtbare Versionszeile (index.html .obrandfoot,
    data-orvia-version-trigger) innerhalb von 5 s. EVENT-DELEGATION auf document → überlebt jedes
@@ -254,7 +260,43 @@ function orviaOpenShadow(){
     else if(typeof toast==='function'){toast('Shadow-Engine nicht verfügbar');}
   }catch(e){try{console.error('[ORVIA diag]',e);}catch(_){}}
 }
-function openLegalDoc(t){oModal(t,'<p class="modtext">Platzhalter — '+escH(t)+'. Dieser Abschnitt ist strukturell vorbereitet; der finale, rechtlich geprüfte Text wird hier ergänzt. ORVIA arbeitet nach Privacy-by-Design: minimale Daten, lokale Speicherung bevorzugt, keine unnötigen Tracker.</p>');}
+/* KF-012: Vorher teilten sich Impressum, Datenschutzerklaerung, Nutzungs-
+   bedingungen und Cookie-Einstellungen EINEN Platzhaltertext. Jetzt hat jedes
+   Dokument einen eigenen, inhaltlich zutreffenden Entwurf, der die TATSAECHLICHE
+   Datenverarbeitung beschreibt (lokal zuerst, Supabase-Konto/-Sync, Garmin ueber
+   den eigenen Worker, keine Werbe-Tracker). Adresse und juristische Endpruefung
+   sind ausdruecklich als offen markiert — hier wird nichts erfunden. */
+var ORVIA_LEGAL={
+  'Impressum':
+    '<p class="modtext"><b>Angaben gemäß § 5 DDG (Entwurf)</b><br>ORVIA — Trainings- und Performance-App<br>'+
+    'Betreiber: Gian Thaysen<br>Kontakt: gthaysen@thaysen.com<br>'+
+    '<i>[Ladungsfähige Anschrift wird vor Veröffentlichung ergänzt — ohne sie darf die App nicht öffentlich betrieben werden.]</i></p>'+
+    '<p class="modtext">ORVIA befindet sich in einer geschlossenen Beta (Research-Preview). Kein Medizinprodukt, keine Heilkunde.</p>',
+  'Datenschutzerklärung':
+    '<p class="modtext"><b>Was ORVIA tatsächlich verarbeitet (Entwurf)</b></p>'+
+    '<p class="modtext">1. <b>Lokal zuerst:</b> Check-ins, Trainingsdaten und Einstellungen liegen primär auf deinem Gerät (Browser-Speicher). Ohne Konto verlässt nichts dein Gerät.</p>'+
+    '<p class="modtext">2. <b>Konto &amp; Sync (Supabase):</b> Mit Konto werden Profil, Aktivitäten, Kennzahlen und Pläne in deiner privaten Datenbankzeile gespeichert (Row-Level-Security: nur dein Konto liest deine Daten). Rechtsgrundlage: Vertragserfüllung, Art. 6 Abs. 1 lit. b DSGVO.</p>'+
+    '<p class="modtext">3. <b>Garmin:</b> Auf Wunsch synchronisiert ein eigener Worker deine Garmin-Daten (Aktivitäten, Schlaf, HF-Kennzahlen). Die Anmeldung erfolgt ausschließlich auf deinem eigenen Rechner; ORVIA speichert dein Garmin-Passwort nicht. Rechtsgrundlage: Einwilligung, Art. 6 Abs. 1 lit. a DSGVO — jederzeit widerrufbar durch Trennen der Verbindung.</p>'+
+    '<p class="modtext">4. <b>Keine Werbung, kein Tracking:</b> keine Werbe-Tracker, kein Verkauf von Daten, keine Analyse-Cookies Dritter.</p>'+
+    '<p class="modtext">5. <b>Deine Rechte:</b> Auskunft, Berichtigung, Löschung, Datenübertragbarkeit (JSON-Export in der App), Widerruf. Löschen entfernt Konto und Daten.</p>'+
+    '<p class="modtext"><i>Entwurf — vor Veröffentlichung juristisch zu prüfen (u. a. Auftragsverarbeiter-Liste, Speicherorte, Fristen).</i></p>',
+  'Nutzungsbedingungen':
+    '<p class="modtext"><b>Nutzungsbedingungen (Entwurf)</b></p>'+
+    '<p class="modtext">1. ORVIA ist eine Beta-Software zur Trainingsunterstützung. Verfügbarkeit und Funktionsumfang können sich ändern.</p>'+
+    '<p class="modtext">2. ORVIA ist <b>kein Medizinprodukt</b> und ersetzt keine ärztliche oder physiotherapeutische Beratung. Trainingsentscheidungen triffst du eigenverantwortlich; bei Warnzeichen empfiehlt ORVIA ärztliche Abklärung.</p>'+
+    '<p class="modtext">3. Kennzahlen (z. B. Prognosen, Belastungswerte) sind Modellwerte auf Basis deiner Daten — ORVIA kennzeichnet Messung und Schätzung, garantiert aber keine Richtigkeit.</p>'+
+    '<p class="modtext">4. Ein Konto ist persönlich; Zugangsdaten sind geheim zu halten. Missbrauch führt zur Sperrung.</p>'+
+    '<p class="modtext">5. Haftung: unbeschränkt bei Vorsatz und grober Fahrlässigkeit; im Übrigen nur für die Verletzung wesentlicher Vertragspflichten, begrenzt auf den vorhersehbaren Schaden.</p>'+
+    '<p class="modtext"><i>Entwurf — vor Veröffentlichung juristisch zu prüfen.</i></p>',
+  'Cookie-/Tracking-Einstellungen':
+    '<p class="modtext"><b>Cookies &amp; lokale Speicherung (Entwurf)</b></p>'+
+    '<p class="modtext">ORVIA setzt <b>keine Tracking- oder Werbe-Cookies</b>. Verwendet werden ausschließlich technisch notwendige lokale Speicher: App-Daten und Einstellungen (Browser-Speicher), die Anmeldesitzung deines Kontos sowie der Offline-Cache der App (Service Worker). Diese sind für den Betrieb erforderlich und nicht einwilligungspflichtig; es gibt daher nichts abzuwählen.</p>'+
+    '<p class="modtext">Einwilligungen zu inhaltlichen Funktionen (z. B. Garmin-Sync) verwaltest du unter „Einwilligungen verwalten".</p>'
+};
+function openLegalDoc(t){
+  var body=ORVIA_LEGAL[t]||('<p class="modtext">'+escH(t)+' — Dokument nicht gefunden.</p>');
+  oModal(t,body);
+}
 function openMedical(){oModal('Medizinischer Hinweis','<p class="modtext">'+escH(ORVIA_DISCLAIMER)+'</p><p class="modtext" style="margin-top:10px">Bei Warnsignalen (starke/zunehmende Schmerzen, Schmerz in Ruhe, Schwellung, Taubheit, Ausstrahlung, Fieber, Atemnot, Brustschmerz, Schwindel) gibt ORVIA keine Trainingsentscheidung, sondern empfiehlt ärztliche Abklärung.</p>');}
 function confirmDelete(){
   oModal('Alle Daten löschen','<p class="modtext">Das löscht alle Check-ins, dein Profil und Einwilligungen unwiderruflich von diesem Gerät. Vorher Backup ziehen?</p>',

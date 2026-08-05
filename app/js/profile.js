@@ -8,7 +8,7 @@ var PROFILE_KEY='orvia_profile_v1';
 /* Neutrale Vorgaben für NEUE Accounts. Bestandsnutzer laden ihr echtes Profil aus der Cloud. */
 var PROFILE_DEFAULTS={
   v:1, onboarded:false,
-  name:'', location:'', age:null, birthDate:'', ageEstimate:null, sex:'', timezone:null,
+  name:'', location:'', handle:null, bio:null, age:null, birthDate:'', ageEstimate:null, sex:'', timezone:null,
   /* D7 (M7/M5c, 2026-07-03): KEINE plausiblen Körper-Defaults mehr — fehlend = null.
      Bestandswerte werden NICHT rückwirkend genullt (Migrationsregel D7); nur Neuanlage ändert sich. */
   weightKg:null, heightCm:null, hfMax:null, rhrBaseline:null, hfMaxMeasured:null, restingHrMeasured:null, sleepGoalH:null,
@@ -69,8 +69,10 @@ function gearKm(g){
   });}catch(e){}
   return Math.round(sum);
 }
-function renderEquipment(){
-  var el=document.getElementById('equipmentBox');if(!el)return;
+/* Phase 3 · Block 2 (2026-08-05): Inhalt als Funktion extrahiert — dieselbe
+   Verschleiss-Darstellung speist jetzt AUCH das GM-Sheet (gmOpenEquipmentSheet,
+   Einstieg: Profil → Geräte & Daten). EINE Quelle, kein Doppelweg. */
+function equipmentHTML(){
   _eqEnsureMigrated();
   var items=_wearItems();
   var rows=items.map(function(g){
@@ -84,8 +86,13 @@ function renderEquipment(){
     }
     return '<div class="eq">'+head+'<div class="eq-meta"><span class="eq-km eq-counter">'+km+' km</span><span class="eq-pct">Zähler</span></div></div>';
   }).join('');
-  el.innerHTML=(rows||'<p class="muted" style="margin:0 0 8px">Noch kein Equipment. Lege Schuhe oder Rad an — beim Lauf/Rad wählst du sie aus, ORVIA zählt die km automatisch.</p>')+
+  return (rows||'<p class="muted" style="margin:0 0 8px">Noch kein Equipment. Lege Schuhe oder Rad an — beim Lauf/Rad wählst du sie aus, ORVIA zählt die km automatisch.</p>')+
     '<button class="btn sec" style="margin-top:10px" onclick="addGearPrompt()">+ Equipment hinzufügen</button>';
+}
+function renderEquipment(){
+  var el=document.getElementById('equipmentBox');if(el)el.innerHTML=equipmentHTML();
+  /* Sheet-Ansicht (falls offen) mitziehen — gleiche Quelle. */
+  try{if(typeof gmRefreshEquipmentSheet==='function')gmRefreshEquipmentSheet();}catch(e){}
 }
 function addGearPrompt(){
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
@@ -271,22 +278,36 @@ function identityRows(p){
 }
 function renderZones(){
   var el=document.getElementById('zoneList');if(!el)return;
-  var _age=(PROFILE&&PROFILE.age)||null;
-  // Gemessene HFmax gewinnt. Sonst altersbasierte Tanaka-Formel (nur lokaler Rechenwert,
-  // wird NICHT persistiert). Fehlen beide → keine Zonen, neutraler Hinweis. KEIN 190/201.
-  var measured=(PROFILE&&PROFILE.hfMaxMeasured!=null)?PROFILE.hfMaxMeasured:null;
-  var calculated=_age?Math.round(208-0.7*_age):null;
-  var max=measured||calculated;
-  if(!max){
+  /* Phase 4 (E-02 · Quellenprioritätsvertrag): Auflösung + Kennzeichnung ZENTRAL über
+     ORVIA.sourceContract — gemessene HFmax und Tanaka-Schätzwert erscheinen nie unter
+     derselben Kennzeichnung. Fehlen beide → keine Zonen, neutraler Hinweis. KEIN 190/201. */
+  var _res=null;
+  try{if(window.ORVIA&&ORVIA.sourceContract)_res=ORVIA.sourceContract.hfMax(PROFILE);}catch(_){ }
+  if(!_res){/* Fallback ohne Modul (alte Logik, unveraendert) */
+    var _age=(PROFILE&&PROFILE.age)||null;
+    var measured=(PROFILE&&PROFILE.hfMaxMeasured!=null)?PROFILE.hfMaxMeasured:null;
+    var calculated=_age?Math.round(208-0.7*_age):null;
+    var mv=measured||calculated;
+    _res=mv?{value:mv,source:measured!=null?'profile_manual':'derived_estimate',confidence:measured!=null?'user_provided':'estimated'}:null;
+  }
+  if(!_res){
     el.innerHTML='<div class="zone-empty">Für Herzfrequenzzonen fehlen Alter oder gemessene HFmax.</div>';
     var he=document.getElementById('zoneTitle');if(he)he.textContent='HR-Zonen · noch nicht verfügbar';
     return;
   }
+  var max=_res.value;
   var z=[['Z1 Recovery',.51,.61,'#e7cf9a','rgba(216,183,119,.35)'],['Z2 Easy',.61,.72,'#4ade80','rgba(52,211,153,.35)'],
     ['Z3 Tempo',.72,.82,'#fbbf24','rgba(251,191,36,.35)'],['Z4 Threshold',.82,.92,'#fb923c','rgba(251,146,60,.4)'],
     ['Z5 Max',.92,1,'#fb7185','rgba(251,77,109,.4)']];
-  el.innerHTML=z.map(function(x){return '<div class="zone" style="border-color:'+x[4]+';color:'+x[3]+'">'+x[0]+'<span>'+Math.round(x[1]*max)+'–'+Math.round(x[2]*max)+'</span></div>';}).join('');
-  var h=document.getElementById('zoneTitle');if(h)h.textContent='HR-Zonen · Max '+max;
+  var srcLbl=(window.ORVIA&&ORVIA.sourceContract&&ORVIA.sourceContract.LABEL[_res.source])||_res.source;
+  var srcNote=(_res.source==='derived_estimate')
+    ?'HFmax '+max+' · Quelle: berechnet (Tanaka: 208 − 0,7 × Alter) — Schätzwert, keine Messung. Trage eine gemessene HFmax im Profil ein, dann rechnen die Zonen mit deiner Messung.'
+    :'HFmax '+max+' · Quelle: '+srcLbl+'.';
+  el.innerHTML=z.map(function(x){return '<div class="zone" style="border-color:'+x[4]+';color:'+x[3]+'">'+x[0]+'<span>'+Math.round(x[1]*max)+'–'+Math.round(x[2]*max)+'</span></div>';}).join('')+
+    '<p class="note" style="text-align:left;margin-top:8px">'+escH(srcNote)+'</p>';
+  /* E-02: drei getrennte Kennzeichnungen — Messung (Geraet) ≠ Profilwert (manuell) ≠ Schaetzung. */
+  var _tit=(_res.source==='derived_estimate')?' (berechnet)':(_res.source==='profile_manual')?' (Profil)':' (gemessen)';
+  var h=document.getElementById('zoneTitle');if(h)h.textContent='HR-Zonen · Max '+max+_tit;
 }
 
 /* ============ ONBOARDING ============ */
@@ -823,9 +844,19 @@ function _secVal(o,k){return o&&o[k]!=null?o[k]:'';}
 var SECTION_DEFS={
   personal:{label:'Persönliche Grunddaten',planImpact:false,fields:[
     {key:'name',label:'Name',type:'text'},{key:'location',label:'Ort',type:'text'},
+    /* 0029 (Phase 4 / P2-5): Handle + Bio — vorher hart '—'/Platzhalter im Profilkopf. */
+    {key:'handle',label:'Handle (Anzeigename, optional)',type:'text'},
+    {key:'bio',label:'Bio (max. 160 Zeichen, optional)',type:'longtext'},
     {key:'birthDate',label:'Geburtsdatum',type:'date'},{key:'sex',label:'Geschlecht',type:'select',optionPairs:[['m','Männlich'],['w','Weiblich'],['d','Divers'],['','Keine Angabe']]}],
-    read:function(p){return {name:p.name||'',location:p.location||'',birthDate:p.birthDate||'',sex:p.sex||''};},
-    write:function(p,d){p.name=d.name;p.location=d.location;p.birthDate=d.birthDate||'';p.sex=d.sex||'';}},
+    read:function(p){return {name:p.name||'',location:p.location||'',handle:p.handle||'',bio:p.bio||'',birthDate:p.birthDate||'',sex:p.sex||''};},
+    write:function(p,d){p.name=d.name;p.location=d.location;
+      /* Handle-Normalisierung (Anzeige-Pseudonym, KEIN Eindeutigkeitssystem — 0029):
+         fuehrendes @ ab, lowercase, nur [a-z0-9._], max. 30. Leer = bewusst kein Handle. */
+      var _h=String(d.handle||'').trim().replace(/^@+/,'').toLowerCase().replace(/[^a-z0-9._]/g,'').slice(0,30);
+      p.handle=_h||null;
+      var _b=String(d.bio||'').trim().slice(0,160);
+      p.bio=_b||null;
+      p.birthDate=d.birthDate||'';p.sex=d.sex||'';}},
   /* P10: SECTION_DEFS.body ENTFERNT — dritte Feldwelt (body.restingHR); kanonisch sind flache Felder + performance (P2). */
   recovery:{label:'Regeneration und Alltag',planImpact:false,fields:[
     {key:'sleepHours',label:'Durchschnittliche Schlafdauer',type:'number',unit:'h'},{key:'sleepQuality',label:'Schlafqualität',type:'select',options:['schlecht','okay','gut']},
@@ -1574,7 +1605,7 @@ function renderDevicesManager(){var M=_devM();var dev=window._devEd.dev;var box=
     if(i.connected&&i.lastSyncAt)bits.push('Letzte Synchronisierung: '+i.lastSyncAt);
     if(i.connected&&i.capabilities.length)bits.push(i.capabilities.map(function(c){return CAP_DE[c]||c;}).join(', '));
     if(i.status==='error'&&i.errorCode)bits.push('Fehler: '+i.errorCode);
-    var note=(k==='garmin'&&!i.connected)?'<div class="gmc-meta">Die automatische Garmin-Synchronisierung ist vorbereitet, aber aktuell noch nicht verfügbar.</div>':((k==='appleHealth'&&i.status==='not_available')?'<div class="gmc-meta">In dieser Version nicht verfügbar.</div>':(k==='strava'&&!i.connected?'<div class="gmc-meta">Import per GPX/TCX/JSON verfügbar; automatischer Sync noch nicht.</div>':''));
+    var note=(k==='garmin'&&!i.connected)?'<div class="gmc-meta">Noch nicht verbunden. Die Synchronisierung startest du im Profil unter „Jetzt synchronisieren".</div>':((k==='appleHealth'&&i.status==='not_available')?'<div class="gmc-meta">In dieser Version nicht verfügbar.</div>':(k==='strava'&&!i.connected?'<div class="gmc-meta">Import per GPX/TCX/JSON verfügbar; automatischer Sync noch nicht.</div>':''));
     return '<div class="gmcard"><div class="gmc-h">'+INT_NAME_DE[k]+'</div><div class="gmc-meta">'+escH(bits.join(' · '))+'</div>'+note+(i.connected?'<div class="gmc-acts"><button class="gmc-b danger-btn" onclick="devDisconnect(\''+k+'\')">Trennen</button></div>':'')+'</div>';}).join('');
   var legacy=(dev._legacyText&&dev._legacyText.length)?'<div class="gmc-meta">Alte Angaben: '+escH(dev._legacyText.join(', '))+'</div>':'';
   box.innerHTML='<h3>Geräte und Datenquellen</h3>'+

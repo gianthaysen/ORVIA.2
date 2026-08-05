@@ -119,6 +119,30 @@
   }
 
   function getActivityById(id) { var all = readAll(); for (var i = 0; i < all.length; i++) if (all[i].id === id || all[i].clientRecordId === id) return all[i]; return null; }
+
+  /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ABGESCHLOSSENEN
+     Workouts nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze.
+     Die Korrektur ist eine manuelle Angabe und wird als solche protokolliert
+     (metrics.durationCorrection mit vorher/nachher/Zeitpunkt) — Messung und
+     manuelle Korrektur bleiben unterscheidbar. */
+  function correctActivityDuration(id, newMin) {
+    if (!(newMin > 0)) return { ok: false, error: 'ungueltige Dauer' };
+    var all = readAll();
+    for (var i = 0; i < all.length; i++) {
+      var a = all[i];
+      if (a.id === id || a.clientRecordId === id) {
+        if (a.status !== 'completed') return { ok: false, error: 'nur abgeschlossene Aktivitaeten' };
+        var fromMin = a.durationSeconds != null ? Math.round(a.durationSeconds / 60) : null;
+        a.metrics = a.metrics || {};
+        a.metrics.durationCorrection = { fromMin: fromMin, toMin: Math.round(newMin), at: now(), method: 'manual_correction' };
+        a.durationSeconds = Math.round(newMin) * 60;
+        a.syncStatus = 'pending'; a.updatedAt = now();
+        writeAll(all);
+        return { ok: true, activity: a, fromMin: fromMin, toMin: Math.round(newMin) };
+      }
+    }
+    return { ok: false, error: 'Aktivitaet nicht gefunden' };
+  }
   function getActivityBySource(source, sourceRecordId) { var all = readAll(); for (var i = 0; i < all.length; i++) if (all[i].source === source && all[i].sourceRecordId === sourceRecordId) return all[i]; return null; }
 
   // Detailauflösung NUR über stabile IDs (nie Datum/Index). Liefert Snapshot + Activity.
@@ -252,6 +276,7 @@
   var api = {
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
+    correctActivityDuration: correctActivityDuration,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,
     mergeServerActivities: mergeServerActivities,

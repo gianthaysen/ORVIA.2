@@ -713,13 +713,40 @@ function goalEngine(runs42,opts){
 }
 
 /* ============ RUNNING ANALYTICS ============ */
-/* 80/20: Easy-Anteil an der Laufzeit, 28T */
-function easyShare(runs28){
-  const t=runs28.filter(r=>r.dur>0);
-  const tot=t.reduce((s,r)=>s+r.dur,0);if(!tot||t.length<6)return null;
-  const easy=t.filter(r=>['Walk-Run','Easy Z2','Long Run'].includes(r.sub)).reduce((s,r)=>s+r.dur,0);
-  return easy/tot;
+/* 80/20: Easy-Anteil an der Laufzeit, 28T.
+   KF-010-Fix: Reine Garmin-/Store-Laeufe tragen sub:'' — vorher zaehlten sie
+   pauschal als NICHT-easy und verzerrten den Anteil systematisch nach unten
+   (E-11: easyShare ist Dimension B, physiologische Zonen — nicht RPE).
+   Neue Regel:
+     • sub-Label vorhanden → wie bisher (Easy-Liste vs. Quality-Label).
+     • kein sub, aber Ø-HF und HFmax bekannt → easy bei HF ≤ 78 % HFmax,
+       hart bei HF ≥ 82 % HFmax (derselbe Easy-Z2-Korridor wie efSeries).
+     • weder Label noch HF (oder HF im Graubereich 78–82 %) → der Lauf ist
+       NICHT klassifizierbar und faellt aus Zaehler UND Nenner — er wird nie
+       stillschweigend einer Seite zugeschlagen.
+   Mindestbasis unveraendert: 6 klassifizierbare Laeufe, sonst null. */
+function easyShareDetail(runs28){
+  const t=(runs28||[]).filter(r=>r&&r.dur>0);
+  const hm=_hrMax();
+  const cls=[];
+  t.forEach(r=>{
+    if(r.sub){cls.push({dur:r.dur,easy:['Walk-Run','Easy Z2','Long Run'].includes(r.sub)});return;}
+    if(hm!=null&&r.hr!=null&&r.hr>0){
+      if(r.hr<=0.78*hm)cls.push({dur:r.dur,easy:true});
+      else if(r.hr>=0.82*hm)cls.push({dur:r.dur,easy:false});
+      /* 78–82 %: Graubereich — bewusst unklassifiziert */
+    }
+  });
+  const tot=cls.reduce((s,r)=>s+r.dur,0);
+  const easy=cls.filter(r=>r.easy).reduce((s,r)=>s+r.dur,0);
+  /* Phase 2.0: Abdeckung fuer den Metrik-Envelope — der Nenner enthaelt NUR
+     klassifizierbare Laeufe; wie viele das von allen sind, wird ausgewiesen. */
+  return {share:(tot&&cls.length>=6)?easy/tot:null,
+    totalRuns:t.length,classifiedRuns:cls.length,
+    classifiedMin:Math.round(tot),easyMin:Math.round(easy),
+    hrMaxUsed:hm};
 }
+function easyShare(runs28){return easyShareDetail(runs28).share;}
 /* Wochensprung: diese Woche vs. letzte */
 function weeklyJump(kmThis,kmLast){
   const ratio=kmThis/Math.max(kmLast,5);
@@ -1440,7 +1467,7 @@ function nutritionTargets(p){
 }
 const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,paceZones,bmr,nutritionTargets,ewma,sessionLoad,acwr,
   loadModel,loadSeries,loadConfidenceContract,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,resolvePlanActual,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegel,riegelHM,goalEngine,
-  easyShare,weeklyJump,lrTarget,hrSpread,easyTooHard,efSeries,nextRunRec,heavyLegs,sleepDebt,weightHint,
+  easyShare,easyShareDetail,weeklyJump,lrTarget,hrSpread,easyTooHard,efSeries,nextRunRec,heavyLegs,sleepDebt,weightHint,
   recentRunStats,calculateRecommendedWeeklyRunVolume,
   dayStateEngine,adaptSessionPlan,adaptWeekPlan,
   classifyTrainingType,SPORT_PROFILES,sportProfileFor,safetyCheck,detectDeficits,buildTrainingDecision,

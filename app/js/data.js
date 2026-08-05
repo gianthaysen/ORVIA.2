@@ -278,3 +278,72 @@ function exportCSV(){
   a.href=url;a.download='orvia-export-'+todayStr()+'.csv';a.click();URL.revokeObjectURL(url);
   toast('CSV exportiert ✓');
 }
+
+/* ============================================================
+   Phase 6.5 ② (2026-08-05) · Vollständiger Cloud-Export — Art.-20-Datenportabilität.
+   exportData() oben exportiert NUR den lokalen DB-Blob; dieser Export liest ALLE
+   nutzerbezogenen Cloud-Tabellen (RLS begrenzt serverseitig auf eigene Zeilen)
+   und lädt EIN maschinenlesbares JSON herunter. Ehrlichkeit vor Vollständigkeit:
+   - jede Tabelle wird einzeln geholt; Fehler werden PRO TABELLE protokolliert,
+     nie verschluckt (ein Fehler bricht nicht den Gesamtexport ab);
+   - provider_credentials ist bewust NICHT enthalten (service_role-only, Client
+     hat und soll keinen Lesezugriff haben) — im Manifest dokumentiert;
+   - Avatar (Storage) wird als Verweis dokumentiert, nicht binär eingebettet;
+   - Paging à 1000 Zeilen (Supabase-Limit) — große Serien vollständig.
+   Tabellenliste = SSOT-Abgleich mit Migrationen 0002–0030 (nur nutzerbezogene
+   Tabellen; globale Referenztabellen wie exercises/sports/equipment gehören
+   nicht zu den personenbezogenen Daten des Nutzers). ============================================================ */
+var ORVIA_CLOUD_EXPORT_TABLES=[
+  'user_profiles','app_state','daily_checkins','user_sports','weekly_availability',
+  'user_goals','user_constraints','fixed_schedule_items','activities',
+  'workout_sessions','workout_exercises','workout_sets',
+  'workout_templates','workout_template_days','workout_template_exercises',
+  'user_training_plans','training_plan_days','training_plan_exercises',
+  'readiness_scores','readiness_components','readiness_baselines',
+  'training_load_daily','data_providers','connected_devices','device_capabilities',
+  'user_metrics','user_metric_series','profile_metric_settings',
+  'daily_energy_expenditure','metric_anomalies','user_week_plans','orvia_migrations'
+];
+async function exportCloudData(){
+  var sb=(window.ORVIA&&ORVIA.sb)||null;
+  if(!sb||!sb.from){if(typeof toast==='function')toast('Cloud-Export braucht eine aktive Anmeldung');return null;}
+  var out={_manifest:{exportedAt:new Date().toISOString(),format:'orvia-cloud-export-v1',
+    tables:ORVIA_CLOUD_EXPORT_TABLES.length+1,
+    filtered:[{table:'exercises',filter:'is_system=false',reason:'nur nutzerdefinierte Übungen — Systemübungen sind keine personenbezogenen Daten'}],
+    excluded:[{table:'provider_credentials',reason:'service_role_only — Zugangsdaten sind clientseitig nicht lesbar (und gehören nicht in einen Datei-Export)'}],
+    storage:[{bucket:'avatars',path:'{userId}/profile.jpg',note:'Profilbild liegt im privaten Storage-Bucket; Download über die App (Profilfoto) möglich, nicht binär in diesem JSON.'}],
+    errors:[]},tables:{}};
+  var PAGE=1000;
+  /* Mischtabellen: exercises enthaelt System- UND Nutzerübungen (nullable user_id,
+     Fund 2026-08-05) — exportiert werden NUR die eigenen (is_system=false); die
+     globalen Systemübungen sind keine personenbezogenen Daten. */
+  var FILTERED={exercises:function(q){return q.eq('is_system',false);}};
+  var ALL=ORVIA_CLOUD_EXPORT_TABLES.concat(Object.keys(FILTERED));
+  for(var i=0;i<ALL.length;i++){
+    var t=ALL[i];
+    try{
+      var rows=[],from=0;
+      for(;;){
+        var q=sb.from(t).select('*');
+        if(FILTERED[t])q=FILTERED[t](q);
+        var r=await q.range(from,from+PAGE-1);
+        if(r.error)throw new Error(r.error.message||'query_error');
+        rows=rows.concat(r.data||[]);
+        if(!r.data||r.data.length<PAGE)break;
+        from+=PAGE;
+        if(from>200000)throw new Error('paging_abort_200k');   // Schutz vor Endlosschleife
+      }
+      out.tables[t]=rows;
+    }catch(e){
+      out.tables[t]=null;
+      out._manifest.errors.push({table:t,error:String((e&&e.message)||e)});
+    }
+  }
+  var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);var a=document.createElement('a');
+  a.href=url;a.download='orvia-cloud-export-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);
+  if(typeof toast==='function')toast(out._manifest.errors.length
+    ?('Cloud-Export mit '+out._manifest.errors.length+' Tabellenfehlern — siehe _manifest.errors')
+    :'Cloud-Export gespeichert ✓ ('+ORVIA_CLOUD_EXPORT_TABLES.length+' Tabellen)');
+  return out;
+}

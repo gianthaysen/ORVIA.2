@@ -116,7 +116,8 @@
       <div><div class="greet" id="greet"></div><h1 id="hdrName"></h1><div class="date" role="button" tabindex="0" onclick="gmOpenDaySheet()" onkeydown="if(event.key==='Enter')gmOpenDaySheet()" aria-label="Tag wählen"><span id="dayTitle">Heute</span> · <span id="dateLabel"></span></div></div>
       <div class="hdr-actions">
         <span id="daynavTpl" style="display:none" aria-hidden="true"><button id="todayBtn" onclick="goToday()"></button><button id="nextDay"></button></span>
-        <button class="iconbtn" id="gmBell" aria-label="Benachrichtigungen" onclick="gmOpenBell()"><svg class="ic sm" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+        <!-- Phase 1b: Glocke entfernt — Header-Knopf ohne funktionierenden Endzustand.
+             Kommt zurueck, sobald es eine produktive Benachrichtigungsquelle gibt. -->
         <button class="iconbtn" aria-label="Einstellungen" onclick="gmOpenDashboardSettings()"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8 2 2 0 1 1-2.8 2.8 1.6 1.6 0 0 0-2.7 1.1 2 2 0 1 1-4 0 1.6 1.6 0 0 0-2.6-1.1 2 2 0 1 1-2.8-2.8A1.6 1.6 0 0 0 3 15a2 2 0 1 1 0-4 1.6 1.6 0 0 0 1.5-2.6 2 2 0 1 1 2.8-2.8A1.6 1.6 0 0 0 10 4.6a2 2 0 1 1 4 0 1.6 1.6 0 0 0 2.7 1.1 2 2 0 1 1 2.8 2.8A1.6 1.6 0 0 0 21 11a2 2 0 1 1 0 4z"/></svg></button>
       </div>
     </div>
@@ -124,6 +125,10 @@
     <div class="sync" id="syncLine"><span class="pulse" aria-hidden="true"></span><span id="syncTxt">Lokaler Modus</span></div>
 
     <div id="command"></div>
+    <!-- P0 2026-08-05: sichtbarer Wiedereinstieg in ein laufendes Workout. Vorher lag
+         der Fortsetzen-Einstieg im ausgeblendeten Legacy-Host #todaySummary — nach
+         einem App-Neustart wirkte das Workout „beendet", lief aber im Hintergrund. -->
+    <div id="resumeBanner"></div>
     <div id="pauseBanner" style="display:none"></div>
     <div id="adaptBox" style="display:none"></div>
     <div id="confBox" style="display:none"></div>
@@ -162,7 +167,7 @@
       <summary><svg class="ic"><use href="#i-repeat"/></svg>Routinen &amp; Supplements<span class="acc-badge" id="routinesOpenBadge"></span><span class="acc-x">›</span></summary>
       <div class="acc-body">
       <div class="field"><label>Routinen erledigt?</label><div class="chips" id="routineChips"></div></div>
-      <div class="field"><label>Spanish Squats — Reps gesamt</label><input type="number" inputmode="numeric" id="ssRepsIn" placeholder="z.B. 36 (3×12)"></div>
+      <div class="field" id="ssRepsField"><label>Spanish Squats — Reps gesamt</label><input type="number" inputmode="numeric" id="ssRepsIn" placeholder="z.B. 36 (3×12)"></div>
       <div class="field" style="margin-bottom:0">
         <label>Supplements heute</label>
         <div id="recBox"></div>
@@ -382,10 +387,10 @@
     <div class="card"><h2><svg class="ic"><use href="#i-info"/></svg>Datenschutz &amp; Sicherheit</h2>
       <p class="muted" style="line-height:1.6;margin:0">Deine Daten bleiben lokal auf dem Gerät und in deinem privaten Konto. Export &amp; Backup jederzeit möglich.<br><br>ORVIA ist kein Medizinprodukt — keine Diagnose, keine Behandlung, nur Trainings- und Performance-Unterstützung. Bei starken oder anhaltenden Beschwerden ärztlich oder physiotherapeutisch abklären lassen.</p></div>
 
-    <div class="card"><h2><svg class="ic"><use href="#i-zap"/></svg>Plan</h2>
-      <div class="mon"><div class="mon-col"><b>Free</b><ul><li>Heute &amp; Check-in</li><li>Basisplan &amp; manuelle Einträge</li><li>einfache Insights</li></ul></div>
-      <div class="mon-col mon-pro"><b>Pro</b><ul><li>adaptive Plananpassung</li><li>Coach Briefing &amp; Export</li><li>Garmin/Strava-Import</li><li>erweiterte Analytics &amp; Energy Planner</li><li>mehrere Ziele &amp; Season Planner</li></ul></div></div>
-      <p class="note" style="margin-top:8px">Aktuell sind alle Funktionen frei nutzbar (Research-Preview).</p></div>
+    <!-- KF-007 (Rest, 2026-08-04): Free/Pro-Behauptungstabelle entfernt. Sie war
+         unerreichbar (Legacy-Profil ist per Kaskade ausgeblendet) und behauptete
+         ein Preismodell, das es nicht gibt. Es existiert kein Free/Pro-Gate im
+         Code — alle Funktionen sind frei (Research-Preview). -->
 
     <div class="card"><h2><svg class="ic"><use href="#i-info"/></svg>App</h2>
       <div class="obrandfoot" data-orvia-version-trigger="true"><svg class="omark" viewBox="0 0 512 512" aria-hidden="true"><use href="#orvia-mark"/></svg><b>ORVIA</b><span class="muted">· Performance OS · v6.0</span></div>
@@ -431,6 +436,21 @@
 <!-- Phase 6: deklarative Check-in-Registry + Garmin-Feld-Resolver (VOR ui.js — renderMorning liest die Registry) -->
 <script src="js/checkin-fields.js"></script>
 <script src="js/checkin-field-resolver.js"></script>
+<!-- KF-021: gemessene Laufbestzeiten aus kanonischen Garmin-Runden. VOR ui.js und
+     activity.js — beide lesen die Rundennormalisierung aus diesem Modul. -->
+<!-- Phase 2.0: gemeinsamer Metrik-Envelope (Wert · Zeitraum · Abdeckung ·
+     Berechnungsgrundlage, technisch erzwungen). VOR ui.js — die Produzenten lesen ihn. -->
+<script src="js/metrics/metric-envelope.js"></script>
+<!-- Phase 4 (E-02): zentraler Quellenprioritätsvertrag — Messung ≠ Profilwert ≠ Schätzung.
+     VOR ui.js/profile.js-Renderern nutzbar; reine Domain, keine Abhängigkeiten. -->
+<script src="js/metrics/source-contract.js"></script>
+<script src="js/run-bests.js"></script>
+<!-- Phase 5C: kanonisches Wochenplan-Modell (Baseline+Overrides+Rebase, reine Domain).
+     VOR ui.js — die Plan-Renderer und die 5D-Migration lesen ORVIA.planDomain. -->
+<script src="js/plan-domain.js"></script>
+<!-- 2026-08-04: gemessene Meilensteine/Medaillen (reine Arithmetik ueber kanonische
+     Aktivitaeten). VOR ui.js — die Analyse-/Profil-Renderer lesen ORVIA.achievements. -->
+<script src="js/achievements.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/activity.js"></script>
 <script src="js/nutrition.js"></script>
@@ -459,6 +479,8 @@
 <script src="js/repos/exerciseRepository.js"></script>
 <script src="js/repos/sportRepository.js"></script>
 <script src="js/repos/trainingPlanRepository.js"></script>
+<!-- Phase 5: user_week_plans (Migration 0030) — I/O fuer das kanonische Planmodell. -->
+<script src="js/repos/weekPlanRepository.js"></script>
 <script src="js/repos/workoutRepository.js"></script>
 <script src="js/repos/activityRepository.js"></script>
 <script src="js/repos/metricsRepository.js"></script>
@@ -500,6 +522,32 @@
 <script src="js/engine/plan-engine-v2.js"></script>
 <script src="js/engine/training-input-resolver.js"></script>
 <script src="js/engine/shadow-runner.js"></script>
+<!-- Phase 6.3 (2026-08-05): Knowledge- + Scheduler-Module laden (vorher fehlten 9 Dateien
+     komplett — scheduler-goal-allocation failte garantiert mit PORTFOLIO_MODULE_MISSING).
+     REIHENFOLGE VERBINDLICH: knowledge-contracts MUSS vor knowledge-sources und
+     running-knowledge-pack stehen (beide rufen zur LADEZEIT packContentHash/
+     registryContentHash auf — sonst fehlt der contentHash und das Pflicht-Pinning
+     in selectRules schlaegt spaeter fehl). Alle Module sind reine, eingefrorene
+     Namespaces ohne DOM-/Storage-Zugriff zur Ladezeit; nichts steuert die UI. -->
+<script src="js/engine/knowledge/knowledge-contracts.js"></script>
+<script src="js/engine/knowledge/knowledge-sources.js"></script>
+<script src="js/engine/knowledge/running-knowledge-pack.js"></script>
+<script src="js/engine/knowledge/sport-coverage-matrix.js"></script>
+<script src="js/engine/goal-portfolio.js"></script>
+<script src="js/engine/running-capacity-factory.js"></script>
+<script src="js/engine/scheduler-input-factory.js"></script>
+<script src="js/engine/scheduler-goal-allocation.js"></script>
+<script src="js/engine/scheduler-v1.js"></script>
+<!-- Phase 7 S3 (2026-08-05): Kapazitaets-Adapter — kanonische Lastserie → capacity.perSport (shadow-only) -->
+<script src="js/engine/capacity-adapter.js"></script>
+<!-- Phase 7 S4 (2026-08-05): Constraint Solver — liest restDay/fixedCommitments, fail-closed (shadow-only) -->
+<script src="js/engine/constraint-solver.js"></script>
+<!-- Phase 7 S5 (2026-08-05): Prescription-Factory — neutrales Vertrag-4-Workout-Schema (shadow-only) -->
+<script src="js/engine/prescription-factory.js"></script>
+<!-- Phase 7 (2026-08-05): scheduler-v2 — Pipeline S3→S4→S5, shadow_only (v1 bleibt Skeleton) -->
+<script src="js/engine/scheduler-v2.js"></script>
+<!-- Phase 8 (2026-08-05): Shadow-Gate-Auswerter — misst die 5 Kriterien, entscheidet nichts -->
+<script src="js/engine/shadow-eval.js"></script>
 <div id="workoutOverlay" class="wo-overlay hide"></div>
 <div id="workoutPicker" class="wo-overlay hide"></div>
 </body>

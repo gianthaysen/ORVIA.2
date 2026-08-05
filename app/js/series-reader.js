@@ -100,7 +100,12 @@
   /* ---- Reine Render-Helfer (SVG-Strings) — nur echte Punkte, keine Interpolation
      erfundener Werte; fehlende Serie ⇒ Aufrufer zeigt ehrlichen Leerzustand. ---- */
   var STAGE_LANE = { deep: 0, light: 1, rem: 2, awake: 3 };
-  var STAGE_COLOR = { deep: '#3b4d8f', light: '#9db4d8', rem: '#7c9cff', awake: '#c9ae7c' };
+  /* Phase 4 (2026-08-05, P2-3): EINE Farbquelle fuer Schlafphasen. Vorher divergierten
+     Hypnogramm (#3b4d8f/#c9ae7c) und Phasenbalken (var(--sleep)/var(--muted)) — dieselbe
+     Phase in zwei Farben. Jetzt: CSS-Variablen mit Fallback (SVG inline im HTML loest
+     var() auf; in var-losen Kontexten greift der Fallback). ui.js liest DIESE Map. */
+  var STAGE_COLOR = { deep: 'var(--sleep,#9585ED)', light: '#9db4d8', rem: '#7c9cff', awake: 'var(--gold-soft,#DCC79A)' };
+  var STAGE_LABEL = { deep: 'Tief', light: 'Leicht', rem: 'REM', awake: 'Wach' };
 
   function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
 
@@ -117,9 +122,20 @@
       var lane = STAGE_LANE[stage]; if (lane == null) return '';
       var x = off / total * W, w = Math.max(0.6, dur / total * W);
       return '<rect x="' + x.toFixed(2) + '" y="' + (lane * laneH).toFixed(2) + '" width="' + w.toFixed(2) +
-        '" height="' + (laneH - 1).toFixed(2) + '" fill="' + STAGE_COLOR[stage] + '" rx="1"/>';
+        '" height="' + (laneH - 1).toFixed(2) + '" fill="' + STAGE_COLOR[stage] + '" rx="1"><title>' + _esc(STAGE_LABEL[stage] || stage) + ' · ' + Math.round(dur / 60) + ' min</title></rect>';
     }).join('');
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="none" role="img" aria-label="Hypnogramm">' + rects + '</svg>';
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="none" role="img" aria-label="Hypnogramm: Schlafphasen im Zeitverlauf (Spuren: Tief, Leicht, REM, Wach)">' + rects + '</svg>';
+    if (opts.plain) return svg;
+    /* Phase 4 (P2-3): Spurenbeschriftung als HTML-Spalte NEBEN dem SVG — Text im
+       preserveAspectRatio="none"-SVG wuerde mitverzerrt. Reihenfolge = STAGE_LANE. */
+    var laneNames = ['deep', 'light', 'rem', 'awake'];
+    var labels = laneNames.map(function (s) {
+      return '<span style="flex:1;display:flex;align-items:center;gap:4px"><i style="width:7px;height:7px;border-radius:2px;background:' + STAGE_COLOR[s] + ';flex:0 0 auto"></i>' + _esc(STAGE_LABEL[s]) + '</span>';
+    }).join('');
+    return '<div style="display:flex;gap:8px;align-items:stretch">' +
+      '<div style="display:flex;flex-direction:column;font-size:9px;color:var(--faint,#8a93a1);font-weight:650;line-height:1;flex:0 0 auto">' + labels + '</div>' +
+      '<div style="flex:1;min-width:0">' + svg + '</div></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--faint,#8a93a1);font-weight:650;margin-top:3px"><span>Einschlafen</span><span>Zeitverlauf der Nacht →</span><span>Aufwachen</span></div>';
   };
 
   Reader.renderCurve = function (points, opts) {
@@ -150,6 +166,8 @@
     return svg;
   };
 
+  Reader.STAGE_COLOR = STAGE_COLOR;   // Phase 4 (P2-3): eine Farb-/Label-Quelle fuer alle Schlafphasen-Darstellungen
+  Reader.STAGE_LABEL = STAGE_LABEL;
   root.ORVIA.seriesReader = Reader;
   if (typeof module !== 'undefined' && module.exports) module.exports = Reader;
 })();

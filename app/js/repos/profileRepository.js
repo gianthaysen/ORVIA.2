@@ -45,7 +45,11 @@
         /* 0018: Regeneration & Alltag + Trainingspräferenzen — vorher Blob-only und damit
            auf anderen Geräten unsichtbar. Migration 0018 MUSS vor diesem JS-Stand laufen. */
         recovery: profile.recovery ?? null,
-        preferences: profile.preferences ?? null
+        preferences: profile.preferences ?? null,
+        /* 0029 (Phase 4 / P2-5): Anzeige-Handle + Bio — vorher hart '—'/Platzhalter in der
+           UI ohne Datenmodell. Migration 0029 MUSS vor diesem JS-Stand laufen. */
+        handle: profile.handle ?? null,
+        bio: profile.bio ?? null
       }), 'user_id');
     }
   };
