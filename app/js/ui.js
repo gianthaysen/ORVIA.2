@@ -3,11 +3,16 @@
 (function(g){['ring','icon','arrow','battGrad','sparkline'].forEach(function(k){if(typeof g[k]!=='function')g[k]=function(){return '';};});if(!g.SC)g.SC={};if(!g.TINT)g.TINT={};})(typeof window!=='undefined'?window:(typeof globalThis!=='undefined'?globalThis:this));
 /* GM1-Daten vor der Top-Level-Init (Modul-Registry, Levels; Funktionen hoisten selbst). */
 var GM_NA='Noch nicht verfügbar';
-var ALLMOD={readinessPro:{t:"Readiness & Konfidenz",d:"Baseline, SD, Trends",lvl:3},recovery:{t:"Schlaf & Erholung",d:"Score, HRV, Ruhepuls",lvl:2},loadPro:{t:"Belastungssteuerung",d:"CTL/ATL, ACWR, Sportart",lvl:3},loadSimple:{t:"Trainingsbelastung",d:"Status + Zone",lvl:2},vitals:{t:"HRV & Ruhepuls",d:"Trend + Baseline",lvl:2},vitalsFull:{t:"Vitalwerte",d:"HRV, RHR, HRR, VO₂, Atmung",lvl:3},stress:{t:"Stress",d:"Tagesverlauf",lvl:3},activity:{t:"Aktivität heute",d:"Schritte, aktive kcal",lvl:1},activitySimple:{t:"Schritte",d:"Tagesziel",lvl:1},next:{t:"Bevorstehendes Training",d:"Nächste Einheit",lvl:1},nextSimple:{t:"Nächstes Training",d:"Was & wann",lvl:1},contrib:{t:"Belastungs-Beitrag",d:"ATL pro Einheit",lvl:3},goal:{t:"Ziel-Fortschritt",d:"Hauptziel",lvl:2},goalSimple:{t:"Dein Ziel",d:"Fortschritt",lvl:1},sleepSimple:{t:"Schlaf",d:"einfach",lvl:1},pain:{t:"Beschwerden",d:"Schmerz-Status",lvl:1}};
-var LEVELMOD={a:["nextSimple","goalSimple","sleepSimple","activitySimple","pain"],f:["recovery","loadSimple","vitals","goal","activity","next"],p:["readinessPro","loadPro","recovery","vitalsFull","stress","contrib","goal","activity","next"]};
+var ALLMOD={readinessPro:{t:"Readiness & Konfidenz",d:"Baseline, SD, Trends",lvl:3},recovery:{t:"Schlaf & Erholung",d:"Score, HRV, Ruhepuls",lvl:2},loadPro:{t:"Belastungssteuerung",d:"CTL/ATL, ACWR, Sportart",lvl:3},loadSimple:{t:"Trainingsbelastung",d:"Status + Zone",lvl:2},vitals:{t:"HRV & Ruhepuls",d:"Trend + Baseline",lvl:2},vitalsFull:{t:"Vitalwerte",d:"HRV, RHR, HRR, VO₂, Atmung",lvl:3},stress:{t:"Stress",d:"Tagesverlauf",lvl:3},activity:{t:"Aktivität heute",d:"Schritte, aktive kcal",lvl:1},activitySimple:{t:"Schritte",d:"Tagesziel",lvl:1},next:{t:"Bevorstehendes Training",d:"Nächste Einheit",lvl:1},nextSimple:{t:"Nächstes Training",d:"Was & wann",lvl:1},contrib:{t:"Belastungs-Beitrag",d:"ATL pro Einheit",lvl:3},goal:{t:"Ziel-Fortschritt",d:"Hauptziel",lvl:2},goalSimple:{t:"Dein Ziel",d:"Fortschritt",lvl:1},sleepSimple:{t:"Schlaf",d:"einfach",lvl:1},pain:{t:"Beschwerden",d:"Schmerz-Status",lvl:1},
+/* 2026-08-05 (Nutzerentscheidung): Ernaehrung, Abend-Check-in und Routinen lagen als
+   Legacy-Karten ausserhalb des Modulsystems (eigenes Markup, nicht anordenbar,
+   nicht ausblendbar). Jetzt regulaere Module — gleiche Datenquellen, GM-Darstellung. */
+nutrition:{t:"Energie & Ernährung",d:"Kalorien, Makros, Protein",lvl:1},evening:{t:"Abend-Check-in",d:"Protein, Beschwerden, Notiz",lvl:1},supplements:{t:"Routinen & Supplements",d:"Tagesroutinen, Stack",lvl:1}};
+var LEVELMOD={a:["nextSimple","goalSimple","sleepSimple","activitySimple","pain","nutrition","evening","supplements"],f:["recovery","loadSimple","vitals","goal","activity","next","nutrition","evening","supplements"],p:["readinessPro","loadPro","recovery","vitalsFull","stress","contrib","goal","activity","next","nutrition","evening","supplements"]};
 /* Wrapper (nicht direkte Referenzen): bestehende Quelltext-Slice-Tests evaluieren ui.js
    teilweise — Aufloesung erst beim Aufruf haelt jede Teilauswertung referenzsicher. */
-var GM_REND={recovery:function(d){return gmModRecovery(d);},sleepSimple:function(d){return gmModSleepSimple(d);},activitySimple:function(d){return gmModActivitySimple(d);},loadSimple:function(d){return gmModLoadSimple(d);},loadPro:function(d){return gmModLoadPro(d);},readinessPro:function(d){return gmModReadinessPro(d);},vitals:function(d){return gmModVitals(d);},vitalsFull:function(d){return gmModVitalsFull(d);},stress:function(d){return gmModStress(d);},activity:function(d){return gmModActivity(d);},next:function(d){return gmModNext(d);},nextSimple:function(d){return gmModNextSimple(d);},goal:function(d){return gmModGoal(d);},goalSimple:function(d){return gmModGoalSimple(d);},pain:function(d){return gmModPain(d);},contrib:function(d){return gmModContrib(d);}};
+var GM_REND={recovery:function(d){return gmModRecovery(d);},sleepSimple:function(d){return gmModSleepSimple(d);},activitySimple:function(d){return gmModActivitySimple(d);},loadSimple:function(d){return gmModLoadSimple(d);},loadPro:function(d){return gmModLoadPro(d);},readinessPro:function(d){return gmModReadinessPro(d);},vitals:function(d){return gmModVitals(d);},vitalsFull:function(d){return gmModVitalsFull(d);},stress:function(d){return gmModStress(d);},activity:function(d){return gmModActivity(d);},next:function(d){return gmModNext(d);},nextSimple:function(d){return gmModNextSimple(d);},goal:function(d){return gmModGoal(d);},goalSimple:function(d){return gmModGoalSimple(d);},pain:function(d){return gmModPain(d);},contrib:function(d){return gmModContrib(d);},
+nutrition:function(d){return gmModNutrition(d);},evening:function(d){return gmModEvening(d);},supplements:function(d){return gmModSupplements(d);}};
 var GM_KGRID={recovery:1,activity:1};
 var GM_METRIC_DEFS={sleep_duration_min:{label:'Schlaf',icon:'moon',color:'sleep',unit:' min'},hrv_ms:{label:'Herzfrequenzvariabilität',icon:'pulse',color:'ready',unit:' ms'},resting_hr:{label:'Ruhepuls',icon:'heart',color:'ready',unit:' bpm'},stress_avg:{label:'Stress',icon:'wind',color:'ready',unit:''},body_battery:{label:'Body Battery',icon:'battery',color:'activity',unit:''},steps:{label:'Schritte',icon:'activity',color:'activity',unit:''},active_kcal:{label:'Aktive Energie',icon:'bolt',color:'activity',unit:' kcal'},load:{label:'Trainingsbelastung',icon:'gauge',color:'ready',unit:''},
 /* GM7.4-2: Group-1 — bereits vom Worker produzierte/gespeicherte Werte, generisches Detail-Sheet (Quelle/Stand/Stale). Keine medizinische Bewertung, keine UI-Neuberechnung. */
@@ -162,6 +167,11 @@ function gmApplyPhase3Visibility(){
     var e=entry(cur);
     var eveOn=gmEveVisible(new Date().getHours(),e);
     var ev=document.getElementById('eveCard');if(ev)ev.classList.toggle('p3-live',eveOn);
+    /* 2026-08-05: Laeuft der Abend-Check-in als Modul (gmModEvening), traegt das Modul den
+       Status — das Formular erscheint erst auf ausdrueckliche Anforderung (gmGotoEvening-
+       Checkin / Quick-Action setzen .gm-co-open). Gleiches Muster wie #routinesCard. */
+    if(ev){var _evMod=(typeof gmModOn==='function')&&gmModOn('evening');
+      ev.classList.toggle('gm-hidden-host',_evMod&&!ev.classList.contains('gm-co-open'));}
     var nu=document.getElementById('nutritionBox');if(nu)nu.classList.toggle('p3-live',gmFeatureFlag('nutrition')&&cur===todayStr());
     /* #extraCheckin bleibt AUS (E-21): erst die Garmin-basierte Variante — die App
        stellt keine Fragen, deren Antwort bereits gemessen vorliegt. */
@@ -356,6 +366,78 @@ function generateWeekPlan(){
       _activeN++;
     }
   }
+  /* ============================================================
+     (3) Gewuenschte EINHEITEN je Sportart (2026-08-05, Nutzer-Feedback)
+
+     BEFUND: Bis hierher entsteht der Plan aus einem festen Wochentemplate, in dem
+     die Nebensportarten hartkodiert GENAU EINMAL vorkommen (z. B. `if(bike) w[5]=…
+     concat([gpB('Easy Z2','60 min')])`). Wer im Profil 3 Radeinheiten hinterlegt,
+     bekam trotzdem eine. Zusaetzlich deckelt der Schritt darueber ausschliesslich
+     TAGE — eine Woche hat sieben, also waren z. B. 10 Einheiten/Woche strukturell
+     unerreichbar, egal was im Profil stand (gemeldet als „ich will zehn, habe sieben").
+
+     LOESUNG (bewusst additiv): Der bestehende Aufbau bleibt unveraendert; hier wird
+     nur die Luecke zwischen IST und der im Profil hinterlegten Wunschzahl gefuellt.
+     Quelle ist ausschliesslich PROFILE.sports[].sessionsPerWeek (kanonisch normalisiert,
+     profile-model.js) — ohne Angabe passiert nichts, es wird nichts geraten.
+
+     REGELN: nur LOCKERE Einheiten (nie zusaetzliche Intensitaet), Ruhetage/nicht
+     verfuegbare Tage bleiben unangetastet, und erst wenn alle verfuegbaren Tage
+     belegt sind, entstehen Doppeleinheiten — beginnend bei den am wenigsten
+     belasteten Tagen. Mehr als 2 Einheiten pro Tag werden nicht geplant.
+     ============================================================ */
+  (function(){
+    var sports=(typeof PROFILE!=='undefined'&&PROFILE&&Array.isArray(PROFILE.sports))?PROFILE.sports:[];
+    if(!sports.length)return;
+    /* Wunschzahl je kanonischer Sport-ID — nur echte, positive Angaben. */
+    var want={};
+    sports.forEach(function(s){
+      if(!s||typeof s!=='object')return;
+      if(s.activeInApp===false)return;
+      var id=s.sportId||'';var n=s.sessionsPerWeek;
+      if(!id||n==null||!isFinite(+n)||+n<=0)return;
+      want[id]=Math.min(14,Math.round(+n));
+    });
+    var ids=Object.keys(want);if(!ids.length)return;
+    /* Bereits geplante Einheiten je Sportart zaehlen (it.t ist das deutsche Label
+       des Templates — dieselbe Quelle, die auch die Plananzeige liest). */
+    var LABEL={running:'Laufen',cycling:'Rad',swimming:'Schwimmen',gym:'Gym'};
+    var MAKE={
+      running:function(){return gpR('Z2 Dauerlauf','ez');},
+      cycling:function(){return gpB('Easy Z2','60 min');},
+      swimming:function(){return gpS('Technik','~900 m');},
+      gym:function(){return gpG('Ganzkörper');}
+    };
+    var have={};
+    for(var d0=0;d0<7;d0++)(w[d0]||[]).forEach(function(it){
+      if(!it||!it.t)return;have[it.t]=(have[it.t]||0)+1;});
+    /* Verfuegbare Tage: Ruhetage bleiben ausgeschlossen — sie sind eine ausdrueckliche
+       Nutzerentscheidung und werden hier NICHT ueberschrieben. */
+    var hasAvail=!!(cfg&&cfg.availableDayIdx&&cfg.availableDayIdx.length);
+    var days=[];for(var d1=0;d1<7;d1++)if(!hasAvail||cfg.availableDayIdx.indexOf(d1)>=0)days.push(d1);
+    if(!days.length)return;
+    var MAX_PER_DAY=2;
+    ids.forEach(function(id){
+      var mk=MAKE[id];if(!mk)return;                     /* nur Sportarten mit echtem Template */
+      var lbl=LABEL[id];if(!lbl)return;
+      var missing=want[id]-(have[lbl]||0);
+      var guard=0;
+      while(missing>0&&guard++<14){
+        /* Zielsuche: erst leere Tage, dann der am wenigsten belastete Tag ohne
+           bereits geplante Einheit DERSELBEN Sportart (kein Doppel am selben Tag). */
+        var pick=-1,best=99;
+        days.forEach(function(dd){
+          var day=w[dd]||[];
+          if(day.length>=MAX_PER_DAY)return;
+          for(var q=0;q<day.length;q++)if(day[q]&&day[q].t===lbl)return;   /* nicht 2× gleiche Sportart/Tag */
+          if(day.length<best){best=day.length;pick=dd;}
+        });
+        if(pick<0)break;                                  /* kein Platz mehr — ehrlich statt ueberladen */
+        w[pick]=(w[pick]||[]).concat([mk()]);
+        missing--;
+      }
+    });
+  })();
   var nonEmpty=0;for(var i=0;i<7;i++)if(w[i].length)nonEmpty++;
   return nonEmpty?w:null;
 }
@@ -1372,7 +1454,19 @@ function renderDecision(){var _rdP=(window.ORVIA&&window.ORVIA.perf)||{now:funct
   // E2: Engine-v2 SHADOW-Lauf (protokolliert v1-vs-v2, steuert NIE die Anzeige).
   var _rd1=_rdP.now();
   try{if(t&&window.ORVIA&&window.ORVIA.engineShadow)window.ORVIA.engineShadow.run();}catch(e){}
-  _rdP.mark('renderDecision: engineShadow.run (duplicate v2 engine pass)',_rd1);}
+  _rdP.mark('renderDecision: engineShadow.run (duplicate v2 engine pass)',_rd1);
+  /* Phase 8.4: Aktivierungsversuch im selben Takt. Bei ausgeschaltetem Flag kehrt
+     die Funktion sofort zurueck (kein Aufwand, kein Protokolleintrag). Ein
+     erledigter Tag wird vermerkt, damit nicht jeder Render neu rechnet; ein
+     ungeklaerter Ausgang darf es dagegen erneut versuchen — gedeckelt, damit
+     ein Dauerfehler keine Schleife wird. */
+  try{
+    if(t&&typeof gmEngineActivateWeek==='function'&&window._engActDay!==todayStr()&&(window._engActTries||0)<3){
+      window._engActTries=(window._engActTries||0)+1;
+      var _ar=gmEngineActivateWeek();
+      if(_ar&&(_ar.applied||_ar.reason==='unchanged'||_ar.reason==='would_drop_overrides'))window._engActDay=todayStr();
+    }
+  }catch(e){}}
 function saveMorning(){if(!canEditCur())return;entry(cur).morning=gatherMorning();if(typeof gatherCheckinIssues==='function')gatherCheckinIssues();if(window._correctionMode&&cur!==todayStr())logCorrection('morning');save();renderDecision();try{if(window.ORVIA&&window.ORVIA.checkinStore){window.ORVIA.checkinStore.persistMorning(cur).then(function(r){if(!r||typeof toast!=='function')return;
   if(r.success===false){
     /* INCIDENT 2026-07-16: Fehler NICHT mehr verschlucken — Code im Toast, Details in der
@@ -2115,7 +2209,12 @@ function renderRoutines(){const e=entry(cur);const r=e.routines||{};
   /* Phase 3 (E-22): sind Routinen konfiguriert, ist die Karte HEUTE regulaer da —
      der taegliche Abhak-Kontext ist ihr Zweck. Leere Auswahl ⇒ Karte weg. */
   const _act3=activeRoutines();
-  if(card)card.style.display=(force||coOpen||(isToday?(open>0||_act3.length>0):hasHist))?'':'none';
+  /* 2026-08-05: Laeuft der Bereich als Modul (gmModSupplements), traegt das Modul den
+     taeglichen Status — die Formularkarte erscheint dann nur noch auf ausdrueckliche
+     Anforderung (gmGotoRoutines setzt .gm-co-open). Kein Doppelinhalt, aber auch kein
+     Funktionsverlust: das Formular selbst bleibt unveraendert. */
+  const _modOn=(typeof gmModOn==='function')&&gmModOn('supplements');
+  if(card)card.style.display=((force||coOpen)||(!_modOn&&(isToday?(open>0||_act3.length>0):hasHist)))?'':'none';
   const badge=document.getElementById('routinesOpenBadge');
   if(badge)badge.textContent=(isToday&&open>0)?open+' offen':'';
   const act=activeRoutines();
@@ -2804,6 +2903,58 @@ function gmCanonPlanEngineRebase(adjustedDays,batchId){
   if(r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+' Plan-Konflikt(e) — siehe Plan-Tab');
   return true;
 }
+/* ============ Phase 8.4 (2026-08-06) · flag-gesteuerter Aktivierungspfad ============
+   Bis hierher endete die Engine im Protokoll: week-projection baute das Anzeige-
+   modell, aber niemand schrieb es je in den Plan. Das ist der eine Aufruf, der die
+   Kette schliesst — und er ist dreifach gesperrt:
+     1. serverseitiges Flag 'engine_v2_plan' (fail-closed, feature-flags.js),
+     2. kanonisches Planmodell aktiv (ohne Baseline/Override-Trennung gaebe es
+        keinen Ort, an dem manuelle Aenderungen die Engine ueberleben koennten),
+     3. plan-activation verweigert selbst, sobald ein Override verloren ginge.
+   Steht auch nur eine der drei nicht, passiert exakt nichts — der Legacy-Pfad
+   bleibt unveraendert. JEDER Ausgang wird protokolliert; genau dieses Protokoll
+   wertet canary-eval aus. Ohne Ereignisse meldet es insufficient_data, nie „gruen". */
+function gmEnginePlanFlagOn(){
+  try{return !!(window.ORVIA&&ORVIA.featureFlags&&ORVIA.featureFlags.isEnabled('engine_v2_plan'));}catch(_){return false;}
+}
+function gmEngineActivateWeek(){
+  var PA=(window.ORVIA&&ORVIA.planActivation)||null;
+  if(!PA)return null;
+  var on=gmEnginePlanFlagOn();
+  /* Ohne Freigabe nicht einmal rechnen: kein Aufwand, kein Protokolleintrag,
+     keine Moeglichkeit einer Nebenwirkung. */
+  if(!on)return null;
+  if(!gmCanonPlanOn()||!_gmCanonPlan.plan)
+    {PA.logEvent({at:new Date().toISOString(),reason:'no_canonical_plan',applied:false,flag:'engine_v2_plan'});return null;}
+  var sh=(window.ORVIA&&ORVIA.engineShadow)||null;
+  var wk=null;try{wk=sh&&typeof sh.buildWeekNow==='function'?sh.buildWeekNow():null;}catch(_){ }
+  if(!wk||!wk.result)
+    {PA.logEvent({at:new Date().toISOString(),reason:'projection_failed',applied:false,flag:'engine_v2_plan',error:'no_scheduler_result'});return null;}
+  var r=PA.activate({plan:_gmCanonPlan.plan,schedulerOutput:wk.result,enabled:true,
+    now:new Date().toISOString(),weekKey:_gmCanonPlan.weekKey});
+  PA.logEvent(r.event);
+  if(!r.applied)return r;
+  /* Erst ab hier wird geschrieben — und der Zustand davor bleibt fuer den
+     Rueckweg erhalten (Canary-Kriterium „Migration reversibel"). */
+  try{PROFILE._planEngineUndo=r.previous;}catch(_){ }
+  gmCanonPlanPersist(r.plan);
+  if(r.conflicts&&r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+' Plan-Konflikt(e) — siehe Plan-Tab');
+  return r;
+}
+/* Rueckweg aus der Konsole/Notfall: ORVIA.enginePlanRevert() */
+function gmEnginePlanRevert(){
+  var PA=(window.ORVIA&&ORVIA.planActivation)||null;
+  var snap=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE._planEngineUndo)||null;
+  if(!PA||!snap)return {ok:false,reason:'no_snapshot'};
+  var r=PA.revert(snap);
+  if(!r.ok)return r;
+  gmCanonPlanPersist(r.plan);
+  try{PROFILE._planEngineUndo=null;}catch(_){ }
+  PA.logEvent({at:new Date().toISOString(),reason:'reverted',applied:false,flag:'engine_v2_plan'});
+  try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }
+  return r;
+}
+try{window.ORVIA=window.ORVIA||{};ORVIA.enginePlanActivate=gmEngineActivateWeek;ORVIA.enginePlanRevert=gmEnginePlanRevert;}catch(_){ }
 /* Konflikt-Badge + Sheet (Entscheidung ②: Badge, keine Unterbrechung). */
 function gmCanonPlanConflictCount(){
   try{return (_gmCanonPlan.plan&&_gmCanonPlan.plan.pendingConflicts&&_gmCanonPlan.plan.pendingConflicts.length)||0;}catch(_){return 0;}
@@ -3489,6 +3640,12 @@ function bestTimes(){
    damit Kachel, Liste und Detailsheet nicht unterschiedlich behaupten koennen,
    woher ein Wert stammt. */
 var GM_BT_SRC={lap_window:'gemessen · Runden aus der Uhr',activity_total:'gemessen · Aktivität',
+  stream_window:'gemessen · Messreihe der Uhr',
+  /* 2026-08-05: Abschnitt aus einer laengeren Einheit, dessen Zeit aus der Gesamtdauer
+     gleichmaessig abgeleitet wurde (die Messreihe traegt keinen Zeitstempel). Die volle
+     Dauer inkl. Pausen wird mitverteilt ⇒ der Wert ist eine Obergrenze, nie zu schnell.
+     Bewusst als EIGENE Quelle benannt, nicht als Rundenmessung. */
+  stream_uniform:'aus Messreihe abgeleitet (Abschnitt, Obergrenze)',
   manual_best:'eingetragene Bestleistung',estimate:'geschätzt (Riegel-Modell, keine Messung)'};
 function gmBtSrcLabel(b,kk){
   var s=b&&b.src?b.src[kk]:null;
@@ -3499,6 +3656,11 @@ function gmBtSrcLabel(b,kk){
   return t;
 }
 function gmBtSrcShort(b,kk){var s=b&&b.src?b.src[kk]:null;
+  /* 2026-08-05: 'stream_uniform' beruht auf echten Distanzdaten, aber auf einer
+     abgeleiteten Zeitachse — es waere unehrlich, das schlicht „gemessen" zu nennen,
+     und ebenso unehrlich, es mit der reinen Riegel-Schaetzung gleichzusetzen.
+     Deshalb eine dritte, eigene Kurzform. */
+  if(s==='stream_uniform')return 'abgeleitet';
   return s==='estimate'?'geschätzt':(s?'gemessen':'—');}
 function renderBestTimes(){
   var el=document.getElementById('bestTimesBox');if(!el)return;var b=bestTimes();
@@ -3506,11 +3668,25 @@ function renderBestTimes(){
   /* KF-021: Etikett folgt der TATSAECHLICHEN Quelle. „Strava" war seit dem
      Garmin-Sync ohnehin falsch und verdeckte, dass hinter „echt" eine Messung
      und hinter dem Rest eine Schaetzung steht. */
-  var cell=function(lbl,sec,kk){var real=b.real[kk];
-    return '<div class="bt"><span class="bt-d">'+lbl+'</span><span class="bt-t">'+(sec!=null?fmtPace(sec):'–')+'</span><span class="bt-src '+(real?'bt-real':'bt-est')+'">'+escH(gmBtSrcShort(b,kk))+'</span></div>';};
+  /* 2026-08-05: Drei statt zwei Herkunftsstufen. „abgeleitet" (Abschnitt aus einer
+     laengeren Einheit, Zeitachse aus der Gesamtdauer) darf weder als volle Messung
+     gruen noch als blosse Schaetzung grau erscheinen — eigene, neutrale Stufe. */
+  var cell=function(lbl,sec,kk){var s=b.src?b.src[kk]:null;
+    var cls=(s==='stream_uniform')?'bt-derived':(b.real[kk]?'bt-real':'bt-est');
+    return '<div class="bt"><span class="bt-d">'+lbl+'</span><span class="bt-t">'+(sec!=null?fmtPace(sec):'–')+'</span><span class="bt-src '+cls+'">'+escH(gmBtSrcShort(b,kk))+'</span></div>';};
   var anyReal=b.real.k1||b.real.k5||b.real.k10;
+  var anyDerived=['k1','k5','k10'].some(function(k){return b.src&&b.src[k]==='stream_uniform';});
+  /* Ehrliche Datenlage statt stillem „—": macht sichtbar, WORAUF die Werte beruhen
+     und warum eine Distanz ggf. keine Messung hat (gemeldet als „die Bestzeiten
+     werden immer noch nicht aus den Splits ermittelt"). */
+  var _m=b.meas||{},_scan=null;
+  try{_scan=(_m.scanned!=null)?_m:null;}catch(_){ }
   el.innerHTML='<div class="bt-grid">'+cell('1 km',b.t1,'k1')+cell('5 km',b.t5,'k5')+cell('10 km',b.t10,'k10')+'</div>'+
-    '<p class="note" style="text-align:left;margin-top:10px">'+(anyReal?'„Gemessen" = echte Leistung aus deinen Runden bzw. Aktivitäten. ':'')+(b.estPace?'„Geschätzt" = aus deinem schnellsten Lauf ('+fmtDe(b.estDist)+' km @ '+fmtPace(b.estPace)+'/km, Riegel-Modell) — nur dort, wo keine Messung existiert.':'')+'</p>';
+    '<p class="note" style="text-align:left;margin-top:10px">'+
+    (anyReal?'„Gemessen" = echte Leistung aus deinen Runden bzw. Aktivitäten. ':'')+
+    (anyDerived?'„Abgeleitet" = schnellster Abschnitt aus einer längeren Einheit; die Zeit stammt aus der Gesamtdauer der Aktivität und ist damit eine Obergrenze — nie zu schnell. ':'')+
+    (b.estPace?'„Geschätzt" = aus deinem schnellsten Lauf ('+fmtDe(b.estDist)+' km @ '+fmtPace(b.estPace)+'/km, Riegel-Modell) — nur dort, wo keine Messung existiert.':'')+'</p>'+
+    (_scan?('<p class="note" style="text-align:left;margin-top:6px;opacity:.75">Datenlage: '+_scan.scanned+' Läufe ausgewertet · '+_scan.withSplits+' mit Runden · '+(_scan.withStreams||0)+' mit Messreihe'+((_scan.withDerivedTime||0)?' (davon '+_scan.withDerivedTime+' ohne Zeitstempel — Zeit aus der Gesamtdauer abgeleitet)':'')+'.</p>'):'');
 }
 function renderDash(){
   flushAuto();
@@ -3886,21 +4062,45 @@ function showTab(name){
 (function(){
   var wrap=document.querySelector('.tabwrap');if(!wrap||wrap.dataset.bound)return;wrap.dataset.bound='1';
   var ind=document.createElement('span');ind.className='glass-indicator';wrap.prepend(ind);
+  var bar=wrap.closest('.tabbar');
   var lastTab='heute';
   function btnOf(name){return wrap.querySelector('button[data-tab="'+name+'"]');}
-  function markOn(name){wrap.querySelectorAll('button[data-tab]').forEach(function(x){x.classList.toggle('on',x.dataset.tab===name);});}
+  /* aria-current gehoert an das TATSAECHLICH aktive Ziel — ohne das ist der aktive
+     Zustand fuer Screenreader nur eine Farbe. Wird bei jedem Wechsel mitgefuehrt. */
+  function markOn(name){wrap.querySelectorAll('button[data-tab]').forEach(function(x){
+    var on=x.dataset.tab===name;x.classList.toggle('on',on);
+    if(on)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});}
+  /* Liquid-Glass (2026-08-06): Die Kapsel bewegt sich per translate3d statt per
+     `left` — `left` erzwingt in jedem Frame ein Layout, `transform` laeuft auf dem
+     Compositor. Die Breite folgt weiterhin dem echten Tab (unterschiedlich lange
+     Labels), wird aber nur bei ECHTER Aenderung geschrieben, damit ein Sync ohne
+     Groessenwechsel keine Layoutarbeit ausloest. */
+  var _indW=-1;
   function syncInd(anim){var b=wrap.querySelector('button[data-tab].on')||btnOf(lastTab);if(!b)return;
+    var x=b.offsetLeft,w=b.offsetWidth;
+    if(!(w>0))return;                                  /* Bar unsichtbar/nicht gelayoutet ⇒ nichts schreiben */
     if(anim===false)ind.style.transition='none';
-    ind.style.left=b.offsetLeft+'px';ind.style.width=b.offsetWidth+'px';
+    if(w!==_indW){ind.style.width=w+'px';_indW=w;}
+    ind.style.transform='translate3d('+x+'px,0,0)';
     if(anim===false)requestAnimationFrame(function(){ind.style.transition='';});}
   window._orviaTabSync=function(){markOn(lastTab);syncInd();};
+  /* Layoutwechsel, die kein resize-Event feuern (Schriftgroesse, Labelwechsel,
+     Standalone-Statusleiste): ResizeObserver auf der Bar selbst — EIN Beobachter,
+     nicht pro Button. */
+  try{if(typeof ResizeObserver==='function'){
+    var _ro=new ResizeObserver(function(){syncInd(false);});_ro.observe(wrap);}
+  }catch(_){ }
   function goTab(name){
     if(!name)return;
     if(name==='mehr'){if(typeof openProfile==='function')openProfile();markOn('mehr');syncInd();return;}
     if(typeof profileOpen==='function'&&profileOpen()&&typeof closeProfile==='function')closeProfile();
     lastTab=name;
     var b=btnOf(name);if(b){b.classList.add('pop');setTimeout(function(){try{b.classList.remove('pop');}catch(e){}},400);}
-    showTab(name);syncInd();}
+    showTab(name);markOn(name);syncInd();
+    /* Signal fuer die Scroll-Komprimierung: showTab scrollt nach oben, die Bar muss
+       dann wieder voll ausgefahren sein. Ein Event statt einer direkten Kopplung —
+       der Tabwechsel kennt die Bar-Optik nicht. */
+    try{window.dispatchEvent(new CustomEvent('orvia:tab-changed',{detail:{tab:name}}));}catch(_){ }}
   /* Click nur für Tastatur/Assistive Tech (detail===0) — Pointer-Taps navigieren im pointerdown,
      weil setPointerCapture den Click auf die Wrap retargetet (verifiziert im Harness). */
   wrap.addEventListener('click',function(e){if(e.detail!==0)return;var b=e.target.closest('button[data-tab]');if(b)goTab(b.dataset.tab);});
@@ -3924,7 +4124,91 @@ function showTab(name){
     var n=bs[(cur+(e.key==='ArrowRight'?1:bs.length-1))%bs.length];
     if(n){n.focus();goTab(n.dataset.tab);e.preventDefault();}});
   window.addEventListener('resize',function(){syncInd(false);});
+  window.addEventListener('orientationchange',function(){setTimeout(function(){syncInd(false);},260);});
   requestAnimationFrame(function(){syncInd(false);});
+
+  /* ============================================================
+     Scroll-Komprimierung (2026-08-06)
+
+     Die Bar darf beim Lesen zurueckweichen, aber NIE verschwinden — sie ist die
+     einzige Navigation. Deshalb nur eine Groessenaenderung (CSS .compact), kein
+     Ausblenden und keine Positionsaenderung.
+
+     STABILITAET: Ein naiver Vergleich „scrollt gerade nach unten" flackert bei
+     jeder Mikrobewegung und bei iOS-Rubberbanding. Deshalb Hysterese: der Zustand
+     wechselt erst, wenn seit dem letzten Wechsel mehr als THRESH Pixel in dieselbe
+     Richtung zurueckgelegt wurden. Zusaetzlich bleibt die Bar in den obersten
+     TOP_ZONE Pixeln immer voll ausgefahren.
+
+     KOSTEN: passiver Listener, der ausschliesslich einen Wert merkt; die eigentliche
+     Auswertung laeuft einmal pro Frame in rAF und schreibt nur bei ECHTEM
+     Zustandswechsel ins DOM. Kein Layout-Lesen im Scroll-Handler.
+     ============================================================ */
+  (function(){
+    if(!bar)return;
+    var THRESH=44,TOP_ZONE=90;
+    var lastY=0,anchor=0,compact=false,ticking=false,dir=0;
+    function apply(){
+      ticking=false;
+      var y=window.pageYOffset||document.documentElement.scrollTop||0;
+      if(y<0)y=0;                                      /* iOS-Overscroll nach oben */
+      if(y<=TOP_ZONE){ if(compact){compact=false;bar.classList.remove('compact');} lastY=y;anchor=y;dir=0;return; }
+      var d=y-lastY;
+      /* Bezugspunkt beim Richtungswechsel ist die VORHERIGE Position, nicht die
+         aktuelle. Sonst waere `moved` im selben Frame immer 0 — ein Sprung-Scroll
+         (scrollTo, Anker, Tastatur) haette die Komprimierung nie ausgeloest, weil
+         Richtungswechsel und Bewegung im selben Ereignis liegen. */
+      if(d>0&&dir!==1){dir=1;anchor=lastY;}
+      else if(d<0&&dir!==-1){dir=-1;anchor=lastY;}
+      lastY=y;
+      var moved=y-anchor;
+      if(dir===1&&moved>THRESH&&!compact){compact=true;bar.classList.add('compact');}
+      else if(dir===-1&&(anchor-y)>THRESH&&compact){compact=false;bar.classList.remove('compact');}
+    }
+    window.addEventListener('scroll',function(){
+      if(ticking)return;ticking=true;requestAnimationFrame(apply);
+    },{passive:true});
+    /* Tabwechsel scrollt nach oben ⇒ Zustand sofort zuruecksetzen, sonst bliebe die
+       Bar faelschlich komprimiert. */
+    window.addEventListener('orvia:tab-changed',function(){
+      compact=false;dir=0;lastY=0;anchor=0;try{bar.classList.remove('compact');}catch(_){ }
+    });
+  })();
+
+  /* ============================================================
+     Specular-Highlight (2026-08-06) — nur auf Geraeten mit ECHTEM Zeiger.
+     Auf Touch waere es entweder unsichtbar oder eine Dauerlast; die Media Query
+     schliesst das aus, bevor ueberhaupt ein Listener entsteht. Reduced Motion
+     schaltet es ebenfalls ab.
+     ============================================================ */
+  (function(){
+    var fine=false,noMotion=false;
+    try{fine=window.matchMedia&&window.matchMedia('(hover:hover) and (pointer:fine)').matches;}catch(_){ }
+    try{noMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;}catch(_){ }
+    if(!fine||noMotion)return;
+    /* Die Variablen sitzen auf .tabglass — dort liegt die Specular-Ebene
+       (.tabglass::after). .tabwrap::after ist von einer frueheren Generation belegt
+       und bewusst abgeschaltet. */
+    /* EINE Mechanik fuer beide Glaskoerper: die Bar (Variablen auf .tabglass, dort
+       liegt .tabglass::after) und den Plus-Button (Variablen auf ihm selbst, sein
+       ::after traegt das Highlight). .tabwrap::after ist von einer frueheren
+       Generation belegt und bewusst abgeschaltet. */
+    function bindSpecular(host,target){
+      if(!host||!target)return;
+      var raf=0,px=0,py=0;
+      function paint(){raf=0;target.style.setProperty('--sx',px+'px');target.style.setProperty('--sy',py+'px');}
+      host.addEventListener('pointermove',function(e){
+        if(e.pointerType==='touch')return;
+        var r=host.getBoundingClientRect();px=e.clientX-r.left;py=e.clientY-r.top;
+        if(!raf)raf=requestAnimationFrame(paint);
+      },{passive:true});
+      host.addEventListener('pointerenter',function(e){if(e.pointerType!=='touch')target.style.setProperty('--spec-o','1');});
+      host.addEventListener('pointerleave',function(){target.style.setProperty('--spec-o','0');
+        if(raf){cancelAnimationFrame(raf);raf=0;}});
+    }
+    bindSpecular(wrap,wrap.querySelector('.tabglass')||wrap);
+    try{var fab=document.getElementById('navPlus');if(fab)bindSpecular(fab,fab);}catch(_){ }
+  })();
 })();
 function openProfile(){
   if(typeof renderMehr==='function')renderMehr();
@@ -4191,6 +4475,10 @@ function openRecoveryMetricSheet(metricId){
 function gmLevel(){var m=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';return m==='anfaenger'?'a':m==='profi'?'p':'f';}
 function gmEsc(x){return (typeof escH==='function')?escH(x):String(x==null?'':x);}
 /* --- Modulsystem: IDs, Reihenfolge und Stufen exakt aus dem Golden Master --- */
+/* 2026-08-05: Ist ein Bereich als Modul aktiv, darf sein Legacy-Host nicht ZUSAETZLICH
+   erscheinen — sonst stuende derselbe Inhalt zweimal auf dem Dashboard. Eine Quelle
+   der Wahrheit fuer alle drei Hosts (#nutritionBox, #eveCard, #routinesCard). */
+function gmModOn(id){try{return gmModules().indexOf(id)>=0;}catch(_){return false;}}
 function gmModules(){var l=gmLevel();
   /* Phase 1 · P0-7: `arr.length` fiel bei einer LEEREN Liste auf die Standardmodule
      zurueck — wer alles ausblendete, bekam ueberraschend alles wieder. Seit die
@@ -4984,6 +5272,119 @@ function gmModActivitySimple(d){var M=d.metrics;
 function gmModPain(d){
   if(!d.pain)return '<div class="card"><div class="simplecard"><div class="sc-ic" style="background:var(--ready-t);color:var(--ready)">'+icon('check')+'</div><div><div class="sc-t">Keine Beschwerden</div><div class="sc-v">Nichts gemeldet — weiter so</div></div></div></div>';
   return '<div class="card" style="border-color:rgba(240,99,122,.3)"><div class="simplecard"><div class="sc-ic" style="background:var(--crit-t);color:var(--crit)">'+icon('knee')+'</div><div style="flex:1"><div class="sc-t">'+gmEsc(d.pain.region)+' · '+gmEsc(d.pain.level)+'</div><div class="sc-v">'+gmEsc(d.pain.note)+'</div></div></div></div>';}
+/* ============================================================
+   Module Ernaehrung / Abend-Check-in / Routinen (2026-08-05, Nutzerentscheidung)
+
+   AUSGANGSLAGE: Diese drei Bereiche lagen als Legacy-Karten fest im Dashboard-DOM
+   (index.html #nutritionBox, #eveCard, #routinesCard) — eigenes Markup, eigene
+   Typografie, ausserhalb des Modulsystems, weder aus-/einblendbar noch anordenbar.
+   Genau das war die Meldung „das passt alles nicht mehr" / „muss mit in die Module".
+
+   VORGEHEN (bewusst konservativ): Die Module sind KOMPAKTE STATUSKARTEN im GM-Stil,
+   die auf die vorhandenen, unveraenderten Formulare fuehren — exakt das Muster, das
+   der Morgen-Check-in seit v5 nutzt (#checkinCompact + #checkinCard). Es entsteht
+   KEIN zweiter Zustandsspeicher und kein zweites Formular; alle Werte stammen aus
+   denselben kanonischen Quellen wie bisher. Fehlende Werte bleiben ehrlich „—".
+   ============================================================ */
+/* Energie & Ernaehrung: Tagesziel + Makroverteilung als EIN gestapelter Balken
+   (statt drei konkurrierender Kacheln) + gemessene Protein-Adhaerenz. */
+function gmModNutrition(d){
+  var t=null,wk=null;
+  try{t=(typeof nutToday==='function')?nutToday():null;}catch(_){ }
+  try{wk=(typeof nutWeekly==='function')?nutWeekly():null;}catch(_){ }
+  if(!t){
+    return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="openNutritionEditor()" onkeydown="if(event.key===\'Enter\')openNutritionEditor()"><span class="taphint">'+icon('chev','xs')+'</span>'+
+      '<div class="simplecard"><div class="sc-ic" style="background:var(--activity-t);color:var(--activity)">'+icon('battery')+'</div>'+
+      '<div style="flex:1"><div class="sc-t">Energie &amp; Ernährung</div><div class="sc-v">Körperdaten fehlen — dann rechnet ORVIA Kalorien und Makros</div></div></div></div>';
+  }
+  var pk=t.protein*4,ck=t.carbs*4,fk=t.fat*9,tot=pk+ck+fk;
+  var pct=function(v){return tot>0?Math.round(v/tot*100):0;};
+  var dtL={rest:'Ruhetag',easy:'Lockerer Tag',quality:'Intensiver Tag',long:'Long-Run-Tag',strength:'Krafttag'}[t.dayType]||'';
+  return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmOpenNutritionSheet()" onkeydown="if(event.key===\'Enter\')gmOpenNutritionSheet()"><span class="taphint">'+icon('chev','xs')+'</span>'+
+    '<div class="ctitle"><div class="l">'+icon('battery')+' Energie &amp; Ernährung</div><span class="more">'+gmEsc(dtL)+'</span></div>'+
+    '<div class="nu-hero"><b>'+gmEsc(fmtDe(t.kcal))+'</b><span>kcal Tagesziel'+(t.burn?' · inkl. ~'+gmEsc(fmtDe(t.burn))+' kcal Training':'')+'</span></div>'+
+    '<div class="nu-stack" role="img" aria-label="Makroverteilung">'+
+      '<i class="nu-p" style="width:'+pct(pk)+'%"></i><i class="nu-c" style="width:'+pct(ck)+'%"></i><i class="nu-f" style="width:'+pct(fk)+'%"></i></div>'+
+    '<div class="nu-legend">'+
+      '<span><i class="nu-p"></i>Protein <b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
+      '<span><i class="nu-c"></i>Carbs <b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
+      '<span><i class="nu-f"></i>Fett <b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div>'+
+    (wk?'<div class="nu-foot"><span>Protein-Ziel diese Woche</span><b>'+wk.proteinDays+'/7 Tage</b></div>':'')+
+    '</div>';
+}
+/* Detail-Sheet: gemessene Protein-Historie (echte Abend-Eintraege, KEINE erfundene
+   Kalorienaufnahme — die wird in ORVIA nirgends erfasst) + heutige Zielwerte. */
+function gmOpenNutritionSheet(){
+  var sh=document.getElementById('detailSheet');if(!sh)return;
+  var t=null,wk=null;try{t=nutToday();}catch(_){ }try{wk=nutWeekly();}catch(_){ }
+  /* 14 Tage Protein-Ist aus dem kanonischen Tagesspeicher — nur echte Eintraege. */
+  var days=[],maxP=0;
+  try{for(var i=13;i>=0;i--){var k=dkey(-i);var e=DB[k];
+    var v=(e&&e.eve&&e.eve.prot!=null&&isFinite(e.eve.prot))?+e.eve.prot:null;
+    if(v!=null&&v>maxP)maxP=v;days.push({k:k,v:v});}}catch(_){ }
+  var pT=(t&&t.protein)||null;if(pT&&pT>maxP)maxP=pT;
+  var bars=days.map(function(x){
+    var h=(x.v!=null&&maxP>0)?Math.max(4,Math.round(x.v/maxP*100)):0;
+    var hit=(x.v!=null&&pT)?(x.v>=pT*0.9):false;
+    var lb='';try{var dd=new Date(x.k+'T12:00');lb=DAYNAMES[(dd.getDay()+6)%7];}catch(_){ }
+    return '<div class="nb-col"><div class="nb-track"><i class="'+(hit?'hit':'')+'" style="height:'+h+'%"></i></div><small>'+gmEsc(lb)+'</small></div>';
+  }).join('');
+  var got=days.filter(function(x){return x.v!=null;}).length;
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('battery')+'</div><div><h3>Energie &amp; Ernährung</h3><div class="sh-sub" style="margin:2px 0 0">'+(t?fmtDe(t.kcal)+' kcal Tagesziel':GM_NA)+'</div></div></div>'+
+    (t?('<div class="sh-block"><div class="nu-legend nu-legend-lg">'+
+      '<span><i class="nu-p"></i>Protein <b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
+      '<span><i class="nu-c"></i>Carbs <b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
+      '<span><i class="nu-f"></i>Fett <b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div></div>'):'')+
+    '<div class="sh-block"><h4 style="margin:0 0 8px;font-size:13px">Protein · letzte 14 Tage</h4>'+
+      (got?('<div class="nu-bars">'+bars+'</div><p class="note" style="text-align:left;margin-top:8px">'+got+' von 14 Tagen erfasst'+(pT?' · Ziel '+fmtDe(pT)+' g (grün = mindestens 90 % erreicht)':'')+'. Nur eingetragene Abendwerte — nichts hochgerechnet.</p>')
+        :'<p class="note" style="text-align:left">Noch keine Protein-Einträge. Der Wert kommt aus dem Abend-Check-in.</p>')+'</div>'+
+    (wk&&wk.weightTrend?'<div class="sh-block"><div class="nu-foot"><span>Gewicht · 7 Tage</span><b>'+gmEsc(wk.weightTrend)+'</b></div></div>':'')+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">Schließen</button><button class="prim" onclick="gmCloseSheets();openNutritionEditor()">Ernährung anpassen</button></div>';
+  gmOpenSheet('detailSheet');
+}
+/* Abend-Check-in: Statuskarte auf das VORHANDENE Formular (#eveCard). */
+function gmModEvening(d){
+  var e=null;try{e=entry(cur);}catch(_){ }
+  var ev=(e&&e.eve)||null;
+  var filled=ev?Object.keys(ev).filter(function(k){return ev[k]!=null&&ev[k]!=='';}).length:0;
+  var done=filled>0;
+  var bits=[];
+  try{if(ev){if(ev.prot!=null)bits.push(fmtDe(ev.prot)+' g Protein');if(ev.knee!=null)bits.push('Knie '+ev.knee);if(ev.note)bits.push('Notiz');}}catch(_){ }
+  return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmGotoEveningCheckin()" onkeydown="if(event.key===\'Enter\')gmGotoEveningCheckin()"><span class="taphint">'+icon('chev','xs')+'</span>'+
+    '<div class="simplecard"><div class="sc-ic" style="background:'+(done?'var(--ready-t);color:var(--ready)':'var(--sleep-t);color:var(--sleep)')+'">'+icon(done?'check':'moon')+'</div>'+
+    '<div style="flex:1"><div class="sc-t">Abend-Check-in</div><div class="sc-v">'+(done?gmEsc(bits.length?bits.join(' · '):'erfasst'):'Noch offen — Protein, Beschwerden, Tagesnotiz')+'</div></div></div></div>';
+}
+function gmGotoEveningCheckin(){
+  var c=document.getElementById('eveCard');if(!c)return;
+  /* .gm-co-open ueberlebt ein erneutes gmApplyPhase3Visibility — sonst wuerde das
+     Formular direkt nach dem Aufklappen wieder verschwinden. */
+  try{c.classList.remove('gm-hidden-host');c.classList.add('gm-co-open','p3-live');}catch(_){ }
+  try{c.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){ }
+  try{var f=c.querySelector('input,select,textarea,button');if(f)setTimeout(function(){try{f.focus({preventScroll:true});}catch(_){ }},420);}catch(_){ }
+}
+/* Routinen & Supplements: Statuskarte auf die VORHANDENE <details>-Karte. */
+function gmModSupplements(d){
+  var open=0,act=0,subs=0;
+  try{open=(typeof openRoutineTasks==='function')?(openRoutineTasks()||0):0;}catch(_){ }
+  try{act=(typeof activeRoutines==='function')?(activeRoutines()||[]).length:0;}catch(_){ }
+  try{var e=entry(cur);subs=((e&&e.subs)||[]).length;}catch(_){ }
+  var doneN=Math.max(0,act-open);
+  var sub;
+  if(!act&&!subs)sub='Noch nichts eingerichtet — Routinen und Supplements festlegen';
+  else if(open>0)sub=doneN+' von '+act+' Routinen erledigt'+(subs?' · '+subs+' Supplements':'');
+  else sub=(act?'Alle '+act+' Routinen erledigt':'Keine Routinen')+(subs?' · '+subs+' Supplements':'');
+  var allDone=act>0&&open===0;
+  return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmGotoRoutines()" onkeydown="if(event.key===\'Enter\')gmGotoRoutines()"><span class="taphint">'+icon('chev','xs')+'</span>'+
+    '<div class="simplecard"><div class="sc-ic" style="background:'+(allDone?'var(--ready-t);color:var(--ready)':'rgba(201,174,124,.14);color:var(--gold-soft)')+'">'+icon(allDone?'check':'calendar')+'</div>'+
+    '<div style="flex:1"><div class="sc-t">Routinen &amp; Supplements</div><div class="sc-v">'+gmEsc(sub)+'</div>'+
+    (act>0?'<div class="bar-mini" style="margin-top:8px"><i style="width:'+Math.round(doneN/act*100)+'%;background:var(--ready)"></i></div>':'')+
+    '</div></div></div>';
+}
+function gmGotoRoutines(){
+  var c=document.getElementById('routinesCard');if(!c)return;
+  try{c.style.display='';c.classList.add('gm-co-open');c.open=true;}catch(_){ }
+  try{c.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){ }
+}
 function gmModContrib(d){
   var list=(d.contrib&&d.contrib.length)?d.contrib:[null,null,null];
   var rows=list.map(function(c){
@@ -5935,7 +6336,11 @@ function renderGMPlan(){
   var cards='';
   for(var di=0;di<7;di++){
     var items=week[di]||[];var k=(typeof dayKeys!=='undefined'&&dayKeys[di])||'';
-    var dLbl='';try{var dd2=new Date(k+'T12:00');dLbl=dd2.getDate()+'.'+(dd2.getMonth()+1);}catch(_){ }
+    /* Bugfix (2026-08-05, Nutzer-Feedback): zeigte bisher NUR "Tag.Monat" (z. B. "3.8"),
+       obwohl DAYNAMES an 5 anderen Stellen in dieser Datei fuer genau diesen Zweck
+       existiert — der Nutzer las eine Zahlenfolge statt Wochentagen. Wochentag zuerst
+       (der eigentliche Bezugspunkt beim Planblick), Datum bleibt als Kontext dahinter. */
+    var dLbl=DAYNAMES[di]||'';try{var dd2=new Date(k+'T12:00');dLbl=(DAYNAMES[di]||'')+' · '+dd2.getDate()+'.'+(dd2.getMonth()+1);}catch(_){ }
     if(!items.length){
       cards+='<div class="session-card rest"><span class="session-ico">'+icon('moon')+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · Ruhetag</b><p>—</p></span><span class="session-state">—</span></div>';
       continue;
@@ -5989,22 +6394,41 @@ function renderGMPlan(){
     /* 9b. Phasen (Calc.racePhases read-only) */
     var phases=[];try{phases=Calc.racePhases(RACE.date,todayStr())||[];}catch(_){ }
     var t0=todayStr();
-    var phCells=phases.map(function(p){var cls=p.on?'now':(p.to&&p.to<t0?'done':'');
-      /* GM7: from==null = offener Phasenbeginn — frueher lief das als new Date(null)
-         in die Epoche 1970 und erzeugte „2953 Wo". Guard + Obergrenze in ORVIA.fmt. */
-      var wks=(window.ORVIA&&ORVIA.fmt&&ORVIA.fmt.phaseWeeksLabel)?ORVIA.fmt.phaseWeeksLabel(p):'—';
-      return '<div class="phase '+cls+'"><b>'+gmEsc(p.n)+'</b><span>'+gmEsc(wks)+'</span></div>';}).join('');
-    var _gShort='—';try{var _g2=goalOf();var _rl2=(typeof raceLabel==='function')?raceLabel(_g2&&_g2.type):null;if(_rl2)_gShort=_rl2==='Halbmarathon'?'HM':_rl2;}catch(_){ }
-    /* Bugfix (2026-08-05, Visuelle QA): daysToSafe() liefert bei fehlendem RACE.date NaN,
-       nicht null (new Date(undefined) wirft nicht) — eine reine !=null-Pruefung liess
-       "noch NaN Wochen" ins UI durch (NaN!=null ist true). isFinite() faengt das ab;
-       EINE Pruefung fuer beide Verwendungsstellen (Ziel-Phase + Wochenlabel). */
+    /* Redesign (2026-08-05, Nutzerentscheidung): Die frueheren 5 gleich breiten Text-Chips
+       waren strukturell zu eng — jeder Phasenname musste in ~60 px passen, deshalb erst
+       Ueberlappung (vor v8-241), dann Ellipsis (v8-241), dann Zeilenumbruch (v8-245) und in
+       KEINER Variante lesbar. Neue Struktur nach Nutzervorgabe: schmale Fortschritts-
+       segmente OHNE Text (dort kann per Konstruktion nichts abgeschnitten werden), darunter
+       die aktuelle Phase gross und fett mit ihrer Wochenangabe, darunter alle Phasen als
+       Liste in voller Breite. Gleiche Datenquelle (Calc.racePhases), nur andere Darstellung. */
     var _dts=daysToSafe();var _dtsOk=(_dts!=null&&isFinite(_dts));
-    phCells+='<div class="phase'+((_dtsOk&&_dts<0)?' done':'')+'"><b>Ziel</b><span>'+gmEsc(_gShort)+'</span></div>';
-    if(!phases.length)phCells=['—','—','—','—','Ziel'].map(function(x){return '<div class="phase"><b>'+x+'</b><span>—</span></div>';}).join('');
+    var _gShort='—';try{var _g2=goalOf();var _rl2=(typeof raceLabel==='function')?raceLabel(_g2&&_g2.type):null;if(_rl2)_gShort=_rl2==='Halbmarathon'?'HM':_rl2;}catch(_){ }
+    var _wkLbl=function(p){return (window.ORVIA&&ORVIA.fmt&&ORVIA.fmt.phaseWeeksLabel)?ORVIA.fmt.phaseWeeksLabel(p):'—';};
     h+='<div class="sectlabel" data-gm-slot="plan-phases">Phasen bis zum Ziel <span class="edit">'+(_dtsOk?'noch '+Math.max(0,Math.ceil(_dts/7))+' Wochen':'—')+'</span></div>';
-    h+='<div class="card"><div class="phase-track">'+phCells+'</div>'+
-      '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>Phasen aus dem kanonischen Phasenmodell — aktuelle Phase aus dem kanonischen Phasenfeld, ohne eigene Periodisierung. Austrittskriterien folgen mit der Engine.</div></div></div>';
+    if(!phases.length){
+      h+='<div class="card"><div class="ph-now"><b>—</b><span>'+GM_NA+' — ohne Zieldatum gibt es kein Phasenmodell.</span></div>'+
+        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>Sobald ein Wettkampfdatum im Ziel hinterlegt ist, erscheinen die Phasen bis dorthin.</div></div></div>';
+    }else{
+      /* Segmentleiste: reine Fortschrittsanzeige, kein Text ⇒ kein Abschneiden moeglich. */
+      var segs=phases.map(function(p){var cls=p.on?'now':((p.to&&p.to<t0)?'done':'todo');
+        return '<i class="ph-seg '+cls+'" aria-hidden="true"></i>';}).join('');
+      segs+='<i class="ph-seg '+((_dtsOk&&_dts<0)?'done':'todo')+' ph-goal" aria-hidden="true"></i>';
+      /* Aktuelle Phase gross — der eigentliche Bezugspunkt beim Planblick. */
+      var _cur=null;for(var pi=0;pi<phases.length;pi++)if(phases[pi].on){_cur=phases[pi];break;}
+      var _curTxt=_cur?(_wkLbl(_cur)+(_cur.d?' · '+_cur.d:'')):(_dtsOk&&_dts<0?'Wettkampf liegt hinter dir':GM_NA);
+      h+='<div class="card">'+
+        '<div class="ph-bar" role="img" aria-label="Phasenfortschritt">'+segs+'</div>'+
+        '<div class="ph-now"><b>'+gmEsc(_cur?_cur.n:'—')+'</b><span>'+gmEsc(_curTxt)+'</span></div>'+
+        /* Vollbreiten-Liste: jede Phase hat eine eigene Zeile, nichts wird gequetscht. */
+        '<div class="ph-list">'+phases.map(function(p){
+          var st=p.on?'now':((p.to&&p.to<t0)?'done':'todo');
+          var mark=st==='done'?'✓':(st==='now'?'●':'');
+          return '<div class="ph-row '+st+'"><span class="ph-mk">'+mark+'</span><span class="ph-n">'+gmEsc(p.n)+'</span><span class="ph-w">'+gmEsc(_wkLbl(p))+'</span></div>';
+        }).join('')+
+        '<div class="ph-row '+((_dtsOk&&_dts<0)?'done':'todo')+'"><span class="ph-mk">'+((_dtsOk&&_dts<0)?'✓':'')+'</span><span class="ph-n">Ziel · '+gmEsc(_gShort)+'</span><span class="ph-w">'+(_dtsOk?(_dts<0?'vorbei':'in '+Math.max(0,Math.ceil(_dts/7))+' Wo'):'—')+'</span></div>'+
+        '</div>'+
+        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>Phasen aus dem kanonischen Phasenmodell — aktuelle Phase aus dem kanonischen Phasenfeld, ohne eigene Periodisierung. Austrittskriterien folgen mit der Engine.</div></div></div>';
+    }
     /* 9c. Wochenkilometer (E2-Quellen; 6 Spalten) */
     var dRace=daysToSafe();
     var cols=[['−2',2],['−1',1],['akt.',0],['+1',-1],['+2',-2],['+3',-3]];
@@ -6542,7 +6966,21 @@ function gmOpenActivityPage(aid){
         return '<div class="gymex"><div class="gymex-head"><b>'+gmEsc(e.name)+'</b><span>'+(e.volumeKg?gmKg(e.volumeKg)+' kg Volumen':'')+'</span></div>'+sub+'</div>';
       }).join('');
     }else{
-      _grows='<div class="gm-split-empty">'+GM_NA+' — für diese Einheit sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine Sätze.</div>';
+      /* Bugfix-Nachbesserung (2026-08-05): Der bisherige Text behauptete pauschal „keine
+         Details gespeichert" — er verdeckte damit die drei voellig verschiedenen Faelle
+         (wird gerade nachgeladen / Server hat sie wirklich nicht / offline, deshalb nicht
+         pruefbar). Der Nutzer sah dadurch bei verschwundenen Saetzen dieselbe Meldung wie
+         bei einem Workout, das nie Saetze hatte. Jetzt wird der TATSAECHLICHE Zustand
+         benannt — samt Diagnose-Einstieg, damit die Ursache belegbar statt vermutet ist. */
+      var _st=_gmActFallbackState[String(aid)]||null;
+      var _canServer=!!(a&&(a.workoutSessionId||a.sourceRecordId)&&(vm.source==='orvia_workout'||vm.source==='live'));
+      var _off=false;try{_off=(navigator.onLine===false);}catch(_){ }
+      if(_st==='loading')_grows='<div class="gm-split-empty">Satzdetails werden aus der Cloud nachgeladen …</div>';
+      else if(_off&&_canServer)_grows='<div class="gm-split-empty">Offline — die Satzdetails liegen nicht auf diesem Gerät und können gerade nicht aus der Cloud geladen werden. Sie sind nicht verloren.</div>';
+      else if(_st==='server_empty')_grows='<div class="gm-split-empty">Für diese Einheit sind weder auf diesem Gerät noch in der Cloud Satzdetails vorhanden. ORVIA erfindet keine Sätze.</div>';
+      else if(_st==='error')_grows='<div class="gm-split-empty">Die Satzdetails konnten nicht geladen werden (Verbindungsfehler). <a href="#" onclick="event.preventDefault();gmActRetryGym(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Erneut versuchen</a></div>';
+      else _grows='<div class="gm-split-empty">'+GM_NA+' — für diese Einheit sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine Sätze.</div>';
+      if(_canServer)_grows+='<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div><a href="#" onclick="event.preventDefault();gmOpenSetsDiagnose(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Warum fehlen die Sätze?</a> — zeigt, wo die Daten tatsächlich liegen.</div></div>';
     }
     h+='<div class="card"><div class="ctitle"><div class="l">'+icon('dumbbell')+' Übungen &amp; Sätze</div>'+(_gym&&_gym.setCount?'<span class="more">'+_gym.setCount+' Sätze</span>':'')+'</div>'+_grows+'</div>';
   }
@@ -6610,6 +7048,87 @@ function gmOpenActivityPage(aid){
       });
     }
   }catch(_){ }
+  /* Bugfix (2026-08-05, Nutzer-Feedback „Saetze verschwinden nach 1-2 Tagen"): diese Seite
+     las Uebungen/Saetze bisher NUR aus dem lokalen workoutSnapshot (gmActGymAgg) — anders
+     als das andere Aktivitaets-Detail (js/activity.js, _loadWorkoutDetailInto) und die
+     Koerperkarte (gym-volume.js, gymPipelineAsync) gab es hier KEINEN Fallback auf die
+     dauerhafte Server-Quelle. Fehlt der lokale Snapshot, jetzt einmalig live nachladen und
+     reparieren statt "keine Saetze gespeichert" zu zeigen. */
+  try{
+    if(_fam==='gym'&&(!_gym||!_gym.list||!_gym.list.length)&&(vm.source==='orvia_workout'||vm.source==='live'))gmActLoadGymFallback(aid,a);
+  }catch(_){ }
+}
+var _gmActFallbackTried={};
+var _gmActFallbackState={};   /* aid -> loading | loaded | server_empty | error | no_session */
+function gmActRetryGym(aid){
+  var k=String(aid);delete _gmActFallbackTried[k];delete _gmActFallbackState[k];
+  try{gmOpenActivityPage(aid);}catch(_){ }
+}
+function gmActLoadGymFallback(aid,a){
+  var key=String(aid);if(_gmActFallbackTried[key])return;_gmActFallbackTried[key]=true;
+  var repos=window.ORVIA&&ORVIA.repos&&ORVIA.repos.workout;
+  var sid=a&&(a.workoutSessionId||a.sourceRecordId);
+  if(!repos||!repos.loadWorkoutTree||!sid){_gmActFallbackState[key]='no_session';return;}
+  _gmActFallbackState[key]='loading';
+  var redraw=function(){var pg=document.getElementById('gmActPage');
+    if(pg&&pg.classList.contains('on'))try{gmOpenActivityPage(aid);}catch(_){ }};
+  repos.loadWorkoutTree(sid).then(function(r){
+    if(!(r&&r.success)){_gmActFallbackState[key]='error';redraw();return;}
+    if(!(r.data&&Array.isArray(r.data.exercises)&&r.data.exercises.length)){
+      /* Server erreichbar, hat aber selbst keine Saetze — das ist eine ECHTE Aussage
+         und keine Vermutung; sie unterscheidet Datenverlust von „nie erfasst". */
+      _gmActFallbackState[key]='server_empty';redraw();return;}
+    var store=window.ORVIA&&ORVIA.activityStore;
+    if(!(store&&store.repairWorkoutSnapshot)){_gmActFallbackState[key]='error';redraw();return;}
+    var rr=store.repairWorkoutSnapshot(a.clientRecordId||a.id,r.data.exercises);
+    if(!rr||!rr.ok){_gmActFallbackState[key]='error';redraw();return;}
+    _gmActFallbackState[key]='loaded';
+    /* Nur neu rendern, wenn die Seite noch offen ist — der Nutzer koennte weitergeklickt
+       haben. Die Reparatur selbst gilt trotzdem (auch fuer Koerperkarte/Volumen). */
+    redraw();
+  }).catch(function(){_gmActFallbackState[key]='error';redraw();});
+}
+/* Diagnose „Warum fehlen die Sätze?" (2026-08-05). Beantwortet mit ECHTEN, gerade
+   gemessenen Werten, wo die Satzdetails liegen — lokal, in der Cloud, oder nirgends.
+   Ohne diese Ansicht liess sich Datenverlust nicht von „nie erfasst" unterscheiden;
+   genau daran scheiterte die Ursachenklaerung bisher. Reines Lesen, keine Aenderung. */
+function gmOpenSetsDiagnose(aid){
+  var sh=document.getElementById('detailSheet');if(!sh)return;
+  var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_){ }
+  var row=function(k,v,ok){return '<div class="md-row"><span>'+gmEsc(k)+'</span><b style="color:'+(ok===true?'var(--ready)':(ok===false?'var(--crit)':'var(--text)'))+'">'+gmEsc(v)+'</b></div>';};
+  var snapN=0;try{snapN=(a&&Array.isArray(a.workoutSnapshot))?a.workoutSnapshot.length:0;}catch(_){ }
+  var setsN=0;try{if(a&&Array.isArray(a.workoutSnapshot))a.workoutSnapshot.forEach(function(e){setsN+=((e&&e.sets)||[]).length;});}catch(_){ }
+  var sid=a&&(a.workoutSessionId||a.sourceRecordId)||null;
+  var on=true;try{on=navigator.onLine!==false;}catch(_){ }
+  var body='<div class="md-pro">'+
+    row('Aktivität gefunden',a?'ja':'nein',!!a)+
+    row('Quelle',(a&&a.source)||'—')+
+    row('Übungen auf diesem Gerät',String(snapN),snapN>0)+
+    row('Sätze auf diesem Gerät',String(setsN),setsN>0)+
+    row('Server-Session-ID',sid?'vorhanden':'fehlt',!!sid)+
+    row('Sync-Status',(a&&a.syncStatus)||'—',(a&&a.syncStatus)==='synced')+
+    row('Verbindung',on?'online':'offline',on)+
+    '</div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('info')+'</div><div><h3>Wo liegen die Sätze?</h3><div class="sh-sub" style="margin:2px 0 0">Gemessener Ist-Zustand, keine Vermutung</div></div></div>'+
+    '<div class="sh-block">'+body+'<p class="note" style="text-align:left;margin-top:10px" id="gmSetsDiagOut">Tippe „In der Cloud nachsehen", um zu prüfen, ob die Sätze serverseitig noch vorhanden sind.</p></div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">Schließen</button>'+
+    (sid&&on?'<button class="prim" onclick="gmSetsDiagProbe(\''+gmEsc(String(aid))+'\',\''+gmEsc(String(sid))+'\')">In der Cloud nachsehen</button>':'')+'</div>';
+  gmOpenSheet('detailSheet');
+}
+function gmSetsDiagProbe(aid,sid){
+  var out=document.getElementById('gmSetsDiagOut');if(out)out.textContent='Frage die Cloud ab …';
+  var repos=window.ORVIA&&ORVIA.repos&&ORVIA.repos.workout;
+  if(!repos||!repos.loadWorkoutTree){if(out)out.textContent='Cloud-Modul nicht geladen.';return;}
+  repos.loadWorkoutTree(sid).then(function(r){
+    if(!out)return;
+    if(!(r&&r.success)){out.textContent='Cloud-Abfrage fehlgeschlagen'+((r&&r.error&&r.error.message)?': '+r.error.message:'.')+' Die Sätze sind dadurch NICHT als verloren belegt.';return;}
+    var exs=(r.data&&r.data.exercises)||[];var n=0;exs.forEach(function(e){n+=((e&&e.sets)||[]).length;});
+    if(n>0){out.textContent='In der Cloud liegen '+exs.length+' Übungen mit '+n+' Sätzen. Sie werden jetzt auf dieses Gerät zurückgeholt.';
+      try{var st=ORVIA.activityStore;var a=_resolveActivityAny(aid);
+        if(st&&st.repairWorkoutSnapshot&&a)st.repairWorkoutSnapshot(a.clientRecordId||a.id,exs);}catch(_){ }
+      setTimeout(function(){try{gmCloseSheets();gmOpenActivityPage(aid);}catch(_){ }},1200);
+    }else{out.textContent='Auch in der Cloud sind für diese Einheit keine Sätze gespeichert — die Details wurden beim Abschließen des Trainings nie serverseitig abgelegt. Das ist ein Schreib-, kein Anzeigefehler.';}
+  }).catch(function(e){if(out)out.textContent='Cloud-Abfrage fehlgeschlagen: '+String(e&&e.message||e);});
 }
 function gmCloseActivityPage(){var pg=document.getElementById('gmActPage');if(pg)pg.classList.remove('on');}
 /* P0-Nachtrag 2026-08-05: Dauer-Korrektur-Sheet. Schreibt ueber den Store
@@ -8481,20 +9000,28 @@ function gmProfMedals(){
     h+='</div><div class="mini-note">'+icon('info','xs')+'<div>Medaillen erscheinen mit deinen ersten abgeschlossenen Aktivitäten — keine erfundenen Auszeichnungen, Tiers oder Fortschritte.</div></div><div class="tabspacer"></div>';
     return h;
   }
+  /* Bugfix (2026-08-05, Nutzer-Feedback „12 verdient, nur 6 angezeigt"): das Raster
+     kappte VERDIENTE Medaillen hart bei 6 (slots.length>=6) — echte, bereits erreichte
+     Auszeichnungen verschwanden dadurch kommentarlos, sobald mehr als 6 Stufen erreicht
+     waren. .medal-grid ist ein zeilenloses 2-Spalten-Grid (styles.css) und wraeppt von
+     selbst — der Deckel war unnoetig. Jetzt: ALLE verdienten Medaillen werden gezeigt,
+     danach noch offene naechste Stufen als Ausblick (max. 6, sonst wird die Seite bei
+     vielen Medaillen unuebersichtlich lang); Platzhalter fuellen nur auf, wenn insgesamt
+     weniger als 6 Kacheln zusammenkommen. */
   var slots=[];
   ach.medals.forEach(function(m){
-    if(slots.length>=6)return;
     var dt=m.date?((typeof fmtDate==='function')?fmtDate(m.date):m.date):'—';
     slots.push('<div class="medal earned"><div class="m-badge">'+icon(m.icon||'shield')+'</div><b>'+gmEsc(gmAchFmtVal(m.step,m.unit))+'</b><span>'+gmEsc(m.label)+' · '+gmEsc(dt)+'</span><div class="m-prog"><i style="width:100%"></i></div></div>');
   });
+  var earnedN=slots.length,lockedCap=earnedN+6;
   /* Naechste erreichbare Stufen als gesperrte Slots mit ECHTEM, gemessenem Fortschritt. */
   ach.milestones.forEach(function(m){
-    if(slots.length>=6||m.next==null)return;
+    if(slots.length>=lockedCap||m.next==null)return;
     slots.push('<div class="medal locked"><div class="m-badge">'+icon(m.icon||'shield')+'</div><b>'+gmEsc(gmAchFmtVal(m.next,m.unit))+'</b><span>'+gmEsc(m.label)+' · Ist '+gmEsc(gmAchFmtVal(m.current,m.unit))+'</span><div class="m-prog"><i style="width:'+m.progress+'%"></i></div></div>');
   });
   while(slots.length<6)slots.push('<div class="medal locked"><div class="m-badge">'+icon('shield')+'</div><b>—</b><span>'+GM_NA+'</span><div class="m-prog"><i style="width:0%"></i></div></div>');
-  h+=slots.slice(0,6).join('');
-  h+='</div><div class="mini-note">'+icon('info','xs')+'<div>'+gmEsc(ach.provenance)+' Gesperrte Medaillen zeigen die nächste Stufe mit deinem gemessenen Ist-Wert.</div></div><div class="tabspacer"></div>';
+  h+=slots.join('');
+  h+='</div><div class="mini-note">'+icon('info','xs')+'<div>'+gmEsc(ach.provenance)+' '+(earnedN>0?(earnedN+' verdiente '+(earnedN===1?'Medaille':'Medaillen')+'. '):'')+'Gesperrte Medaillen zeigen die nächste Stufe mit deinem gemessenen Ist-Wert.</div></div><div class="tabspacer"></div>';
   return h;
 }
 /* Liest ausschliesslich bereits vorhandene Felder des Meilenstein-Datensatzes aus.

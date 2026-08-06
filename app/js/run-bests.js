@@ -149,6 +149,39 @@
     return null;
   }
 
+  /* ============================================================
+     Ersatz-Zeitachse bei gleichmaessiger Abtastung (2026-08-05, Nutzerwunsch:
+     „das sollte auch einzelne Abschnitte aus laengeren Einheiten nehmen")
+
+     AUSGANGSLAGE: Ein 5-km-Abschnitt aus einem 7-km-Lauf ist genau der Fall, den
+     bestWindow (Runden) und bestWindowFromStreams (Messreihe) abdecken sollen. Der
+     Rundenweg braucht Runden, der Streamweg eine echte Zeitachse — der Sync-Worker
+     liefert heute aber weder zwingend Runden noch einen Zeitstempel-Stream. Ohne
+     beides fiel die Anzeige auf die Riegel-SCHAETZUNG aus der Durchschnittspace
+     zurueck, also auf einen langsameren Wert als tatsaechlich gelaufen.
+
+     WAS HIER PASSIERT: Liegt eine kumulative Distanzreihe und die Gesamtdauer der
+     Aktivitaet vor, wird die Zeit GLEICHMAESSIG auf die Samples verteilt.
+
+     WARUM DAS DEN „NIE BESCHOENIGEN"-VERTRAG NICHT BRICHT: Verteilt wird die
+     VOLLSTAENDIGE Aktivitaetsdauer, also inklusive aller Pausen-/Stehzeiten. Jedes
+     Teilfenster traegt dadurch seinen Anteil an dieser Zeit mit — die berechnete
+     Zeit ist im Zweifel zu LANGSAM, nie zu schnell. Ein so ermittelter Wert bleibt
+     damit eine belastbare Obergrenze, genau wie beim Rundenfenster.
+
+     GRENZE, die offen benannt wird: Bei ungleichmaessiger Abtastung („Smart
+     Recording") ist die Annahme ungenau. Das Ergebnis traegt deshalb eine EIGENE
+     Methode ('stream_uniform') und ein eigenes Quellenetikett — es wird nirgends
+     als Rundenmessung ausgegeben, und der Rundenweg gewinnt immer, wenn er greift.
+     ============================================================ */
+  function uniformTimeAxis(nSamples, totalSeconds) {
+    var n = Math.round(+nSamples), t = +totalSeconds;
+    if (!(n >= 2) || !(t > 0)) return null;
+    var out = new Array(n), step = t / (n - 1);
+    for (var i = 0; i < n; i++) out[i] = i * step;
+    return out;
+  }
+
   function normSport(v) {
     try {
       if (O.trainingDomain && O.trainingDomain.normSport) return O.trainingDomain.normSport(v);
@@ -171,7 +204,11 @@
     opts = opts || {};
     var isTomb = (typeof opts.isTombstoned === 'function') ? opts.isTombstoned : null;
     var slack = (typeof opts.slack === 'number') ? opts.slack : SLACK;
-    var res = { k1: null, k5: null, k10: null, scanned: 0, withSplits: 0, slack: slack };
+    /* withStreams/withDerivedTime (2026-08-05): machen nachvollziehbar, WORAUF die
+       Auswertung beruht — ohne diese Zaehler liess sich „keine Bestzeit gefunden"
+       nicht von „keine auswertbaren Daten vorhanden" unterscheiden. */
+    var res = { k1: null, k5: null, k10: null, scanned: 0, withSplits: 0,
+                withStreams: 0, withDerivedTime: 0, slack: slack };
     var list = Array.isArray(activities) ? activities : [];
     list.forEach(function (a) {
       if (!isRunning(a)) return;
@@ -182,28 +219,44 @@
       if (splits) res.withSplits++;
       /* Sekundengenaues Stream-Fenster — nur mit ECHTER Zeitachse (siehe
          bestWindowFromStreams). Rundenfenster bleibt der Rueckfall. */
-      var sDist = null, sTime = null;
-      try {
-        var strm = a.metrics && a.metrics.streams;
-        if (strm && Array.isArray(strm.distance) && strm.distance.length >= 2) {
-          sTime = streamTimeAxis(strm);
-          if (sTime) sDist = strm.distance;
-        }
-      } catch (e) {}
       var id = a.clientRecordId || a.id || a.sourceRecordId || null;
       var day = a.startedAt ? String(a.startedAt).slice(0, 10) : null;
       var totalKm = distanceKm(a);
       var totalSec = num(a.durationSeconds);
+      var sDist = null, sTime = null, sMethod = 'stream_window';
+      try {
+        var strm = a.metrics && a.metrics.streams;
+        if (strm && Array.isArray(strm.distance) && strm.distance.length >= 2) {
+          sTime = streamTimeAxis(strm);
+          if (sTime) { sDist = strm.distance; }
+          else {
+            /* Keine echte Zeitachse: konservative Ersatzachse aus der Gesamtdauer
+               (siehe uniformTimeAxis — verteilt inkl. Pausen, Ergebnis ist eine
+               Obergrenze). Eigene Methode, damit die Oberflaeche die Herkunft
+               nicht mit einer Rundenmessung verwechseln kann. */
+            var ut = uniformTimeAxis(strm.distance.length, totalSec);
+            if (ut) { sDist = strm.distance; sTime = ut; sMethod = 'stream_uniform'; res.withDerivedTime++; }
+          }
+          if (sDist) res.withStreams++;
+        }
+      } catch (e) {}
       TARGETS.forEach(function (t) {
         var cand = null;
         if (sDist) {
           var sw = bestWindowFromStreams(sDist, sTime, t.km, slack);
           if (sw) cand = { sec: sw.sec, km: sw.km, laps: null, fromLap: null,
-                           samples: sw.samples, method: 'stream_window' };
+                           samples: sw.samples, method: sMethod };
         }
         if (splits) {
           var w = bestWindow(splits, t.km, slack);
-          if (w && (!cand || w.sec < cand.sec)) cand = { sec: w.sec, km: w.km, laps: w.laps, fromLap: w.fromLap, method: 'lap_window' };
+          /* Vorrangregel: Ein Rundenfenster ist eine ECHTE Messung, die Ersatzachse
+             ('stream_uniform') nur eine begruendete Annahme. Greift der Rundenweg,
+             gewinnt er deshalb IMMER — auch wenn die Annahme zufaellig eine schnellere
+             Zeit ergaebe. Gegen eine echte Zeitachse ('stream_window') entscheidet
+             wie bisher allein die kuerzere Zeit (beides Messungen). */
+          if (w && (!cand || cand.method === 'stream_uniform' || w.sec < cand.sec)) {
+            cand = { sec: w.sec, km: w.km, laps: w.laps, fromLap: w.fromLap, method: 'lap_window' };
+          }
         }
         /* Ohne passende Runden: die Aktivitaet selbst, aber nur wenn ihre eigene
            Distanz im Zielfenster liegt. Keine Hochrechnung ueber laengere Laeufe. */

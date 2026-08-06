@@ -399,13 +399,19 @@
   </div>
 </div>
 
-<div class="tabbar"><div class="tabwrap" id="tabs">
-  <button data-tab="heute" class="on" aria-label="Dashboard"><svg class="ic"><use href="#i-nav-dash"/></svg><span class="tl">Dashboard</span></button>
-  <button data-tab="plan" aria-label="Plan"><svg class="ic"><use href="#i-nav-plan"/></svg><span class="tl">Plan</span></button>
-  <button data-tab="akt" aria-label="Aktivität"><svg class="ic"><use href="#i-nav-act"/></svg><span class="tl">Aktivität</span></button>
-  <button data-tab="dash" aria-label="Analyse"><svg class="ic"><use href="#i-nav-ana"/></svg><span class="tl">Analyse</span></button>
-  <button data-tab="mehr" aria-label="Profil"><svg class="ic"><use href="#i-nav-prof"/></svg><span class="tl">Profil</span></button>
-</div></div>
+<!-- Liquid-Glass-Tabbar (2026-08-06). Struktur bewusst minimal geaendert: dieselben
+     fuenf data-tab-Ziele, dieselbe .tabwrap#tabs, damit die bestehende delegierte
+     Bindung, das Routing und #navPlus unveraendert weiterlaufen. Neu: semantisches
+     nav-Element, aria-current auf dem aktiven Ziel, und eine dekorative
+     Glasschicht (Lichtkante + Specular), die aria-hidden bleibt. -->
+<nav class="tabbar" aria-label="Hauptnavigation"><div class="tabwrap" id="tabs">
+  <span class="tabglass" aria-hidden="true"></span>
+  <button data-tab="heute" class="on" aria-label="Dashboard" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-nav-dash"/></svg><span class="tl">Dashboard</span></button>
+  <button data-tab="plan" aria-label="Plan"><svg class="ic" aria-hidden="true"><use href="#i-nav-plan"/></svg><span class="tl">Plan</span></button>
+  <button data-tab="akt" aria-label="Aktivität"><svg class="ic" aria-hidden="true"><use href="#i-nav-act"/></svg><span class="tl">Aktivität</span></button>
+  <button data-tab="dash" aria-label="Analyse"><svg class="ic" aria-hidden="true"><use href="#i-nav-ana"/></svg><span class="tl">Analyse</span></button>
+  <button data-tab="mehr" aria-label="Profil"><svg class="ic" aria-hidden="true"><use href="#i-nav-prof"/></svg><span class="tl">Profil</span></button>
+</div></nav>
 <!-- v3-Shell: separater FAB — behält #navPlus, damit die bestehende Quick-Action-Bindung unverändert greift.
      Training bleibt über Quick Actions (training_start → workoutUI.openTrainingTab) erreichbar. -->
 <button type="button" id="navPlus" class="fab" aria-label="Schnellaktionen öffnen" aria-haspopup="dialog"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
@@ -548,6 +554,22 @@
 <script src="js/engine/scheduler-v2.js"></script>
 <!-- Phase 8 (2026-08-05): Shadow-Gate-Auswerter — misst die 5 Kriterien, entscheidet nichts -->
 <script src="js/engine/shadow-eval.js"></script>
+<!-- Phase 8.1 (2026-08-06): Projektion Engine-Woche -> Anzeigemodell. Rein rechnend,
+     steuert nichts; die Anzeige entscheidet weiterhin der Aktivierungspfad. -->
+<script src="js/engine/week-projection.js"></script>
+<!-- Phase 8.4 (2026-08-06): serverseitiger Schaltkanal. Fail-closed — ohne
+     ausdrueckliche Freigabe ist alles aus. -->
+<script src="js/engine/feature-flags.js"></script>
+<!-- Phase 8.4 (2026-08-06): flag-gesteuerter Aktivierungspfad. Rechnet aus, WAS der
+     neue Plan waere, und verweigert, sobald ein manueller Override verloren ginge.
+     Ohne Freigabe (Standard) bleibt der Legacy-Pfad unveraendert. -->
+<script src="js/engine/plan-activation.js"></script>
+<!-- Phase 8.4 (2026-08-06): Canary-Gate-Auswerter. Sieben Kriterien, drei Zustaende
+     je Kriterium; insufficient_data ist NICHT pass. -->
+<script src="js/engine/canary-eval.js"></script>
+<!-- Phase 8.4 (2026-08-06): Belegsammler fuer das Canary-Gate. Sammelt, was die App
+     wissen kann, und benennt, was nur ein Mensch beisteuern kann. -->
+<script src="js/engine/canary-report.js"></script>
 <div id="workoutOverlay" class="wo-overlay hide"></div>
 <div id="workoutPicker" class="wo-overlay hide"></div>
 </body>

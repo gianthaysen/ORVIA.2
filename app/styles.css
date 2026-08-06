@@ -204,7 +204,11 @@ input::placeholder{color:var(--faint);font-weight:500}
 .scat{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px}.scat:first-child{margin-top:4px}
 .searchbox{width:100%;padding:13px 14px;font-size:15px;border-radius:12px;border:1px solid var(--line);background:#0d131d;margin-bottom:12px;font-weight:500;color:var(--txt)}
 /* banner */
-.banner{border-radius:16px;padding:13px 16px;margin-bottom:16px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:11px;line-height:1.4;border:1px solid}
+/* Bugfix (2026-08-05, Nutzer-Feedback „Backup älter als 7 Tage" breiter als der Rest der
+   Seite): .card hat margin:0 18px 14px (styles.css:2391), .banner hatte gar kein
+   horizontales Margin — dadurch spannte der Banner ueber die volle Breite, waehrend
+   alle Karten 18px eingerueckt sind. Gleiche Einrueckung wie .card. */
+.banner{border-radius:16px;padding:13px 16px;margin:0 18px 16px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:11px;line-height:1.4;border:1px solid}
 .banner .ic{width:18px;height:18px;flex-shrink:0}
 .banner.info{background:rgba(201,174,124,.1);border-color:rgba(201,174,124,.3);color:#dcc79a}
 .banner.warn2{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#fbd474}
@@ -1219,6 +1223,37 @@ body.profile-open .sheet-x{display:flex}
 .nut-rec{font-size:13.5px;color:var(--text);line-height:1.5;background:rgba(255,255,255,.03);border-left:2px solid var(--accent);border-radius:8px;padding:11px 13px}
 .nut-week{font-size:12.5px;color:var(--text-muted);margin-top:12px}
 .nut-week b{color:var(--text)}
+/* ---- Modul „Energie & Ernährung" (2026-08-05) — GM-Stil statt Legacy-Kacheln ---- */
+.gm-hidden-host{display:none!important}
+.nu-hero{margin:2px 0 12px}
+.nu-hero b{display:block;font-size:27px;font-weight:820;line-height:1.05;color:var(--text);font-variant-numeric:tabular-nums}
+.nu-hero span{display:block;margin-top:3px;font-size:11.5px;color:var(--muted);font-weight:600}
+.nu-stack{display:flex;height:9px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.06)}
+.nu-stack i{display:block;height:100%}
+.nu-stack .nu-p,.nu-legend .nu-p{background:#7fb8ff}
+.nu-stack .nu-c,.nu-legend .nu-c{background:var(--accent)}
+.nu-stack .nu-f,.nu-legend .nu-f{background:var(--warning)}
+.nu-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11.5px;color:var(--muted);font-weight:600}
+.nu-legend span{display:flex;align-items:center;gap:6px}
+.nu-legend i{width:9px;height:9px;border-radius:3px;flex:0 0 9px}
+.nu-legend b{color:var(--text);font-weight:750}
+.nu-legend-lg{font-size:13px;gap:8px 18px}
+.nu-foot{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid var(--hairline);font-size:12px;color:var(--muted)}
+.nu-foot b{color:var(--text);font-size:13.5px;font-weight:750}
+.nu-bars{display:flex;align-items:flex-end;gap:4px;height:96px}
+.nb-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%}
+.nb-track{flex:1;width:100%;display:flex;align-items:flex-end;background:rgba(255,255,255,.04);border-radius:4px;overflow:hidden}
+.nb-track i{display:block;width:100%;background:rgba(255,255,255,.22);border-radius:4px 4px 0 0}
+.nb-track i.hit{background:var(--ready)}
+.nb-col small{font-size:9px;color:var(--faint);font-weight:600}
+/* Bugfix (2026-08-05, Nutzer-Feedback): Protein-Adhaerenz und Gewichtstrend als zwei
+   getrennte Haelften statt einer durchlaufenden Zeile. */
+.nut-week-split{display:grid;grid-template-columns:1fr 1fr;margin-top:12px}
+.nut-week-split .nut-week-half{padding:0 12px}
+.nut-week-split .nut-week-half:first-child{padding-left:0;border-right:1px solid var(--hairline)}
+.nut-week-split .nut-week-half:last-child{padding-right:0}
+.nut-week-half span{display:block;font-size:11px;color:var(--text-muted)}
+.nut-week-half b{display:block;margin-top:3px;font-size:13.5px;color:var(--text);font-weight:700}
 
 /* ============================================================
    ORVIA · Insights "Diese Woche erkannt" (Phase 6)
@@ -1305,6 +1340,9 @@ body.profile-open .sheet-x{display:flex}
 .bt-src{display:block;font-size:9px;letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
 .bt-real{color:#34d399}
 .bt-est{color:var(--muted)}
+/* 2026-08-05: dritte Herkunftsstufe — Abschnitt aus laengerer Einheit mit abgeleiteter
+   Zeitachse. Bewusst weder gruen (volle Messung) noch grau (Schaetzung). */
+.bt-derived{color:var(--gold-soft,#dcc79a)}
 /* Splits in der Workout-Card */
 .wc-splits{margin-top:14px}
 .wc-splits-h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -2180,27 +2218,9 @@ details.acc .acc-body{margin-top:14px}
   --sleep:#9585ED; --sleep-t:rgba(149,133,237,.15);
   --gold-grad:linear-gradient(135deg,#DCC79A,#C9AE7C 55%,#8E7647);
 }
-/* Inhalt: etwas mehr Bodenfreiheit für die höhere beschriftete Bar */
-.wrap{padding-bottom:calc(env(safe-area-inset-bottom) + 138px)}
+/* Liquid-Glass-Tabbar: konsolidierte Definition steht am DATEIENDE (2026-08-06) —
+   siehe dort. Fruehere Generationen an dieser Stelle sind dort abgeloest. */
 
-/* ---- Liquid-Glass-Tabbar (v3): 5 beschriftete Ziele + wandernde Linse ---- */
-.tabwrap{position:relative;gap:2px;padding:8px 10px;border-radius:30px;
-  background:linear-gradient(150deg,rgba(40,54,73,.60),rgba(14,20,31,.50) 55%,rgba(9,14,22,.62));
-  backdrop-filter:blur(34px) saturate(185%) brightness(1.07);-webkit-backdrop-filter:blur(34px) saturate(185%) brightness(1.07);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:inset 0 1.4px .5px rgba(255,255,255,.5),inset 0 -14px 22px rgba(6,10,18,.5),0 22px 48px rgba(0,0,0,.55)}
-@supports not ((backdrop-filter:blur(4px)) or (-webkit-backdrop-filter:blur(4px))){.tabwrap{background:rgba(13,19,29,.97)}}
-.tabbar button[data-tab]{width:auto;min-width:56px;height:50px;border-radius:20px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;z-index:1;padding:0 8px}
-.tabbar button[data-tab] .ic{width:21px;height:21px}
-.tabbar .tl{font-size:9px;font-weight:750;letter-spacing:.01em;line-height:1}
-.tabbar button[data-tab].on{color:var(--accent-soft,#DCC79A)}
-.glass-indicator{position:absolute;top:7px;bottom:7px;border-radius:18px;z-index:0;pointer-events:none;
-  background:linear-gradient(150deg,rgba(201,174,124,.30),rgba(255,255,255,.09) 55%,rgba(201,174,124,.12));
-  border:1px solid rgba(255,255,255,.20);
-  box-shadow:inset 0 1px .5px rgba(255,255,255,.55),0 6px 16px rgba(0,0,0,.28);
-  transition:left .32s cubic-bezier(.2,.9,.25,1),width .32s cubic-bezier(.2,.9,.25,1)}
-.tabbar button[data-tab]:focus-visible{outline:2px solid var(--accent,#C9AE7C);outline-offset:2px}
 
 /* ---- FAB: separater Quick-Action-Zugang (behält #navPlus-Logik) ---- */
 .fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 104px);z-index:51;
@@ -3224,13 +3244,28 @@ body.profile-open #tab-mehr{padding:var(--sat) 0 calc(env(safe-area-inset-bottom
 .page-head p{margin:2px 0 0;line-height:1.2}
 .plan-hero p{margin:5px 0 0}
 .phase b{white-space:nowrap}
-/* Bugfix (2026-08-05, Nutzer-Screenshots): Phasen-Chips liefen bei langen Labels
-   (Aufbau offen / Wettkampf / Ziel HM) in die Nachbar-Chips — nowrap ohne
-   overflow-Begrenzung. Ellipsis statt Ueberlappung. */
-.phase-track .phase{min-width:0;overflow:hidden}
-.phase-track .phase b,.phase-track .phase span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.phase span{white-space:nowrap}
-.phase-track{min-height:44px;height:auto}
+/* Phasen-Redesign (2026-08-05, Nutzerentscheidung): ersetzt die frueheren engen Text-Chips
+   (.phase-track/.phase — dort passte kein Phasenname in ~60 px, weder mit Ellipsis noch mit
+   Umbruch). Neue Struktur: textfreie Segmentleiste + grosse aktuelle Phase + Vollbreiten-
+   Liste. Die alten .phase-Regeln bleiben unangetastet, weil sie noch andere Hosts bedienen. */
+.ph-bar{display:flex;gap:4px;margin:2px 0 14px}
+.ph-seg{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10)}
+.ph-seg.done{background:rgba(255,255,255,.28)}
+.ph-seg.now{background:var(--gold,#c9ae7c)}
+.ph-seg.ph-goal{flex:0 0 18px}
+.ph-now{padding:0 0 4px}
+.ph-now b{display:block;font-size:21px;font-weight:800;line-height:1.15;color:var(--text)}
+.ph-now span{display:block;margin-top:4px;font-size:12.5px;color:var(--muted);line-height:1.4}
+.ph-list{margin-top:14px;border-top:1px solid var(--hairline)}
+.ph-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.ph-row:last-child{border-bottom:none}
+.ph-mk{width:13px;flex:0 0 13px;text-align:center;font-size:11px;color:var(--muted)}
+.ph-row.now .ph-mk{color:var(--gold,#c9ae7c)}
+.ph-n{flex:1;min-width:0;color:var(--muted);font-weight:600}
+.ph-row.now .ph-n{color:var(--text);font-weight:800}
+.ph-row.done .ph-n{color:var(--text-muted)}
+.ph-w{flex:0 0 auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ph-row.now .ph-w{color:var(--gold,#c9ae7c);font-weight:700}
 .page-head .page-head-row > div:not(.backbtn){flex:1;min-width:0}
 .page-head h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plan-hero h2{line-height:normal}
@@ -3511,3 +3546,268 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .resume-banner .rb-b b{font-size:13.5px}
 .resume-banner .rb-b span{font-size:11.5px;color:var(--muted)}
 .resume-banner .rb-cta{font-size:12px;font-weight:800;color:var(--activity,#e0904e);white-space:nowrap}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIQUID-GLASS-TABBAR — konsolidierte Definition (2026-08-06)
+
+   WARUM AM DATEIENDE: In styles.css lagen FÜNF Tabbar-Generationen übereinander
+   (~84, ~417, ~506, ~2704, ~3005, ~3077, ~3441), teils mit !important. Jede neue
+   Ebene stapelte eigene ::before/::after-Glasflächen auf die vorige — genau die
+   „Glas auf Glas"-Situation, die trübe wirkt und unnötig GPU kostet. Statt eine
+   sechste Ebene daraufzusetzen, steht hier EINE Definition, die die Bar
+   vollständig beschreibt und die Altlasten gezielt abschaltet.
+
+   EBENEN (bewusst vier, nicht mehr):
+     1  .tabwrap          Grundkörper: EIN backdrop-filter, halbtransparenter
+                          Verlauf, Kontur aus Lichtkanten statt aus 1px-Rahmen
+     2  .tabglass         obere Lichtkante, per mask zum Rand auslaufend
+     3  .tabglass::after  Specular, folgt dem Zeiger — nur bei echtem Pointer
+     4  .glass-indicator  aktive Kapsel, gleitet per translate3d (js/ui.js)
+
+   Alle Kennwerte als Custom Properties, damit Theme und Debugging an einer
+   Stelle greifen.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --orvia-glass-blur:30px;
+  --orvia-glass-saturation:170%;
+  --orvia-glass-contrast:106%;
+  --orvia-glass-brightness:106%;
+  --orvia-glass-bg:linear-gradient(178deg,rgba(255,255,255,.14),rgba(255,255,255,.05) 46%,rgba(255,255,255,.03));
+  --orvia-glass-tint:linear-gradient(160deg,rgba(38,52,72,.44),rgba(11,17,27,.36) 58%,rgba(8,12,20,.46));
+  --orvia-glass-edge-light:rgba(255,255,255,.40);
+  --orvia-glass-edge-dark:rgba(0,0,0,.22);
+  --orvia-glass-shadow:0 18px 46px rgba(0,0,0,.42),0 3px 12px rgba(0,0,0,.26);
+  --orvia-glass-highlight:rgba(255,255,255,.26);
+  --orvia-tab-active:var(--accent-soft,#DCC79A);
+  /* Bewusst heller als das globale --text-faint: Glas laesst den Inhalt durch, und
+     ueber hellen Flaechen verschwand ein #656C79-Label fast vollstaendig. Gemessen
+     im Screenshot-Test ueber einem bunten Verlauf. */
+  --orvia-tab-inactive:rgba(233,240,250,.72);
+  --orvia-tabbar-inline:clamp(10px,4.2vw,22px);
+  --orvia-tabbar-bottom:clamp(8px,2.4vh,18px);
+  --orvia-tabbar-h:52px;
+  --orvia-tabbar-pad:5px;      /* Innenabstand der Kapsel — geht in die Gesamthoehe ein */
+  --orvia-tabbar-scale:1;
+}
+/* Bodenfreiheit folgt derselben Rechnung wie die Bar — eine Quelle, kein Sprung. */
+.wrap{padding-bottom:calc(env(safe-area-inset-bottom) + var(--orvia-tabbar-bottom) + var(--orvia-tabbar-h) + (var(--orvia-tabbar-pad) * 2) + 64px)}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;
+  z-index:50;pointer-events:none;isolation:isolate;
+  padding:0 var(--orvia-tabbar-inline) calc(env(safe-area-inset-bottom) + var(--orvia-tabbar-bottom));
+  /* Nur ein kurzer Abdunkler direkt unter der Bar. Der frühere Verlauf über die
+     halbe Bildschirmhöhe nahm ihr genau den Schwebe-Eindruck. */
+  background:linear-gradient(to top,rgba(6,10,17,.55),rgba(6,10,17,.15) 44%,transparent 78%)}
+.tabwrap{position:relative;pointer-events:auto;display:flex;gap:2px;
+  padding:var(--orvia-tabbar-pad) 8px;border-radius:999px;border:none!important;overflow:visible;isolation:isolate;
+  transform:scale(var(--orvia-tabbar-scale));transform-origin:50% 100%;
+  transition:transform .34s cubic-bezier(.22,1,.36,1);
+  background:var(--orvia-glass-bg),var(--orvia-glass-tint)!important;
+  backdrop-filter:blur(var(--orvia-glass-blur)) saturate(var(--orvia-glass-saturation)) contrast(var(--orvia-glass-contrast)) brightness(var(--orvia-glass-brightness))!important;
+  -webkit-backdrop-filter:blur(var(--orvia-glass-blur)) saturate(var(--orvia-glass-saturation)) contrast(var(--orvia-glass-contrast)) brightness(var(--orvia-glass-brightness))!important;
+  box-shadow:
+    inset 0 1px 0 var(--orvia-glass-edge-light),
+    inset 0 -1px 0 var(--orvia-glass-edge-dark),
+    inset 0 -16px 24px rgba(6,10,18,.28),
+    var(--orvia-glass-shadow)!important}
+/* Altlasten der früheren Generationen abschalten (sonst Glas auf Glas). */
+.tabwrap::before,.tabwrap::after{content:none!important}
+.tabwrap button.on::before{display:none!important}
+.tabbar button.on::after,.tabbar button[data-tab].on::after{content:none!important}
+
+/* Ebene 2: Lichtkante oben, zu den Seiten auslaufend. */
+.tabglass{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,0) 36%),
+             radial-gradient(120% 90% at 50% -30%,var(--orvia-glass-highlight),transparent 62%);
+  -webkit-mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.32) 54%,transparent);
+  mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.32) 54%,transparent)}
+/* Ebene 3: Specular. Deckkraft 0 bis js sie bei echtem Pointer setzt ⇒ auf Touch
+   entsteht weder Sichtbares noch Dauerlast. */
+.tabglass::after{content:"";position:absolute;inset:0;pointer-events:none;
+  opacity:var(--spec-o,0);transition:opacity .25s;
+  background:radial-gradient(54px 36px at var(--sx,50%) var(--sy,50%),rgba(255,255,255,.30),transparent 70%)}
+
+.tabbar button[data-tab]{width:auto;min-width:58px;height:var(--orvia-tabbar-h);border-radius:999px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  position:relative;z-index:2;padding:0 8px;background:none;border:none;cursor:pointer;
+  color:var(--orvia-tab-inactive);-webkit-tap-highlight-color:transparent;
+  transition:color .22s ease,transform .16s cubic-bezier(.22,1,.36,1)}
+.tabbar button[data-tab] .ic{width:21px;height:21px;
+  transition:transform .32s cubic-bezier(.22,1,.36,1),opacity .22s}
+.tabbar .tl{font-size:9px;font-weight:750;letter-spacing:.01em;line-height:1;white-space:nowrap}
+/* Lesbarkeit ueber BELIEBIGEM Untergrund: das Glas zeigt den Inhalt darunter, der
+   hell oder dunkel sein kann. Ein sehr schwacher dunkler Saum haelt Icons und
+   Labels in beiden Faellen lesbar, ohne dass es wie ein Schlagschatten wirkt. */
+.tabbar button[data-tab] .tl{text-shadow:0 1px 2px rgba(4,8,14,.45)}
+.tabbar button[data-tab] .ic{filter:drop-shadow(0 1px 1.5px rgba(4,8,14,.4))}
+[data-theme="light"] .tabbar button[data-tab] .tl{text-shadow:0 1px 2px rgba(255,255,255,.7)}
+[data-theme="light"] .tabbar button[data-tab] .ic{filter:drop-shadow(0 1px 1.5px rgba(255,255,255,.75))}
+.tabbar button[data-tab].on{color:var(--orvia-tab-active)}
+.tabbar button[data-tab].on .ic{transform:translateY(-1px) scale(1.06)}
+/* Interaktion: kurze physische Kompression, kein Ripple. */
+.tabbar button[data-tab]:active{transform:scale(.95) translateY(1px)}
+.tabbar button[data-tab]:focus-visible{outline:2px solid var(--accent,#C9AE7C);outline-offset:2px}
+
+/* Ebene 4: aktive Kapsel — Position/Breite aus dem DOM (js/ui.js), Bewegung per
+   translate3d auf dem Compositor statt per `left` (das erzwänge Layout je Frame). */
+.tabwrap .glass-indicator{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;
+  z-index:1;pointer-events:none;will-change:transform;border:none!important;
+  background:linear-gradient(168deg,rgba(255,255,255,.20),rgba(255,255,255,.06) 55%,rgba(201,174,124,.10))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.44),inset 0 -1px 0 rgba(0,0,0,.16),0 4px 14px rgba(0,0,0,.22)!important;
+  transition:transform .42s cubic-bezier(.22,1,.36,1),width .42s cubic-bezier(.22,1,.36,1)}
+/* Drag: die Kapsel folgt enger, ohne die Positionierung zu übernehmen —
+   die frühere Regel setzte hier ein scale-transform und löschte damit translate3d. */
+.tabwrap.dragging .glass-indicator{transition:transform .10s linear,width .10s linear}
+.tabwrap.dragging button .ic{transform:scale(.94)}
+
+/* Komprimierter Zustand: nur Größe. Labels und Touch-Targets bleiben. */
+.tabbar.compact{--orvia-tabbar-scale:.93}
+.tabbar.compact .tl{opacity:.7;transition:opacity .3s}
+
+/* Helles Theme: dieselbe Struktur, andere Lichtwerte. */
+[data-theme="light"] .tabbar{background:linear-gradient(to top,rgba(226,235,246,.62),transparent 78%)}
+[data-theme="light"] .tabwrap{
+  --orvia-glass-tint:linear-gradient(160deg,rgba(255,255,255,.62),rgba(232,240,250,.48) 58%,rgba(218,230,244,.58));
+  --orvia-glass-edge-light:rgba(255,255,255,.92);
+  --orvia-glass-edge-dark:rgba(40,60,90,.14);
+  --orvia-glass-shadow:0 18px 42px rgba(30,50,90,.20),0 3px 10px rgba(30,50,90,.12);
+  --orvia-glass-highlight:rgba(255,255,255,.55)}
+[data-theme="light"] .tabbar button[data-tab]{color:#5b6675}
+[data-theme="light"] .tabbar button[data-tab].on{color:#2a3242}
+[data-theme="light"] .tabwrap .glass-indicator{
+  background:linear-gradient(168deg,rgba(255,255,255,.86),rgba(255,255,255,.5) 55%,rgba(201,174,124,.16))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 4px 12px rgba(30,50,90,.16)!important}
+
+/* Fallback ohne backdrop-filter: deckend, aber weiterhin als Körper lesbar. */
+@supports not ((backdrop-filter:blur(4px)) or (-webkit-backdrop-filter:blur(4px))){
+  .tabwrap{background:linear-gradient(178deg,rgba(24,32,46,.97),rgba(12,18,28,.98))!important}
+  .tabbar{background:linear-gradient(to top,rgba(6,10,17,.90),transparent 82%)}
+  [data-theme="light"] .tabwrap{background:linear-gradient(178deg,rgba(250,252,255,.97),rgba(236,242,250,.98))!important}
+}
+/* Reduzierte Transparenz: Blur aus, Kontrast rauf. */
+@media (prefers-reduced-transparency:reduce){
+  .tabwrap{background:rgba(14,18,26,.96)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .tabglass{opacity:.4}
+}
+/* Reduced Motion: keine Bewegung, Zustand bleibt eindeutig ablesbar. */
+@media (prefers-reduced-motion:reduce){
+  .tabwrap,.tabwrap .glass-indicator,.tabbar button[data-tab],.tabbar button[data-tab] .ic{transition:none!important}
+  .tabbar.compact{--orvia-tabbar-scale:1}
+  .tabglass::after{display:none}
+}
+/* Landscape / sehr flache Viewports: niedriger, Labels bleiben. */
+@media (max-height:460px){:root{--orvia-tabbar-h:46px}.tabbar .tl{font-size:8.5px}}
+/* Sehr schmal (320 px): Innenabstand runter statt Labels abschneiden. */
+@media (max-width:340px){.tabbar button[data-tab]{min-width:52px;padding:0 4px}.tabwrap{padding:5px 6px}}
+/* Tastatur sichtbar: Bar weg (bestehendes .kb-Verhalten bleibt gültig). */
+.tabbar.kb{transform:translateY(130%)}
+/* Breite Viewports: Die Bar folgt der 430-px-Spalte der App. Eine fruehere Regel
+   (styles.css ~3096) loeste das ueber left:50% + translateX(-50%); da diese
+   konsolidierte Definition left:0/right:0 setzt, blieb dort nur das transform
+   uebrig und schob die Bar um die halbe Breite nach links aus dem Bild.
+   Zentriert wird jetzt ueber margin-inline — das kollidiert mit keinem transform
+   (.tabbar.kb braucht transform weiterhin fuer das Wegfahren bei Tastatur). */
+.tabbar{max-width:430px;margin-inline:auto}
+@media(min-width:431px){
+  .tabbar{left:0;right:0;transform:none}
+  .tabbar.kb{transform:translateY(130%)}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLUS-BUTTON als Gold-Glaskörper (2026-08-06)
+
+   ENTSCHEIDUNG ZUR HIERARCHIE: Der Plus ist eine AKTION, die fünf Tabs sind
+   NAVIGATION. Er bekommt deshalb dieselbe Materialsprache wie die Bar
+   (Backdrop-Brechung, Lichtkanten, Specular, gleiche Bewegungsphysik), behält
+   aber seinen goldenen Kern. Ihn zu neutralem Glas zu machen hätte die
+   Unterscheidung eingeebnet — er wäre eine leere Blase ohne Signalwirkung.
+   Der Goldanteil bleibt kräftig genug, dass das dunkle Icon über beliebigem
+   Untergrund lesbar bleibt; Glas ersetzt hier die Fläche, nicht die Farbe.
+
+   BEHOBEN NEBENBEI: Die bisher stärkste Regel (#navPlus.fab, styles.css ~3103)
+   setzte bottom:94px OHNE env(safe-area-inset-bottom) — auf iPhones mit
+   Home-Indicator saß der Button dadurch zu tief. Die Position folgt jetzt
+   denselben Tokens wie die Bar, sodass beide zusammen wandern.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --orvia-fab-size:56px;
+  --orvia-fab-gap:16px;            /* Abstand zwischen Bar-Oberkante und Button */
+  /* Deckkraft bewusst unter 1: der Hintergrund toent das Gold sichtbar durch
+     (Glas statt Farbfleck). Untergrenze ist die Lesbarkeit des dunklen Icons —
+     unterhalb ~.78 verliert es ueber hellem Inhalt den Kontrast. Im Screenshot-
+     Test ueber einem bunten Verlauf geprueft. */
+  --orvia-fab-gold-a:rgba(236,214,172,.86);
+  --orvia-fab-gold-b:rgba(201,174,124,.80);
+  --orvia-fab-gold-c:rgba(146,120,74,.80);
+}
+#navPlus.fab{
+  position:fixed;left:auto;top:auto;margin:0;padding:0;z-index:51;
+  right:var(--orvia-tabbar-inline);
+  /* Die sichtbare Barhoehe ist --orvia-tabbar-h PLUS ihr Innenabstand oben und
+     unten. Ohne diesen Term rutschte der Button 10 px zu tief und der Abstand
+     zur Bar schrumpfte auf 6 px (im Layout-Test gemessen). */
+  bottom:calc(env(safe-area-inset-bottom) + var(--orvia-tabbar-bottom) + var(--orvia-tabbar-h) + (var(--orvia-tabbar-pad) * 2) + var(--orvia-fab-gap));
+  width:var(--orvia-fab-size);height:var(--orvia-fab-size);border-radius:50%;
+  border:none;cursor:pointer;color:#241a08;overflow:visible;isolation:isolate;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  /* Goldenes Glas: halbtransparenter Verlauf ÜBER der Hintergrundbrechung —
+     der Inhalt dahinter tönt das Material, statt eine flache Fläche zu sein. */
+  background:
+    radial-gradient(78% 68% at 34% 22%,rgba(255,255,255,.50),transparent 58%),
+    linear-gradient(158deg,var(--orvia-fab-gold-a),var(--orvia-fab-gold-b) 52%,var(--orvia-fab-gold-c));
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  /* Kontur aus Licht, wie bei der Bar: helle Oberkante, dunkle Unterkante, Tiefe. */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.72),
+    inset 0 -1.5px 0 rgba(88,62,20,.34),
+    inset 0 -8px 14px rgba(120,88,36,.22),
+    0 14px 32px rgba(201,174,124,.30),
+    0 4px 12px rgba(0,0,0,.34);
+  transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .28s cubic-bezier(.22,1,.36,1)}
+/* Specular: derselbe Zeiger-abhängige Lichtpunkt wie auf der Bar. Deckkraft 0,
+   bis js sie bei echtem Pointer setzt ⇒ auf Touch keine Dauerlast. */
+#navPlus.fab::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  opacity:var(--spec-o,0);transition:opacity .25s;
+  background:radial-gradient(26px 20px at var(--sx,50%) var(--sy,50%),rgba(255,255,255,.55),transparent 72%)}
+#navPlus.fab .ic{width:25px;height:25px;stroke-width:2.4;position:relative;z-index:1;
+  filter:drop-shadow(0 1px 1px rgba(255,255,255,.35));
+  transition:transform .3s cubic-bezier(.22,1,.36,1)}
+/* Interaktion: dieselbe Kompression wie die Tabs, plus die bestehende Icon-Drehung. */
+#navPlus.fab:active{transform:scale(.94);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.72),inset 0 -1.5px 0 rgba(88,62,20,.34),
+             0 6px 16px rgba(201,174,124,.26),0 2px 6px rgba(0,0,0,.30)}
+#navPlus.fab:active .ic{transform:rotate(90deg)}
+#navPlus.fab:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* Beim Komprimieren geht der Button mit — sonst risse der optische Verbund auf. */
+.tabbar.compact ~ #navPlus.fab,.tabbar.compact + #navPlus.fab{transform:scale(.93) translateY(3px)}
+/* Tastatur sichtbar: mit der Bar wegfahren (bestehendes Verhalten, an die neue
+   Spezifität angepasst — die alte Regel .tabbar.kb ~ .fab wäre unterlegen). */
+.tabbar.kb ~ #navPlus.fab,.tabbar.kb + #navPlus.fab{transform:translateY(240%)}
+/* Breite Viewports: dem 430-px-Raster der App folgen. */
+@media(min-width:431px){
+  #navPlus.fab{right:calc(50% - 215px + var(--orvia-tabbar-inline))}
+}
+[data-theme="light"] #navPlus.fab{
+  color:#2a1f08;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.9),
+    inset 0 -1.5px 0 rgba(120,92,40,.26),
+    0 12px 28px rgba(160,130,70,.28),
+    0 3px 10px rgba(40,60,90,.18)}
+/* Fallback ohne backdrop-filter: deckendes Gold, gleiche Form und Tiefe. */
+@supports not ((backdrop-filter:blur(4px)) or (-webkit-backdrop-filter:blur(4px))){
+  #navPlus.fab{background:
+    radial-gradient(78% 68% at 34% 22%,rgba(255,255,255,.42),transparent 58%),
+    linear-gradient(158deg,#E8D1A6,#C9AE7C 52%,#967C4E)}
+}
+@media (prefers-reduced-transparency:reduce){
+  #navPlus.fab{backdrop-filter:none;-webkit-backdrop-filter:none;
+    background:linear-gradient(158deg,#E8D1A6,#C9AE7C 52%,#967C4E)}
+}
+@media (prefers-reduced-motion:reduce){
+  #navPlus.fab,#navPlus.fab .ic{transition:none!important}
+  .tabbar.compact ~ #navPlus.fab,.tabbar.compact + #navPlus.fab{transform:none}
+  #navPlus.fab::after{display:none}
+}

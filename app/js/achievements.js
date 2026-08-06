@@ -57,7 +57,26 @@
       metric: 'count', sport: null },
     { id: 'week_streak', label: 'Konstanz (Wochen in Folge ≥ 3 Einheiten)', unit: ' Wo.', icon: 'calendar',
       steps: [2, 4, 8, 12, 26],
-      metric: 'weekStreak', sport: null }
+      metric: 'weekStreak', sport: null },
+    /* Ergaenzung 2026-08-05 (Nutzerwunsch „ein, zwei mehr Meilensteine").
+       Alle vier folgen demselben Vertrag wie die bestehenden: gemessene Groessen aus
+       ECHTEN abgeschlossenen Aktivitaeten, Schwellen sind sportlich uebliche Marken,
+       nichts wird geschaetzt. Bewusst gewaehlt, weil sie die bisherigen Luecken
+       schliessen — kumulierte Distanz (bisher nur Einzelbestleistung), Radumfang
+       (bisher nur laengste Fahrt) und Schwimmen (bisher gar nicht, obwohl es fuer
+       das langfristige Triathlon-/Ironman-Ziel die dritte Disziplin ist). */
+    { id: 'run_total_km', label: 'Laufkilometer gesamt', unit: ' km', icon: 'run',
+      steps: [50, 100, 250, 500, 1000, 2500],
+      metric: 'sumAll', sport: 'running' },
+    { id: 'ride_week_km', label: 'Rad-Wochenumfang', unit: ' km', icon: 'activity',
+      steps: [50, 80, 120, 180, 250],
+      metric: 'maxWeekSum', sport: 'cycling' },
+    { id: 'swim_longest', label: 'Längste Schwimmeinheit', unit: ' km', icon: 'activity',
+      steps: [0.4, 0.75, 1, 1.9, 3.8],
+      metric: 'maxSingle', sport: 'swimming' },
+    { id: 'gym_sessions', label: 'Krafteinheiten', unit: '', icon: 'dumbbell',
+      steps: [10, 25, 50, 100, 200],
+      metric: 'countSport', sport: 'gym' }
   ];
 
   /* activities: vereinheitlichte kanonische Liste (Server > lokal > Legacy,
@@ -87,6 +106,24 @@
         /* Datum der Stufe = Tag der n-ten Einheit (chronologisch). */
         var days = acts.map(dayOf).sort();
         return { value: days.length, dateForStep: function (s) { return days.length >= s ? days[s - 1] : null; } };
+      }
+      /* Kumulierte Distanz einer Sportart. Datum einer Stufe = Tag, an dem die Summe
+         sie ERSTMALS erreicht hat (chronologisch aufsummiert, keine Rueckdatierung). */
+      if (l.metric === 'sumAll') {
+        var rows2 = (per[l.sport] || []).filter(function (x) { return x.km != null; })
+          .slice().sort(function (a, b) { return a.day < b.day ? -1 : 1; });
+        var run2 = 0, marks = [];
+        rows2.forEach(function (x) { run2 += x.km; marks.push({ day: x.day, sum: run2 }); });
+        return { value: Math.round(run2 * 10) / 10,
+          dateForStep: function (s) {
+            for (var i = 0; i < marks.length; i++) if (marks[i].sum + 1e-9 >= s) return marks[i].day;
+            return null;
+          } };
+      }
+      /* Einheitenzahl EINER Sportart (das bestehende 'count' zaehlt sportuebergreifend). */
+      if (l.metric === 'countSport') {
+        var days2 = (per[l.sport] || []).map(function (x) { return x.day; }).sort();
+        return { value: days2.length, dateForStep: function (s) { return days2.length >= s ? days2[s - 1] : null; } };
       }
       if (l.metric === 'maxSingle') {
         var list = (per[l.sport] || []).filter(function (x) { return x.km != null; });

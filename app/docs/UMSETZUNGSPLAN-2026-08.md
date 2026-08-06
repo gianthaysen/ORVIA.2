@@ -919,13 +919,24 @@ Shadow-Infrastruktur existiert (`shadow-runner.js`, Gate `withBoth.length >= 14`
 - [x] vollständige Provenienz für **jede** Session — *messbar + live belegt (S5)*
 
 ### Canary Gate
-- [ ] begrenzter Nutzerkreis
-- [ ] Feature Flag **serverseitig** deaktivierbar
-- [ ] alte Heuristik weiterhin verfügbar
-- [ ] Migration reversibel
-- [ ] Fehlerquote unter definiertem Grenzwert
-- [ ] keine erhöhte Workout-Abbruchrate
-- [ ] **kein Verlust manueller Overrides**
+
+> **✅ Messapparat gebaut (2026-08-06, v8-253): `js/engine/canary-eval.js`.** Gleiche
+> Bauart wie `shadow-eval`: sieben Kriterien, drei Zustände je Kriterium,
+> `insufficient_data` ist **nicht** `pass`. Konsole: `ORVIA.canaryEval.evaluate({…})`.
+> Vier der sieben Kriterien waren vor dem Flag-Kanal und dem Aktivierungspfad
+> überhaupt nicht messbar — sie vorher zu „bewerten" wäre eine Behauptung gewesen.
+
+- [ ] begrenzter Nutzerkreis — *messbar (C1), Kohortengröße muss übergeben werden*
+- [x] Feature Flag **serverseitig** deaktivierbar — *gebaut + messbar (C2): Migration 0031
+      (RLS: lesen ja, schreiben **keine** Policy) + `js/engine/feature-flags.js` (fail-closed)*
+- [ ] alte Heuristik weiterhin verfügbar — *messbar (C3), live belegt (Legacy-Pfad unverändert)*
+- [ ] Migration reversibel — *messbar (C4); `planActivation.revert()` + `ORVIA.enginePlanRevert()`
+      gebaut, der Nachweis eines echten Rücklaufs steht aus*
+- [ ] Fehlerquote unter definiertem Grenzwert — *messbar (C5), wartet auf Canary-Daten*
+- [ ] keine erhöhte Workout-Abbruchrate — *messbar (C6), richtungsabhängig: nur ein Anstieg blockiert*
+- [x] **kein Verlust manueller Overrides** — *technisch erzwungen (C7): `plan-activation`
+      verweigert die Aktivierung, statt einen Override zu verlieren; die Buchhaltung
+      `vorher = kept + retargeted + conflicts + dropped` wird in jedem Lauf geprüft*
 
 ### Live Gate
 - [ ] kanonisches Planmodell vollständig aktiv
@@ -985,14 +996,149 @@ Zusätzlich zu ergänzen:
 > `shadow-runner.js` las `root.DB` für `sessionsByDay` (Legacy-Sessions fehlten damit in der
 > Kapazitätsrechnung) — **mit behoben, gleiches Muster.**
 
-**Noch offen in Phase 8 (nicht gebaut):**
-- **Integrationstest „Engine-Output erreicht den Nutzer"** — braucht zuerst eine
-  Projektion `scheduler-v2.sessions[] → kanonisches Wochenplan-Modell`. Diese
-  Abbildung existiert heute nicht; das ist der eigentliche fehlende Baustein
-  zwischen Shadow und Canary.
-- **Canary-Gate-Auswerter** — analog zu `shadow-eval`, aber die Kriterien
-  (serverseitiges Flag, Fehlerquote, Abbruchrate, kein Verlust manueller Overrides)
-  setzen einen serverseitigen Flag-Kanal voraus, den es noch nicht gibt.
+### 📋 ARBEITSPLAN Phase 8 (2026-08-06)
+
+**Ausgangslage, nüchtern:** S3/S4/S5 sind gebaut und live belegt. S1/S2 sind messbar,
+warten aber auf Daten. Der Engpass ist NICHT das Gate — es ist die fehlende Brücke
+zwischen Engine und Oberfläche. Solange die fehlt, kann das Gate schließen, ohne dass
+der Nutzer etwas davon hat.
+
+**Kritischer Startpunkt:** Die 14-Tage-Zählung beginnt faktisch mit dem Deploy von
+v8-245+. Ältere Shadow-Einträge sind durch den P0-Binding-Befund wertlos und müssen
+einmalig verworfen werden:
+
+    ORVIA.engineShadow.clearLog(); ORVIA.engineShadow.clearWeekLog();
+
+Ohne diesen Schnitt mischt das Gate wertlose mit gültigen Tagen und meldet ein
+falsches Ergebnis — in sicherheitsrelevanter Richtung.
+
+---
+
+#### 8.1 · Wochenplan-Projektion (der eigentliche fehlende Baustein)
+
+`scheduler-v2` erzeugt `sessions[]` in Engine-Form. Die Oberfläche liest ein anderes
+Modell (`activeWeekPlan()` → 7 Tage-Arrays mit `{t,l,d,id}`). **Diese Abbildung
+existiert nicht.** Sie ist die Ursache dafür, dass Zielprognose, Zielqualität und
+Tagesziele „—" zeigen: es gibt keinen Weg, auf dem Engine-Werte dort ankommen könnten.
+
+- [x] `js/engine/week-projection.js` — **gebaut (2026-08-06, v8-251)**. Pure Funktion
+      `projectWeek(schedulerOutput) → {days:[7], unmapped[], notPlanned[], counts, provenance}`.
+- [x] Rückrichtung: `weekPlanToComparable()` + `diffWeeks()` für den Vergleich Plan⇄Engine.
+      Bewusst KEINE vollständige Umkehr — aus einer Anzeige-Einheit lässt sich keine
+      Verordnung rekonstruieren, und so zu tun als ob wäre eine Erfindung.
+- [x] Test: jede Session landet genau einmal im Wochenmodell oder begründet in `unmapped[]`
+- [x] Test: deterministisch, nicht mutierend, stabile Ordnung im Tag
+
+> **Beim Bauen aufgefallen und ergänzt:** Der Scheduler meldet ZWEI Verlustarten, bevor
+> überhaupt eine Session entsteht — `unplaced` (kein zulässiger Tag) und
+> `blockedPrescriptions` (Verordnung nicht baubar). Die erste Fassung der Projektion
+> reichte beides nicht weiter; der Nutzer hätte einen dünneren Plan ohne jeden Grund
+> gesehen. Jetzt in `notPlanned[]` mit unterscheidbarer Stufe (`placement` /
+> `prescription`) durchgereicht.
+>
+> **Ebenfalls gemessen:** `deriveRequirements` liest `sports[].role` und
+> `capacityPerSport[].weeklySessions/.longSessionCeiling/.confidence` — NICHT
+> `sessionsPerWeek`. Mit korrekt geformtem Input liefert der Scheduler eine
+> vollständige Woche (Long Run · Intervalle · Z2 · 3× Kraft, Ruhetag frei), die
+> verlustfrei projiziert wird. Ohne Kapazitätsdaten bleibt es bewusst bei einer
+> konservativen generischen Einheit je Sportart (`conservative_generic_no_capacity`).
+> **Konsequenz für 8.3:** Das Gate misst nur dann etwas Aussagekräftiges, wenn der
+> Kapazitäts-Adapter echte Werte liefert. Das ist vor der Datensammlung zu prüfen.
+
+#### 8.2 · Integrationstest „Engine-Output erreicht den Nutzer"
+
+**Gebaut (2026-08-06):** `supabase/tests/phase8_week_projection_test.mjs` (38 Prüfungen).
+
+- [x] Test: echter `scheduler-v2` → Projektion → `activeWeekPlan()` → gerenderte Session-Karten
+- [x] Test: bei abgeschalteter Engine ist der Legacy-Plan bitgenau unverändert
+- [x] Test: die Projektion steuert nichts (schreibt von sich aus in kein Profilfeld)
+- [x] Test: manuelle Overrides des Nutzers überleben den Weg — **geschlossen (2026-08-06,
+      v8-253)**. Der Aktivierungspfad existiert jetzt (`js/engine/plan-activation.js`),
+      und die Zusage ist härter als „überleben meistens": ein Override geht **nie still**
+      verloren. Entweder er überlebt (kept/retargeted) oder die Aktivierung findet
+      **nicht statt**. Belege: `phase8_plan_activation_test.mjs` (98) ·
+      `phase8_activation_live_test.mjs` (30, Browser)
+
+#### 8.3 · Gate schließen (wartet auf Daten, nicht auf Code)
+
+- [ ] S1: 14 vergleichbare Tage — frühestens 14 Tage nach dem Deploy
+- [ ] S2: Divergenzen sichten. Erwartung ehrlich: v2 wird abweichen. Blockierend sind
+      nur Fälle, in denen v2 NACHSICHTIGER ist als v1 (richtungsabhängig definiert).
+- [ ] Zwischenstand nach 7 Tagen prüfen (`gateReport()`), damit ein systematischer
+      Fehler nicht erst nach zwei Wochen auffällt
+
+#### 8.4 · Canary — entblockt und gebaut (2026-08-06, v8-253)
+
+- [x] Supabase-Migration `0031_feature_flags.sql`: Tabelle `user_feature_flags`
+      (user_id, flag, enabled, reason, cohort, set_by) + RLS. **Entscheidend ist,
+      was NICHT drinsteht:** es gibt keine insert/update/delete-Policy für
+      `authenticated`. Ohne Policy blockt RLS jeden Client-Write; Schreibrechte hat
+      nur die `service_role`. Damit ist „serverseitig deaktivierbar" technisch
+      garantiert und nicht bloß vereinbart. CHECK-Constraint auf bekannte Flagnamen.
+- [x] `js/engine/feature-flags.js` — fail-closed in **jedem** Ausgang: kein Nutzer,
+      kein Client, offline, Abfragefehler, unlesbare Antwort, fehlende Zeile,
+      abgelaufener Zwischenstand ⇒ AUS. Nur ein ausdrückliches `enabled === true`
+      schaltet ein (`"true"`, `1`, `"yes"` schalten **nicht**). `killSwitch()` ohne
+      Gegenstück zum Einschalten. Test: `phase8_feature_flags_test.mjs` (46).
+- [x] `js/engine/plan-activation.js` — der Aktivierungspfad. Pur (Uhr und ID-Fabrik
+      kommen herein), idempotent (identische Woche ⇒ keine neue Revision), reversibel
+      (`previous` + `revert()`), und er **verweigert**, statt einen manuellen Override
+      zu verlieren. Verdrahtet in `ui.js` (`gmEngineActivateWeek`, dreifach gesperrt:
+      Flag · kanonisches Modell · Override-Buchhaltung).
+- [x] `js/engine/canary-eval.js` — sieben Kriterien, drei Zustände, richtungsabhängige
+      Abbruchrate (nur ein **Anstieg** blockiert). Ein unbekannter Ausgangsgrund macht
+      C5 zu `insufficient_data` statt still zu „kein Fehler".
+
+> **Beim Bauen gefunden — zwei Dinge, die sonst durchgegangen wären:**
+> 1. **Ein neuer Grund im Aktivierungspfad wäre im Auswerter still als „kein Fehler"
+>    gelandet.** Deshalb ist die Fehlerliste eine Positivliste und ein unbekannter Grund
+>    setzt C5 auf `insufficient_data`; ein Test vergleicht beide Listen gegeneinander,
+>    damit sie nicht auseinanderdriften.
+> 2. **`would_drop_overrides` doppelt zu zählen wäre falsch.** Die Schutzverweigerung ist
+>    kein technischer Fehler (C5), sondern der verhinderte Verlust (C7). Beides zu zählen
+>    hätte dieselbe Situation zweimal bestraft und die Fehlerquote uninterpretierbar gemacht.
+>
+> **Was das Gate weiterhin NICHT schließt:** C1 (Kohortengröße), C4 (ein echter
+> durchgeführter Rücklauf), C5/C6 (Canary-Daten). Das ist keine fehlende Bauarbeit,
+> sondern fehlende Betriebszeit — genau die Unterscheidung, die das Dreizustandsmodell
+> sichtbar macht.
+
+**Reihenfolge und Begründung:** 8.1 zuerst, weil es das einzige ist, das ohne Wartezeit
+Fortschritt bringt und alles Weitere trägt. 8.2 direkt danach. 8.3 läuft nebenher ab.
+8.4 erst, wenn 8.3 tatsächlich grün ist — vorher wäre es Arbeit auf Verdacht.
+
+**Realistische Zeitachse:** 8.1+8.2 sind Bauarbeit ohne Wartezeit. 8.3 frühestens
+zwei Wochen nach dem Deploy. Canary damit nicht vor Ende August.
+
+---
+
+**Stand Phase 8 (2026-08-06, v8-253): alles gebaut, was ohne Betriebszeit baubar ist.**
+
+Gebaut: Projektion (8.1) · Integrationstest (8.2, inkl. des zuletzt offenen
+Override-Punkts) · Shadow-Messapparat · Kapazitäts-Adapter geprüft (zwei P0-Befunde,
+siehe unten) · Flag-Kanal · Aktivierungspfad · Canary-Messapparat.
+
+Offen — und zwar **nur** aus Zeitgründen, nicht aus Codegründen:
+- **S1/S2** brauchen 14 Tage Shadow-Daten nach dem Deploy.
+- **C1/C4/C5/C6** brauchen einen laufenden Canary (Kohorte festlegen, Rücklauf einmal
+  wirklich ausführen, Fehler- und Abbruchraten sammeln).
+
+> ### 🔴 P0-BEFUND (2026-08-06, vor der Datensammlung) — die Gate-Belege wären ein zweites Mal wertlos gewesen
+>
+> Vor dem Start der 14-Tage-Sammlung wurde der Kapazitäts-Adapter geprüft (Vorbedingung
+> aus 8.1). Ergebnis: **derselbe Objekt-statt-ID-Fehler an zwei weiteren Stellen.**
+> - `js/engine/capacity-adapter.js` las `a.sport`, das kanonische Feld heißt `sportId`
+>   ⇒ **jede** Aktivität fiel auf `other`, die Kapazität pro Sportart war leer.
+> - `js/engine/shadow-runner.js` gab das ganze Sport-**Objekt** an `canonicalSportOf`
+>   ⇒ `String({}) = "[object Object]"` ⇒ `sports = ['other']`.
+>
+> **Wirkung zusammen:** `scheduler-v2` setzte `conservative_generic_no_capacity` und baute
+> eine generische Minimalwoche — 14 Tage Sammlung hätten eine Engine gemessen, die nie
+> mit echten Daten gerechnet hat. Nach dem Fix: **2 → 6 Sessions**, nur noch die
+> sachlich richtige Flagge `no_pace_evidence_shadow`.
+>
+> Es ist derselbe Fehlertyp, der in `generateWeekPlan` schon als H1 behoben war. Dritter
+> Fundort in diesem Projekt. Regression: `phase8_capacity_pipeline_test.mjs` (16).
 
 ---
 

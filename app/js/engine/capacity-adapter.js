@@ -136,11 +136,34 @@
     var sessByDay = opts.sessionsByDay || {};
     function shift(day, delta) { var d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + delta); return d.toISOString().slice(0, 10); }
 
+    /* 🔴 P0-FIX (2026-08-06): Das Sportfeld wurde nur als `a.sport` gelesen. Die
+       KANONISCHEN Aktivitäten aus activityStore.listActivities() heißen aber
+       `sportId` (activity-store.js: `sportId: row.sport_id`) — `a.sport` ist dort
+       schlicht undefined.
+
+       WIRKUNG im Produktivpfad: shadow-runner reicht genau diese kanonischen
+       Aktivitäten herein. mapSport(undefined) liefert einen einzigen Pseudo-Sport
+       ("null"/"unknown"), unter dem ALLE Sportarten zusammenfielen. Damit fand
+       scheduler-v2 unter `capacityPerSport['running']` nie etwas, setzte
+       `conservative_generic_no_capacity` und baute eine generische Minimalwoche.
+       Das Shadow-Gate hätte 14 Tage lang diese Minimalwoche gegen den echten Plan
+       verglichen — die Datensammlung wäre wertlos gewesen, genau wie beim
+       DB/RACE-Bindungsbefund vom 2026-08-05.
+
+       Gefunden beim Prüfen der 8.3-Voraussetzung, VOR der Datensammlung.
+       Reihenfolge: kanonisch zuerst, Legacy-/Testform als Rückfall. */
+    function sportFieldOf(a) {
+      if (!a) return null;
+      if (a.sportId != null) return a.sportId;
+      if (a.sport != null) return a.sport;
+      if (a.sport_id != null) return a.sport_id;
+      return null;
+    }
     /* Aktivitäten je Sport je Tag gruppieren (kanonische Tageszuordnung). */
     var bySport = {};
     (Array.isArray(activities) ? activities : []).forEach(function (a) {
       if (!a || isTomb(a)) return;
-      var sp = mapSport(a.sport);
+      var sp = mapSport(sportFieldOf(a));
       var day = AC.dayOfActLocal(a, tz); if (!day) return;
       var b = bySport[sp] || (bySport[sp] = { byDay: {}, minutes: 0, minutesComplete: true, km: 0, kmComplete: true, maxMin: null, count: 0 });
       (b.byDay[day] || (b.byDay[day] = [])).push(a);

@@ -171,6 +171,11 @@ function macroCell(label, grams, kcal, cls) {
 function renderNutritionToday() {
   var el = document.getElementById('nutritionBox'); if (!el) return;
   if (cur !== todayStr()) { el.innerHTML = ''; return; }
+  /* 2026-08-05: Laeuft Ernaehrung als Dashboard-Modul (gmModNutrition), rendert dieser
+     Legacy-Host NICHTS mehr — sonst stuende die Karte zweimal untereinander. Das Modul
+     nutzt dieselben Quellen (nutToday/nutWeekly); dieser Pfad bleibt als Rueckfall,
+     falls der Nutzer das Modul ausblendet. */
+  try { if (typeof gmModOn === 'function' && gmModOn('nutrition')) { el.innerHTML = ''; return; } } catch (e) {}
   var t = nutToday();
   if (!t) {
     /* Phase 3 (E-23): kontextueller Einstieg DIREKT aus der Karte — der Verweis
@@ -193,7 +198,15 @@ function renderNutritionToday() {
     '</div>' + eaWarn +
     '<div class="nut-rec">' + escH(nutRecommendation(t.dayType)) + '</div>' +
     (function () { var f = (typeof fuelingToday === 'function') ? fuelingToday() : null; if (!f) return ''; return '<div class="nut-fuel"><div class="nf-h">' + escH(f.title) + '</div><ul>' + f.lines.map(function (x) { return '<li>' + escH(x) + '</li>'; }).join('') + '</ul></div>'; })() +
-    '<div class="nut-week">Protein-Ziel diese Woche: <b>' + wk.proteinDays + '/7</b> Tage' + (wk.weightTrend ? ' · Gewicht 7T: <b>' + escH(wk.weightTrend) + '</b>' : '') + '</div>' +
+    /* Bugfix (2026-08-05, Nutzer-Feedback): zwei unabhaengige Kennzahlen (Protein-
+       Adhaerenz/Woche, Gewichtstrend/7T) standen als EIN durchlaufender Satz — bei
+       vorhandenem Gewichtstrend wirkte die Zeile ueberladen. Zwei klar getrennte
+       Haelften statt einer Zeile. */
+    (function () {
+      var left = '<div class="nut-week-half"><span>Protein-Ziel diese Woche</span><b>' + wk.proteinDays + '/7 Tage</b></div>';
+      var right = wk.weightTrend ? ('<div class="nut-week-half"><span>Gewicht · 7 Tage</span><b>' + escH(wk.weightTrend) + '</b></div>') : '';
+      return '<div class="nut-week' + (right ? ' nut-week-split' : '') + '">' + left + right + '</div>';
+    })() +
     '<div class="nut-note">Schätzwerte — werden über Gewichtstrend, Training und Energielevel angepasst.</div></div>';
 }
 

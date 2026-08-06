@@ -55,7 +55,7 @@
     } catch (e) { return null; }
   }
 
-  var RENDERERS = { topAvatar: 'renderTopAvatar', profileCard: 'renderProfileScreen', zones: 'renderZones', day: 'renderDay', plan: 'renderPlan', dash: 'renderDash', akt: 'renderAkt' };
+  var RENDERERS = { topAvatar: 'renderTopAvatar', profileCard: 'renderProfileScreen', gmProfile: 'renderGMProfile', zones: 'renderZones', day: 'renderDay', plan: 'renderPlan', dash: 'renderDash', akt: 'renderAkt' };
 
   /* GM6.1: Host je Renderziel — ausschließlich für den Eingabeschutz.
      topAvatar/goalSync haben keine Eingabefelder und brauchen keinen Host. */

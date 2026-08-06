@@ -43,8 +43,10 @@
     { id: 'appointment_add', label: 'Termin hinzufügen', description: 'Fester Termin für die Planung', icon: '#i-calendar', category: 'secondary', frequency: 'setup',
       entryPoint: 'openFixedEventEditor', requiresProfile: false, requiresOnline: false, resultEvent: null },
     // Kontextaktionen (erscheinen nur über das Ranking):
+    /* Phase 1 · KF-003: zeigte bis v8-219 auf denselben Entry-Point wie
+       training_start — beide waren damit dieselbe (tote) Aktion. */
     { id: 'training_continue', label: 'Training fortsetzen', description: 'Laufende Einheit öffnen', icon: '#i-run', category: 'context', frequency: 'daily',
-      entryPoint: 'orvia:workoutUI.openTrainingTab', requiresProfile: false, requiresOnline: false, resultEvent: null },
+      entryPoint: 'orvia:workoutUI.resumeActiveSync', requiresProfile: false, requiresOnline: false, resultEvent: null },
     { id: 'profile_complete', label: 'Profil vervollständigen', description: 'Wenige Angaben fehlen noch', icon: '#i-user', category: 'context', frequency: 'setup',
       entryPoint: 'openProfileCenterEntry', requiresProfile: false, requiresOnline: false, resultEvent: 'orvia:profile-updated' },
     { id: 'complaint_update', label: 'Beschwerden aktualisieren', description: 'Wie geht es der betroffenen Stelle?', icon: '#i-pulse', category: 'context', frequency: 'occasional',
@@ -183,21 +185,110 @@
 
   /* ---------- B4 · UI (Sheet über openSheet, Plus-Button bindet sich selbst) ---------- */
   var _busy = false;
-  function runAction(id) {
-    if (_busy) return false;   // Doppelklick-Schutz
+  /* ==========================================================================
+     Phase 0 — Aktions-Ergebnisvertrag (Instrumentierung, KEIN Verhaltensumbau).
+
+     Vorher meldete runAction() ausschliesslich true/false und verlor damit die
+     URSACHE. Genau das hat die toten Kernpfade (Hero-CTA, FAB-Start,
+     Workout-Fortsetzen) dauerhaft unsichtbar gemacht: `!!fn` ist true, sobald
+     der Entry-Point AUFLOESBAR ist — auch wenn der Handler intern nichts tut.
+
+     runActionEx() liefert ab jetzt ein strukturiertes Ergebnis. runAction()
+     bleibt bitgenau boolesch (Bestandsvertrag, supabase/tests/
+     quick_actions_b_test.mjs:100 assertiert `ran === true`).
+
+     BEWUSSTE GRENZE DIESER STUFE: ein Handler, der aufloesbar ist, nichts tut
+     und undefined liefert, wird weiterhin als 'handled' gemeldet. Das ist
+     ehrlich — Phase 0 aendert keine Handler. Erst wenn die Handler in Phase 1
+     einen Endzustand melden (false bei Misserfolg), greift 'handler_failed'.
+     Bis dahin bleiben KF-001..KF-003 in baseline/known-failures.json gefuehrt.
+
+     Der Toast gehoert NICHT hierher: diese Schicht loest Aktionen fachlich auf.
+     UI-Nebenwirkungen wuerden Tests und programmgesteuerte Aufrufe koppeln.
+     Stattdessen: onActionResult(fn) abonnieren (zentraler Dispatcher / UI).
+     ========================================================================== */
+  var ACTION_RESULT_REASONS = ['handled', 'target_unavailable', 'handler_missing',
+                               'handler_failed', 'blocked', 'invalid_action'];
+  var ACTION_LOG_MAX = 50;
+  var _actionLog = [];
+  var _resultObservers = [];
+
+  function _actionResult(id, handled, reason, error, target, outcome) {
+    var r = { handled: !!handled, action: id, reason: reason,
+              error: error || null, target: target || null,
+              outcome: outcome != null ? outcome : null, at: Date.now() };
+    _actionLog.push(r);
+    if (_actionLog.length > ACTION_LOG_MAX) _actionLog.shift();
+    for (var i = 0; i < _resultObservers.length; i++) {
+      try { _resultObservers[i](r); } catch (e) {}   // Beobachter duerfen nie die Aktion kippen
+    }
+    if (!r.handled) {
+      try { console.warn('[ORVIA quick-actions] Aktion nicht ausgefuehrt:', id, '·', reason,
+                         r.target ? '· Ziel: ' + r.target : ''); } catch (e) {}
+    }
+    return r;
+  }
+
+  function runActionEx(id) {
+    if (_busy) return _actionResult(id, false, 'blocked', null, null);   // Doppelklick-Schutz
     _busy = true;
     try {
       var a = null; ACTIONS.forEach(function (x) { if (x.id === id) a = x; });
-      var fn = a && resolveEntryPoint(a.entryPoint);
+      if (!a) { try { if (typeof root._closeM === 'function') root._closeM('_quickActions'); } catch (e) {}
+                return _actionResult(id, false, 'invalid_action', null, null); }
+      if (!a.entryPoint) { try { if (typeof root._closeM === 'function') root._closeM('_quickActions'); } catch (e) {}
+                           return _actionResult(id, false, 'handler_missing', null, null); }
+      var fn = resolveEntryPoint(a.entryPoint);
+      /* Reihenfolge bitgenau wie vorher: aufloesen -> Sheet schliessen -> ausfuehren.
+         Das Sheet schloss auch dann, wenn fn null war. Nicht aendern. */
       try { if (typeof root._closeM === 'function') root._closeM('_quickActions'); } catch (e) {}
-      if (fn) fn();
-      return !!fn;
+      if (!fn) return _actionResult(id, false, 'target_unavailable', null, a.entryPoint);
+      var ret = fn();
+      /* Phase 1 · E-14 — Action-Outcome-Vertrag.
+         Handler duerfen ihren FACHLICHEN Endzustand melden:
+             { ok: true,  outcome: 'workout_overlay_opened' }
+             { ok: false, reason:  'no_active_workout' }
+         Damit wird erkennbar, was runActionEx allein nicht sehen kann: ein
+         aufloesbarer Handler, der intern nichts bewirkt (KF-001..003).
+         Verbindlich nur fuer neu reparierte Kernaktionen — Altaktionen liefern
+         weiterhin undefined und bleiben unveraendert 'handled'. */
+      if (ret === false) return _actionResult(id, false, 'handler_failed', null, a.entryPoint);
+      if (ret && typeof ret === 'object' && typeof ret.ok === 'boolean') {
+        return ret.ok
+          ? _actionResult(id, true, 'handled', null, a.entryPoint, ret.outcome || null)
+          : _actionResult(id, false, 'handler_failed', null, a.entryPoint, ret.reason || null);
+      }
+      return _actionResult(id, true, 'handled', null, a.entryPoint);
     } catch (e) {
       try { console.error('[ORVIA quick-actions] Aktion fehlgeschlagen:', id, e && e.message); } catch (_) {}
-      return false;
+      return _actionResult(id, false, 'handler_failed', e, null);
     } finally {
       setTimeout(function () { _busy = false; }, 350);
     }
+  }
+
+  /* Bestandsvertrag: unveraendert boolesch. */
+  function runAction(id) { return runActionEx(id).handled; }
+
+  function onActionResult(fn) {
+    if (typeof fn !== 'function') return function () {};
+    _resultObservers.push(fn);
+    return function () {   // Abmeldefunktion
+      var i = _resultObservers.indexOf(fn);
+      if (i >= 0) _resultObservers.splice(i, 1);
+    };
+  }
+  function getActionLog() { return _actionLog.slice(); }
+
+  /* Statische Erreichbarkeitsprobe: fuehrt NICHTS aus, meldet nur, welche
+     Entry-Points aktuell aufloesbar sind. Fuer Baseline und Regressionstests. */
+  function probeActions() {
+    return ACTIONS.map(function (a) {
+      var fn = a.entryPoint ? resolveEntryPoint(a.entryPoint) : null;
+      return { action: a.id, entryPoint: a.entryPoint || null,
+               resolvable: !!fn,
+               reason: !a.entryPoint ? 'handler_missing' : (fn ? 'handled' : 'target_unavailable') };
+    });
   }
   function actionRow(a, big) {
     return '<button type="button" class="qa-item' + (big ? ' qa-primary' : '') + '" id="qa-' + esc(a.id) + '" aria-label="' + esc(a.label) + '">' +
@@ -292,6 +383,12 @@
     openFavoritesManager: openFavoritesManager,
     open: openQuickActions,
     runAction: runAction,
+    /* Phase 0 — Instrumentierung (siehe Ergebnisvertrag oben) */
+    runActionEx: runActionEx,
+    onActionResult: onActionResult,
+    getActionLog: getActionLog,
+    probeActions: probeActions,
+    ACTION_RESULT_REASONS: ACTION_RESULT_REASONS,
     bindPlusButton: bindPlusButton,
     gotoMorningCheckin: function () { _gotoCheckin('morningForm'); },
     gotoEveningCheckin: function () { _gotoCheckin('eveForm'); },

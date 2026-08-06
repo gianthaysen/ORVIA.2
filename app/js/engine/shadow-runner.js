@@ -193,7 +193,17 @@
     }
   }
 
-  function runWeekShadow() {
+  /* Letzter echter Wochenlauf (Eingabe UND Ergebnis). Phase 8.4 braucht das
+     Ergebnis selbst, nicht nur die Zählwerte im Protokoll — der Aktivierungspfad
+     projiziert `result.sessions[]`. Bewusst nur ein Zwischenspeicher des zuletzt
+     Gerechneten, KEIN Cache: `buildWeekNow()` rechnet immer neu (die Frische der
+     Gate-Belege war schon einmal der Grund, einen Cache zurückzunehmen). */
+  var _lastWeek = null;
+  function lastWeek() { return _lastWeek; }
+  function buildWeekNow() { runWeekShadow({ force: true }); return _lastWeek; }
+
+  function runWeekShadow(opts) {
+    var _o = opts || {};
     try {
       var SV2 = O.schedulerV2, CA = O.capacityAdapter, PD = O.planDomain, PM = O.profileModel;
       var TL = O.repos && O.repos.trainingLoad;
@@ -202,13 +212,31 @@
       var weekKey = PD.weekKeyFor(today);
       var log = _readWLog();
       var existing = log.filter(function (x) { return x && x.weekKey === weekKey; })[0];
-      if (existing && existing.day === today) return existing;                     // max. 1 Lauf/Tag
+      if (existing && existing.day === today && !_o.force) return existing;        // max. 1 Lauf/Tag
       var P = (typeof root.PROFILE !== 'undefined' && root.PROFILE) || {};
       var mapSport = TL ? function (s) { return TL.canonicalSportOf(s); } : function (s) { return String(s || 'unknown').toLowerCase(); };
       var flags = ['no_pace_evidence_shadow'];
       /* Sportarten aus dem Profil (Registry-Mapping), dedupliziert + sortiert (deterministisch). */
       var seen = {}, sports = [];
-      (Array.isArray(P.sports) ? P.sports : []).forEach(function (s) { var c = mapSport(s); if (c && c !== 'unknown' && !seen[c]) { seen[c] = 1; sports.push(c); } });
+      /* 🔴 P0-FIX (2026-08-06): Hier wurde das ganze Sport-OBJEKT an mapSport gegeben.
+         PROFILE.sports ist kanonisch ein Objekt-Array ({sportId,…}) — dokumentiert im
+         H1-Vertrag in js/ui.js. canonicalSportOf macht aus einem Objekt
+         String({}) = "[object Object]" und liefert deshalb IMMER 'other'.
+
+         WIRKUNG: Der Shadow lief mit sports=['other'] statt ['running','gym',…].
+         Für 'other' existiert keine Kapazität ⇒ scheduler-v2 setzte
+         `conservative_generic_no_capacity:other` und baute eine generische
+         Minimalwoche. Zusammen mit dem Adapter-Befund (capacity-adapter.js las
+         a.sport statt a.sportId) wäre die 14-Tage-Sammlung DOPPELT wertlos gewesen.
+
+         Exakt derselbe Fehlertyp, der in generateWeekPlan als H1 bereits behoben
+         wurde („nie wieder deutsches String-Array annehmen") — im Shadow nie.
+         Der Fallback deckt Alt-Profile mit reinem String-Array weiter ab. */
+      (Array.isArray(P.sports) ? P.sports : []).forEach(function (s) {
+        var raw = (s && typeof s === 'object') ? (s.sportId || s.id || null) : s;
+        if (s && typeof s === 'object' && s.activeInApp === false) return;
+        var c = mapSport(raw);
+        if (c && c !== 'unknown' && !seen[c]) { seen[c] = 1; sports.push(c); } });
       sports.sort();
       var primary = sports.indexOf('running') >= 0 ? 'running' : sports[0];
       if (primary && primary !== 'running') flags.push('shadow_primary_heuristic');
@@ -228,6 +256,7 @@
       var svInput = { activationMode: 'shadow_only', weekKey: weekKey, sports: sportList,
         availability: availability, capacityPerSport: capR && capR.ok ? capR.perSport : null, evidence: null };
       var res = SV2.buildWeek(svInput);
+      _lastWeek = { weekKey: weekKey, day: today, input: svInput, result: res };
       /* PHASE 8 (2026-08-05): GATE-BELEGE mitschreiben.
          Befund vor dieser Änderung: der Wochen-Eintrag enthielt nur Zählwerte
          (sessions/unplaced/conflicts). Damit sind DREI der fünf Shadow-Gate-
@@ -286,5 +315,5 @@
 
   O.engineShadow = { run: run, report: report, buildInput: buildInput, clearLog: clearLog, _key: _key,
     runWeekShadow: runWeekShadow, weekReport: weekReport, clearWeekLog: clearWeekLog, _wkey: _wkey,
-    gateReport: gateReport };
+    gateReport: gateReport, lastWeek: lastWeek, buildWeekNow: buildWeekNow };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

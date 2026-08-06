@@ -145,6 +145,32 @@
   }
   function getActivityBySource(source, sourceRecordId) { var all = readAll(); for (var i = 0; i < all.length; i++) if (all[i].source === source && all[i].sourceRecordId === sourceRecordId) return all[i]; return null; }
 
+  /* Bugfix (2026-08-05, Nutzer-Feedback "Saetze verschwinden nach 1-2 Tagen"): die
+     Aktivitaetsseite (js/ui.js gmOpenActivityPage) las Uebungen/Saetze bisher AUSSCHLIESSLICH
+     aus diesem lokalen workoutSnapshot (einmalig befuellt bei finishWorkout, siehe
+     upsertActivityFromWorkout oben) — ohne Fallback auf die serverseitige, dauerhafte Quelle
+     (workout_exercises/workout_sets). Geht der lokale Snapshot verloren (Geraetewechsel,
+     Browser-Speicher geleert, PWA-Storage-Eviction), zeigte die Seite "keine Saetze
+     gespeichert", obwohl der Server sie eventuell noch hat. gmActLoadGymFallback (js/ui.js)
+     laedt in diesem Fall live nach (ueber workoutRepository.loadWorkoutTree, dieselbe Quelle
+     wie gym-volume.js's gymPipelineAsync) und repariert hier den lokalen Snapshot — davon
+     profitieren automatisch auch alle anderen lokalen Leser (z. B. gym-volume.js), ohne
+     eigene Nachlade-Logik. */
+  function repairWorkoutSnapshot(activityId, exercises) {
+    var snap = snapshotExercises(exercises);
+    if (!snap.length) return { ok: false, error: 'leer' };
+    var all = readAll();
+    for (var i = 0; i < all.length; i++) {
+      var a = all[i];
+      if (a.id === activityId || a.clientRecordId === activityId) {
+        a.workoutSnapshot = snap; a.updatedAt = now();
+        writeAll(all);
+        return { ok: true, activity: a };
+      }
+    }
+    return { ok: false, error: 'Aktivitaet nicht gefunden' };
+  }
+
   // Detailauflösung NUR über stabile IDs (nie Datum/Index). Liefert Snapshot + Activity.
   function getWorkoutDetailsForActivity(activityId) {
     var a = getActivityById(activityId);
@@ -276,7 +302,7 @@
   var api = {
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
-    correctActivityDuration: correctActivityDuration,
+    correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,
     mergeServerActivities: mergeServerActivities,

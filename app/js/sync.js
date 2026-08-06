@@ -110,13 +110,38 @@
   /* ---- Start: Pull + ggf. Migrationsdialog ---- */
   // Beim Kontowechsel ALLE nutzerbezogenen Keys löschen (außer geräte-/flow-weite),
   // damit keine fremden Daten in ein anderes Konto gelangen.
-  function clearLocalUserData() {
+  /* DATENVERLUST-FIX (2026-08-06, gemeldet als „die Sätze verschwinden, wenn ich die App
+     neulade / die Dateien austausche").
+
+     BEFUND: Diese Funktion löschte JEDEN localStorage-Key mit dem Präfix `orvia_` —
+     also auch `orvia_activities_<NUTZER-ID>`, in dem die Übungs- und Satzdetails
+     abgeschlossener Workouts liegen (workoutSnapshot). Die Sätze existieren dort
+     zunächst NUR lokal; serverseitig liegen sie in eigenen Tabellen, die dieser
+     Datensatz nicht mitführt. Wurde der Pfad ausgelöst, waren sie unwiederbringlich
+     weg, während die Aktivität selbst später vom Server zurückkam — genau das Bild
+     „Aktivität da, Sätze fehlen".
+
+     Ausgelöst wird der Pfad von applyUserScope bei JEDEM Start, sobald
+     `orvia_active_user` oder `orvia_data_owner` nicht zur aktuellen Nutzer-ID passt.
+     Das kann auch ohne echten Kontowechsel passieren: `orvia_data_owner` wird nur in
+     bestimmten Zweigen gesetzt, und `clearLocalUserData` löscht ihn selbst mit —
+     ein einmal entstandener Mismatch überlebt damit Reloads.
+
+     FIX: Der Zweck bleibt unverändert — FREMDE Daten dürfen nie in ein anderes Konto
+     gelangen. Aber Keys, die die ID des GERADE ANGEMELDETEN Nutzers tragen, gehören
+     per Konstruktion diesem Nutzer und werden verschont. Alles ohne erkennbare
+     Zuordnung wird weiterhin gelöscht (fail-safe in Richtung Datenschutz).
+     Belegt in supabase/tests/sets_survive_reload_test.mjs. */
+  function clearLocalUserData(currentUserId) {
     var keep = { orvia_device: 1, orvia_active_user: 1, orvia_onboard_pending: 1 };
+    var mine = currentUserId ? String(currentUserId) : null;
     try {
       var del = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (!k || keep[k]) continue;
+        /* Nutzergebundener Key des AKTUELLEN Kontos (…_<uid>) ⇒ behalten. */
+        if (mine && k.length > mine.length + 1 && k.slice(-(mine.length + 1)) === '_' + mine) continue;
         if (k.indexOf('orvia_') === 0 || k === 'gian_checkins_v2') del.push(k);
       }
       del.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -139,8 +164,12 @@
       var owner = localStorage.getItem('orvia_data_owner');
       // Bei aktivem Nutzerwechsel ODER fremdem Daten-Eigentümer (z.B. fehlender
       // active_user nach iOS-Eviction): lokale Daten löschen, bevor irgendetwas rendert/synct.
-      if ((prev && prev !== userId) || (owner && owner !== userId)) clearLocalUserData();
+      if ((prev && prev !== userId) || (owner && owner !== userId)) clearLocalUserData(userId);
       localStorage.setItem('orvia_active_user', userId);
+      /* Den Eigentuemer direkt mitschreiben. Vorher konnte er fehlen (er wurde nur
+         gesetzt, wenn bereits Tagesdaten existierten) — ein fehlender Eintrag fuehrte
+         beim naechsten Start erneut in den Loeschpfad. */
+      if (userId) localStorage.setItem('orvia_data_owner', userId);
     } catch (e) {}
   }
   window.orviaClearLocal = clearLocalUserData;
@@ -166,7 +195,8 @@
       var owner = null; try { owner = localStorage.getItem('orvia_data_owner'); } catch (e) {}
       if (owner && owner !== u.id) {
         // Fremde lokale Daten — NIEMALS in dieses Konto pushen. Löschen, dann Cloud laden.
-        clearLocalUserData();
+        // Die auf u.id lautenden Keys gehoeren diesem Konto und bleiben (2026-08-06).
+        clearLocalUserData(u.id);
       } else {
         try { localStorage.setItem('orvia_data_owner', u.id); } catch (e) {}
         /* INCIDENT-FIX (2026-07-11): Die reine Rev-Ungleichheit erzeugte auf iOS einen

@@ -92,6 +92,9 @@
       if (url) {
         try { if (typeof renderTopAvatar === 'function') renderTopAvatar(); } catch (e) {}
         try { if (typeof renderProfileScreen === 'function') renderProfileScreen(); } catch (e) {}
+        /* Phase 1 · P0-6: der GM-Profilkopf war hier nicht registriert — nach
+           dem Laden der Storage-URL blieb dort die Initialen-Darstellung. */
+        try { if (typeof renderGMProfile === 'function') renderGMProfile(); } catch (e) {}
       }
       return res(true, { url: url }, null, url ? 'supabase' : 'empty', 'synced');
     }
