@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-352, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-352 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-353, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-353 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-352) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§42).
+`sw.js` (Versionsköpfe v8-329 bis v8-353) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§43).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -40,9 +40,9 @@ mit eigener Angabe 240 s → bleibt 240          ← Wissen ergänzt, überschre
 
 | | |
 |---|---|
-| Sportarten mit Wissenspaket | **2 von 24** (Laufen handgepflegt, Gym eingespeist) |
+| Sportarten mit Wissenspaket | **2 von 24** (Laufen: handgepflegt UND aus Notizen, Gym eingespeist) |
 | davon wissenschaftlich geprüft | **0** |
-| davon im Produktivweg gelesen | **1** (Gym) |
+| davon im Produktivweg gelesen | **2** (Gym; Laufen seit v8-353 über das Notizpaket) |
 | Gym-Paket | 4 Regeln aus **einer** Übersichtsarbeit von 2007 |
 | Laufpaket | 14 Regeln, rein qualitativ — sie kommen seit v8-349 als **Hinweis** auf der Karte an, nicht als Zahl (§39) |
 | Ziele, die nirgends ankommen | **0 von 30** — gemessen, nicht abgeleitet (`knowledge_targets_test.mjs`) |
@@ -59,7 +59,23 @@ die Matrix nachzuziehen, bekommt einen roten Test.
 
 ## Offene Punkte, priorisiert
 
-### 1 · Laufen verdrahten — **teils erledigt (v8-349), der Rest ist Erfassungsarbeit**
+### 1 · Laufen verdrahten — **erledigt in v8-353**
+
+> Seit v8-353 ist Laufen verdrahtet: `running-notizen-knowledge-pack` (17
+> Regeln aus sechs Quellennotizen) hängt im `knowledgeConsumer`, 14 Aussagen
+> kommen mit Herkunft auf der Laufkarte an, 3 bleiben medizinisch gesperrt.
+> Das handgepflegte `running-knowledge-pack` bleibt bewusst draußen — es hat
+> mit `running-capacity-factory` einen eigenen Konsumenten. Vollständig in §43.
+>
+> **Die alte Entscheidung war nicht falsch — ihre Voraussetzung hat sich
+> geändert.** Bis v8-348 hätte Verdrahten nichts transportiert; seit v8-349
+> transportiert derselbe Anschluss 14 belegte Aussagen. Was weiterhin fehlt,
+> ist der **Zahlwert** — dazu die Analyse unten.
+
+<details>
+<summary>Die Analyse, die zur Zurückstellung geführt hatte</summary>
+
+**teils erledigt (v8-349), der Rest ist Erfassungsarbeit**
 
 **Was v8-349 geändert hat:** Die Formulierung „wirkt auf nichts" war nie
 gemessen worden. Sie stammte aus einem Abgleich mit dem Zielregister — was
@@ -101,6 +117,8 @@ Was stattdessen möglich wäre, in aufsteigendem Ertrag:
 | **Zahlen nachtragen** | Die Notizen enthalten Zahlen im Fließtext („zwei bis drei Einheiten je Woche über sechs bis zwölf Wochen"), aber nicht im Feld `zahlen`. Nachpflegen macht sie maschinenlesbar. | hoch, geringes Risiko |
 | **Qualitative Leser** | Regeln wie „harte Tage nicht aufeinanderfolgend" als **Sperre** umsetzen statt als Zahl. Braucht pro Regel Code mit Belegbindung. | hoch, aber Neubau |
 | **Verdrahten** | `PAKETE.running` eintragen. | **null**, solange keine Werte da sind |
+
+</details>
 
 ### 2 · Die Satzsumme je Muskelgruppe — **Prüfer steht (v8-351), Auswahl offen**
 
@@ -385,7 +403,7 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 - Gesamtsuite **261/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
   **Nur mit Chromium** — ohne Browser-Binary sind es 239/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **163 Proben in 20 Katalogen**, 158 gefahren / 5 übersprungen, jede
+- **166 Proben in 20 Katalogen**, 161 gefahren / 5 übersprungen, jede
   gefahrene schlägt an
 - **Ziele, die ankommen: 30 von 30** aus Paketen (1 als Wert, 24 als Hinweis,
   5 bewusst gesperrt mit Code) und 25 von 25 aus Notizen (21 nach technischer

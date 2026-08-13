@@ -18,30 +18,30 @@
       "pattern": "value_not_type",
       "title": "ein verdrahtetes Paket wird als nicht verdrahtet geführt",
       "file": "js/engine/knowledge/sport-coverage-matrix.js",
-      "find": "      knowledgePackWired: true, knowledgePackStatus:",
-      "replace": "      knowledgePackWired: false, knowledgePackStatus:",
+      "find": "    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,\n      knowledgePackWired: true, knowledgePackStatus:",
+      "replace": "    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,\n      knowledgePackWired: false, knowledgePackStatus:",
       "expectTest": "C6 knowledgePackWired ==",
-      "history": "Untertreibung ist genauso falsch wie Übertreibung: wer die Matrix liest, um zu entscheiden, welche Sportart als nächste angeschlossen wird, würde Gym erneut anschließen wollen."
+      "history": "Untertreibung ist genauso falsch wie Übertreibung: wer die Matrix liest, um zu entscheiden, welche Sportart als nächste angeschlossen wird, würde Gym erneut anschließen wollen. ANKER NACHGEZOGEN in v8-353: seit auch Laufen verdrahtet ist, stehen zwei Zeilen wortgleich in der Matrix und der Suchtext war nicht mehr eindeutig — das Werkzeug meldete `ambiguous`, also KEIN Beleg. Der Anker nennt jetzt die Sportart mit. Dieselbe Sorte Nachziehen wie bei den Registerproben: ein Anker altert mit dem Code, den er bewacht."
     },
     {
       "id": "SCM3",
       "pattern": "data_lacks_var",
       "title": "ein NICHT verdrahtetes Paket wird als wirksam ausgegeben",
       "file": "js/engine/knowledge/sport-coverage-matrix.js",
-      "find": "      knowledgePackWired: false, knowledgePackStatus:",
-      "replace": "      knowledgePackWired: true, knowledgePackStatus:",
+      "find": "      knowledgePackWired: false,          // = knowledgeConsumer holt es wirklich (testerzwungen)",
+      "replace": "      knowledgePackWired: true,          // = knowledgeConsumer holt es wirklich (testerzwungen)",
       "expectTest": "C6 knowledgePackWired ==",
-      "history": "Die gefährlichere Richtung. Das Laufpaket hat 14 gepflegte Regeln und erreicht trotzdem keinen Aufrufer; stünde es als wirksam in der Matrix, hielte man die Laufberatung für belegt, obwohl sie aus nichts stammt."
+      "history": "Die gefährlichere Richtung. Das Laufpaket hat 14 gepflegte Regeln und erreicht trotzdem keinen Aufrufer; stünde es als wirksam in der Matrix, hielte man die Laufberatung für belegt, obwohl sie aus nichts stammt. ANKER NACHGEZOGEN in v8-353: die Probe zielte auf die Zeile `knowledgePackWired: false` der Sportart running — die es nicht mehr gibt, seit das aus den Notizen erzeugte Laufpaket verdrahtet ist. Sie zeigt jetzt auf den VORGABEWERT in entry(): damit werden alle Sportarten OHNE Paket (Rad, Schwimmen, …) als verdrahtet ausgegeben. Derselbe Befund, nur an der Stelle, an der er heute noch entstehen kann. Ein Anker, der ins Leere zeigt, meldet `not_applied` — kein Beleg, weder in die eine noch in die andere Richtung."
     },
     {
       "id": "SCM4",
       "pattern": "fixture_masks",
       "title": "der Prüfstand des Pakets fehlt, die Matrix behauptet es trotzdem",
       "file": "js/engine/knowledge/sport-coverage-matrix.js",
-      "find": "      knowledgePackWired: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),",
-      "replace": "      knowledgePackWired: true }),",
+      "find": "    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,\n      knowledgePackWired: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),",
+      "replace": "    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,\n      knowledgePackWired: true }),",
       "expectTest": "… und jede Sportart mit Paket nennt ihren Prüfstand",
-      "history": "„Hat ein Paket\" ohne „wie geprüft\" ist die Aussage, die zur Überschätzung führt. Kein Paket im Projekt ist wissenschaftlich geprüft; das muss an jeder Sportart stehen, die eines führt."
+      "history": "„Hat ein Paket\" ohne „wie geprüft\" ist die Aussage, die zur Überschätzung führt. Kein Paket im Projekt ist wissenschaftlich geprüft; das muss an jeder Sportart stehen, die eines führt. ANKER NACHGEZOGEN in v8-353: seit auch Laufen verdrahtet ist, stehen zwei Zeilen wortgleich in der Matrix und der Suchtext war nicht mehr eindeutig — das Werkzeug meldete `ambiguous`, also KEIN Beleg. Der Anker nennt jetzt die Sportart mit. Dieselbe Sorte Nachziehen wie bei den Registerproben: ein Anker altert mit dem Code, den er bewacht."
     }
   ]
 }

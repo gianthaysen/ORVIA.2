@@ -103,6 +103,37 @@
       "replace": "    if (s.hinweise && s.hinweise.length) { item.hinweise = _clone(s.hinweise); item.rx.hinweise = _clone(s.hinweise); }",
       "expectTest": "… ohne die Verordnung selbst anzufassen",
       "history": "Der naheliegende Fehlgriff: Hinweise gehoeren doch zur Verordnung, also legt man sie hinein. Folge waere, dass `plan-activation._rxPrint` einen anderen Fingerabdruck bildet — jede neu eingespeiste Quelle wuerde bestehende Wochen als GEAENDERT melden, obwohl sich an der Vorgabe nichts geaendert hat. Eine Aenderungsmeldung, die nichts bedeutet, bringt den Nutzer dazu, alle zu ignorieren."
+    },
+    {
+      "id": "H11",
+      "pattern": "value_not_type",
+      "title": "die Karte kuerzt still statt sichtbar",
+      "file": "js/engine/prescription-format.js",
+      "find": "      out.push({ art: 'gekuerzt', rest: rest, ziel: null, regelId: null,\n        text: rest + ' weitere belegte Hinweise — auf dieser Karte nicht angezeigt' });",
+      "replace": "",
+      "expectTest": "… die Restzeile nennt die Zahl der weggelassenen",
+      "history": "Eine Laufeinheit erzeugt seit v8-353 vierzehn belegte Aussagen; vier passen auf die Karte. Kuerzen ist richtig — still kuerzen behauptet Vollstaendigkeit, die es nicht gibt. Dasselbe Prinzip wie beim Test-Runner seit v8-342 (uebersprungen ist kein Beleg) und beim Zaehler seit v8-351 (nicht mitgezaehlt steht an der Zeile)."
+    },
+    {
+      "id": "H12",
+      "pattern": "neighbour_guard",
+      "title": "die Auswahl der gezeigten Hinweise wird beliebig",
+      "file": "js/engine/prescription-format.js",
+      "find": "        var ar = (a && a.regelId) || '', br = (b && b.regelId) || '';\n        return ar < br ? -1 : (ar > br ? 1 : 0);",
+      "replace": "        return 0;",
+      "expectTest": "… dieselbe Menge in anderer Reihenfolge zeigt dieselben vier",
+      "history": "Bei gleicher Einheit muessen dieselben vier Hinweise oben stehen. Eine Karte, die bei jedem Aufruf andere Aussagen zeigt, wirkt gewuerfelt — und beliebig ist das Gegenteil von belegt. Die Probe entfernt die letzte Ordnungsstufe; ohne sie haengt die Reihenfolge an der Reihenfolge der Vorgaben. ANKER NACHGEZOGEN: die Probe blieb zuerst GRUEN. Meine Zusicherung verglich zwei Aufrufe mit DERSELBEN Eingabereihenfolge — und `Array.sort` ist stabil, also kam zweimal dasselbe heraus, auch ohne die letzte Ordnungsstufe. Die Eigenschaft, die der Vergleich schuetzt, ist eine andere: dieselbe MENGE in anderer Reihenfolge muss dieselben vier zeigen. Sonst haengt die Auswahl daran, in welcher Reihenfolge applyKnowledge die Vorgaben zufaellig geliefert hat."
+    },
+    {
+      "id": "H13",
+      "pattern": "fixture_masks",
+      "title": "eine medizinisch gesperrte Regel kommt durch die Verdrahtung doch an",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "        if (r.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') {",
+      "replace": "        if (false && r.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') {",
+      "expectTest": "… die medizinisch pruefpflichtigen Regeln bleiben gesperrt",
+      "test": "supabase/tests/knowledge_hinweise_test.mjs",
+      "history": "Der gefaehrlichste Moment einer Verdrahtung: das Paket wird angeschlossen, und dabei faellt eine Sperre. Drei Laufregeln sind medizinisch pruefpflichtig (Achillessehne, Wettkampf-Nachlauf, Umfangsobergrenze). Sie duerfen auch dann nicht auf der Karte stehen, wenn ihr Paket ansonsten wirkt — und ihre Sperre haengt an genau dieser Bedingung."
     }
   ]
 }

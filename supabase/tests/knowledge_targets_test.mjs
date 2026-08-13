@@ -187,7 +187,10 @@ sec('B · Wissenspakete — gemessen an gebauten Verordnungen');
      ausgeschrieben: raten waere genau der Fehler, den dieser Test sucht. */
   const PAARE = [
     { pack: 'gym-knowledge-pack.js', registry: 'gym-knowledge-sources.js', sport: 'gym' },
-    { pack: 'running-knowledge-pack.js', registry: 'knowledge-sources.js', sport: 'running' }
+    { pack: 'running-knowledge-pack.js', registry: 'knowledge-sources.js', sport: 'running' },
+    /* v8-353: das aus den Notizen erzeugte Laufpaket. Eigene Dateien, eigenes
+       Register, keine gemeinsame Regel-Kennung mit dem handgepflegten. */
+    { pack: 'running-notizen-knowledge-pack.js', registry: 'running-notizen-knowledge-sources.js', sport: 'running' }
   ];
   const packDateien = readdirSync(dir).filter(f => /-knowledge-pack\.js$/.test(f)).sort();
   ok('es gibt ueberhaupt Wissenspakete zu pruefen', packDateien.length > 0, packDateien.join(', '));
@@ -208,8 +211,11 @@ sec('B · Wissenspakete — gemessen an gebauten Verordnungen');
     const registry = require(join(dir, paar.registry));
     const m = messen(pack, registry, paar.sport);
 
-    if (!m.ok) { ok('Paket ' + paar.sport + ' wird angewendet', false, 'blockiert: ' + m.grund); return; }
-    ok('Paket ' + paar.sport + ' wird angewendet', true,
+    /* Der Name des PAKETS, nicht der Sportart: seit v8-353 gibt es zwei
+       Laufpakete, und zwei gleich beschriftete Zeilen sind keine Auskunft. */
+    const nameP = paar.pack.replace('-knowledge-pack.js', '');
+    if (!m.ok) { ok('Paket ' + nameP + ' wird angewendet', false, 'blockiert: ' + m.grund); return; }
+    ok('Paket ' + nameP + ' wird angewendet', true,
       (m.erg.vorgaben || []).length + ' Vorgaben, ' + (m.erg.ausgeschlossen || []).length + ' Regeln gesperrt');
 
     const ziele = new Map();
@@ -244,7 +250,7 @@ sec('B · Wissenspakete — gemessen an gebauten Verordnungen');
        gezaehlt. Es kann beides sein — `session.rest_seconds` ist im
        Krafttemplate eine Zahl und in den Ausdauertemplates nur ein Hinweis —
        aber eine Summe ueber 100 % waere eine Auskunft, der man nicht traut. */
-    console.log('   ' + paar.sport + ': ' + ziele.size + ' Ziele · '
+    console.log('   ' + nameP + ': ' + ziele.size + ' Ziele · '
       + [...ziele.keys()].filter(z => m.alsWert.has(z)).length + ' als Wert · '
       + [...ziele.keys()].filter(z => !m.alsWert.has(z) && m.alsHinweis.has(z)).length + ' nur als Hinweis · '
       + [...ziele.keys()].filter(z => !m.alsWert.has(z) && !m.alsHinweis.has(z)).length + ' nicht angekommen');

@@ -251,8 +251,44 @@
      Hinweis nicht sagt, steht nicht da. Die Herkunft wird mitgefuehrt, weil
      eine Aussage ohne Quelle in dieser App keine Aussage ist.
      ============================================================ */
-  function hinweisZeilen(hinweise) {
+  /* v8-353 — WIE VIELE HINWEISE EINE KARTE VERTRAEGT.
+
+     BEFUND beim Verdrahten des Laufwissens: eine Laufeinheit erzeugt auf
+     einmal 14 belegte Aussagen. Jede einzelne ist richtig, hat eine Quelle
+     und gehoert zum Thema — und alle zusammen machen die Karte unlesbar.
+     „Alles kommt an" ist nicht dasselbe wie „alles gehoert auf jede Karte".
+
+     Gekuerzt wird deshalb, aber SICHTBAR: die Restzahl steht als eigene
+     Zeile. Dasselbe Prinzip wie beim Test-Runner seit v8-342 — uebersprungen
+     ist kein Beleg, und hier ist gekuerzt kein Weglassen.
+
+     Die Reihenfolge ist bewusst deterministisch statt „die ersten vier":
+     erst Befunde (sie betreffen DIESE Einheit), dann nach Evidenzklasse,
+     dann nach Regel-Kennung. Damit steht bei gleicher Einheit immer dasselbe
+     oben — eine Karte, die bei jedem Aufruf andere Hinweise zeigt, wirkt
+     beliebig, und beliebig ist das Gegenteil von belegt.
+
+     `max` ist ein PRODUKTWERT, keine Erkenntnis: vier Zeilen sind ein
+     Erfahrungswert fuer die Kartengroesse, keine Quelle sagt das. Ohne
+     `opts.max` wird nichts gekuerzt — der Aufrufer entscheidet. */
+  function _klasseRang(h) {
+    var k = (h && h.herkunft && h.herkunft.evidenceClass) || 'Z';
+    return String(k);
+  }
+  function hinweisZeilen(hinweise, opts) {
     if (!Array.isArray(hinweise) || !hinweise.length) return [];
+    opts = opts || {};
+    var max = (typeof opts.max === 'number' && opts.max > 0) ? Math.floor(opts.max) : null;
+    if (max) {
+      hinweise = hinweise.slice().sort(function (a, b) {
+        var ab = (a && a.befund) ? 0 : 1, bb = (b && b.befund) ? 0 : 1;
+        if (ab !== bb) return ab - bb;
+        var ak = _klasseRang(a), bk = _klasseRang(b);
+        if (ak !== bk) return ak < bk ? -1 : 1;
+        var ar = (a && a.regelId) || '', br = (b && b.regelId) || '';
+        return ar < br ? -1 : (ar > br ? 1 : 0);
+      });
+    }
     var out = [];
     hinweise.forEach(function (h) {
       if (!h || typeof h.aussage !== 'string' || !h.aussage.trim()) return;
@@ -288,6 +324,14 @@
       }
       out.push(zeile);
     });
+    /* Gekuerzt wird ERST hier, nach dem Verwerfen leerer Hinweise: sonst
+       zaehlte die Restzahl Zeilen mit, die ohnehin nie erschienen waeren. */
+    if (max && out.length > max) {
+      var rest = out.length - max;
+      out = out.slice(0, max);
+      out.push({ art: 'gekuerzt', rest: rest, ziel: null, regelId: null,
+        text: rest + ' weitere belegte Hinweise — auf dieser Karte nicht angezeigt' });
+    }
     return out;
   }
 

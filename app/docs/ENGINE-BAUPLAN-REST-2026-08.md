@@ -4606,3 +4606,89 @@ zwar eine gut aussehende.
 - `gym_volume_test.mjs` 45 → **53**, `muscle_map_pilot_test.mjs` 16 → **22**
 - neu: `tools/probes/gym-korridor.json`
 - Kohorten-Pin `023ee59b` unverändert
+
+## 43 · Laufen ist verdrahtet — weil sich die Frage geändert hat (v8-353)
+
+§35 hat entschieden, Laufen **nicht** zu verdrahten, und die Entscheidung mit
+einer Zahl begründet:
+
+```
+Regeln mit maschinenlesbarem Zahlwert:  Gym 2 von 4 · Laufen 0 von 14
+```
+
+Verdrahten hätte nichts transportiert. Das war richtig — **für den Stand von
+v8-345**. Seit §39 kommt jede Aussage als Hinweis mit Herkunft, Grenzen und
+Ausschlüssen auf der Karte an. Derselbe Anschluss transportiert damit auf
+einmal 14 belegte Aussagen statt null Zahlen.
+
+Nicht die Entscheidung war falsch — **ihre Voraussetzung hat sich geändert.**
+Das fällt nur auf, wenn man alte Entscheidungen noch einmal ansieht, statt
+sie als erledigt zu führen.
+
+### 43.1 Was verdrahtet ist, und was ausdrücklich nicht
+
+| | |
+|---|---|
+| **neu im Consumer** | `running-notizen-knowledge-pack` — 17 Regeln aus sechs Quellennotizen (QUELLE-04/07/08/09/11/13) |
+| **unverändert draußen** | `running-knowledge-pack` — 14 handgepflegte Regeln. Es hat mit `running-capacity-factory` einen eigenen Konsumenten; zusätzlich einzuhängen öffnete zwei Wege auf dieselben Regeln |
+
+Die beiden Pakete haben **keine gemeinsame Regel-Kennung** — geprüft beim
+Erzeugen, das Werkzeug bricht bei jeder Kollision ab.
+
+Gemessen auf einer Laufkarte: **14 Hinweise** mit Klasse B/C und Regel-ID.
+Drei Regeln bleiben gesperrt (`medical_safety_review_pending`) — auch jetzt,
+wo ihr Paket wirkt. Probe H13 hält genau diese Sperre offen: der gefährlichste
+Moment einer Verdrahtung ist der, in dem dabei eine Sperre fällt.
+
+### 43.2 Das Werkzeug nimmt jetzt mehrere Notizen
+
+Bis hierher nahm `knowledge-ingest.mjs` genau **eine** Notiz und ersetzte
+damit das ganze Paket. Sein eigener Überschreibschutz riet: *„die bestehenden
+Regeln in die Notizdatei übernehmen"* — also alle Quellen in eine Datei
+kopieren. Das ist das Gegenteil der Ordnung, die `docs/wissen` pflegt: **eine
+Datei je Quelle**, mit eigener Herkunft, eigenen Grenzen, eigenem Prüfdatum.
+
+Jetzt fügt es beliebig viele zusammen und bricht bei doppelter Regel- oder
+Quellen-Kennung ab — welche Regel sonst gälte, hinge an der Reihenfolge der
+Argumente. Neu außerdem `--paket <präfix>`, damit ein handgepflegtes Paket
+nicht überschrieben werden **kann**.
+
+### 43.3 Ein Befund, kein Erfolg: 14 Hinweise sind unlesbar
+
+Jede Aussage ist richtig, hat eine Quelle und gehört zum Thema — und alle
+zusammen machen die Karte unbrauchbar. **„Alles kommt an" ist nicht dasselbe
+wie „alles gehört auf jede Karte".**
+
+Die Karte zeigt vier und schreibt die Restzahl hin:
+
+```
+… 10 weitere belegte Hinweise — auf dieser Karte nicht angezeigt
+```
+
+Gekürzt ist kein Weglassen — so wie übersprungen kein Beleg ist (§32) und
+nicht mitgezählt kein Übersehen (§41). Die Reihenfolge ist deterministisch
+(Befunde zuerst, dann Evidenzklasse, dann Regel-Kennung): eine Karte, die bei
+jedem Aufruf andere Aussagen zeigt, wirkt gewürfelt — und **beliebig ist das
+Gegenteil von belegt**. Die Vier ist ein Produktwert für diese Kartengröße,
+keine Erkenntnis.
+
+### 43.4 Zwei Proben mussten nachgezogen werden
+
+| Probe | Meldung | Warum |
+|---|---|---|
+| **H12** | `gap` — blieb grün | Meine Zusicherung verglich zwei Aufrufe mit **derselben** Eingabereihenfolge. `Array.sort` ist stabil, also kam zweimal dasselbe heraus, auch ohne Sortierung. Die geschützte Eigenschaft ist eine andere: dieselbe **Menge** in anderer Reihenfolge muss dieselben vier zeigen |
+| **SCM3** | `not_applied` | Ihr Anker war `knowledgePackWired: false` bei running — die Zeile gibt es nicht mehr. Sie zeigt jetzt auf den Vorgabewert in `entry()` |
+| SCM2/SCM4 | `ambiguous` | Seit auch Laufen verdrahtet ist, stehen zwei Zeilen wortgleich in der Matrix. Der Anker nennt jetzt die Sportart mit |
+
+Ein Anker ins Leere ist **kein Beleg**, in keine Richtung — und ein Anker, der
+zwei Stellen trifft, auch nicht. Anker altern mit dem Code, den sie bewachen.
+
+### 43.5 Stand
+
+- Gesamtsuite **261/0** bei 7 übersprungenen (268 Dateien)
+- **166 Proben in 20 Katalogen**, 161 gefahren / 5 übersprungen, jede
+  gefahrene schlägt an
+- `knowledge_hinweise_test.mjs` 51 → **64 Zusicherungen**
+- Sportarten mit wirksamem Wissen: **2** (Gym, Laufen) — vorher 1
+- `sport-coverage-matrix` v3 → **v4**
+- Kohorten-Pin `023ee59b` unverändert

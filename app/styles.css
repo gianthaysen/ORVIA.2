@@ -1548,6 +1548,11 @@ body.story-open{overflow:hidden}
 .sc-rx-hint .sc-hint-text{display:inline}
 .sc-rx-hint .sc-hint-src{display:block;font-size:10px;opacity:.6;margin-left:18px;letter-spacing:.02em}
 .sc-rx-hint .sc-hint-note{display:block;font-size:10px;opacity:.72;margin-left:18px}
+/* v8-353 · „10 weitere belegte Hinweise" — die Zeile, die das Kuerzen sichtbar
+   macht. Bewusst gedaempft, aber vorhanden: eine Karte, die schweigend kuerzt,
+   behauptet Vollstaendigkeit, die sie nicht hat. */
+.sc-plex.sc-rx-hint li.sc-hint-more{font-size:10px;opacity:.55;font-style:italic}
+.sc-plex.sc-rx-hint li.sc-hint-more::before{content:'…'}
 
 /* v8-352 · Die Herkunft des Zielkorridors (.md-corr-src) und die Abgrenzung
    zur Quellenzahl (.md-corr-cmp).

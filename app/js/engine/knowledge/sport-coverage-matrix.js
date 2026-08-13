@@ -29,7 +29,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var COVERAGE_VERSION = 3;
+  var COVERAGE_VERSION = 4;
 
   var DIMENSIONS = ['onboardingSelectable', 'activityTrackingSupported', 'profileSchema', 'positionRoleModel',
     'knowledgePack', 'knowledgePackWired', 'plannerSupport', 'exerciseLibrary', 'safetyReview', 'productionStatus'];
@@ -51,10 +51,18 @@
   }
 
   var COVERAGE = {
-    /* running: 14 handgepflegte Regeln, technisch geprüft, wissenschaftlich
-       ungeprüft — und im Produktivweg von niemandem gelesen. */
+    /* running: ZWEI Pakete, und der Unterschied gehört benannt.
+       • running-knowledge-pack (14 handgepflegte Regeln) hat mit
+         running-capacity-factory einen eigenen Konsumenten, ist aber NICHT im
+         knowledgeConsumer — es erreicht die Verordnung nicht.
+       • running-notizen-knowledge-pack (17 Regeln aus sechs Quellennotizen)
+         ist seit v8-353 verdrahtet; 14 davon kommen als Hinweis mit Herkunft
+         auf der Karte an, 3 bleiben medizinisch gesperrt.
+       `knowledgePackWired` sagt: erreicht Wissen dieser Sportart die
+       Verordnung? Seit v8-353: ja. Dass es das ANDERE Paket ist, steht hier —
+       eine Matrix mit einem Häkchen kann diesen Unterschied nicht tragen. */
     running: entry({ activityTrackingSupported: true, profileSchema: true, knowledgePack: true,
-      knowledgePackWired: false, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),
+      knowledgePackWired: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),
     /* gym: 4 Regeln aus einer Übersichtsarbeit (2007), eingespeist in v8-339,
        seit v8-341 die einzige Sportart, deren Wissen die Verordnung erreicht. */
     gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,

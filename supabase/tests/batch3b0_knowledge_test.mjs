@@ -539,9 +539,19 @@ const review = (rule, over) => Object.assign({
       .filter(v => v && typeof v === 'object' && Array.isArray(v.rules) && typeof v.sport === 'string');
     return treffer.length === 1 ? treffer[0].sport : null;
   };
-  const vorhanden = packFiles.map(packSportOf).filter(Boolean).sort();
+  /* v8-353: EINE Sportart darf MEHRERE Pakete haben. Laufen hat seit
+     v8-353 zwei — das handgepflegte (eigener Konsument: running-capacity-
+     factory) und das aus den Quellennotizen erzeugte (im knowledgeConsumer).
+     Die Matrix fuehrt eine Zeile JE SPORTART, nicht je Datei; hier wird
+     deshalb die MENGE der versorgten Sportarten verglichen, nicht die Liste
+     der Dateien. Ohne das Entdoppeln meldete der Test „running, running"
+     gegen „running" und waere rot, ohne dass etwas fehlt. */
+  const vorhanden = [...new Set(packFiles.map(packSportOf).filter(Boolean))].sort();
   ok('C5 knowledgePack == die real vorhandenen Pack-Module (kein Zähler, ein Vergleich)',
-    packFiles.length > 0 && vorhanden.length === packFiles.length &&
+    packFiles.length > 0 && vorhanden.length > 0 &&
+    /* Jede Datei muss eine Sportart nennen — eine, die keine nennt, faellt
+       durch `filter(Boolean)` und darf nicht unbemerkt verschwinden. */
+    packFiles.map(packSportOf).filter(Boolean).length === packFiles.length &&
     JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePack).sort()) === JSON.stringify(vorhanden),
     'Module: ' + JSON.stringify(vorhanden) + ' · Matrix: ' +
     JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePack).sort()));

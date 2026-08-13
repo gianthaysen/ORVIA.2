@@ -3549,11 +3549,20 @@ function gmHinweisHTML(item){
   var F=(window.ORVIA&&ORVIA.prescriptionFormat)||null;
   if(!F||typeof F.hinweisZeilen!=='function')return '';
   var z;
-  try{z=F.hinweisZeilen(item.hinweise);}catch(_){return '';}
+  /* v8-353: die Wochenkarte zeigt hoechstens vier Hinweise. Eine Laufeinheit
+     erzeugt seit dem Verdrahten des Laufwissens 14 belegte Aussagen — jede
+     richtig, alle zusammen unlesbar. Was nicht gezeigt wird, wird gezaehlt
+     und benannt, nicht verschwiegen. Die Vier ist ein Produktwert fuer diese
+     Kartengroesse, keine Erkenntnis. */
+  try{z=F.hinweisZeilen(item.hinweise,{max:4});}catch(_){return '';}
   if(!z||!z.length)return '';
   var html='<ul class="sc-plex sc-rx-hint">';
   for(var i=0;i<z.length;i++){
     var h=z[i];
+    if(h.art==='gekuerzt'){
+      html+='<li class="sc-hint-more">'+gmEsc(h.text)+'</li>';
+      continue;
+    }
     html+='<li><span class="sc-hint-text">'+gmEsc(h.text)+'</span>';
     if(h.herkunft||h.regelId){
       html+='<span class="sc-hint-src">'+gmEsc([h.herkunft,h.regelId].filter(Boolean).join(' · '))+'</span>';

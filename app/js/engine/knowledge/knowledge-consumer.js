@@ -53,11 +53,44 @@
         expectedSourceRegistryVersion: 1,
         expectedSourceRegistryHash: 'fnv1a-60e813e0'
       }
+    }],
+    /* v8-353 — LAUFEN IST VERDRAHTET, aber nicht das Paket, das man erwartet.
+
+       Hier stand bis v8-352: „das handgepflegte Paket laeuft ueber seinen
+       eigenen Consumer (running-capacity-factory); es hier zusaetzlich
+       einzuhaengen wuerde zwei Wege auf dieselben Regeln oeffnen." Das gilt
+       unveraendert — `running-knowledge-pack.js` bleibt draussen.
+
+       Eingetragen ist ein ANDERES Paket: `running-notizen`, erzeugt aus den
+       sechs Quellennotizen in docs/wissen (QUELLE-04/07/08/09/11/13). Seine
+       17 Regeln haben mit den 14 des handgepflegten Pakets KEINE einzige
+       Kennung gemeinsam — geprueft beim Erzeugen, das Werkzeug bricht bei
+       jeder Kollision ab. Es sind zwei Wege auf zwei verschiedene
+       Regelmengen, nicht zwei Wege auf dieselbe.
+
+       WARUM ES SICH JETZT LOHNT und vorher nicht: bis v8-348 haette das
+       Verdrahten nichts transportiert — keine der Regeln traegt eine Zahl,
+       und `outputs` war eine Absichtserklaerung. Seit v8-349 kommt jede
+       Aussage als HINWEIS mit Herkunft, Grenzen und Ausschluessen auf der
+       Karte an. Damit transportiert derselbe Anschluss auf einmal 14
+       belegte Aussagen statt null Zahlen. Der Befund von v8-345 („es gibt
+       nichts zu verdrahten") war fuer seinen Stand richtig und ist es
+       seit v8-349 nicht mehr. */
+    running: [{
+      id: 'running-notizen-2026-08',
+      packGlobal: 'knowledgePack_running_notizen',
+      registryGlobal: 'knowledgeSources_running_notizen',
+      /* [PIN] Erzeugt am 2026-08-13 aus sechs Notizdateien. Aendert sich eine
+         davon, aendert sich der Hash und es BLOCKIERT — bis jemand diese
+         Zeilen bewusst nachzieht. Das ist Absicht. */
+      pins: {
+        expectedKnowledgeContractVersion: 7,
+        expectedKnowledgeVersion: 'kb-running-notizen-v1.0.0',
+        expectedPackContentHash: 'fnv1a-404d81b4',
+        expectedSourceRegistryVersion: 1,
+        expectedSourceRegistryHash: 'fnv1a-10204a17'
+      }
     }]
-    /* running: das handgepflegte Paket läuft weiterhin über seinen eigenen
-       Consumer (running-capacity-factory, Shadow-Modus). Es hier zusätzlich
-       einzuhängen würde zwei Wege auf dieselben Regeln öffnen — erst
-       zusammenführen, dann eintragen. */
   };
 
   function _global(name) {

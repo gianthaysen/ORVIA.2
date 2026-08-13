@@ -364,6 +364,88 @@ sec('F · Der Prüfer — eine Zahl anwenden, ohne sie vorzuschreiben (v8-351)')
   }
 }
 
+sec('G · Laufwissen und die Grenze der Karte (v8-353)');
+{
+  /* BEFUND beim Verdrahten: eine Laufeinheit erzeugt auf einmal 14 belegte
+     Aussagen. Jede richtig, jede mit Quelle — und alle zusammen unlesbar.
+     „Alles kommt an" ist nicht dasselbe wie „alles gehört auf jede Karte".
+     Gekürzt wird deshalb SICHTBAR: die Restzahl steht als eigene Zeile. */
+  require(join(APP, 'js/engine/knowledge/running-notizen-knowledge-sources.js'));
+  require(join(APP, 'js/engine/knowledge/running-notizen-knowledge-pack.js'));
+  const KCons = require(join(APP, 'js/engine/knowledge/knowledge-consumer.js'));
+
+  ok('Laufen ist im Consumer registriert',
+    KCons.registrierteSportarten().indexOf('running') >= 0,
+    KCons.registrierteSportarten().join(', '));
+
+  const wR = KCons.wissenFuer('running');
+  ok('  … und das Laufwissen wird geholt (Pins stimmen)', wR && wR.ok === true,
+    wR && wR.ok ? (wR.vorgaben.length + ' Vorgaben') : ('blockiert: ' + (wR && wR.grund)));
+
+  const pR = PF.buildPrescription({ sportId: 'running', sessionType: 'endurance_easy',
+    durationMin: 45, knowledge: wR }, {});
+  ok('  … und kommt als Hinweis auf der Laufkarte an',
+    pR.ok === true && (pR.hinweise || []).length > 0, (pR.hinweise || []).length + ' Hinweise');
+  ok('  … jeder mit Regel und Herkunft, keiner anonym',
+    (pR.hinweise || []).every(h => h.regelId && h.herkunft && h.herkunft.evidenceClass),
+    JSON.stringify((pR.hinweise || []).filter(h => !h.regelId || !h.herkunft).map(h => h.ziel)));
+
+  /* Die medizinisch pruefpflichtigen Regeln bleiben draussen — auch jetzt,
+     wo das Paket verdrahtet ist. Das ist der Fall, in dem eine Verdrahtung
+     eine Sperre aushebeln koennte. */
+  const gesperrt = (wR.ausgeschlossen || []).map(a => a.ruleId);
+  ok('  … die medizinisch pruefpflichtigen Regeln bleiben gesperrt',
+    gesperrt.indexOf('RUN-ACH-001') >= 0 && gesperrt.indexOf('RUN-ERHOL-001') >= 0
+      && gesperrt.indexOf('RUN-ERHOL-002') >= 0,
+    JSON.stringify(wR.ausgeschlossen));
+  ok('  … und keine ihrer Aussagen steht auf der Karte',
+    !(pR.hinweise || []).some(h => ['RUN-ACH-001', 'RUN-ERHOL-001', 'RUN-ERHOL-002'].indexOf(h.regelId) >= 0),
+    JSON.stringify((pR.hinweise || []).map(h => h.regelId)));
+
+  /* ---- Die Kürzung ---- */
+  const alle = FMT.hinweisZeilen(pR.hinweise);
+  const kurz = FMT.hinweisZeilen(pR.hinweise, { max: 4 });
+  ok('ohne max wird NICHT gekürzt', alle.length === (pR.hinweise || []).length,
+    alle.length + ' von ' + (pR.hinweise || []).length);
+  ok('mit max:4 stehen vier Hinweise plus eine Restzeile', kurz.length === 5, String(kurz.length));
+
+  const rest = kurz[kurz.length - 1];
+  ok('  … die Restzeile nennt die Zahl der weggelassenen',
+    rest.art === 'gekuerzt' && rest.rest === alle.length - 4,
+    JSON.stringify({ art: rest.art, rest: rest.rest, erwartet: alle.length - 4 }));
+  ok('  … und sagt es im Text, nicht nur im Feld',
+    /weitere belegte Hinweise/.test(rest.text), rest.text);
+
+  /* Beliebigkeit ist das Gegenteil von belegt: dieselbe Einheit muss
+     dieselben vier zeigen — sonst wirkt die Auswahl gewürfelt. */
+  ok('  … die Auswahl ist bei gleicher Einheit stabil',
+    JSON.stringify(kurz) === JSON.stringify(FMT.hinweisZeilen(pR.hinweise, { max: 4 })));
+
+  /* NACHGETRAGEN, weil eine Probe grün blieb: der Vergleich oben schickt
+     zweimal DIESELBE Reihenfolge hinein, und `Array.sort` ist stabil — es
+     kommt auch ohne Sortierung zweimal dasselbe heraus. Die Eigenschaft,
+     die die Ordnung wirklich schützt, ist diese: dieselbe MENGE in anderer
+     Reihenfolge muss dieselben vier zeigen. Sonst hängt die Auswahl daran,
+     in welcher Reihenfolge `applyKnowledge` die Vorgaben geliefert hat. */
+  const gedreht = FMT.hinweisZeilen((pR.hinweise || []).slice().reverse(), { max: 4 });
+  ok('  … dieselbe Menge in anderer Reihenfolge zeigt dieselben vier',
+    JSON.stringify(gedreht.map(z => z.regelId)) === JSON.stringify(kurz.map(z => z.regelId)),
+    JSON.stringify({ vorwaerts: kurz.map(z => z.regelId), rueckwaerts: gedreht.map(z => z.regelId) }));
+
+  /* Ein Befund betrifft DIESE Einheit und steht deshalb vor allgemeinen
+     Aussagen — sonst kürzt man ausgerechnet das Konkrete weg. */
+  const mitBefund = [{ ziel: 'a', regelId: 'Z-999', aussage: 'Allgemein.', herkunft: { evidenceClass: 'B' } },
+    { ziel: 'b', regelId: 'A-001', aussage: 'Auch allgemein.', herkunft: { evidenceClass: 'B' } },
+    { ziel: 'c', regelId: 'M-002', aussage: 'Quelle.', befund: 'Diese Einheit: 7 Sätze.', herkunft: { evidenceClass: 'C' } }];
+  const g = FMT.hinweisZeilen(mitBefund, { max: 1 });
+  ok('  … und ein Befund steht vor allgemeinen Aussagen',
+    g[0].regelId === 'M-002', JSON.stringify(g.map(x => x.regelId || x.art)));
+
+  console.log('   So steht es auf der Laufkarte:');
+  kurz.forEach(z => console.log('     ' + (z.art === 'gekuerzt' ? '… ' : 'ℹ ') + z.text.slice(0, 88)
+    + (z.regelId ? '  [' + z.herkunft + ' · ' + z.regelId + ']' : '')));
+}
+
 console.log('\n' + '═'.repeat(62));
 console.log('Ergebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

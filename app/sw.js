@@ -1,4 +1,72 @@
-const C = 'orvia-v8-352';   /* DIE UNBELEGTE ZAHL SAH VERBINDLICHER AUS (2026-08-13) · v8-352:
+const C = 'orvia-v8-353';   /* LAUFEN IST VERDRAHTET — WEIL SICH DIE FRAGE GEAENDERT HAT (2026-08-13) · v8-353:
+
+   v8-345 hat entschieden, Laufen NICHT zu verdrahten, und die Entscheidung
+   mit einer Zahl begruendet:
+
+       Regeln mit maschinenlesbarem Zahlwert:  Gym 2 von 4 · Laufen 0 von 14
+
+   Verdrahten haette nichts transportiert. Das war richtig — fuer den Stand
+   von v8-345. Seit v8-349 kommt jede Aussage als HINWEIS mit Herkunft,
+   Grenzen und Ausschluessen auf der Karte an. Damit transportiert derselbe
+   Anschluss auf einmal 14 belegte Aussagen statt null Zahlen. Nicht die
+   Entscheidung war falsch, sondern ihre Voraussetzung hat sich geaendert —
+   und das faellt nur auf, wenn man alte Entscheidungen noch einmal ansieht.
+
+   WAS VERDRAHTET IST, und was ausdruecklich nicht:
+     • NEU: running-notizen-knowledge-pack — 17 Regeln aus sechs
+       Quellennotizen (QUELLE-04/07/08/09/11/13), erzeugt vom Einspeisewerkzeug.
+     • UNVERAENDERT DRAUSSEN: running-knowledge-pack (14 handgepflegte
+       Regeln). Es hat mit running-capacity-factory einen eigenen Konsumenten;
+       es hier zusaetzlich einzuhaengen oeffnete zwei Wege auf dieselben
+       Regeln. Die beiden Pakete haben KEINE gemeinsame Regel-Kennung —
+       geprueft beim Erzeugen, das Werkzeug bricht bei jeder Kollision ab.
+
+   GEMESSEN auf einer Laufkarte: 14 Hinweise mit Klasse B/C und Regel-ID.
+   Drei Regeln bleiben gesperrt (RUN-ACH-001, RUN-ERHOL-001/002,
+   medical_safety_review_pending) — auch jetzt, wo ihr Paket wirkt. Probe H13
+   haelt genau diese Sperre offen: der gefaehrlichste Moment einer
+   Verdrahtung ist der, in dem dabei eine Sperre faellt.
+
+   DAS WERKZEUG NIMMT JETZT MEHRERE NOTIZEN. Bis hierher nahm es genau EINE
+   und ersetzte damit das ganze Paket; sein eigener Ueberschreibschutz riet,
+   „die bestehenden Regeln in die Notizdatei zu uebernehmen" — also alle
+   Quellen in eine Datei zu kopieren. Das ist das Gegenteil der Ordnung, die
+   docs/wissen pflegt: eine Datei je Quelle, mit eigener Herkunft und eigenem
+   Pruefdatum. Jetzt fuegt es beliebig viele zusammen und bricht bei doppelter
+   Regel- oder Quellen-Kennung ab. Neu ausserdem `--paket <praefix>`, damit
+   ein handgepflegtes Paket nicht ueberschrieben werden KANN.
+
+   EIN BEFUND, KEIN ERFOLG: 14 Hinweise auf einer Karte sind unlesbar. Jede
+   Aussage ist richtig, hat eine Quelle und gehoert zum Thema — und alle
+   zusammen sind unbrauchbar. „Alles kommt an" ist nicht dasselbe wie „alles
+   gehoert auf jede Karte". Die Karte zeigt deshalb vier und schreibt die
+   Restzahl hin: „10 weitere belegte Hinweise — auf dieser Karte nicht
+   angezeigt". Gekuerzt ist kein Weglassen, so wie uebersprungen kein Beleg
+   ist (v8-342) und nicht mitgezaehlt kein Uebersehen (v8-351). Die Vier ist
+   ein PRODUKTWERT fuer diese Kartengroesse, keine Erkenntnis.
+
+   ZWEI PROBEN MUSSTEN NACHGEZOGEN WERDEN, beide aus gutem Grund:
+   • H12 blieb GRUEN. Meine Zusicherung verglich zwei Aufrufe mit DERSELBEN
+     Eingabereihenfolge — und `Array.sort` ist stabil, also kam zweimal
+     dasselbe heraus, auch ohne Sortierung. Die Eigenschaft, die die Ordnung
+     schuetzt, ist eine andere: dieselbe MENGE in anderer Reihenfolge muss
+     dieselben vier zeigen.
+   • SCM3 meldete `not_applied`. Ihr Anker war die Zeile
+     `knowledgePackWired: false` bei running — die es nicht mehr gibt. Sie
+     zeigt jetzt auf den Vorgabewert in `entry()`, damit derselbe Befund an
+     der Stelle geprueft wird, an der er heute noch entstehen kann. Ein Anker
+     ins Leere ist kein Beleg, in keine Richtung.
+
+   GEAENDERT: tools/knowledge-ingest.mjs (Mehrfacheingabe, --paket),
+   running-notizen-knowledge-{pack,sources}.js (neu, erzeugt),
+   knowledge-consumer.js (running eingetragen), prescription-format.js
+   (Kuerzung mit Restzahl), ui.js + styles.css, sport-coverage-matrix (v4),
+   index.html + ASSETS, knowledge_targets_test (zweites Laufpaket),
+   knowledge_hinweise_test (+15), batch3b0_knowledge_test (mehrere Pakete je
+   Sportart). Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   DIE UNBELEGTE ZAHL SAH VERBINDLICHER AUS (2026-08-13) · v8-352:
 
    DER BEFUND, direkt aus v8-351 heraus. Seit v8-349 traegt auf der Karte
    jede Zahl aus eingespeistem Wissen ihre Herkunft: Evidenzklasse, Regel-ID,
@@ -4235,7 +4303,7 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
   './js/clock.js','./js/config.js','./js/supplements.js','./js/calc.js','./js/data.js','./js/profile.js','./js/issues.js','./js/intelligence.js','./js/orvia-pro.js','./js/charts.js','./js/orvia-charts.js',
   './js/gm-icons.js','./js/format-utils.js','./js/series-reader.js','./js/run-bests.js','./js/plan-domain.js','./js/achievements.js','./js/ui.js','./js/activity.js','./js/nutrition.js','./js/insights.js','./js/race.js','./js/story.js','./js/extras.js',
   './js/repos/repoBase.js','./js/repos/profileRepository.js','./js/repos/checkinRepository.js','./js/repos/trainingLoadRepository.js','./js/repos/readinessRepository.js','./js/repos/goalRepository.js','./js/repos/constraintRepository.js','./js/repos/availabilityRepository.js','./js/repos/activityRepository.js','./js/training-domain.js','./js/activity-normalize.js','./js/activity-store.js','./js/activity-config.js','./js/activity-sync.js','./js/gym-volume.js','./js/repos/exerciseRepository.js','./js/repos/sportRepository.js','./js/repos/trainingPlanRepository.js','./js/repos/weekPlanRepository.js','./js/repos/workoutRepository.js','./js/offline-queue.js','./js/profile-store.js','./js/checkin-store.js','./js/migrate-blob.js','./js/readiness-source.js','./js/readiness-store.js','./js/training-migration.js','./js/workout-store.js',
-  './js/avatar-store.js','./js/sync.js','./js/profile-model.js','./js/profile-ui-kit.js','./js/profile-center.js','./js/onboarding/onboarding-profile-logic.js','./js/onboarding/onboarding-sports-logic.js','./js/onboarding/onboarding-logic.js','./js/onboarding/onboarding-steps.js','./js/onboarding/onboarding-store.js','./js/onboarding/onboarding-ui.js','./js/coachmarks.js','./js/quick-actions.js','./js/auth-logic.js','./js/auth.js','./js/checkin-extra.js','./js/workout-ui.js','./js/ui-refresh.js','./js/engine/engine-contracts.js','./js/engine/readiness-engine-v2.js','./js/engine/decision-engine-v2.js','./js/engine/plan-engine-v2.js','./js/engine/training-input-resolver.js','./js/engine/shadow-runner.js','./js/engine/knowledge/knowledge-contracts.js','./js/engine/knowledge/knowledge-sources.js','./js/engine/knowledge/running-knowledge-pack.js','./js/engine/knowledge/gym-knowledge-sources.js','./js/engine/knowledge/gym-knowledge-pack.js','./js/engine/knowledge/sport-coverage-matrix.js','./js/engine/knowledge/knowledge-ingest.js','./js/engine/knowledge/knowledge-application.js','./js/engine/knowledge/knowledge-consumer.js','./js/engine/goal-portfolio.js','./js/engine/running-capacity-factory.js','./js/engine/scheduler-input-factory.js','./js/engine/scheduler-goal-allocation.js','./js/engine/scheduler-v1.js','./js/engine/capacity-adapter.js','./js/engine/constraint-solver.js','./js/engine/planned-volume.js','./js/engine/prescription-factory.js','./js/engine/scheduler-v2.js','./js/engine/shadow-eval.js','./js/engine/week-projection.js','./js/engine/prescription-format.js','./js/engine/evidence.js','./js/engine/performance-zones.js','./js/engine/load-profile.js','./js/engine/performance-resolver.js','./js/engine/performance-input.js','./js/engine/session-debrief.js','./js/engine/debrief-record.js','./js/engine/load-history.js','./js/engine/progression.js','./js/engine/goal-feasibility.js','./js/engine/shadow-adaptive.js','./js/engine/plan-translator.js','./js/adaptive-card.js','./js/engine/observer-source.js','./js/engine/observer-input.js','./js/engine/prediction-observer.js','./js/engine/week-plan-designer.js','./js/engine/plan-variants.js','./js/engine/week-plan-policy.js','./js/engine/decision-log.js','./js/engine/feature-flags.js','./js/engine/plan-activation.js','./js/engine/canary-eval.js','./js/engine/canary-report.js',
+  './js/avatar-store.js','./js/sync.js','./js/profile-model.js','./js/profile-ui-kit.js','./js/profile-center.js','./js/onboarding/onboarding-profile-logic.js','./js/onboarding/onboarding-sports-logic.js','./js/onboarding/onboarding-logic.js','./js/onboarding/onboarding-steps.js','./js/onboarding/onboarding-store.js','./js/onboarding/onboarding-ui.js','./js/coachmarks.js','./js/quick-actions.js','./js/auth-logic.js','./js/auth.js','./js/checkin-extra.js','./js/workout-ui.js','./js/ui-refresh.js','./js/engine/engine-contracts.js','./js/engine/readiness-engine-v2.js','./js/engine/decision-engine-v2.js','./js/engine/plan-engine-v2.js','./js/engine/training-input-resolver.js','./js/engine/shadow-runner.js','./js/engine/knowledge/knowledge-contracts.js','./js/engine/knowledge/knowledge-sources.js','./js/engine/knowledge/running-knowledge-pack.js','./js/engine/knowledge/gym-knowledge-sources.js','./js/engine/knowledge/gym-knowledge-pack.js','./js/engine/knowledge/running-notizen-knowledge-sources.js','./js/engine/knowledge/running-notizen-knowledge-pack.js','./js/engine/knowledge/sport-coverage-matrix.js','./js/engine/knowledge/knowledge-ingest.js','./js/engine/knowledge/knowledge-application.js','./js/engine/knowledge/knowledge-consumer.js','./js/engine/goal-portfolio.js','./js/engine/running-capacity-factory.js','./js/engine/scheduler-input-factory.js','./js/engine/scheduler-goal-allocation.js','./js/engine/scheduler-v1.js','./js/engine/capacity-adapter.js','./js/engine/constraint-solver.js','./js/engine/planned-volume.js','./js/engine/prescription-factory.js','./js/engine/scheduler-v2.js','./js/engine/shadow-eval.js','./js/engine/week-projection.js','./js/engine/prescription-format.js','./js/engine/evidence.js','./js/engine/performance-zones.js','./js/engine/load-profile.js','./js/engine/performance-resolver.js','./js/engine/performance-input.js','./js/engine/session-debrief.js','./js/engine/debrief-record.js','./js/engine/load-history.js','./js/engine/progression.js','./js/engine/goal-feasibility.js','./js/engine/shadow-adaptive.js','./js/engine/plan-translator.js','./js/adaptive-card.js','./js/engine/observer-source.js','./js/engine/observer-input.js','./js/engine/prediction-observer.js','./js/engine/week-plan-designer.js','./js/engine/plan-variants.js','./js/engine/week-plan-policy.js','./js/engine/decision-log.js','./js/engine/feature-flags.js','./js/engine/plan-activation.js','./js/engine/canary-eval.js','./js/engine/canary-report.js',
   /* v8-321: plan-quality.js fehlte hier seit v8-316 — das Modul wurde von
      index.html geladen, war aber NICHT im Offline-Vorrat. Offline waeren die
      sechs Planqualitaets-Kacheln stumm ausgefallen. Zusammen mit dem neuen
