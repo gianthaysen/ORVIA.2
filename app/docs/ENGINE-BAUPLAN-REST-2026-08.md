@@ -4411,3 +4411,119 @@ gesondert zu bewerten ist: `gym-volume.CORRIDORS` führt zum selben Gegenstand
 einen **unbelegten Produktwert** (6–12 Sätze je Muskelgruppe und Woche,
 `source: 'conservative_start:…'`), der über die Wochenfrequenz mit der
 Quellenzahl verbunden ist — und genau die Frequenz nennt die Quelle nicht.
+
+## 41 · Eine Zahl anwenden, ohne sie vorzuschreiben (v8-351)
+
+Die letzte Quittung in `_ziele-ohne-leser.json` ist weg — nicht gestrichen,
+sondern aufgelöst. `plan.saetze_je_muskelgruppe` wird jetzt angewendet, und
+zwar anders als jedes Ziel davor.
+
+### 41.1 Warum prüfen und nicht setzen
+
+Die Quelle verbietet das Setzen wörtlich: *„keine Umrechnung auf Sätze je
+Übung. Diese Zahl darf `session.sets` nicht speisen."* Sie gilt für eine
+**Muskelgruppe**, und die entsteht erst aus der Übungsauswahl — aus 5 Sätzen
+Quadrizeps würden sonst 5 Sätze Kniebeuge *und* 5 Sätze Beinpresse (§34).
+
+Was bleibt, ist die Prüfung:
+
+```
+Kniebeuge 4 Sätze + Beinpresse 3 Sätze
+→ Quadrizeps 7 Sätze geplant — die Quelle nennt 5 bis 6   [Klasse B · GYM-HYP-002]
+    laut Quelle: „Der Umfang wird je Muskelgruppe geplant, nicht je Übung …"
+    nicht mitgezählt: Hantelrudern Jacob
+    gilt nicht für: krafttraining_anfaenger, kinder_jugendliche, akute_verletzung
+```
+
+**Befund und Aussage bleiben getrennt.** Die Messung gehört ORVIA, der Satz
+darunter der Quelle. Zusammengezogen wären es ORVIA-Zahlen im Mund einer
+Übersichtsarbeit von 2007.
+
+### 41.2 Der Messwert, der den Weg entschieden hat
+
+Vor dem ersten Codezeichen: wie viele Übungen lassen sich überhaupt zuordnen?
+
+| Datenlage | zuordenbar |
+|---|---|
+| Name + Slug + Bewegungsmuster | **71 von 78 = 91 %** |
+| Name + Slug (Stand v8-350) | **26 von 78 = 33 %** |
+
+Die Lücke war **ein Feld**: `gmExLibEnsure` speicherte `{name, slug}` und warf
+`movement_pattern` weg, obwohl `select('*')` es mitliefert. 45 der 78 Übungen
+hängen genau daran. Ohne diese Messung wäre ein Prüfer entstanden, der bei
+zwei Dritteln der Übungen schweigt — und Schweigen sieht aus wie Zustimmung.
+
+Der Zwischenspeicher trägt jetzt eine **Formatversion**: ein alter Eintrag
+ohne Muster wird verworfen, nicht als „diese Übung hat kein Muster" gelesen.
+Sonst bliebe die Quote nach dem Update genauso niedrig und niemand sähe warum.
+
+### 41.3 Zwei Register statt einer unscharfen Liste
+
+`GELESENE_ZIELE` heißt „wird als Wert eingebaut". Ein Prüfer tut das nicht.
+Deshalb `GEPRUEFTE_ZIELE` als eigene, ebenfalls eingefrorene Liste.
+
+Beides zusammenzuwerfen wäre bequem und falsch: der Sensor fragt *„wird diese
+freigegebene Zahl angewendet?"*, und die ehrliche Antwort lautet hier *„ja,
+aber anders"*. Eine Liste, die zwei Dinge bedeutet, beantwortet keine Frage
+mehr — daran ist die Quittungsliste bis v8-348 unscharf geworden.
+
+### 41.4 Zwei Proben blieben grün
+
+Der nützlichste Teil des Tages.
+
+| Probe | Zielte auf | Warum sie nichts fing |
+|---|---|---|
+| PV7 | „DIE Zahl speist `session.sets` nicht" | im Testfall tragen **alle** Übungen eine eigene Satzzahl — die mutierte Stelle wird nie erreicht. Erst eine Übung **ohne** Satzzahl führt dorthin |
+| PV8 | „ohne Wissen gibt es keinen Befund" | ohne Wissen greift die **erste** Sperre; die mutierte Stelle liegt dahinter. Der gefährliche Fall ist Wissen **ohne diese Regel**: Vorgaben sind da, nur nicht die richtige, und 5–6 steht im Code |
+
+Beide Zusicherungen fehlten und sind nachgetragen; beide Proben schlagen
+jetzt an. Ein Test, der grün bleibt, wenn man den Code kaputtmacht, prüft
+nichts — und wer die Probe stattdessen umgeschrieben hätte, um sie „passend"
+zu machen, hätte die Lücke zugedeckt.
+
+### 41.5 Warum ein eigenes Modul
+
+`gym-volume` zählt **absolvierte** Sätze: jeder Satz trägt `completed`, einen
+Satztyp und Ausschlussgründe. Ein **geplanter** Satz hat nichts davon. Beides
+in `computeMuscleVolume` zu mischen hieße, dort eine zweite Bedeutung von
+„Satz" einzuführen.
+
+Die **Zuordnung** kommt trotzdem von dort (`musclesFor`, `coeffOf`, `roleOf`)
+— benutzt, nicht kopiert. Eine zweite Zuordnungstabelle wäre die dritte
+Stelle im Projekt mit zwei Wahrheiten (§28 Satzzahl, §32 Coverage-Matrix);
+beide Male ist es teuer geworden.
+
+### 41.6 Grenzen, ausdrücklich
+
+- Der Prüfer ändert **nichts** — keine Satzzahl, keine Übung, keine Pause.
+- Ohne Wissen **kein** Befund, auch nicht bei zwölf Sätzen.
+- Gezählt werden nur **direkte** Sätze. Aus fünf Kniebeugen „Gesäß 2,5 Sätze
+  zu wenig" zu machen hieße, eine Zahl zu verlangen, die niemand geplant hat.
+- Was nicht zugeordnet werden kann, steht als *nicht mitgezählt* an der Zeile.
+- Die Zahl ist **Klasse B, wissenschaftlich ungeprüft**, aus einer
+  Übersichtsarbeit von 2007. Sie informiert, sie greift nicht ein.
+
+### 41.7 Offen
+
+Die **Übungsauswahl** selbst. `scheduler-v2` leitet für Gym keine ab, und eine
+erfundene Standardliste ist ausgeschlossen — sie braucht eine Quelle, keine
+Programmierung. Der Prüfer wirkt deshalb heute an selbst geplanten Einheiten
+und läuft unverändert weiter, wenn die Liste eines Tages aus einem Kraft-Pack
+kommt.
+
+Ebenfalls offen und in `docs/PLAN-PUNKT-2-MUSKELGRUPPEN.md` §5 beschrieben:
+`gym-volume.CORRIDORS` führt zum selben Gegenstand einen **unbelegten
+Produktwert** (6–12 Sätze je Muskelgruppe und Woche). Er ist über die
+Wochenfrequenz mit der Quellenzahl verbunden — und genau die nennt die Quelle
+nicht.
+
+### 41.8 Stand
+
+- Gesamtsuite **261/0** bei 7 übersprungenen (268 Dateien)
+- **159 Proben in 19 Katalogen**, 154 gefahren / 5 übersprungen, jede
+  gefahrene schlägt an
+- neu: `planned-volume@1`, `planned_volume_test.mjs` (22 Zusicherungen),
+  `tools/probes/planned-volume.json`
+- `knowledge_hinweise_test.mjs` 32 → **51 Zusicherungen**
+- `_ziele-ohne-leser.json`: **1 → 0 Quittungen**
+- Kohorten-Pin `023ee59b` unverändert

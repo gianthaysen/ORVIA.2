@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-350, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-350 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-351, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-351 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-350) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§40).
+`sw.js` (Versionsköpfe v8-329 bis v8-351) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§41).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -102,7 +102,21 @@ Was stattdessen möglich wäre, in aufsteigendem Ertrag:
 | **Qualitative Leser** | Regeln wie „harte Tage nicht aufeinanderfolgend" als **Sperre** umsetzen statt als Zahl. Braucht pro Regel Code mit Belegbindung. | hoch, aber Neubau |
 | **Verdrahten** | `PAKETE.running` eintragen. | **null**, solange keine Werte da sind |
 
-### 2 · Die Satzsumme je Muskelgruppe — **Richtung in v8-350 korrigiert**
+### 2 · Die Satzsumme je Muskelgruppe — **Prüfer steht (v8-351), Auswahl offen**
+
+> **Erledigt in v8-351:** Der Prüfer ist gebaut. Eine geplante Krafteinheit
+> wird gegen GYM-HYP-002 geprüft; liegt eine Muskelgruppe außerhalb von 5–6
+> Sätzen, steht der Befund mit Herkunft, Grenzen und Ausschlüssen auf der
+> Karte. Neu: `planned-volume@1`, ein zweites Register `GEPRUEFTE_ZIELE`,
+> Zuordnungsquote 33 % → 91 %. Vollständig in §41.
+>
+> **Offen bleibt** allein die Übungsauswahl für den Scheduler — sie braucht
+> eine Quelle, keine Programmierung (Weg C unten).
+
+<details>
+<summary>Die Analyse, die dorthin geführt hat</summary>
+
+**Richtung in v8-350 korrigiert**
 
 > **Was hier falsch stand.** Bis v8-349 hieß es, `plan.saetze_je_muskelgruppe`
 > sei ein **wöchentlicher** Umfang und brauche einen Leser im Wochenplan. Die
@@ -135,6 +149,8 @@ mit der Quellenzahl verbunden — und genau die nennt die Quelle nicht.
 
 Die alte Zusicherung in `knowledge_consumer_test.mjs` bleibt gültig: sie
 schlägt an, sobald der Scheduler Übungen liefert.
+
+</details>
 
 ### 3 · Eingespeiste Laufregeln sind noch keine Module
 `QUELLE-07` (Sperlich, 5 Regeln), `QUELLE-08` (Hoff, 2 Regeln) und `QUELLE-09`
@@ -364,17 +380,21 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ## Zahlen zum Nachprüfen (v8-349)
 
-- Gesamtsuite **260/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
-  **Nur mit Chromium** — ohne Browser-Binary sind es 238/0 bei 29 übersprungenen,
+- Gesamtsuite **261/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
+  **Nur mit Chromium** — ohne Browser-Binary sind es 239/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **150 Proben in 18 Katalogen**, 146 gefahren / 4 übersprungen, jede schlägt an
+- **159 Proben in 19 Katalogen**, 154 gefahren / 5 übersprungen, jede
+  gefahrene schlägt an
 - **Ziele, die ankommen: 30 von 30** aus Paketen (1 als Wert, 24 als Hinweis,
   5 bewusst gesperrt mit Code) und 25 von 25 aus Notizen (21 nach technischer
   Freigabe, 4 medizinisch gesperrt). **Gemessen** durch die echte Kette, nicht
   aus dem Register abgeleitet — die alte Zahl „1 von 30" war eine Ableitung.
-- **1 Quittung** in `_ziele-ohne-leser.json` (vorher 41): `plan.saetze_je_muskelgruppe`
-  — eine freigegebene Zahl ohne Anwender. 5–6 Sätze je Muskelgruppe und
-  **Einheit** (nicht Woche — in v8-350 korrigiert, §40), Punkt 2
+- **0 Quittungen** in `_ziele-ohne-leser.json` (v8-348: 41). Die letzte,
+  `plan.saetze_je_muskelgruppe`, ist in v8-351 aufgelöst — sie wird jetzt
+  angewendet, aber als **Prüfung** statt als Vorgabe (§41)
+- **Zuordnungsquote Übung → Muskelgruppe: 91 %** (71 von 78 Systemübungen),
+  nach v8-351. Vorher 33 %, weil das Bewegungsmuster im Zwischenspeicher
+  fehlte — gemessen mit `tools/messung-zuordnungsquote.mjs`
 - **55 Zielnamen** in `_zielvokabular.json` — die Tippfehlerbremse, seit v8-349
   am Namen statt an der Wirkung
 - **Wissensvertrag: Version 7**

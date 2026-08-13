@@ -563,6 +563,10 @@
 <script src="js/engine/capacity-adapter.js"></script>
 <!-- Phase 7 S4 (2026-08-05): Constraint Solver — liest restDay/fixedCommitments, fail-closed (shadow-only) -->
 <script src="js/engine/constraint-solver.js"></script>
+<!-- v8-351: planned-volume — Saetze je Muskelgruppe in einer GEPLANTEN Einheit.
+     Muss VOR prescription-factory stehen, die den Pruefer benutzt; nutzt die
+     Zuordnung aus gym-volume.js (weiter oben geladen), nicht eine eigene. -->
+<script src="js/engine/planned-volume.js"></script>
 <!-- Phase 7 S5 (2026-08-05): Prescription-Factory — neutrales Vertrag-4-Workout-Schema (shadow-only) -->
 <script src="js/engine/prescription-factory.js"></script>
 <!-- Phase 7 (2026-08-05): scheduler-v2 — Pipeline S3→S4→S5, shadow_only (v1 bleibt Skeleton) -->

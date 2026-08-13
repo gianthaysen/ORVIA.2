@@ -256,8 +256,26 @@
     var out = [];
     hinweise.forEach(function (h) {
       if (!h || typeof h.aussage !== 'string' || !h.aussage.trim()) return;
-      var zeile = { text: h.aussage.trim(), regelId: h.regelId || null, ziel: h.ziel || null };
+      /* v8-351 — BEFUND VOR AUSSAGE, und beides bleibt getrennt.
+         Ein Pruefbefund („Quadrizeps 7 Saetze geplant") ist eine Messung an
+         DIESER Einheit; die Aussage daneben gehoert der Quelle. Steht der
+         Befund oben, liest der Nutzer zuerst, was ihn betrifft — und die
+         Quelle darunter als Beleg, nicht als Behauptung ueber seinen Plan.
+         Zusammengezogen waeren es ORVIA-Zahlen im Mund einer
+         Uebersichtsarbeit von 2007. */
+      var hatBefund = (typeof h.befund === 'string' && h.befund.trim().length > 0);
+      var zeile = { text: hatBefund ? h.befund.trim() : h.aussage.trim(),
+        regelId: h.regelId || null, ziel: h.ziel || null };
       var zusatz = [];
+      if (hatBefund) zusatz.push('laut Quelle: ' + h.aussage.trim());
+      /* Eine Summe ueber die Haelfte der Uebungen ist keine Summe. Was nicht
+         mitgezaehlt wurde, steht an der Zeile — nicht in einer Fussnote und
+         erst recht nicht nirgends. */
+      if (hatBefund && Array.isArray(h.nichtGezaehlt) && h.nichtGezaehlt.length) {
+        zusatz.push('nicht mitgezählt: ' + h.nichtGezaehlt.map(function (u) {
+          return (u && (u.name || u.exerciseId)) || 'unbenannte Übung';
+        }).join(', '));
+      }
       if (h.zahlGesperrt === true) zusatz.push('Zahl vorhanden, aber nicht freigegeben');
       if (Array.isArray(h.giltNichtFuer) && h.giltNichtFuer.length) {
         zusatz.push('gilt nicht für: ' + h.giltNichtFuer.join(', '));

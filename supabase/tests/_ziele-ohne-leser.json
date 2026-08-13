@@ -36,13 +36,20 @@
     "„dito“ zaehlt nicht: der Test verlangt je Eintrag eine echte Begruendung.",
     "",
     "Historie: v8-347 session.exercises entfallen (Vertrag v7 gab der Verordnung",
-    "eine Liste). v8-348 session.repetitions entfallen. v8-349 die restlichen 43",
-    "entfallen — nicht weil sie stillgelegt wurden, sondern weil gemessen wurde,",
-    "dass sie ankommen."
+    "eine Liste). v8-348 session.repetitions entfallen. v8-349 die restlichen 43 —",
+    "nicht weil sie stillgelegt wurden, sondern weil GEMESSEN wurde, dass sie",
+    "ankommen. v8-351 der letzte Eintrag: plan.saetze_je_muskelgruppe wird jetzt",
+    "angewendet, aber anders als alle davor — es wird nicht VORGESCHRIEBEN,",
+    "sondern eine geplante Einheit wird dagegen GEPRUEFT. Dafuer gibt es ein",
+    "zweites Register (prescriptionFactory.GEPRUEFTE_ZIELE).",
+    "",
+    "DIE LISTE IST DAMIT LEER — und das ist kein Grund, die Datei zu loeschen.",
+    "Sie ist der Ort, an dem die naechste freigegebene Zahl ohne Anwender",
+    "auffallen muss. Fehlt die Datei, ist der Test rot; steht ein neues Ziel",
+    "unquittiert darin, ebenfalls. Eine leere Liste ist eine Aussage, keine",
+    "ueberfluessige Datei."
   ],
   "quittiertAm": "2026-08-13",
-  "appVersion": "v8-349",
-  "ziele": {
-    "plan.saetze_je_muskelgruppe": "GYM-HYP-002 (Friedmann 2007), als Zahl freigegeben: 5 bis 6 Saetze je Muskelgruppe und TRAININGSEINHEIT — nicht je Woche und ausdruecklich nicht je Uebung. Das Feld `umrechnung` der Quelle sagt woertlich: „Diese Zahl darf session.sets nicht speisen.\" Ein Anwender muss also die geplanten Uebungen einer Einheit den Muskelgruppen zuordnen und die Saetze je Muskelgruppe SUMMIEREN. Dafuer fehlt der Verordnung heute beides: eine Uebungsliste fuer Gym (scheduler-v2 leitet keine ab, Flag no_exercise_list_generic_session) und ein Zaehler auf geplanten statt absolvierten Saetzen (gym-volume rechnet auf Snapshots abgeschlossener Workouts). Das ist offener Punkt 2. KORREKTUR 2026-08-13: hier stand seit v8-344 „woechentlich\" und daraus folgte der falsche Schluss, der Anwender sei die Wochenplanung. Die Quelle sagt Einheit; der Anwender ist die Einheit."
-  }
+  "appVersion": "v8-351",
+  "ziele": {}
 }

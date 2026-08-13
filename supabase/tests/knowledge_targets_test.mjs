@@ -140,9 +140,19 @@ sec('A · Register == was der Quelltext liest');
   const src = readFileSync(join(APP, 'js/engine/prescription-factory.js'), 'utf8');
   /* Der Registerblock selbst darf sich nicht mitzaehlen — sonst bestaetigt
      die Liste sich selbst, genau wie ein Pack, das seinen eigenen Hash pinnt. */
-  const ohneRegister = src.replace(/var GELESENE_ZIELE = \[[\s\S]*?\];/, '');
+  /* v8-351: BEIDE Registerbloecke werden ausgeschnitten. Kam der zweite
+     hinzu, ohne hier genannt zu werden, bestaetigte er sich selbst — genau
+     der Fehler, den Probe ZR4 fuer den ersten Block bewacht. */
+  const ohneRegister = src
+    .replace(/var GELESENE_ZIELE = \[[\s\S]*?\];/, '')
+    .replace(/var GEPRUEFTE_ZIELE = \[[\s\S]*?\];/, '');
   const imCode = [...new Set((ohneRegister.match(/'session\.[a-z_0-9]+'/g) || []).map(s => s.slice(1, -1)))].sort();
   const imRegister = (PF.GELESENE_ZIELE || []).slice().sort();
+  /* Die geprueften Ziele tragen `plan.`-Namen, deshalb ein eigenes Muster.
+     Sie mit den gelesenen in eine Liste zu werfen waere bequem und falsch:
+     die eine sagt „wird eingebaut", die andere „wird geprueft". */
+  const imCodeGeprueft = [...new Set((ohneRegister.match(/'plan\.[a-z_0-9]+'/g) || []).map(s => s.slice(1, -1)))].sort();
+  const imRegisterGeprueft = (PF.GEPRUEFTE_ZIELE || []).slice().sort();
 
   ok('das Register ist vorhanden und nicht leer', imRegister.length > 0, imRegister.length + ' Ziele');
   ok('kein gelesenes Ziel fehlt im Register',
@@ -153,6 +163,20 @@ sec('A · Register == was der Quelltext liest');
     'im Register, nicht im Code: ' + JSON.stringify(imRegister.filter(z => !imCode.includes(z))));
   ok('das Register ist eingefroren (kein Nachtragen zur Laufzeit)',
     Object.isFrozen(PF.GELESENE_ZIELE));
+
+  /* v8-351 — DAS ZWEITE REGISTER, mit derselben Strenge.
+     Ein Ziel, das geprueft statt gesetzt wird, ist trotzdem angewendet — und
+     ein erfundener Eintrag hier waere genauso gefaehrlich wie drueben: er
+     liesse eine freigegebene Zahl als versorgt erscheinen. */
+  ok('das Register der geprueften Ziele ist vorhanden und eingefroren',
+    Array.isArray(PF.GEPRUEFTE_ZIELE) && Object.isFrozen(PF.GEPRUEFTE_ZIELE),
+    JSON.stringify(imRegisterGeprueft));
+  ok('kein geprueftes Ziel ist erfunden (jedes kommt im Quelltext vor)',
+    imRegisterGeprueft.every(z => imCodeGeprueft.includes(z)),
+    'im Register, nicht im Code: ' + JSON.stringify(imRegisterGeprueft.filter(z => !imCodeGeprueft.includes(z))));
+  ok('kein Ziel steht in BEIDEN Registern',
+    imRegisterGeprueft.every(z => !imRegister.includes(z)),
+    JSON.stringify(imRegisterGeprueft.filter(z => imRegister.includes(z))));
 }
 
 /* ══ B · Was von den Wissenspaketen wirklich ankommt ══ */
@@ -207,6 +231,12 @@ sec('B · Wissenspakete — gemessen an gebauten Verordnungen');
     (m.erg.vorgaben || []).forEach(v => {
       if (!v || (v.art !== 'zahl' && v.art !== 'liste')) return;
       if ((PF.GELESENE_ZIELE || []).includes(v.ziel)) return;
+      /* v8-351: geprueft ist auch angewendet. Eine Zahl, gegen die eine
+         geplante Einheit geprueft wird, ist nicht wirkungslos — sie wird
+         nur nicht vorgeschrieben. Genau diese Unterscheidung trennt die
+         beiden Register; wer sie hier fallen liesse, verlangte eine
+         Quittung fuer etwas, das laengst wirkt. */
+      if ((PF.GEPRUEFTE_ZIELE || []).includes(v.ziel)) return;
       zahlOhneAnwender.push(v.ziel);
     });
 

@@ -3265,10 +3265,31 @@ function _pqWarnList(q){if(!q.warns.length)return '';return '<div class="pqv5-li
    Schluessel wird NIEMALS geraten — er wird als unbekannt ausgewiesen.
    ============================================================ */
 var _gmExLib=null,_gmExLibLoading=false;
+/* v8-351 — FORMATVERSION DES ZWISCHENSPEICHERS.
+   Bis v8-350 hielt der Spiegel je Uebung nur {name, slug}. Das
+   Bewegungsmuster fehlte, obwohl `select('*')` es laengst mitliefert — und
+   an ihm haengen 45 der 78 Systemuebungen bei der Muskelzuordnung
+   (gemessen: 33 % statt 91 %, siehe tools/messung-zuordnungsquote.mjs).
+
+   Ein alter Eintrag OHNE Muster darf jetzt nicht als „diese Uebung hat kein
+   Muster" gelesen werden — sonst bliebe die Quote nach dem Update genau so
+   niedrig und niemand saehe den Grund. Deshalb traegt der Spiegel eine
+   Formatversion: passt sie nicht, wird er verworfen und neu geholt.
+   Verworfen, nicht repariert — geraten wird auch hier nichts. */
+var GM_EXLIB_FORMAT=2;
 function gmExLibKey(){try{return 'orvia_exlib_'+((window.ORVIA&&ORVIA.user&&ORVIA.user.id)||'x');}catch(_){return 'orvia_exlib_x';}}
 function gmExLibLoadLocal(){
   if(_gmExLib)return _gmExLib;
-  try{var raw=localStorage.getItem(gmExLibKey());if(raw){var o=JSON.parse(raw);if(o&&typeof o==='object'){_gmExLib=o;return _gmExLib;}}}catch(_){ }
+  try{
+    var raw=localStorage.getItem(gmExLibKey());
+    if(raw){
+      var o=JSON.parse(raw);
+      /* Format 1 war ein nacktes {id:{name,slug}} ohne Huelle. Es wird nicht
+         gelesen, sondern verworfen: eine halbe Bibliothek ist schlimmer als
+         keine, weil sie wie eine vollstaendige aussieht. */
+      if(o&&typeof o==='object'&&o.format===GM_EXLIB_FORMAT&&o.map&&typeof o.map==='object'){_gmExLib=o.map;return _gmExLib;}
+    }
+  }catch(_){ }
   return null;
 }
 /* Laedt die kanonische Bibliothek EINMAL und ruft danach cb(). Ohne Netz
@@ -3285,9 +3306,12 @@ function gmExLibEnsure(cb){
     ORVIA.repos.exercise.list().then(function(r){
       _gmExLibLoading=false;
       if(!r||!r.success||!r.data)return;
-      var map={};for(var i=0;i<r.data.length;i++){var e=r.data[i];if(e&&e.id)map[e.id]={name:e.name||null,slug:e.slug||null};}
+      /* `movementPattern` kommt aus derselben Antwort (select('*')) und wird
+         seit v8-351 mitgespeichert — ohne ihn kann die Muskelzuordnung 45
+         der 78 Systemuebungen nicht aufloesen. */
+      var map={};for(var i=0;i<r.data.length;i++){var e=r.data[i];if(e&&e.id)map[e.id]={name:e.name||null,slug:e.slug||null,movementPattern:e.movement_pattern||null};}
       _gmExLib=map;
-      try{localStorage.setItem(gmExLibKey(),JSON.stringify(map));}catch(_){ }
+      try{localStorage.setItem(gmExLibKey(),JSON.stringify({format:GM_EXLIB_FORMAT,map:map}));}catch(_){ }
       if(cb)cb(_gmExLib);
     }).catch(function(){_gmExLibLoading=false;});
   }catch(_){_gmExLibLoading=false;}
@@ -3299,6 +3323,21 @@ function gmExName(id){
   if(!lib||!id)return null;
   var e=lib[id];
   return (e&&e.name)?e.name:null;
+}
+/* v8-351 — die aufgeloeste Uebung, wie `gym-volume.musclesFor` sie braucht.
+   Eine geplante Uebung fuehrt laut `strength-plan@1` NUR `exerciseId` — eine
+   Datenbankkennung. Damit findet die Muskelzuordnung nichts: sie sucht nach
+   Name, Slug oder Bewegungsmuster. Diese Funktion setzt zusammen, was die
+   Bibliothek dazu weiss, und gibt null zurueck, wenn sie nichts weiss.
+
+   Ausdruecklich KEIN Rueckfall auf die Kennung als Name: aus einer UUID
+   einen Uebungsnamen zu machen hiesse, eine Zuordnung zu erfinden. */
+function gmExAufgeloest(id){
+  var lib=_gmExLib||gmExLibLoadLocal();
+  if(!lib||!id)return null;
+  var e=lib[id];
+  if(!e)return null;
+  return { exerciseId:id, name:e.name||null, slug:e.slug||null, movementPattern:e.movementPattern||null };
 }
 /* Zeilen fuer die Wochenplan-Karte. Liefert [] wenn nichts geplant ist —
    Altbestand ohne Vorgaben bleibt damit unveraendert. */
@@ -3329,7 +3368,67 @@ function gmPlannedLinesHTML(item){
     html+='<li'+(lines[i].resolved?'':' class="sc-plex-unknown" title="Diese Übung steht nicht in der Bibliothek — die Kennung wird unverändert angezeigt."')+'>'+
       (lines[i].resolved?'':'⚠ ')+gmEsc(lines[i].text)+'</li>';
   }
-  return html+'</ul>';
+  return html+'</ul>'+gmMuskelHinweisHTML(item);
+}
+
+/* v8-351 — DER PRUEFBEFUND AN DER SELBST GEPLANTEN EINHEIT.
+   Eine Krafteinheit, die der Nutzer selbst zusammengestellt hat, hat KEINE
+   Verordnung (`item.rx` ist leer) — es gibt also nichts, woran der
+   Hinweisweg aus v8-349 haengen koennte. Genau hier ist die Regel aber
+   anwendbar: die Uebungen stehen fest, und damit auch die Saetze je
+   Muskelgruppe.
+
+   Gerechnet wird mit DEMSELBEN Pruefer wie in der Verordnung
+   (`prescriptionFactory.muskelHinweise`) und dargestellt mit DEMSELBEN
+   Formatierer. Ein zweiter Pruefer hier waere die naechste Stelle, an der
+   zwei Wahrheiten auseinanderlaufen.
+
+   Fail-closed an jeder Stelle: fehlt ein Modul, fehlt das Wissen, fehlt die
+   Uebungsbibliothek — dann steht hier NICHTS. Kein Ersatztext, keine
+   Schaetzung, kein „ungefaehr". */
+function gmMuskelHinweisHTML(item){
+  try{
+    var O=window.ORVIA||{};
+    var SP=O.strengthPlan, PF=O.prescriptionFactory, FMT=O.prescriptionFormat, KC=O.knowledgeConsumer;
+    if(!SP||!PF||!FMT||!KC)return '';
+    if(typeof PF.muskelHinweise!=='function')return '';
+    var list=SP.readPlanned(item);
+    if(!list||!list.length)return '';
+    /* Die geplante Uebung fuehrt nur eine Kennung. Ohne aufgeloeste
+       Bibliothek gibt es keine Muskelzuordnung — und dann sagen wir nichts,
+       statt die Haelfte zu zaehlen und es Summe zu nennen. */
+    var aufgeloest=[],offen=0;
+    for(var i=0;i<list.length;i++){
+      var a=gmExAufgeloest(list[i].exerciseId);
+      if(!a){offen++;continue;}
+      a.sets=list[i].sets;
+      aufgeloest.push(a);
+    }
+    if(!aufgeloest.length)return '';
+    var wissen=KC.wissenFuer('gym');
+    if(!wissen||wissen.ok!==true)return '';
+    var h=PF.muskelHinweise(aufgeloest,wissen);
+    if(!h||!h.length)return '';
+    /* Uebungen, die die Bibliothek gar nicht kennt, gehoeren in denselben
+       Vermerk wie die nicht zuordenbaren — fuer den Nutzer ist es dieselbe
+       Frage: was ist hier nicht mitgezaehlt worden? */
+    if(offen>0){
+      h[0].nichtGezaehlt=(h[0].nichtGezaehlt||[]).concat([{name:offen+' Übung(en) ohne Bibliothekseintrag'}]);
+    }
+    var z=FMT.hinweisZeilen(h);
+    if(!z||!z.length)return '';
+    var html='<ul class="sc-plex sc-rx-hint">';
+    for(var j=0;j<z.length;j++){
+      html+='<li><span class="sc-hint-text">'+gmEsc(z[j].text)+'</span>';
+      if(z[j].herkunft||z[j].regelId){
+        html+='<span class="sc-hint-src">'+gmEsc([z[j].herkunft,z[j].regelId].filter(Boolean).join(' · '))+'</span>';
+      }
+      var zu=z[j].zusatz||[];
+      for(var k=0;k<zu.length;k++)html+='<span class="sc-hint-note">'+gmEsc(zu[k])+'</span>';
+      html+='</li>';
+    }
+    return html+'</ul>';
+  }catch(_){return '';}
 }
 
 /* v8-332b — Die Ausdauer-Vorgabe AUF der Wochenkarte.

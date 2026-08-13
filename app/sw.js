@@ -1,4 +1,88 @@
-const C = 'orvia-v8-350';   /* EINE EINHEIT IST KEINE WOCHE (2026-08-13) · v8-350:
+const C = 'orvia-v8-351';   /* EINE ZAHL ANWENDEN, OHNE SIE VORZUSCHREIBEN (2026-08-13) · v8-351:
+
+   DIE LETZTE QUITTUNG IST WEG — und zwar nicht, weil sie gestrichen wurde,
+   sondern weil `plan.saetze_je_muskelgruppe` jetzt wirklich angewendet wird.
+   Anders als jedes Ziel davor: es wird NICHT vorgeschrieben, sondern eine
+   geplante Einheit wird dagegen GEPRUEFT.
+
+       Kniebeuge 4 Saetze + Beinpresse 3 Saetze
+       → Quadrizeps 7 Saetze geplant — die Quelle nennt 5 bis 6
+         [Klasse B · GYM-HYP-002]
+         laut Quelle: „Der Umfang wird je Muskelgruppe geplant, nicht je
+         Uebung: fuenf bis sechs Saetze pro Muskelgruppe und Einheit …"
+         nicht mitgezaehlt: Hantelrudern Jacob
+         gilt nicht fuer: krafttraining_anfaenger, kinder_jugendliche …
+
+   WARUM PRUEFEN UND NICHT SETZEN. Die Quelle verbietet es woertlich: „keine
+   Umrechnung auf Saetze je Uebung. Diese Zahl darf session.sets nicht
+   speisen." Sie gilt fuer eine Muskelgruppe, und die entsteht erst aus der
+   Uebungsauswahl. v8-344 hat diesen Einheitenfehler fast gemacht und ihn
+   dokumentiert; Probe PV7 haelt die Sperre jetzt offen, wo die Zahl endlich
+   gelesen wird.
+
+   DER MESSWERT, DER DEN WEG ENTSCHIEDEN HAT. Bevor irgendetwas gebaut wurde:
+   wie viele Uebungen lassen sich ueberhaupt einer Muskelgruppe zuordnen?
+
+       78 Systemuebungen · 71 zuordenbar (91 %) — theoretisch
+                          · 26 zuordenbar (33 %) — tatsaechlich
+
+   Die Luecke war EIN Feld. `gmExLibEnsure` speicherte je Uebung {name, slug}
+   und warf `movement_pattern` weg, obwohl `select('*')` es mitliefert — und
+   45 der 78 Uebungen haengen genau daran. Ohne diese Messung waere ein
+   Pruefer entstanden, der bei zwei Dritteln der Uebungen schweigt und das
+   wie Zustimmung aussehen laesst. Gemessen mit
+   tools/messung-zuordnungsquote.mjs.
+
+   NEU: js/engine/planned-volume.js (`planned-volume@1`). Zaehlt geplante
+   Saetze je Muskelgruppe. Bewusst NICHT in gym-volume: dort geht es um
+   ABSOLVIERTE Saetze mit `completed`, Satztypen und Ausschlussgruenden — ein
+   geplanter Satz hat nichts davon. Die Muskelzuordnung wird von dort BENUTZT
+   (musclesFor/coeffOf/roleOf), nicht kopiert: eine zweite Tabelle waere die
+   dritte Stelle im Projekt mit zwei Wahrheiten.
+
+   EIN ZWEITES REGISTER: `GEPRUEFTE_ZIELE`. `GELESENE_ZIELE` heisst „wird als
+   Wert eingebaut". Ein Pruefer tut das nicht. Beides in eine Liste zu werfen
+   waere bequem und falsch — der Sensor fragt „wird diese freigegebene Zahl
+   angewendet?", und die ehrliche Antwort ist hier „ja, aber anders". Eine
+   Liste, die zwei Dinge bedeutet, beantwortet keine Frage mehr.
+
+   ZWEI PROBEN BLIEBEN GRUEN — und das war der nuetzlichste Teil des Tages:
+   • PV7 zielte auf „DIE Zahl speist session.sets NICHT". In diesem Testfall
+     tragen alle Uebungen eine eigene Satzzahl, die mutierte Stelle wird nie
+     erreicht. Erst eine Uebung OHNE Satzzahl fuehrt dorthin — die
+     Zusicherung fehlte.
+   • PV8 zielte auf „ohne Wissen gibt es keinen Befund". Ohne Wissen greift
+     die erste Sperre, die mutierte Stelle liegt dahinter. Der gefaehrliche
+     Fall ist Wissen OHNE diese Regel: Vorgaben sind da, nur nicht die
+     richtige, und 5–6 steht im Code. Auch diese Zusicherung fehlte.
+   Beide Luecken sind geschlossen, beide Proben schlagen jetzt an. Ein Test,
+   der gruen bleibt, wenn man den Code kaputtmacht, prueft nichts.
+
+   WAS DER PRUEFER NICHT TUT: er aendert keine Satzzahl, keine Uebung, keine
+   Pause. Er meldet nichts ohne Wissen — auch nicht bei zwoelf Saetzen. Er
+   zaehlt nur DIREKTE Saetze: aus fuenf Kniebeugen „Gesaess 2,5 Saetze zu
+   wenig" zu machen hiesse, eine Zahl zu verlangen, die niemand geplant hat.
+   Und was er nicht zuordnen kann, steht als „nicht mitgezaehlt" an der
+   Zeile — eine Summe ueber die Haelfte der Uebungen ist keine Summe.
+
+   OFFEN BLEIBT: die Uebungsauswahl selbst. `scheduler-v2` leitet fuer Gym
+   keine ab, und eine erfundene Standardliste ist ausgeschlossen — sie
+   braucht eine Quelle, keine Programmierung. Der Pruefer wirkt deshalb heute
+   an selbst geplanten Einheiten und wird unveraendert weiterlaufen, wenn die
+   Liste eines Tages aus einem Kraft-Pack kommt.
+
+   GEAENDERT: planned-volume.js (neu), prescription-factory.js (Pruefer,
+   zweites Register), prescription-format.js (Befund vor Aussage), ui.js
+   (Bewegungsmuster im Zwischenspeicher mit Formatversion, Befund an der
+   selbst geplanten Einheit), index.html + ASSETS, knowledge_targets_test
+   (zweites Register), knowledge_hinweise_test (Naht + zwei nachgetragene
+   Zusicherungen), planned_volume_test (neu), _ziele-ohne-leser.json (1 → 0).
+   Suite 261/0 bei 7 uebersprungenen (268 Dateien), 159 Proben in 19
+   Katalogen, 154 gefahren / 5 uebersprungen, jede angeschlagen.
+   Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   EINE EINHEIT IST KEINE WOCHE (2026-08-13) · v8-350:
 
    REINE TEXTKORREKTUR, kein Codeverhalten geaendert. Aufgefallen beim Planen
    von Punkt 2 — und zwar erst, als ich die Regel im Paket nachgelesen habe,
@@ -4096,7 +4180,7 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
   './js/clock.js','./js/config.js','./js/supplements.js','./js/calc.js','./js/data.js','./js/profile.js','./js/issues.js','./js/intelligence.js','./js/orvia-pro.js','./js/charts.js','./js/orvia-charts.js',
   './js/gm-icons.js','./js/format-utils.js','./js/series-reader.js','./js/run-bests.js','./js/plan-domain.js','./js/achievements.js','./js/ui.js','./js/activity.js','./js/nutrition.js','./js/insights.js','./js/race.js','./js/story.js','./js/extras.js',
   './js/repos/repoBase.js','./js/repos/profileRepository.js','./js/repos/checkinRepository.js','./js/repos/trainingLoadRepository.js','./js/repos/readinessRepository.js','./js/repos/goalRepository.js','./js/repos/constraintRepository.js','./js/repos/availabilityRepository.js','./js/repos/activityRepository.js','./js/training-domain.js','./js/activity-normalize.js','./js/activity-store.js','./js/activity-config.js','./js/activity-sync.js','./js/gym-volume.js','./js/repos/exerciseRepository.js','./js/repos/sportRepository.js','./js/repos/trainingPlanRepository.js','./js/repos/weekPlanRepository.js','./js/repos/workoutRepository.js','./js/offline-queue.js','./js/profile-store.js','./js/checkin-store.js','./js/migrate-blob.js','./js/readiness-source.js','./js/readiness-store.js','./js/training-migration.js','./js/workout-store.js',
-  './js/avatar-store.js','./js/sync.js','./js/profile-model.js','./js/profile-ui-kit.js','./js/profile-center.js','./js/onboarding/onboarding-profile-logic.js','./js/onboarding/onboarding-sports-logic.js','./js/onboarding/onboarding-logic.js','./js/onboarding/onboarding-steps.js','./js/onboarding/onboarding-store.js','./js/onboarding/onboarding-ui.js','./js/coachmarks.js','./js/quick-actions.js','./js/auth-logic.js','./js/auth.js','./js/checkin-extra.js','./js/workout-ui.js','./js/ui-refresh.js','./js/engine/engine-contracts.js','./js/engine/readiness-engine-v2.js','./js/engine/decision-engine-v2.js','./js/engine/plan-engine-v2.js','./js/engine/training-input-resolver.js','./js/engine/shadow-runner.js','./js/engine/knowledge/knowledge-contracts.js','./js/engine/knowledge/knowledge-sources.js','./js/engine/knowledge/running-knowledge-pack.js','./js/engine/knowledge/gym-knowledge-sources.js','./js/engine/knowledge/gym-knowledge-pack.js','./js/engine/knowledge/sport-coverage-matrix.js','./js/engine/knowledge/knowledge-ingest.js','./js/engine/knowledge/knowledge-application.js','./js/engine/knowledge/knowledge-consumer.js','./js/engine/goal-portfolio.js','./js/engine/running-capacity-factory.js','./js/engine/scheduler-input-factory.js','./js/engine/scheduler-goal-allocation.js','./js/engine/scheduler-v1.js','./js/engine/capacity-adapter.js','./js/engine/constraint-solver.js','./js/engine/prescription-factory.js','./js/engine/scheduler-v2.js','./js/engine/shadow-eval.js','./js/engine/week-projection.js','./js/engine/prescription-format.js','./js/engine/evidence.js','./js/engine/performance-zones.js','./js/engine/load-profile.js','./js/engine/performance-resolver.js','./js/engine/performance-input.js','./js/engine/session-debrief.js','./js/engine/debrief-record.js','./js/engine/load-history.js','./js/engine/progression.js','./js/engine/goal-feasibility.js','./js/engine/shadow-adaptive.js','./js/engine/plan-translator.js','./js/adaptive-card.js','./js/engine/observer-source.js','./js/engine/observer-input.js','./js/engine/prediction-observer.js','./js/engine/week-plan-designer.js','./js/engine/plan-variants.js','./js/engine/week-plan-policy.js','./js/engine/decision-log.js','./js/engine/feature-flags.js','./js/engine/plan-activation.js','./js/engine/canary-eval.js','./js/engine/canary-report.js',
+  './js/avatar-store.js','./js/sync.js','./js/profile-model.js','./js/profile-ui-kit.js','./js/profile-center.js','./js/onboarding/onboarding-profile-logic.js','./js/onboarding/onboarding-sports-logic.js','./js/onboarding/onboarding-logic.js','./js/onboarding/onboarding-steps.js','./js/onboarding/onboarding-store.js','./js/onboarding/onboarding-ui.js','./js/coachmarks.js','./js/quick-actions.js','./js/auth-logic.js','./js/auth.js','./js/checkin-extra.js','./js/workout-ui.js','./js/ui-refresh.js','./js/engine/engine-contracts.js','./js/engine/readiness-engine-v2.js','./js/engine/decision-engine-v2.js','./js/engine/plan-engine-v2.js','./js/engine/training-input-resolver.js','./js/engine/shadow-runner.js','./js/engine/knowledge/knowledge-contracts.js','./js/engine/knowledge/knowledge-sources.js','./js/engine/knowledge/running-knowledge-pack.js','./js/engine/knowledge/gym-knowledge-sources.js','./js/engine/knowledge/gym-knowledge-pack.js','./js/engine/knowledge/sport-coverage-matrix.js','./js/engine/knowledge/knowledge-ingest.js','./js/engine/knowledge/knowledge-application.js','./js/engine/knowledge/knowledge-consumer.js','./js/engine/goal-portfolio.js','./js/engine/running-capacity-factory.js','./js/engine/scheduler-input-factory.js','./js/engine/scheduler-goal-allocation.js','./js/engine/scheduler-v1.js','./js/engine/capacity-adapter.js','./js/engine/constraint-solver.js','./js/engine/planned-volume.js','./js/engine/prescription-factory.js','./js/engine/scheduler-v2.js','./js/engine/shadow-eval.js','./js/engine/week-projection.js','./js/engine/prescription-format.js','./js/engine/evidence.js','./js/engine/performance-zones.js','./js/engine/load-profile.js','./js/engine/performance-resolver.js','./js/engine/performance-input.js','./js/engine/session-debrief.js','./js/engine/debrief-record.js','./js/engine/load-history.js','./js/engine/progression.js','./js/engine/goal-feasibility.js','./js/engine/shadow-adaptive.js','./js/engine/plan-translator.js','./js/adaptive-card.js','./js/engine/observer-source.js','./js/engine/observer-input.js','./js/engine/prediction-observer.js','./js/engine/week-plan-designer.js','./js/engine/plan-variants.js','./js/engine/week-plan-policy.js','./js/engine/decision-log.js','./js/engine/feature-flags.js','./js/engine/plan-activation.js','./js/engine/canary-eval.js','./js/engine/canary-report.js',
   /* v8-321: plan-quality.js fehlte hier seit v8-316 — das Modul wurde von
      index.html geladen, war aber NICHT im Offline-Vorrat. Offline waeren die
      sechs Planqualitaets-Kacheln stumm ausgefallen. Zusammen mit dem neuen

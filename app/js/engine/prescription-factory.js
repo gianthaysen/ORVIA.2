@@ -177,6 +177,79 @@
     return out;
   }
 
+  /* ============================================================
+     v8-351 — DER ERSTE ANWENDER, DER EINE ZAHL PRUEFT STATT SIE ZU SETZEN.
+
+     GYM-HYP-002 nennt „fuenf bis sechs Saetze pro Muskelgruppe und Einheit,
+     verteilt ueber alle Uebungen, die diese Muskelgruppe belasten". Diese
+     Zahl laesst sich NICHT vorschreiben: die Quelle verbietet die Umrechnung
+     auf Saetze je Uebung woertlich („Diese Zahl darf session.sets nicht
+     speisen"), und sie gilt fuer eine Muskelgruppe, die erst aus der
+     Uebungsauswahl entsteht.
+
+     Was sie kann, ist PRUEFEN: liegen die geplanten Saetze einer
+     Muskelgruppe ausserhalb von 5 bis 6, wird das gemeldet — mit Herkunft,
+     Grenzen und Ausschluessen wie jeder andere Hinweis.
+
+     WAS DER PRUEFER NICHT TUT:
+       • er aendert keine Satzzahl, keine Uebung, keine Pause
+       • er erfindet keine Muskelzuordnung — was `planned-volume` nicht
+         zuordnen kann, wird als unzugeordnet gemeldet, nicht weggelassen
+       • er meldet nichts ohne Wissen: ohne Vorgabe gibt es keinen Befund,
+         auch nicht bei zwoelf Saetzen auf einen Muskel
+
+     WAS DER BEFUND VON DER QUELLE TRENNT: `aussage` bleibt der Satz der
+     Quelle, unveraendert. Die Messung steht getrennt in `befund`. Wer beides
+     zusammenzoege, legte ORVIA-Zahlen in den Mund einer Uebersichtsarbeit
+     von 2007. ============================================================ */
+  function _muskelHinweise(req, exs) {
+    var vorgaben = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;
+    if (!vorgaben || !Array.isArray(exs) || !exs.length) return [];
+    var v = null;
+    for (var i = 0; i < vorgaben.length; i++) {
+      var c = vorgaben[i];
+      if (c && c.ziel === 'plan.saetze_je_muskelgruppe' && c.art === 'zahl' && c.wert) { v = c; break; }
+    }
+    if (!v) return [];
+    var PV = O.plannedVolume, GV = O.gymVolume;
+    /* Ohne Zaehler wird NICHT geraten und auch nicht stillschweigend
+       geschwiegen — der Aufrufer sieht am fehlenden Hinweis nichts, deshalb
+       steht der Grund im Flag (siehe buildPrescription). */
+    if (!PV || typeof PV.plannedMuscleSets !== 'function') return [];
+    var erg = PV.plannedMuscleSets(exs, { gymVolume: GV });
+    var raus = PV.ausserhalb(erg.byMuscle, v.wert.min, v.wert.max);
+    if (!raus.length) return [];
+    var label = function (mk) {
+      return (GV && GV.MUSCLE_LABEL && GV.MUSCLE_LABEL[mk]) ? GV.MUSCLE_LABEL[mk] : mk;
+    };
+    var teile = raus.map(function (r) {
+      return label(r.muscle) + ' ' + r.sets + (r.sets === 1 ? ' Satz' : ' Saetze');
+    });
+    /* EIN Hinweis fuer alle betroffenen Muskelgruppen, nicht einer je
+       Gruppe: es ist dieselbe Regel und derselbe Satz. Fuenf Zeilen mit
+       identischem Quellentext waeren genau die Doppelung, die v8-349
+       abgestellt hat. */
+    return [{
+      ziel: 'plan.saetze_je_muskelgruppe',
+      ziele: ['plan.saetze_je_muskelgruppe'],
+      regelId: v.regelId || null,
+      aussage: v.aussage,
+      befund: teile.join(' · ') + ' geplant — die Quelle nennt '
+        + v.wert.min + ' bis ' + v.wert.max
+        + (v.einheit ? ' (' + v.einheit + ')' : ''),
+      wennUnsicher: v.wennUnsicher || null,
+      grenzen: Array.isArray(v.sicherheitsgrenzen) && v.sicherheitsgrenzen.length ? v.sicherheitsgrenzen.slice()
+        : (typeof v.grenzen === 'string' && v.grenzen ? [v.grenzen] : []),
+      giltNichtFuer: Array.isArray(v.giltNichtFuer) ? v.giltNichtFuer.slice() : [],
+      herkunft: v.herkunft || null,
+      zahlGesperrt: false,
+      /* Mitgefuehrt, damit die Oberflaeche sagen kann, worauf sich der
+         Befund NICHT stuetzt. Eine Summe ueber die Haelfte der Uebungen ist
+         keine Summe. */
+      nichtGezaehlt: erg.unclassified.slice()
+    }];
+  }
+
   /* v8-347: Aufzaehlungen aus Wissen (Vertrag v7, art 'liste'). Bewusst OHNE
      Produktwert-Fallback: eine erfundene Uebungsliste waere schlimmer als
      keine. Gibt es nichts, gibt es null — der Aufrufer entscheidet sichtbar. */
@@ -363,6 +436,24 @@
       }
     });
     var hinweise = _hinweiseAus(req, verwendet);
+
+    /* v8-351 — der Pruefbefund kommt HINTER die Quellenhinweise, weil er
+       sich auf die konkrete Einheit bezieht und nicht allgemein gilt.
+       `plan.saetze_je_muskelgruppe` steht dadurch zweimal im Ergebnis:
+       einmal als Aussage der Quelle (aus _hinweiseAus), einmal als Befund.
+       Das ist gewollt und NICHT die Doppelung aus v8-349 — dort stand
+       zweimal derselbe Satz, hier stehen Aussage und Messung. Damit auf der
+       Karte trotzdem nur eine Zeile steht, faellt die reine Aussage weg,
+       sobald es einen Befund gibt. */
+    var muskel = _muskelHinweise(req, (req && req.exercises) || null);
+    if (muskel.length) {
+      hinweise = hinweise.filter(function (h) { return h.ziel !== 'plan.saetze_je_muskelgruppe'; });
+      hinweise = hinweise.concat(muskel);
+      flags.push('muskelvolumen_geprueft:' + muskel[0].regelId);
+      if (muskel[0].nichtGezaehlt && muskel[0].nichtGezaehlt.length) {
+        flags.push('muskelvolumen_unvollstaendig:' + muskel[0].nichtGezaehlt.length);
+      }
+    }
     if (hinweise.length) flags.push('hinweise_aus_wissen:' + hinweise.length);
 
     return { ok: true, workout: workout, flags: flags, hinweise: hinweise,
@@ -400,9 +491,35 @@
     'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',
     'session.sets', 'session.trabpause_min', 'session.warmup_anteil'];
 
+  /* ============================================================
+     DAS ZWEITE REGISTER (v8-351) — GEPRUEFTE ZIELE.
+
+     WARUM ES NICHT IN GELESENE_ZIELE GEHOERT. Dort steht, was die Verordnung
+     als WERT einbaut: eine Zahl aus Wissen ersetzt einen Produktwert und
+     landet im Workout. `plan.saetze_je_muskelgruppe` tut das ausdruecklich
+     NICHT — die Quelle verbietet es. Es wird gelesen, um eine geplante
+     Einheit dagegen zu PRUEFEN.
+
+     Beides in eine Liste zu werfen waere bequem und falsch: der Sensor
+     fragt „wird diese freigegebene Zahl angewendet?", und die ehrliche
+     Antwort lautet hier „ja, aber anders". Eine Liste, die zwei Dinge
+     bedeutet, beantwortet keine Frage mehr — genau daran ist die
+     Quittungsliste bis v8-348 unscharf geworden.
+
+     Wer ein Ziel hier eintraegt, sagt zu: es wird gelesen, es aendert
+     nichts, und der Befund ist auf der Karte sichtbar.
+     ============================================================ */
+  var GEPRUEFTE_ZIELE = ['plan.saetze_je_muskelgruppe'];
+
   function _freeze(o) { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.keys(o).forEach(function (k) { _freeze(o[k]); }); Object.freeze(o); } return o; }
   O.prescriptionFactory = _freeze({ VERSION: VERSION, TEMPLATE_IDS: Object.keys(TEMPLATES).sort(),
-    GELESENE_ZIELE: GELESENE_ZIELE,
-    validateWorkout: validateWorkout, buildPrescription: buildPrescription });
+    GELESENE_ZIELE: GELESENE_ZIELE, GEPRUEFTE_ZIELE: GEPRUEFTE_ZIELE,
+    validateWorkout: validateWorkout, buildPrescription: buildPrescription,
+    /* Oeffentlich, weil die Oberflaeche denselben Pruefer fuer selbst
+       geplante Einheiten braucht — dort gibt es keine Verordnung, nur
+       Uebungen. Zwei Pruefer waeren zwei Wahrheiten. */
+    muskelHinweise: function (exercises, knowledge) {
+      return _muskelHinweise({ knowledge: knowledge }, exercises);
+    } });
   if (typeof module !== 'undefined' && module.exports) module.exports = O.prescriptionFactory;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

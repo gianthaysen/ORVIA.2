@@ -253,6 +253,117 @@ sec('E · Die wirkliche letzte Meile: Wochenplan → Anzeigemodell');
   kartenZeilen.forEach(z => console.log('     ℹ ' + z.text.slice(0, 88) + '  [' + z.herkunft + ' · ' + z.regelId + ']'));
 }
 
+sec('F · Der Prüfer — eine Zahl anwenden, ohne sie vorzuschreiben (v8-351)');
+{
+  /* `plan.saetze_je_muskelgruppe` war die LETZTE Quittung in
+     `_ziele-ohne-leser.json`: eine vom Vertrag zum Vorschreiben freigegebene
+     Zahl, die niemand anwendet. Vorschreiben lässt sie sich nicht — die
+     Quelle verbietet die Umrechnung auf `session.sets` wörtlich. Prüfen
+     schon. Genau das wird hier durch die echte Kette belegt. */
+  require(join(APP, 'js/gym-volume.js'));
+  require(join(APP, 'js/engine/planned-volume.js'));
+
+  const UE = (id, sets) => ({ exerciseId: id, sets: sets, restSeconds: 120 });
+  const bauenMit = (exs, k) => PF.buildPrescription({ sportId: 'gym',
+    sessionType: 'strength_general', knowledge: k === undefined ? wissen : k, exercises: exs }, {});
+
+  /* Kniebeuge 4 + Beinpresse 3 = 7 Sätze Quadrizeps, Bereich ist 5–6. */
+  const zuViel = bauenMit([UE('squat', 4), UE('leg_press', 3)]);
+  const befund = (zuViel.hinweise || []).filter(h => h.befund);
+  ok('sieben geplante Sätze auf einen Muskel erzeugen genau EINEN Befund',
+    befund.length === 1, JSON.stringify((zuViel.hinweise || []).map(h => h.ziel)));
+  ok('  … er nennt die Regel der Quelle', befund.length === 1 && befund[0].regelId === 'GYM-HYP-002',
+    befund.length ? befund[0].regelId : '—');
+  ok('  … und trägt die Messung, nicht die Quelle, als Befund',
+    befund.length === 1 && /Quadrizeps 7/.test(befund[0].befund),
+    befund.length ? befund[0].befund : '—');
+  ok('  … die Aussage der Quelle bleibt wörtlich unverändert daneben stehen',
+    befund.length === 1 && befund[0].aussage.indexOf('fuenf bis sechs Saetze pro Muskelgruppe') >= 0);
+  ok('  … das Flag nennt die Regel', (zuViel.flags || []).includes('muskelvolumen_geprueft:GYM-HYP-002'),
+    JSON.stringify((zuViel.flags || []).filter(f => /muskel/.test(f))));
+
+  /* DIE REGEL DER QUELLE, wörtlich: „Diese Zahl darf session.sets nicht
+     speisen." Wäre sie verletzt, stünden im Workout 5 Sätze je Übung. */
+  const bloecke = zuViel.workout.blocks;
+  ok('DIE Zahl speist session.sets NICHT — jede Übung behält ihre eigene',
+    bloecke[0].sets === 4 && bloecke[1].sets === 3,
+    JSON.stringify(bloecke.map(b => b.exercise_id + ':' + b.sets)));
+
+  /* Im Bereich: kein Befund — aber die Aussage der Quelle bleibt sichtbar. */
+  const passt = bauenMit([UE('squat', 5)]);
+  ok('fünf Sätze lösen keinen Befund aus', (passt.hinweise || []).every(h => !h.befund),
+    JSON.stringify((passt.hinweise || []).map(h => h.ziel)));
+  ok('  … die Regel steht trotzdem als Aussage auf der Karte',
+    (passt.hinweise || []).some(h => h.ziel === 'plan.saetze_je_muskelgruppe'));
+
+  /* Ohne Wissen kein Befund — auch bei zwölf Sätzen. Das ist der Fall, in
+     dem ein „hilfreicher" Ratschlag am verlockendsten wäre. */
+  const ohne = bauenMit([UE('squat', 12)], null);
+  ok('ohne Wissen gibt es KEINEN Befund, auch bei zwölf Sätzen',
+    (ohne.hinweise || []).length === 0, JSON.stringify(ohne.hinweise));
+
+  /* NACHGETRAGEN, weil eine Probe grün blieb (v8-351). Der Fall oben trifft
+     die erste Sperre in `_muskelHinweise` (`vorgaben` fehlt ganz) und kommt
+     nie bis zu der Stelle, an der eine erfundene Zahl entstehen könnte.
+     Der gefährlichere Fall ist Wissen OHNE diese Regel: dann sind Vorgaben
+     da, nur nicht die richtige — und 5–6 steht im Code. */
+  const ohneRegel = { ok: true, konflikte: [], ausgeschlossen: [],
+    vorgaben: (wissen.vorgaben || []).filter(v => v.ziel !== 'plan.saetze_je_muskelgruppe') };
+  const oR = bauenMit([UE('squat', 12)], ohneRegel);
+  ok('Wissen ohne diese Regel erzeugt ebenfalls keinen Befund',
+    (oR.hinweise || []).every(h => !h.befund)
+      && !(oR.flags || []).some(f => f.indexOf('muskelvolumen_geprueft') === 0),
+    JSON.stringify((oR.hinweise || []).map(h => h.ziel)) + ' · ' + JSON.stringify((oR.flags || []).filter(f => /muskel/.test(f))));
+
+  /* NACHGETRAGEN aus demselben Grund. Oben tragen alle Übungen eine eigene
+     Satzzahl — die Stelle, an der die Muskelzahl in `session.sets` sickern
+     könnte, wird dabei gar nicht erreicht. Hier trägt die Übung KEINE
+     Satzzahl: die Verordnung muss sperren, nicht auffüllen. */
+  const ohneSatzzahl = PF.buildPrescription({ sportId: 'gym', sessionType: 'strength_general',
+    knowledge: wissen, exercises: [{ exerciseId: 'squat', restSeconds: 120 }] }, {});
+  ok('eine Übung ohne Satzzahl SPERRT die Verordnung — die Muskelzahl füllt sie nicht auf',
+    ohneSatzzahl.ok === false && ohneSatzzahl.blocked === 'schema_invalid',
+    ohneSatzzahl.ok ? ('nicht gesperrt, sets=' + JSON.stringify(ohneSatzzahl.workout.blocks.map(b => b.sets)))
+      : (ohneSatzzahl.blocked + ' ' + JSON.stringify(ohneSatzzahl.errors)));
+
+  /* Was nicht gezählt werden konnte, muss am Befund hängen — sonst sieht
+     eine halbe Summe aus wie eine ganze. */
+  const halb = bauenMit([UE('squat', 4), UE('leg_press', 3), UE('gibtsnicht_xy', 4)]);
+  const bh = (halb.hinweise || []).filter(h => h.befund)[0];
+  ok('nicht zuordenbare Übungen hängen am Befund',
+    !!bh && (bh.nichtGezaehlt || []).length === 1,
+    JSON.stringify(bh ? bh.nichtGezaehlt : null));
+  ok('  … und das Flag sagt es ebenfalls',
+    (halb.flags || []).some(f => f.indexOf('muskelvolumen_unvollstaendig:') === 0),
+    JSON.stringify((halb.flags || []).filter(f => /muskel/.test(f))));
+
+  const zeilen = FMT.hinweisZeilen(halb.hinweise);
+  const zb = zeilen.filter(z => z.ziel === 'plan.saetze_je_muskelgruppe')[0];
+  ok('auf der Karte steht der Befund oben und die Quelle darunter',
+    !!zb && /Quadrizeps 7/.test(zb.text) && (zb.zusatz || []).some(t => t.indexOf('laut Quelle:') === 0),
+    zb ? zb.text : '—');
+  ok('  … samt dem, was nicht mitgezählt wurde',
+    !!zb && (zb.zusatz || []).some(t => t.indexOf('nicht mitgezählt:') === 0),
+    JSON.stringify(zb ? zb.zusatz : null));
+  ok('  … und genau EINE Zeile für dieses Ziel (keine je Muskelgruppe)',
+    zeilen.filter(z => z.ziel === 'plan.saetze_je_muskelgruppe').length === 1);
+
+  /* Das zweite Register: ein Prüfer ist kein Setzer. */
+  ok('das Ziel steht im Register der GEPRÜFTEN Ziele',
+    (PF.GEPRUEFTE_ZIELE || []).indexOf('plan.saetze_je_muskelgruppe') >= 0,
+    JSON.stringify(PF.GEPRUEFTE_ZIELE));
+  ok('  … und NICHT bei den als Wert eingebauten',
+    (PF.GELESENE_ZIELE || []).indexOf('plan.saetze_je_muskelgruppe') < 0);
+  ok('  … das zweite Register ist ebenfalls eingefroren',
+    Object.isFrozen(PF.GEPRUEFTE_ZIELE));
+
+  console.log('   So steht der Befund auf der Karte:');
+  if (zb) {
+    console.log('     ℹ ' + zb.text + '  [' + zb.herkunft + ' · ' + zb.regelId + ']');
+    (zb.zusatz || []).forEach(t => console.log('       ↳ ' + t.slice(0, 92)));
+  }
+}
+
 console.log('\n' + '═'.repeat(62));
 console.log('Ergebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

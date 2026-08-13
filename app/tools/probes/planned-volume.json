@@ -1,0 +1,100 @@
+{
+  "target": "js/engine/planned-volume.js",
+  "test": "supabase/tests/planned_volume_test.mjs",
+  "note": "Der Zaehler, der die letzte Quittung aufgeloest hat. Er beantwortet EINE Frage — wie viele Saetze plant diese Einheit je Muskelgruppe — und die Antwort geht in eine Pruefung gegen eine Quelle. Ein Zaehler, dem man nicht trauen kann, ist hier schlimmer als keiner: er wuerde einen Befund mit Evidenzklasse und Quellenangabe erzeugen, der auf einer falschen Summe steht.",
+  "probes": [
+    {
+      "id": "PV1",
+      "pattern": "value_not_type",
+      "title": "aus der Summe wird das Maximum",
+      "file": "js/engine/planned-volume.js",
+      "find": "        if (rolle === 'direct') m.directSets += sets;",
+      "replace": "        if (rolle === 'direct') m.directSets = Math.max(m.directSets, sets);",
+      "expectTest": "zwei Uebungen auf denselben Muskel werden SUMMIERT, nicht maximiert",
+      "history": "Der Kernfall der ganzen Regel: „verteilt ueber alle Uebungen, die diese Muskelgruppe belasten\". Kniebeuge 4 + Beinpresse 3 sind 7 Saetze Quadrizeps. Wer das Maximum nimmt, meldet 4 — der Wert liegt scheinbar im Bereich 5–6, die Pruefung schlaegt nie an, und die Karte sagt nichts. Ein stiller Ausfall, der wie Ruhe aussieht."
+    },
+    {
+      "id": "PV2",
+      "pattern": "data_lacks_var",
+      "title": "eine fehlende Satzzahl wird auf 3 geraten",
+      "file": "js/engine/planned-volume.js",
+      "find": "    if (typeof s !== 'number' || !isFinite(s)) return null;",
+      "replace": "    if (typeof s !== 'number' || !isFinite(s)) return 3;",
+      "expectTest": "eine Uebung OHNE Satzzahl wird nicht mit 3 aufgefuellt",
+      "history": "`strength-plan@1` sagt woertlich: „Satzanzahl ist Pflicht. Kein Default — 3 waere geraten.\" Genau dieser Widerspruch stand bis v8-336 in prescription-factory, wo `sets: e.sets >= 1 ? e.sets : 3` die Vertragsregel des eigenen Projekts still ueberschrieb. Hier waere es schlimmer: die geratene 3 ginge in eine Summe ein, gegen die eine Quelle geprueft wird."
+    },
+    {
+      "id": "PV3",
+      "pattern": "fixture_masks",
+      "title": "nicht zuordenbare Uebungen verschwinden still",
+      "file": "js/engine/planned-volume.js",
+      "find": "      if (!muskeln) {\n        unclassified.push({ exerciseId: e.exerciseId || e.exercise_id || null, name: _name(e), sets: sets, reason: 'nicht_zuordenbar' });\n        return;\n      }",
+      "replace": "      if (!muskeln) { return; }",
+      "expectTest": "eine unbekannte Uebung erscheint in unclassified",
+      "history": "Eine Summe ueber die Haelfte der Uebungen ist keine Summe — und sieht von aussen genauso aus wie eine vollstaendige. Der Nutzer laese „Quadrizeps 3 Saetze\" und wuesste nicht, dass zwei Uebungen uebergangen wurden. Gemessen am 13.08.: von 78 Systemuebungen sind 7 gar nicht zuordenbar, das ist kein Randfall."
+    },
+    {
+      "id": "PV4",
+      "pattern": "neighbour_guard",
+      "title": "indirekte Beteiligung wird voll gezaehlt",
+      "file": "js/engine/planned-volume.js",
+      "find": "        if (rolle === 'direct') m.directSets += sets;\n        else m.indirectSetEquivalents += sets * c;",
+      "replace": "        if (rolle === 'direct') m.directSets += sets;\n        else m.indirectSetEquivalents += sets;",
+      "expectTest": "indirekte Beteiligung zaehlt mit Koeffizient, nicht voll",
+      "history": "Kniebeuge belastet die Gesaessmuskulatur mit halbem Gewicht. Wird der Koeffizient ignoriert, entstehen Saetze, die niemand geplant hat — und weil der Befund mit Evidenzklasse B und Quellenangabe erscheint, sieht die erfundene Zahl belegt aus. Die Zuordnung stammt bewusst aus gym-volume; ihre Koeffizienten sind Teil davon."
+    },
+    {
+      "id": "PV5",
+      "pattern": "value_not_type",
+      "title": "die Pruefung zaehlt auch indirekte Saetze mit",
+      "file": "js/engine/planned-volume.js",
+      "find": "      var d = byMuscle[k].directSets;",
+      "replace": "      var d = byMuscle[k].effectiveSets;",
+      "expectTest": "rein indirekt beteiligte Muskeln loesen keinen Befund aus",
+      "history": "Die Regel spricht von Saetzen FUER eine Muskelgruppe, nicht von Satzaequivalenten aus Nebenbeteiligung. Wer effektive Saetze prueft, meldet bei fuenf Kniebeugen „Gesaess 2,5 Saetze — zu wenig\" und verlangt damit etwas, das die Quelle nie gesagt hat. Eine Warnung, die der Nutzer nicht sinnvoll befolgen kann, ist schlimmer als keine."
+    },
+    {
+      "id": "PV6",
+      "pattern": "data_lacks_var",
+      "title": "ohne Zuordnungsmodul wird stillschweigend nichts gezaehlt",
+      "file": "js/engine/planned-volume.js",
+      "find": "      leer.grund = 'zuordnung_fehlt';\n      return leer;",
+      "replace": "      return leer;",
+      "expectTest": "ohne Zuordnungsmodul wird nicht gezaehlt, sondern der Grund genannt",
+      "history": "„Keine Muskelgruppe belastet\" und „ich kann es nicht sagen\" sehen im Rueckgabewert gleich aus, bedeuten aber das Gegenteil. Dieselbe Unterscheidung traegt seit v8-343 den Test-Runner (uebersprungen ist kein Beleg) und seit v8-349 den Zielsensor (gesperrt ist kein Defekt). Ohne den Grund faellt ein fehlendes Modul als leeres Ergebnis durch."
+    },
+    {
+      "id": "PV7",
+      "pattern": "fixture_masks",
+      "title": "der Pruefer speist doch session.sets",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        var sets = (e.sets >= 1) ? e.sets : (setsV ? setsV.wert.min : null);",
+      "replace": "        var sets = (e.sets >= 1) ? e.sets : (setsV ? setsV.wert.min : (ausWissen('plan.saetze_je_muskelgruppe') ? ausWissen('plan.saetze_je_muskelgruppe').wert.min : null));",
+      "expectTest": "eine Übung ohne Satzzahl SPERRT die Verordnung — die Muskelzahl füllt sie nicht auf",
+      "test": "supabase/tests/knowledge_hinweise_test.mjs",
+      "history": "Das Feld `umrechnung` der Quelle sagt woertlich: „keine — und ausdruecklich KEINE Umrechnung auf Saetze je Uebung. Diese Zahl darf session.sets nicht speisen.\" v8-344 hat genau diesen Fehler fast gemacht und ihn im Kopf festgehalten: aus 5 Saetzen Quadrizeps waeren 5 Saetze Beinpresse UND 5 Saetze Kniebeuge geworden, eine Verdopplung des Umfangs durch verwechselte Einheiten. Die Probe haelt die Sperre offen, jetzt wo die Zahl endlich gelesen wird. NACHGEZOGEN beim Bauen: die Probe zielte zuerst auf „DIE Zahl speist session.sets NICHT\" — und blieb GRUEN. Dort tragen alle Uebungen eine eigene Satzzahl, die mutierte Stelle wird nie erreicht. Erst eine Uebung OHNE Satzzahl fuehrt dorthin. Die Zusicherung fehlte, das Werkzeug hat sie erzwungen: genau dafuer gibt es die Proben."
+    },
+    {
+      "id": "PV8",
+      "pattern": "neighbour_guard",
+      "title": "der Befund erscheint auch ohne Wissen",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    if (!v) return [];\n    var PV = O.plannedVolume, GV = O.gymVolume;",
+      "replace": "    if (!v) { v = { regelId: null, aussage: 'Achte auf ein ausgewogenes Satzvolumen.', wert: { min: 5, max: 6 } }; }\n    var PV = O.plannedVolume, GV = O.gymVolume;",
+      "expectTest": "Wissen ohne diese Regel erzeugt ebenfalls keinen Befund",
+      "test": "supabase/tests/knowledge_hinweise_test.mjs",
+      "history": "Der gefaehrlichste Fall, hier in seiner verlockendsten Form: die Zahl 5–6 steht im Code, warum also nicht pruefen, auch wenn kein Paket geladen ist? Weil der Befund dann eine Herkunft vortaeuscht, die er nicht hat. Ohne Quelle keine Zahl — dieselbe Regel wie beim Hinweisleser (Probe H3), nur eine Ebene weiter. NACHGEZOGEN beim Bauen: die Probe zielte zuerst auf „ohne Wissen gibt es KEINEN Befund\" — und blieb GRUEN. Ohne Wissen greift die erste Sperre (`vorgaben` fehlt ganz), die mutierte Stelle liegt dahinter. Der gefaehrliche Fall ist Wissen OHNE diese Regel: Vorgaben sind da, nur nicht die richtige. Diese Zusicherung fehlte."
+    },
+    {
+      "id": "PV9",
+      "pattern": "data_lacks_var",
+      "title": "das zweite Register bestaetigt sich selbst",
+      "file": "supabase/tests/knowledge_targets_test.mjs",
+      "requiresRoot": "<repo> (Testdatei, nicht unter app/)",
+      "find": "    .replace(/var GEPRUEFTE_ZIELE = \\[[\\s\\S]*?\\];/, '');",
+      "replace": "    .replace(/var GEPRUEFTE_ZIELE_XX = \\[[\\s\\S]*?\\];/, '');",
+      "expectTest": "kein geprueftes Ziel ist erfunden (jedes kommt im Quelltext vor)",
+      "history": "Dieselbe Selbstbestaetigung wie bei Probe ZR4, nur fuer das neue Register: wird sein Block nicht aus dem Quelltext geschnitten, findet der Test jeden erfundenen Eintrag im Register selbst wieder. UEBERSPRUNGEN im App-Lauf, weil das Probenwerkzeug nur Dateien unter app/ mutiert und Testdateien ausserhalb liegen — das ist dieselbe bekannte Luecke wie im Zielregister-Katalog und steht hier, damit sie nicht unsichtbar wird."
+    }
+  ]
+}
