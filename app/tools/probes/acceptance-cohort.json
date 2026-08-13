@@ -1,0 +1,37 @@
+{
+  "target": "js/engine/shadow-adaptive.js",
+  "test": "supabase/tests/shadow_adaptive_test.mjs",
+  "note": "Der Kohorten-Pin (023ee59b) entscheidet, welche Beobachtungen zusammen abgenommen werden duerfen. Aendert sich eine der 17 Kohortenversionen, beginnt die Belegsammlung bei null — das darf nie nebenbei passieren. Diese Proben sichern, dass die Pinpruefung wirklich prueft.",
+  "probes": [
+    {
+      "id": "KOH1",
+      "pattern": "value_not_type",
+      "title": "eine Kohortenversion aendert sich, ohne dass der Pin anschlaegt",
+      "file": "js/engine/observer-input.js",
+      "find": "  var VERSION = 'observer-input@5';",
+      "replace": "  var VERSION = 'observer-input@6';",
+      "expectTest": "die eingefrorene Kohorte ist unverändert",
+      "history": "Der Eingangsadapter gehoert seit @7 zur Kohorte, weil ein anderer Adapter eine andere Beobachtungsbedeutung ist. Wuerde der Pin das nicht bemerken, mischten sich Belege aus zwei Bedeutungen in einer Abnahme."
+    },
+    {
+      "id": "KOH2",
+      "pattern": "neighbour_guard",
+      "title": "der Kohortenschluessel wird konstant — jede Aenderung sieht gleich aus",
+      "file": "js/engine/shadow-adaptive.js",
+      "find": "    return { key: _hash(_stable(parts)), versions: parts };",
+      "replace": "    return { key: '023ee59b', versions: parts };",
+      "expectTest": "jede Kohortenversion ändert den Schlüssel",
+      "history": "Die gefaehrlichste Fassung: der Pin bliebe fuer immer gruen und bestaetigte jede Codeaenderung. Ein Schluessel, der sich nie aendert, ist kein Schluessel."
+    },
+    {
+      "id": "KOH3",
+      "pattern": "fixture_masks",
+      "title": "ein Kohortenfeld faellt aus der Liste und wird nicht mehr ueberwacht",
+      "file": "js/engine/shadow-adaptive.js",
+      "find": "    /* @11: die Quellenbeschaffung — siehe versions.source. */\n    'source'];",
+      "replace": "    ];",
+      "expectTest": "Kohortenfeld vorhanden: source",
+      "history": "Diese Probe hat beim ersten Lauf eine echte Luecke aufgedeckt: `source` gehoerte seit @11 zur Kohorte, stand aber in KEINER Feldzusicherung des Tests. Rot wurde nur der Pin — und der laesst sich bewusst neu setzen, womit das fehlende Feld dauerhaft unbemerkt geblieben waere. Seit v8-343 ist die Feldliste vollzaehlig und wird beidseitig geprueft."
+    }
+  ]
+}

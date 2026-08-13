@@ -1,0 +1,47 @@
+{
+  "target": "../supabase/tests/run-all.mjs",
+  "test": "supabase/tests/run_all_reporting_test.mjs",
+  "note": "Der Runner ist das Werkzeug, dem alle anderen Zahlen dieses Projekts vertrauen — und er war bis v8-343 selbst ungeprüft. Er hat den Grund fuer jeden uebersprungenen Test GERATEN statt gelesen. Diese Proben sichern, dass die Auskunft ueber den eigenen Lauf ehrlich bleibt.",
+  "probes": [
+    {
+      "id": "RUN1",
+      "pattern": "value_not_type",
+      "title": "der Browser-Skip wird wieder als Supabase-Sache ausgegeben (der Originalbefund)",
+      "file": "../supabase/tests/run-all.mjs",
+      "find": "  return g ? g.id : 'unbekannt';",
+      "replace": "  return 'supabase';",
+      "expectTest": "der Browser-Skip wird als Browser-Skip benannt",
+      "history": "Genau dieses Verhalten hat 22 uebersprungene Dateien auf Gians Rechner falsch etikettiert: ein fehlendes Chromium las sich als fehlende Datenbankzugangsdaten, und niemand kam auf die Idee, den Browser nachzuinstallieren."
+    },
+    {
+      "id": "RUN2",
+      "pattern": "data_lacks_var",
+      "title": "ein unbekannter Grund wird stillschweigend einsortiert",
+      "file": "../supabase/tests/run-all.mjs",
+      "find": "  const g = GRUENDE.find(g => g.treffer.test(s.out || ''));",
+      "replace": "  const g = GRUENDE.find(g => g.treffer.test(s.out || '')) || GRUENDE[1];",
+      "expectTest": "ein Grund ohne Muster wird NICHT in eine vorhandene Schublade gesteckt",
+      "history": "Ein geratener Grund ist schlimmer als ein eingestandener: er beendet die Suche. Wer liest, der Test brauche Supabase, installiert keinen Browser."
+    },
+    {
+      "id": "RUN3",
+      "pattern": "neighbour_guard",
+      "title": "ein unvollstaendiger Lauf meldet sich wieder als sauberer Lauf",
+      "file": "../supabase/tests/run-all.mjs",
+      "find": "  ? (nichtGeprueft",
+      "replace": "  ? (false",
+      "expectTest": "mit übersprungenen Dateien heißt es UNVOLLSTÄNDIG",
+      "history": "„Keine fehlgeschlagenen Tests\" ist wahr und trotzdem irrefuehrend, solange 29 Dateien gar nicht gelaufen sind. Der Satz war der Grund, warum die Luecke ueber Wochen niemandem auffiel."
+    },
+    {
+      "id": "RUN4",
+      "pattern": "value_not_type",
+      "title": "uebersprungene Dateien werden zu bestandenen addiert",
+      "file": "../supabase/tests/run-all.mjs",
+      "find": "  else if (code === 2) bucket = skipped;",
+      "replace": "  else if (code === 2) bucket = passed;",
+      "expectTest": "bestanden/übersprungen/fehlgeschlagen werden getrennt gezählt",
+      "history": "Die einfachste Art, eine Suite gruen aussehen zu lassen: nicht Gelaufenes mitzaehlen. Der Runner existiert, weil genau solche Zaehlfehler zweimal zu falschen Lageberichten gefuehrt haben."
+    }
+  ]
+}

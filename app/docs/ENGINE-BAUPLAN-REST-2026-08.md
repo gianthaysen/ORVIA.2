@@ -3700,3 +3700,111 @@ verschachtelten `ok()` wieder passiert.
 3. Im Repo-Stamm liegt ein **zweites `sw.js`** (v8-329).
 4. Der Arbeitsstand v8-255…v8-341 war **nicht committet**; nachgeholt als
    `21c3c1a` auf `sicherung/v8-341`. Push steht aus.
+
+---
+
+## 33 · Das Prüfwerkzeug war selbst ungeprüft (v8-343)
+
+### 33.1 Zuerst ein eigener Fehler, zurückgenommen
+
+§32.6 und die Standdatei behaupteten, der Kohorten-Pin `023ee59b` sei
+nirgends maschinell geprüft. **Das war falsch.** `shadow_adaptive_test.mjs`
+vergleicht ihn seit v8-299 gegen `supabase/tests/_acceptance-cohort.json`
+und meldet bei Abweichung genau die geänderten Felder.
+
+Der Fehler war handwerklich: die Suche lief über `--include=*.js`,
+`*.mjs`, `*.md`. Der Pin steht in einer `.json`. Ein Filter, der die
+Antwort ausschließt, liefert zuverlässig „nicht gefunden" — und „nicht
+gefunden" fühlt sich an wie ein Befund, obwohl es keiner ist. Notiert als
+Muster, nicht als Ausrutscher: **Bevor „existiert nicht" behauptet wird,
+muss die Suche ohne Dateityp-Filter wiederholt werden.**
+
+### 33.2 Befund 1 — ein fehlender Pin galt als bestätigter Pin
+
+Beim Nachprüfen zeigte dieselbe Stelle die echte Lücke:
+
+```js
+if (!existsSync(PIN)) { writeFileSync(PIN, …); ok('Kohorte neu eingefroren', true); }
+```
+
+Der Weg, die Prüfung **abzuschalten**, war identisch mit dem Weg, sie zu
+**bestätigen**: Datei weg → still neu eingefroren → grüner Haken. Ein
+versehentliches Löschen, ein Lauf im anderen Layout (dort lag das Manifest
+nie), ein aufgeräumtes Arbeitsverzeichnis — jedes davon hätte die
+Kohortenprüfung lautlos beendet.
+
+Dazu schrieb der Zweig **feste Werte**: `frozenAt: '2026-08-08'`,
+`appVersion: 'v8-299'`. Ein am 13.08. unter v8-342 neu gesetzter Pin
+behauptete also, seit dem 08.08. unter v8-299 eingefroren zu sein — die
+Datei hätte über ihre eigene Herkunft gelogen.
+
+Jetzt fail-closed. Fehlt das Manifest, ist die Kohorte ungeprüft, und das
+ist rot. Bewusstes Neusetzen bleibt möglich, aber nur als Ansage:
+
+```
+ORVIA_REPIN_COHORT=2026-08-13 node supabase/tests/shadow_adaptive_test.mjs
+```
+
+Dann steht das echte Datum darin und die Version, die wirklich in `sw.js`
+steht. Alle drei Fälle gemessen: Pin da → grün · Pin weg → rot mit
+Anleitung, Datei bleibt weg · Pin weg + Ansage → grün, `frozenAt`
+`2026-08-13`, `appVersion` `v8-342`.
+
+### 33.3 Befund 2 — der Runner hat den Grund geraten
+
+`run-all.mjs` beschriftete jeden übersprungenen Test mit „brauchen eine
+echte Supabase-Instanz". Auf Gians Rechner übersprangen 22 Dateien wegen
+eines fehlenden Chromium — ausgegeben als Datenbanksache. Die Auskunft war
+nicht nur falsch, sie war **irreführend in die verkehrte Richtung**: wer
+liest, ein Test brauche Zugangsdaten, installiert keinen Browser.
+
+Darunter stand `✅ GRÜN — keine fehlgeschlagenen Tests`. Wahr, und
+trotzdem der Satz, wegen dem die Lücke wochenlang niemandem auffiel.
+
+Drei Änderungen: der Grund wird **aus der Ausgabe gelesen** statt geraten;
+ein Grund ohne Muster wird ausdrücklich als *nicht erkennbar* ausgewiesen
+(ein geratener Grund beendet die Suche, ein eingestandener nicht); und die
+Schlusszeile lautet bei Skips `GRÜN, aber UNVOLLSTÄNDIG — N geprüft, M
+nicht gelaufen`, mit dem Hinweis auf `npx playwright install chromium`,
+wenn der Browser der Grund war.
+
+**Neu: `run_all_reporting_test.mjs`, 12 Zusicherungen.** Der Runner ist das
+Werkzeug, dem alle anderen Zahlen dieses Projekts vertrauen, und war selbst
+ungeprüft — dieselbe Konstellation, aus der er ursprünglich entstanden ist
+(eine Textsuche auf „FAILED", die einen Fehlercode in einer *grünen*
+Ausgabe traf). Geprüft wird mit echten Prozessen in einem
+Wegwerfverzeichnis unter dem Systemtemp; keine Datei trägt den Namen
+echter Projektdaten (v8-338), und das Verzeichnis wird im `finally`
+entfernt.
+
+### 33.4 Befund 3 — eine Probe hat eine echte Lücke gefunden
+
+KOH3 sollte belegen, dass ein aus `COHORT_FIELDS` entferntes Feld
+auffliegt. Ergebnis: `wrong_test`. Rot wurde nur der Pin — **keine
+Feldzusicherung**, denn `source` gehört seit shadow-adaptive@11 zur
+Kohorte, stand aber in der Prüfliste des Tests nicht drin. 16 von 17
+Feldern waren abgesichert.
+
+Warum das nicht durch den Pin abgedeckt ist: Der Pin lässt sich bewusst neu
+setzen. Wer nach einem Umbau „neu einfrieren" wählt, hätte den stillen
+Wegfall mit eingefroren. Die Liste ist jetzt vollzählig **und wird
+beidseitig geprüft** — kein Feld fehlt, keines steht zu viel drin.
+
+### 33.5 Stand
+
+- `run-all.mjs` und `shadow_adaptive_test.mjs` geändert, kein Produktivcode
+  der App berührt
+- neu: `run_all_reporting_test.mjs` (12), Kataloge `test-runner` (4 Proben)
+  und `acceptance-cohort` (3 Proben)
+- `shadow_adaptive_test` 192 → 194 Zusicherungen
+- Gesamtsuite **257/0** bei 7 übersprungenen (264 Dateien)
+- **124 Proben in 15 Katalogen**, 120 gefahren / 4 übersprungen
+- Kohorten-Pin `023ee59b` unverändert, Wissensmodule vor/nach gehasht: unverändert
+
+### 33.6 Offen gesagt: was hier NICHT probengedeckt ist
+
+Der fail-closed-Zweig aus §33.2 liegt im Test selbst. Das Probenwerkzeug
+mutiert nur Dateien unterhalb der App-Wurzel, kann ihn also nicht
+anfassen. Belegt ist er durch drei gemessene Läufe — das ist schwächer als
+eine wiederholbare Probe und wird hier deshalb ausdrücklich genannt statt
+als Fußnote geführt.

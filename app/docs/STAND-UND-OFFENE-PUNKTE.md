@@ -1,15 +1,20 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-342, 2026-08-13.** Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-343, 2026-08-13.** Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-342) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§31).
+`sw.js` (Versionsköpfe v8-329 bis v8-343) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§33).
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
 > Suite und Proben stimmten. Zwei Aussagen nicht: die Coverage-Matrix führte
 > Gym als paketlos (in v8-342 korrigiert), und das Laufpaket läuft nicht „im
-> Shadow-Modus", sondern erreicht überhaupt keinen Aufrufer. Was danach noch
-> offen blieb, steht unter „Nachlese der Bestandsaufnahme".
+> Shadow-Modus", sondern erreicht überhaupt keinen Aufrufer.
+>
+> **Zurückgenommen:** v8-342 behauptete hier, der Kohorten-Pin sei nirgends
+> maschinell geprüft. Das war falsch — `shadow_adaptive_test.mjs` prüft ihn
+> seit v8-299 gegen `_acceptance-cohort.json`; die Suche hatte `.json` nicht
+> erfasst. An derselben Stelle lag dafür eine echte Lücke, die v8-343
+> schließt.
 
 ---
 
@@ -86,28 +91,40 @@ Zahlenlogik sind riskanter als an der qualitativen.
 
 ---
 
-## Nachlese der Bestandsaufnahme (13.08., noch offen)
+## Nachlese der Bestandsaufnahme (Stand v8-343)
 
-Vier Punkte, die die Prüfung ergeben hat und die **nicht** mit v8-342
-behoben wurden. Keiner ist dringend, jeder ist billig.
+**Erledigt in v8-343:**
 
-1. **22 Testdateien überspringen still, wenn kein Browser da ist.** Ohne
-   Chromium meldet die Suite lokal *234 grün / 29 übersprungen / 0 rot* —
-   sieht unauffällig aus, ist aber ein Zehntel weniger Abdeckung. Erst mit
-   Browser werden daraus 256/7. `npx playwright install chromium` schließt
-   das ein für alle Mal.
-2. **Der Kohorten-Pin `023ee59b` ist keine Prüfung.** Er steht ausschließlich
-   in Fließtext (sw.js-Köpfe, diese Datei). Kein Code, kein Test berechnet
-   oder vergleicht ihn. „Pin unverändert" in jedem Versionskopf ist eine
-   handgeführte Behauptung — entweder in einem Test verankern oder aufhören,
-   sie zu schreiben.
-3. **Im Repo-Stamm liegt ein zweites `sw.js`** (v8-329) neben dem echten
+- Der Runner **rät den Grund nicht mehr**. Bis v8-342 bekam jeder
+  übersprungene Test das Etikett „braucht eine echte Supabase-Instanz" — auch
+  die 22, die wegen fehlendem Chromium übersprangen. Jetzt wird der Grund aus
+  der Ausgabe gelesen, nach Gruppen getrennt, ein unbekannter Grund als
+  unbekannt ausgewiesen, und die Schlusszeile lautet bei Skips
+  *„GRÜN, aber UNVOLLSTÄNDIG — N geprüft, M nicht gelaufen"*. Neuer Test
+  `run_all_reporting_test.mjs`, neuer Katalog `test-runner` (4 Proben).
+- **Ein fehlender Kohorten-Pin galt als bestätigter Pin.** Fehlte
+  `_acceptance-cohort.json`, schrieb der Test sie still neu und meldete einen
+  Haken — der Weg zum Abschalten war derselbe wie der zum Bestätigen. Jetzt
+  fail-closed; bewusstes Neusetzen über `ORVIA_REPIN_COHORT=JJJJ-MM-TT`, mit
+  echtem Datum statt fest eingetragenem.
+- **`source` fehlte in der Kohorten-Feldliste** des Tests, obwohl es seit @11
+  dazugehört — gefunden von einer Mutationsprobe. Die Liste wird jetzt
+  beidseitig geprüft. Neuer Katalog `acceptance-cohort` (3 Proben).
+
+**Noch offen (braucht dich oder den Mac):**
+
+1. `npx playwright install chromium` auf dem Mac. Ohne Browser laufen 22
+   Dateien nicht — der Runner sagt es jetzt deutlich, installieren muss ihn
+   trotzdem jemand.
+2. Im Repo-Stamm liegt ein zweites `sw.js` (v8-329) neben dem echten
    `app/sw.js`. Wer dort die Version abliest, liest die falsche.
-4. **`.git` sammelt Müll**, weil der Cowork-Mount kein `unlink` erlaubt:
+3. **`.git` sammelt Müll**, weil der Cowork-Mount kein `unlink` erlaubt:
    nach jedem git-Aufruf über die Bridge bleiben `tmp_obj_*` und eine
    `index.lock` liegen — letztere blockiert den nächsten Aufruf, bis sie
    weggeschoben wird. Lokal auf dem Mac einmal `git gc` laufen lassen;
    git-Arbeit besser dort erledigen als über die Bridge.
+4. `main` steht auf `f633b5f` (v8-254); der gesicherte Stand liegt auf
+   `sicherung/v8-341`. **Nichts ist gepusht.**
 
 ---
 
@@ -165,18 +182,27 @@ zusätzlich nach `supabase/tests/` im Wurzelverzeichnis kopieren.
 Zusätzlich seit v8-338: **Hashes von `js/engine/knowledge/*` vor und nach dem
 Probenlauf vergleichen.**
 
+Seit v8-343: Ändert sich eine der 17 Kohortenversionen, wird
+`shadow_adaptive_test.mjs` rot und nennt das geänderte Feld. Das ist **kein
+Fehler, sondern eine Ansage**: die Belegsammlung beginnt bei null. Bewusst
+bestätigen — Manifest löschen, dann
+`ORVIA_REPIN_COHORT=JJJJ-MM-TT node supabase/tests/shadow_adaptive_test.mjs`.
+Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
+
 `rm` ist auf dem Gerätemount verboten — stattdessen nach `_to_delete_*` verschieben.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-342)
+## Zahlen zum Nachprüfen (v8-343)
 
-- Gesamtsuite **256/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
-  **Nur mit Chromium** — ohne Browser-Binary sind es 234/0 bei 29 übersprungenen.
-- **117 Proben in 13 Katalogen**, 113 gefahren / 4 übersprungen
-- Kohorten-Pin `023ee59b` (nur Fließtext, siehe Nachlese Punkt 2)
+- Gesamtsuite **257/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
+  **Nur mit Chromium** — ohne Browser-Binary sind es 235/0 bei 29 übersprungenen,
+  und der Runner sagt das seit v8-343 ausdrücklich dazu.
+- **124 Proben in 15 Katalogen**, 120 gefahren / 4 übersprungen
+- Kohorten-Pin `023ee59b`, geprüft von `shadow_adaptive_test.mjs` gegen
+  `supabase/tests/_acceptance-cohort.json` (seit 2026-08-08 eingefroren)
 - `running-knowledge-pack.js` = `42ca48f4…`, `knowledge-sources.js` = `b786437d…`
   (bis v8-341 stand hier fälschlich `b7864371…` — ein Prüfanker, der beim
   Nachprüfen fehlschlug)
-- Git-Stand: `21c3c1a` auf Zweig `sicherung/v8-341` sichert alles bis v8-341;
-  `main` steht noch auf `f633b5f` (v8-254). **Noch nicht gepusht.**
+- Git-Stand: `21c3c1a` (alles bis v8-341) und `fdb5337` (v8-342) auf Zweig
+  `sicherung/v8-341`; `main` steht noch auf `f633b5f` (v8-254). **Nicht gepusht.**

@@ -586,13 +586,25 @@ sec('S8 · Die acht Fallkriterien entscheiden, nicht die Kalenderzeit');
     S.COHORT_FIELDS.every(f =>
       S.cohortOf(Object.assign({}, COHORT, { [f]: 'x@99' })).key !== S.cohortOf(COHORT).key));
   /* DER VOLLSTÄNDIGE ABNAHMEVERTRAG: alle End-to-End-Abhängigkeiten, nicht
-     nur die vier Rechenmodule. */
-  ['shadow', 'shadowPolicy', 'history', 'historyPolicy', 'debrief', 'evidence', 'loadProfile',
-    'progression', 'progressionPolicy', 'feasibility', 'feasibilityPolicy',
-    'translator', 'translatorPolicy', 'designer', 'weekPolicy',
-    'input'].forEach(f => {
+     nur die vier Rechenmodule.
+     v8-343: `source` fehlte hier, obwohl es seit shadow-adaptive@11 zur
+     Kohorte gehört — aufgefallen durch eine Mutationsprobe, die das Feld aus
+     COHORT_FIELDS entfernte und KEINE Zusicherung dafür rot bekam. Der Pin
+     hätte den Wegfall zwar bemerkt, aber der Pin lässt sich bewusst neu
+     setzen; dann wäre das fehlende Feld dauerhaft unbemerkt geblieben.
+     Die Liste ist ab jetzt vollzählig — und die letzte Zusicherung hält sie
+     vollzählig, ohne dass jemand daran denken muss. */
+  const ERWARTETE_FELDER = ['shadow', 'shadowPolicy', 'history', 'historyPolicy', 'debrief',
+    'evidence', 'loadProfile', 'progression', 'progressionPolicy', 'feasibility',
+    'feasibilityPolicy', 'translator', 'translatorPolicy', 'designer', 'weekPolicy',
+    'input', 'source'];
+  ERWARTETE_FELDER.forEach(f => {
     ok('Kohortenfeld vorhanden: ' + f, S.COHORT_FIELDS.indexOf(f) >= 0);
   });
+  ok('… und die Kohorte enthält KEIN Feld, das hier nicht steht (beide Listen vollzählig)',
+    S.COHORT_FIELDS.every(f => ERWARTETE_FELDER.indexOf(f) >= 0) &&
+    S.COHORT_FIELDS.length === ERWARTETE_FELDER.length,
+    'Kohorte: ' + S.COHORT_FIELDS.length + ' Felder · erwartet: ' + ERWARTETE_FELDER.length);
   ok('… und die Beobachtung führt jede dieser Versionen',
     (() => { const v = S.observe(S.snapshot(ROH())).versions;
       return ['history', 'debrief', 'evidence', 'loadProfile', 'translator', 'designer', 'weekPolicy']
@@ -739,10 +751,35 @@ sec('DIE KOHORTE IST EINGEFROREN');
   ok('die Kohorte ist vollständig bestimmbar (kein „absent")',
     Object.values(jetzt.versions).every(v => v !== 'absent'),
     JSON.stringify(jetzt.versions));
-  if (!existsSync(PIN)) {
-    writeFileSync(PIN, JSON.stringify({ frozenAt: '2026-08-08', appVersion: 'v8-299',
+  /* BEFUND 2026-08-13: Bis hierher galt „Datei fehlt → schreib sie neu und sei
+     grün". Damit war der Weg, die Prüfung abzuschalten, identisch mit dem Weg,
+     sie zu bestätigen — ein versehentlich gelöschtes Manifest (oder ein Lauf im
+     anderen Layout, wo es nie lag) fror die Kohorte still neu ein und meldete
+     einen Haken. Zwei Fehler in einer Zeile: das automatische Schreiben, und
+     die FESTEN Werte darin — ein am 13.08. neu gesetzter Pin behauptete,
+     seit dem 08.08. eingefroren zu sein.
+
+     Ab jetzt fail-closed. Fehlt das Manifest, ist die Kohorte UNGEPRÜFT, und
+     das ist rot. Neu einfrieren geht weiterhin, aber nur als ausdrückliche
+     Ansage — und dann mit ehrlichem Datum und der Version, die wirklich
+     ausgeliefert wird:
+
+         ORVIA_REPIN_COHORT=2026-08-13 node supabase/tests/shadow_adaptive_test.mjs
+  */
+  const repin = (process.env.ORVIA_REPIN_COHORT || '').trim();
+  if (!existsSync(PIN) && repin) {
+    const swQuelle = readFileSync(join(APP, 'sw.js'), 'utf8');
+    const swTreffer = swQuelle.match(/const C = 'orvia-(v8-\d+)'/);
+    writeFileSync(PIN, JSON.stringify({ frozenAt: repin,
+      appVersion: swTreffer ? swTreffer[1] : 'unbekannt',
       key: jetzt.key, versions: jetzt.versions }, null, 2));
-    ok('Kohorte neu eingefroren', true, jetzt.key);
+    ok('Kohorte AUSDRÜCKLICH neu eingefroren — die Belegsammlung beginnt bei null',
+      true, jetzt.key + ' (' + repin + ', ' + (swTreffer ? swTreffer[1] : 'Version unbekannt') + ')');
+  } else if (!existsSync(PIN)) {
+    ok('die eingefrorene Kohorte ist unverändert', false,
+      'MANIFEST FEHLT (_acceptance-cohort.json) — die Kohorte ist ungeprüft. ' +
+      'Ein fehlender Pin ist kein bestätigter Pin. Bewusst neu einfrieren: ' +
+      'ORVIA_REPIN_COHORT=JJJJ-MM-TT node supabase/tests/shadow_adaptive_test.mjs');
   } else {
     const pin = JSON.parse(readFileSync(PIN, 'utf8'));
     ok('die eingefrorene Kohorte ist unverändert', pin.key === jetzt.key,
@@ -750,7 +787,7 @@ sec('DIE KOHORTE IST EINGEFROREN');
         : 'KOHORTENÄNDERUNG! Die Belegsammlung beginnt neu. Geändert: ' +
           Object.keys(jetzt.versions).filter(k => pin.versions[k] !== jetzt.versions[k])
             .map(k => k + ': ' + pin.versions[k] + ' → ' + jetzt.versions[k]).join(', ') +
-          ' — bewusst bestätigen durch Löschen von _acceptance-cohort.json');
+          ' — bewusst bestätigen: Datei löschen und mit ORVIA_REPIN_COHORT=JJJJ-MM-TT neu setzen');
   }
 }
 

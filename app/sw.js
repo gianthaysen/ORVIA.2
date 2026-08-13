@@ -1,4 +1,64 @@
-const C = 'orvia-v8-342';   /* EIN ZAEHLER IST KEINE PRUEFUNG (2026-08-13) · v8-342:
+const C = 'orvia-v8-343';   /* DAS PRUEFWERKZEUG WAR SELBST UNGEPRUEFT (2026-08-13) · v8-343:
+
+   ZUERST EIN EIGENER FEHLER, ZURUECKGENOMMEN. In v8-342 stand hier und in
+   der Standdatei, der Kohorten-Pin `023ee59b` sei "nur Fliesstext, kein Test
+   prueft ihn". Das war falsch. `shadow_adaptive_test.mjs` vergleicht den Pin
+   seit v8-299 gegen `_acceptance-cohort.json` — ich hatte nur `.js/.mjs/.md`
+   durchsucht und die `.json` uebersehen. Die Behauptung ist zurueckgenommen;
+   wer sie in v8-342 gelesen hat, hat eine falsche Auskunft bekommen.
+
+   BEFUND 1 · EIN FEHLENDER PIN GALT ALS BESTAETIGTER PIN.
+   Beim Nachpruefen fiel an derselben Stelle die eigentliche Luecke auf:
+
+       if (!existsSync(PIN)) { writeFileSync(PIN, …); ok('neu eingefroren', true); }
+
+   Der Weg, die Pruefung ABZUSCHALTEN, war identisch mit dem Weg, sie zu
+   bestaetigen — eine geloeschte Datei fror die Kohorte still neu ein und
+   meldete einen Haken. Dazu schrieb sie FESTE Werte: ein am 13.08. neu
+   gesetzter Pin behauptete, seit dem 08.08. eingefroren zu sein.
+   Jetzt fail-closed: fehlt das Manifest, ist die Kohorte ungeprueft und der
+   Test rot. Neu einfrieren geht weiter, aber nur als Ansage —
+   `ORVIA_REPIN_COHORT=JJJJ-MM-TT`, und dann mit echtem Datum und der
+   Version, die wirklich in sw.js steht. Alle drei Faelle gemessen.
+
+   BEFUND 2 · DER RUNNER HAT DEN GRUND GERATEN.
+   `run-all.mjs` beschriftete JEDEN uebersprungenen Test mit "brauchen eine
+   echte Supabase-Instanz". Auf Gians Rechner uebersprangen 22 Dateien wegen
+   fehlendem Chromium und wurden als Datenbanksache ausgegeben — niemand kam
+   dadurch auf den fehlenden Browser. Darunter stand "GRUEN, keine
+   fehlgeschlagenen Tests", und damit sah ein Lauf ohne ein Zehntel seiner
+   Abdeckung aus wie ein vollstaendiger.
+   Jetzt wird der Grund AUS DER AUSGABE gelesen, nach Gruppen getrennt, ein
+   unbekannter Grund ausdruecklich als unbekannt ausgewiesen (ein geratener
+   Grund beendet die Suche), und die Schlusszeile sagt
+   "GRUEN, aber UNVOLLSTAENDIG — N geprueft, M nicht gelaufen".
+
+   NEU: `run_all_reporting_test.mjs` (12 Zusicherungen). Der Runner ist das
+   Werkzeug, dem alle anderen Zahlen dieses Projekts vertrauen, und war
+   selbst ungeprueft — dieselbe Konstellation, aus der er entstanden ist.
+   Geprueft wird mit echten Prozessen in einem Wegwerfverzeichnis unter
+   /tmp; keine Datei traegt den Namen echter Projektdaten (v8-338).
+
+   BEFUND 3 · EINE PROBE HAT EINE ECHTE LUECKE GEFUNDEN.
+   KOH3 entfernte `source` aus COHORT_FIELDS — und keine Feldzusicherung
+   wurde rot: `source` gehoert seit @11 zur Kohorte, stand aber in der
+   Pruefliste des Tests nicht drin. Rot wurde nur der Pin, und den kann man
+   bewusst neu setzen; damit waere das fehlende Feld dauerhaft unbemerkt
+   geblieben. Die Liste ist jetzt vollzaehlig und wird BEIDSEITIG geprueft
+   (kein Feld fehlt, keines steht zu viel drin).
+
+   NICHT PROBENGEDECKT, offen gesagt: der fail-closed-Zweig aus Befund 1
+   liegt im Test selbst; das Probenwerkzeug mutiert nur Dateien unterhalb
+   der App-Wurzel. Belegt ist er durch drei gemessene Laeufe (Pin da → gruen,
+   Pin weg → rot mit Anleitung, Pin weg + Ansage → gruen und ehrlich datiert).
+
+   GEAENDERT: supabase/tests/run-all.mjs, supabase/tests/shadow_adaptive_test.mjs,
+   neu supabase/tests/run_all_reporting_test.mjs, neue Kataloge
+   tools/probes/test-runner.json und tools/probes/acceptance-cohort.json.
+   Kein Produktivcode der App. Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   EIN ZAEHLER IST KEINE PRUEFUNG (2026-08-13) · v8-342:
 
    HERKUNFT. Keine neue Funktion, sondern das Ergebnis einer Bestandsaufnahme:
    jede Zahl aus STAND-UND-OFFENE-PUNKTE.md gegen ausgefuehrten Code gehalten.

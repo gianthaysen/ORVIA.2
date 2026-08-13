@@ -61,17 +61,45 @@ files.forEach((f, i) => {
   }
 });
 
+/* WARUM ÜBERSPRUNGEN WURDE, steht in der Ausgabe des Tests — bis v8-342 hat
+   dieser Runner es trotzdem GERATEN und jeden Skip als „braucht eine echte
+   Supabase-Instanz" beschriftet. Auf einem Rechner ohne Browser-Binary
+   übersprangen 22 Dateien wegen fehlendem Chromium und wurden als
+   Supabase-Sache ausgegeben: eine falsche Auskunft, die niemanden auf den
+   fehlenden Browser stieß — und weil „0 fehlgeschlagen" darunter stand,
+   sah der Lauf sauber aus, obwohl ein Zehntel der Abdeckung nicht lief. */
+const GRUENDE = [
+  { id: 'browser', treffer: /kein Browser-Binary|playwright install|ORVIA_CHROME/i,
+    text: 'kein Browser-Binary — `npx playwright install chromium` holt es nach' },
+  { id: 'supabase', treffer: /SUPABASE_URL|SUPABASE_ANON_KEY|ENV fehlt|Umgebungsvariablen fehlen/i,
+    text: 'brauchen eine echte Supabase-Instanz (Zugangsdaten fehlen)' }
+];
+function grundVon(s) {
+  const g = GRUENDE.find(g => g.treffer.test(s.out || ''));
+  return g ? g.id : 'unbekannt';
+}
+const skipGruppen = new Map();
+skipped.forEach(s => {
+  const id = grundVon(s);
+  if (!skipGruppen.has(id)) skipGruppen.set(id, []);
+  skipGruppen.get(id).push(s);
+});
+
 const secs = ((Date.now() - t0) / 1000).toFixed(1);
 console.log('\n' + '─'.repeat(72));
 console.log('Bestanden      : ' + passed.length);
 console.log('Fehlgeschlagen : ' + failed.length);
-console.log('Übersprungen   : ' + skipped.length + (skipped.length ? '  (Umgebungsvariablen fehlen — kein Defekt)' : ''));
+console.log('Übersprungen   : ' + skipped.length + (skipped.length ? '  (NICHT geprüft — kein Defekt, aber auch kein Beleg)' : ''));
 console.log('Abgestürzt     : ' + crashed.length);
 console.log('Gesamt         : ' + files.length + ' Dateien in ' + secs + ' s');
 
 if (skipped.length) {
-  console.log('\nÜbersprungen (brauchen eine echte Supabase-Instanz):');
-  skipped.forEach(s => console.log('  ⏭️  ' + s.file));
+  for (const [id, liste] of skipGruppen) {
+    const g = GRUENDE.find(g => g.id === id);
+    console.log('\nÜbersprungen — ' + (g ? g.text : 'Grund aus der Ausgabe nicht erkennbar') +
+      '  (' + liste.length + ')');
+    liste.forEach(s => console.log('  ⏭️  ' + s.file));
+  }
 }
 if (failed.length || crashed.length) {
   console.log('\nProblemfälle im Detail:');
@@ -82,8 +110,19 @@ if (failed.length || crashed.length) {
       .forEach(l => console.log('     ' + l.slice(0, 150)));
   });
 }
+/* Die Schlusszeile darf einen unvollständigen Lauf nicht wie einen
+   vollständigen aussehen lassen. „Keine fehlgeschlagenen Tests" ist wahr und
+   trotzdem irreführend, solange 29 Dateien gar nicht gelaufen sind. */
+const nichtGeprueft = skipped.length;
 console.log('\n' + (failed.length + crashed.length === 0
-  ? '✅ GRÜN — keine fehlgeschlagenen Tests.'
+  ? (nichtGeprueft
+    ? '✅ GRÜN, aber UNVOLLSTÄNDIG — ' + passed.length + ' geprüft, ' + nichtGeprueft +
+      ' nicht gelaufen.' +
+      (skipGruppen.has('browser')
+        ? '\n   ' + skipGruppen.get('browser').length + ' davon nur wegen des fehlenden Browsers' +
+          ' — die laufen mit `npx playwright install chromium` sofort mit.'
+        : '')
+    : '✅ GRÜN — alle ' + passed.length + ' Dateien geprüft, keine übersprungen.')
   : '❌ ROT — ' + (failed.length + crashed.length) + ' Datei(en) mit Problemen.'));
 
 process.exit(failed.length + crashed.length === 0 ? 0 : 1);
