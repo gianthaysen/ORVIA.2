@@ -148,10 +148,11 @@ Zahlenlogik sind riskanter als an der qualitativen.
    Dateien nicht — der Runner sagt es jetzt deutlich, installieren muss ihn
    trotzdem jemand.
 2. **Zwei Layouts im selben Repo — niemals `main` force-pushen.** Lokal liegt
-   die App unter `app/`, auf GitHub in der **Wurzel** (`js/…`, kein `app/`);
-   Tests und `docs/` gibt es auf GitHub gar nicht. Ein Force-Push des lokalen
-   `main` würde `index.html` und `sw.js` nach `app/` schieben — Pages fände
-   beide nicht mehr. Der Diff zeigt das nur als 117 harmlos aussehende
+   die App unter `app/`, auf GitHub in der **Wurzel**: `index.html`, `sw.js`,
+   `styles.css`, `env.js`, `js/`, `assets/` — kein `app/`, und weder
+   `supabase/tests/` noch `docs/`. Ein Force-Push des lokalen `main` würde
+   `index.html` und `sw.js` nach `app/` schieben — Pages fände beide nicht
+   mehr. Der Diff zeigt das nur als 117 harmlos aussehende
    `R100`-Umbenennungen. Entwicklungsstand gehört auf `entwicklung`:
    `git push origin main:entwicklung`.
 3. **`.git` sammelt Müll**, weil der Cowork-Mount kein `unlink` erlaubt:
@@ -184,7 +185,7 @@ Zahlenlogik sind riskanter als an der qualitativen.
 | YouTube | **nein** | HTTP 429 |
 | Google Books | **nein** | robots.txt |
 | GitHub-API / `github.io`-Dateien | **nein** | 403 bzw. Inhalt kommt als Binärdaten an |
-| `raw.githubusercontent.com` | **ja** | der verlässliche Weg, veröffentlichte Dateien zu prüfen |
+| `raw.githubusercontent.com` | **meistens** | `styles.css` (380 kB), `package.json`, alle `js/…` kommen durch — **`sw.js` und `index.html` aber nicht: 404, obwohl beide auf `main` liegen** (im Browser nachgewiesen). Grund unbekannt, an der Dateigröße liegt es nicht. **Ein 404 dieses Werkzeugs ist kein Beleg für Nichtvorhandensein.** |
 | Werkzeuge nach Art „Seite als PDF speichern" (Microlink u. a.) | **nutzlos** | liefert einen Bildschirmabzug des BETRACHTERS statt des Dokuments: aus 179 Seiten wurde 1 (Kanjuh) |
 
 **Regel daraus: im Zweifel die PDF herunterladen und in den Chat hängen.** Das
@@ -213,6 +214,13 @@ Verwechslung hätte in v8-339 den Umfang verdoppelt.
 - **Probleme vor Erneuerung.** Immer.
 - Jede Behauptung gegen **tatsächlich ausgeführten Code** prüfen, nie gegen
   Vermutung.
+- **„Nicht gefunden" ist kein Befund, solange das Werkzeug blind sein kann.**
+  Am 13.08. zweimal derselbe Fehler: eine Suche mit `--include=*.js,*.mjs,*.md`
+  übersah den Kohorten-Pin in einer `.json` („kein Test prüft ihn" — falsch),
+  und `raw.githubusercontent` meldete 404 für `sw.js` und `index.html`, die
+  beide da waren („GitHub hat kein index.html" — falsch). Beide Male fühlte
+  sich das Nichts wie ein Ergebnis an. **Ein Negativbefund braucht eine
+  zweite, andersartige Quelle**, bevor er behauptet wird.
 - Verhaltenstests gegen **echte Module**, keine Nachbauten des Vertrags.
 - Nach jeder Änderung **Mutationsproben** — und Proben, die grün bleiben,
   offen als Testlücke melden. `not_applied` und `skipped` sind **kein Beleg**.
