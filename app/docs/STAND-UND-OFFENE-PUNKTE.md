@@ -1,6 +1,6 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-343, 2026-08-13.** Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-343, veröffentlicht am 2026-08-13.** Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
 `sw.js` (Versionsköpfe v8-329 bis v8-343) und in
 `docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§33).
@@ -82,6 +82,30 @@ Zusicherung von der Factory auf den Wochenplan gehoben.
 `running-knowledge-pack-*.js` geschrieben und nicht verdrahtet. Blockiert
 durch Punkt 1.
 
+### 3b · QUELLE-11 (Kanjuh) — vertragsfest, aber ohne Wirkung
+Am 13.08. eingespeist, eine Regel (`RUN-KRAFTPROFIL-001`: Kraftwerte auf die
+Körpermasse normiert vergleichen, nicht absolut). Gegen die echten Module
+gefahren: `ingest` **ok**, `applyKnowledge` **ok**, eine Vorgabe, kein Konflikt.
+
+Und trotzdem wirkungslos — aus einem Grund, der über diese eine Quelle
+hinausgeht:
+
+```
+wirkt_auf: "plan.kraftvergleich_normierung"
+→ kommt in app/js NIRGENDS vor. Niemand liest dieses Ziel.
+```
+
+**Der Vertrag prüft Zielnamen nicht.** Es gibt keine Liste erlaubter Ziele;
+jeder String wird angenommen. Damit sieht eine Regel „eingespeist und
+angewendet" aus und bewirkt nichts — und ein Tippfehler
+(`session.rest_secons`) verhält sich exakt genauso. Das ist zum **dritten
+Mal** dieselbe Fehlerklasse: v8-335 („eingespeist, aber niemand liest es"),
+v8-341 (`applyKnowledge` ohne Aufrufer), jetzt das Ziel ohne Leser.
+
+Fällig wäre ein **Zielregister**: die Verordnung meldet, welche Ziele sie
+kennt; die Einspeisung weist alles andere ab oder markiert es sichtbar als
+„noch ohne Leser". Gehört zusammen mit Punkt 1 gemacht.
+
 ### 4 · Konfliktlösung — noch offene Feinheit
 Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
 Zahlbereiche gleicher Klasse, die sich **überlappen** (z. B. 120–180 und
@@ -111,20 +135,30 @@ Zahlenlogik sind riskanter als an der qualitativen.
   dazugehört — gefunden von einer Mutationsprobe. Die Liste wird jetzt
   beidseitig geprüft. Neuer Katalog `acceptance-cohort` (3 Proben).
 
+**Erledigt danach (13.08., nach der Veröffentlichung):**
+
+- Stamm-`sw.js` (v8-329) entfernt, `.git` von 1038 verwaisten `tmp_obj_*`
+  befreit, `main` lokal auf v8-343 gezogen.
+- v8-343 ist **veröffentlicht** (GitHub Pages, Publish-Commit `f5d1b2e`), der
+  Entwicklungsstand liegt auf dem Zweig **`entwicklung`** (`89acee8`).
+
 **Noch offen (braucht dich oder den Mac):**
 
 1. `npx playwright install chromium` auf dem Mac. Ohne Browser laufen 22
    Dateien nicht — der Runner sagt es jetzt deutlich, installieren muss ihn
    trotzdem jemand.
-2. Im Repo-Stamm liegt ein zweites `sw.js` (v8-329) neben dem echten
-   `app/sw.js`. Wer dort die Version abliest, liest die falsche.
+2. **Zwei Layouts im selben Repo — niemals `main` force-pushen.** Lokal liegt
+   die App unter `app/`, auf GitHub in der **Wurzel** (`js/…`, kein `app/`);
+   Tests und `docs/` gibt es auf GitHub gar nicht. Ein Force-Push des lokalen
+   `main` würde `index.html` und `sw.js` nach `app/` schieben — Pages fände
+   beide nicht mehr. Der Diff zeigt das nur als 117 harmlos aussehende
+   `R100`-Umbenennungen. Entwicklungsstand gehört auf `entwicklung`:
+   `git push origin main:entwicklung`.
 3. **`.git` sammelt Müll**, weil der Cowork-Mount kein `unlink` erlaubt:
    nach jedem git-Aufruf über die Bridge bleiben `tmp_obj_*` und eine
    `index.lock` liegen — letztere blockiert den nächsten Aufruf, bis sie
    weggeschoben wird. Lokal auf dem Mac einmal `git gc` laufen lassen;
    git-Arbeit besser dort erledigen als über die Bridge.
-4. `main` steht auf `f633b5f` (v8-254); der gesicherte Stand liegt auf
-   `sicherung/v8-341`. **Nichts ist gepusht.**
 
 ---
 
@@ -137,9 +171,25 @@ Zahlenlogik sind riskanter als an der qualitativen.
 | `QUELLE-03-pauls-krafttraining.json` | Buch Pauls S. 93 — dito |
 | `QUELLE-06-beck-marathon.json` | Buch Beck S. 42 — dito (inhaltlich die relevanteste) |
 | `QUELLE-10-…-ABGELEHNT.json` | die 4 Primärstudien aus dem Literaturverzeichnis |
+| `QUELLE-11-kanjuh-kraftprofile-2026.json` | der **Volltext** (179 S.) — angekommen ist nur ein Bildschirmabzug der Betrachterseite. Interessant wären die Referenzbereiche für Kraftkennwerte; die gibt es in keiner anderen Quelle |
 
-**Was ich selbst lesen kann:** PDFs von Fachzeitschriften, PubMed-Abstracts, DOI.
-**Was nicht:** YouTube (HTTP 429), Google Books (robots.txt).
+### Was ich selbst lesen kann — und was nicht
+
+| Quelle | Abrufbar | Beleg |
+|---|---|---|
+| PDF direkt hochgeladen (Chat-Anhang) | **ja, am besten** | Volltext selbst extrahierbar, 6 S. / 39 k Zeichen gelesen (Sperlich) |
+| PDF von Fachzeitschriften (offener Server) | meist ja | Friedmann, Hoff, Hirschmüller |
+| PubMed-Abstract, DOI | ja | Llanos-Lagos, Ramos-Campo |
+| Hochschulserver (OPUS o. ä.) | **nein** | `opus.hs-offenburg.de`: robots.txt nicht abrufbar → Abruf fällt geschlossen aus |
+| YouTube | **nein** | HTTP 429 |
+| Google Books | **nein** | robots.txt |
+| GitHub-API / `github.io`-Dateien | **nein** | 403 bzw. Inhalt kommt als Binärdaten an |
+| `raw.githubusercontent.com` | **ja** | der verlässliche Weg, veröffentlichte Dateien zu prüfen |
+| Werkzeuge nach Art „Seite als PDF speichern" (Microlink u. a.) | **nutzlos** | liefert einen Bildschirmabzug des BETRACHTERS statt des Dokuments: aus 179 Seiten wurde 1 (Kanjuh) |
+
+**Regel daraus: im Zweifel die PDF herunterladen und in den Chat hängen.** Das
+ist der zuverlässigste Weg und liefert mir den Volltext statt einer
+Zusammenfassung durch ein Zwischenwerkzeug.
 
 Bei Zahlen immer mitliefern: **pro Übung oder pro Muskelgruppe?** Diese
 Verwechslung hätte in v8-339 den Umfang verdoppelt.

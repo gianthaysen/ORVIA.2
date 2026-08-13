@@ -1,0 +1,84 @@
+{
+  "_status": [
+    "TEILWEISE GELESEN — und die Datei, die ankam, war nicht die Arbeit.",
+    "",
+    "Der Zip enthielt einen Bildschirmabzug des PDF-Betrachters (1 Seite,",
+    "346 KB) statt der 179-seitigen Arbeit. Titelseite und Abstract waren im",
+    "Abzug lesbar, alles Weitere nicht. Ein Werkzeug wie Microlink bildet die",
+    "BETRACHTERSEITE ab, nicht das Dokument — bei OPUS liefert der direkte",
+    "Download-Knopf die echte PDF.",
+    "",
+    "EINE REGEL, nicht mehr. Der Abstract traegt genau eine Aussage, die noch",
+    "keine andere Quelle abdeckt: der Normierungsbefund. Alles Uebrige aus dem",
+    "Abstract (Kraft ist nur ein Baustein, grosse Streuung) sagen Sperlich 2015",
+    "und Friedmann 2007 bereits auf HOEHERER Evidenzstufe — eine dritte Stimme",
+    "auf niedrigerer Stufe fuegt dort nichts hinzu.",
+    "",
+    "WAS SICH LOHNEN WUERDE: die Referenzbereiche fuer Kraftkennwerte aus dem",
+    "Volltext. Die gibt es in keiner der bisherigen Quellen. Sie bleiben zwar",
+    "Klasse D (n=47, nicht begutachtet) und duerfen nichts vorschreiben, waeren",
+    "aber als Einordnungshilfe brauchbar.",
+    "",
+    "URHEBERRECHT: die Arbeit ist ausdruecklich als urheberrechtlich geschuetzt",
+    "gekennzeichnet. Nur eigene Formulierungen, keine Uebernahme."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-KANJUH-2026",
+    "art": "studie",
+    "titel": "Erstellung von Kraftprofilen bei Mittel- und Langstreckenlaeufer*innen (Masterthesis)",
+    "wer": "Mario Kanjuh — Hochschule Offenburg, M.Sc. Applied Research, Human Motion and Emotion, Fakultaet Maschinenbau und Verfahrenstechnik",
+    "jahr": 2026,
+    "url": "https://opus.hs-offenburg.de/frontdoor/index/index/docId/11984",
+    "sportarten": [
+      "running",
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitlaeufer",
+      "gut_trainierte_laeufer"
+    ],
+    "worum_gehts": [
+      "kraftprofil",
+      "laufoekonomie",
+      "geschlechtsunterschiede"
+    ],
+    "qualitaet": "niedrig",
+    "kernaussage": "Die Querschnittarbeit misst bei siebenundvierzig Mittel- und Langstreckenlaeuferinnen und -laeufern isometrische Kraftkennwerte und setzt sie in Beziehung zu Laufoekonomie sowie zu raum-zeitlichen und kinematischen Laufparametern. Kraftdiagnostik, dreidimensionale Laufbandanalyse und Spiroergometrie liefen in einem gemeinsamen Messprotokoll. Ein durchgaengiges Muster: Maenner erreichen hoehere absolute Kraftwerte, doch nach Normierung auf die Koerpermasse schwaechen sich die geschlechtsspezifischen Unterschiede deutlich ab. Die gefundenen Zusammenhaenge zwischen Kraft und Laufmerkmalen fallen ueberwiegend klein bis moderat aus und haengen stark davon ab, welche Zielgroesse betrachtet wird.",
+    "grenzen": "Masterthesis, keine begutachtete Veroeffentlichung. Querschnittdesign — Zusammenhang, keine Ursache. Der Autor benennt die entscheidende Einschraenkung selbst: die Einteilung in Leistungsgruppen ist bei den sehr kleinen Teilgruppen primaer als beschreibende Orientierung zu lesen, nicht als belastbarer Gruppenvergleich. Er ordnet Kraftkennwerte ausdruecklich als EINEN Baustein in einem vielschichtigen System aus Technik, muskulaer-tendinoeser Funktion, Koerperbau, Trainingserfahrung und Ermuedung ein. Ich habe nur Titelseite und Abstract gelesen — der Volltext mit den Referenzbereichen lag nicht vor.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-KRAFTPROFIL-001",
+      "thema": "kraftvergleich",
+      "aussage": "Kraftwerte von Laeuferinnen und Laeufern werden auf die Koerpermasse normiert verglichen, nicht absolut. Absolut betrachtet erscheinen Maenner staerker; nach Normierung schwaecht sich der Unterschied deutlich ab. Ein absoluter Vergleich bildet damit vor allem Koerpergroesse ab, nicht Leistungsfaehigkeit.",
+      "art": "studie",
+      "quellen": [
+        "SRC-KANJUH-2026"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Masterthesis, nicht begutachtet — die Einordnung stuetzt sich auf die Angaben des Autors",
+        "Querschnittdesign mit siebenundvierzig Personen; die Leistungsgruppen sind laut Autor nur beschreibend zu lesen",
+        "Nur Titelseite und Abstract gelesen, kein Volltext",
+        "Die Groesse der Abschwaechung nach Normierung ist im Abstract nicht beziffert"
+      ],
+      "wenn_unsicher": "Im Zweifel gar keinen Kraftvergleich zwischen Personen anzeigen. Ein normierter Vergleich ist besser als ein absoluter, aber beide sagen wenig ueber die Laufleistung.",
+      "wirkt_auf": [
+        "plan.kraftvergleich_normierung"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    }
+  ]
+}
