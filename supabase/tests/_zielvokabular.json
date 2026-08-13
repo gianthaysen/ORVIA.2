@@ -32,7 +32,7 @@
     "session.repetitions": "Wiederholungen je Satz. Wird von der Verordnung als Zahl angewendet.",
     "session.exercises": "Auswahl der Uebungen einer Krafteinheit. Wird von der Verordnung als Liste angewendet.",
     "session.last_prozent_1rm": "Trainingslast in Prozent des Einwiederholungsmaximums. Die Verordnung fuehrt heute kein Lastfeld — waere neue Funktion, nicht blosser Anschluss.",
-    "session.sets": "Saetze je Uebung innerhalb EINER Einheit (nicht je Woche — das ist plan.saetze_je_muskelgruppe).",
+    "session.sets": "Saetze je UEBUNG innerhalb einer Einheit. Nicht zu verwechseln mit plan.saetze_je_muskelgruppe: das ist die Summe je MUSKELGRUPPE ueber alle Uebungen derselben Einheit.",
     "session.warmup_anteil": "Anteil der Einheit, der auf das Aufwaermen entfaellt.",
     "session.cooldown_anteil": "Anteil der Einheit, der auf das Auslaufen entfaellt.",
     "session.intervall_min": "Dauer eines einzelnen Intervalls in Minuten.",
@@ -44,7 +44,7 @@
     "session.rpe_warmup": "Zielbelastung des Aufwaermens auf der RPE-Skala.",
     "session.rpe_kraft": "Zielbelastung einer Kraftuebung, wenn die Uebung keine eigene RIR-Angabe traegt.",
 
-    "plan.saetze_je_muskelgruppe": "Woechentlicher Satzumfang JE MUSKELGRUPPE. Gehoert in die Wochenplanung, nicht in die Einheit.",
+    "plan.saetze_je_muskelgruppe": "Satzsumme JE MUSKELGRUPPE innerhalb EINER Trainingseinheit, verteilt ueber alle Uebungen, die diese Muskelgruppe belasten. Darf session.sets nicht speisen (Quelle: umrechnung).",
     "plan.strength_focus": "Wozu Laeufer Krafttraining machen (Laufoekonomie, nicht VO2max) — steuert die Ausrichtung, nicht eine Zahl.",
     "plan.maximalkraft_dosis": "Dosis eines Maximalkraftblocks (Serien, Wiederholungen, Wochen) — mehrdimensional, deshalb bisher qualitativ.",
     "plan.plyometrie_frequenz": "Haeufigkeit und Dauer eines plyometrischen Blocks.",

@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-349, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-349 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-350, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-350 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-349) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§39).
+`sw.js` (Versionsköpfe v8-329 bis v8-350) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§40).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -102,12 +102,39 @@ Was stattdessen möglich wäre, in aufsteigendem Ertrag:
 | **Qualitative Leser** | Regeln wie „harte Tage nicht aufeinanderfolgend" als **Sperre** umsetzen statt als Zahl. Braucht pro Regel Code mit Belegbindung. | hoch, aber Neubau |
 | **Verdrahten** | `PAKETE.running` eintragen. | **null**, solange keine Werte da sind |
 
-### 2 · Übungsauswahl für Gym
-`scheduler-v2` leitet für Gym keine Übungsliste ab → `no_exercise_list_generic_session`
-→ die Pausenregel greift in der Verordnung, aber **nicht im Wochenplan**.
-Das ist als Zusicherung in `knowledge_consumer_test.mjs` festgeschrieben; der
-Test schlägt an, sobald der Scheduler Übungen liefert. Dann gehört die
-Zusicherung von der Factory auf den Wochenplan gehoben.
+### 2 · Die Satzsumme je Muskelgruppe — **Richtung in v8-350 korrigiert**
+
+> **Was hier falsch stand.** Bis v8-349 hieß es, `plan.saetze_je_muskelgruppe`
+> sei ein **wöchentlicher** Umfang und brauche einen Leser im Wochenplan. Die
+> Quelle sagt ausdrücklich *Sätze je Muskelgruppe und **Trainingseinheit***
+> und verbietet die Umrechnung auf `session.sets` wörtlich. Damit ist Punkt 2
+> **kein Scheduler-Problem**, sondern eines der Einheitenzusammensetzung.
+> Vollständig in §40 und in `docs/PLAN-PUNKT-2-MUSKELGRUPPEN.md`.
+
+Zwei Dinge fehlen, und nur eines davon ist Programmierarbeit:
+
+| | Was fehlt | Woher es kommen müsste |
+|---|---|---|
+| **Übungsliste** | `scheduler-v2` leitet für Gym keine ab → `no_exercise_list_generic_session` | eine **Quelle** für Übungsauswahl (Vertrag v7 kann Aufzählungen). Eine erfundene Standardliste ist ausgeschlossen — die Factory sagt das wörtlich |
+| **Zähler** | `gym-volume` rechnet auf Snapshots **absolvierter** Workouts (`completed === true`). Für **geplante** Sätze gibt es keinen Zähler | neues Modul `planned-volume@1`, das `gym-volume.musclesFor` benutzt statt eine zweite Zuordnungstabelle zu bauen |
+
+**Der gangbare Weg** ist der Nutzerplan: `plannedExercises` existiert samt
+Sätzen, `musclesFor` klassifiziert 85 Namen / 20 IDs / 16 Bewegungsmuster auf
+15 Muskelgruppen. Daraus wird ein **Prüfer**, kein Setzer — er meldet, wenn
+eine Muskelgruppe außerhalb von 5–6 landet, und ändert nichts.
+
+**Vorgeschaltet und noch offen:** die Zuordnungsquote. `plannedExercises`
+führt `exerciseId` als Datenbank-UUID, nicht als Slug — ob die Auflösung über
+die Übungsbibliothek trägt, ist unbelegt. Unter ~60 % zuordenbar wäre der
+Prüfer mehr Rauschen als Nutzen.
+
+**Nebenbefund, gesondert zu bewerten:** `gym-volume.CORRIDORS` führt zum
+selben Gegenstand einen **unbelegten Produktwert** (6–12 Sätze je Muskelgruppe
+und Woche, `source: 'conservative_start:…'`). Er ist über die Wochenfrequenz
+mit der Quellenzahl verbunden — und genau die nennt die Quelle nicht.
+
+Die alte Zusicherung in `knowledge_consumer_test.mjs` bleibt gültig: sie
+schlägt an, sobald der Scheduler Übungen liefert.
 
 ### 3 · Eingespeiste Laufregeln sind noch keine Module
 `QUELLE-07` (Sperlich, 5 Regeln), `QUELLE-08` (Hoff, 2 Regeln) und `QUELLE-09`
@@ -346,7 +373,8 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
   Freigabe, 4 medizinisch gesperrt). **Gemessen** durch die echte Kette, nicht
   aus dem Register abgeleitet — die alte Zahl „1 von 30" war eine Ableitung.
 - **1 Quittung** in `_ziele-ohne-leser.json` (vorher 41): `plan.saetze_je_muskelgruppe`
-  — eine freigegebene Zahl, deren Anwender die Wochenplanung wäre (Punkt 2)
+  — eine freigegebene Zahl ohne Anwender. 5–6 Sätze je Muskelgruppe und
+  **Einheit** (nicht Woche — in v8-350 korrigiert, §40), Punkt 2
 - **55 Zielnamen** in `_zielvokabular.json` — die Tippfehlerbremse, seit v8-349
   am Namen statt an der Wirkung
 - **Wissensvertrag: Version 7**

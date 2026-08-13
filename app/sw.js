@@ -1,4 +1,46 @@
-const C = 'orvia-v8-349';   /* WISSEN, DAS KEINE ZAHL IST, KOMMT JETZT AN (2026-08-13) · v8-349:
+const C = 'orvia-v8-350';   /* EINE EINHEIT IST KEINE WOCHE (2026-08-13) · v8-350:
+
+   REINE TEXTKORREKTUR, kein Codeverhalten geaendert. Aufgefallen beim Planen
+   von Punkt 2 — und zwar erst, als ich die Regel im Paket nachgelesen habe,
+   statt meiner eigenen Beschreibung davon zu glauben.
+
+   WAS FALSCH WAR. Zu `plan.saetze_je_muskelgruppe` stand in
+   `_ziele-ohne-leser.json` seit v8-344: „woechentlicher Umfang je
+   Muskelgruppe — braucht einen Leser im Wochenplan (scheduler-v2)". In v8-349
+   habe ich das uebernommen und in drei weitere Dateien geschrieben: diesen
+   Kopf, Bauplan §39.5 und das neue Zielvokabular.
+
+   WAS DIE QUELLE SAGT (GYM-HYP-002, woertlich aus dem Paket):
+     statement          „fuenf bis sechs Saetze pro Muskelgruppe UND EINHEIT,
+                         verteilt ueber alle Uebungen, die diese Muskelgruppe
+                         belasten"
+     inputUnits         „Saetze pro Muskelgruppe und Trainingseinheit"
+     outputUnits        dasselbe
+     allowedTransformation
+                        „keine — und ausdruecklich KEINE Umrechnung auf Saetze
+                         je Uebung. Diese Zahl darf session.sets nicht speisen."
+     uncertainties      „Keine Angabe zur Wochenfrequenz, ohne die eine
+                         Satzzahl je Einheit wenig aussagt"
+
+   WARUM DAS MEHR IST ALS EIN WORT. Aus „Woche" folgte der Schluss, der
+   Anwender sei die Wochenplanung — und damit stand Punkt 2 seit v8-344 als
+   Scheduler-Aufgabe in der Liste. Er ist keine: der Anwender ist die
+   EINHEIT, genauer die Stelle, an der die Uebungen einer Einheit feststehen.
+   Ein falsches Wort hat eine Aufgabe an die falsche Stelle gehaengt.
+
+   Die EINSPEISUNG war die ganze Zeit korrekt — die Notiz, das Paket und der
+   v8-344-Kopf sagen alle „je Einheit", und v8-344 warnt sogar ausdruecklich
+   vor genau dieser Einheitenverwechslung. Falsch war nur mein Begleittext.
+   Das ist die unangenehme Sorte Fehler: die Daten stimmen, die Erzaehlung
+   darueber nicht, und gelesen wird die Erzaehlung.
+
+   GEAENDERT: _ziele-ohne-leser.json, _zielvokabular.json, sw.js (dieser Kopf
+   und der v8-349-Absatz), ENGINE-BAUPLAN §39.5, STAND-UND-OFFENE-PUNKTE
+   (Punkt 2). Neu: docs/PLAN-PUNKT-2-MUSKELGRUPPEN.md — der Umsetzungsplan mit
+   der korrigierten Richtung. Kein Modul unter js/ angefasst.
+
+   ============================================================
+   WISSEN, DAS KEINE ZAHL IST, KOMMT JETZT AN (2026-08-13) · v8-349:
 
    DER AUFTRAG WAR: es darf nirgends stehen, dass etwas nicht wirkt. Was ich
    dabei gefunden habe, war schlimmer als die Formulierung — die Behauptung
@@ -68,9 +110,10 @@ const C = 'orvia-v8-349';   /* WISSEN, DAS KEINE ZAHL IST, KOMMT JETZT AN (2026-
    DIE QUITTUNGSLISTE IST VON 45 AUF 1 GESCHRUMPFT und hat eine engere
    Bedeutung: sie fuehrt nur noch eine ZAHL, die der Vertrag zum Vorschreiben
    freigegeben hat und die niemand anwendet. Der eine Eintrag ist
-   `plan.saetze_je_muskelgruppe` (5–6 Saetze je Muskelgruppe und WOCHE) — sein
-   Anwender ist die Wochenplanung, nicht die Einheit. Offener Punkt 2, benannt
-   statt verrechnet.
+   `plan.saetze_je_muskelgruppe` (5–6 Saetze je Muskelgruppe und EINHEIT) —
+   offener Punkt 2, benannt statt verrechnet.
+   [KORRIGIERT in v8-350: hier stand „und WOCHE, Anwender ist die
+   Wochenplanung". Falsch, siehe Kopf von v8-350.]
 
    OFFEN GESAGT: die Zusicherung „jedes vorhandene Paket wird auch gemessen"
    ist NICHT probengedeckt. Sie haengt an einer Liste im Test, und das

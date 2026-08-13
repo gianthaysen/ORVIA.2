@@ -4329,9 +4329,13 @@ Wirkung.**
 Sie hat auch eine engere Bedeutung bekommen. Sie führt nur noch eine **Zahl**,
 die der Vertrag zum Vorschreiben freigegeben hat und die niemand anwendet:
 
-- `plan.saetze_je_muskelgruppe` — 5 bis 6 Sätze je Muskelgruppe und **Woche**
-  (GYM-HYP-002). Der Anwender ist die Wochenplanung, nicht die Einheit. Das
-  ist offener Punkt 2, benannt statt verrechnet.
+- `plan.saetze_je_muskelgruppe` — 5 bis 6 Sätze je Muskelgruppe und
+  **Einheit** (GYM-HYP-002). Offener Punkt 2, benannt statt verrechnet.
+
+  > **Korrigiert in v8-350.** Hier stand „und Woche… der Anwender ist die
+  > Wochenplanung". Die Quelle sagt ausdrücklich *Trainingseinheit* — siehe
+  > §40. Aus dem falschen Wort folgte eine an die falsche Stelle gehängte
+  > Aufgabe.
 
 Ein Hinweis braucht keinen Anwender: er wirkt, indem er angezeigt wird. Eine
 freigegebene Zahl braucht einen — sonst war die Freigabe umsonst.
@@ -4352,3 +4356,58 @@ damit er nicht vollständiger aussieht, als er ist.
 - `knowledge_targets_test.mjs` 12 → **20 Zusicherungen**, Messung statt Ableitung
 - Quittungen **45 → 1**
 - Kohorten-Pin `023ee59b` unverändert
+
+
+## 40 · Eine Einheit ist keine Woche (v8-350)
+
+Reine Textkorrektur, kein Codeverhalten geändert. Sie steht trotzdem hier,
+weil der Fehler eine Aufgabe sechs Versionen lang an die falsche Stelle
+gehängt hat.
+
+### 40.1 Was falsch war
+
+Zu `plan.saetze_je_muskelgruppe` stand in `_ziele-ohne-leser.json` seit v8-344:
+*„wöchentlicher Umfang je Muskelgruppe — braucht einen Leser im Wochenplan
+(scheduler-v2)"*. In v8-349 habe ich das übernommen und in drei weitere
+Dateien geschrieben: `sw.js`-Kopf, §39.5 und das neue Zielvokabular.
+
+### 40.2 Was die Quelle sagt
+
+Wörtlich aus GYM-HYP-002 im Paket:
+
+| Feld | Inhalt |
+|---|---|
+| `statement` | „fünf bis sechs Sätze pro Muskelgruppe **und Einheit**, verteilt über alle Übungen, die diese Muskelgruppe belasten" |
+| `inputUnits` / `outputUnits` | „Sätze pro Muskelgruppe und **Trainingseinheit**" |
+| `allowedTransformation` | „keine — und ausdrücklich KEINE Umrechnung auf Sätze je Übung. **Diese Zahl darf `session.sets` nicht speisen.**" |
+| `uncertainties` | „Keine Angabe zur Wochenfrequenz, ohne die eine Satzzahl je Einheit wenig aussagt" |
+
+### 40.3 Warum das mehr ist als ein Wort
+
+Aus „Woche" folgte der Schluss, der Anwender sei die Wochenplanung — und so
+stand Punkt 2 seit v8-344 als **Scheduler-Aufgabe** in der offenen Liste. Er
+ist keine. Der Anwender ist die **Einheit**, genauer: die Stelle, an der die
+Übungen einer Einheit feststehen. Ein falsches Wort hat eine Aufgabe an die
+falsche Stelle gehängt, und niemand hat es bemerkt, weil die Beschreibung in
+sich schlüssig klang.
+
+Die **Einspeisung** war die ganze Zeit korrekt: Notiz, Paket und der
+v8-344-Kopf sagen alle „je Einheit" — v8-344 warnt sogar ausdrücklich vor
+genau dieser Einheitenverwechslung (§34, „Einheitenfehler"). Falsch war nur
+mein Begleittext.
+
+Das ist die unangenehme Sorte Fehler. Die Daten stimmen, die Erzählung darüber
+nicht — und gelesen wird die Erzählung. Ein Test kann das nicht fangen: kein
+Vertrag prüft, ob ein Kommentar die Wahrheit sagt. Was es fängt, ist die
+Gewohnheit, vor dem Planen die Regel **im Paket** nachzulesen statt die eigene
+Beschreibung davon.
+
+### 40.4 Folge
+
+`docs/PLAN-PUNKT-2-MUSKELGRUPPEN.md` — der Umsetzungsplan mit der korrigierten
+Richtung. Kernaussage: Punkt 2 ist ein Zusammensetzungs-Problem der Einheit,
+kein Scheduler-Problem. Dabei ist ein zweiter Befund aufgetaucht, der
+gesondert zu bewerten ist: `gym-volume.CORRIDORS` führt zum selben Gegenstand
+einen **unbelegten Produktwert** (6–12 Sätze je Muskelgruppe und Woche,
+`source: 'conservative_start:…'`), der über die Wochenfrequenz mit der
+Quellenzahl verbunden ist — und genau die Frequenz nennt die Quelle nicht.

@@ -43,6 +43,6 @@
   "quittiertAm": "2026-08-13",
   "appVersion": "v8-349",
   "ziele": {
-    "plan.saetze_je_muskelgruppe": "GYM-HYP-002 (Friedmann 2007), als Zahl freigegeben: 5 bis 6 Saetze je Muskelgruppe und WOCHE. Der richtige Anwender ist nicht prescription-factory — die baut EINE Einheit und kennt die Woche nicht. Der Wert gehoert in die Wochenplanung (scheduler-v2, offener Punkt 2 in STAND-UND-OFFENE-PUNKTE.md). Bis dahin kommt die Aussage als Hinweis auf der Karte an, die Zahl selbst wirkt noch nicht. Bewusst offen, nicht uebersehen."
+    "plan.saetze_je_muskelgruppe": "GYM-HYP-002 (Friedmann 2007), als Zahl freigegeben: 5 bis 6 Saetze je Muskelgruppe und TRAININGSEINHEIT — nicht je Woche und ausdruecklich nicht je Uebung. Das Feld `umrechnung` der Quelle sagt woertlich: „Diese Zahl darf session.sets nicht speisen.\" Ein Anwender muss also die geplanten Uebungen einer Einheit den Muskelgruppen zuordnen und die Saetze je Muskelgruppe SUMMIEREN. Dafuer fehlt der Verordnung heute beides: eine Uebungsliste fuer Gym (scheduler-v2 leitet keine ab, Flag no_exercise_list_generic_session) und ein Zaehler auf geplanten statt absolvierten Saetzen (gym-volume rechnet auf Snapshots abgeschlossener Workouts). Das ist offener Punkt 2. KORREKTUR 2026-08-13: hier stand seit v8-344 „woechentlich\" und daraus folgte der falsche Schluss, der Anwender sei die Wochenplanung. Die Quelle sagt Einheit; der Anwender ist die Einheit."
   }
 }
