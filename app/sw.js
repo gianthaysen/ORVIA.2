@@ -1,4 +1,56 @@
-const C = 'orvia-v8-341';   /* DAS WISSEN WURDE VON NIEMANDEM GELESEN (2026-08-13) · v8-341:
+const C = 'orvia-v8-342';   /* EIN ZAEHLER IST KEINE PRUEFUNG (2026-08-13) · v8-342:
+
+   HERKUNFT. Keine neue Funktion, sondern das Ergebnis einer Bestandsaufnahme:
+   jede Zahl aus STAND-UND-OFFENE-PUNKTE.md gegen ausgefuehrten Code gehalten.
+   Die Suite stimmt (256/0 bei 7 uebersprungenen), die Proben stimmen
+   (109 angeschlagen / 4 uebersprungen) — zwei Aussagen stimmten nicht.
+
+   BEFUND 1 · DIE MATRIX LOG, UND EIN GRUENER TEST HIELT SIE FEST.
+   `sport-coverage-matrix` fuehrte Gym als paketlos, obwohl Gym seit v8-339
+   ein Wissenspaket hat und seit v8-341 die einzige Sportart ist, deren
+   Wissen die Verordnung erreicht. Aufgefallen ist es nicht, weil die
+   Zusicherung in batch3b0 nur ZAEHLTE:
+
+       matrixSports.filter(s => COVERAGE[s].knowledgePack).length === 1
+
+   Mit Gym faelschlich auf `false` ergab das weiterhin 1 — gruen. Ein
+   Zaehler kann eine falsche Aussage nicht von einer richtigen
+   unterscheiden; er friert den Stand des Tages ein. Dieselbe Fehlerklasse
+   wie die Paritaets-Gates aus dem GM7-Audit, nur kleiner.
+
+   NEU: C5/C6 vergleichen, statt zu zaehlen. C5 gegen die Pack-Module, die
+   wirklich im Verzeichnis liegen (Sportart aus dem MODUL gelesen, nicht aus
+   dem Dateinamen — der Dateiname waere nur eine Vermutung ueber den
+   Inhalt), C6 gegen das, was `knowledgeConsumer.registrierteSportarten()`
+   tatsaechlich zurueckgibt. Beides pflegt sich selbst: ein neues Paket
+   laesst den Test anschlagen, bis die Matrix es fuehrt.
+
+   BEFUND 2 · BESITZEN UND GELESEN WERDEN IST NICHT DASSELBE.
+   Beim Korrigieren kam heraus, dass `O.runningCapacityFactory` von KEINER
+   Stelle der App gerufen wird — nur vom eigenen Unittest und vom
+   Modul-Ladetest. Das Laufpaket mit seinen 14 gepflegten Regeln wirkt
+   heute auf nichts. Haette ich nur `knowledgePack: true` fuer Gym
+   nachgetragen, behauptete die Matrix ab jetzt zwei wirksame Wissensbasen,
+   wo es eine gibt — der falsche Eindruck waere durch die Korrektur erst
+   entstanden. Deshalb die getrennte Dimension `knowledgePackWired`
+   (running false, gym true), testerzwungen gegen den Consumer.
+
+   Fuer die offene Liste heisst das: „erst zusammenfuehren, dann eintragen"
+   stand mit einer falschen Begruendung dort. Es gibt keine zwei Wege auf
+   dieselben Regeln, es gibt einen lebenden und einen toten.
+
+   PROBEN. Neuer Katalog `tools/probes/sport-coverage-matrix.json`, vier
+   Stueck, alle angeschlagen — darunter der Originalbefund (SCM1: Gym
+   zurueck auf paketlos) und die gefaehrlichere Gegenrichtung (SCM3: ein
+   unverdrahtetes Paket als wirksam ausgeben). Gesamtstand jetzt
+   117 Proben in 13 Katalogen, 113 gefahren / 4 uebersprungen.
+
+   GEAENDERT: js/engine/knowledge/sport-coverage-matrix.js (v2 → v3),
+   supabase/tests/batch3b0_knowledge_test.mjs, tools/probes/sport-coverage-matrix.json.
+   Suite danach 256/0 bei 7 uebersprungenen, Kohorten-Pin 023ee59b nicht beruehrt.
+
+   ============================================================
+   DAS WISSEN WURDE VON NIEMANDEM GELESEN (2026-08-13) · v8-341:
 
    ZWEI BEFUNDE, beide aus dem Weiterarbeiten an der eigenen Liste.
 

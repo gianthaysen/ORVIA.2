@@ -1,0 +1,47 @@
+{
+  "target": "js/engine/knowledge/sport-coverage-matrix.js",
+  "test": "supabase/tests/batch3b0_knowledge_test.mjs",
+  "note": "Die Matrix ist die einzige Stelle, an der ORVIA über sich selbst Auskunft gibt, wie weit die Wissensbasis je Sportart ist. Sie hat sich am 2026-08-13 als veraltet erwiesen: Gym hatte seit v8-339 ein Paket, die Matrix führte es als paketlos — und der Test hat den Irrtum GESCHÜTZT, weil er nur zählte. Diese Proben sichern, dass die neuen Zusicherungen wirklich vergleichen.",
+  "probes": [
+    {
+      "id": "SCM1",
+      "pattern": "value_not_type",
+      "title": "eine vorhandene Wissensbasis wird in der Matrix verschwiegen (der Originalbefund)",
+      "file": "js/engine/knowledge/sport-coverage-matrix.js",
+      "find": "exerciseLibrary: true, knowledgePack: true,",
+      "replace": "exerciseLibrary: true, knowledgePack: false,",
+      "expectTest": "C5 knowledgePack ==",
+      "history": "Genau dieser Zustand lag zwischen v8-339 und v8-341 im Repo, ohne dass ein Test anschlug. Die alte Zusicherung prüfte `filter(knowledgePack).length === 1` — mit Gym auf false ergab das weiterhin 1, also grün. Ein Zähler kann eine falsche Aussage nicht von einer richtigen unterscheiden."
+    },
+    {
+      "id": "SCM2",
+      "pattern": "value_not_type",
+      "title": "ein verdrahtetes Paket wird als nicht verdrahtet geführt",
+      "file": "js/engine/knowledge/sport-coverage-matrix.js",
+      "find": "      knowledgePackWired: true, knowledgePackStatus:",
+      "replace": "      knowledgePackWired: false, knowledgePackStatus:",
+      "expectTest": "C6 knowledgePackWired ==",
+      "history": "Untertreibung ist genauso falsch wie Übertreibung: wer die Matrix liest, um zu entscheiden, welche Sportart als nächste angeschlossen wird, würde Gym erneut anschließen wollen."
+    },
+    {
+      "id": "SCM3",
+      "pattern": "data_lacks_var",
+      "title": "ein NICHT verdrahtetes Paket wird als wirksam ausgegeben",
+      "file": "js/engine/knowledge/sport-coverage-matrix.js",
+      "find": "      knowledgePackWired: false, knowledgePackStatus:",
+      "replace": "      knowledgePackWired: true, knowledgePackStatus:",
+      "expectTest": "C6 knowledgePackWired ==",
+      "history": "Die gefährlichere Richtung. Das Laufpaket hat 14 gepflegte Regeln und erreicht trotzdem keinen Aufrufer; stünde es als wirksam in der Matrix, hielte man die Laufberatung für belegt, obwohl sie aus nichts stammt."
+    },
+    {
+      "id": "SCM4",
+      "pattern": "fixture_masks",
+      "title": "der Prüfstand des Pakets fehlt, die Matrix behauptet es trotzdem",
+      "file": "js/engine/knowledge/sport-coverage-matrix.js",
+      "find": "      knowledgePackWired: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),",
+      "replace": "      knowledgePackWired: true }),",
+      "expectTest": "… und jede Sportart mit Paket nennt ihren Prüfstand",
+      "history": "„Hat ein Paket\" ohne „wie geprüft\" ist die Aussage, die zur Überschätzung führt. Kein Paket im Projekt ist wissenschaftlich geprüft; das muss an jeder Sportart stehen, die eines führt."
+    }
+  ]
+}

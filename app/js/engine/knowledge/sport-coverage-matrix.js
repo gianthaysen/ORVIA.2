@@ -13,13 +13,26 @@
    trainingDomain.POSITIONS; catalogPlanningFlag aus dem Katalog.
    plannerSupport ist überall false (es existiert noch kein Scheduler).
    KEINE Sportart ist produktionsreif oder fachlich geprüft.
+
+   Korrektur v2 → v3 (Bestandsaufnahme 2026-08-13): Gym hat seit v8-339 ein
+   Wissenspaket, die Matrix führte es weiter als paketlos. Der Irrtum blieb
+   unbemerkt, weil die Zusicherung im Test nur ZÄHLTE („genau eine Sportart
+   mit Paket") statt gegen die vorhandenen Module zu vergleichen — ein
+   Zähler prüft nichts, er schreibt den Stand des Tages fest.
+
+   Mit der Korrektur kam die zweite Hälfte der Wahrheit dazu: ein Paket zu
+   BESITZEN und im Produktivweg GELESEN zu werden ist nicht dasselbe. Das
+   Laufpaket wird von keinem Aufrufer erreicht (running-capacity-factory hat
+   keinen produktiven Aufrufer), das Gym-Paket schon. Ohne die getrennte
+   Dimension würde diese Matrix ab jetzt genau den falschen Eindruck
+   erzeugen, den sie eigentlich verhindern soll.
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var COVERAGE_VERSION = 2;
+  var COVERAGE_VERSION = 3;
 
   var DIMENSIONS = ['onboardingSelectable', 'activityTrackingSupported', 'profileSchema', 'positionRoleModel',
-    'knowledgePack', 'plannerSupport', 'exerciseLibrary', 'safetyReview', 'productionStatus'];
+    'knowledgePack', 'knowledgePackWired', 'plannerSupport', 'exerciseLibrary', 'safetyReview', 'productionStatus'];
 
   function entry(over) {
     return Object.assign({
@@ -27,7 +40,8 @@
       activityTrackingSupported: false,   // nur wenn in trainingDomain.ACTIVITY_SPORTS (testerzwungen)
       profileSchema: false,               // = sportFollowupSchema(id) existiert (testerzwungen)
       positionRoleModel: false,           // = trainingDomain.POSITIONS[id] existiert (testerzwungen)
-      knowledgePack: false,
+      knowledgePack: false,               // = ein *-knowledge-pack.js existiert (testerzwungen)
+      knowledgePackWired: false,          // = knowledgeConsumer holt es wirklich (testerzwungen)
       plannerSupport: false,              // es existiert noch KEIN Scheduler (Batch 4)
       exerciseLibrary: false,
       safetyReview: false,
@@ -37,8 +51,14 @@
   }
 
   var COVERAGE = {
-    running: entry({ activityTrackingSupported: true, profileSchema: true, knowledgePack: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),
-    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true }),
+    /* running: 14 handgepflegte Regeln, technisch geprüft, wissenschaftlich
+       ungeprüft — und im Produktivweg von niemandem gelesen. */
+    running: entry({ activityTrackingSupported: true, profileSchema: true, knowledgePack: true,
+      knowledgePackWired: false, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),
+    /* gym: 4 Regeln aus einer Übersichtsarbeit (2007), eingespeist in v8-339,
+       seit v8-341 die einzige Sportart, deren Wissen die Verordnung erreicht. */
+    gym: entry({ activityTrackingSupported: true, profileSchema: true, exerciseLibrary: true, knowledgePack: true,
+      knowledgePackWired: true, knowledgePackStatus: 'technically_reviewed_scientifically_unreviewed' }),
     cycling: entry({ activityTrackingSupported: true }),
     swimming: entry({ activityTrackingSupported: true }),
     football: entry({ activityTrackingSupported: true, profileSchema: true, positionRoleModel: true }),

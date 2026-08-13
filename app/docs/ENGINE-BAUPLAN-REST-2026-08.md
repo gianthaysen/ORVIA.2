@@ -3605,3 +3605,98 @@ Konflikte.**
 Laufen hängt noch nicht am Consumer. Das handgepflegte Paket läuft über seinen
 eigenen Weg (`running-capacity-factory`, Shadow), und zwei Wege auf dieselben
 Regeln wären schlechter als einer. Erst zusammenführen, dann eintragen.
+
+---
+
+## 32 · Ein Zähler ist keine Prüfung (v8-342)
+
+### 32.1 Anlass
+
+Keine Weiterentwicklung, sondern eine Bestandsaufnahme: jede Zahl aus
+`STAND-UND-OFFENE-PUNKTE.md` gegen tatsächlich ausgeführten Code gehalten,
+nicht gegen die Erinnerung an den letzten Lauf.
+
+Was hielt: Gesamtsuite 256/0 bei 7 übersprungenen (263 Dateien),
+Mutationsproben 109 angeschlagen / 4 übersprungen, Wissenshashes
+unverändert, und die drei Messwerte der Pausenregel (120 / null / 240)
+reproduzieren sich über die echten Module.
+
+Was nicht hielt: zwei Aussagen über den eigenen Reifegrad.
+
+### 32.2 Befund 1 — die Matrix log, und ein grüner Test hielt sie fest
+
+`sport-coverage-matrix` führte Gym als paketlos. Gym hat seit v8-339 ein
+Wissenspaket und ist seit v8-341 die **einzige** Sportart, deren Wissen die
+Verordnung erreicht. Die Zusicherung, die das hätte melden müssen, lautete:
+
+```js
+matrixSports.filter(s => COVERAGE[s].knowledgePack).length === 1
+```
+
+Mit Gym fälschlich auf `false` ergab das weiterhin `1`. Grün. Ein Zähler
+kann eine falsche Aussage nicht von einer richtigen unterscheiden — er hält
+fest, wie viele es *am Tag des Schreibens* waren, und schützt jeden späteren
+Irrtum, der die Anzahl nicht verändert. Dieselbe Fehlerklasse wie die
+Paritäts-Gates aus dem GM7-Audit, nur kleiner und unauffälliger.
+
+**C5/C6 vergleichen jetzt gegen die Wirklichkeit.** C5 liest die Pack-Module
+aus dem Verzeichnis und nimmt die Sportart **aus dem Modul**, nicht aus dem
+Dateinamen — ein Dateiname ist nur eine Vermutung über seinen Inhalt. C6
+fragt `knowledgeConsumer.registrierteSportarten()`. Beide Zusicherungen
+pflegen sich selbst: ein neues Paket lässt den Test anschlagen, bis die
+Matrix es führt.
+
+### 32.3 Befund 2 — besitzen und gelesen werden ist nicht dasselbe
+
+Beim Korrigieren fiel auf, dass `O.runningCapacityFactory` von **keiner
+Stelle der App** gerufen wird. Die einzigen Nennungen im gesamten Repo sind
+ihre eigene Datei, ihr Unittest und `phase6_module_load_test`. Das
+Laufpaket — 14 handgepflegte Regeln, 17 Quellen — wirkt heute auf nichts.
+Die bisherige Beschreibung „läuft über seinen eigenen Consumer im
+Shadow-Modus" war zu freundlich: ein Shadow-Lauf wäre ein Lauf.
+
+Hätte ich nur `knowledgePack: true` für Gym nachgetragen, behauptete die
+Matrix ab sofort zwei wirksame Wissensbasen, wo es eine gibt — der falsche
+Eindruck wäre durch die Korrektur überhaupt erst entstanden. Deshalb die
+getrennte Dimension `knowledgePackWired` (running `false`, gym `true`),
+testerzwungen gegen den Consumer.
+
+Für §31.7 heißt das: „erst zusammenführen, dann eintragen" stand mit einer
+falschen Begründung dort. Es gibt keine zwei Wege auf dieselben Regeln, es
+gibt einen lebenden und einen toten.
+
+### 32.4 Proben
+
+Neuer Katalog `tools/probes/sport-coverage-matrix.json`, vier Stück, alle
+angeschlagen:
+
+| | Was eingebracht wird | Warum |
+|---|---|---|
+| SCM1 | Gym zurück auf paketlos | **der Originalbefund** — genau dieser Zustand lag zwischen v8-339 und v8-341 im Repo, ohne dass ein Test anschlug |
+| SCM2 | verdrahtetes Paket als unverdrahtet | Untertreibung führt dazu, dass jemand Gym ein zweites Mal anschließt |
+| SCM3 | unverdrahtetes Paket als wirksam | die gefährlichere Richtung: man hielte die Laufberatung für belegt, obwohl sie aus nichts stammt |
+| SCM4 | Prüfstand weglassen | „hat ein Paket" ohne „wie geprüft" ist die Aussage, die zur Überschätzung führt |
+
+SCM4 lief im ersten Anlauf als `wrong_test` — `expectTest` muss ein **Präfix
+der getrimmten** Fehlerzeile sein, die führenden Leerzeichen einer
+Unterzusicherung gehören nicht hinein. Notiert, weil es beim nächsten
+verschachtelten `ok()` wieder passiert.
+
+### 32.5 Stand
+
+- `sport-coverage-matrix` v2 → v3, neue Dimension `knowledgePackWired`
+- `batch3b0_knowledge_test.mjs`: C4 entkernt, C5/C6 neu (116 Zusicherungen)
+- **117 Proben in 13 Katalogen**, 113 gefahren / 4 übersprungen
+- App-Gesamtsuite **256/0** Dateien, 7 übersprungen, Kohorten-Pin `023ee59b`
+  unverändert (er ist allerdings nirgends maschinell geprüft — siehe unten)
+- Wissensmodule vor und nach dem Probenlauf gehasht: unverändert
+
+### 32.6 Offen aus der Bestandsaufnahme
+
+1. Ohne Chromium überspringen **22 Testdateien still**; die Suite meldet dann
+   234/0 bei 29 übersprungenen und sieht dabei unauffällig aus.
+2. Der **Kohorten-Pin steht nur in Fließtext**. Kein Code, kein Test
+   berechnet ihn — „unverändert" ist eine handgeführte Behauptung.
+3. Im Repo-Stamm liegt ein **zweites `sw.js`** (v8-329).
+4. Der Arbeitsstand v8-255…v8-341 war **nicht committet**; nachgeholt als
+   `21c3c1a` auf `sicherung/v8-341`. Push steht aus.

@@ -5,7 +5,7 @@
    Appraisals, semantische Validierung, 24er-Coverage.
    node supabase/tests/batch3b0_knowledge_test.mjs
    ============================================================ */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
@@ -504,11 +504,63 @@ const review = (rule, over) => Object.assign({
     matrixSports.every(s => CM.COVERAGE[s].profileSchema === (PM.sportFollowupSchema(s) != null)) &&
     matrixSports.every(s => CM.COVERAGE[s].positionRoleModel === !!TD.POSITIONS[s]) &&
     matrixSports.every(s => CM.COVERAGE[s].catalogPlanningFlag === OSL.CATALOG_BY_ID[s].planningSupported));
-  ok('C4 nichts produktionsreif/fachlich geprüft; kein Scheduler; mobility = Modalität; nur running mit (ungeprüftem) Pack',
+  ok('C4 nichts produktionsreif/fachlich geprüft; kein Scheduler; mobility = Modalität',
     matrixSports.every(s => CM.COVERAGE[s].plannerSupport === false && CM.COVERAGE[s].safetyReview === false && CM.COVERAGE[s].productionStatus === 'none') &&
-    CM.COVERAGE.mobility.modalityClassification === true &&
-    matrixSports.filter(s => CM.COVERAGE[s].knowledgePack).length === 1 &&
-    CM.COVERAGE.running.knowledgePackStatus === 'technically_reviewed_scientifically_unreviewed');
+    CM.COVERAGE.mobility.modalityClassification === true);
+
+  /* C5/C6 — BEFUND 2026-08-13, der diese beiden Zusicherungen erzwungen hat:
+     Gym bekam in v8-339 ein Wissenspaket, die Matrix führte es weiter als
+     paketlos, und die frühere Fassung von C4 hielt genau das für richtig
+     (`… .filter(knowledgePack).length === 1`). Ein Zähler prüft nichts — er
+     friert den Stand des Tages ein und bleibt grün, während die Aussage
+     falsch wird. Deshalb wird ab jetzt gegen die WIRKLICHKEIT verglichen:
+       C5  welche Pack-Module liegen tatsächlich im Verzeichnis,
+       C6  welche davon holt der Consumer im Produktivweg wirklich.
+     Beides ist selbstpflegend: ein neues Paket lässt den Test anschlagen,
+     bis die Matrix es führt. */
+  const packFiles = readdirSync(new URL('engine/knowledge/', base))
+    .filter(f => /-knowledge-pack\.js$/.test(f)).sort();
+  /* Die Sportart steht IM Modul, nicht im Dateinamen — der Dateiname wäre
+     nur eine Vermutung über den Inhalt. Jede Datei bekommt eine frische
+     Sandbox, damit die Pakete sich nicht gegenseitig überschreiben. */
+  const packSportOf = (file) => {
+    const s = {}; s.window = s; s.self = s; s.globalThis = s;
+    s.console = console; s.Date = Date; s.Math = Math; s.JSON = JSON; s.Object = Object; s.Array = Array;
+    s.String = String; s.Number = Number; s.Intl = Intl; s.isNaN = isNaN; s.isFinite = isFinite;
+    s.RegExp = RegExp; s.Error = Error; s.parseInt = parseInt; s.parseFloat = parseFloat;
+    vm.createContext(s);
+    vm.runInContext(src('engine/knowledge/knowledge-contracts.js'), s, { filename: 'knowledge-contracts.js' });
+    vm.runInContext(src('engine/knowledge/' + file), s, { filename: file });
+    const treffer = Object.keys(s.ORVIA || {}).map(k => s.ORVIA[k])
+      .filter(v => v && typeof v === 'object' && Array.isArray(v.rules) && typeof v.sport === 'string');
+    return treffer.length === 1 ? treffer[0].sport : null;
+  };
+  const vorhanden = packFiles.map(packSportOf).filter(Boolean).sort();
+  ok('C5 knowledgePack == die real vorhandenen Pack-Module (kein Zähler, ein Vergleich)',
+    packFiles.length > 0 && vorhanden.length === packFiles.length &&
+    JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePack).sort()) === JSON.stringify(vorhanden),
+    'Module: ' + JSON.stringify(vorhanden) + ' · Matrix: ' +
+    JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePack).sort()));
+  ok('  … und jede Sportart mit Paket nennt ihren Prüfstand',
+    vorhanden.every(s => CM.COVERAGE[s].knowledgePackStatus === 'technically_reviewed_scientifically_unreviewed'));
+
+  /* C6: ein Paket zu BESITZEN und im Produktivweg GELESEN zu werden ist
+     nicht dasselbe. Das Laufpaket erreicht heute keinen Aufrufer. */
+  const sbW = {}; sbW.window = sbW; sbW.self = sbW; sbW.globalThis = sbW;
+  sbW.console = console; sbW.Date = Date; sbW.Math = Math; sbW.JSON = JSON; sbW.Object = Object; sbW.Array = Array;
+  sbW.String = String; sbW.Number = Number; sbW.Intl = Intl; sbW.isNaN = isNaN; sbW.isFinite = isFinite;
+  sbW.RegExp = RegExp; sbW.Error = Error; sbW.parseInt = parseInt; sbW.parseFloat = parseFloat;
+  vm.createContext(sbW);
+  ['engine/knowledge/knowledge-contracts.js', 'engine/knowledge/knowledge-application.js',
+    'engine/knowledge/knowledge-consumer.js'].forEach(f => vm.runInContext(src(f), sbW, { filename: f }));
+  const verdrahtet = sbW.ORVIA.knowledgeConsumer.registrierteSportarten().slice().sort();
+  ok('C6 knowledgePackWired == was der knowledge-consumer wirklich registriert',
+    verdrahtet.length > 0 &&
+    JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePackWired).sort()) === JSON.stringify(verdrahtet),
+    'Consumer: ' + JSON.stringify(verdrahtet) + ' · Matrix: ' +
+    JSON.stringify(matrixSports.filter(s => CM.COVERAGE[s].knowledgePackWired).sort()));
+  ok('  … und verdrahtet ist immer eine Teilmenge von vorhanden',
+    verdrahtet.every(s => vorhanden.indexOf(s) >= 0));
 }
 
 /* ---------- PR: Vertrag v6 — Vorgabefähigkeit von Evidenzklasse entkoppelt ----------
