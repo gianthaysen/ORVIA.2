@@ -199,7 +199,11 @@
       <p class="muted" style="margin:-6px 0 12px" id="runnaSub"></p>
       <div class="plan-tools"><button class="btn sec" onclick="openPlanEditor()">Plan bearbeiten</button><button class="btn sec" onclick="openPauseEditor()">Pause / Urlaub</button></div>
       <div id="planPauses"></div>
-      <div id="weekPlanBox"></div></div>
+      <div id="weekPlanBox"></div>
+      <!-- Sichtscheibe auf den Schattenbetrieb: reine Darstellung von
+           ORVIA.getAdaptiveExplanation(). Kein Anwenden-Knopf, keine eigene
+           Rechnung, kein Schreiben. -->
+      <div id="adaptiveCard"></div></div>
     <div class="card"><h2><svg class="ic"><use href="#i-layers"/></svg>Plan-Varianten (B / C)</h2><div id="planVariantsBox"></div></div>
     <div class="card"><h2><svg class="ic"><use href="#i-flag"/></svg>Planqualität &amp; Sicherheit</h2><div id="planQualityBox"></div></div>
     <div class="card"><h2><svg class="ic"><use href="#i-target"/></svg>Zielprognose &amp; Diagnose</h2><div id="forecastBox"></div></div>
@@ -538,7 +542,18 @@
 <script src="js/engine/knowledge/knowledge-contracts.js"></script>
 <script src="js/engine/knowledge/knowledge-sources.js"></script>
 <script src="js/engine/knowledge/running-knowledge-pack.js"></script>
+<!-- v8-339: das erste eingespeiste Paket. Erzeugt von tools/knowledge-ingest.mjs
+     aus docs/wissen/QUELLE-05-friedmann-krafttraining-2007.json — nicht von Hand
+     bearbeiten, Aenderungen gehoeren in die Notizdatei. Eigenes Quellenregister
+     (gym-knowledge-sources.js), deshalb VOR dem Paket geladen: das Paket ruft zur
+     Ladezeit packContentHash auf. Wissenschaftlich ungeprueft, laeuft nur im
+     Advisory-Modus mit Herkunftsanzeige. -->
+<script src="js/engine/knowledge/gym-knowledge-sources.js"></script>
+<script src="js/engine/knowledge/gym-knowledge-pack.js"></script>
 <script src="js/engine/knowledge/sport-coverage-matrix.js"></script>
+<script src="js/engine/knowledge/knowledge-ingest.js"></script>
+<script src="js/engine/knowledge/knowledge-application.js"></script>
+<script src="js/engine/knowledge/knowledge-consumer.js"></script>
 <script src="js/engine/goal-portfolio.js"></script>
 <script src="js/engine/running-capacity-factory.js"></script>
 <script src="js/engine/scheduler-input-factory.js"></script>
@@ -557,6 +572,114 @@
 <!-- Phase 8.1 (2026-08-06): Projektion Engine-Woche -> Anzeigemodell. Rein rechnend,
      steuert nichts; die Anzeige entscheidet weiterhin der Aktivierungspfad. -->
 <script src="js/engine/week-projection.js"></script>
+<script src="js/engine/prescription-format.js"></script>
+<!-- Wochenstruktur-Regelwerk (2026-08-06): garantiert Ruhetag, begrenzt Doppel-
+     einheiten auf freigegebene Tage, loest fachliche Kollisionen. generateWeekPlan
+     ruft es zur Laufzeit ueber ORVIA.weekPlanPolicy auf — Ladereihenfolge unkritisch. -->
+<!-- Lastprofil (2026-08-06): bildet JEDE Einheit auf 15 Muskelgruppen ab.
+     Kollisionen werden dadurch sportartenuebergreifend erkannt statt per Sonderfall. -->
+<!-- Leistungszonen (2026-08-06): Schwelle, Zonen, Zielprognose — mit Konfidenz.
+     Ohne Referenzleistung liefert es bewusst NICHTS statt eines Schaetzwerts. -->
+<!-- Bauplan Stufe 0b (2026-08-07): Herkunftsvertrag. Jeder entscheidungsrelevante
+     Wert traegt ab hier dieselbe Huelle — Wert, Quelle, Datum, Belegstufe. Zwei
+     GETRENNTE Achsen: evidence (unknown<weak<moderate<strong) und freshness,
+     gemessen gegen eine quellenspezifische Grenze. Ein starker Beleg von vor einem
+     Jahr bleibt stark — nur alt. MUSS vor performance-zones geladen werden. -->
+<script src="js/engine/evidence.js"></script>
+<script src="js/engine/performance-zones.js"></script>
+<script src="js/engine/load-profile.js"></script>
+<!-- Verbindung Profil → Zonen (2026-08-06): liest ALLE Leistungsangaben des
+     Nutzers und macht daraus die Eingabe je Sportart. -->
+<script src="js/engine/performance-resolver.js"></script>
+<!-- Bauplan Stufe 1 / G1 (2026-08-07): Performance Evidence Input. Prueft und
+     normalisiert Wettkampf-, Test- und Einzelwerte und haengt jedem Wert seine
+     Herkunft an (Huelle aus evidence.js). Lehnt Unplausibles AB statt es
+     umzudeuten und fragt bei mehrdeutigen Zeiten nach ("1:50"). Braucht
+     evidence.js und performance-zones.js (Protokolle) davor. -->
+<script src="js/engine/performance-input.js"></script>
+<!-- Bauplan Stufe 2 / C3 (2026-08-07): Session Debrief — die Feedbackschnittstelle
+     der Engine und die EINZIGE Quelle gelabelter Daten. executionScore misst
+     Planerfuellung (nicht Qualitaet: RPE und Schmerz gehen ausdruecklich nicht
+     ein), expectedRPE kommt aus der Prescription statt aus dem Sessionnamen, und
+     Vertraeglichkeit wird je {Domaene, Sportart} gefuehrt — schlechte
+     VO2-Vertraeglichkeit beim Laufen schraenkt keine Rad-Intervalle ein. -->
+<script src="js/engine/session-debrief.js"></script>
+
+<!-- Kanonischer Debrief-Persistenzvertrag: gmDbSave delegiert hierher; die
+     Tests bauen ihre Debriefs mit DERSELBEN Funktion (debrief_record via
+     prediction_observer_test). -->
+<script src="js/engine/debrief-record.js"></script>
+<!-- Bauplan Stufe 3 / C1 (2026-08-07): Load History. Haelt drei Dinge getrennt,
+     die man leicht verwechselt: tatsaechlich absolvierte Last, Datenvollstaendigkeit
+     und daraus abgeleitete Vertraeglichkeit. Fehlende Aktivitaeten sind fehlende
+     DATEN, niemals Nullbelastung — sonst schloesse die Engine aus einer nicht
+     geloggten Woche auf „gut erholt, jetzt steigern". Braucht load-profile
+     (Lastmodell) und session-debrief (Toleranz) davor. -->
+<script src="js/engine/load-history.js"></script>
+<!-- Bauplan Stufe 4 / C2 (2026-08-07): Adaptive Progression. +8 % ist die DECKE,
+     nicht der Motor — `delta` darf 0 oder negativ sein. Die sieben Stufen werden
+     hierarchisch durchlaufen: Sicherheit, Datenlage, handlungsfaehige Toleranz,
+     Phase und Zielbedarf, Wunsch, Guardrails, Empfehlung. Ein Guardrail darf
+     senken, nie erhoehen. -->
+<script src="js/engine/progression.js"></script>
+
+<!-- Stufe 5 · Zielmachbarkeit: reiner Bewerter. Liest das C2-Ergebnis, verändert
+     es nie. Muss deshalb NACH progression.js stehen. -->
+<script src="js/engine/goal-feasibility.js"></script>
+
+<!-- Schattenbetrieb: rechnet C1 -> C2 -> Stufe 5 bei jedem Planlauf mit und
+     schreibt ins Decision Log. Veraendert den Plan NICHT (planMutation none).
+     Muss nach goal-feasibility.js stehen, weil es dessen Ergebnis liest. -->
+<script src="js/engine/shadow-adaptive.js"></script>
+
+<!-- Stufe 6a · Uebersetzer: C2-Vertrag -> Aenderungsvorschlag. GEBAUT, ABER
+     NICHT VERDRAHTET — die produktive Anwendung bleibt gesperrt, bis die acht
+     Shadow-Abnahmekriterien erfuellt sind (plan_translator_test.mjs prueft
+     die Sperre). -->
+<script src="js/engine/plan-translator.js"></script>
+
+<!-- Sichtscheibe: View-Aufbau + Renderer der adaptiven Karte, pur und in Node
+     testbar (adaptive_card_test.mjs: Verhaltenstest statt Quelltextsuche). -->
+<script src="js/adaptive-card.js"></script>
+
+<!-- Prediction Observer: friert Erwartungen VOR einer Einheit ein und
+     vergleicht sie spaeter mit dem Debrief. Reiner Beobachter AUSSERHALB der
+     eingefrorenen Abnahmekohorte — beruehrt keines der 15 Module. -->
+<script src="js/engine/observer-source.js"></script>
+<script src="js/engine/observer-input.js"></script>
+<script src="js/engine/prediction-observer.js"></script>
+<script src="js/engine/week-plan-designer.js"></script>
+<!-- v8-316: Planqualitaets-Subscores. Bis hierher existierte nur der Validator
+     engine-contracts.isPlanQuality() — die sechs Kacheln im Plan-Tab standen
+     dauerhaft auf „—". Reines Modul, kein DOM; braucht trainingDomain fuer die
+     Sportart-Normalisierung (steht weiter oben) und faellt ohne ihn fuer die
+     Sportbalance ehrlich auf „nicht bewertbar" zurueck statt zu raten. -->
+<script src="js/engine/plan-quality.js"></script>
+<!-- Kraft-Datenvertrag (2026-08-12, K1/K2): eine Form fuer geplante Uebungen,
+     Saetze, Wiederholungen und Zielgewicht — gelesen von Wochenplan, Editor,
+     Sessionstart und Garmin-Export. Braucht trainingDomain (Sportart-
+     Normalisierung, steht weiter oben) und faellt ohne ihn ehrlich darauf
+     zurueck, eine Einheit NICHT als Kraft zu erkennen, statt zu raten. -->
+<script src="js/engine/strength-plan.js"></script>
+<!-- Garmin-Uebungszuordnung (2026-08-12, K3): versioniert, gegen den offiziellen
+     FIT-SDK-Katalog 21.213.0 nachgewiesen. Reine Nachschlagetabelle ohne Netz-
+     zugriff; der vollstaendige Katalog liegt als Testfixture, nicht im Produkt. -->
+<script src="js/engine/garmin-exercise-map.js"></script>
+<!-- Kraft-Workout-Exporter (2026-08-12, K4): rein, deterministisch, ohne Netz.
+     Nicht belegte Garmin-Zahlen bleiben standardmaessig leer statt erfunden;
+     Gewichte erst nach Gate G3. -->
+<script src="js/engine/garmin-workout-export.js"></script>
+<!-- Planvarianten (2026-08-06): A vollstaendig · B reduziert (ohne Doppeleinheiten)
+     · C minimal (nur Kernreize). Ersetzt die Prioritaets-Filterung, die A und B
+     bei gleichrangigen Einheiten identisch machte. -->
+<script src="js/engine/plan-variants.js"></script>
+<script src="js/engine/week-plan-policy.js"></script>
+<!-- Bauplan Stufe 0a (2026-08-07): Entscheidungs-Log. Protokolliert WARUM eine
+     Planentscheidung so fiel — mit Kandidaten (Top 5), ausgeloesten Regeln und
+     ALLEN entscheidungsrelevanten Modulversionen. Ohne die Versionen waere eine
+     spaetere Rekonstruktion eine Erfindung aus heutigem Code. Reines Modul; die
+     unreinen Teile (Uhr, IDs, Supabase) haengen in js/ui.js daran. -->
+<script src="js/engine/decision-log.js"></script>
 <!-- Phase 8.4 (2026-08-06): serverseitiger Schaltkanal. Fail-closed — ohne
      ausdrueckliche Freigabe ist alles aus. -->
 <script src="js/engine/feature-flags.js"></script>

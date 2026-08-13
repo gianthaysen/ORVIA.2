@@ -541,6 +541,13 @@ function trendDir(a){
    { hrvBase7, hrvSd28, hrvN, rhrBase, sleepDebtH, hrvLowStreak }
    Fehlende Komponenten werden NICHT mit Defaults gefüllt, sondern aus der
    Gewichtung entfernt und renormalisiert (ehrlicher Score). */
+/* v8-317 · EINE Lesart von Garmins HRV-Status im ganzen Produkt.
+   Garmin kennt Balanced · Unbalanced · Low · Poor (kein 'Good'). Vorher wurde
+   an fuenf Stellen `hrv==='Low'` verglichen — 'Poor' (schlechter als Low!) fiel
+   damit ueberall durch und landete faelschlich in besseren Zustaenden als 'Low'.
+   Genau das hat die Gegenprobe zu v8-317 aufgedeckt. 'Unbalanced' zaehlt
+   bewusst NICHT als schlecht: es heisst leicht neben der eigenen Baseline. */
+function hrvBelowBaseline(h){var x=String(h||'').toLowerCase();return x==='low'||x==='poor';}
 function hrvScoreOf(m,ctx){
   if(m.hrvMs&&ctx&&ctx.hrvN>=14&&ctx.hrvBase7!=null&&ctx.hrvSd28!=null&&ctx.hrvSd28>0){
     const ln=Math.log(m.hrvMs),swc=0.5*ctx.hrvSd28; // smallest worthwhile change
@@ -548,22 +555,96 @@ function hrvScoreOf(m,ctx){
     if(ln>=ctx.hrvBase7-2*swc)return 60;
     return 25;
   }
-  // Garmin-HRV-Status ist bereits persönlich-relativ (gegen die eigene 3-Wochen-Baseline).
-  // 'Balanced' = innerhalb der individuellen Norm → hoch bewerten, nicht pauschal abstrafen.
-  if(m.hrv)return m.hrv==='Good'?100:m.hrv==='Balanced'?88:(m.hrv==='Low'||m.hrv==='Unbalanced')?45:null;
+  /* v8-317 · GARMINS ECHTE KATEGORIEN. Garmin kennt VIER Zustände:
+     Balanced · Unbalanced · Low · Poor. Ein 'Good' gibt es NICHT — der frühere
+     100er-Zweig war toter Code, und damit war über diesen Pfad bei 88 Schluss:
+     eine der Ursachen dafür, dass der Tagesscore nie 100 erreichen konnte.
+     Zweiter Fehler: 'Unbalanced' und 'Low' wurden gemeinsam auf 45 gelegt.
+     Das sind aber verschiedene Aussagen — 'Unbalanced' heißt „7-Tage-Schnitt
+     LEICHT über ODER unter der eigenen Baseline", 'Low' heißt „deutlich
+     darunter". Beides gleich zu bestrafen macht den häufigsten Zwischenzustand
+     zum Alarm. 'Poor' (unter der Altersnorm) war überhaupt nicht behandelt und
+     fiel auf null — die HRV verschwand dann still aus der Gewichtung.
+     Der gemessene Pfad oben bleibt vorrangig: er ist gegen die EIGENE,
+     mitwachsende Baseline gerechnet und kann 100 erreichen. */
+  if(m.hrv){
+    var _h=String(m.hrv).toLowerCase();
+    if(_h==='balanced')return 92;
+    if(_h==='unbalanced')return 62;
+    if(_h==='low')return 38;
+    if(_h==='poor')return 22;
+    return null;                    /* unbekannte Kennung: nicht raten, aus der Gewichtung nehmen */
+  }
   return null;
 }
 function readiness(m,ctx){
   ctx=ctx||{};
   const comps=[];
   const add=(name,score,w)=>{if(score!=null&&!isNaN(score))comps.push([name,clampC(score,0,100),w]);};
-  add('Knie',m.knee!=null?(10-m.knee)/10*100:null,25);
+  /* v8-317 · SCHMERZ ZAEHLT, EGAL WO (Gians Huefte).
+     Vorher stand hier ausschliesslich m.knee — die Readiness kannte nur den
+     Knieschmerz. Gians Hueftbeschwerden liefen ueber e.issues in die
+     ENTSCHEIDUNG, erreichten die READINESS aber nie: der Rohwert blieb bei
+     jeder Hueftstufe identisch, und nur der Zustandsdeckel bewegte die Zahl.
+     Genau deshalb wirkte die Anpassung wie eine Treppe.
+     ctx.painToday ist der groesste erfasste Schmerz des Tages ueber ALLE
+     Regionen (Knie eingeschlossen); fehlt er, bleibt es beim bisherigen
+     Knie-Wert — kein Verhaltenswechsel fuer Aufrufer ohne diese Angabe. */
+  var _painToday=(ctx&&ctx.painToday!=null)?ctx.painToday:m.knee;
+  if(m.knee!=null&&(_painToday==null||m.knee>_painToday))_painToday=m.knee;
+  add('Schmerz',_painToday!=null?(10-_painToday)/10*100:null,25);
   const hrvS=hrvScoreOf(m,ctx);add('HRV',hrvS,20);
   // Allgemeinbefinden — subjektiv stark gewichtet (war zuvor gar nicht enthalten).
   if(m.feel!=null)add('Befinden',m.feel*10,18);
+  /* ═══ v8-318 · SCHLAF GEGEN DEN EIGENEN BEDARF ═══════════════════════
+     Vorher: feste Rampe von 5 h (=0) bis 8 h (=100). Wer gewohnheitsmaessig
+     7 h braucht und 7 h schlaeft, bekam damit dauerhaft 67 — obwohl er
+     ausgeschlafen ist. Das ist genau die „feste Idealwert"-Logik, die Gian
+     beanstandet hat.
+     Jetzt: liegt eine eigene Historie vor (>=14 Tage, ctx.sleepBase), wird
+     gegen den EIGENEN Median gerechnet. Auf oder ueber dem eigenen Bedarf
+     = 100; darunter faellt es mit der EIGENEN Streuung (sleepSd), nicht mit
+     einer fremden Zahl. Die Streuung wird nach unten auf 30 min begrenzt,
+     damit ein sehr regelmaessiger Schlaefer nicht fuer 10 Minuten abgestraft
+     wird, und nach oben auf 120 min, damit eine chaotische Historie die
+     Bewertung nicht bedeutungslos macht.
+     OHNE eigene Historie bleibt ALLES wie bisher — kein erfundener Bezug. */
   if(ctx.sleepDebtH!=null)add('Schlaf-Konto',100-ctx.sleepDebtH*12,12);
+  else if(m.sleepMin!=null&&ctx.sleepBase>0){
+    var _sd=(ctx.sleepSd!=null&&ctx.sleepSd>0)?ctx.sleepSd:60;
+    _sd=clampC(_sd,30,120);
+    var _def=ctx.sleepBase-m.sleepMin;
+    add('Schlafdauer',_def<=0?100:clampC(100-(_def/_sd)*30,0,100),12);
+  }
   else if(m.sleepMin!=null)add('Schlafdauer',clampC((m.sleepMin-300)/180,0,1)*100,12);
-  if(m.sleepQ!=null)add('Schlafqualität',m.sleepQ*10,14); // stärker gewichtet
+  /* ═══ v8-319 · GARMINS SLEEP SCORE UND DIE SCHLAFPHASEN ═══════════════
+     Gians Vorgabe: „Der muss den Sleep Score bewerten." Der Wert wurde bisher
+     nur ANGEZEIGT und floss in keine Bewertung ein.
+
+     DOPPELZAEHLUNG VERMEIDEN — der Grund fuer die Gewichtsverschiebung:
+     Garmins Sleep Score enthaelt Dauer und Phasen bereits. Ihn zusaetzlich zur
+     subjektiven Schlafqualitaet mit vollem Gewicht zu fuehren, wuerde denselben
+     Sachverhalt zweimal zaehlen. Deshalb: liegt der gemessene Score vor, teilen
+     sich beide das bisherige Gewicht 14 (gemessen 9, subjektiv 5) — die
+     Messung fuehrt, das Empfinden bleibt als eigenstaendige Information
+     erhalten (es traegt, was kein Geraet sieht). Ohne gemessenen Score bleibt
+     die subjektive Angabe bei ihren vollen 14.
+
+     SCHLAFPHASEN als EIGENER, KLEINER Beitrag: bewertet wird der Anteil aus
+     Tief- und REM-Schlaf gegen die EIGENE Verteilung (Median 28 Naechte), nicht
+     gegen eine Lehrbuchzahl. Der absolute Minutenwert haengt an der Dauer und
+     waere schon im Sleep Score enthalten; der ANTEIL relativ zur eigenen Norm
+     ist die zusaetzliche Information. Gewicht bewusst nur 6: die Phasenerkennung
+     am Handgelenk ist die unsicherste der hier verwendeten Groessen. */
+  var _hasSleepScore=(ctx.sleepScore!=null&&ctx.sleepScore>=0&&ctx.sleepScore<=100);
+  if(_hasSleepScore)add('Schlafqualität (gemessen)',ctx.sleepScore,9);
+  if(m.sleepQ!=null)add('Schlafqualität',m.sleepQ*10,_hasSleepScore?5:14);
+  if(ctx.phaseShareToday>0&&ctx.phaseShareBase>0){
+    /* Auf oder ueber der eigenen ueblichen Tief-/REM-Quote = voll. Darunter
+       faellt es proportional; 30 % relative Abweichung entspricht 0. */
+    var _rel=ctx.phaseShareToday/ctx.phaseShareBase;
+    add('Schlafphasen',_rel>=1?100:clampC(100-(1-_rel)*333,0,100),6);
+  }
   if(m.stress)add('Stress',m.stress==='Low'?100:m.stress==='Med'?60:25,8);
   let rhrDev=null;
   // Ruhepuls NUR gegen die ECHTE persönliche Baseline des Nutzers bewerten (≥7 eigene Tage).
@@ -571,8 +652,33 @@ function readiness(m,ctx){
   // Nur erhöhter Ruhepuls zählt negativ; unter der Baseline ist neutral/gut.
   const rhrB=(ctx.rhrBase!=null)?ctx.rhrBase:null;
   if(m.rhr!=null&&rhrB!=null){rhrDev=m.rhr-rhrB;add('Ruhepuls',100-Math.max(rhrDev,0)*11,15);}
-  if(m.doms!=null)add('DOMS',(10-m.doms)*10,10);
-  if(m.bb!=null)add('Body Battery',m.bb,10); // herabgestuft: Garmin-Komposit, sonst Doppelzählung
+  /* v8-317 · MUSKELKATER IST REGIONAL, NICHT GLOBAL (Gians Befund).
+     „Wenn ich gestern Beine trainiert habe und heute Oberkörper dran ist und
+     Muskelkater 7 habe, darf der Score das nicht so ändern, dass ich keinen
+     Oberkörper machen kann." Genau richtig: Beinmuskelkater sagt nichts über
+     die Belastbarkeit des Oberkörpers. Die Entscheidungsseite wusste das
+     bereits (evaluateDomsImpact prüft Region gegen die geplante Einheit) —
+     der SCORE nicht, er zog pauschal ab.
+     Jetzt: trifft der Muskelkater die heutige Belastung nicht, bleibt er
+     drin, aber mit deutlich kleinerem Gewicht (3 statt 10). Er verschwindet
+     NICHT ganz — starker Muskelkater bedeutet auch systemische Ermüdung —,
+     aber er dominiert den Tag nicht mehr. Ohne bekannte Region bleibt es beim
+     alten, konservativen Verhalten (volles Gewicht). */
+  if(m.doms!=null){
+    var _domsW=10;
+    if(ctx&&ctx.domsHitsToday===false&&m.domsRegion)_domsW=3;
+    add('DOMS',(10-m.doms)*10,_domsW);
+  }
+  /* v8-318 · BODY BATTERY GEGEN DEN EIGENEN MORGENWERT. Der Rohwert ist
+     zwischen Personen nicht vergleichbar: wessen Morgenwert typischerweise
+     bei 75 liegt, erreichte nie die vollen Punkte. Mit eigener Historie
+     (>=14 Tage) zaehlt die Abweichung vom eigenen Median — auf oder ueber
+     dem eigenen Normalwert = 100. Ohne Historie bleibt es beim Rohwert.
+     Gewicht unveraendert 10 (Garmin-Komposit, sonst Doppelzaehlung). */
+  if(m.bb!=null){
+    if(ctx.bbBase>0)add('Body Battery',m.bb>=ctx.bbBase?100:clampC(100-(ctx.bbBase-m.bb)*2.2,0,100),10);
+    else add('Body Battery',m.bb,10);
+  }
   const W=comps.reduce((s,c)=>s+c[2],0)||1;
   let score=Math.round(comps.reduce((s,c)=>s+c[1]*c[2],0)/W);
   // Harter Schmerz-Cap: akuter Knie-Schmerz darf nie im grünen Band landen,
@@ -805,8 +911,30 @@ function heavyLegs(gymSession){
 }
 
 /* ---- Schlafschuld 7T (h) ---- */
-function sleepDebt(sleepMins7){
-  return sleepMins7.filter(x=>x!=null).reduce((s,x)=>s+Math.max(0,480-x),0)/60;
+/* ═══ v8-318 · SCHLAFSCHULD GEGEN DEN EIGENEN BEDARF ═══════════════════
+   VORHER: `480-x` — acht Stunden als fest verdrahteter Sollwert fuer jeden.
+   Wer gewohnheitsmaessig 7 h schlaeft, sammelte damit JEDE Nacht 1 h
+   „Schuld": 7 h pro Woche, Score-Beitrag 100 − 7·12 = 16 statt 100. Dauerhaft
+   und unbehebbar, ausser er schlaeft ab sofort jede Nacht 8 h. Bei Gewicht 12
+   zieht das den Tagesscore um rund 8 Punkte — und zwar JEDEN Tag gleich.
+   Das ist einer der Gruende fuer die konstante Zahl, die Gian beschrieben hat.
+
+   JETZT: `needMin` ist der EIGENE gewohnheitsmaessige Bedarf (Median der
+   letzten 28 Tage, aus recoveryCtx).
+
+   [A] ANNAHME, DIE HIER BEWUSST GETROFFEN WIRD: Der eigene Median darf NICHT
+   unbegrenzt nach unten wandern. Sonst wuerde chronischer Schlafmangel sich
+   selbst zur Norm erklaeren und die Schuld verschwinden — die Zahl waere dann
+   angenehm und falsch. Deshalb wird die Referenz auf 7–8 h begrenzt: wer
+   gewohnheitsmaessig 7 h schlaeft, wird an 7 h gemessen (Gians Punkt); wer
+   chronisch 5 h schlaeft, weiterhin an 7 h (Sicherheitspunkt).
+   Die untere Grenze folgt der verbreiteten Erwachsenenempfehlung von 7–9 h;
+   fuer Sportler wird eher mehr angesetzt — 7 h ist also die konservative,
+   nicht die grosszuegige Wahl.
+   OHNE uebergebenen Bedarf bleibt es bei 480 — Altaufrufer unveraendert. */
+function sleepDebt(sleepMins7,needMin){
+  var need=(needMin!=null&&isFinite(needMin))?clampC(needMin,420,480):480;
+  return sleepMins7.filter(x=>x!=null).reduce((s,x)=>s+Math.max(0,need-x),0)/60;
 }
 
 /* ---- Gewicht vs. Ziel (einfach, ehrlich — keine Kalorienbilanz) ---- */
@@ -906,21 +1034,41 @@ function dayStateEngine(inp){
   var pain=(i.pain!=null?i.pain:0), doms=(i.doms!=null?i.doms:0);
   var sleepH=(i.sleepH!=null?i.sleepH:7), sleepQ=(i.sleepQ!=null?i.sleepQ:6);
   var feel=(i.feel!=null?i.feel:7), readiness=(i.readiness!=null?i.readiness:null);
-  var lowHrv=(i.hrv==='Low'), highStress=(i.stress==='High'), illness=!!i.illness;
+  var lowHrv=hrvBelowBaseline(i.hrv), highStress=(i.stress==='High'), illness=!!i.illness;
   var poorSleep=(sleepH<6||sleepQ<=4), lowEnergy=(feel<=4);
   var lowMot=(i.motivation!=null&&i.motivation<=3);
   // Belastungssprung 3T vs. 7T-Schnitt (falls geliefert)
   var loadSpike=(i.load3!=null&&i.load7!=null&&i.load7>0&&(i.load3/i.load7)>1.4);
+  /* v8-317 · MUSKELKATER IST REGIONAL (Gians Befund, zweite Haelfte).
+     Der Score unterschied nach der ersten Korrektur bereits, der ZUSTAND nicht:
+     Beinmuskelkater 7/10 setzte auch an einem Oberkoerpertag ORANGE — und
+     ORANGE verbietet Krafttraining komplett. Damit konnte man nach einem
+     Beintag keinen Oberkoerper mehr machen, obwohl der Oberkoerper frisch ist.
+     `domsHits` kommt aus evaluateDomsImpact (Region gegen die heute geplante
+     Einheit). Trifft der Muskelkater die heutige Belastung NICHT, zaehlt er
+     eine Stufe niedriger — er verschwindet nicht, denn starker Muskelkater
+     bedeutet auch systemische Ermuedung.
+     OHNE erfasste Region entscheidet weiterhin evaluateDomsImpact nach seiner
+     bestehenden Regel (beinlastige geplante Einheit ⇒ trifft zu) — hier wird
+     nichts umgedeutet. Nur ein voellig FEHLENDER Wert (undefined, z. B. aus
+     einem Alt-Aufrufer ohne pdm) gilt konservativ als „trifft zu". */
+  var domsHits=(i.domsHits===false)?false:true;
   var flags={illness:illness,painSevere:pain>=6,pain:pain>=4&&pain<6,painMild:pain>=2&&pain<4,
-    domsHigh:doms>=7,domsMod:doms>=4&&doms<7,poorSleep:poorSleep,lowEnergy:lowEnergy,
+    domsHigh:doms>=7&&domsHits,domsMod:(doms>=4&&doms<7)||(doms>=7&&!domsHits),poorSleep:poorSleep,lowEnergy:lowEnergy,
     lowHrv:lowHrv,highStress:highStress,loadSpike:loadSpike,lowMotivation:lowMot};
   var state;
   if(illness||flags.painSevere||(readiness!=null&&readiness<40)||(lowHrv&&poorSleep&&lowEnergy))state='RED';
   else if(flags.pain||flags.domsHigh||(readiness!=null&&readiness<55)||(lowHrv&&poorSleep)||loadSpike)state='ORANGE';
   else if((readiness!=null&&readiness<70)||flags.domsMod||poorSleep||flags.painMild||lowHrv||highStress||lowEnergy)state='YELLOW';
   else state='GREEN';
+  /* v8-320: Im Wiedereinstiegsfenster nach Krankheit nie GREEN — die Freigabe
+     fuer harte Einheiten haengt am Zustand, und genau die ist hier zu frueh. */
+  var _irw=illnessReturnWindow(i.illSinceEnd,i.illDuration);
+  if(_irw.inWindow){flags.illnessReturn=true;flags.illnessReturnDay=_irw.day;flags.illnessReturnDays=_irw.days;
+    if(state==='GREEN')state='YELLOW';}
   var reasons=[];
   if(illness)reasons.push('Krankheitssymptome');
+  if(_irw.inWindow)reasons.push('Wiedereinstieg nach Krankheit (Tag '+_irw.day+' von '+_irw.days+')');
   if(pain>0)reasons.push('Schmerzen '+pain+'/10'+(i.region?' ('+i.region+')':''));
   if(doms>=4)reasons.push('Muskelkater '+doms+'/10');
   if(poorSleep)reasons.push('Schlaf '+(sleepH<6?sleepH.toFixed(1)+' h':'Qualität '+sleepQ+'/10'));
@@ -933,7 +1081,7 @@ function dayStateEngine(inp){
     YELLOW:{hard:false,strength:true,impact:true},
     ORANGE:{hard:false,strength:false,impact:false},
     RED:{hard:false,strength:false,impact:false}}[state];
-  return {state:state,reasons:reasons,flags:flags,allow:allow};
+  return {state:state,reasons:reasons,flags:flags,allow:allow,illnessReturn:_irw};
 }
 /* Eine geplante Einheit an den Tageszustand anpassen → Aktionstyp + Ersatz.
    item: {t:'Laufen'|'Rad'|'Gym'|'Schwimmen'|'Mobilität', l, d, kind?}
@@ -1133,13 +1281,13 @@ function evaluateRecoveryState(n){
   var lim=[],sc=100,hard=!!n.hardPlanned,sleepH=n.sleepH,sleepQ=n.sleepQ;
   if(sleepH!=null){ if(sleepH<5){sc-=28;lim.push('Schlaf <5 h');} else if(sleepH<6){sc-=16;lim.push('Schlaf <6 h');} else if(sleepH<7){sc-=7;} }
   if(sleepQ!=null){ if(sleepQ<=2){sc-=24;lim.push('Schlafqualität sehr niedrig');} else if(sleepQ<=4){sc-=12;lim.push('Schlafqualität niedrig');} else if(sleepQ<=6){sc-=5;} }
-  if(n.hrv==='Low'){sc-=16;lim.push('HRV niedrig');}
+  if(hrvBelowBaseline(n.hrv)){sc-=16;lim.push('HRV niedrig');}
   if(n.rhrDev!=null&&n.rhrDev>=5){sc-=12;lim.push('Ruhepuls erhöht');}
   if(n.stress==='High'){sc-=10;lim.push('Stress hoch');} else if(n.stress==='Med'){sc-=4;}
   if(n.sleepDebtH!=null&&n.sleepDebtH>=4){sc-=8;lim.push('Schlafkonto negativ');}
   sc=Math.max(0,Math.min(100,sc));
   var extreme=(sleepH!=null&&sleepH<5)||(sleepQ!=null&&sleepQ<=2);
-  var hrvBad=(n.hrv==='Low'&&((sleepH!=null&&sleepH<6)||(sleepQ!=null&&sleepQ<=4)));
+  var hrvBad=(hrvBelowBaseline(n.hrv)&&((sleepH!=null&&sleepH<6)||(sleepQ!=null&&sleepQ<=4)));
   var sev='ok';
   if(lim.length>=3)sev='high';
   else if(extreme)sev=hard?'high':'moderate';
@@ -1160,25 +1308,117 @@ function evaluateLoadAndInterference(n,tt){
     spikePct:spike?Math.round((ratio-1)*100):null};
 }
 /* ---- Score-Caps zentral (UI rechnet KEINE Caps) ---- */
+/* ═══ v8-320 · WIEDEREINSTIEG NACH KRANKHEIT ══════════════════════════
+   Bis hierher war `illness` ein Ja/Nein. An dem Tag, an dem der Haken
+   verschwand, war man sofort wieder voll belastbar — der Score sprang von
+   gedeckelt auf ungebremst. Nach einem Infekt steigt die Belastbarkeit aber
+   graduell, und gerade die ersten Tage danach sind die, an denen zu frueh
+   wieder intensiv trainiert wird.
+
+   [A] ANNAHME, ausdruecklich als Faustregel gekennzeichnet: ETWA EIN
+   ZURUECKHALTENDER TAG JE KRANKHEITSTAG, gedeckelt bei 7. Das ist die in der
+   Sportpraxis verbreitete Groessenordnung fuer den Wiedereinstieg nach einem
+   banalen Infekt; es ist KEIN gemessener Wert und keine Diagnose. Bewusst
+   konservativ gedeckelt, damit eine lange Krankheit nicht wochenlang bremst.
+
+   Waehrend des Fensters steigt die Obergrenze LINEAR von 68 zurueck auf 100.
+   Der erste Tag danach ist damit spuerbar gebremst, der letzte praktisch frei.
+
+   HARTE EINHEITEN: Der erste Entwurf hatte hier ein eigenes `blocksHard` fuer
+   das erste Drittel des Fensters. Beim Durchmessen zeigte sich, dass das eine
+   SCHEINUNTERSCHEIDUNG ist: Das Fenster setzt den Tageszustand ohnehin auf
+   mindestens YELLOW, und YELLOW erlaubt per Definition keine harten Einheiten
+   (allow.hard=false). Das Feld haette eine Feinsteuerung suggeriert, die es
+   nicht gibt — deshalb entfernt. Die Schutzwirkung kommt aus dem Zustand.
+
+   returns {inWindow, day, days, ceiling} — pur, keine Uhr, keine Daten. */
+function illnessReturnWindow(sinceEnd,duration){
+  var d=(duration>0)?duration:0;
+  if(sinceEnd==null||d<=0)return {inWindow:false,day:0,days:0,ceiling:100};
+  if(sinceEnd<=0)return {inWindow:false,day:0,days:0,ceiling:100};   /* heute noch krank: bestehende Deckel greifen */
+  var days=Math.min(Math.max(Math.round(d),1),7);
+  if(sinceEnd>days)return {inWindow:false,day:0,days:days,ceiling:100};
+  var frac=(sinceEnd-1)/days;                 /* Tag 1 ⇒ 0, letzter Tag ⇒ nahe 1 */
+  return {inWindow:true,day:sinceEnd,days:days,ceiling:Math.round(68+(100-68)*frac)};
+}
 function applyDecisionCaps(score,n,ev,state,tt){
   var cap=100,hard=!!(n&&n.hardPlanned),S=ev.safety,P=ev.pdm,Ld=ev.load||{};
   if(S.level==='red')cap=Math.min(cap,35);
   if(n.illness&&S.level!=='red')cap=Math.min(cap,55);
+  /* v8-320: nach der Krankheit ein steigender statt gar kein Deckel. */
+  var _rw=illnessReturnWindow(n.illSinceEnd,n.illDuration);
+  if(_rw.inWindow)cap=Math.min(cap,_rw.ceiling);
   if((n.pain||0)>=8)cap=Math.min(cap,40);
   if(n.sleepQ!=null&&n.sleepQ<=2&&hard)cap=Math.min(cap,65);
   if(n.sleepH!=null&&n.sleepH<5&&hard)cap=Math.min(cap,65);
-  if(n.hrv==='Low'&&((n.sleepH!=null&&n.sleepH<6)||(n.sleepQ!=null&&n.sleepQ<=4)))cap=Math.min(cap,68);
+  if(hrvBelowBaseline(n.hrv)&&((n.sleepH!=null&&n.sleepH<6)||(n.sleepQ!=null&&n.sleepQ<=4)))cap=Math.min(cap,68);
   if((n.doms||0)>=8&&P.doms.hits)cap=Math.min(cap,65);
   if((n.pain||0)>=5&&P.pain.impactRegion&&P.pain.hits)cap=Math.min(cap,60);
   // Belastung ≠ Tagesform: Ein NUR durch Lastsprung ausgelöstes ORANGE darf den physiologischen
   // Readiness-Score NICHT deckeln. Der Lastsprung steuert die Trainingsentscheidung (Umfang
   // reduzieren), nicht die Zahl. Physiologische ORANGE-Ursachen deckeln weiterhin korrekt.
   var physOrangeCause=(n.illness||(n.pain||0)>=4||(n.doms||0)>=7||(n.readiness!=null&&n.readiness<55)||
-    (n.hrv==='Low'&&((n.sleepH!=null&&n.sleepH<6)||(n.sleepQ!=null&&n.sleepQ<=4))));
+    (hrvBelowBaseline(n.hrv)&&((n.sleepH!=null&&n.sleepH<6)||(n.sleepQ!=null&&n.sleepQ<=4))));
   var loadOnlyOrange=(state==='ORANGE'&&Ld.loadSpike&&!physOrangeCause);
-  var stateCap=loadOnlyOrange?100:{GREEN:100,YELLOW:79,ORANGE:64,RED:44}[state];
+  /* ═══ v8-317 · DER TAGESSCORE WIRD STETIG ═══════════════════════════════
+     GIANS BEFUND, am Code reproduziert: Der angezeigte Wert war KEINE
+     Messung, sondern die Obergrenze des Tageszustands. Die frühere Zeile
+       {GREEN:100, YELLOW:79, ORANGE:64, RED:44}[state]
+     erzeugte exakt die Treppe, die er gemessen hat — Hüftschmerz 2/3/4 ⇒ 79,
+     5/6 ⇒ 64, 7–10 ⇒ 44. Weil die physiologische Readiness fast immer ÜBER
+     der Grenze lag, sah er wochenlang „79", egal wie gut Schlaf, Stress oder
+     HRV waren: jede Verbesserung wurde von derselben Zahl abgeschnitten.
+
+     WAS BLEIBT (und warum): Die BÄNDER bleiben garantiert getrennt. Ein
+     ORANGE-Tag darf nie aussehen wie ein GREEN-Tag — sonst wäre die Zahl als
+     Sicherheitssignal wertlos. Die harten Sicherheitsdeckel oben (Red Flags,
+     Krankheit, Schmerz ≥8) bleiben ebenfalls unangetastet.
+
+     WAS SICH ÄNDERT: Innerhalb seines Bandes bewegt sich die Obergrenze jetzt
+     STETIG mit der tatsächlichen Schwere der Ursache. Ein YELLOW aus leichtem
+     Schmerz 2/10 deckelt bei 95, ein YELLOW aus Schmerz 3/10 plus schlechtem
+     Schlaf bei 80. Damit wirken Verbesserungen sofort sichtbar — und
+     Verschlechterungen ebenso, statt erst beim nächsten Bandwechsel.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var BAND={GREEN:[86,100],YELLOW:[70,95],ORANGE:[50,79],RED:[20,49]};
+  var b=loadOnlyOrange?BAND.GREEN:(BAND[state]||BAND.YELLOW);
+  var sev=stateSeverity(n,ev,state);
+  var stateCap=Math.round(b[1]-(b[1]-b[0])*sev);
   cap=Math.min(cap,stateCap);
   return Math.max(0,Math.min(Math.round(score),cap));
+}
+/* Schwere des AKTUELLEN Zustands als stetige Zahl 0..1 — 0 = gerade eben in
+   diesem Band, 1 = am unteren Rand. Sie ist die Ursache dafür, dass sich die
+   Zahl überhaupt bewegt, und benutzt AUSSCHLIESSLICH Größen, die auch die
+   Zustandsbestimmung selbst verwendet — kein zweites, abweichendes Kriterium.
+   Jeder Beitrag ist gedeckelt, damit ein einzelner Ausreißer nicht das ganze
+   Band aufbraucht. */
+function stateSeverity(n,ev,state){
+  var s=0;
+  var pain=n.pain||0,doms=n.doms||0;
+  var P=(ev&&ev.pdm)||{pain:{},doms:{}};
+  /* Schmerz zählt voll, wenn er die heutige Belastung trifft, sonst halb —
+     dieselbe Unterscheidung, die die Entscheidungsseite ohnehin trifft. */
+  if(pain>0)s+=Math.min(pain/10,1)*((P.pain&&P.pain.hits)?0.42:0.21);
+  /* Muskelkater: trifft er die heutige Einheit NICHT, wiegt er deutlich
+     weniger (Beinmuskelkater an einem Oberkörpertag). */
+  if(doms>0)s+=Math.min(doms/10,1)*((P.doms&&P.doms.hits)?0.28:0.08);
+  if(n.sleepH!=null&&n.sleepH<7)s+=Math.min((7-n.sleepH)/4,1)*0.18;
+  if(n.sleepQ!=null&&n.sleepQ<7)s+=Math.min((7-n.sleepQ)/7,1)*0.16;
+  if(n.feel!=null&&n.feel<7)s+=Math.min((7-n.feel)/7,1)*0.16;
+  var hrv=String(n.hrv||'').toLowerCase();
+  if(hrv==='low')s+=0.16; else if(hrv==='poor')s+=0.24; else if(hrv==='unbalanced')s+=0.07;
+  var st=String(n.stress||'').toLowerCase();
+  if(st==='high')s+=0.12; else if(st==='med')s+=0.04;
+  if(n.illness)s+=0.30;
+  /* Readiness unterhalb der Bandgrenze schiebt zusätzlich nach unten — sie ist
+     die verdichtete Morgenlage und darf im Band sichtbar bleiben. */
+  if(n.readiness!=null){
+    var refs={GREEN:70,YELLOW:55,ORANGE:40,RED:0};
+    var ref=refs[state]!=null?refs[state]:55;
+    if(n.readiness<ref+15)s+=Math.min(Math.max((ref+15-n.readiness)/30,0),1)*0.20;
+  }
+  return s<0?0:s>1?1:s;
 }
 /* ---- Max. 2 Trigger, PRIORISIERT: Safety > Plan-Konflikt > lokal > Recovery > Last ---- */
 function buildTriggerHighlights(ev){
@@ -1222,6 +1462,7 @@ function buildTrainingDecision(input){
   var planned=i.plannedToday||null,tt=classifyTrainingType(planned);
   // normalisierter Input (eine Quelle): painRegion ≠ domsRegion, hardPlanned aus tt
   var n={pain:c.pain||0,painRegion:c.painRegion||c.region||'',doms:c.doms||0,domsRegion:c.domsRegion||'',
+    illSinceEnd:(c.illSinceEnd!=null?c.illSinceEnd:null),illDuration:(c.illDuration||0),
     illness:!!c.illness,sleepH:c.sleepH,sleepQ:c.sleepQ,feel:c.feel,motivation:c.motivation,
     stress:c.stress,hrv:c.hrv,rhrDev:c.rhrDev,sleepDebtH:c.sleepDebtH,readiness:c.readiness,
     loads:L,hardPlanned:!!(tt.hard||(tt.legLoad&&tt.intensity!=='low'))};
@@ -1234,7 +1475,7 @@ function buildTrainingDecision(input){
   var rec=evaluateRecoveryState(n);
   var pdm=evaluatePainAndDOMS(n,tt);
   var load=evaluateLoadAndInterference(n,tt);
-  var stateInput={pain:n.pain,region:n.painRegion,illness:n.illness,doms:n.doms,sleepH:n.sleepH,sleepQ:n.sleepQ,feel:n.feel,motivation:n.motivation,stress:n.stress,hrv:n.hrv,readiness:n.readiness,load3:L.load3,load7:L.load7,load14:L.load14};
+  var stateInput={pain:n.pain,region:n.painRegion,illness:n.illness,illSinceEnd:n.illSinceEnd,illDuration:n.illDuration,doms:n.doms,domsHits:(pdm&&pdm.doms)?pdm.doms.hits:undefined,sleepH:n.sleepH,sleepQ:n.sleepQ,feel:n.feel,motivation:n.motivation,stress:n.stress,hrv:n.hrv,readiness:n.readiness,load3:L.load3,load7:L.load7,load14:L.load14};
   var ds=dayStateEngine(stateInput);
   // State-Hierarchie: Safety-RED > Schmerz≥8 RED > Krankheit (mind. ORANGE, nicht zwingend RED) > dayState
   var state;
@@ -1473,7 +1714,7 @@ const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,pac
   classifyTrainingType,SPORT_PROFILES,sportProfileFor,safetyCheck,detectDeficits,buildTrainingDecision,
   evaluateExtraState,escalateWithExtras,loadSpikeInfo,
   evaluatePainImpact,evaluateDomsImpact,evaluatePainAndDOMS,evaluateRecoveryState,evaluateLoadAndInterference,
-  applyDecisionCaps,buildTriggerHighlights,combineScore};
+  applyDecisionCaps,stateSeverity,hrvBelowBaseline,illnessReturnWindow,buildTriggerHighlights,combineScore};
 root.Calc=Calc;
 if(typeof module!=='undefined'&&module.exports)module.exports=Calc;
 })(typeof window!=='undefined'?window:globalThis);

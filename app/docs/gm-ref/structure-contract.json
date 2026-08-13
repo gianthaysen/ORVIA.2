@@ -1,0 +1,120 @@
+{
+  "contractVersion": "2.0.0",
+  "generatedFrom": "v8-219-audit-baseline",
+  "purpose": "Semantischer Strukturvertrag. Ersetzt die /tmp-abhaengigen gm*_parity.mjs. Geprueft wird, WELCHE Bereiche und Anzeigeslots existieren muessen — nicht ihr Aussehen.",
+  "rules": [
+    "Erforderliche GM-Bereiche muessen existieren (stabile IDs).",
+    "Erforderliche Anzeigeslots muessen erhalten bleiben — verankert ueber data-gm-slot.",
+    "Sektionslabel-TEXTE sind informativ, nicht vertraglich. Umbenennen ist erlaubt.",
+    "Ein Slot darf leer sein und \"—\" oder einen ehrlichen Grund anzeigen.",
+    "Ein Slot darf NICHT 0 oder einen Schaetzwert als Messung ausgeben.",
+    "Funktionslose interaktive Elemente duerfen verschwinden — sie sind nicht Teil des Vertrags.",
+    "Keine Abhaengigkeit von /tmp, Downloads oder extern erzeugten Harness-Dateien."
+  ],
+  "followUp": "Erledigt (E-13): die Anker sind data-gm-slot-Attribute. Neue geschuetzte Bereiche bekommen ein data-gm-slot im Renderer und werden hier aufgenommen.",
+  "requiredTabs": [
+    "heute",
+    "plan",
+    "akt",
+    "dash",
+    "mehr"
+  ],
+  "requiredGmHosts": [
+    "gmPlan",
+    "gmPage",
+    "gmAkt",
+    "gmActPage",
+    "gmAna",
+    "gmAnaPage",
+    "gmProf",
+    "gmProfPage"
+  ],
+  "requiredSlots": {
+    "plan": [
+      "plan-daily-goals",
+      "plan-goal-forecast",
+      "plan-phases",
+      "plan-quality",
+      "plan-variant",
+      "plan-week",
+      "plan-week-km"
+    ],
+    "dash": [
+      "analysis-insights",
+      "analysis-progress"
+    ],
+    "dashSegments": {
+      "overview": [
+        "analysis-insights",
+        "analysis-progress"
+      ],
+      "endurance": [
+        "analysis-quick-access",
+        "analysis-race-forecast"
+      ],
+      "recovery": [
+        "analysis-recovery-all"
+      ],
+      "body": [
+        "analysis-body-map"
+      ]
+    },
+    "mehr": [
+      "profile-control",
+      "profile-goal-journey",
+      "profile-performance",
+      "profile-sports"
+    ],
+    "heute": [
+      "dashboard-modules"
+    ],
+    "akt": []
+  },
+  "observedSectionLabels": {
+    "plan": [
+      "Planvariante",
+      "Diese Woche",
+      "Planqualität",
+      "Zielprognose",
+      "Phasen bis zum Ziel",
+      "Wochenkilometer (Lauf)",
+      "Tagesziele"
+    ],
+    "dash": [
+      "Was ORVIA daraus macht",
+      "Fortschritt & nächster Schritt"
+    ],
+    "dashSegments": {
+      "overview": [
+        "Was ORVIA daraus macht",
+        "Fortschritt & nächster Schritt"
+      ],
+      "endurance": [
+        "Wettkampfprognose",
+        "Schnellzugriff"
+      ],
+      "recovery": [
+        "Alle Erholungswerte"
+      ],
+      "body": [
+        "Vorderseite"
+      ]
+    },
+    "mehr": [
+      "Deine Sportarten",
+      "Zielreise",
+      "Profil & Kontrolle",
+      "Leistung & Fortschritt"
+    ],
+    "heute": [
+      "Deine Module"
+    ],
+    "akt": []
+  },
+  "observedAtGeneration": {
+    "honesty": {
+      "emDashCount": 9,
+      "notAvailableCount": 1
+    }
+  }
+}

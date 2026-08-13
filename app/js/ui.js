@@ -414,31 +414,141 @@ function generateWeekPlan(){
     /* Verfuegbare Tage: Ruhetage bleiben ausgeschlossen — sie sind eine ausdrueckliche
        Nutzerentscheidung und werden hier NICHT ueberschrieben. */
     var hasAvail=!!(cfg&&cfg.availableDayIdx&&cfg.availableDayIdx.length);
-    var days=[];for(var d1=0;d1<7;d1++)if(!hasAvail||cfg.availableDayIdx.indexOf(d1)>=0)days.push(d1);
+    /* ============================================================
+       KORREKTUR (2026-08-06) an genau dieser Stelle.
+
+       Die erste Fassung dieses Blocks (2026-08-05) hat den Befund erzeugt, der
+       ihn jetzt korrigiert: Sie kannte als einzige Grenzen MAX_PER_DAY=2 und
+       „nicht zweimal dieselbe Sportart am Tag". Damit hat sie
+         • jeden freien Tag belegt — auch den Ruhetag, den der Tagesdeckel
+           unmittelbar davor erzeugt hatte, und
+         • an jedem Tag eine zweite Einheit ergaenzt, ohne zu pruefen, ob der
+           Nutzer diesen Tag ueberhaupt fuer Doppeleinheiten freigegeben hat.
+       Ich hatte damals notiert „Ruhetag bleibt erhalten". Das galt nur fuer
+       ausdruecklich als nicht verfuegbar markierte Tage — nicht fuer den
+       Ruhetag, der aus dem Deckel entstand. Genau der wurde wieder zugebaut.
+
+       Jetzt: harte Ruhetage und nicht freigegebene Doppeltage sind schon beim
+       Auffuellen tabu. Die Feinstruktur (Kollisionen, Ruhetag-Garantie,
+       Wochendeckel) prueft danach week-plan-policy.js.
+       ============================================================ */
+    var _hardRest={};(cfg&&cfg.restDayIdx||[]).forEach(function(i){_hardRest[i]=1;});
+    var _dblOk={};(cfg&&cfg.doubleAllowedDayIdx||[]).forEach(function(i){_dblOk[i]=1;});
+    var _hasDblInfo=!!(cfg&&cfg.doubleAllowedDayIdx&&cfg.doubleAllowedDayIdx.length);
+    var days=[];for(var d1=0;d1<7;d1++){
+      if(_hardRest[d1])continue;                                   /* Ruhetag ist kein Fuellplatz */
+      if(!hasAvail||cfg.availableDayIdx.indexOf(d1)>=0)days.push(d1);
+    }
     if(!days.length)return;
-    var MAX_PER_DAY=2;
+    /* Kapazitaet je Tag: 1 — 2 nur, wenn dieser Tag ausdruecklich freigegeben ist. */
+    function _capOf(dd){ if(!_hasDblInfo)return 2; return _dblOk[dd]?2:1; }
+    var PL=(window.ORVIA&&ORVIA.weekPlanPolicy)||null;
     ids.forEach(function(id){
       var mk=MAKE[id];if(!mk)return;                     /* nur Sportarten mit echtem Template */
       var lbl=LABEL[id];if(!lbl)return;
       var missing=want[id]-(have[lbl]||0);
       var guard=0;
       while(missing>0&&guard++<14){
-        /* Zielsuche: erst leere Tage, dann der am wenigsten belastete Tag ohne
-           bereits geplante Einheit DERSELBEN Sportart (kein Doppel am selben Tag). */
+        var neu=mk();
+        /* Zielsuche: leere Tage zuerst; ein zweiter Slot nur an freigegebenen
+           Tagen und nur, wenn dabei keine fachliche Kollision entsteht. */
         var pick=-1,best=99;
         days.forEach(function(dd){
           var day=w[dd]||[];
-          if(day.length>=MAX_PER_DAY)return;
+          if(day.length>=_capOf(dd))return;
           for(var q=0;q<day.length;q++)if(day[q]&&day[q].t===lbl)return;   /* nicht 2× gleiche Sportart/Tag */
+          /* Kein harter Lauf neben beinlastiger Kraft und keine zwei harten
+             Einheiten — dieselben Regeln, die die Policy danach prueft. */
+          if(PL){var bad=false;
+            for(var q2=0;q2<day.length;q2++){var o2=day[q2];
+              if(PL.isHard(neu)&&PL.isHard(o2)){bad=true;break;}
+              if(PL.isHard(neu)&&neu.t==='Laufen'&&PL.isLegHeavy(o2)){bad=true;break;}
+              if(PL.isHard(o2)&&o2.t==='Laufen'&&PL.isLegHeavy(neu)){bad=true;break;}}
+            if(bad)return;}
           if(day.length<best){best=day.length;pick=dd;}
         });
         if(pick<0)break;                                  /* kein Platz mehr — ehrlich statt ueberladen */
-        w[pick]=(w[pick]||[]).concat([mk()]);
+        w[pick]=(w[pick]||[]).concat([neu]);
         missing--;
       }
     });
   })();
+  /* ============================================================
+     (4) Wochenstruktur-Regelwerk (2026-08-06) — die letzte Instanz.
+
+     Alles davor ist Template plus Auffuellen; hier wird aus dem Ergebnis eine
+     Woche, die trainierbar ist: Ruhetag garantiert, Doppeleinheiten nur wo
+     freigegeben, keine zwei harten Einheiten am selben Tag, keine beinlastige
+     Kraft am Tag eines harten Laufs. Verschieben vor Loeschen; jede Aenderung
+     wird protokolliert (PROFILE._planPolicy) und ist damit erklaerbar.
+     ============================================================ */
+  /* ============================================================
+     (4a) WOCHENAUFBAU (2026-08-06, zweiter Nutzerbefund) — der Designer ordnet
+     die Woche neu an, BEVOR das Sicherheitsnetz prueft.
+
+     Das Template darueber bestimmt, WELCHE Einheiten die Woche enthaelt. Es
+     bestimmt aber auch die Tage — und genau das war fachlich schwach: Laufen an
+     Mo/Di/So (drei Lauftage ueber den Wochenwechsel), Tempo direkt neben
+     Intervallen, Long Run neben einem Belastungstag. Ein nachgelagertes
+     Regelwerk findet das nicht, weil es einzelne TAGE prueft und nicht den
+     Rhythmus.
+
+     Deshalb: alle Einheiten einsammeln und von week-plan-designer neu
+     platzieren lassen — Kernreize zuerst und maximal weit auseinander, dann
+     Beinkraft, dann lockere Grundlage. Der Designer entscheidet NUR das WANN.
+     ============================================================ */
+  try{
+    var _DS=(window.ORVIA&&ORVIA.weekPlanDesigner)||null;
+    if(_DS&&typeof _DS.designWeek==='function'){
+      var _units=[];for(var _du=0;_du<7;_du++)(w[_du]||[]).forEach(function(it){if(it&&it.t)_units.push(it);});
+      if(_units.length){
+        var _dr=_DS.designWeek(_units,{
+          availableDayIdx:(cfg&&cfg.availableDayIdx)||null,
+          restDayIdx:(cfg&&cfg.restDayIdx)||[],
+          preferredRestDayIdx:(cfg&&cfg.preferredRestDayIdx)||[],
+          doubleAllowedDayIdx:(cfg&&cfg.doubleAllowedDayIdx)||[],
+          maxSessionsPerWeek:(cfg&&cfg.maxSessionsPerWeek)||null,
+          minRestDays:1
+        });
+        if(_dr&&_dr.report&&_dr.report.ok){
+          w=_dr.days;
+          try{if(typeof PROFILE!=='undefined'&&PROFILE)PROFILE._planDesign=_dr.report;}catch(_e2){}
+        }
+      }
+    }
+  }catch(_){ }
+  try{
+    var _PL=(window.ORVIA&&ORVIA.weekPlanPolicy)||null;
+    if(_PL&&typeof _PL.applyPolicy==='function'){
+      var _res=_PL.applyPolicy(w,{
+        availableDayIdx:(cfg&&cfg.availableDayIdx)||null,
+        restDayIdx:(cfg&&cfg.restDayIdx)||[],
+        preferredRestDayIdx:(cfg&&cfg.preferredRestDayIdx)||[],
+        doubleAllowedDayIdx:(cfg&&cfg.doubleAllowedDayIdx)||[],
+        maxSessionsPerWeek:(cfg&&cfg.maxSessionsPerWeek)||null,
+        minRestDays:1
+      });
+      if(_res&&_res.report&&_res.report.ok){
+        w=_res.days;
+        try{if(typeof PROFILE!=='undefined'&&PROFILE)PROFILE._planPolicy=_res.report;}catch(_e){}
+      }
+    }
+  }catch(_){ }
   var nonEmpty=0;for(var i=0;i<7;i++)if(w[i].length)nonEmpty++;
+  /* Entscheidungs-Log (Stufe 0a): protokolliert WARUM diese Woche so aussieht.
+     Steht bewusst NACH der Berechnung und veraendert w nicht — bei Ausfall des
+     Logs ist der Plan byte-fuer-byte identisch (decision_log_test.mjs, Z4). */
+  try{
+    if(window.ORVIA&&ORVIA.logWeekDecision){
+      ORVIA.logWeekDecision({
+        cfg:cfg||null,
+        design:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE._planDesign)||null,
+        policy:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE._planPolicy)||null,
+        finalSummary:{sessions:w.reduce(function(n,d){return n+d.length;},0),
+          restDays:w.filter(function(d){return !d.length;}).length}
+      });
+    }
+  }catch(_){ }
   return nonEmpty?w:null;
 }
 /* FIX (2026-07-16, „Donnerstag Ruhetag wird ignoriert"): Der GESPEICHERTE Wochenplan gewann
@@ -494,6 +604,39 @@ function plannedOccurrenceIdFor(item,di){
   if(!item||!item.id)return null;
   return 'po:'+planLocalDateForIndex(di)+':'+item.id;
 }
+/* v8-310a (Gians P0): Die Occurrence einer DARGESTELLTEN Woche. Der Klick
+   bildet den Datumskontext EINMAL (dateIso der gerenderten Karte) und reicht
+   ihn unveraendert durch — keine Aktion rekonstruiert das Datum spaeter aus
+   _wOff oder di. plannedOccurrenceIdFor(item,di) bleibt fuer Pfade, die
+   AUSDRUECKLICH die laufende Woche meinen (Resolver-Abgleich beim Speichern). */
+function plannedOccurrenceIdForDate(item,dateIso){
+  if(!item||!item.id||!dateIso)return null;
+  return 'po:'+dateIso+':'+item.id;
+}
+/* v8-310a: Wochenkopf als PURE Funktion — der Hoisting-Fehler (undefined
+   Wochen voraus / NaN.NaN.) entstand, weil _wOff im Renderer erst NACH der
+   Kopfzeile deklariert wurde. Eine Funktion mit Parameter kann den Fehler
+   strukturell nicht mehr haben und ist direkt testbar. */
+function gmPlanWeekHeader(off){
+  var o=(typeof off==='number'&&isFinite(off))?off:0;
+  var m0=new Date();var w0=(m0.getDay()+6)%7;m0.setDate(m0.getDate()-w0+o*7);
+  var s0=new Date(m0),e0=new Date(m0);e0.setDate(m0.getDate()+6);
+  return {label:o===0?'Diese Woche':(o===-1?'Letzte Woche':(o===1?'Nächste Woche':
+      (o<0?Math.abs(o)+' Wochen zurück':o+' Wochen voraus'))),
+    range:s0.getDate()+'.'+(s0.getMonth()+1)+'. – '+e0.getDate()+'.'+(e0.getMonth()+1)+'.'};
+}
+/* v8-310a (Gians Entscheidung): DREI Tageszustaende statt „leer = Ruhetag".
+   'rest' nur fuer den KONFIGURIERTEN Ruhetag (hart oder bevorzugt),
+   'unavailable' nur bei ausdruecklich gepflegter Verfuegbarkeit,
+   sonst 'free' — verfuegbar, aber nichts geplant. Ausblenden wuerde die
+   drei Bedeutungen wieder vermischen, deshalb bleibt jede Karte sichtbar. */
+function gmDayStateFor(di,cfg){
+  var rest=((cfg&&cfg.restDayIdx)||[]).concat((cfg&&cfg.preferredRestDayIdx)||[]);
+  if(rest.indexOf(di)>=0)return 'rest';
+  var avail=(cfg&&cfg.availableDayIdx)||null;
+  if(avail&&avail.length&&avail.indexOf(di)<0)return 'unavailable';
+  return 'free';
+}
 var _psSeq=0;
 function ensurePlannedSessionIds(plan){
   var assigned=false;
@@ -501,6 +644,197 @@ function ensurePlannedSessionIds(plan){
   for(var di=0;di<7;di++){var day=plan[di]||[];for(var j=0;j<day.length;j++){var it=day[j];
     if(it&&typeof it==='object'&&!it.id){it.id='ps:'+Date.now().toString(36)+':'+(_psSeq++).toString(36)+':'+Math.random().toString(36).slice(2,6);assigned=true;}}}
   return assigned;
+}
+/* ============================================================
+   BEOBACHTUNG AN DER ZENTRALEN PLANQUELLE (v8-296).
+
+   BEFUND: Schatten, Vorhersagen und Retry-Herzschlag hingen im GENERATOR —
+   aber activeWeekPlan() kehrt bei kanonischem oder gespeichertem Plan VOR
+   dem Generator zurueck. Ein Nutzer mit bestehendem Plan (der Normalfall)
+   erreichte den Observer NIE: Die Verdrahtung war getestet, der Weg
+   dorthin nicht. Jetzt laeuft JEDER Rueckgabepfad durch diesen Wrapper;
+   das Entscheidungs-Log der GENERIERUNG (week_design/final_plan) bleibt
+   bewusst im Generator — es protokolliert die Entscheidung, nicht den
+   Bestand.
+
+   RENDER-STURM-DROSSEL: activeWeekPlan() wird je Render dutzendfach
+   gerufen. Beobachtet wird ein UNVERAENDERTER Plan hoechstens einmal je
+   Minute — ein GEAENDERTER sofort (der Schluessel enthaelt den Planinhalt).
+   Die Drossel verliert nichts: Schatten dedupliziert per idempotencyKey,
+   Vorhersagen per predictionId, der Herzschlag ueber das Ergebnis.
+   ============================================================ */
+var _gmObsLast={key:null,at:0};
+/* PLAN-IDENTITAET AUCH OHNE KANONISCHES MODELL (v8-297): Bei gespeichertem
+   Altplan lieferte _gmCanonPlan null fuer planId/planRevision — predict()
+   lehnte fail-closed ab, und der Aufruf lief ins Leere: erreicht, aber
+   wirkungslos. Der Altplan HAT eine ehrliche Identitaet: die Woche als
+   Plan-ID und der INHALT als Revision — eine Bearbeitung ist eine neue
+   Revision (alte Vorhersagen werden ehrlich superseded), unveraenderter
+   Inhalt bleibt dieselbe. Kanonisch geladen gewinnt immer das Modell.
+   Dieselbe Funktion speist gmDbSave — Vorhersage und Debrief tragen
+   dieselbe Identitaet, sonst traefe sich nie etwas. */
+function gmPlanIdentity(dateIso){
+  try{
+    if(typeof _gmCanonPlan!=='undefined'&&_gmCanonPlan&&_gmCanonPlan.plan){
+      return {planId:_gmCanonPlan.plan.planId!=null?_gmCanonPlan.plan.planId:null,
+        planRevision:_gmCanonPlan.plan.revision!=null?_gmCanonPlan.plan.revision:null,
+        basis:'canonical'};
+    }
+  }catch(_e){}
+  try{
+    var p=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan)||null;
+    if(p&&p.length===7){
+      var wk=null;
+      try{var PD=(window.ORVIA&&window.ORVIA.planDomain)||null;
+        wk=PD&&PD.weekKeyFor?PD.weekKeyFor(dateIso||((typeof todayStr==='function')?todayStr():null)):null;}catch(_e2){wk=null;}
+      if(!wk)return {planId:null,planRevision:null,basis:'none'};
+      var s=JSON.stringify(p),h=5381;
+      for(var ci=0;ci<s.length;ci++)h=((h<<5)+h+s.charCodeAt(ci))>>>0;
+      return {planId:'weekplan:'+wk,planRevision:'wp:'+h.toString(16),basis:'stored_weekplan'};
+    }
+  }catch(_e3){}
+  return {planId:null,planRevision:null,basis:'none'};
+}
+/* SPORT-IDENTITAET EINER PLANEINHEIT — EINE QUELLE FUER BEIDE SEITEN
+   (v8-298): Der Debrief-Pfad mappte Rad->cycling/Schwimmen->swimming laengst,
+   die Vorhersage nur das exakte 'Laufen' — Rad und Schwimmen wurden als
+   sport:null prognostiziert und in der Kalibrierung zu 'unknown' vermengt.
+   Dieselbe Funktion speist jetzt BEIDE Seiten; Drift ist damit unmoeglich. */
+function gmSportIdOfUnit(u){
+  if(u&&u.sportId)return u.sportId;
+  var t=String((u&&u.t)||'').toLowerCase();
+  if(t.indexOf('lauf')>=0)return 'running';
+  if(t.indexOf('rad')>=0)return 'cycling';
+  if(t.indexOf('schwimm')>=0)return 'swimming';
+  return null;
+}
+function gmObserveWeekPlan(w,src){
+  try{
+    if(!Array.isArray(w))return w;
+    var OI=(window.ORVIA&&ORVIA.observerInput)||null;
+    if(!OI||!OI.build)return w;               /* ohne Eingangsmodul keine Beobachtung */
+    /* DER EINE SNAPSHOT (v8-299, observer-input@1): Alle Quellen werden
+       EINMAL eingesammelt, tief kopiert, eingefroren und gehasht. Schatten,
+       Vorhersagen, Herzschlag UND Drossel arbeiten mit DEMSELBEN Zustand —
+       die Drossel kann nichts mehr verschlucken, was im Snapshot steht,
+       denn jede Aenderung aendert den Hash (auch Performance, Zielzeit,
+       korrigierte Aktivitaeten). Quellen, die fehlen, werden als
+       'unavailable' AUSGEWIESEN, nicht als leer gedeutet. */
+    var snap=OI.build({
+      userId:(window.ORVIA&&ORVIA.user&&ORVIA.user.id)||null,
+      today:(typeof todayStr==='function')?todayStr():null,
+      weekId:(function(){try{var PD=(window.ORVIA&&window.ORVIA.planDomain)||null;
+        return PD&&PD.weekKeyFor?PD.weekKeyFor(todayStr()):null;}catch(_e){return null;}})(),
+      currentPlan:w,
+      planIdentity:(typeof gmPlanIdentity==='function')?gmPlanIdentity(null):undefined,
+      /* P0 (v8-299): Die ECHTE Aktivitaetsquelle ist der activityStore —
+         activitiesAll() existierte nie, DB.activities ist tagbasiert leer.
+         Fehlt der Store, ist das 'unavailable', keine leere Liste. */
+      activities:(function(){try{var st=window.ORVIA&&ORVIA.activityStore;
+        return (st&&st.listActivities)?(st.listActivities()||[]):undefined;}catch(_e){return undefined;}})(),
+      debriefs:(function(){try{return (typeof gmDbStore==='function')?(gmDbStore()||[]):undefined;}catch(_e){return undefined;}})(),
+      sports:(function(){try{return (typeof PROFILE!=='undefined'&&PROFILE)?(PROFILE.sports||null):undefined;}catch(_e){return undefined;}})(),
+      goal:(function(){try{return (typeof goalOf==='function')?(goalOf()||null):undefined;}catch(_e){return undefined;}})(),
+      level:(function(){try{return (typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.level)||null;}catch(_e){return null;}})(),
+      currentPerformance:(function(){try{return (window.ORVIA&&ORVIA._lastPlanPerf!==undefined)?ORVIA._lastPlanPerf:undefined;}catch(_e){return undefined;}})(),
+      /* STEUERFELDER (v8-300): ohne sie sah C2 im echten Schatten weder
+         Krankheit noch Taper, und Stufe 5 kein Zieldatum. */
+      availability:(function(){try{return (window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?(ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null)||null):undefined;}catch(_e){return undefined;}})(),
+      phase:(function(){try{
+        var g=(typeof goalOf==='function')?goalOf():null;
+        if(!g||!g.raceDate||typeof Calc==='undefined'||!Calc.racePhases)return null;
+        var act=(Calc.racePhases(g.raceDate,todayStr())||[]).filter(function(p){return p&&p.on;})[0];
+        if(!act)return null;
+        return ({'Taper':'taper','Wettkampf':'race_week','Peak':'peak','Aufbau':'build'})[act.n]||null;
+      }catch(_e){return null;}})(),
+      /* ROHE Check-in-Serie der letzten 28 Tage (v8-301): ill dreiwertig
+         (true/false/null=kein Check-in) + Red Flags. Die EPISODEN-Ableitung
+         (symptomFreeDays, kein Fensterablauf) ist observer-input@3 —
+         Verhalten gehoert in den versionierten Adapter, nicht hierher. */
+      /* QUELLEN UEBER DAS VERSIONIERTE MODUL (v8-303): Die Beschaffung
+         selbst ist jetzt Vertrag (observer-source@1) — hier wird nur noch
+         verdrahtet. Fehlt das Modul, sind die Quellen 'unavailable' und
+         das Abnahme-Gate schliesst aus (fail-closed), statt dass ui wieder
+         selbst fachliche Zustaende sammelt. */
+      checkins:(function(){try{
+        var OS=window.ORVIA&&ORVIA.observerSource;
+        if(!OS||!OS.checkinSeries)return undefined;
+        return OS.checkinSeries((typeof DB!=='undefined'&&DB)||null,
+          (typeof todayStr==='function')?todayStr():null);
+      }catch(_e){return undefined;}})(),
+      profileConstraints:(function(){try{
+        var OS=window.ORVIA&&ORVIA.observerSource;
+        if(!OS||!OS.safetyConstraints)return undefined;
+        return OS.safetyConstraints(typeof PROFILE!=='undefined'?PROFILE:null);
+      }catch(_e){return undefined;}})()
+    });
+    /* DIE DROSSEL IST DER SNAPSHOT-HASH: unveraenderter Zustand hoechstens
+       einmal je Minute, JEDE Zustandsaenderung sofort. Setzt der Resolver
+       _lastPlanPerf erst nach diesem Render, aendert das den Hash — die
+       naechste Beobachtung laeuft dann mit Performance, statt dass der
+       erste Lauf der einzige bliebe. gmDbSave bustet zusaetzlich direkt. */
+    var key=String(src||'')+'|'+snap.hash;
+    var nowMs=Date.now();
+    if(_gmObsLast.key===key&&(nowMs-_gmObsLast.at)<60000)return w;
+    _gmObsLast.key=key;_gmObsLast.at=nowMs;
+    /* Schattenbetrieb: rechnet die adaptive Kette mit, VERAENDERT NICHTS.
+       Weist `w` nichts zu — shadow_adaptive_test prueft diese Stelle. Alle
+       Felder stammen aus dem EINEN Snapshot; planId traegt jetzt auch beim
+       gespeicherten Altplan die weekplan:-Identitaet. */
+    if(window.ORVIA&&ORVIA.logWeekShadow){
+      ORVIA.logWeekShadow({
+        weekId:snap.weekId,
+        planId:snap.planIdentity.planId,
+        today:snap.today,
+        currentPlan:w,
+        activities:snap.activities,
+        debriefs:snap.debriefs,
+        sports:snap.sports,
+        /* STUFE-5-FORMEN AUS DEM ADAPTER (v8-300): goalOf()/Resolver-Formen
+           direkt durchzureichen ergab IMMER insufficient_data — Stufe 5
+           erwartet targetValue/metricType und EINEN Leistungswert. Die
+           Uebersetzung ist observer-input@2 (kohortengebunden). */
+        goal:(snap.derived&&snap.derived.feasibilityGoal)
+          ? Object.assign({},snap.goal||{},snap.derived.feasibilityGoal)
+          : snap.goal,
+        currentPerformance:(snap.derived&&snap.derived.feasibilityPerformance)||null,
+        targetDate:snap.targetDate,
+        weeksLeft:snap.weeksLeft,
+        availability:snap.availability,
+        phase:snap.phase,
+        lowWeekReason:snap.lowWeekReason,
+        /* v8-301: EPISODE statt Fensterzaehlung, Sicherheitsschicht in
+           C2-Form — beides aus dem versionierten Adapter. */
+        interruption:(snap.derived&&snap.derived.interruption!==undefined)?snap.derived.interruption:snap.interruption,
+        constraints:(snap.derived&&snap.derived.constraints)||null,
+        level:snap.level,
+        inputHash:snap.hash, inputVersion:snap.version, inputBasis:snap.basis
+      });
+    }
+    if(window.ORVIA&&ORVIA.logWeekPredictions){
+      ORVIA.logWeekPredictions({
+        weekId:snap.weekId,
+        planId:snap.planIdentity.planId,
+        planRevision:snap.planIdentity.planRevision,
+        today:snap.today,
+        currentPlan:w,
+        /* AUS DEM SNAPSHOT, NICHT AUS DER WELT (v8-300): Der verzoegerte
+           Callback las O._lastPlanPerf und den lebenden Debrief-Speicher —
+           eine Aenderung zwischen Snapshot und Callback haette die
+           Vorhersage rueckwirkend veraendert. */
+        performance:snap.currentPerformance,
+        debriefs:snap.debriefs
+      });
+    }
+    /* Retry-Herzschlag: offene pendings erneut versuchen — der Planlauf ist
+       der natuerliche Takt, kein eigener Timer. */
+    if(window.ORVIA&&ORVIA.reconcilePendingPredictions){
+      ORVIA.reconcilePendingPredictions((function(){
+        try{return (typeof gmDbStore==='function'&&gmDbStore())||[];}catch(_e){return [];}
+      })());
+    }
+  }catch(_){ }
+  return w;
 }
 function activeWeekPlan(){
   /* Phase 5F (2026-08-05): kanonischer Lesepfad. ALLE 7 Plan-Leser (Dashboard,
@@ -520,8 +854,8 @@ function activeWeekPlan(){
         var _eff5=JSON.parse(JSON.stringify(_PD5.effectiveSessions(_gmCanonPlan.plan).days));
         try{
           var _cfg5=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-          return alignPlanToAvailability(_eff5,_cfg5);
-        }catch(_e5){return _eff5;}
+          return gmObserveWeekPlan(alignPlanToAvailability(_eff5,_cfg5),'canonical');
+        }catch(_e5){return gmObserveWeekPlan(_eff5,'canonical');}
       }
     }
   }catch(_){ }
@@ -539,8 +873,8 @@ function activeWeekPlan(){
        Entscheidung), ohne ihn zu persistieren — der Plan im Profil bleibt unangetastet. */
     try{
       var _cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-      return alignPlanToAvailability(p,_cfg);
-    }catch(e){return p;}
+      return gmObserveWeekPlan(alignPlanToAvailability(p,_cfg),'stored');
+    }catch(e){return gmObserveWeekPlan(p,'stored');}
   }
   var g=(typeof generateWeekPlan==='function')?generateWeekPlan():null;
   // Batch 2c: auch GENERIERTE (nicht persistierte) Pläne erhalten stabile IDs —
@@ -549,7 +883,7 @@ function activeWeekPlan(){
   // gespeichert, bleiben die IDs erhalten; ensurePlannedSessionIds überschreibt nie.
   if(g)ensureGeneratedPlanIds(g);
   // Kein Rückfall mehr auf Gians festen Beispielplan — leerer 7-Tage-Rahmen ist neutral.
-  return g||[[],[],[],[],[],[],[]];
+  return g?gmObserveWeekPlan(g,'generated'):[[],[],[],[],[],[],[]];
 }
 var PLAN_PRESETS=[
   {t:'Laufen',l:'Intervalle',d:'iv'},{t:'Laufen',l:'Z2 Dauerlauf',d:'ez'},{t:'Laufen',l:'Tempo',d:'tempo'},{t:'Laufen',l:'Long Run',d:'lr'},
@@ -606,18 +940,148 @@ function chipGet(id){const box=document.getElementById(id);if(!box)return[];retu
 
 /* ============ KONTEXT-BUILDER (Baselines, Fenster) ============ */
 function recoveryCtx(dateStr){
-  const ln7=[],ln28=[],rhr28=[],sleep7=[];let lowStreak=0,streakDone=false;
+  const ln7=[],ln28=[],rhr28=[],sleep7=[],sleep28=[],bb28=[];let lowStreak=0,streakDone=false;
+  /* v8-320: Krankheitsverlauf. `ill` ist heute ein Ja/Nein — an dem Tag, an dem
+     man den Haken wegnimmt, ist man sofort wieder voll belastbar. Physiologisch
+     ist der Wiedereinstieg nach einem Infekt graduell. Hier wird im BEREITS
+     laufenden Durchlauf ermittelt: wie viele Tage ist die letzte Krankheit her
+     (0 = heute noch krank) und wie lange hat sie am Stueck gedauert. */
+  const illDays=[];
   for(let i=1;i<=28;i++){
     const d=new Date(dateStr+'T12:00');d.setDate(d.getDate()-i);
     const e=DB[todayStr(d)];const m=e&&e.morning;if(!m)continue;
     if(m.hrvMs){const ln=Math.log(m.hrvMs);ln28.push(ln);if(i<=7)ln7.push(ln);}
     if(m.rhr!=null)rhr28.push(m.rhr);
     if(i<=7&&m.sleepMin!=null)sleep7.push(m.sleepMin);
-    if(!streakDone){const s=Calc.hrvScoreOf(m,null);if(s===25)lowStreak++;else streakDone=true;}
+    /* v8-318: eigene Historie fuer Schlafdauer und Body Battery — im BEREITS
+       laufenden 28-Tage-Durchlauf, also ohne zusaetzliche Kosten. */
+    if(m.sleepMin!=null&&m.sleepMin>120&&m.sleepMin<900)sleep28.push(m.sleepMin);
+    if(m.bb!=null&&m.bb>=0&&m.bb<=100)bb28.push(m.bb);
+    if(m.ill)illDays.push(i);          /* i = Tage vor dateStr */
+    /* v8-317: SCHWELLE statt Gleichheit. Vorher `s===25` — das war der eine
+       Wert, den der alte HRV-Zweig für 'Low'/'Unbalanced' vergab. Mit den
+       korrigierten Garmin-Kategorien (Low 38, Poor 22, Unbalanced 62) hätte
+       ein Gleichheitsvergleich die Strähne still nie wieder erkannt. Gemeint
+       war immer „HRV im schlechten Bereich" — genau das steht jetzt da.
+       'Unbalanced' zählt bewusst NICHT als Strähne: es heißt leicht neben der
+       eigenen Baseline, nicht deutlich darunter. */
+    if(!streakDone){const s=Calc.hrvScoreOf(m,null);if(s!=null&&s<=40)lowStreak++;else streakDone=true;}
   }
+  /* v8-317: Trifft der Muskelkater die HEUTE geplante Belastung? Die
+     Entscheidungsseite wusste das längst (evaluateDomsImpact), der Score
+     nicht — Beinmuskelkater drückte auch an einem Oberkörpertag voll durch.
+     Hier EINMAL bestimmt und an readiness() weitergereicht; ohne bekannte
+     Region bleibt es bei null (= konservativ, volles Gewicht wie bisher). */
+  /* v8-317: groesster erfasster Schmerz des Tages ueber ALLE Regionen — dieselbe
+     Ableitung wie in getDecision (Knie + e.issues). Ohne sie kannte readiness()
+     nur den Knieschmerz, und Huefte/Ruecken/Schulter bewegten den Rohwert nie. */
+  let painToday=null;
+  try{
+    const _e=DB[dateStr]||null,_m=(_e&&_e.morning)||null;
+    if(_m){
+      painToday=(_m.knee!=null?_m.knee:null);
+      if(_e.issues)Object.keys(_e.issues).forEach(function(k){const vv=_e.issues[k];
+        if(typeof vv==='number'&&(painToday==null||vv>painToday))painToday=vv;});
+    }
+  }catch(_){painToday=null;}
+  let domsHitsToday=null;
+  try{
+    const _mToday=(DB[dateStr]&&DB[dateStr].morning)||null;
+    if(_mToday&&_mToday.domsRegion&&typeof Calc.evaluateDomsImpact==='function'){
+      const _u=(typeof todayPrimaryUnit==='function')?todayPrimaryUnit():null;
+      const _tt=(typeof Calc.classifyTrainingType==='function')?Calc.classifyTrainingType(_u):null;
+      domsHitsToday=!!Calc.evaluateDomsImpact({doms:_mToday.doms,domsRegion:_mToday.domsRegion},_tt).hits;
+    }
+  }catch(_){domsHitsToday=null;}
+  /* ═══ v8-319 · GEMESSENE SCHLAFDATEN STATT ERSATZWERTE ════════════════
+     Der Worker synchronisiert seit Langem sleep_need_min (Garmins eigener,
+     personalisierter Schlafbedarf), sleep_score und die Phasen — im Produkt
+     hatte sleep_need_min NULL Verwendungsstellen und der Sleep Score floss
+     nirgends in die Bewertung. Der 28-Tage-Median aus v8-318 war ein
+     Hilfswert fuer genau diesen Fall; liegt der gemessene Bedarf vor, gewinnt
+     er. Reihenfolge: gemessen > eigener Median > fest (480, in calc.js).
+     Fehlt der Metrik-Cache oder ist er zu schmal, liefern die Helfer null und
+     alles bleibt beim v8-318-Verhalten — keine erfundenen Werte. */
+  function _metricVal(id){
+    try{var r=(typeof gmMetric==='function')?gmMetric(id):null;
+      return (r&&typeof r.value==='number'&&isFinite(r.value))?r.value:null;}catch(_){return null;}
+  }
+  function _sleepNeed(hist){
+    var measured=_metricVal('sleep_need_min');
+    if(measured!=null&&measured>240&&measured<720)return measured;
+    return (hist&&hist.length>=14)?Calc.median(hist):null;
+  }
+  /* Anteil aus Tief- und REM-Schlaf gegen die EIGENE Verteilung. Der absolute
+     Minutenwert haengt an der Schlafdauer und waere doppelt gezaehlt; der
+     ANTEIL ist die zusaetzliche Information. Braucht 14 eigene Naechte. */
+  function _phaseShare(){
+    try{
+      if(typeof gmMetricSeries!=='function')return {today:null,base:null,n:0};
+      var dp=gmMetricSeries('sleep_deep_min',28),rm=gmMetricSeries('sleep_rem_min',28),
+          du=gmMetricSeries('sleep_duration_min',28);
+      if(!dp||!rm||!du)return {today:null,base:null,n:0};
+      var byD={},byR={};
+      dp.dates.forEach(function(d,i){byD[d]=dp.values[i];});
+      rm.dates.forEach(function(d,i){byR[d]=rm.values[i];});
+      var shares=[],last=null;
+      du.dates.forEach(function(d,i){
+        var tot=du.values[i],de=byD[d],re=byR[d];
+        if(!(tot>0)||de==null||re==null)return;
+        var sh=(de+re)/tot;
+        if(!(sh>0&&sh<1))return;
+        shares.push(sh);last={date:d,share:sh};
+      });
+      if(shares.length<14)return {today:null,base:null,n:shares.length};
+      var today=(last&&last.date===dateStr)?last.share:null;
+      return {today:today,base:Calc.median(shares),n:shares.length};
+    }catch(_){return {today:null,base:null,n:0};}
+  }
+  const _ph=_phaseShare();
+  /* Krankheitsverlauf zusammenfassen: juengster Krankheitstag und die Laenge
+     der ZUSAMMENHAENGENDEN Phase, die dort endet. Eine Erkaeltung vor drei
+     Wochen soll den heutigen Tag nicht mehr bremsen — deshalb zaehlt nur die
+     letzte, direkt zurueckliegende Phase. */
+  let illSinceEnd=null,illDuration=0;
+  try{
+    const illToday=!!((DB[dateStr]&&DB[dateStr].morning)||{}).ill;
+    if(illToday){
+      illSinceEnd=0;illDuration=1;
+      for(let k=1;k<=28;k++){if(illDays.indexOf(k)>=0)illDuration++;else break;}
+    }else if(illDays.length){
+      const last=Math.min.apply(null,illDays);
+      illSinceEnd=last;illDuration=1;
+      for(let k=last+1;k<=28;k++){if(illDays.indexOf(k)>=0)illDuration++;else break;}
+    }
+  }catch(_){illSinceEnd=null;illDuration=0;}
   return{hrvBase7:ln7.length>=4?Calc.avg(ln7):null,hrvSd28:Calc.sd(ln28),hrvN:ln28.length,
+    sleepNeedMeasured:_metricVal('sleep_need_min'),
+    sleepScore:_metricVal('sleep_score'),
+    phaseShareToday:_ph.today,phaseShareBase:_ph.base,phaseN:_ph.n,
+    illSinceEnd:illSinceEnd,illDuration:illDuration,
     rhrBase:rhr28.length>=7?Calc.median(rhr28):null,rhrN:rhr28.length,
-    sleepDebtH:sleep7.length>=4?Calc.sleepDebt(sleep7):null,hrvLowStreak:lowStreak};
+    /* v8-318/319: die Schlafschuld zaehlt gegen den Bedarf, nicht gegen fest
+       verdrahtete 8 h. RANGFOLGE (v8-319): Garmins GEMESSENER Schlafbedarf
+       (sleep_need_min) schlaegt den 28-Tage-Median-Ersatz aus v8-318 — der war
+       immer nur ein Hilfswert fuer den Fall, dass kein gemessener Bedarf
+       vorliegt. Beide werden in calc.js auf 7–8 h begrenzt. */
+    sleepDebtH:sleep7.length>=4?Calc.sleepDebt(sleep7,_sleepNeed(sleep28)):null,hrvLowStreak:lowStreak,
+    domsHitsToday:domsHitsToday,painToday:painToday,
+    /* ═══ v8-318 · MITWACHSENDE REFERENZEN ═══════════════════════════════
+       Gians Vorgabe: „Der Score darf nichts mit perfekten Werten zu tun haben
+       … es gibt Daten, die sich mit der Zeit entwickeln, und das muss
+       eingerechnet werden." Fuer HRV (hrvBase7/hrvSd28) und Ruhepuls
+       (rhrBase) galt das laengst — Schlafdauer und Body Battery wurden
+       dagegen gegen FESTE Schwellen gerechnet (5–8 h bzw. Rohwert). Wer
+       gewohnheitsmaessig 7 h braucht, wurde damit dauerhaft unter 100
+       gehalten, obwohl er ausgeschlafen ist.
+       Beide Referenzen sind der eigene Median der letzten 28 Tage. MINDESTENS
+       14 eigene Tage — darunter bleibt der Wert null und calc.js benutzt
+       weiterhin die bisherige feste Rampe. Keine erfundene Baseline. */
+    sleepBase:_sleepNeed(sleep28),
+    sleepSd:sleep28.length>=14?Calc.sd(sleep28):null,
+    sleepN:sleep28.length,
+    bbBase:bb28.length>=14?Calc.median(bb28):null,
+    bbN:bb28.length};
 }
 function readinessFor(k){const e=DB[k];if(!e||!e.morning||e.morning.knee==null)return{score:''};return Calc.readiness(e.morning,recoveryCtx(k));}
 function readinessOf(k){const e=DB[k];return(e&&e.morning&&e.morning.knee!=null)?Calc.readiness(e.morning,recoveryCtx(k)).score:null;}
@@ -781,8 +1245,9 @@ function planActualResolveForDates(dates){
       if(!dateSet[ld])return;
       var dm=(a.durationSeconds!=null)?Math.round(a.durationSeconds/60):null;
       var dk=(a.summary&&a.summary.distanceKm!=null)?a.summary.distanceKm:null;
+      var _pl=(store&&store.planLinkOf)?store.planLinkOf(a):((a.metrics&&a.metrics.plannedSessionId)||null);
       activities.push({activityId:(a.id||a.clientRecordId), sportId:_planActualNorm(a.sportId), localDate:ld,
-        plannedSessionId:(a.metrics&&a.metrics.plannedSessionId)||null, durationMin:dm, distanceKm:dk,
+        plannedSessionId:_pl, durationMin:dm, distanceKm:dk,
         load:null, loadKnown:false, source:a.source||null, externalId:a.sourceRecordId||null});
     });
     // Explizite plan_done-Marker (DB-Blob): datenlos, aber plan-eigene Identität (Nutzer-Assertion).
@@ -1200,6 +1665,8 @@ function getDecision(){
   var _gdf=_gdP.now();var conf=(typeof dataConfidence==='function')?dataConfidence():null;_gdP.mark('getDecision: dataConfidence (3x full-history Object.keys(DB) scan)',_gdf);
   var dec=Calc.buildTrainingDecision({
     checkin:{pain:pain,painRegion:painRegion,doms:m.doms,domsRegion:m.domsRegion||'',illness:!!m.ill,
+      /* v8-320: der Verlauf, nicht nur der heutige Haken. */
+      illSinceEnd:(ctx?ctx.illSinceEnd:null),illDuration:(ctx?ctx.illDuration:0),
       sleepH:(m.sleepMin!=null?m.sleepMin/60:null),sleepQ:m.sleepQ,feel:m.feel,stress:m.stress,hrv:m.hrv,
       rhrDev:r.rhrDev,sleepDebtH:(ctx?ctx.sleepDebtH:null),readiness:r.score,
       /* Batch 0: Red Flags kommen kanonisch aus morning.redFlags (Check-in-Chips);
@@ -2247,7 +2714,8 @@ function suppRecs(){
   if((activeWeekPlan()[(wd+1)%7]||[]).find(p=>p.t==='Schwimmen'))out.push({n:'Melatonin',why:'Morgen früher Schwimmtag — 0,5–1mg vor dem Schlaf'});
   if(ev.prot!=null&&ev.prot<150)out.push({n:'Whey/Protein',why:'Erst '+ev.prot+'g — Lücke zum 150g-Ziel schließen'});
   else out.push({n:'Whey/Protein',why:'Baustein fürs 150–165g-Ziel'});
-  if(m.hrv==='Low'||Calc.hrvScoreOf(m,recoveryCtx(cur))===25)out.push({n:'L-Theanin',why:'HRV gedrückt — beruhigend; Koffein heute meiden'});
+  /* v8-317: Garmins echte Kategorien (Low UND Poor) plus Schwelle statt Gleichheit. */
+  if(Calc.hrvBelowBaseline(m.hrv)||(function(){var _s=Calc.hrvScoreOf(m,recoveryCtx(cur));return _s!=null&&_s<=40;})())out.push({n:'L-Theanin',why:'HRV gedrückt — beruhigend; Koffein heute meiden'});
   const seen=new Set();return out.filter(r=>!seen.has(r.n)&&seen.add(r.n));
 }
 function renderSupps(){
@@ -2625,6 +3093,7 @@ function orviaRebuildPlan(){if(typeof PROFILE==='undefined'||!PROFILE)return;
 /* ====== E4: Wochenliste (v5-Session-Cards) — Sessions, Reihenfolge, Status und
    Prioritäten unverändert aus den bestehenden kanonischen Quellen; reine Darstellung. ====== */
 function renderWeekPlan(){
+  try{if(typeof gmRenderAdaptiveCard==='function')gmRenderAdaptiveCard();}catch(_e){}
   const off=window._planWeekOff||0;
   // E1: ausstehende Plan-Neuberechnung sichtbar machen (statt stillem Alt-Plan).
   try{var _pb=document.getElementById('planRebuildBanner');
@@ -2666,9 +3135,12 @@ function renderWeekPlan(){
       const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':'';
       // Anfänger: Titel + wichtigste vorhandene Angabe; Fortgeschritten/Profi: + Sportart + Prioritätsbadge.
       const sub=(mode==='anfaenger')?(det?esc(det):''):(esc(it.t)+(det?' · '+esc(det):''));
-      return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx})"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'✓ Erledigt':'›'}</span></button>`;
+      return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'✓ Erledigt':'›'}</span></button>`;
     }).join('')
-    :'<div class="sess5-rest"><span aria-hidden="true">☾</span> Ruhetag</div>';
+    :(function(){var _s5=(typeof gmDayStateFor==='function')?gmDayStateFor(i,(function(){try{return (window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){return null;}})()):'rest';
+      return _s5==='rest'?'<div class="sess5-rest"><span aria-hidden="true">☾</span> Ruhetag</div>'
+        :_s5==='unavailable'?'<div class="sess5-rest"><span aria-hidden="true">–</span> Nicht verfügbar</div>'
+        :'<div class="sess5-rest"><span aria-hidden="true">·</span> Frei</div>';})();
     const pz=(typeof pauseFor==='function')?pauseFor(k):null;
     html+=`<div class="pday${isToday?' today':''}${pz?' paused':''}"><div class="pd">${DAYNAMES[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}${isToday?' · HEUTE':''}${pz?' <span class="pd-pause">'+esc(pz.reason||'Pause')+'</span>':''}</div>${items}</div>`;}
   const fmt=function(dt){return dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});};
@@ -2776,6 +3248,120 @@ function _pqChip(r){var sym=r.c==='g'?'✓':r.c==='y'?'▲':'‼';return '<span 
 function _pqWarnList(q){if(!q.warns.length)return '';return '<div class="pqv5-list">'+q.warns.map(function(x){return '<div class="pqv5-w"><span class="pqv5-wsym" aria-hidden="true">▲</span><div class="pqv5-wt"><b>'+_pqEsc(x[0])+'</b><span>'+_pqEsc(x[1])+'</span></div></div>';}).join('')+'</div>';}
 /* ====== E3-ENDE ====== */
 /* ---- Wochenplan-Editor ---- */
+/* ============================================================
+   v8-323 (K2) · Kraftplanung sichtbar und bearbeitbar
+   ------------------------------------------------------------
+   BEFUND bis hierher: Der Datenvertrag (strength-plan@1) trug seit v8-321
+   Uebungen, Saetze, Wiederholungen und Zielgewicht; v8-322 hat die
+   Schreibpfade und die Uebernahme beim Sessionstart angeschlossen. Sichtbar
+   war davon NICHTS: renderGMPlan las `plannedExercises` nicht, und
+   summarizePlanned() hatte keinen Aufrufer. Es gab auch keinen Weg, Vorgaben
+   ueberhaupt anzulegen — der Editor kopierte beim Hinzufuegen nur {t,l,d}.
+
+   Die Uebungsnamen liegen in der DB-Tabelle `exercises`; der Wochenplan
+   rendert aber SYNCHRON. Deshalb ein kleiner Namens-Cache: einmal laden,
+   in localStorage spiegeln (damit die erste Darstellung nach einem Neustart
+   und offline traegt), danach synchron nachschlagen. Ein unbekannter
+   Schluessel wird NIEMALS geraten — er wird als unbekannt ausgewiesen.
+   ============================================================ */
+var _gmExLib=null,_gmExLibLoading=false;
+function gmExLibKey(){try{return 'orvia_exlib_'+((window.ORVIA&&ORVIA.user&&ORVIA.user.id)||'x');}catch(_){return 'orvia_exlib_x';}}
+function gmExLibLoadLocal(){
+  if(_gmExLib)return _gmExLib;
+  try{var raw=localStorage.getItem(gmExLibKey());if(raw){var o=JSON.parse(raw);if(o&&typeof o==='object'){_gmExLib=o;return _gmExLib;}}}catch(_){ }
+  return null;
+}
+/* Laedt die kanonische Bibliothek EINMAL und ruft danach cb(). Ohne Netz
+   passiert nichts Schlimmes: der Spiegel aus localStorage bleibt gueltig,
+   und fehlt auch der, zeigt die Oberflaeche „unbekannte Uebung" statt eines
+   erfundenen Namens. */
+function gmExLibEnsure(cb){
+  if(_gmExLib){if(cb)cb(_gmExLib);return;}
+  if(gmExLibLoadLocal()&&cb)cb(_gmExLib);
+  if(_gmExLibLoading)return;
+  _gmExLibLoading=true;
+  try{
+    if(!(window.ORVIA&&ORVIA.repos&&ORVIA.repos.exercise)){_gmExLibLoading=false;return;}
+    ORVIA.repos.exercise.list().then(function(r){
+      _gmExLibLoading=false;
+      if(!r||!r.success||!r.data)return;
+      var map={};for(var i=0;i<r.data.length;i++){var e=r.data[i];if(e&&e.id)map[e.id]={name:e.name||null,slug:e.slug||null};}
+      _gmExLib=map;
+      try{localStorage.setItem(gmExLibKey(),JSON.stringify(map));}catch(_){ }
+      if(cb)cb(_gmExLib);
+    }).catch(function(){_gmExLibLoading=false;});
+  }catch(_){_gmExLibLoading=false;}
+}
+/* Synchroner Nachschlag. null = nicht aufloesbar (die Oberflaeche macht das
+   sichtbar, sie erfindet nichts). */
+function gmExName(id){
+  var lib=_gmExLib||gmExLibLoadLocal();
+  if(!lib||!id)return null;
+  var e=lib[id];
+  return (e&&e.name)?e.name:null;
+}
+/* Zeilen fuer die Wochenplan-Karte. Liefert [] wenn nichts geplant ist —
+   Altbestand ohne Vorgaben bleibt damit unveraendert. */
+function gmPlannedLines(item){
+  try{
+    var SP=window.ORVIA&&ORVIA.strengthPlan;if(!SP)return [];
+    var list=SP.readPlanned(item);if(!list.length)return [];
+    var out=[];
+    for(var i=0;i<list.length;i++){
+      var nm=gmExName(list[i].exerciseId);
+      out.push({resolved:!!nm,text:SP.summarizeExercise(list[i],function(){return nm;})});
+    }
+    return out;
+  }catch(_){return [];}
+}
+var _gmExLibRerender=false;
+function gmPlannedLinesHTML(item){
+  var lines=gmPlannedLines(item);
+  if(!lines.length)return '';
+  /* Namen noch nicht da? Genau EINMAL nachladen und danach neu zeichnen —
+     der Wochenplan rendert synchron, die Bibliothek kommt asynchron. */
+  if(!(_gmExLib||gmExLibLoadLocal())&&!_gmExLibRerender){
+    _gmExLibRerender=true;
+    gmExLibEnsure(function(){try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }});
+  }
+  var html='<ul class="sc-plex">';
+  for(var i=0;i<lines.length;i++){
+    html+='<li'+(lines[i].resolved?'':' class="sc-plex-unknown" title="Diese Übung steht nicht in der Bibliothek — die Kennung wird unverändert angezeigt."')+'>'+
+      (lines[i].resolved?'':'⚠ ')+gmEsc(lines[i].text)+'</li>';
+  }
+  return html+'</ul>';
+}
+
+/* v8-332b — Die Ausdauer-Vorgabe AUF der Wochenkarte.
+   Gegenstueck zu gmPlannedLinesHTML: dort die selbst geplanten Kraftuebungen,
+   hier die von der Engine berechnete Verordnung (`item.rx`).
+
+   Ohne `rx` liefert die Funktion '' — Altbestand und Legacy-Einheiten sehen
+   Zeichen fuer Zeichen aus wie vorher, es entsteht kein leerer Kasten.
+
+   Formatiert wird AUSSCHLIESSLICH ueber prescription-format. Waere hier eine
+   zweite Formatierung, gaebe es zwei Wahrheiten und irgendwann zwei
+   verschiedene Tempoangaben fuer dieselbe Einheit. */
+function gmRxLinesHTML(item){
+  if(!item||!item.rx)return '';
+  var F=(window.ORVIA&&ORVIA.prescriptionFormat)||null;
+  if(!F)return '';
+  var r;
+  try{r=F.formatPrescription(item.rx,{nameOf:(typeof gmExName==='function')?gmExName:null});}
+  catch(_){return '';}
+  if(!r||!r.ok||!r.lines.length)return '';
+  var html='<ul class="sc-plex sc-rx">';
+  for(var i=0;i<r.lines.length;i++){
+    var l=r.lines[i];
+    /* Belastung und Uebungen tragen die Aussage; Aufwaermen/Auslaufen sind
+       Beiwerk und werden zurueckgenommen — aber NICHT weggelassen, sonst
+       fehlte dem Nutzer die halbe Einheit. */
+    var kern=(l.kind==='group'||l.kind==='work'||l.kind==='exercise');
+    html+='<li'+(kern?'':' class="sc-rx-soft"')+'>'+gmEsc(l.text)+'</li>';
+  }
+  return html+'</ul>';
+}
+
 var _planEdit=null;
 function openPlanEditor(){
   _planEdit=JSON.parse(JSON.stringify(activeWeekPlan()));
@@ -2785,19 +3371,163 @@ function openPlanEditor(){
     '<button class="btn sec" style="margin-top:10px" onclick="resetPlan()">Auf Standard zurücksetzen</button>'+
     '<button class="btn sec" style="margin-top:10px" onclick="closePlanEditor()">Abbrechen</button></div>';
   document.body.appendChild(wrap);window._planEd=wrap;wrap.addEventListener('click',function(ev){if(ev.target===wrap)closePlanEditor();});
+  /* v8-323: Panelzustand gehoert nicht ueber Editor-Sitzungen hinweg erhalten. */
+  _peOpen=null;_peErr=null;
+  /* Uebungsbibliothek vorladen, damit Auswahl und Namen sofort da sind. */
+  gmExLibEnsure(function(){renderPlanEditor();});
   renderPlanEditor();
+}
+/* ---- v8-323 (K2) · Uebungs-Editor im Wochenplan-Editor ----
+   Zustand liegt AUSSCHLIESSLICH in _planEdit[di][ii].plannedExercises — es gibt
+   kein zweites UI-Modell. Alle Listenoperationen laufen ueber den reinen
+   Datenvertrag (strengthPlan.insert/remove/move/updateExerciseAt), damit
+   Sortierung, Grenzen und Fail-closed-Verhalten nur an EINER Stelle stehen. */
+var _peOpen=null;   /* {di,ii} — geoeffnetes Uebungspanel */
+var _peErr=null;    /* {di,ii,msg} — sichtbarer Fehler statt stiller Ablehnung */
+var PE_ERR_TEXT={
+  missing:'Pflichtangabe fehlt', not_integer:'nur ganze Zahlen', not_finite:'keine Zahl',
+  out_of_range:'ausserhalb des zulaessigen Bereichs', reversed_range:'Von-Wert groesser als Bis-Wert',
+  too_many:'Obergrenze erreicht', not_object:'unbrauchbare Eingabe'
+};
+var PE_FIELD_DE={sets:'Sätze',minReps:'Wdh. von',maxReps:'Wdh. bis',targetWeightKg:'Zielgewicht',targetRir:'RIR',restSeconds:'Pause',exerciseId:'Übung'};
+function _peErrText(errs){
+  if(!errs||!errs.length)return 'Eingabe abgelehnt.';
+  var e=errs[0];
+  return (PE_FIELD_DE[e.field]||e.field||'Eingabe')+': '+(PE_ERR_TEXT[e.code]||e.code);
+}
+function _peSP(){return (window.ORVIA&&ORVIA.strengthPlan)||null;}
+function _peItem(di,ii){try{return (_planEdit&&_planEdit[di]&&_planEdit[di][ii])||null;}catch(_){return null;}}
+function _peList(di,ii){var SP=_peSP(),it=_peItem(di,ii);return (SP&&it)?SP.readPlanned(it):[];}
+function _peCommit(di,ii,list){
+  var SP=_peSP(),it=_peItem(di,ii);if(!SP||!it)return false;
+  _planEdit[di][ii]=SP.attachPlanned(it,list);   /* attachPlanned liefert eine Kopie */
+  return true;
+}
+/* Leeres Feld = „keine Vorgabe" (null). Unlesbares = NaN ⇒ sichtbarer Fehler,
+   niemals stilles Verwerfen. */
+function _peNum(el){
+  if(!el)return null;
+  var v=String(el.value==null?'':el.value).trim().replace(',','.');
+  if(!v)return null;
+  var n=parseFloat(v);
+  return isFinite(n)?n:NaN;
+}
+function peToggleEx(di,ii){
+  if(_peOpen&&_peOpen.di===di&&_peOpen.ii===ii){_peOpen=null;}
+  else{_peOpen={di:di,ii:ii};_peErr=null;gmExLibEnsure(function(){renderPlanEditor();});}
+  renderPlanEditor();
+}
+function peAddEx(di,ii){
+  var SP=_peSP();if(!SP)return;
+  var sel=document.getElementById('pe_ex_sel_'+di+'_'+ii);
+  var setsEl=document.getElementById('pe_ex_sets_'+di+'_'+ii);
+  var id=sel&&sel.value;
+  if(!id){_peErr={di:di,ii:ii,msg:'Bitte zuerst eine Übung auswählen.'};return renderPlanEditor();}
+  var sets=_peNum(setsEl);
+  if(sets===null||(typeof sets==='number'&&isNaN(sets))){
+    _peErr={di:di,ii:ii,msg:'Sätze: Pflichtangabe fehlt'};return renderPlanEditor();
+  }
+  var r=SP.insertExercise(_peList(di,ii),{exerciseId:id,sets:sets});
+  if(!r.ok){_peErr={di:di,ii:ii,msg:_peErrText(r.errors)};return renderPlanEditor();}
+  _peErr=null;_peCommit(di,ii,r.exercises);renderPlanEditor();
+}
+function peRemoveEx(di,ii,idx){
+  var SP=_peSP();if(!SP)return;
+  var r=SP.removeExerciseAt(_peList(di,ii),idx);
+  if(!r.ok){_peErr={di:di,ii:ii,msg:_peErrText(r.errors)};return renderPlanEditor();}
+  _peErr=null;_peCommit(di,ii,r.exercises);renderPlanEditor();
+}
+function peMoveEx(di,ii,idx,dir){
+  var SP=_peSP();if(!SP)return;
+  var r=SP.moveExercise(_peList(di,ii),idx,idx+dir);
+  if(!r.ok)return;                       /* Rand der Liste — kein Fehler, nur nichts zu tun */
+  _peErr=null;_peCommit(di,ii,r.exercises);renderPlanEditor();
+}
+function peUpdateEx(di,ii,idx,field,el){
+  var SP=_peSP();if(!SP)return;
+  var v=_peNum(el);
+  if(typeof v==='number'&&isNaN(v)){
+    _peErr={di:di,ii:ii,msg:(PE_FIELD_DE[field]||field)+': keine Zahl'};return renderPlanEditor();
+  }
+  var patch={};patch[field]=v;
+  var r=SP.updateExerciseAt(_peList(di,ii),idx,patch);
+  if(!r.ok){_peErr={di:di,ii:ii,msg:_peErrText(r.errors)};return renderPlanEditor();}
+  _peErr=null;_peCommit(di,ii,r.exercises);renderPlanEditor();
+}
+/* Auswahlliste AUSSCHLIESSLICH aus der kanonischen Bibliothek. Ist sie (noch)
+   nicht geladen, gibt es keine Ersatzliste und keine Freitexteingabe — dann
+   sagt die Oberflaeche das offen. */
+function peExOptions(){
+  var lib=_gmExLib||gmExLibLoadLocal();
+  if(!lib)return null;
+  var arr=[];for(var id in lib)if(Object.prototype.hasOwnProperty.call(lib,id))arr.push({id:id,name:(lib[id]&&lib[id].name)||id});
+  arr.sort(function(a,b){return String(a.name).localeCompare(String(b.name),'de');});
+  return arr;
+}
+function peExPanelHTML(di,ii){
+  var SP=_peSP();if(!SP)return '';
+  var list=_peList(di,ii);
+  var rows='';
+  for(var i=0;i<list.length;i++){
+    var e=list[i],nm=gmExName(e.exerciseId);
+    var idp=di+'_'+ii+'_'+i;
+    rows+='<div class="pe-exrow">'+
+      '<div class="pe-exname'+(nm?'':' pe-exname-unknown')+'">'+(nm?'':'⚠ ')+esc(nm||e.exerciseId)+
+        (nm?'':'<span class="pe-exhint">nicht in der Bibliothek</span>')+'</div>'+
+      '<div class="pe-exfields">'+
+        '<label>Sätze<input type="number" inputmode="numeric" min="1" max="20" id="pe_f_sets_'+idp+'" value="'+e.sets+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'sets\',this)"></label>'+
+        '<label>Wdh. von<input type="number" inputmode="numeric" min="1" max="100" value="'+(e.minReps==null?'':e.minReps)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'minReps\',this)"></label>'+
+        '<label>bis<input type="number" inputmode="numeric" min="1" max="100" value="'+(e.maxReps==null?'':e.maxReps)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'maxReps\',this)"></label>'+
+        '<label>kg<input type="number" inputmode="decimal" step="0.5" min="0" max="500" value="'+(e.targetWeightKg==null?'':e.targetWeightKg)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'targetWeightKg\',this)"></label>'+
+        '<label>Pause s<input type="number" inputmode="numeric" min="0" max="900" value="'+(e.restSeconds==null?'':e.restSeconds)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'restSeconds\',this)"></label>'+
+      '</div>'+
+      '<div class="pe-exact">'+
+        '<button type="button" onclick="peMoveEx('+di+','+ii+','+i+',-1)" aria-label="Nach oben"'+(i===0?' disabled':'')+'>↑</button>'+
+        '<button type="button" onclick="peMoveEx('+di+','+ii+','+i+',1)" aria-label="Nach unten"'+(i===list.length-1?' disabled':'')+'>↓</button>'+
+        '<button type="button" onclick="peRemoveEx('+di+','+ii+','+i+')" aria-label="Übung entfernen">✕</button>'+
+      '</div></div>';
+  }
+  if(!rows)rows='<p class="pe-empty">Noch keine Übungen geplant.</p>';
+  var opts=peExOptions();
+  var add;
+  if(!opts){
+    add='<p class="pe-exwarn">Die Übungsbibliothek ist gerade nicht verfügbar (offline oder noch nicht geladen). Übungen lassen sich erst hinzufügen, wenn sie da ist — es wird keine Ersatzliste erfunden.</p>';
+  }else{
+    var os='<option value="">Übung wählen …</option>';
+    for(var k=0;k<opts.length;k++)os+='<option value="'+esc(opts[k].id)+'">'+esc(opts[k].name)+'</option>';
+    add='<div class="pe-exadd"><select id="pe_ex_sel_'+di+'_'+ii+'">'+os+'</select>'+
+      '<input type="number" inputmode="numeric" min="1" max="20" id="pe_ex_sets_'+di+'_'+ii+'" value="3" aria-label="Sätze">'+
+      '<button type="button" class="btn sec" onclick="peAddEx('+di+','+ii+')">Hinzufügen</button></div>';
+  }
+  var err=(_peErr&&_peErr.di===di&&_peErr.ii===ii)?'<p class="pe-exerr" role="alert">'+esc(_peErr.msg)+'</p>':'';
+  var est=SP.estimateDurationMin(list);
+  var meta=list.length?'<p class="pe-exmeta">'+list.length+' Übung'+(list.length===1?'':'en')+(est?' · geschätzt '+est+' min':'')+'</p>':'';
+  return '<div class="pe-expanel">'+rows+meta+err+add+'</div>';
 }
 function renderPlanEditor(){
   var sc=document.getElementById('pe_scroll');if(!sc)return;
+  var SP=_peSP();
   var opts=PLAN_PRESETS.map(function(p,i){return '<option value="'+i+'">'+esc(p.t+' · '+p.l)+'</option>';}).join('');
   sc.innerHTML=_planEdit.map(function(day,di){
-    var items=day.length?day.map(function(it,ii){return '<span class="pe-chip">'+esc(it.l)+'<button type="button" onclick="removePlanItem('+di+','+ii+')" aria-label="Entfernen">✕</button></span>';}).join(''):'<span class="pe-empty">Ruhetag</span>';
+    var items=day.length?day.map(function(it,ii){
+      var chip='<span class="pe-chip">'+esc(it.l);
+      /* Nur Krafteinheiten bekommen den Uebungs-Schalter — Sportart wird
+         normalisiert, nicht per Teilstring geraten (v8-316-Lehre). */
+      if(SP&&SP.isStrengthItem(it)){
+        var n=SP.readPlanned(it).length;
+        var open=!!(_peOpen&&_peOpen.di===di&&_peOpen.ii===ii);
+        chip+='<button type="button" class="pe-exbtn'+(open?' on':'')+'" onclick="peToggleEx('+di+','+ii+')" aria-expanded="'+(open?'true':'false')+'">Übungen ('+n+')</button>';
+      }
+      chip+='<button type="button" onclick="removePlanItem('+di+','+ii+')" aria-label="Entfernen">✕</button></span>';
+      if(SP&&SP.isStrengthItem(it)&&_peOpen&&_peOpen.di===di&&_peOpen.ii===ii)chip+=peExPanelHTML(di,ii);
+      return chip;
+    }).join(''):'<span class="pe-empty">Ruhetag</span>';
     return '<div class="pe-day"><div class="pe-dh">'+DAYNAMES[di]+'</div><div class="pe-items">'+items+'</div>'+
       '<div class="pe-add"><select class="pe-sel" id="pe_sel_'+di+'">'+opts+'</select><button type="button" class="btn sec" onclick="addPlanItem('+di+')">+</button></div></div>';
   }).join('');
 }
 function addPlanItem(di){var sel=document.getElementById('pe_sel_'+di);if(!sel)return;var p=PLAN_PRESETS[+sel.value];if(!p)return;_planEdit[di].push({t:p.t,l:p.l,d:p.d});renderPlanEditor();}
-function removePlanItem(di,ii){_planEdit[di].splice(ii,1);renderPlanEditor();}
+function removePlanItem(di,ii){_planEdit[di].splice(ii,1);if(_peOpen&&_peOpen.di===di&&_peOpen.ii===ii)_peOpen=null;renderPlanEditor();}
 /* GM7.5g: renderWeekPlan() bemalt nur die verborgene Legacy-Box (#weekPlanBox); die sichtbare
    GM-Planseite (renderPlan->renderGMPlan) blieb nach Editor-Save/Reset stale, weil saveProfile()
    kein orvia:profile-updated ausloest. Bestehenden Renderer direkt nachziehen (kein neuer Pfad). */
@@ -2861,6 +3591,131 @@ function gmCanonPlanEnsure(cb){
     });
   }).catch(function(){_gmCanonPlan.loading=false;_gmCanonPlan.error=true;});
 }
+/* ============================================================
+   v8-315 · DIE WOCHE WIRD ADRESSIERBAR.
+
+   BEFUND (Gians „jede Folgewoche sieht gleich aus"): Der Plan-Renderer las
+   activeWeekPlan() OHNE Wochenbezug. Der Blätter-Versatz _wOff wirkte nur auf
+   das Datum in der Kopfzeile und auf die Ist-Auflösung — der INHALT war immer
+   die laufende Woche. Zwei getrennte Probleme steckten darin:
+
+   1. WAHRHEIT: user_week_plans ist seit Migration 0029 nach week_key
+      adressiert, weekPlanRepository.get(weekKey) existiert. Liegt für eine
+      andere Woche ein eigener Plan vor (Engine-Aktivierung, manuelle
+      Änderung), wurde er NICHT angezeigt — stattdessen die laufende Woche,
+      beschriftet mit dem fremden Datum. Das ist die schwerere Hälfte: die
+      Ansicht behauptete etwas, das nicht stimmte.
+   2. STRUKTUR: PROFILE.weekPlan ist per Konstruktion eine WIEDERKEHRENDE
+      Wochenstruktur (siehe Selbstheilungs-Kommentar in activeWeekPlan). Ohne
+      eigenen Plan für die Zielwoche ist die wiederkehrende Struktur die
+      ehrliche Antwort — aber sie muss als VORSCHAU kenntlich sein und darf
+      nicht wie ein festgelegter Plan aussehen.
+
+   Diese Runde löst 1 und macht 2 sichtbar. Sie erzeugt AUSDRÜCKLICH KEINE
+   Wochenvariation: eine in der Oberfläche erfundene Progression wäre genau
+   die Ersatzheuristik, die Bauplan §17.2 verbietet. Periodisierung ist
+   Stufe 10 und braucht die Engine — diese Runde macht sie erst möglich,
+   indem es einen Ort gibt, an den eine Folgewoche überhaupt geschrieben
+   werden kann.
+
+   ZWEI RIEGEL, die beim Bauen aufgefallen sind:
+   a) KEINE BEOBACHTUNG FREMDER WOCHEN. gmObserveWeekPlan hängt den Plan an
+      den Schatten-Snapshot mit weekId = HEUTIGE Woche. Gäbe man ihm eine
+      Vorschauwoche, würde der Observer eine fremde Woche als aktuellen Plan
+      protokollieren — die Kalibrierung wäre verunreinigt, und zwar
+      unbemerkt. Der Vorschaupfad beobachtet deshalb nie.
+   b) KEIN SCHREIBEN AUS DER VORSCHAU. Der Lesepfad für fremde Wochen ruft
+      weder Selbstheilung noch ensurePlannedSessionIds noch saveProfile —
+      sonst könnte das Blättern den gespeicherten Plan verändern.
+   ============================================================ */
+var _gmWeekCache={};        /* weekKey -> {plan|null, at} — nur Lesecache */
+var _gmWeekLoading={};
+function gmWeekKeyForOffset(off){
+  var PD=(typeof gmCanonPlanDomain==='function')?gmCanonPlanDomain():null;
+  if(!PD||typeof PD.weekKeyFor!=='function')return null;
+  var n=(typeof off==='number'&&isFinite(off))?off:0;
+  /* Die injizierbare Uhr, nicht new Date() — dieselbe Quelle wie todayStr()
+     selbst, sonst koennte der Wochenschluessel gegen ein anderes Heute rechnen
+     als der Rest des Renderers. */
+  var d=new Date((typeof orviaNowMs==='function')?orviaNowMs():Date.now());
+  d.setDate(d.getDate()+n*7);
+  return PD.weekKeyFor(todayStr(d));
+}
+/* Laedt den Plan einer FREMDEN Woche nach und rendert danach neu. Fuer die
+   laufende Woche ist gmCanonPlanEnsure zustaendig — dieser Pfad fasst
+   _gmCanonPlan nie an und migriert nichts (kein save, kein fromLegacy). */
+function gmWeekPlanEnsure(weekKey,cb){
+  if(!weekKey)return;
+  if(Object.prototype.hasOwnProperty.call(_gmWeekCache,weekKey)){if(cb)cb(_gmWeekCache[weekKey]);return;}
+  if(_gmWeekLoading[weekKey])return;
+  var repo=(typeof gmCanonPlanRepo==='function')?gmCanonPlanRepo():null;
+  if(!repo||!gmCanonPlanOn()){_gmWeekCache[weekKey]=null;if(cb)cb(null);return;}
+  _gmWeekLoading[weekKey]=true;
+  repo.get(weekKey).then(function(r){
+    delete _gmWeekLoading[weekKey];
+    _gmWeekCache[weekKey]=(r&&r.success&&r.data)?r.data:null;
+    if(cb)cb(_gmWeekCache[weekKey]);
+    try{if(typeof gmPlanWeekOff==='function'&&gmWeekKeyForOffset(gmPlanWeekOff())===weekKey&&typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+  }).catch(function(){delete _gmWeekLoading[weekKey];_gmWeekCache[weekKey]=null;});
+}
+/* DER Lesepfad des Plan-Renderers. Liefert IMMER {days, provenance, weekKey}.
+   provenance ist Teil des Vertrags, nicht Kosmetik: die Oberflaeche muss
+   unterscheiden koennen zwischen „das ist der Plan dieser Woche" und
+   „das ist die wiederkehrende Struktur als Vorschau". */
+function gmPlanForOffset(off){
+  var n=(typeof off==='number'&&isFinite(off))?off:0;
+  var weekKey=gmWeekKeyForOffset(n);
+  if(n===0){
+    var days0=[[],[],[],[],[],[],[]];
+    try{days0=activeWeekPlan();}catch(_){ }
+    return {days:days0,provenance:'current',weekKey:weekKey};
+  }
+  /* Fremde Woche: eigener persistierter Plan? */
+  var PD=(typeof gmCanonPlanDomain==='function')?gmCanonPlanDomain():null;
+  if(weekKey&&PD&&typeof PD.effectiveSessions==='function'){
+    if(!Object.prototype.hasOwnProperty.call(_gmWeekCache,weekKey)){
+      gmWeekPlanEnsure(weekKey);
+      /* NACH dem Anstossen erneut pruefen: ohne Repo/ohne kanonisches Modell
+         entscheidet gmWeekPlanEnsure SYNCHRON (Cache = null). Wer hier blind
+         'loading' zurueckgibt, zeigt dauerhaft „wird geladen …", obwohl nie
+         etwas geladen wird — genau das hat die Testprobe aufgedeckt. */
+      if(!Object.prototype.hasOwnProperty.call(_gmWeekCache,weekKey))
+        return {days:gmRecurringBaselineDays(),provenance:'loading',weekKey:weekKey};
+    }
+    var wp=_gmWeekCache[weekKey];
+    if(wp&&((wp.baseline&&wp.baseline.sessions&&wp.baseline.sessions.length)||(wp.overrides&&wp.overrides.length))){
+      try{
+        var eff=JSON.parse(JSON.stringify(PD.effectiveSessions(wp).days));
+        var cfg=null;
+        try{cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;}catch(_){ }
+        /* KEIN gmObserveWeekPlan — siehe Riegel (a). */
+        return {days:(typeof alignPlanToAvailability==='function')?alignPlanToAvailability(eff,cfg):eff,
+          provenance:'planned_week',weekKey:weekKey};
+      }catch(_){ }
+    }
+  }
+  return {days:gmRecurringBaselineDays(),provenance:'recurring_preview',weekKey:weekKey};
+}
+/* Die wiederkehrende Struktur OHNE Nebenwirkung: kein Speichern, keine
+   ID-Vergabe, keine Beobachtung — siehe Riegel (b). */
+function gmRecurringBaselineDays(){
+  try{
+    var p=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan);
+    if(p&&p.length===7){
+      var cp=JSON.parse(JSON.stringify(p));
+      var cfg=null;
+      try{cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;}catch(_){ }
+      return (typeof alignPlanToAvailability==='function')?alignPlanToAvailability(cp,cfg):cp;
+    }
+    var g=(typeof generateWeekPlan==='function')?generateWeekPlan():null;
+    return g||[[],[],[],[],[],[],[]];
+  }catch(_){return [[],[],[],[],[],[],[]];}
+}
+var GM_PROV_NOTE={
+  planned_week:null,
+  recurring_preview:'Vorschau aus deiner wiederkehrenden Wochenstruktur — für diese Woche ist noch kein eigener Plan festgelegt.',
+  loading:'Plan dieser Woche wird geladen …'
+};
 /* Projektion: kanonischer effektiver Plan → Legacy-Feld (EINE Wahrheit bis 5F). */
 function gmCanonPlanProject(plan){
   try{
@@ -3147,29 +4002,46 @@ function unitBodyOther(item,kind,lvl){
   var statHTML=(lvl==='profi'&&s.rpe)?'<div class="unit-stats"><div class="unit-stat"><span class="us-k">Intensität</span><span class="us-v">'+escH(s.rpe)+'</span></div></div>':'';
   return goal+statHTML+(steps?'<div class="unit-steps">'+steps+'</div>':'')+guid+alt;
 }
-function planEntryClick(di,ii){
+function planEntryClick(di,ii,dateIso){
   // AD1b: eindeutiger Plan–Actual-Link → kanonische Activity öffnen (Kontext 'plan');
   // keiner/mehrdeutig → geplante Vorgabe (openUnit), NIE eine beliebige Tagesaktivität blind wählen.
+  // v8-310a (Gians P0): dateIso kommt von der GERENDERTEN Karte (dargestellte
+  // Woche). Ohne Angabe (Legacy-Aufrufer) gilt die laufende Woche — danach wird
+  // der Kontext nur noch DURCHGEREICHT, nie neu aus _wOff/di gerechnet.
   try{
     var row=activeWeekPlan()[di]; var item=row&&row[ii];
-    var occ=(item&&item.id&&typeof plannedOccurrenceIdFor==='function')?plannedOccurrenceIdFor(item,di):null;
+    /* v8-310a-Haertung: KEIN Legacy-Rueckbau mehr. Ein datumsloser Aufrufer
+       bekommt eine rein lesbare Ansicht ohne Occurrence — nie eine still
+       rekonstruierte laufende Woche (genau die Fehlerklasse dieses P0). */
+    var dIso=dateIso||null;
+    var occ=(dIso&&item&&item.id&&typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(item,dIso):null;
     var au=(window.ORVIA&&ORVIA.activityUI)?ORVIA.activityUI:null;
     var res=(occ&&au&&au.resolvePlannedActivity)?au.resolvePlannedActivity(occ):{status:'none'};
     if(res&&res.status==='unique'&&res.id&&au&&au.openActivityDetail){ au.openActivityDetail(res.id,'plan'); return; }
     if(res&&res.status==='ambiguous'&&typeof toast==='function'){ toast('Mehrere Aktivitäten für diese Einheit — bitte manuell zuordnen.'); }
-    openUnit(di,ii);
-  }catch(e){ try{ openUnit(di,ii); }catch(_){} }
+    openUnit(di,ii,dIso);
+  }catch(e){ try{ openUnit(di,ii,dateIso); }catch(_){} }
 }
-function openUnit(di,ii){
+function openUnit(di,ii,dateIso){
   var row=activeWeekPlan()[di];if(!row)return;var item=row[ii];if(!item)return;
   var kind=unitKind(item);var lvl=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var body=(item.t==='Laufen')?unitBodyRun(item,kind,lvl):(item.t==='Rad')?unitBodyBike(item,lvl):unitBodyOther(item,kind,lvl);
-  // F1: geplante Einheit → Aktionen. „Training starten" nur für den heutigen Wochentag (Live = jetzt).
-  var todayIdx=(new Date().getDay()+6)%7;
+  /* v8-310a (Gians P0): DAS DATUM SPERRT AKTIONEN — nicht der Wochentagsindex.
+     Der alte Vergleich (di gegen den heutigen Wochentagsindex) machte in einer geblaetterten Woche
+     denselben Wochentag wie heute faelschlich bedienbar: „Training starten"
+     fuer eine Einheit NAECHSTE Woche haette eine heutige Aktivitaet mit
+     falscher Occurrence erzeugt. Starten/Erledigen NUR wenn dateIso===heute;
+     Vergangenheit und Zukunft sind ausschliesslich lesbar. */
+  /* v8-310a-Haertung: ohne Datumskontext ist die Ansicht NUR lesbar. */
+  var dIso=dateIso||null;
+  var isToday=(dIso===todayStr());
   var foot='';
-  if(di===todayIdx){
-    foot+='<button class="btn" onclick="startPlannedUnit('+di+','+ii+')">Training starten</button>'+
-      '<button class="btn sec" style="margin-top:10px" onclick="markPlannedDone(\''+escH(item.t)+'\','+di+','+ii+')">Als erledigt markieren</button>';
+  if(isToday){
+    foot+='<button class="btn" onclick="startPlannedUnit('+di+','+ii+',\''+dIso+'\')">Training starten</button>'+
+      '<button class="btn sec" style="margin-top:10px" onclick="markPlannedDone(\''+escH(item.t)+'\','+di+','+ii+',\''+dIso+'\')">Als erledigt markieren</button>';
+  }else if(dIso){
+    var _dd3=null;try{var _d3=new Date(dIso+'T12:00');_dd3=_d3.getDate()+'.'+(_d3.getMonth()+1)+'.';}catch(_){ }
+    foot+='<div class="mini-note">'+icon('info','xs')+'<div>Nur lesbar — diese Einheit ist für '+(_dd3?('den '+_dd3):'einen anderen Tag')+' geplant. Starten und Erledigen sind nur am Tag selbst möglich.</div></div>';
   }
   foot+='<button class="btn sec" style="margin-top:10px" onclick="closeSupp();openPlanEditor()">Plan bearbeiten / verschieben</button>';
   if(typeof oModal==='function')oModal(item.l+' · '+item.t,body,foot);
@@ -3188,17 +4060,44 @@ function planNoteFor(item){
   return item.l||'';
 }
 /* F1: geplante Einheit live starten — Sportart + Plan-Sollwerte an den passenden Live-Modus. */
-function startPlannedUnit(di,ii){
+function startPlannedUnit(di,ii,dateIso){
   var item=null;try{item=activeWeekPlan()[di][ii];}catch(e){}
   try{if(typeof closeSupp==='function')closeSupp();}catch(e){}
   if(!item)return;
+  /* v8-310a (Gians P0, zweiter Riegel): Auch wenn der Button in einer
+     geblaetterten Woche nie gerendert wird — die Funktion selbst verweigert
+     jeden Start ausserhalb des heutigen Datums. Ein Konsolenaufruf oder ein
+     kuenftiger Renderfehler darf keine Aktivitaet mit fremder Occurrence
+     erzeugen. */
+  /* v8-310a-Haertung: fehlendes Datum ist ein VERTRAGSBRUCH des Aufrufers —
+     benannter Fehler statt stiller Rekonstruktion, keine Mutation. */
+  if(!dateIso){
+    if(typeof toast==='function')toast('Nicht gestartet — fehlender Datumskontext.');
+    return {ok:false,code:'missing_date_context'};
+  }
+  var dIso=dateIso;
+  if(dIso!==todayStr()){
+    if(typeof toast==='function')toast('Nicht gestartet — diese Einheit ist nicht für heute geplant.');
+    return {ok:false,code:'not_today'};
+  }
   var note=planNoteFor(item);
   /* Batch 2d: planned_session_id erhält die OCCURRENCE-ID (konkrete Instanz
      mit Datum), nicht die Template-ID; zusätzlich unveränderlicher Snapshot
      der geplanten Vorgabe für den späteren Plan-Ist-Vergleich. */
-  var occ=(typeof plannedOccurrenceIdFor==='function')?plannedOccurrenceIdFor(item,di):null;
-  var planSnap=occ?{occurrenceId:occ,templateSessionId:item.id||null,plannedDate:(typeof planLocalDateForIndex==='function')?planLocalDateForIndex(di):null,t:item.t||null,l:item.l||null,d:item.d||null,capturedAt:Date.now()}:null;
+  var occ=(typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(item,dIso):null;
+  var planSnap=occ?{occurrenceId:occ,templateSessionId:item.id||null,plannedDate:dIso,t:item.t||null,l:item.l||null,d:item.d||null,capturedAt:Date.now()}:null;
+  /* v8-322: die geplanten Kraftvorgaben gehoeren IN den Snapshot. Vorher trug er
+     nur t/l/d — die Uebungen, Saetze und Zielgewichte gingen beim Start
+     verloren, und der spaetere Soll-Ist-Vergleich haette auf der Soll-Seite
+     nichts zu vergleichen gehabt. Nur anhaengen, wenn tatsaechlich etwas
+     geplant ist: sonst bliebe bei jeder Laufeinheit ein leeres Feld im
+     unveraenderlichen Anker stehen. */
+  try{
+    var _pex=(window.ORVIA&&window.ORVIA.strengthPlan)?window.ORVIA.strengthPlan.readPlanned(item):[];
+    if(planSnap&&_pex.length)planSnap.plannedExercises=_pex;
+  }catch(e){}
   if(window.ORVIA&&window.ORVIA.workoutUI&&window.ORVIA.workoutUI.startSport)window.ORVIA.workoutUI.startSport(item.t,{planNote:note,planLabel:item.l,plannedSessionId:occ,templateSessionId:item.id||null,planSnapshot:planSnap});
+  return {ok:true,code:'started'};
 }
 /* F1: geplante Einheit ohne Live-Tracking als erledigt markieren (heutiger Tag, lokale Quelle). */
 /* Batch 2e/2f: „Als erledigt markieren" — FAIL CLOSED.
@@ -3213,17 +4112,33 @@ function startPlannedUnit(di,ii){
      kein anker-loser Eintrag, kein improvisiertes Schatten-SSOT,
    - Erfolgstoast NUR nach verifizierter Speicherung (Rollback bei save-Fehler).
    Rückgabe { ok, code } für Tests/Aufrufer. */
-function markPlannedDone(type,di,ii){
+function markPlannedDone(type,di,ii,dateIso){
   var result={ok:false,code:'error'};
   try{
     var it=null;
     try{it=(di!=null&&ii!=null&&typeof activeWeekPlan==='function')?(activeWeekPlan()[di]||[])[ii]:null;}catch(_){}
-    var occ=(it&&it.id&&typeof plannedOccurrenceIdFor==='function')?plannedOccurrenceIdFor(it,di):null;
+    /* v8-310a (Gians P0, zweiter Riegel): Erledigen NUR am Tag selbst. Der
+       Datumskontext kommt vom Klick und wird hier verifiziert, nicht neu
+       gerechnet — eine Markierung mit fremder Occurrence waere eine falsche
+       Grundwahrheit fuer C3 und jede spaetere Auswertung. */
+    /* v8-310a-Haertung: ohne Datumskontext keine Mutation — benannter Fehler. */
+    if(!dateIso){
+      result.code='missing_date_context';
+      if(typeof toast==='function')toast('Nicht markiert — fehlender Datumskontext.');
+      return result;
+    }
+    var dIso=dateIso;
+    if(dIso!==todayStr()){
+      result.code='not_today';
+      if(typeof toast==='function')toast('Nicht markiert — Erledigen ist nur am Tag der Einheit möglich.');
+      return result;
+    }
+    var occ=(it&&it.id&&typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(it,dIso):null;
     if(!occ){
       result.code='no_plan_reference';
       if(typeof toast==='function')toast('Nicht markiert — keine eindeutige Plan-Einheit gefunden.');
     }else{
-      var e=entry(todayStr());
+      var e=entry(dIso);
       /* Batch 2h: Zustand VOR jeder Mutation sichern — EXISTENZ und WERT strikt
          getrennt (2g vermischte beides: sessions:null wurde bei Speicherfehler
          gelöscht statt als null wiederhergestellt).
@@ -3274,9 +4189,15 @@ function markPlannedDone(type,di,ii){
             }
           }catch(_){}
         }
+        /* v8-322: derselbe Anker wie beim Live-Start — auch die ohne Messwerte
+           abgehakte Einheit behaelt ihre Soll-Vorgaben. */
+        var _pexDone=[];
+        try{_pexDone=(window.ORVIA&&window.ORVIA.strengthPlan)?window.ORVIA.strengthPlan.readPlanned(it):[];}catch(_e){}
+        var _snapDone={occurrenceId:occ,templateSessionId:it.id,plannedDate:dIso,t:it.t||null,l:it.l||null,d:it.d||null,capturedAt:Date.now()};
+        if(_pexDone.length)_snapDone.plannedExercises=_pexDone;
         var rec={note:'Als erledigt markiert (ohne Messwerte)',source:'plan_done',
           plannedSessionId:occ,templateSessionId:it.id,
-          planSnapshot:{occurrenceId:occ,templateSessionId:it.id,plannedDate:(typeof planLocalDateForIndex==='function')?planLocalDateForIndex(di):null,t:it.t||null,l:it.l||null,d:it.d||null,capturedAt:Date.now()}};
+          planSnapshot:_snapDone};
         e.sessions=e.sessions||{};
         e.sessions[type]=rec;e.sessions._ts=Date.now();
         var persisted=false;
@@ -3303,6 +4224,50 @@ function markPlannedDone(type,di,ii){
   if(typeof renderDay==='function')renderDay();
   if(typeof renderWeekPlan==='function')renderWeekPlan();
   return result;
+}
+
+/* v8-310b · Korrekturpfad 3: Ein plan_done-Marker ist eine datenlose
+   Nutzerbehauptung und KEINE Activity. Deshalb wird bei der Ruecknahme nur
+   exakt dieser Marker entfernt — ohne Tombstone, ohne Workout-Loeschung und
+   ohne Eingriff in Tageslast oder andere Sessions. */
+function planDoneMarkerFor(type,dateIso,occurrenceId){
+  try{
+    if(!type||!dateIso||!occurrenceId||typeof DB==='undefined'||!DB)return null;
+    var e=DB[dateIso],s=e&&e.sessions&&e.sessions[type];
+    return (s&&s.source==='plan_done'&&s.plannedSessionId===occurrenceId)?s:null;
+  }catch(_){return null;}
+}
+function undoPlanDone(type,dateIso,occurrenceId){
+  if(!type||!dateIso||!occurrenceId)return {ok:false,code:'missing_context'};
+  var e=(typeof DB!=='undefined'&&DB)?DB[dateIso]:null;
+  var marker=planDoneMarkerFor(type,dateIso,occurrenceId);
+  if(!e||!e.sessions||!marker)return {ok:false,code:'marker_not_found'};
+  var before;
+  try{before=JSON.stringify(e.sessions);}catch(_){return {ok:false,code:'snapshot_failed'};}
+  delete e.sessions[type];
+  var remaining=Object.keys(e.sessions).filter(function(k){return k!=='_ts';});
+  if(!remaining.length)delete e.sessions;
+  else e.sessions._ts=Date.now();
+  var saved=false;
+  try{saved=(typeof save==='function'&&save()===true);}catch(_){saved=false;}
+  if(!saved){
+    try{e.sessions=JSON.parse(before);}catch(_){ }
+    return {ok:false,code:'save_failed'};
+  }
+  try{if(typeof renderDay==='function')renderDay();}catch(_){ }
+  try{if(typeof renderWeekPlan==='function')renderWeekPlan();}catch(_){ }
+  try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+  try{if(window.dispatchEvent)window.dispatchEvent(new CustomEvent('orvia:activity-updated',{detail:{planDoneUndone:true,occurrenceId:occurrenceId}}));}catch(_){ }
+  if(typeof toast==='function')toast('Erledigt-Markierung zurückgenommen');
+  return {ok:true,code:'unmarked'};
+}
+function confirmUndoPlanDone(type,dateIso,occurrenceId){
+  var run=function(){return undoPlanDone(type,dateIso,occurrenceId);};
+  if(typeof orviaConfirm==='function'){
+    orviaConfirm({title:'Erledigt-Markierung zurücknehmen?',text:'Es wird nur die manuelle Markierung entfernt. Echte Aktivitäten und Trainingsdaten bleiben unverändert.',okLabel:'Markierung entfernen',onOk:run});
+    return {ok:true,code:'confirmation_open'};
+  }
+  return run();
 }
 /* Wochenziele NICHT mehr aus festen Defaults, sondern aus dem aktiven Plan ableiten. */
 function weeklyPlanTargets(){
@@ -6194,10 +7159,25 @@ function gmPlanWeekMeta(){
    gespeicherte Wochenplan wird dabei NIE veraendert — die Auswahl ist eine
    Ansicht/Fokussetzung und liegt in localStorage. Die individuelle, leistungs-
    datenbasierte Varianten-PLANUNG uebernimmt spaeter die Trainingsengine. */
-var GM_PLAN_VARIANTS={
-  A:{name:'Optimal',desc:'Der vollständige Wochenplan — alle geplanten Einheiten.'},
-  B:{name:'Reduziert',desc:'Wenig Zeit diese Woche: Kern- und Aufbaueinheiten bleiben, Ergänzungen entfallen.'},
-  C:{name:'Minimalwoche',desc:'Fast keine Zeit: nur die Kernreize — hält den Fortschritt, verhindert den Bruch.'}};
+/* Namen und Beschreibungen kommen aus js/engine/plan-variants.js — dort liegt
+   auch die Rechnung. Zwei Namensquellen fuer dieselbe Sache waren der Grund,
+   warum Beschriftung und Verhalten auseinanderliefen. Der Rueckfall gilt nur,
+   wenn das Modul fehlt. */
+var GM_PLAN_VARIANTS=(function(){
+  try{if(window.ORVIA&&ORVIA.planVariants&&ORVIA.planVariants.META)return ORVIA.planVariants.META;}catch(_){ }
+  return {A:{name:'Vollständig',desc:'Der Plan wie gebaut — alle Einheiten.'},
+    B:{name:'Reduziert',desc:'Gleiche Wochenstruktur, ohne Doppeleinheiten. Zeitsparend, alle Kernreize bleiben.'},
+    C:{name:'Minimal',desc:'Nur die Einheiten, die das Ziel tragen.'}};})();
+/* Wochenversatz der Planseite. Bewusst NUR im Speicher (kein localStorage):
+   Beim naechsten Oeffnen soll wieder die laufende Woche stehen — sonst landet
+   man Wochen spaeter unbemerkt in einer alten Woche und haelt sie fuer aktuell. */
+var _gmPlanWeekOff=0;
+function gmPlanWeekOff(){return _gmPlanWeekOff;}
+function gmShiftPlanWeek(d){
+  _gmPlanWeekOff=Math.max(-52,Math.min(52,_gmPlanWeekOff+(d||0)));
+  try{renderGMPlan();}catch(_){ }
+}
+function gmPlanWeekToday(){_gmPlanWeekOff=0;try{renderGMPlan();}catch(_){ }}
 function gmPlanVariantSel(){try{var v=localStorage.getItem('orvia_plan_variant_v1');return (v==='B'||v==='C')?v:'A';}catch(_){return 'A';}}
 function gmSetPlanVariant(v){
   if(!GM_PLAN_VARIANTS[v])return;
@@ -6206,34 +7186,43 @@ function gmSetPlanVariant(v){
   try{if(typeof gmCloseSheets==='function')gmCloseSheets();}catch(_){ }
 }
 function gmPlanVariantModel(){
+  /* FIX (2026-08-06, Nutzerbefund „bei A reduziert und B zaehlen dieselben Einheiten"):
+     Die alte Fassung filterte nach unitPriority (A=alles, B=A+B, C=nur A). Liefert
+     unitPriority fuer die Einheiten eines Nutzers durchgaengig denselben Wert — und
+     genau das tut sie bei Laufen+Rad+Kraft —, filtert B nichts weg und zeigt dieselbe
+     Zahl wie A. Die Varianten waren dreimal derselbe Plan mit anderer Beschriftung.
+
+     Neue Bedeutung (Nutzervorgabe): B ist NICHT eine andere Prioritaetsklasse,
+     sondern derselbe Plan zeiteffizienter — Doppeleinheiten aufgeloest, Kernreize
+     unangetastet. Die Rechnung liegt in js/engine/plan-variants.js (pur, getestet). */
   var week=[[],[],[],[],[],[],[]];try{week=activeWeekPlan()||week;}catch(_){ }
-  var canClassify=(typeof unitPriority==='function');
-  var units=[];
-  week.forEach(function(day,di){(day||[]).forEach(function(it,ii){
-    var pri=null;try{pri=canClassify?unitPriority(it):null;}catch(_){ }
-    units.push({di:di,ii:ii,it:it,pri:pri});});});
-  var keepFor=function(v,pri){
-    if(v==='A')return true;
-    if(pri==null)return null;                      /* ohne Einstufung keine B/C-Aussage */
-    return v==='B'?(pri==='A'||pri==='B'):(pri==='A');
-  };
-  var out={sel:gmPlanVariantSel(),classified:canClassify,total:units.length,variants:{}};
+  var PV=(window.ORVIA&&ORVIA.planVariants)||null;
+  var sel=gmPlanVariantSel();
+  if(!PV||typeof PV.build!=='function'){
+    /* Ohne das Modul KEINE Variantenaussage — lieber „—" als drei gleiche Zahlen. */
+    return {sel:sel,classified:false,total:0,variants:{A:{count:null},B:{count:null},C:{count:null}},
+      keep:function(){return null;},note:null};
+  }
+  var built=PV.build(week);
+  var out={sel:sel,classified:true,total:built.A.count,built:built,
+    note:built.note,consistent:built.consistent,distinct:built.distinct,variants:{}};
   ['A','B','C'].forEach(function(v){
-    if(v!=='A'&&!canClassify){out.variants[v]={count:null,days:null,rest:null,core:null,kept:null};return;}
-    var kept=units.filter(function(u){return keepFor(v,u.pri)===true;});
-    var ds={};kept.forEach(function(u){ds[u.di]=1;});
-    var days=Object.keys(ds).length;
-    out.variants[v]={count:kept.length,days:days,rest:7-days,
-      /* ohne Klassifikation keine Kernreiz-BEHAUPTUNG (0 waere eine falsche Aussage) */
-      core:canClassify?kept.filter(function(u){return u.pri==='A';}).length:null,kept:kept};
+    var b=built[v];
+    out.variants[v]={count:b.count,days:b.trainingDays,rest:b.restDays,core:b.keySessions,
+      name:b.name,desc:b.desc,dropped:b.dropped};
   });
+  /* Bleibt die Einheit (di,ii) in der gewaehlten Variante erhalten? Verglichen wird
+     ueber Sportart+Bezeichnung am selben Tag — dieselbe Einheit kommt pro Tag nur
+     einmal vor (Regel R8 im Designer), die Zuordnung ist also eindeutig. */
   out.keep=function(di,ii){
-    var sel=out.sel;if(sel==='A')return true;
-    for(var i=0;i<units.length;i++){var u=units[i];
-      if(u.di===di&&u.ii===ii)return keepFor(sel,u.pri)!==false;}
-    return true;
+    try{
+      var it=(week[di]||[])[ii];if(!it)return null;
+      var target=built[out.sel];if(!target)return true;
+      var day=target.days[di]||[];
+      for(var k=0;k<day.length;k++){if(day[k]&&day[k].t===it.t&&day[k].l===it.l)return true;}
+      return false;
+    }catch(_){return null;}
   };
-  out.units=units;
   return out;
 }
 function gmOpenVariantSheet(){
@@ -6296,6 +7285,205 @@ function gmDailyGoalsBlock(){
     return '<div class="daily-goal"><div class="dg-top"><span>'+s[0]+'</span>'+icon(s[1],'xs')+'</div><b>— / —</b><div class="mini-track"><i style="width:0%"></i></div></div>';}).join('')+'</div>'+
   '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>'+GM_NA+' — es existiert noch kein dailyTargets-Datenvertrag (Schritte-/kcal-/Wasser-/Schlafziele). ORVIA zeigt hier keine erfundenen Ziele.</div></div>';
 }
+/* ============================================================
+   v8-313 · ZIELPROGNOSE — die erste echte Engine-Anbindung des Plan-Tabs.
+
+   BEFUND, DER DAZU FÜHRTE: Der Slot zeigte die String-Literale
+   „vorsichtig — realistisch — optimistisch —" und den Satz „erscheint mit der
+   externen Trainingsengine". Diese Engine ist seit v8-2xx im Haus und rechnet
+   bei JEDEM Planlauf mit: performance-zones.forecast() liefert exakt dieses
+   Tripel, goal-feasibility.feasibility() liefert die Zielaussicht. Beides lief
+   im Schattenbetrieb und wurde nie gelesen. forecast() hatte im gesamten
+   Projekt NULL Aufrufer.
+
+   WARUM HIER UND NICHT IM LEGACY-CONTAINER: Die Zielaussicht wurde bereits
+   gerendert — in #adaptiveCard (js/adaptive-card.js), einem direkten Kind von
+   #tab-plan, das styles.css:3130 (`#tab-plan > :not(#gmPlan):not(#gmPage)`)
+   ausblendet. Der zweite Renderpfad hing an renderWeekPlan(), das nur vom
+   überschriebenen renderPlan() gerufen wird. Der Wert existierte also, war aber
+   doppelt unerreichbar. Statt die CSS-Regel aufzuweichen (sie hält die gesamte
+   Legacy-Planansicht zurück) liest der GM-Slot die Engine jetzt direkt.
+
+   WAS SICH NICHT ÄNDERT — DIE EHRLICHKEITSREGEL: Ohne belastbaren Leistungswert
+   gibt es weiterhin KEINE Zahl. Neu ist nur, dass der leere Zustand seinen GRUND
+   nennt und den Weg zeigt, statt auf eine „externe Engine" zu vertrösten, die es
+   längst gibt. goal-feasibility fail-closed 'insufficient_data' bleibt unberührt:
+   ein Leistungswert OHNE Datum ist laut Evidenzvertrag informational, nie
+   entscheidungsfähig (evidence.js usability()) — daran rüttelt diese Runde nicht.
+
+   REINE DARSTELLUNG: keine eigene Rechnung, kein Schreiben, kein Zustand. Die
+   Funktion ist pur (Eingaben rein, String raus) und deshalb als VERHALTEN
+   testbar — sie bekommt die bereits im Render aufgelöste Leistung übergeben,
+   statt sie ein zweites Mal aufzulösen (das könnte abweichen). */
+function gmGoalForecastMin(min){
+  if(!(min>0))return '—';
+  var h=Math.floor(min/60),m=Math.round(min%60);
+  if(m===60){h++;m=0;}
+  return h>0?(h+':'+String(m).padStart(2,'0')+' h'):(m+' min');
+}
+/* Reine Sicht auf Korridor + Zielaussicht. runPerf = _perfBySport.running.
+   goal = goalOf()-Ergebnis. feas = getAdaptiveExplanation().feasibility (darf
+   fehlen — die Karte bleibt dann ohne Aussagezeile, nicht ohne Korridor). */
+function gmGoalForecastView(runPerf,goal,feas){
+  var v={ok:false,reason:null,cautious:null,realistic:null,optimistic:null,
+    bandPct:null,confidence:null,status:null,weeks:null,missing:[],reachable:null};
+  var distKm=(goal&&goal.distanceKm>0)?goal.distanceKm:null;
+  if(!distKm){v.reason='no_goal_distance';return v;}
+  if(!runPerf||runPerf.ok!==true){
+    v.reason='no_performance';
+    /* Den konkreten Mangel durchreichen statt ihn zu verallgemeinern — der
+       Resolver benennt ihn bereits (path.prompt/detail). */
+    try{if(runPerf&&(runPerf.detail||(runPerf.path&&runPerf.path.prompt)))v.missing.push(String((runPerf.path&&runPerf.path.prompt)||runPerf.detail));}catch(_){ }
+    return v;
+  }
+  var PZ=(window.ORVIA&&ORVIA.performanceZones)||null;
+  if(!PZ||typeof PZ.forecast!=='function'){v.reason='no_forecast_module';return v;}
+  var fc=null;try{fc=PZ.forecast(runPerf,distKm);}catch(_){fc=null;}
+  if(!fc||fc.ok!==true){v.reason=(fc&&fc.reason)||'not_computable';return v;}
+  v.ok=true;
+  v.cautious=fc.cautiousMin;v.realistic=fc.realisticMin;v.optimistic=fc.optimisticMin;
+  v.bandPct=fc.bandPct;v.confidence=fc.confidence;
+  /* Zielzeit gegen die KONSERVATIVE Kante prüfen, nicht gegen den Punktwert —
+     dieselbe Regel, die observer-input für die Evidenzvererbung anwendet. */
+  if(goal&&goal.targetMin>0){
+    v.target=goal.targetMin;
+    v.reachable=(goal.targetMin>=fc.cautiousMin)?'likely':(goal.targetMin>=fc.optimisticMin)?'edge':'beyond';
+  }
+  if(feas&&feas.status){
+    v.status=feas.status;
+    if(feas.estimatedWeeksRange&&feas.estimatedWeeksRange.min!=null)v.weeks=feas.estimatedWeeksRange;
+    if(feas.status==='insufficient_data'&&feas.limitingFactors&&feas.limitingFactors.length)
+      v.missing=v.missing.concat(feas.limitingFactors);
+  }
+  return v;
+}
+var GM_FEAS_TEXT={within_modeled_corridor:'Im Rahmen dessen, was das Modell trägt',
+  outside_modeled_corridor:'Außerhalb des Modellkorridors',insufficient_data:'Datenlage reicht nicht'};
+var GM_MISSING_TEXT={current_performance:'ein gemessener Leistungswert',
+  current_performance_not_decision_eligible:'ein Leistungswert MIT Datum (undatiert zählt nicht)',
+  goal:'eine bezifferte Zielzeit'};
+function gmGoalForecastCard(lvl,perfBySport){
+  var runPerf=(perfBySport&&perfBySport.running)||null;
+  var goal=null;try{goal=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
+  var feas=null;
+  try{var ax=(window.ORVIA&&ORVIA.getAdaptiveExplanation)?ORVIA.getAdaptiveExplanation():null;
+    feas=(ax&&ax.feasibility)||null;}catch(_){ }
+  var v=gmGoalForecastView(runPerf,goal,feas);
+  if(!v.ok){
+    var why=v.reason==='no_goal_distance'
+      ?'Ohne Zieldistanz gibt es nichts zu prognostizieren — hinterlege ein Distanzziel.'
+      :v.missing.length
+        ?('Es fehlt: '+v.missing.map(function(m){return gmEsc(GM_MISSING_TEXT[m]||m);}).join(', ')+'.')
+        :'Es fehlt ein belastbarer Leistungswert.';
+    var cta=(v.reason==='no_performance')
+      ?' <span class="edit" role="button" tabindex="0" onclick="gmOpenBestTimesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenBestTimesEntry()">Leistung erfassen</span>':'';
+    return '<div class="card"><div class="fc-labels"><span>vorsichtig —</span><span>realistisch —</span><span>optimistisch —</span></div>'+
+      '<div class="fc-corridor"><div class="fc-band" style="left:12%;right:12%;opacity:.18"></div></div>'+
+      '<div class="mini-note">'+icon('info','xs')+'<div>'+why+cta+'</div></div></div>';
+  }
+  /* Der Korridor ist eine SPANNE. Die Bandbreite kommt aus Belegstufe und Alter
+     der Referenz (evidence.bandFor) — ein schwacher oder alter Wert erzeugt ein
+     sichtbar breiteres Band. Genau das soll man sehen. */
+  var inset=Math.max(4,Math.min(34,50-(v.bandPct||5)*2.2));
+  var tgtTxt='';
+  if(v.target>0){
+    var tw={likely:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt im Korridor.',
+      edge:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt an der optimistischen Kante.',
+      beyond:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt unter dem, was der heutige Wert trägt.'}[v.reachable];
+    if(tw)tgtTxt=' '+gmEsc(tw);
+  }
+  var statusTxt=v.status?('<b>'+gmEsc(GM_FEAS_TEXT[v.status]||v.status)+'.</b>'):'';
+  var weeksTxt=(v.weeks&&v.weeks.min!=null)
+    ?(' Geschätzter Zeitraum: etwa '+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+' Wochen':' Wochen oder deutlich mehr')+' — Spanne, keine Terminzusage.'):'';
+  var basisTxt=(lvl==='p'&&v.confidence)
+    ?(' Grundlage: Beleglage '+gmEsc(String(v.confidence))+', Bandbreite ±'+gmEsc(String(v.bandPct))+' %.'):'';
+  return '<div class="card"><div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
+      '</span><span>realistisch '+gmEsc(gmGoalForecastMin(v.realistic))+
+      '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
+    '<div class="fc-corridor"><div class="fc-band" style="left:'+inset+'%;right:'+inset+'%"></div></div>'+
+    '<div class="mini-note">'+icon('info','xs')+'<div>'+statusTxt+tgtTxt+weeksTxt+basisTxt+
+      ' Modellwert aus deiner gemessenen Referenz — keine Garantie.</div></div></div>';
+}
+/* ============================================================
+   v8-316 · PLANQUALITÄT — die sechs Kacheln bekommen Werte.
+
+   Bis hierher waren „Zielabdeckung · Erholungsverteilung · Belastungsbalance ·
+   Zeitmachbarkeit · Sportbalance · Datenqualität" sechs Literale „—" mit Balken
+   auf 0 %. Anders als bei Zielprognose und adaptiver Einschätzung fehlte hier
+   nicht die Verdrahtung, sondern der RECHNER: es existierte ausschließlich der
+   Validator engine-contracts.isPlanQuality(). js/engine/plan-quality.js ist der
+   Produzent dazu (rein, versioniert, ohne DOM/Uhr).
+
+   DIE OBERFLÄCHE SCHAUT AUF `applicable`, NICHT AUF DIE ZAHL. Der Vertrag
+   verlangt für jeden Subscore eine Zahl 0–100; nicht bewertbare Bereiche
+   tragen deshalb 0 und rating 'insufficient_data'. Würde die Kachel die 0
+   anzeigen, stünde dort „0 % Sportbalance" für einen reinen Läufer — eine
+   Abwertung für etwas, das gar nicht bewertet wurde. Deshalb: nicht anwendbar
+   ⇒ „—" mit leerem Balken, wie zuvor, aber mit Grund.
+   ============================================================ */
+function gmPlanQualityEval(week,perfBySport){
+  try{
+    var PQE=(window.ORVIA&&ORVIA.planQuality)||null;
+    if(!PQE||typeof PQE.evaluate!=='function')return null;
+    var cfg=null;
+    try{cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
+    var sports=[];
+    try{
+      var sp=(typeof PROFILE!=='undefined'&&PROFILE&&Array.isArray(PROFILE.sports))?PROFILE.sports:[];
+      sports=sp.filter(function(s){return s&&s.activeInApp!==false;})
+        .map(function(s){return typeof s==='string'?s:(s.sportId||'');}).filter(Boolean);
+    }catch(_){ }
+    return PQE.evaluate({
+      days:week,
+      /* DIESELBEN Prädikate wie im übrigen Produkt — kein zweites Hart-Kriterium. */
+      isHardUnit:(typeof isHardUnit==='function')?isHardUnit:null,
+      isLongUnit:function(it){try{return unitKind(it)==='long';}catch(_){return false;}},
+      level:(typeof userLevel==='function')?userLevel():null,
+      goal:(typeof goalOf==='function')?goalOf():null,
+      config:cfg,activeSports:sports,
+      performance:(perfBySport&&perfBySport.running)||null,
+      planProvenance:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan&&PROFILE.weekPlan.length===7)?'stored':'generated'
+    });
+  }catch(_){return null;}
+}
+var GM_PQ_LABELS=[['goalCoverage','Zielabdeckung'],['recoveryDistribution','Erholungsverteilung'],
+  ['loadBalance','Belastungsbalance'],['timeFeasibility','Zeitmachbarkeit'],
+  ['sportBalance','Sportbalance'],['dataQuality','Datenqualität']];
+var GM_PQ_NA_TEXT={no_goal:'kein Ziel hinterlegt',goal_without_distance_model:'für diese Zielart noch kein Modell',
+  no_availability_config:'Verfügbarkeit nicht gepflegt',single_sport:'nur eine Sportart aktiv',
+  no_sessions:'keine Einheiten geplant',too_few_active_days:'zu wenige Trainingstage',
+  no_sport_normalizer:'Sportart-Zuordnung nicht verfügbar',too_few_known_sports:'zu wenige bekannte Sportarten',
+  no_plan:'kein Plan'};
+function gmPlanQualityCells(ev){
+  return GM_PQ_LABELS.map(function(p){
+    var s=ev&&ev.subscores?ev.subscores[p[0]]:null;
+    if(!s||s.applicable!==true){
+      var why=s&&s.note?(GM_PQ_NA_TEXT[s.note]||s.note):null;
+      return '<div class="pq" data-pq-key="'+p[0]+'" data-pq-applicable="0"><div class="pqt">'+p[1]+'</div>'+
+        '<div class="pqv" style="color:var(--muted)">—</div><div class="pq-track"><i style="width:0%"></i></div>'+
+        (why?'<div class="pq-na">'+gmEsc(why)+'</div>':'')+'</div>';
+    }
+    var col=s.value>=80?'var(--ready)':s.value>=60?'var(--gold-soft)':s.value>=40?'var(--attention)':'var(--crit)';
+    return '<div class="pq" data-pq-key="'+p[0]+'" data-pq-applicable="1"><div class="pqt">'+p[1]+'</div>'+
+      '<div class="pqv" style="color:'+col+'">'+gmEsc(String(s.value))+'</div>'+
+      '<div class="pq-track"><i style="width:'+s.value+'%;background:'+col+'"></i></div></div>';
+  }).join('');
+}
+/* v8-314 · Abschnitt „Adaptive Einschätzung" für den GM-Plan. Reine Weiterleitung
+   an den bestehenden, verhaltensgetesteten Renderer — die Funktion existiert nur,
+   damit der Abschnittstitel NICHT erscheint, wenn die Karte leer ist (sonst stünde
+   eine Überschrift über nichts). Kein eigener Zustand, keine eigene Rechnung. */
+function gmAdaptiveSection(){
+  var body='';
+  try{
+    var AC=(window.ORVIA&&ORVIA.adaptiveCard)||null;
+    if(AC&&typeof AC.render==='function'&&window.ORVIA&&ORVIA.getAdaptiveExplanation)
+      body=AC.render(ORVIA.getAdaptiveExplanation())||'';
+  }catch(_){body='';}
+  if(!body)return '';
+  return '<div class="sectlabel" data-gm-slot="plan-adaptive">Adaptive Einschätzung</div>'+
+    '<div class="card">'+body+'</div>';
+}
 function renderGMPlan(){
   var host=document.getElementById('gmPlan');if(!host)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
@@ -6324,15 +7512,72 @@ function renderGMPlan(){
   h+='<div class="card"><div class="ctitle"><div class="l">Variante '+pSel+' · '+gmEsc(pMeta.name)+'</div><span class="more" onclick="gmOpenVariantSheet()">Wechseln '+icon('chev','xs')+'</span></div>'+
     '<p class="prescription" style="margin-bottom:10px">'+gmEsc(pMeta.desc)+'</p>'+
     '<div class="week-progress">'+pCell(pd?pd.count:null,'EINHEITEN')+pCell(pd?pd.days:null,'TRAININGSTAGE')+pCell(pd?pd.core:null,'KERNREIZE')+pCell(pd?pd.rest:null,'RUHETAGE')+'</div>'+
-    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>Auswirkung:</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'Alle '+pvm.total+' geplanten Einheiten aktiv.':pd.count+' von '+pvm.total+' Einheiten aktiv — entfallende sind unten markiert, dein gespeicherter Plan bleibt unverändert.'):GM_NA+' — ohne Einstufung keine Variantenaussage.')+(lvl==='p'?' Einstufung nach Einheitstyp; die individuelle Varianten-Planung übernimmt die Trainingsengine.':'')+'</div></div></div>';
+    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>Auswirkung:</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'Alle '+pvm.total+' geplanten Einheiten aktiv.':pd.count+' von '+pvm.total+' Einheiten aktiv · '+(pd.core||0)+' Kernreize bleiben. Entfallende sind unten markiert, dein gespeicherter Plan bleibt unverändert.'):GM_NA+' — ohne Variantenmodell keine Aussage.')+((pvm&&pvm.note)?' '+gmEsc(pvm.note):'')+'</div></div></div>';
   /* 5–6. Woche (kanonische Wochenliste, E4-Datenpfad in GM-session-cards) */
-  h+='<div class="sectlabel" data-gm-slot="plan-week">'+(meta.wk!=null?'Woche '+meta.wk:'Diese Woche')+' <span class="edit" onclick="openPlanEditor()">'+icon('pen','xs')+' Bearbeiten</span></div>';
-  var week=[[],[],[],[],[],[],[]];try{week=activeWeekPlan();}catch(_){ }
-  var byOcc={};try{var dates=[];var now=new Date();var wd0=(now.getDay()+6)%7;var mon=new Date(now);mon.setDate(now.getDate()-wd0);
+  /* Kopfzeile der Wochenliste mit Blaetterung. Der Zeitraum wird ausgeschrieben,
+     damit beim Blaettern nie unklar ist, welche Woche man sieht.
+     v8-310a (Gians Befund): _wOff wurde hier benutzt, aber erst SPAETER
+     deklariert — Hoisting machte es undefined, die Kopfzeile zeigte
+     „undefined Wochen voraus" und „NaN.NaN." OHNE Exception (setDate(NaN)
+     wirft nicht). Der Versatz wird jetzt VOR der ersten Verwendung geholt
+     und die Kopfzeile kommt aus der puren, testbaren Funktion
+     gmPlanWeekHeader(). */
+  var _wOff=(typeof gmPlanWeekOff==='function')?gmPlanWeekOff():0;
+  var _wLbl='Diese Woche',_wRange='';
+  try{var _wh=gmPlanWeekHeader(_wOff);_wLbl=_wh.label;_wRange=_wh.range;}catch(_){ }
+  h+='<div class="sectlabel" data-gm-slot="plan-week">'+gmEsc(_wLbl)+
+     '<span class="edit">'+
+       '<button class="iconbtn" aria-label="Woche zurück" onclick="gmShiftPlanWeek(-1)">'+icon('chev','xs')+'</button>'+
+       '<span style="margin:0 8px;font-variant-numeric:tabular-nums">'+gmEsc(_wRange)+'</span>'+
+       '<button class="iconbtn" aria-label="Woche vor" onclick="gmShiftPlanWeek(1)">'+icon('chev','xs')+'</button>'+
+       (_wOff!==0?'<button class="iconbtn" aria-label="Zur aktuellen Woche" onclick="gmPlanWeekToday()" style="margin-left:6px">Heute</button>':'')+
+     '</span></div>';
+  /* v8-315: Der Wocheninhalt kommt jetzt aus dem wochenadressierten Lesepfad.
+     Die Kopfnotiz benennt die HERKUNFT statt pauschal „Vorschau" zu behaupten —
+     liegt fuer die Zielwoche ein eigener Plan vor, ist es kein Vorschautext
+     mehr, und das muss man sehen koennen. */
+  var _wSel=gmPlanForOffset(_wOff);
+  var week=(_wSel&&_wSel.days)||[[],[],[],[],[],[],[]];
+  if(_wOff!==0){
+    var _provNote=(_wOff<0)
+      ?'Vergangene Woche — die Einheiten zeigen, wie sie tatsächlich absolviert wurden.'
+      :(GM_PROV_NOTE[_wSel&&_wSel.provenance]||'Kommende Woche — für diese Woche ist ein eigener Plan hinterlegt.');
+    h+='<div class="mini-note" style="margin:0 0 8px" data-gm-prov="'+gmEsc((_wSel&&_wSel.provenance)||'')+'">'+icon('info','xs')+'<div>'+gmEsc(_provNote)+'</div></div>';
+  }
+  /* WOCHENNAVIGATION (2026-08-07, Nutzerwunsch): Die Planseite zeigte immer nur
+     die laufende Woche. Zurueckblaettern gab es nur in der verborgenen Legacy-Box
+     (shiftPlanWeek → renderWeekPlan) — an der sichtbaren Seite also gar nicht.
+     `gmPlanWeekOff` ist der Versatz in Wochen: 0 = diese Woche, -1 = vorige.
+     Der Versatz wirkt NUR auf die Anzeige; der gespeicherte Wochenplan ist eine
+     wiederkehrende Struktur und wird dadurch nie veraendert.
+     v8-310a: _wOff ist bereits VOR der Kopfzeile deklariert (Hoisting-Fix) —
+     hier keine zweite Deklaration mehr. */
+  var byOcc={};try{var dates=[];var now=new Date();var wd0=(now.getDay()+6)%7;var mon=new Date(now);mon.setDate(now.getDate()-wd0+_wOff*7);
     for(var i=0;i<7;i++){var dd=new Date(mon);dd.setDate(mon.getDate()+i);dates.push(todayStr(dd));}
     if(typeof planActualResolveForDates==='function'&&typeof Calc!=='undefined'&&Calc.resolvePlanActual){byOcc=(planActualResolveForDates(dates)||{}).byOcc||{};}
     var dayKeys=dates;
   }catch(_){var dayKeys=[];}
+  /* Leistungszonen aus dem KOMPLETTEN Profil (2026-08-06). Einmal je Render
+     aufgeloest und an alle Karten weitergereicht — nicht je Karte neu gerechnet.
+     Fehlt fuer eine Sportart die Referenz, bleibt es dort bei „—" MIT Grund,
+     waehrend die anderen Sportarten echte Vorgaben zeigen. */
+  var _perf=null;
+  try{
+    if(window.ORVIA&&ORVIA.performanceResolver){
+      var _acts=[];try{if(ORVIA.activityStore&&ORVIA.activityStore.listActivities)_acts=ORVIA.activityStore.listActivities();}catch(_a){}
+      _perf=ORVIA.performanceResolver.resolveAll(typeof PROFILE!=='undefined'?PROFILE:null,
+        {today:todayStr(),activities:_acts});
+    }
+  }catch(_){ }
+  var _perfBySport=(_perf&&_perf.sports)||null;
+  /* C3: Das Debrief muss gegen GENAU die Zonen urteilen, die die Karte gezeigt
+     hat. Deshalb wird die Aufloesung dieses Renders gemerkt, statt sie beim
+     Oeffnen der Rueckmeldung erneut zu rechnen — das waere nicht nur teurer,
+     sondern koennte auch abweichen (zwischenzeitlich erfasster Wert). */
+  try{if(window.ORVIA)ORVIA._lastPlanPerf=_perf;}catch(_){ }
+  /* v8-310a: Tageszustands-Konfiguration EINMAL je Render aufloesen. */
+  var _dayCfg=null;
+  try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
   var cards='';
   for(var di=0;di<7;di++){
     var items=week[di]||[];var k=(typeof dayKeys!=='undefined'&&dayKeys[di])||'';
@@ -6342,18 +7587,42 @@ function renderGMPlan(){
        (der eigentliche Bezugspunkt beim Planblick), Datum bleibt als Kontext dahinter. */
     var dLbl=DAYNAMES[di]||'';try{var dd2=new Date(k+'T12:00');dLbl=(DAYNAMES[di]||'')+' · '+dd2.getDate()+'.'+(dd2.getMonth()+1);}catch(_){ }
     if(!items.length){
-      cards+='<div class="session-card rest"><span class="session-ico">'+icon('moon')+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · Ruhetag</b><p>—</p></span><span class="session-state">—</span></div>';
+      /* v8-310a (Gians Entscheidung): leer ≠ Ruhetag. Drei ehrliche Zustaende
+         aus der Verfuegbarkeit — der Nutzer sah ZWEI „Ruhetage", hatte aber
+         nur einen eingestellt; der zweite war schlicht unbelegt. */
+      var _ds=(typeof gmDayStateFor==='function')?gmDayStateFor(di,_dayCfg):'rest';
+      var _dsL=_ds==='rest'?['moon','Ruhetag','—']
+        :_ds==='unavailable'?['info','Nicht verfügbar','laut Verfügbarkeit gesperrt']
+        :['info','Frei','verfügbar — keine Einheit geplant'];
+      cards+='<div class="session-card rest"><span class="session-ico">'+icon(_dsL[0])+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · '+_dsL[1]+'</b><p>'+_dsL[2]+'</p></span><span class="session-state">—</span></div>';
       continue;
     }
     for(var ii=0;ii<items.length;ii++){var it=items[ii];
       var occ=(it&&it.id)?('po:'+k+':'+it.id):null;
-      var done=!!(occ&&byOcc[occ]&&byOcc[occ].state==='completed');
+      var _res=(occ&&byOcc[occ])||null;
+      var done=!!(_res&&_res.state==='completed');
       var ic2=it.t==='Gym'?'dumbbell':it.t==='Rad'?'activity':it.t==='Schwimmen'?'activity':'run';
       /* GM7: Sportart + Umfang (it.d, vorhandenes Feld) + Prioritaet (unitPriority, vorhandene Quelle) */
       /* GM7.2: rohe Lauf-Codes (lr/iv/ez/tempo/recovery) sind Engine-Kürzel, kein Umfang —
          nicht als Untertitel zeigen. Echter Umfang (14 km) käme aus dem session.*-Vertrag (blockiert). */
       var _dOk=it.d&&!/^(lr|iv|ez|tempo|recovery|long|easy)$/i.test(String(it.d).trim());
       var subP=gmEsc(it.t)+(_dOk?' · '+gmEsc(it.d):'');
+      /* Konkrete Vorgabe statt Engine-Kuerzel: „5:53–6:25/km" bzw. „140–188 W".
+         Traegt die Konfidenz mit — eine abgeleitete Zahl darf nicht aussehen wie
+         eine gemessene. Ohne Referenz erscheint nichts (kein erfundener Bereich). */
+      try{
+        if(_perfBySport&&window.ORVIA&&ORVIA.performanceZones&&ORVIA.performanceZones.targetForUnit){
+          var _tg=ORVIA.performanceZones.targetForUnit(it,_perfBySport);
+          if(_tg&&_tg.ok&&_tg.text){
+            /* 0b: eine Skala fuer die ganze Engine. ORVIA.evidence.marker() ist die
+                 einzige Stelle, die Belegstufe in ein Zeichen uebersetzt — vorher stand
+                 die Zuordnung hier und haette bei jeder Aenderung nachgezogen werden muessen. */
+              var _cf=(window.ORVIA&&ORVIA.evidence)?(ORVIA.evidence.marker(_tg.confidence)?' '+ORVIA.evidence.marker(_tg.confidence):'')
+                :(_tg.confidence==='strong'?'':_tg.confidence==='moderate'?' ≈':' ~');
+            subP+=' · <b style="color:var(--txt)">'+gmEsc(_tg.text)+'</b>'+_cf;
+          }
+        }
+      }catch(_){ }
       /* GM7.5g (Audit-Revert): Kern/Flexibel-Badges kamen aus derselben unitPriority-
          Label-Heuristik — keine Engine-Klassifikation, daher entfernt (kein erfundener
          Prioritaetsstatus; Erledigt/— kommt weiterhin aus dem echten Resolver). */
@@ -6363,16 +7632,50 @@ function renderGMPlan(){
          als „Entfaellt" markiert. Erledigte Einheiten gewinnen immer. */
       var pKeep=true;try{if(pvm)pKeep=pvm.keep(di,ii)!==false;}catch(_){ }
       var pSkip=!pKeep&&!done;
-      cards+='<div class="session-card'+(done?' done':'')+(pSkip?' pvar-skip':'')+'" data-sid="'+gmEsc(it.id||'')+'" role="button" tabindex="0" onclick="planEntryClick('+di+','+ii+')" onkeydown="if(event.key===\'Enter\')planEntryClick('+di+','+ii+')">'+
-        '<span class="session-ico">'+icon(ic2)+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · '+gmEsc(it.l)+prioBadge+'</b><p>'+subP+'</p></span>'+
+      cards+='<div class="session-card'+(done?' done':'')+(pSkip?' pvar-skip':'')+'" data-sid="'+gmEsc(it.id||'')+'" role="button" tabindex="0" onclick="planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')" onkeydown="if(event.key===\'Enter\')planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')">'+
+        '<span class="session-ico">'+icon(ic2)+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · '+gmEsc(it.l)+prioBadge+'</b><p>'+subP+'</p>'+
+        /* v8-323 (K2): die geplanten Kraftuebungen stehen jetzt AUF der Karte.
+           Ohne Vorgaben liefert der Helfer '' — Altbestand sieht unveraendert
+           aus, kein leerer Kasten. */
+        gmPlannedLinesHTML(it)+gmRxLinesHTML(it)+'</span>'+
         '<span class="session-state'+(done?' done':'')+'">'+(done?'Erledigt':(pSkip?'Entfällt ('+pSel+')':'—'))+'</span></div>';
+      /* IST-Werte einer absolvierten Einheit — der eigentliche Zweck des
+         Zurueckblaetterns. Quelle ist ausschliesslich der Resolver (`actual`);
+         fehlt dort ein Wert, wird er weggelassen statt geschaetzt. */
+      try{
+        if(_res&&_res.actual){
+          var _a=_res.actual,_bits=[];
+          if(_a.distanceKm!=null)_bits.push(fmtDe(Math.round(_a.distanceKm*10)/10)+' km');
+          if(_a.durationMin!=null)_bits.push(Math.round(_a.durationMin)+' min');
+          if(_a.distanceKm>0&&_a.durationMin>0){
+            var _pc=Math.round(_a.durationMin*60/_a.distanceKm);
+            _bits.push(Math.floor(_pc/60)+':'+String(_pc%60).padStart(2,'0')+'/km');
+          }
+          if(_bits.length){
+            /* C3: Rueckmeldung zur absolvierten Einheit. Der Zustand wird
+               ANGEZEIGT (erfasst / offen), damit sichtbar ist, wo die Engine
+               noch keine Grundwahrheit hat — eine unbeantwortete Einheit ist
+               kein stiller Datenpunkt, sondern eine offene Frage. */
+            var _dbKey=gmDbKey(k,it),_dbRec=null;
+            try{_dbRec=gmDbFind(_dbKey);}catch(_e3){ }
+            var _dbTxt=_dbRec&&_dbRec.rpe!=null
+              ?'RPE '+_dbRec.rpe+(_dbRec.pain?' · Schmerz gemeldet':'')+(_dbRec.deltaRpe!=null?' (erwartet '+_dbRec.expectedRpe+')':'')
+              :'Rückmeldung offen';
+            cards+='<div class="mini-note" style="margin:-4px 0 8px 44px">'+icon('check','xs')+
+              '<div><b>Absolviert:</b> '+gmEsc(_bits.join(' · '))+
+              (_res.confidence&&_res.confidence!=='high'?' <span style="color:var(--muted)">(Zuordnung '+gmEsc(_res.confidence)+')</span>':'')+
+              '<br><span class="edit" role="button" tabindex="0" onclick="gmOpenDebriefAt('+di+','+ii+',\''+gmEsc(k)+'\')">'+gmEsc(_dbTxt)+'</span>'+
+              '</div></div>';
+          }
+        }
+      }catch(_){ }
     }
   }
   h+='<div class="plan-list">'+cards+'</div>';
   /* 7–8. Planqualität (E3-Quelle read-only; 6 strukturelle Zellen mit —) */
   var pq=null;try{pq=planQualityChecks();}catch(_){ }
-  var pqCells=['Zielabdeckung','Erholungsverteilung','Belastungsbalance','Zeitmachbarkeit','Sportbalance','Datenqualität'].map(function(t){
-    return '<div class="pq"><div class="pqt">'+t+'</div><div class="pqv" style="color:var(--muted)">—</div><div class="pq-track"><i style="width:0%"></i></div></div>';}).join('');
+  var _pqEval=gmPlanQualityEval(week,_perfBySport);
+  var pqCells=gmPlanQualityCells(_pqEval);
   var pqNote;
   if(!pq){pqNote=GM_NA+'.';}
   else if(gmLevel()==='a'){pqNote='<b>Planqualität: '+gmEsc(pq.rating.l)+'.</b> '+(pq.warns.length?pq.warns.length+' Hinweis'+(pq.warns.length>1?'e':'')+' im Sheet.':'Keine Auffälligkeiten.');}
@@ -6388,9 +7691,19 @@ function renderGMPlan(){
     var _gLbl='';try{var _g=goalOf();var _rl=(typeof raceLabel==='function')?raceLabel(_g&&_g.type):null;var _tm=(typeof goalTargetMinOrNull==='function')?goalTargetMinOrNull():null;
       if(_rl)_gLbl=' · '+_rl+(_tm!=null?' '+Math.floor(_tm/60)+':'+String(_tm%60).padStart(2,'0'):'');}catch(_){ }
     h+='<div class="sectlabel" data-gm-slot="plan-goal-forecast">Zielprognose'+gmEsc(_gLbl)+'</div>';
-    h+='<div class="card"><div class="fc-labels"><span>vorsichtig —</span><span>realistisch —</span><span>optimistisch —</span></div>'+
-      '<div class="fc-corridor"><div class="fc-band" style="left:12%;right:12%;opacity:.35"></div></div>'+
-      '<div class="mini-note">'+icon('info','xs')+'<div>'+GM_NA+' — der Prognosekorridor erscheint mit der externen Trainingsengine. '+(lvl==='p'?'Keine Garantie, keine Nachrechnung, keine Unsicherheitsangabe im UI.':'Keine Garantie, keine Nachrechnung im UI.')+'</div></div></div>';
+    h+=gmGoalForecastCard(lvl,_perfBySport);
+    /* v8-314: ADAPTIVE EINSCHAETZUNG im SICHTBAREN Plan-Tab.
+       Der Renderer (js/adaptive-card.js) existiert seit v8-283, ist String->String
+       und als Verhalten getestet — er schrieb aber ausschliesslich in
+       #adaptiveCard, ein direktes Kind von #tab-plan, das styles.css:3130
+       ausblendet, angestossen aus renderWeekPlan() (nur vom ueberschriebenen
+       renderPlan() gerufen). Die vollstaendige Ausgabe des Schattenbetriebs —
+       Anpassungsrichtung, Delta, Zielload, Sperrgruende, Begruendung — war damit
+       fuer den Nutzer nie sichtbar. Hier wird DERSELBE Renderer mit DEMSELBEN
+       View-Vertrag benutzt: keine zweite Darstellung, keine eigene Rechnung.
+       FAIL-SOFT bleibt: ohne Beobachtung liefert render() den leeren String,
+       dann entfaellt der Abschnitt ersatzlos (keine halb gefuellte Karte). */
+    h+=gmAdaptiveSection();
     /* 9b. Phasen (Calc.racePhases read-only) */
     var phases=[];try{phases=Calc.racePhases(RACE.date,todayStr())||[];}catch(_){ }
     var t0=todayStr();
@@ -6465,21 +7778,34 @@ function gmOpenDailyGoalsSheet(){
 }
 /* Session-Vollseite (GM sessionView-Struktur) — ersetzt das openUnit-Sheet sichtbar,
    bestehende Aktionen (Training starten / erledigt / Editor) bleiben produktiv. */
-function gmOpenSessionPage(di,ii){
+function gmOpenSessionPage(di,ii,dateIso){
   var pg=document.getElementById('gmPage');if(!pg)return;
   var row=[];try{row=activeWeekPlan()[di]||[];}catch(_){ }
   var it=row[ii];if(!it)return;
   var note=null;try{note=(typeof planNoteFor==='function')?planNoteFor(it):null;}catch(_){ }
   if(note===it.l)note=null;
-  var todayIdx=(new Date().getDay()+6)%7;
-  var cta=(di===todayIdx)
-    ?'<button class="cta prim" style="margin:0 18px;width:calc(100% - 36px)" onclick="gmCloseSessionPage();startPlannedUnit('+di+','+ii+')">'+icon('play','sm')+' Training starten</button>'
-    :'<button class="cta wide-ghost" style="margin:0 18px;width:calc(100% - 36px)" onclick="gmCloseSessionPage();openPlanEditor()">Plan bearbeiten / verschieben</button>';
-  pg.innerHTML='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseSessionPage()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>'+gmEsc(DAYNAMES[di])+' · '+gmEsc(it.l)+'</h2><p>Planvorgabe</p></div></div></div>'+   /* siehe GM7.9h-Notiz unter dieser Funktion */
+  /* v8-310a (Gians P0): DIESE Seite ist die produktive Einheiten-Ansicht
+     (openUnit ist unten auf sie umgelenkt) — und sie entschied per
+     WOCHENTAGSINDEX ueber „Training starten". In einer geblaetterten Woche
+     war derselbe Wochentag wie heute damit faelschlich startbar. Das Datum
+     kommt jetzt vom Klick; gestartet wird NUR am Tag selbst, sonst steht
+     hier der ehrliche Nur-lesbar-Hinweis. */
+  /* v8-310a-Haertung: ohne Datumskontext ist auch die Vollseite NUR lesbar. */
+  var dIso=dateIso||null;
+  var isToday=(dIso===todayStr());
+  var _occ2=(dIso&&it.id&&typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(it,dIso):null;
+  var _pd2=(typeof planDoneMarkerFor==='function')?planDoneMarkerFor(it.t,dIso,_occ2):null;
+  var cta=isToday
+    ?'<button class="cta prim" style="margin:0 18px;width:calc(100% - 36px)" onclick="gmCloseSessionPage();startPlannedUnit('+di+','+ii+',\''+dIso+'\')">'+icon('play','sm')+' Training starten</button>'
+    :'<div class="mini-note" style="margin:0 18px">'+icon('info','xs')+'<div>Nur lesbar — Starten ist nur am Tag der Einheit möglich.</div></div>'+
+     '<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="gmCloseSessionPage();openPlanEditor()">Plan bearbeiten / verschieben</button>';
+  var _dLbl2='';try{var _d4=new Date(dIso+'T12:00');_dLbl2=' · '+_d4.getDate()+'.'+(_d4.getMonth()+1);}catch(_){ }
+  var _undoPd=_pd2?'<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="confirmUndoPlanDone(\''+gmEsc(it.t)+'\',\''+gmEsc(dIso)+'\',\''+gmEsc(_occ2)+'\')">Erledigt-Markierung zurücknehmen</button>':'';
+  pg.innerHTML='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseSessionPage()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>'+gmEsc(DAYNAMES[di])+_dLbl2+' · '+gmEsc(it.l)+'</h2><p>Planvorgabe</p></div></div></div>'+   /* siehe GM7.9h-Notiz unter dieser Funktion */
     '<div class="plan-hero"><div class="plan-kicker">'+gmEsc(it.t)+'</div><h2>'+gmEsc(it.l)+'</h2><p>Geplante Einheit aus deinem Wochenplan; Ziel- und Intensitätsbereiche folgen mit der externen Trainingsengine.</p>'+
     '<div class="week-progress"><div class="wp"><b>'+(it.d&&!/^(iv|ez|lr|tempo)$/.test(it.d)?gmEsc(it.d):'—')+'</b><span>UMFANG</span></div><div class="wp"><b>—</b><span>INTENSITÄT</span></div><div class="wp"><b>—</b><span>ZIEL</span></div><div class="wp"><b>—</b><span>KONFIDENZ</span></div></div></div>'+
     '<div class="coach-card"><h3>'+icon('sparkle','sm')+' Warum diese Einheit?</h3><p>'+(note?gmEsc(note):'Eine kanonische Begründung ist noch nicht verfügbar — ORVIA erfindet hier keine Erklärung. Die Einheit stammt unverändert aus deinem Wochenplan; Anpassungen nimmst du über den Plan-Editor vor, nicht hier.')+'</p></div>'+
-    cta+'<div class="tabspacer"></div>';
+    cta+_undoPd+'<div class="tabspacer"></div>';
   pg.classList.add('on');
   try{pg.scrollTop=0;}catch(_){ }
 }
@@ -6501,7 +7827,9 @@ function gmOpenSessionPage(di,ii){
       ist der praezisere Text und bleibt bewusst stehen. */
 function gmCloseSessionPage(){var pg=document.getElementById('gmPage');if(pg)pg.classList.remove('on');}
 /* Bestehende Session-Aktion bleibt der Einstieg: openUnit zeigt jetzt die GM-Vollseite. */
-function openUnit(di,ii){gmOpenSessionPage(di,ii);}
+/* v8-310a: Die GM-Vollseite ERSETZT das aeltere openUnit-Sheet (spaetere
+   Deklaration gewinnt). Der Datumskontext des Klicks geht 1:1 mit durch. */
+function openUnit(di,ii,dateIso){gmOpenSessionPage(di,ii,dateIso);}
 /* Aktiver GM2-Pfad: renderPlan rendert NUR den GM-Aufbau — die unsichtbaren Legacy-
    Renderer (E1–E4 u. a.) werden übersprungen (kein doppelter Engine-/Helper-Aufruf,
    keine Nebenwirkungen unsichtbarer Ausgaben). Quellcode der Blöcke bleibt unverändert;
@@ -6595,6 +7923,30 @@ function gmActFmtMin(min){
 }
 function gmActTodayItem(){
   try{var row=activeWeekPlan()[(new Date().getDay()+6)%7]||[];return row.length?row[0]:null;}catch(_){return null;}
+}
+/* v8-310b · Im geplanten Hub-Modus darf die gewaehlte Sportart nicht an
+   irgendeine heutige Planeinheit gebunden werden. Vorher startete der Code
+   stets Index 0: „Krafttraining" konnte so eine Lauf-/Rad-Occurrence erben
+   oder umgekehrt. Eindeutig passender Sport => planbar; kein/mehrere Treffer
+   => fail-closed und Start ueber die konkrete Plankarte. */
+function gmPlannedStartSelection(sport,plan,dayIndex){
+  var di=(dayIndex!=null)?dayIndex:((new Date().getDay()+6)%7);
+  var row=[];try{row=(plan||activeWeekPlan())[di]||[];}catch(_){row=[];}
+  var norm=function(v){
+    try{if(window.ORVIA&&ORVIA.trainingDomain&&ORVIA.trainingDomain.normSportStrict)return ORVIA.trainingDomain.normSportStrict(v);}
+    catch(_){ }
+    var s=String(v||'').toLowerCase();
+    if(s==='gym'||s.indexOf('kraft')>=0)return 'gym';
+    if(s.indexOf('lauf')>=0)return 'running';
+    if(s.indexOf('rad')>=0)return 'cycling';
+    if(s.indexOf('schwimm')>=0)return 'swimming';
+    return s||null;
+  };
+  var wanted=norm(sport),hits=[];
+  for(var i=0;i<row.length;i++)if(norm(row[i]&&(row[i].sportId||row[i].t))===wanted)hits.push({item:row[i],di:di,ii:i});
+  if(hits.length===1)return {status:'unique',item:hits[0].item,di:di,ii:hits[0].ii,sportId:wanted};
+  if(hits.length>1)return {status:'ambiguous',matches:hits,sportId:wanted};
+  return {status:'none',matches:[],sportId:wanted};
 }
 function renderGMActivity(){
   var host=document.getElementById('gmAkt');if(!host)return;
@@ -6941,6 +8293,13 @@ function gmOpenActivityPage(aid){
       '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" style="font-weight:700">Dauer korrigieren</a>'+
       (_dc?'':' — z. B. wenn die App während des Trainings beendet wurde und Wartezeit mitzählte.')+'</div></div>';
   }
+  /* v8-310b · Drei Korrekturwege bleiben sichtbar getrennt: Link loesen
+     behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
+     Tombstone-Pfad. Keine Schaltflaeche tut beides. */
+  var _aidCorr=a.clientRecordId||a.id;
+  h+='<div style="margin:0 18px 14px">'+
+    (vm.planLink?'<button class="cta wide-ghost" style="width:100%;margin-bottom:8px" onclick="unlinkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(String(vm.planLink))+'\')">Vom Wochenplan lösen</button>':'')+
+    '<button class="cta wide-ghost danger-btn" style="width:100%" onclick="deleteActivityCanonical(\''+gmEsc(String(_aidCorr))+'\')">Aktivität löschen</button></div>';
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen). */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
     h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
@@ -7175,6 +8534,25 @@ function gmOpenActTeaserSheet(kind){
     '<div class="sh-block"><p>'+t+' erscheinen mit deinen ersten abgeschlossenen Aktivitäten — gemessen, nicht erfunden. ORVIA zeigt keine erfundenen Werte.</p></div>';
   gmOpenSheet('detailSheet');
 }
+/* v8-312: Sportart-Icons im Training-Start-Sheet MUESSEN mit dem kanonischen Sport-
+   Katalog uebereinstimmen (js/onboarding/onboarding-sports-logic.js: football->'ball',
+   mobility->'stretch' — bereits produktiv fuer Aktivitaetenliste/Hub ueber
+   ORVIA.activityConfig.sportIcon()). gm-icons.js ist laut eigenem Dateikopf VERBATIM
+   aus dem Golden Master und bleibt unangetastet; hier werden NUR die beiden dort
+   fehlenden Glyphen als IDENTISCHES Pfad-Markup der bereits kanonischen Sprite-Symbole
+   (index.html #i-ball / #i-stretch) nachgezogen — keine neue Bildsprache.
+   Vorher wurden 'target' (Ziel-/Readiness-Icon, siehe Zielkarte/Meilenstein) und 'moon'
+   (im ganzen Produkt exklusiv Schlaf) zweckentfremdet: Fussball und die Zielkarte teilten
+   sich ein Icon, Mobility sah aus wie die Schlaf-Kachel. Zusaetzlich hing Fussball an
+   var(--ready) — derselben Farbe wie Laufen, beide Kacheln waren farblich nicht zu
+   unterscheiden. Neue Token --team/--recovery (styles.css) sind bewusst NICHT mit einer
+   bereits semantisch belegten Farbe identisch (--attention/--crit=Warnung/kritisch,
+   --sleep=Schlaf) — sonst waere nur eine Kollision gegen eine andere getauscht. */
+var GM_SPORT_ICON_EXTRA={
+  ball:'<circle cx="12" cy="12" r="8.6"/><path d="M12 3.4c2.4 2.3 3.7 5.3 3.7 8.6s-1.3 6.3-3.7 8.6"/><path d="M12 3.4C9.6 5.7 8.3 8.7 8.3 12s1.3 6.3 3.7 8.6"/><path d="M3.6 10.2h16.8M3.6 13.8h16.8"/>',
+  stretch:'<circle cx="12" cy="4.6" r="1.9"/><path d="M12 7.4v6M12 9.2L7.2 11.6M12 9.2l4.8 2.4M12 13.4l-3.6 6.2M12 13.4l3.6 6.2"/>'
+};
+function gmSportTileIcon(n,c){if(GM_SPORT_ICON_EXTRA[n])return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24">'+GM_SPORT_ICON_EXTRA[n]+'</svg>';return icon(n,c);}
 /* ---------- Training-Start-Sheet (GM-Einstieg; nur bestehende produktive Start-Handler) ---------- */
 var _gmStartCtx={mode:null,sport:null};
 function gmOpenStartSheet(mode){
@@ -7183,20 +8561,25 @@ function gmOpenStartSheet(mode){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var title=mode==='planned'?'Geplante Einheit starten':mode==='repeat'?'Letztes Training wiederholen':mode==='free'?'Freies Training':'Training starten';
   var sub=lvl==='a'?'Wähle deine Sportart':lvl==='p'?'Sportart → geplant/frei → Pre-Start-Check':'Sportart wählen · dann geplant oder frei';
-  var SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','target','var(--ready)'],['Mobility','moon','var(--sleep)'],['Eigenes','plus','var(--muted)']];
+  var SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
   sh.innerHTML='<div class="grab"></div><h3>'+title+'</h3><div class="sh-sub">'+sub+'</div>'+
-    '<div class="sport-grid">'+SPORTS.map(function(s){return '<button class="sport-tile" onclick="gmStartSport(\''+s[0]+'\')"><span class="st-ic" style="background:'+s[2]+';color:#0c1017">'+icon(s[1],'sm')+'</span><b>'+s[0]+'</b></button>';}).join('')+'</div>';
+    '<div class="sport-grid">'+SPORTS.map(function(s){return '<button class="sport-tile" onclick="gmStartSport(\''+s[0]+'\')"><span class="st-ic" style="background:'+s[2]+';color:#0c1017">'+gmSportTileIcon(s[1],'sm')+'</span><b>'+s[0]+'</b></button>';}).join('')+'</div>';
   gmOpenSheet('detailSheet');
 }
 function gmStartSport(sport){
   _gmStartCtx.sport=sport;
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  var tItem=gmActTodayItem();
-  var planned=(_gmStartCtx.mode==='planned')&&!!tItem;
+  var plannedMode=(_gmStartCtx.mode==='planned');
+  var _sel=plannedMode?gmPlannedStartSelection(sport):{status:'none'};
+  var planned=plannedMode&&_sel.status==='unique';
+  var tItem=planned?_sel.item:null;
   /* Readiness-/Safety-Hinweis NUR aus bestehender kanonischer Ausgabe — nie ausgeblendet. */
   var hint='';try{var d=(typeof getDecision==='function')?getDecision():null;if(d)hint=String(d.reco||d.title||'');}catch(_){ }
   if(!hint)hint='Keine kanonische Readiness-Bewertung verfügbar — ORVIA erfindet keinen Zustand.';
-  var canStart=planned||!!(window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.startSport);
+  if(plannedMode&&!planned)hint=(_sel.status==='ambiguous')
+    ?'Mehrere passende Planeinheiten heute — öffne die gewünschte Einheit direkt im Wochenplan.'
+    :'Für diese Sportart ist heute keine Planeinheit vorhanden. Wähle „Frei" oder öffne eine Plankarte.';
+  var canStart=plannedMode?planned:!!(window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.startSport);
   var rows=[
     ['Ziel der Einheit',planned?gmEsc(tItem.l):'—'],
     ['Dauer','—'],
@@ -7226,7 +8609,7 @@ function gmStartSport(sport){
       '<p style="margin:6px 0 0;font-size:11px;color:var(--muted)">Aus deinen Garmin-/Check-in-Daten — kein manueller Pre-Check-in nötig. Wird beim Start als Snapshot gesichert.</p></div>';
   }
   sh.innerHTML='<div class="grab"></div><h3>'+gmEsc(sport)+'</h3><div class="sh-sub">Vor dem Start</div>'+
-    '<div class="subtabs" style="margin:6px 0 12px"><button class="'+(planned?'on':'')+'" onclick="gmStartSetMode(\'planned\')">Geplant</button><button class="'+(planned?'':'on')+'" onclick="gmStartSetMode(\'free\')">Frei</button></div>'+   /* Phase 1b: Subtab „Vorlage" entfernt — kein Endzustand vorhanden. */
+    '<div class="subtabs" style="margin:6px 0 12px"><button class="'+(plannedMode?'on':'')+'" onclick="gmStartSetMode(\'planned\')">Geplant</button><button class="'+(plannedMode?'':'on')+'" onclick="gmStartSetMode(\'free\')">Frei</button></div>'+   /* Phase 1b: Subtab „Vorlage" entfernt — kein Endzustand vorhanden. */
     '<div class="card prestart" style="margin:0 0 6px">'+rows.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div>'+
     preRows+
     '<div class="mode-hint">'+icon('shield','sm')+'<div>'+gmEsc(hint)+'</div></div>'+
@@ -7241,10 +8624,22 @@ function gmStartSport(sport){
 function gmStartSetMode(m){_gmStartCtx.mode=(m==='planned')?'planned':'free';if(_gmStartCtx.sport)gmStartSport(_gmStartCtx.sport);}
 function gmStartFromPreStart(){
   var sport=_gmStartCtx.sport;
-  var tItem=gmActTodayItem();
+  var sel=(_gmStartCtx.mode==='planned')?gmPlannedStartSelection(sport):null;
+  /* v8-310a/310b: Der Hub-Einstieg „Aktivitäten → Training starten →
+     Geplant" uebergibt das heutige dateIso AUSDRUECKLICH. Die konkrete
+     Einheit kommt aus gmPlannedStartSelection: nie wieder blind Index 0. */
+  if(_gmStartCtx.mode==='planned'){
+    if(!sel||sel.status!=='unique'){
+      if(typeof toast==='function')toast(sel&&sel.status==='ambiguous'?'Mehrere passende Planeinheiten — bitte im Plan auswählen.':'Keine passende Planeinheit für diese Sportart heute.');
+      return {ok:false,code:sel&&sel.status==='ambiguous'?'ambiguous_planned_unit':'no_matching_planned_unit'};
+    }
+    try{if(typeof gmCloseSheets==='function')gmCloseSheets();}catch(_){ }
+    if(typeof startPlannedUnit==='function')return startPlannedUnit(sel.di,sel.ii,todayStr());
+    return {ok:false,code:'start_unavailable'};
+  }
   try{if(typeof gmCloseSheets==='function')gmCloseSheets();}catch(_){ }
-  if(_gmStartCtx.mode==='planned'&&tItem&&typeof startPlannedUnit==='function'){startPlannedUnit((new Date().getDay()+6)%7,0);return;}
   if(window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.startSport)ORVIA.workoutUI.startSport(sport);
+  return {ok:true,code:'free_started'};
 }
 /* Kanonischer Aktivitäten-Renderer (GM7-Fix): EXAKT eine produktive Implementierung
    unter ORVIA.activity.render. Das globale renderAkt ist nur noch ein eindeutiger
@@ -8533,6 +9928,7 @@ function renderGMProfile(){
     gmPRow('link','Geräte &amp; Daten',gmEsc(gmProfSyncLabel()),'',"gmOpenProfPage('connections')")+
     gmPRow('gear','Einstellungen','Ansicht, Training, Datenschutz und Konto','',"gmOpenProfPage('settings')")+'</div>';
   h+='<div class="sectlabel" data-gm-slot="profile-performance">Leistung &amp; Fortschritt</div><div class="setting-group">'+
+    gmPRow('gauge','Leistungsdaten',(typeof gmPerfRowSub==='function'?gmPerfRowSub():'Wettkampf, Test und Schwellenwerte'),'',"gmOpenProfPage('performance')")+
     gmPRow('bolt','Bestzeiten','Persönliche Rekorde je Distanz','',"gmOpenProfPage('bestTimes')")+
     gmPRow('shield','Medaillen','Erreichte und offene Auszeichnungen','',"gmOpenProfPage('medals')")+
     gmPRow('target','Meilensteine','Fortschritt Richtung Ziel','',"gmOpenProfPage('milestones')")+
@@ -8846,8 +10242,242 @@ function gmProfConnections(){
     gmPRow('link','Apple Health','Zusätzliche Gesundheitsdaten','—','',true)+
     gmPRow('db','Manuelle Daten','Check-in, Training, Körperwerte','Aktiv','',false)+
     /* Phase 3 · Block 2: Equipment-Verschleiss — bestehender km-Zaehler je Schuh/Rad. */
-    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('equipment'))?gmPRow('gauge','Equipment &amp; Verschleiß','Schuhe und Rad — km-Zähler und Wechsel-Limit','',"gmOpenEquipmentSheet()",false):'')+'</div>';
+    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('equipment'))?gmPRow('gauge','Equipment &amp; Verschleiß','Schuhe und Rad — km-Zähler und Wechsel-Limit','',"gmOpenEquipmentSheet()",false):'')+'</div>'+
+    gmRxPreviewSection()+gmGateTestSection();
 }
+
+/* ============================================================
+   v8-328 · Gerätetest G1–G3 — Auslöser IN der App
+   ------------------------------------------------------------
+   Der Push liess sich bisher nur ueber tools/device-test-push.mjs ausloesen —
+   also nur am Rechner. Im Gym ist das unbrauchbar.
+
+   KEIN PRODUKTKNOPF. Der Abschnitt erscheint AUSSCHLIESSLICH, wenn die Seite
+   mit ?gate=1 geoeffnet wurde, und der Zustand wird NICHT gespeichert: beim
+   naechsten normalen Aufruf ist er wieder weg. Damit bleibt der produktive
+   Pfad geschlossen, so wie vereinbart — es gibt keinen Weg, hier
+   versehentlich hineinzugeraten.
+
+   Gebaut wird mit denselben ECHTEN Modulen wie im Terminalwerkzeug. Das
+   Sitzungs-Token holt sich der Abschnitt selbst aus der laufenden Anmeldung
+   (dasselbe Muster wie „Jetzt synchronisieren"), es muss nichts kopiert
+   werden. Und es wird zweistufig bedient: erst RECHNEN und die Kontrollwerte
+   zeigen, dann — in einem zweiten, ausdruecklichen Griff — senden.
+   ============================================================ */
+var _gmGate={built:null,state:'idle',msg:'',result:null};
+function gmGateOn(){
+  try{return new URLSearchParams(location.search).get('gate')==='1';}catch(_){return false;}
+}
+/* Dieselben zwei Uebungen wie im Terminalwerkzeug und im Protokollblatt —
+   absichtlich mit UNTERSCHIEDLICHEN Gewichten, weil eine einzelne Zahl die
+   Skalierung nicht belegen kann (Gate G3). */
+function gmGatePlanned(){
+  return [
+    {exerciseId:'devtest-1',slug:'bench_press',sets:2,minReps:8,maxReps:8,targetWeightKg:20,restSeconds:60},
+    {exerciseId:'devtest-2',slug:'romanian_deadlift',sets:2,minReps:6,maxReps:6,targetWeightKg:30,restSeconds:90}
+  ];
+}
+function gmGateOcc(){return 'po:'+todayStr()+':ps:devicetest';}
+function gmGateRef(){return 'swe:'+gmGateOcc()+':v1';}
+function gmGateBuild(){
+  var O=window.ORVIA||{};
+  var EXP=O.garminWorkoutExport,SP=O.strengthPlan,MAP=O.garminExerciseMap;
+  if(!EXP||!SP||!MAP){_gmGate.state='error';_gmGate.msg='Module nicht geladen (Seite neu laden).';return null;}
+  var r=EXP.buildGarminStrengthWorkout({
+    occurrence:{occurrenceId:gmGateOcc(),l:'Gerätetest G1–G3',t:'Gym'},
+    plannedExercises:gmGatePlanned(),
+    mapping:MAP,
+    /* Beide Gates ausdruecklich geoeffnet — das IST der Zweck dieses Laufs.
+       Der Worker verlangt zusaetzlich die serverseitige Freigabe. */
+    options:{fillUnverifiedIds:true,includeWeight:true}
+  });
+  if(!r.ok){_gmGate.state='error';_gmGate.msg='Exporter: '+r.reason;return null;}
+  r.payloadHash=SP.fingerprint(gmGatePlanned());
+  r.mappingVersion=MAP.VERSION;
+  _gmGate.built=r;_gmGate.state='built';_gmGate.msg='';
+  return r;
+}
+function gmGateCheck(){gmGateBuild();gmRerenderConnections();}
+async function gmGateSend(){
+  if(_gmGate.state==='sending')return;
+  var b=_gmGate.built||gmGateBuild();
+  if(!b)return gmRerenderConnections();
+  _gmGate.state='sending';_gmGate.msg='Sende …';_gmGate.result=null;gmRerenderConnections();
+  var base=(window.ORVIA_CFG&&ORVIA_CFG.GARMIN_WORKER_URL)||'';
+  var sb=window.ORVIA&&ORVIA.sb,token=null;
+  try{var s=sb?await sb.auth.getSession():null;token=s&&s.data&&s.data.session&&s.data.session.access_token;}catch(_){ }
+  if(!base){_gmGate.state='error';_gmGate.msg='Worker nicht konfiguriert.';return gmRerenderConnections();}
+  if(!token){_gmGate.state='error';_gmGate.msg='Keine aktive Sitzung — bitte neu anmelden.';return gmRerenderConnections();}
+  var body={clientRef:gmGateRef(),occurrenceId:gmGateOcc(),payloadVersion:b.version,
+    mappingVersion:b.mappingVersion,payloadHash:b.payloadHash,workout:b.workout,
+    stepBindings:b.stepBindings,deviceTest:true};
+  try{
+    var resp=await fetch(base+'/workout/push',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(body)});
+    var txt=await resp.text(),json=null;try{json=JSON.parse(txt);}catch(_){ }
+    _gmGate.result={status:resp.status,body:json||{raw:String(txt).slice(0,300)}};
+    _gmGate.state=(resp.status===200)?'sent':'error';
+    /* Die haeufigsten Faelle im Klartext, damit im Gym niemand raten muss. */
+    if(resp.status===200)_gmGate.msg='Übertragen.';
+    else if(resp.status===422)_gmGate.msg='Abgelehnt — sehr wahrscheinlich steht STRENGTH_PUSH_DEVICE_TEST im Worker noch auf false.';
+    else if(resp.status===409)_gmGate.msg='Dieser clientRef wurde heute schon verwendet.';
+    else if(resp.status===401)_gmGate.msg='Anmeldung abgelaufen oder Garmin-Token ungültig.';
+    else _gmGate.msg='Worker antwortet mit '+resp.status+'.';
+  }catch(e){
+    _gmGate.state='error';_gmGate.msg='Worker nicht erreichbar (offline oder Netzwerkfehler).';
+  }
+  gmRerenderConnections();
+}
+function gmGateTestSection(){
+  if(!gmGateOn())return '';
+  var b=_gmGate.built,rows='';
+  rows+=gmPRow('activity','Payload prüfen','Rechnet mit den echten Modulen. Kein Netz.','',
+    (_gmGate.state==='sending')?'':'gmGateCheck()',_gmGate.state==='sending');
+  if(b){
+    var lines=[];
+    for(var i=0;i<b.stepBindings.length;i++){
+      var s=b.stepBindings[i];
+      if(s.kind==='repeat')lines.push(s.exerciseName+' · '+s.sets+'×');
+      if(s.kind==='set')lines.push('  '+s.reps+' Wdh.');
+      if(s.kind==='rest')lines.push('  '+s.seconds+' s Pause');
+    }
+    rows+=gmPRow('check','Kontrollwerte',gmEsc('clientRef '+gmGateRef()),'',"",false);
+    rows+=gmPRow('check','payloadHash',gmEsc(b.payloadHash),'',"",false);
+    rows+=gmPRow('dumbbell','Schritte',gmEsc(lines.join(' · ')),'',"",false);
+    rows+=gmPRow('gauge','Gewichte','20 kg → 20000 · 30 kg → 30000 (Gramm-Annahme, Gate G3)','',"",false);
+  }
+  rows+=gmPRow('link','An Garmin senden',
+    b?'Sendet mit deviceTest — der Worker muss serverseitig freigeschaltet sein.':'Erst prüfen.',
+    (_gmGate.state==='sending')?'Läuft …':(_gmGate.state==='sent'?'Gesendet':''),
+    (b&&_gmGate.state!=='sending')?'gmGateSend()':'',!b||_gmGate.state==='sending');
+  if(_gmGate.msg)rows+=gmPRow(_gmGate.state==='error'?'alert':'check','Ergebnis',gmEsc(_gmGate.msg),'',"",false);
+  var r=_gmGate.result;
+  if(r){
+    rows+=gmPRow('info','Antwort','HTTP '+r.status+' · '+gmEsc(JSON.stringify(r.body).slice(0,180)),'',"",false);
+    if(r.status===200&&r.body&&r.body.workoutId){
+      rows+=gmPRow('check','workoutId — NOTIEREN',gmEsc(String(r.body.workoutId)),'',"",false);
+    }
+  }
+  return '<div class="setting-title">Gerätetest G1–G3 (nur mit ?gate=1)</div><div class="setting-group">'+rows+'</div>'+
+    '<div class="source">'+icon('info','xs')+' Kein Produktweg. Dieser Abschnitt erscheint nur, solange die Adresse ?gate=1 enthält, und wird nirgends gespeichert.</div>';
+}
+
+/* ============================================================
+   v8-332 · Trainingsplan-VORSCHAU aus der Engine
+   ------------------------------------------------------------
+   WOZU. Die Engine rechnet seit Monaten taeglich eine vollstaendige Woche
+   samt Verordnung — und wirft sie weg. Wer sie sehen wollte, musste das
+   Flag `engine_v2_plan` einschalten; das ERSETZT aber den bestehenden
+   Wochenplan. Man musste also seinen Plan aufs Spiel setzen, um zu
+   erfahren, ob der Ersatz ueberhaupt taugt.
+
+   Diese Vorschau dreht das um: rechnen und ZEIGEN, ohne irgendetwas zu
+   schreiben. Kein Persistieren, kein Protokolleintrag, keine Aktivierung.
+   Sie ist deshalb auch kein versteckter Testweg wie der Gate-Abschnitt,
+   sondern normal sichtbar — sie kann nichts kaputt machen.
+
+   EHRLICHER LEERZUSTAND. Kann die Engine nichts rechnen, steht der Grund
+   da, nicht ein leerer Kasten. Und was in der Verordnung fehlt, wird nicht
+   ergaenzt: keine geschaetzten Paces, keine erfundenen Dauern.
+
+   PRAEZISE STATT BEQUEM — die EINE Nebenwirkung, die es doch gibt:
+   `engineShadow.buildWeekNow()` schreibt den ueblichen Schattenprotokoll-
+   Eintrag der laufenden Woche. Das faellt nicht ins Gewicht, weil der
+   Eintrag je Woche ERSETZT und nicht angehaengt wird (shadow-runner:
+   `log.filter(x => x.weekKey !== weekKey)` vor dem push) — die Zahl der
+   protokollierten Wochen, aus der sich spaeter das ≥14-Tage-Gate speist,
+   aendert sich also nicht. Aufgefallen ist das erst im Browsertest; die
+   urspruengliche Formulierung "es wird nichts gespeichert" war zu absolut
+   und steht deshalb nicht mehr da. Was gilt: der PLAN wird nicht angefasst,
+   es entsteht kein Rueckname-Schnappschuss, und es wird nichts aktiviert.
+   ============================================================ */
+var _gmRxPrev={state:'idle',week:null,msg:'',at:null};
+
+/* Rechnen. Schreibt NICHTS — weder Plan, noch Protokoll, noch Profil. */
+function gmRxPreviewBuild(){
+  _gmRxPrev.week=null;_gmRxPrev.msg='';_gmRxPrev.at=null;
+  var sh=(window.ORVIA&&ORVIA.engineShadow)||null;
+  var WP=(window.ORVIA&&ORVIA.weekProjection)||null;
+  if(!sh||typeof sh.buildWeekNow!=='function'||!WP){
+    _gmRxPrev.state='error';_gmRxPrev.msg='Engine-Module nicht geladen — Seite neu laden.';
+    gmRerenderConnections();return null;
+  }
+  var wk=null;
+  try{wk=sh.buildWeekNow();}catch(e){
+    _gmRxPrev.state='error';_gmRxPrev.msg='Die Engine konnte nicht rechnen: '+((e&&e.message)||'unbekannter Fehler');
+    gmRerenderConnections();return null;
+  }
+  if(!wk||!wk.result){
+    _gmRxPrev.state='error';
+    _gmRxPrev.msg='Die Engine hat keine Woche geliefert. Meist fehlen noch Trainingsdaten oder Zielangaben.';
+    gmRerenderConnections();return null;
+  }
+  var proj=null;
+  try{proj=WP.projectWeek(wk.result);}catch(e2){
+    _gmRxPrev.state='error';_gmRxPrev.msg='Die Woche liess sich nicht darstellen: '+((e2&&e2.message)||'unbekannter Fehler');
+    gmRerenderConnections();return null;
+  }
+  if(!proj||proj.ok!==true){
+    _gmRxPrev.state='error';_gmRxPrev.msg='Die Woche liess sich nicht darstellen'+((proj&&proj.error)?(' ('+proj.error+')'):'')+'.';
+    gmRerenderConnections();return null;
+  }
+  _gmRxPrev.week=proj;_gmRxPrev.state='built';
+  try{_gmRxPrev.at=new Date().toISOString();}catch(_){ }
+  gmRerenderConnections();return proj;
+}
+
+/* Eine Einheit als Zeilen. Nutzt AUSSCHLIESSLICH prescription-format —
+   hier wird nicht zweitformatiert, damit es nur eine Wahrheit gibt. */
+function gmRxPreviewUnitHTML(it){
+  var F=(window.ORVIA&&ORVIA.prescriptionFormat)||null;
+  var kopf='<div style="font-weight:600">'+gmEsc(it.t+' · '+it.l)+(it.d?(' <span class="muted" style="font-weight:400">· '+gmEsc(it.d)+'</span>'):'')+'</div>';
+  if(!F||!it.rx){
+    return kopf+'<div class="muted" style="font-size:12px;margin-top:2px">Keine Vorgabe hinterlegt</div>';
+  }
+  var r=F.formatPrescription(it.rx,{nameOf:(typeof gmExName==='function')?gmExName:null});
+  if(!r.ok){
+    return kopf+'<div class="muted" style="font-size:12px;margin-top:2px">Keine darstellbare Vorgabe'+
+      ((r.warnings&&r.warnings.length)?(' ('+gmEsc(r.warnings[0].code)+')'):'')+'</div>';
+  }
+  var zeilen=r.lines.map(function(l){
+    var stark=(l.kind==='group'||l.kind==='work'||l.kind==='exercise');
+    return '<div style="font-size:12px;margin-top:2px;'+(stark?'':'opacity:.7')+'">'+gmEsc(l.text)+'</div>';
+  }).join('');
+  var warn=(r.warnings&&r.warnings.length)
+    ? '<div class="muted" style="font-size:11px;margin-top:3px">'+gmEsc(r.warnings.length+' Block/Bloecke nicht darstellbar')+'</div>' : '';
+  return kopf+zeilen+warn;
+}
+
+function gmRxPreviewSection(){
+  var WD=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var rows='';
+  rows+=gmPRow('activity','Engine-Woche berechnen',
+    'Rechnet die Woche und zeigt sie an. Dein Plan wird NICHT verändert.',
+    (_gmRxPrev.state==='built')?'Berechnet':'','gmRxPreviewBuild()',false);
+  if(_gmRxPrev.msg)rows+=gmPRow('alert','Kein Ergebnis',gmEsc(_gmRxPrev.msg),'',"",false);
+  var p=_gmRxPrev.week;
+  if(p){
+    var gesamt=0;
+    for(var d=0;d<7;d++)gesamt+=((p.days&&p.days[d])||[]).length;
+    rows+=gmPRow('check','Einheiten in der Woche',
+      gesamt+' geplant'+((p.counts&&p.counts.unmapped)?(' · '+p.counts.unmapped+' nicht darstellbar'):''),'',"",false);
+    for(var i=0;i<7;i++){
+      var tag=(p.days&&p.days[i])||[];
+      if(!tag.length)continue;
+      var inhalt=tag.map(gmRxPreviewUnitHTML).join('<div style="height:6px"></div>');
+      rows+='<div class="setting-row" style="align-items:flex-start"><div class="sr-ic">'+icon('calendar')+'</div>'+
+        '<div class="sr-tx" style="flex:1"><div class="sr-t">'+WD[i]+'</div><div class="sr-s" style="white-space:normal">'+inhalt+'</div></div></div>';
+    }
+    if(p.unmapped&&p.unmapped.length){
+      rows+=gmPRow('info','Nicht darstellbar',
+        gmEsc(p.unmapped.map(function(u){return u.reason;}).join(', ')),'',"",false);
+    }
+  }
+  return '<div class="setting-title">Trainingsplan-Vorschau (Engine)</div><div class="setting-group">'+rows+'</div>'+
+    '<div class="source">'+icon('info','xs')+' Reine Vorschau: dein Wochenplan wird nicht verändert, nichts wird aktiviert, es entsteht kein Rückweg-Schnappschuss. Die Engine schreibt dabei nur ihren üblichen Schatten-Eintrag für die laufende Woche — der wird ersetzt, nicht vermehrt. Angezeigt wird ausschließlich, was die Engine tatsächlich ausgerechnet hat; fehlende Angaben werden nicht ergänzt.</div>';
+}
+try{window.ORVIA=window.ORVIA||{};ORVIA.enginePlanPreview=gmRxPreviewBuild;}catch(_){ }
 /* Phase 3 · Block 2 (2026-08-05): Equipment-Sheet — identische Quelle wie der
    Legacy-Renderer (equipmentHTML, profile.js). Anlegen/Loeschen nutzt die
    bestehenden produktiven Handler; das Sheet zieht danach automatisch mit. */
@@ -9189,7 +10819,10 @@ var GM_PROF_ROUTES={
   data:function(){return gmProfData();},account:function(){return gmProfAccount();},
   about:function(){return gmProfAbout();},bestTimes:function(){return gmProfBestTimes();},
   medals:function(){return gmProfMedals();},milestones:function(){return gmProfMilestones();},
-  paceCalc:function(){return gmProfPaceCalc();}
+  paceCalc:function(){return gmProfPaceCalc();},
+  /* G1 (2026-08-07): Leistungsdaten. Ohne diese Seite bleiben Intensitaet,
+     Zielprognose, Wochenkilometer und Tagesziele bei „—". */
+  performance:function(){return gmProfPerformance();}
 };
 function gmOpenProfPage(route){
   var pg=document.getElementById('gmProfPage');if(!pg)return;
@@ -9262,3 +10895,1176 @@ function gmOpenDashboardSettings(){
   gmOpenProfPage('settings');
 }
 /* ====== GM5-ENDE ====== */
+
+/* ============================================================
+   ENTSCHEIDUNGS-LOG · Verdrahtung (Bauplan Stufe 0a, 2026-08-07)
+
+   WARUM HIER UND NICHT IM MODUL: js/engine/decision-log.js ist pur — keine Uhr,
+   keine IDs, kein Netz, kein Storage. Genau das ist die Bedingung dafuer, dass
+   die nicht gespeicherten Kandidaten spaeter rekonstruierbar bleiben. Die
+   unreinen Teile — Zeit, ID-Erzeugung, Supabase, App-Version — gehoeren deshalb
+   in diese Schicht.
+
+   WARUM DIE APP-VERSION AUS DEM CACHE KOMMT: Der einzige Ort, an dem die
+   Version heute gepflegt wird, ist die Konstante C in sw.js. Eine zweite
+   Konstante hier waere eine zweite Stelle zum Vergessen — und ein falscher
+   decisionRuntimeHash ist schlimmer als keiner, weil er eine Rekonstruktion
+   anbieten wuerde, die aus anderem Code stammt.
+
+   DAS LOG DARF DEN PLAN NICHT BEEINFLUSSEN: Jeder Aufruf hier steht in einem
+   eigenen try/catch und gibt nichts an den Aufrufer zurueck. Geprueft in
+   decision_log_test.mjs (Z4): Bei defekter oder abgeschalteter Senke ist der
+   erzeugte Plan byte-fuer-byte identisch.
+   ============================================================ */
+(function(){
+  var O=window.ORVIA=window.ORVIA||{};
+
+  /* App-Version aus dem Service-Worker-Cache — eine Quelle, keine Kopie. */
+  try{
+    if(window.caches&&caches.keys){
+      caches.keys().then(function(ks){
+        var hit=(ks||[]).filter(function(k){return /^orvia-v/.test(k);}).sort().pop();
+        if(hit)O.engineVersion=hit.replace(/^orvia-/,'');
+      }).catch(function(){});
+    }
+  }catch(_){ }
+
+  var _n=0;
+  function _decisionId(){
+    /* Keine Zufallszahl: Die ID muss im Test reproduzierbar sein und der
+       Zeitstempel plus Zaehler reicht fuer Eindeutigkeit je Geraet. */
+    return 'dec:'+Date.now().toString(36)+':'+(++_n);
+  }
+
+  /* Senke: schreibt in engine_decision_log (Migration 0032). Fehler werden
+     geschluckt — der Rueckgabewert der Senke interessiert nur das Log selbst.
+
+     v8-305: Die Spaltenabbildung lebt NICHT mehr hier, sondern als reine
+     Funktion decisionLog.toRow() — dieselbe, die der Live-Test verwendet.
+     Vorher gab es zwei handgepflegte Abbildungen, und die des Live-Tests
+     hatte bereits drei Spalten verloren (parent/supersedes/week_id): ein
+     gruener Live-Test bewies die App-Senke nicht. toRow() ist fail-closed
+     (fehlende NOT-NULL-Quelle ⇒ keine Zeile), die Senke bleibt es auch. */
+  function _sink(rec){
+    try{
+      var sb=O.sb, uid=(O.user&&O.user.id)||null;
+      if(!sb||!uid)return false;
+      var DL=O.decisionLog;
+      if(!DL||typeof DL.toRow!=='function')return false;
+      var m=DL.toRow(rec,uid);
+      if(!m||m.ok!==true)return false;
+      /* v8-306: supabase-js LEHNT bei SQL-/Constraint-Fehlern NICHT AB —
+         es loest mit {data,error} auf. Der alte Erfolgszweig ignorierte
+         das Argument und meldete jeden Constraint-Tod als true. Erfolg
+         ist NUR eine Aufloesung ohne error-Objekt; Rejection (Netz) und
+         {error} (SQL) enden beide in false. */
+      return sb.from('engine_decision_log').insert(m.row)
+        .then(function(res){return !(res&&res.error);},function(){return false;});
+    }catch(_){ return false; }
+  }
+  try{ if(O.decisionLog&&O.decisionLog.setSink)O.decisionLog.setSink(_sink); }catch(_){ }
+
+  /* Aufgerufen aus generateWeekPlan, NACH Designer und Policy. Erzeugt die
+     Kette week_design -> policy_move -> final_plan. Der final_plan-Eintrag ist
+     die einzige Antwort auf „was wurde tatsaechlich geplant" — die erste
+     Auswahl des Designers ist es ausdruecklich nicht. */
+  O.logWeekDecision=function(ctx){
+    try{
+      var DL=O.decisionLog; if(!DL||!DL.logDecision)return;
+      var c=ctx||{}, now=new Date().toISOString();
+      var weekId=c.weekId||null, planId=c.planId||null;
+
+      var dDesign=_decisionId();
+      DL.logDecision({
+        timestamp:now, decisionType:'week_design', decisionId:dDesign,
+        weekId:weekId, planId:planId, registry:O,
+        inputs:c.cfg||null, derivedState:c.derived||null,
+        candidates:(c.design&&c.design.candidates)||null,
+        selected:(c.design&&{hardDays:c.design.hardDays,restDays:c.design.restDays})||null,
+        rulesTriggered:(c.design&&c.design.rules)||[]
+      });
+
+      var dPolicy=null;
+      if(c.policy){
+        dPolicy=_decisionId();
+        DL.logDecision({
+          timestamp:now, decisionType:'policy_move', decisionId:dPolicy,
+          parentDecisionId:dDesign, weekId:weekId, planId:planId, registry:O,
+          selected:{changes:c.policy.changes||[],warnings:c.policy.warnings||[]},
+          rulesTriggered:(c.policy.changes||[]).map(function(x){return (x&&x.rule)||'unknown';})
+        });
+      }
+
+      DL.logDecision({
+        timestamp:now, decisionType:'final_plan', decisionId:_decisionId(),
+        parentDecisionId:dPolicy||dDesign, weekId:weekId, planId:planId, registry:O,
+        selected:c.finalSummary||null,
+        resolvedFrom:dPolicy?[dDesign,dPolicy]:[dDesign]
+      });
+    }catch(_){ }
+  };
+
+  /* ============================================================
+     SCHATTENBETRIEB (v8-279)
+
+     Rechnet C1 -> C2 -> Stufe 5 bei jedem Planlauf mit und schreibt das
+     Ergebnis als BEOBACHTUNG ins Decision Log. Der Plan wird nicht angefasst:
+     Diese Funktion bekommt ihn als Vergleichsgroesse und gibt nichts zurueck,
+     was ihn veraendern koennte. `planMutation: 'none'` ist deshalb keine
+     Absprache, sondern die Bauform.
+
+     ALLES IN try/catch UND OHNE RUECKGABEWERT. Faellt hier irgendetwas aus,
+     bleibt der Plan byte-fuer-byte derselbe — dieselbe Zusage wie beim
+     Entscheidungs-Log (decision_log_test.mjs, Z4).
+
+     DER SNAPSHOT WIRD EINMAL GEBILDET und eingefroren. Wuerde die adaptive
+     Rechnung den Live-Zustand lesen, waere eine spaetere Abweichung nicht mehr
+     zuzuordnen: Logik oder zwischenzeitliche Datenaenderung?
+     ============================================================ */
+  var _shadowSeen = [];
+  O.logWeekShadow=function(ctx){
+    try{
+      var SA=O.shadowAdaptive; if(!SA||!SA.observe)return;
+      var DL=O.decisionLog; var c=ctx||{};
+      /* DER SNAPSHOT ENTSTEHT SYNCHRON — im selben Tick wie der Plan. Nur so
+         ist garantiert, dass er exakt den Zustand einfriert, aus dem der Plan
+         hervorging. Alles Weitere darf warten. */
+      /* KEINE ZWEITE FELDLISTE (v8-304): Der explizite Katalog hier hat
+         constraints, inputHash, inputVersion und inputBasis VERWORFEN —
+         die Sicherheitsschicht erreichte C2 doch nicht, und das
+         fail-closed-Gate haette jede reale Beobachtung ausgeschlossen
+         (leere Basis im persistierten Record). Der Kontext geht VOLLSTAENDIG
+         durch; SA.snapshot waehlt seine Vertragsfelder selbst. Eine hier
+         gepflegte Kopie der Liste war genau die Fehlerklasse. */
+      var snap=SA.snapshot(Object.assign({},c,{
+        userId:(O.user&&O.user.id)||null
+      }));
+      /* DIE BEOBACHTUNG LAEUFT NACH DEM SICHTBAREN RENDER. try/catch schuetzt
+         den Plan, aber nicht die Fluessigkeit der Oberflaeche — eine teure
+         Kette im Render-Tick waere ein Ruckler bei jedem Wochenaufbau. Deshalb
+         verzoegert (requestIdleCallback, sonst setTimeout) und IMMER mit Uhr
+         und Zeitbudget: Ohne Budget koennte ein pathologischer Datenbestand
+         die Kette beliebig lange rechnen lassen. */
+      var _defer=(typeof requestIdleCallback==='function')
+        ? function(f){requestIdleCallback(f,{timeout:2000});}
+        : function(f){setTimeout(f,0);};
+      _defer(function(){
+        try{
+          var obs=SA.observe(snap,{registry:O, now:function(){return Date.now();},
+            budgetMs:250, seenKeys:_shadowSeen});
+          if(obs.idempotencyKey&&_shadowSeen.indexOf(obs.idempotencyKey)<0){
+            _shadowSeen.push(obs.idempotencyKey);
+            if(_shadowSeen.length>50)_shadowSeen.splice(0,_shadowSeen.length-50);
+          }
+          /* Eine Wiederholung wird protokolliert, aber als solche gekennzeichnet —
+             nicht unterdrueckt (sonst fehlte der Beleg, dass der Lauf stattfand)
+             und nicht als neue Beobachtung gezaehlt. */
+          if(DL&&DL.logDecision){
+            var e=SA.toLogEntry(obs,{decisionId:_decisionId(),
+              timestamp:new Date().toISOString(), registry:O});
+            DL.logDecision(e);
+          }
+          O._lastShadow=obs;
+          /* Kontext fuer die sichtbare Erklaerung: Beobachtung UND Snapshot
+             zusammen. Die Erklaerung darf nie eine frische Rechnung gegen
+             einen inzwischen veraenderten Plan mit einer alten Beobachtung
+             mischen — beides muss aus DEMSELBEN Einfrieren stammen. */
+          O._lastShadowCtx={snap:snap,obs:obs,at:new Date().toISOString()};
+          try{if(typeof gmRenderAdaptiveCard==='function')gmRenderAdaptiveCard();}catch(_e){}
+        }catch(_){ }
+      });
+    }catch(_){ }
+  };
+
+  /* ============================================================
+     PREDICTION OBSERVER · VERDRAHTUNG (v8-293)
+
+     GESPERRT HINTER DEM SERVERSEITIGEN FLAG 'prediction_observer'
+     (feature-flags@2 / Migration 0034): Standard ist AUS, der Client kann
+     das Flag nicht setzen, ein Fehler kann das Sammeln nicht einschalten.
+     Die Freigabeordnung (v8-292-Review) verlangt den gruenen Live-Test VOR
+     der Sammlung — das Flag ist genau diese Reihenfolge als Mechanismus.
+
+     DIESELBEN ZUSAGEN WIE BEIM SCHATTEN: alles in try/catch, kein
+     Rueckgabewert, kein Zugriff auf `w` — faellt hier irgendetwas aus oder
+     WIRFT der Observer, bleiben Plan und Debrief byte-fuer-byte identisch
+     (prediction_wiring_test prueft genau das als Verhalten). Die Auswahl
+     der Einheiten entsteht SYNCHRON im Plan-Tick (eingefrorenes Datum je
+     Einheit), die Vorhersagen selbst laufen verzoegert und budgetiert.
+
+     NUR EINHEITEN STRIKT NACH HEUTE: fuer heutige Einheiten ist die
+     Vor-Ereignis-Garantie ohne Startzeit nicht beweisbar — P.predict()
+     wuerde sie ablehnen (predicted_on_or_after_session_day), also werden
+     sie gar nicht erst versucht.
+     ============================================================ */
+  var _predSeen=[];
+  function _poIsoAdd(dateIso,days){var d=new Date(String(dateIso).slice(0,10)+'T12:00:00Z');
+    if(isNaN(d.getTime()))return null;d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
+  function _poMondayOf(dateIso){var d=new Date(String(dateIso).slice(0,10)+'T12:00:00Z');
+    if(isNaN(d.getTime()))return null;var off=(d.getUTCDay()+6)%7;
+    d.setUTCDate(d.getUTCDate()-off);return d.toISOString().slice(0,10);}
+  O.logWeekPredictions=function(ctx){
+    try{
+      var FF=O.featureFlags;
+      if(!FF||typeof FF.isEnabled!=='function'||!FF.isEnabled('prediction_observer'))return;
+      var P=O.predictionObserver, DL=O.decisionLog, SD=O.sessionDebrief, DR=O.debriefRecord;
+      if(!P||!P.predict||!DL||!DL.logDecision||!SD||!DR)return;
+      var c=ctx||{};
+      var uid=(O.user&&O.user.id)||null;
+      var today=c.today||null, plan=c.currentPlan;
+      /* fail-closed: ohne vollstaendige Identitaet entsteht keine Vorhersage —
+         P.predict lehnte sie ohnehin ab, wir sparen nur den Leerlauf. */
+      if(!uid||c.planId==null||c.planRevision==null||!today||!Array.isArray(plan))return;
+      var monday=_poMondayOf(today); if(!monday)return;
+      /* SNAPSHOT SYNCHRON: Einheiten + fixiertes Datum, eingefroren im
+         selben Tick wie der Plan. */
+      var sel=[];
+      for(var di=0;di<7&&di<plan.length;di++){
+        var dIso=_poIsoAdd(monday,di); if(!dIso||!(dIso>today))continue;
+        var day=plan[di]||[];
+        for(var j=0;j<day.length;j++){var u=day[j];
+          /* TIEFE KOPIE IM TICK (v8-294): sel speicherte REFERENZEN — eine
+             Planbearbeitung zwischen Tick und verzoegertem Callback haette
+             die Vorhersage aus dem NEUEN Zustand gerechnet, mit dem Stempel
+             des alten. Der Snapshot ist erst dann einer, wenn er einfriert. */
+          if(u&&typeof u==='object'){
+            try{sel.push({unit:JSON.parse(JSON.stringify(u)),dateIso:dIso});}catch(_e){}
+          }}
+      }
+      if(!sel.length)return;
+      /* EINGEFRORENE KONSUMQUELLEN (v8-300): Performance und Debriefs kommen
+         aus dem Snapshot des Aufrufers — der Callback liest NICHTS Globales
+         und NICHTS Lebendes mehr. */
+      var perfSnap=(c.performance!==undefined)?c.performance:null;
+      var dbSnap=Array.isArray(c.debriefs)?c.debriefs:[];
+      var planId=c.planId, planRev=c.planRevision, weekId=c.weekId||null;
+      var predictedAt=new Date().toISOString();
+      var _defer=(typeof requestIdleCallback==='function')
+        ? function(f){requestIdleCallback(f,{timeout:2000});}
+        : function(f){setTimeout(f,0);};
+      _defer(function(){
+        try{
+          var t0=Date.now();
+          for(var k=0;k<sel.length;k++){
+            if(Date.now()-t0>250)break;            /* Budget wie beim Schatten */
+            var s=sel[k], u=s.unit;
+            var occ=DR.occurrenceIdOf(s.dateIso,u);
+            /* C3-PARITAET (v8-297, verschaerft v8-307): Die Prescription
+               entsteht NICHT mehr inline, sondern ueber die EINE gemeinsame
+               Funktion SD.prescriptionOf — dieselbe, aus der der
+               C3-Snapshot und der Live-Test ihre Vertragsfelder beziehen.
+               Der Live-Test-Befund: drei Erzeuger (ui inline, C3, Live-rx)
+               liefen auseinander, und die Divergenz verdeckte den
+               typeOf-Klassifikationsfehler. durationMin aus
+               plannedDurationOf (die eine Parserquelle), KEINE Historie
+               (C3 uebergibt keine), Zone aus derselben
+               paceForUnit-Aufloesung. */
+            var zone=null;
+            try{
+              var _sp=(typeof gmSportIdOfUnit==='function')?gmSportIdOfUnit(u):((u.t==='Laufen')?'running':(u.sportId||null));
+              var _all=perfSnap||null;
+              var _z=_all&&_all.sports?_all.sports[_sp]:null;
+              var _tg=(_z&&O.performanceZones&&O.performanceZones.paceForUnit)?O.performanceZones.paceForUnit(u,_z):null;
+              if(_tg&&_tg.ok)zone=_tg.zone!=null?_tg.zone:null;
+            }catch(_e3){zone=null;}
+            var rx=null;
+            try{
+              var _pdm=DR.plannedDurationOf?DR.plannedDurationOf(u):null;
+              rx=SD.prescriptionOf(u,{durationMin:_pdm,targetZone:zone,history:[]});
+            }catch(_e){rx=null;}
+            if(!rx||rx.expectedRpe==null)continue; /* keine Erwartung -> keine Vorhersage */
+            var hasDb=false;
+            try{
+              /* Debrief-Lookup im SNAPSHOT: dieselbe Identitaet wie der
+                 Speicherpfad (Occurrence-ID, Label-Schluessel nur als
+                 Legacy-Rueckfall ohne Template-ID). Fehlerpfad fail-closed. */
+              var _oid='db:'+occ.replace(/^(po:|occ:)/,'');
+              for(var _q=0;_q<dbSnap.length;_q++){var _r3=dbSnap[_q];
+                if(!_r3)continue;
+                if(_r3.id===_oid){hasDb=true;break;}
+                if(_r3.id==null&&_r3.key===(s.dateIso+'|'+String(u.t||'')+'|'+String(u.l||''))){hasDb=true;break;}}
+            }catch(_e2){hasDb=true;}
+            var pred=P.predict({userId:uid,sessionId:occ,planId:planId,planRevision:planRev,
+              sport:(typeof gmSportIdOfUnit==='function')?gmSportIdOfUnit(u):((u.t==='Laufen')?'running':(u.sportId||null)),
+              /* v8-309: KEIN separater sessionType mehr — die Prescription
+                 ist die eine autoritative Quelle (predict uebernimmt). */
+              prescription:rx,
+              predictedAt:predictedAt,sessionDate:s.dateIso,debriefExists:hasDb});
+            if(!pred||pred.ok!==true)continue;
+            if(_predSeen.indexOf(pred.predictionId)>=0)continue;
+            _predSeen.push(pred.predictionId);
+            if(_predSeen.length>100)_predSeen.splice(0,_predSeen.length-100);
+            /* decisionId = predictionId: dieselbe Vorhersage kann am
+               unique-Constraint nie doppelt persistieren — Wiederholungen
+               scheitern serverseitig, genau wie gewollt. */
+            DL.logDecision({timestamp:predictedAt,decisionType:'prediction_record',
+              decisionId:pred.predictionId,weekId:weekId,planId:planId,registry:O,
+              inputs:{sessionId:occ,sessionDate:s.dateIso},derivedState:pred});
+          }
+        }catch(_){ }
+      });
+    }catch(_){ }
+  };
+
+  /* ============================================================
+     AUFLOESUNG NACH DEM DEBRIEF — DAS SPEICHERN HAT IMMER VORRANG.
+
+     gmDbSave ruft dies NACH upsert + saveProfile auf; die Aufloesung laeuft
+     verzoegert. Fehlt die Vorhersage (predict() lief noch nicht oder nie),
+     entsteht ein pending-Eintrag; die Reconciliation verbindet spaeter ueber
+     die exakte Identitaet (P.reconcile, key5 + Modellversion DER Vorhersage).
+     ============================================================ */
+  O.resolveDebriefPrediction=function(rec){
+    try{
+      var FF=O.featureFlags;
+      if(!FF||typeof FF.isEnabled!=='function'||!FF.isEnabled('prediction_observer'))return;
+      var P=O.predictionObserver, DL=O.decisionLog;
+      if(!P||!P.resolve||!DL||!DL.logDecision||!rec)return;
+      var uid=(O.user&&O.user.id)||null; if(!uid)return;
+      var _defer=(typeof requestIdleCallback==='function')
+        ? function(f){requestIdleCallback(f,{timeout:2000});}
+        : function(f){setTimeout(f,0);};
+      _defer(function(){
+        try{
+          var evAt=new Date().toISOString();
+          /* KANDIDATENWAHL NACH EXAKTER IDENTITAET (v8-294), nicht nach
+             Reihenfolge: Nach einer Planrevision liegen fuer dieselbe
+             Session Vorhersagen mehrerer Revisionen im Ring — „die letzte"
+             griffe die falsche und produzierte superseded, wo scored
+             moeglich waere. Praeferenz: (1) gleiche Revision UND gleicher
+             Prescription-Hash, (2) gleiche Revision, (3) neueste der
+             Session — resolve() beurteilt die dann ehrlich als superseded. */
+          var rxh=null;try{rxh=P.prescriptionHashOf(rec.snapshot||null);}catch(_e){rxh=null;}
+          function _poPick(list){
+            var same=list.filter(function(p){return p&&p.userId===uid&&p.sessionId===rec.sessionId;});
+            if(!same.length)return null;
+            var rev=same.filter(function(p){return p.planId===rec.planId&&p.planRevision===rec.planRevision;});
+            var hash=rev.filter(function(p){return rxh!=null&&p.prescriptionHash===rxh;});
+            var pool=hash.length?hash:(rev.length?rev:same);
+            return pool[pool.length-1];
+          }
+          function _poEmit(evaluation){
+            DL.logDecision({timestamp:evAt,decisionType:'prediction_evaluation',
+              decisionId:(evaluation.predictionId||'pending')+'#'+String(rec.id||rec.key||'')+'@'+evAt,
+              weekId:null,planId:rec.planId||null,registry:O,
+              inputs:{debriefId:rec.id||null,sessionId:rec.sessionId||null},
+              derivedState:evaluation});
+            /* RECONCILIATION: verbindet offene pendings mit inzwischen
+               eingetroffenen Vorhersagen — aus dem Ring, budgetlos billig. */
+            try{
+              var ring=DL.recent();
+              var pend=ring.filter(function(r){return r&&r.decisionType==='prediction_evaluation'&&
+                r.derivedState&&r.derivedState.resolution==='pending';}).map(function(r){return r.derivedState;});
+              var allPreds=ring.filter(function(r){return r&&r.decisionType==='prediction_record'&&
+                r.derivedState&&r.derivedState.userId===uid;}).map(function(r){return r.derivedState;});
+              if(pend.length&&allPreds.length){
+                var rc=P.reconcile(pend,allPreds,[rec],{evaluatedAt:evAt});
+                (rc.resolved||[]).forEach(function(ev2){
+                  DL.logDecision({timestamp:evAt,decisionType:'prediction_evaluation',
+                    decisionId:(ev2.predictionId||'rec')+'#reconciled@'+evAt,
+                    weekId:null,planId:rec.planId||null,registry:O,
+                    inputs:{reconciled:true},derivedState:ev2});
+                });
+              }
+            }catch(_e){}
+          }
+          var ringCand=_poPick(DL.recent().filter(function(r){
+            return r&&r.decisionType==='prediction_record'&&r.derivedState;
+          }).map(function(r){return r.derivedState;}));
+          if(ringCand){_poEmit(P.resolve(ringCand,rec,{evaluatedAt:evAt}));return;}
+          /* NEUSTART-FALL (v8-294): Der Ring stirbt mit dem Tab, die
+             Vorhersage ist aber persistiert. Ohne Rueckgriff wuerde jedes
+             Debrief nach einem Neustart pending — und das pending fuer
+             immer, weil auch die Reconciliation nur den Ring kennt. Also:
+             persistierte Vorhersagen dieser Plan-ID lesen (RLS trennt den
+             Nutzer), exakt auswaehlen, sonst ehrlich pending. */
+          if(O.sb&&rec.planId!=null){
+            O.sb.from('engine_decision_log')
+              .select('derived_state')
+              .eq('decision_type','prediction_record')
+              .eq('plan_id',rec.planId)
+              /* SESSION SERVERSEITIG, VOR DEM LIMIT (v8-295): Ohne diesen
+                 Filter luden 50 beliebige Plan-Vorhersagen — bei vielen
+                 Revisionen laege die gesuchte aeltere Session ausserhalb
+                 des Fensters und wuerde still nie gefunden. */
+              .eq('derived_state->>sessionId',rec.sessionId)
+              .order('decided_at',{ascending:false})
+              .limit(50)
+              .then(function(res){
+                try{
+                  var rows=((res&&res.data)||[]).map(function(r){return r&&r.derived_state;})
+                    .filter(Boolean).reverse();       /* aelteste zuerst -> pick nimmt die neueste passende */
+                  var cand=_poPick(rows);
+                  _poEmit(P.resolve(cand||null,rec,{evaluatedAt:evAt}));
+                }catch(_e){try{_poEmit(P.resolve(null,rec,{evaluatedAt:evAt}));}catch(_e2){}}
+              },function(){
+                try{_poEmit(P.resolve(null,rec,{evaluatedAt:evAt}));}catch(_e){}
+              });
+            return;
+          }
+          _poEmit(P.resolve(null,rec,{evaluatedAt:evAt}));
+        }catch(_){ }
+      });
+    }catch(_){ }
+  };
+
+  /* ============================================================
+     RETRY-HERZSCHLAG (v8-295): pending IST KEIN ENDZUSTAND — AUCH NICHT
+     IM FEHLERPFAD.
+
+     Bisher wurde ein pending nur beim NAECHSTEN Debrief-Speichern erneut
+     versucht, und nur gegen den Tab-Ring. Zwei Luecken: (a) offline beim
+     Debrief ⇒ pending, und ohne weiteres Speichern kam nie ein zweiter
+     Versuch; (b) nach einem Neustart lag das pending nur noch persistiert —
+     unerreichbar fuer eine Ring-Reconciliation.
+
+     Dieser Durchlauf haengt am PLANLAUF (der ohnehin regelmaessig kommt —
+     ein natuerlicher Herzschlag, kein Timer): offene pendings einsammeln
+     (Ring UND persistierte Auswertungen), das zugehoerige Debrief aus dem
+     uebergebenen Profil-Speicher holen, die persistierten Vorhersagen der
+     betroffenen Sessions SERVERSEITIG gefiltert laden und ueber P.reconcile
+     (exakte Identitaet, Modellversion DER Vorhersage) verbinden.
+
+     DEDUP UEBER DAS ERGEBNIS, NICHT DEN VERSUCH: Ein Debrief, fuer das
+     bereits eine NICHT-pending-Auswertung existiert (Ring oder persistiert),
+     wird nie erneut aufgeloest — der Herzschlag ist idempotent. Budget:
+     hoechstens 10 pendings je Durchlauf, eine Sammelabfrage je Richtung.
+     ============================================================ */
+  O.reconcilePendingPredictions=function(debriefStore){
+    try{
+      var FF=O.featureFlags;
+      if(!FF||typeof FF.isEnabled!=='function'||!FF.isEnabled('prediction_observer'))return;
+      var P=O.predictionObserver, DL=O.decisionLog;
+      if(!P||!P.reconcile||!DL||!DL.logDecision)return;
+      var uid=(O.user&&O.user.id)||null; if(!uid)return;
+      var store=Array.isArray(debriefStore)?debriefStore:[];
+      if(!store.length)return;
+      var _defer=(typeof requestIdleCallback==='function')
+        ? function(f){requestIdleCallback(f,{timeout:2000});}
+        : function(f){setTimeout(f,0);};
+      _defer(function(){
+        try{
+          var evAt=new Date().toISOString();
+          var byId={};store.forEach(function(d){if(d&&d.id!=null)byId[d.id]=d;});
+          var ring=DL.recent();
+          var ringEvals=ring.filter(function(r){return r&&r.decisionType==='prediction_evaluation'&&r.derivedState;})
+            .map(function(r){return r.derivedState;});
+          var ringPreds=ring.filter(function(r){return r&&r.decisionType==='prediction_record'&&
+            r.derivedState&&r.derivedState.userId===uid;}).map(function(r){return r.derivedState;});
+          function step2(persEvals){
+            try{
+              var all=ringEvals.concat(persEvals||[]);
+              /* NUR scored IST ENDGUELTIG (v8-296): Vorher galt jede
+                 nicht-pending-Auswertung als erledigt — ein superseded
+                 (alte Revision zuerst aufgeloest) haette das spaetere
+                 scored gegen die EXAKTE Vorhersage fuer immer blockiert.
+                 superseded/not_comparable sind ehrliche Urteile UEBER EINE
+                 KANDIDATIN, kein Endzustand des Debriefs. */
+              var done={};
+              all.forEach(function(e){if(e&&e.resolution==='scored'&&e.debriefId!=null)done[e.debriefId]=1;});
+              var seen={};
+              var open=all.filter(function(e){
+                if(!e||e.resolution==='scored'||e.debriefId==null)return false;
+                if(done[e.debriefId]||seen[e.debriefId])return false;
+                if(!byId[e.debriefId])return false;      /* ohne Grundwahrheit kein Versuch */
+                seen[e.debriefId]=1;return true;
+              }).slice(0,10);                             /* Budget je Durchlauf */
+              if(!open.length)return;
+              var debriefs=open.map(function(e){return byId[e.debriefId];});
+              var sessions=[];
+              debriefs.forEach(function(d){if(d.sessionId&&sessions.indexOf(d.sessionId)<0)sessions.push(d.sessionId);});
+              function finish(preds){
+                try{
+                  /* Direkte Aufloesung mit EXAKTER Praeferenz (statt ueber
+                     P.reconcile, dessen pending-Filter superseded-Faelle
+                     nie wieder anfasste). Geloggt wird NUR ein Upgrade auf
+                     scored — kein Urteils-Spam, idempotent per done-Map. */
+                  var list=ringPreds.concat(preds||[]);
+                  debriefs.forEach(function(d){
+                    var same=list.filter(function(p2){return p2&&p2.ok===true&&
+                      p2.userId===d.userId&&p2.sessionId===d.sessionId;});
+                    if(!same.length)return;
+                    var rxh2=null;try{rxh2=P.prescriptionHashOf(d.snapshot||null);}catch(_e){rxh2=null;}
+                    var rev=same.filter(function(p2){return p2.planId===d.planId&&p2.planRevision===d.planRevision;});
+                    var hash=rev.filter(function(p2){return rxh2!=null&&p2.prescriptionHash===rxh2;});
+                    var pool=hash.length?hash:(rev.length?rev:same);
+                    var ev2=P.resolve(pool[pool.length-1],d,{evaluatedAt:evAt});
+                    if(!ev2||ev2.resolution!=='scored')return;
+                    DL.logDecision({timestamp:evAt,decisionType:'prediction_evaluation',
+                      decisionId:(ev2.predictionId||'rec')+'#retry@'+evAt,
+                      weekId:null,planId:null,registry:O,
+                      inputs:{retry:true,debriefId:ev2.debriefId||null},derivedState:ev2});
+                  });
+                }catch(_e){}
+              }
+              if(O.sb&&sessions.length){
+                O.sb.from('engine_decision_log')
+                  .select('derived_state')
+                  .eq('decision_type','prediction_record')
+                  .in('derived_state->>sessionId',sessions)
+                  .order('decided_at',{ascending:false})
+                  .limit(100)
+                  .then(function(res){
+                    finish(((res&&res.data)||[]).map(function(r){return r&&r.derived_state;}).filter(Boolean));
+                  },function(){finish([]);});
+              } else finish([]);
+            }catch(_e){}
+          }
+          /* Persistierte Auswertungen: liefern die pendings, die den
+             Neustart ueberlebt haben, UND das Dedup-Wissen ueber bereits
+             Aufgeloestes. Fehlt der Client oder die Abfrage: nur der Ring. */
+          if(O.sb){
+            O.sb.from('engine_decision_log')
+              .select('derived_state')
+              .eq('decision_type','prediction_evaluation')
+              .order('decided_at',{ascending:false})
+              .limit(200)
+              .then(function(res){
+                step2(((res&&res.data)||[]).map(function(r){return r&&r.derived_state;}).filter(Boolean));
+              },function(){step2([]);});
+          } else step2([]);
+        }catch(_){ }
+      });
+    }catch(_){ }
+  };
+
+  /* ============================================================
+     ABNAHMESTAND (v8-284): AUS DEN DAUERHAFTEN EINTRAEGEN, NICHT AUS DEM
+     BROWSERZUSTAND. Der lokale Ringpuffer stirbt mit dem Tab — eine Abnahme,
+     die nur ihn liest, vergisst jede Woche neu. Gelesen wird deshalb zuerst
+     die persistierte Historie (engine_decision_log, RLS auf den Nutzer);
+     der Ring ist nur der ausgewiesene Notbehelf. Die Kohortenpruefung
+     (gleiche Vertragsversionen) uebernimmt acceptance() selbst.
+     ============================================================ */
+  function _obsOfDerived(d){
+    d=d||{};
+    return {mode:d.mode,planMutation:d.planMutation,applied:d.applied,
+      status:d.status,stages:d.stages,progression:d.progression,
+      deviation:d.deviation,coverage:d.coverage,idempotencyKey:d.idempotencyKey,
+      feasibility:d.feasibility,versions:d.versions,
+      userId:d.userId||null,observedAt:d.observedAt||null,
+      weekId:d.weekId||null,planId:d.planId||null,hashes:d.hashes||null,
+      inputHash:d.inputHash||null,inputVersion:d.inputVersion||null,
+      inputBasis:d.inputBasis||null};
+  }
+  O.shadowAcceptance=function(){
+    try{
+      var SA=O.shadowAdaptive, DL=O.decisionLog;
+      if(!SA||!DL)return null;
+      var sb=O.sb, uid=(O.user&&O.user.id)||null;
+      /* Der lokale Ring ueberlebt einen Nutzerwechsel im selben Tab. Fremde
+         Beobachtungen werden deshalb ausgefiltert, bevor sie irgendetwas
+         belegen — die persistierte Historie trennt per RLS ohnehin. */
+      /* FAIL-CLOSED: Eine Beobachtung ohne eindeutigen Nutzer belegt nichts —
+         und ohne bekannten aktuellen Nutzer belegt der lokale Ring gar nichts.
+         Lieber eine leere Abnahme als eine, die fremde oder herrenlose
+         Eintraege mitzaehlt. */
+      var lokal=DL.recent().filter(function(r){return r&&r.decisionType==='shadow_observation';})
+        .map(function(r){return _obsOfDerived(r.derivedState);})
+        .filter(function(o2){return uid!=null&&o2.userId===uid;});
+      if(sb&&uid){
+        return sb.from('engine_decision_log')
+          .select('derived_state,decided_at')
+          .eq('decision_type','shadow_observation')
+          /* NEUESTE ZUERST. Aufsteigend + Limit haette die AELTESTEN 500
+             geladen — und damit irgendwann ausschliesslich Eintraege fremder
+             Kohorten, waehrend die aktuellen unsichtbar blieben. Fuer die
+             Abnahme zaehlt die Reihenfolge nicht, die Aktualitaet schon. */
+          .order('decided_at',{ascending:false})
+          .limit(500)
+          .then(function(res){
+            var rows=(res&&res.data)||[];
+            var obs=rows.map(function(r){return _obsOfDerived(r.derived_state);});
+            var acc=SA.acceptance(obs.length?obs:lokal,{registry:O});
+            acc.source=obs.length?'persisted':'local_ring_fallback';
+            return acc;
+          },function(){
+            var acc=SA.acceptance(lokal,{registry:O});
+            acc.source='local_ring_fallback';
+            return acc;
+          });
+      }
+      var acc=SA.acceptance(lokal,{registry:O});
+      acc.source='local_ring_offline';
+      return acc;
+    }catch(_){ return null; }
+  };
+
+  O.getAdaptiveExplanation=function(){
+    try{
+      var AC=O.adaptiveCard;
+      if(!AC||!AC.buildView)return {available:false, reason:'no_module'};
+      var live=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan)||null;
+      return AC.buildView(O._lastShadowCtx||null, live, O);
+    }catch(_){ return {available:false, reason:'error'}; }
+  };
+
+  /* Einhaenger der Karte: reine Darstellung des View-Vertrags. Rendern
+     veraendert und speichert nichts — der Renderer ist String -> String und
+     lebt in js/adaptive-card.js, wo er auch als VERHALTEN getestet wird. */
+  globalThis.gmRenderAdaptiveCard=function(){
+    try{
+      var box=document.getElementById('adaptiveCard'); if(!box)return;
+      var AC=O.adaptiveCard;
+      box.innerHTML=(AC&&AC.render)?AC.render(O.getAdaptiveExplanation()):'';
+    }catch(_){ }
+  };
+
+  /* Diagnose fuer die Konsole — IMMER redigiert (keine Schmerzangaben, kein RPE). */
+  O.explainWeek=function(weekId){
+    try{
+      var DL=O.decisionLog; if(!DL)return null;
+      return DL.explain(weekId,DL.recent(),O);
+    }catch(_){ return null; }
+  };
+})();
+
+/* ============================================================
+   G1 · LEISTUNGSDATEN ERFASSEN (Bauplan Stufe 1, 2026-08-07)
+
+   WARUM DIESE SEITE ZUERST KAM: Ohne erfasste Leistungswerte bleiben
+   Intensitaet, Zielprognose, Wochenkilometer und Tagesziele bei „—", egal wie
+   gut die Engine dahinter ist. Genau das war der Ausloeser des Umbaus.
+
+   BEDINGUNG, OHNE DIE DIE SEITE IHREN ZWECK VERFEHLT: Der leere Zustand muss in
+   EINER Sitzung fuellbar sein. Wer noch nie getestet hat, bekommt das passende
+   Protokoll mit Anleitung direkt hier — nicht als Verweis auf eine Hilfeseite.
+   Sonst wird die Maske gebaut und nie ausgefuellt; das ist das Hauptrisiko
+   dieser Stufe.
+
+   ABLEHNEN STATT UMDEUTEN: Die Pruefung liegt vollstaendig in
+   js/engine/performance-input.js (rein, getestet). Diese Schicht sammelt nur
+   ein und zeigt an. Ein unplausibler Wert wird benannt, nicht zurechtgebogen —
+   und eine mehrdeutige Zeitangabe („1:50") fuehrt zur Rueckfrage, nicht zu
+   einer stillen Entscheidung.
+   ============================================================ */
+function gmPerfToday(){try{return new Date().toISOString().slice(0,10);}catch(_){return null;}}
+function gmPerfMod(){try{return (window.ORVIA&&ORVIA.performanceInput)||null;}catch(_){return null;}}
+function gmPerfEv(){try{return (window.ORVIA&&ORVIA.evidence)||null;}catch(_){return null;}}
+
+var _gmPerfSport='running';
+var _gmPerfTest=null;
+var _gmPerfMsg=null;
+
+function gmPerfSetSport(s){_gmPerfSport=s;_gmPerfTest=null;_gmPerfMsg=null;gmOpenProfPage('performance');}
+function gmPerfPickTest(id){_gmPerfTest=(_gmPerfTest===id)?null:id;_gmPerfMsg=null;gmOpenProfPage('performance');}
+
+var GM_PERF_SPORTS=[['running','Laufen'],['cycling','Radfahren'],['swimming','Schwimmen']];
+
+/* Klartext fuer Ablehnungen. Eine Fehlermeldung, die nur einen Schluessel
+   zeigt, ist fuer den Nutzer wertlos — und eine, die nicht sagt WARUM, laedt
+   dazu ein, den Wert so lange zu veraendern, bis er durchgeht. */
+var GM_PERF_REASONS={
+  out_of_range:'Der Wert liegt ausserhalb des plausiblen Bereichs',
+  implausible_pace:'Daraus ergibt sich keine realistische Pace',
+  implausible_css:'Daraus ergibt sich keine realistische Schwimmgeschwindigkeit',
+  implausible_swim_pace:'Daraus ergibt sich keine realistische Schwimmgeschwindigkeit',
+  css_400_not_slower_than_200:'Die 400-m-Zeit muss groesser sein als die 200-m-Zeit',
+  date_in_future:'Das Datum liegt in der Zukunft',
+  date_too_old:'Das Datum liegt mehr als zehn Jahre zurueck — vertippt?',
+  date_unreadable:'Das Datum ist nicht lesbar',
+  not_a_time:'Das ist keine lesbare Zeitangabe',
+  not_positive:'Der Wert muss groesser als null sein',
+  unknown_protocol:'Unbekanntes Testprotokoll',
+  unknown_field:'Unbekanntes Feld'
+};
+function gmPerfReason(e){
+  var t=GM_PERF_REASONS[e&&e.reason]||('Ungueltige Eingabe ('+gmEsc(String(e&&e.reason||'?'))+')');
+  if(e&&e.expected)t+=' — erwartet '+e.expected[0]+' bis '+e.expected[1]+(e.unit?' '+e.unit:'')+(e.got!=null?', eingetragen '+e.got:'');
+  else if(e&&e.got!=null)t+=' — eingetragen '+e.got;
+  if(e&&e.detail)t+='. '+e.detail;
+  return t;
+}
+function gmPerfShow(res){
+  if(!res)return;
+  if(res.status==='ok'){_gmPerfMsg={k:'ok',t:'Gespeichert.'};return;}
+  if(res.status==='needs_input'){
+    var n=(res.needs||[])[0];
+    _gmPerfMsg={k:'need',t:(n&&n.hint)||'Es fehlt noch eine Angabe.',
+      alts:(n&&n.alternatives)||null};
+    return;
+  }
+  _gmPerfMsg={k:'bad',t:(res.errors||[]).map(gmPerfReason).join(' · ')||'Eingabe abgelehnt.'};
+}
+function _gmPerfVal(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';}
+function _gmPerfPersist(){try{if(typeof saveProfile==='function')saveProfile();}catch(_){ }}
+function _gmPerfProfile(){
+  if(typeof PROFILE==='undefined'||!PROFILE)return null;
+  PROFILE.performance=PROFILE.performance||{};
+  PROFILE.performance.personalBests=PROFILE.performance.personalBests||[];
+  PROFILE.performance.tests=PROFILE.performance.tests||[];
+  return PROFILE;
+}
+
+/* Wettkampf oder Bestzeit eintragen. */
+function gmPerfSaveRace(){
+  var PI=gmPerfMod();if(!PI)return;
+  var res=PI.validateRace({
+    sportId:_gmPerfSport,
+    distance:_gmPerfVal('gmPerfDist'),
+    time:_gmPerfVal('gmPerfTime'),
+    context:_gmPerfVal('gmPerfCtx'),
+    measuredAt:_gmPerfVal('gmPerfDate')||null
+  },{today:gmPerfToday()});
+  if(res.status==='ok'){
+    var P=_gmPerfProfile();
+    if(P){P.performance.personalBests.push(res.entry);_gmPerfPersist();}
+  }
+  gmPerfShow(res);
+  gmOpenProfPage('performance');
+  try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+}
+
+/* Testergebnis eintragen. */
+function gmPerfSaveTest(){
+  var PI=gmPerfMod();if(!PI||!_gmPerfTest)return;
+  var proto=PI.protocolById(_gmPerfSport,_gmPerfTest);if(!proto)return;
+  var input={sportId:_gmPerfSport,id:_gmPerfTest,date:_gmPerfVal('gmPerfTestDate')||null};
+  (proto.needs||[]).forEach(function(f){input[f]=_gmPerfVal('gmPerfT_'+f);});
+  var res=PI.validateTest(input,{today:gmPerfToday()});
+  if(res.status==='ok'){
+    var P=_gmPerfProfile();
+    if(P){P.performance.tests.push(res.entry);_gmPerfPersist();}
+    _gmPerfTest=null;
+  }
+  gmPerfShow(res);
+  gmOpenProfPage('performance');
+  try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+}
+
+/* Einzelwert (FTP, Schwellen-HF, 100-m-Pace) — landet im Sportfeld, nicht in
+   den Bestzeiten: dort liest ihn der performance-resolver bereits. */
+function gmPerfSaveValue(field){
+  var PI=gmPerfMod();if(!PI)return;
+  var res=PI.validateValue({field:field,value:_gmPerfVal('gmPerfV_'+field),date:_gmPerfVal('gmPerfVDate_'+field)||null},{today:gmPerfToday()});
+  if(res.status==='ok'){
+    var P=_gmPerfProfile();
+    if(P){
+      P.sports=Array.isArray(P.sports)?P.sports:[];
+      var ent=null,i;
+      for(i=0;i<P.sports.length;i++)if(P.sports[i]&&String(P.sports[i].sportId||'').toLowerCase()===res.sportId)ent=P.sports[i];
+      if(!ent){ent={sportId:res.sportId,fields:{}};P.sports.push(ent);}
+      ent.fields=ent.fields||{};
+      ent.fields[res.field]=res.entry.value;
+      /* Herkunft getrennt ablegen — das Sportfeld selbst bleibt eine blanke
+         Zahl, damit bestehende Leser unveraendert funktionieren. */
+      P.performance=P.performance||{};
+      P.performance.provenance=P.performance.provenance||{};
+      P.performance.provenance[res.sportId+'.'+res.field]=res.entry.evidence||null;
+      _gmPerfPersist();
+    }
+  }
+  gmPerfShow(res);
+  gmOpenProfPage('performance');
+  try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+}
+
+function gmPerfDeleteBest(idx){
+  var P=_gmPerfProfile();if(!P)return;
+  if(idx<0||idx>=P.performance.personalBests.length)return;
+  P.performance.personalBests.splice(idx,1);_gmPerfPersist();
+  _gmPerfMsg={k:'ok',t:'Eintrag entfernt.'};
+  gmOpenProfPage('performance');
+}
+function gmPerfDeleteTest(idx){
+  var P=_gmPerfProfile();if(!P)return;
+  if(idx<0||idx>=P.performance.tests.length)return;
+  P.performance.tests.splice(idx,1);_gmPerfPersist();
+  _gmPerfMsg={k:'ok',t:'Test entfernt.'};
+  gmOpenProfPage('performance');
+}
+
+/* Belegzeile — eine Quelle fuer die Formulierung (ORVIA.evidence.describe). */
+function gmPerfEvLine(hull){
+  var EV=gmPerfEv();
+  if(!EV||!hull)return '';
+  return '<div class="bt-sub">'+gmEsc(EV.describe(hull))+'</div>';
+}
+
+function gmProfPerformance(){
+  var PI=gmPerfMod(),EV=gmPerfEv();
+  var h=gmPPageHead('Leistungsdaten','Wettkampf, Test und Schwellenwerte je Sportart');
+  if(!PI){
+    return h+'<div style="padding:0 18px"><div class="mini-note">'+icon('info','xs')+'<div>Das Leistungsmodul ist nicht geladen. Bitte die App neu starten.</div></div></div><div class="tabspacer"></div>';
+  }
+  var P=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:null;
+  var cov=null;try{cov=PI.coverage(P,{today:gmPerfToday()});}catch(_){ }
+  var mine=cov&&cov.sports?cov.sports[_gmPerfSport]:null;
+
+  h+='<div style="padding:0 18px">';
+
+  /* Rueckmeldung der letzten Eingabe — steht oben, damit sie nicht uebersehen wird. */
+  if(_gmPerfMsg){
+    var cls=_gmPerfMsg.k==='ok'?'ok':(_gmPerfMsg.k==='need'?'warn':'bad');
+    h+='<div class="mini-note perf-'+cls+'">'+icon(_gmPerfMsg.k==='ok'?'check':'info','xs')+'<div>'+gmEsc(_gmPerfMsg.t);
+    if(_gmPerfMsg.alts){
+      h+='<br><span style="color:var(--muted)">Moegliche Lesarten: '+
+        Object.keys(_gmPerfMsg.alts).map(function(k){return gmEsc(k)+' = '+gmEsc(String(Math.round(_gmPerfMsg.alts[k]*100)/100))+' min';}).join(' · ')+
+        '. Trag die Zeit eindeutig ein, z. B. „1:50:00".</span>';
+    }
+    h+='</div></div>';
+    _gmPerfMsg=null;
+  }
+
+  /* Sportartwahl */
+  h+='<div class="seg" style="margin:10px 0 14px">';
+  GM_PERF_SPORTS.forEach(function(s){
+    h+='<button type="button" class="seg-b'+(s[0]===_gmPerfSport?' on':'')+'" onclick="gmPerfSetSport(\''+s[0]+'\')">'+gmEsc(s[1])+'</button>';
+  });
+  h+='</div>';
+
+  /* ABDECKUNG — beantwortet „warum steht da ein Strich" */
+  h+='<div class="sectlabel">Stand</div>';
+  if(mine&&mine.ok){
+    h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time">Zonen vorhanden '+gmEsc(EV?EV.marker(mine.evidence):'')+'</div>'+
+      '<div class="bt-sub">Beleg: '+gmEsc((EV&&EV.LEVEL_LABEL[mine.evidence])||mine.evidence)+
+      (mine.ageDays!=null?' · '+mine.ageDays+(mine.ageDays===1?' Tag':' Tage')+' alt':'')+
+      ' · Status: '+gmEsc((EV&&EV.FRESH_LABEL[mine.freshness])||'—')+'</div></div></div>';
+    if(mine.staleHint){
+      h+='<div class="mini-note">'+icon('info','xs')+'<div>Dieser Wert ist ueber seiner Haltbarkeit. Die Zonen stammen weiterhin daraus — ein neuer Test oder Wettkampf wuerde sie schaerfen.</div></div>';
+    }
+  }else{
+    h+='<div class="mini-note">'+icon('info','xs')+'<div><b>Noch keine Zonen fuer diese Sportart.</b> Solange hier nichts steht, bleiben Intensitaet, Zielprognose und Tagesziele im Plan bei „—". '+
+      gmEsc((mine&&mine.suggestion)||'Trag ein Ergebnis ein oder mach einen der Tests unten.')+'</div></div>';
+  }
+
+  /* WETTKAMPF / BESTZEIT */
+  h+='<div class="sectlabel">Ergebnis eintragen</div>';
+  h+='<div class="perf-form">'+
+    '<label>Distanz<input id="gmPerfDist" type="text" inputmode="decimal" placeholder="10 km, HM, Marathon"></label>'+
+    '<label>Zeit<input id="gmPerfTime" type="text" inputmode="numeric" placeholder="48:30 oder 1:50:00"></label>'+
+    '<label>Kontext<select id="gmPerfCtx"><option value="Wettkampf">Wettkampf</option><option value="Test">Test / Trainingsbestzeit</option></select></label>'+
+    '<label>Datum<input id="gmPerfDate" type="date"></label>'+
+    '<button class="mini-btn primary" onclick="gmPerfSaveRace()">Eintragen</button>'+
+    '</div>';
+  h+='<div class="mini-note">'+icon('info','xs')+'<div>Ein Wettkampf ist der staerkste Beleg. Eine Trainingsbestzeit zaehlt schwaecher — sie entsteht meist in einem Tempolauf und liegt systematisch ueber der Wettkampfform. Bei mehrdeutigen Zeiten („1:50") fragt die App nach, statt zu raten.</div></div>';
+
+  /* TESTS — mit Anleitung direkt hier */
+  var protos=PI.protocolsFor(_gmPerfSport)||[];
+  if(protos.length){
+    h+='<div class="sectlabel">Test machen</div>';
+    protos.forEach(function(p){
+      var open=(_gmPerfTest===p.id);
+      var suggested=(mine&&mine.level==='beginner'&&p.level==='anfaenger');
+      h+='<button type="button" class="bt-row" onclick="gmPerfPickTest(\''+p.id+'\')"><div class="bt-b">'+
+        '<div class="bt-time" style="font-size:15px">'+gmEsc(p.label)+(suggested?' <span style="color:var(--muted);font-size:12px">empfohlen</span>':'')+'</div>'+
+        '<div class="bt-sub">'+gmEsc(p.level==='anfaenger'?'Einsteiger':'Fortgeschritten')+'</div></div>'+
+        '<div class="bt-imp">'+icon('chev','sm')+'</div></button>';
+      if(open){
+        h+='<div class="perf-form perf-open">';
+        h+='<div class="mini-note">'+icon('info','xs')+'<div>'+gmEsc(p.howto)+'</div></div>';
+        (p.needs||[]).forEach(function(f){
+          h+='<label>'+gmEsc(GM_PERF_FIELD_LABEL[f]||f)+'<input id="gmPerfT_'+f+'" type="text" inputmode="decimal" placeholder="'+gmEsc(GM_PERF_FIELD_HINT[f]||'')+'"></label>';
+        });
+        h+='<label>Datum<input id="gmPerfTestDate" type="date"></label>';
+        h+='<button class="mini-btn primary" onclick="gmPerfSaveTest()">Ergebnis speichern</button></div>';
+      }
+    });
+  }
+
+  /* EINZELWERTE je Sportart */
+  var vals=[];
+  if(_gmPerfSport==='cycling')vals=['ftp','thresholdHr'];
+  if(_gmPerfSport==='swimming')vals=['pace100'];
+  if(vals.length){
+    h+='<div class="sectlabel">Bekannte Werte</div><div class="perf-form">';
+    vals.forEach(function(f){
+      var spec=PI.VALUE_FIELDS[f];
+      h+='<label>'+gmEsc(spec.label)+' ('+gmEsc(spec.unit)+')<input id="gmPerfV_'+f+'" type="text" inputmode="decimal"></label>'+
+        '<label>Datum<input id="gmPerfVDate_'+f+'" type="date"></label>'+
+        '<button class="mini-btn" onclick="gmPerfSaveValue(\''+f+'\')">'+gmEsc(spec.label)+' speichern</button>';
+    });
+    h+='</div>';
+    h+='<div class="mini-note">'+icon('info','xs')+'<div>Ein selbst eingetragener Wert zaehlt als Selbstauskunft. Wer den Wert wirklich getestet hat, traegt oben den Test ein — dafuer gibt es die hoehere Belegstufe.</div></div>';
+  }
+
+  /* ERFASSTES */
+  var pbs=(P&&P.performance&&P.performance.personalBests)||[];
+  var tests=(P&&P.performance&&P.performance.tests)||[];
+  var mineBests=pbs.map(function(b,i){return {b:b,i:i};}).filter(function(x){return String((x.b&&x.b.sportId)||'running').toLowerCase()===_gmPerfSport;});
+  var mineTests=tests.map(function(t,i){return {t:t,i:i};}).filter(function(x){return String((x.t&&x.t.sportId)||'').toLowerCase()===_gmPerfSport;});
+
+  if(mineBests.length||mineTests.length){
+    h+='<div class="sectlabel">Erfasst</div>';
+    mineBests.forEach(function(x){
+      var b=x.b,sec=b.timeSeconds||0;
+      var tt=sec?(Math.floor(sec/3600)?Math.floor(sec/3600)+':'+('0'+Math.floor(sec%3600/60)).slice(-2)+':'+('0'+(sec%60)).slice(-2):Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2)):'—';
+      h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time">'+gmEsc(String(b.distance))+' km · '+gmEsc(tt)+'</div>'+
+        (b.evidence?gmPerfEvLine(b.evidence):'<div class="bt-sub">'+gmEsc(b.context||'—')+'</div>')+'</div>'+
+        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteBest('+x.i+')">Entfernen</span></div>';
+    });
+    mineTests.forEach(function(x){
+      var t=x.t,proto=PI.protocolById(_gmPerfSport,t.id);
+      h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time" style="font-size:15px">'+gmEsc((proto&&proto.label)||t.id)+'</div>'+
+        (t.evidence?gmPerfEvLine(t.evidence):'<div class="bt-sub">'+gmEsc(t.date||'ohne Datum')+'</div>')+'</div>'+
+        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteTest('+x.i+')">Entfernen</span></div>';
+    });
+  }
+
+  h+='</div><div class="tabspacer"></div>';
+  return h;
+}
+
+var GM_PERF_FIELD_LABEL={
+  distanceKm:'Distanz in km',durationMin:'Dauer in Minuten',avgWatts:'Durchschnittsleistung in Watt',
+  avgHr:'Durchschnittliche Herzfrequenz',distanceM:'Distanz in Metern',
+  t400Sec:'400-m-Zeit in Sekunden',t200Sec:'200-m-Zeit in Sekunden'
+};
+var GM_PERF_FIELD_HINT={
+  distanceKm:'z. B. 2.8',durationMin:'z. B. 22',avgWatts:'z. B. 263',avgHr:'z. B. 172',
+  distanceM:'z. B. 520',t400Sec:'z. B. 372',t200Sec:'z. B. 178'
+};
+/* Untertitel der Profilzeile: nennt beim Namen, was fehlt. „Leistungsdaten" allein
+   sagt nicht, dass genau hier die Striche im Plan herkommen. */
+function gmPerfRowSub(){
+  try{
+    var PI=gmPerfMod();if(!PI)return 'Wettkampf, Test und Schwellenwerte';
+    var cov=PI.coverage((typeof PROFILE!=='undefined'&&PROFILE)||null,{today:gmPerfToday()});
+    if(!cov)return 'Wettkampf, Test und Schwellenwerte';
+    var miss=cov.missing||[];
+    if(!miss.length)return 'Zonen für alle drei Sportarten vorhanden';
+    if(!cov.anyOk)return 'Noch keine Zonen — deshalb steht im Plan „—"';
+    var L={running:'Laufen',cycling:'Rad',swimming:'Schwimmen'};
+    return 'Fehlt: '+miss.map(function(m){return L[m]||m;}).join(', ');
+  }catch(_){return 'Wettkampf, Test und Schwellenwerte';}
+}
+
+/* ============================================================
+   C3 · DEBRIEF-ERFASSUNG (Bauplan Stufe 2, 2026-08-07)
+
+   WARUM SO WENIG GEFRAGT WIRD: Elf Felder pro Einheit fuellt niemand ueber
+   Monate aus — und lueckenhafte Selbstauskunft ist SCHLECHTER als keine, weil
+   sie systematisch verzerrt: Schlechte Tage werden seltener geloggt, also saehe
+   die Engine einen Athleten, der alles vertraegt. Deshalb genau ZWEI Eingaben
+   im Normalfall: RPE und Schmerz ja/nein. Alles andere wird abgeleitet.
+
+   Der Grund einer Abweichung wird NUR erfragt, wenn eine erkannt wurde — und
+   dann als Auswahl, nicht als Freitext, sonst ist er nicht auswertbar.
+
+   Die Bewertung selbst liegt vollstaendig in js/engine/session-debrief.js
+   (rein, getestet). Diese Schicht sammelt ein, speichert und zeigt an.
+   ============================================================ */
+function gmDbMod(){try{return (window.ORVIA&&ORVIA.sessionDebrief)||null;}catch(_){return null;}}
+var _gmDbCtx=null;   /* {di, ii, planned, actual, zones, key} */
+var _gmDbRpe=null, _gmDbPain=false;
+
+function gmDbKey(dateIso,unit){
+  return String(dateIso||'')+'|'+String((unit&&unit.t)||'')+'|'+String((unit&&unit.l)||'');
+}
+function gmDbStore(){
+  if(typeof PROFILE==='undefined'||!PROFILE)return null;
+  PROFILE.performance=PROFILE.performance||{};
+  PROFILE.performance.debriefs=Array.isArray(PROFILE.performance.debriefs)?PROFILE.performance.debriefs:[];
+  return PROFILE.performance.debriefs;
+}
+function gmDbFind(key,unit,dateIso){
+  var st=gmDbStore();if(!st)return null;
+  /* Zuerst ueber die eindeutige Occurrence-ID — der Schluessel kollidiert bei
+     Zwillingen und dient nur noch als Legacy-Rueckfall. */
+  try{
+    if(unit&&window.ORVIA&&ORVIA.debriefRecord){
+      var occ=ORVIA.debriefRecord.occurrenceIdOf(dateIso,unit);
+      var id='db:'+occ.replace(/^(po:|occ:)/,'');
+      for(var j=0;j<st.length;j++)if(st[j]&&st[j].id===id)return st[j];
+      if(ORVIA.debriefRecord.occurrenceBasisOf(unit)==='template_id')return null;
+    }
+  }catch(_e){}
+  for(var i=0;i<st.length;i++)if(st[i]&&st[i].key===key)return st[i];
+  return null;
+}
+
+/* Oeffnet die Erfassung fuer eine absolvierte Einheit. */
+function gmOpenDebrief(dateIso,unit,planned,actual){
+  var key=gmDbKey(dateIso,unit);
+  var prev=gmDbFind(key,unit,dateIso);
+  _gmDbCtx={key:key,date:dateIso,unit:unit,planned:planned||null,actual:actual||null};
+  _gmDbRpe=prev?prev.rpe:null;
+  _gmDbPain=prev?!!prev.pain:false;
+  gmRenderDebriefSheet();
+}
+function gmDbSetRpe(v){_gmDbRpe=v;gmRenderDebriefSheet();}
+function gmDbTogglePain(){_gmDbPain=!_gmDbPain;gmRenderDebriefSheet();}
+
+function gmRenderDebriefSheet(){
+  if(!_gmDbCtx)return;
+  var c=_gmDbCtx;
+  var h='<div class="sheet-head"><h3>Wie war die Einheit?</h3><p>'+gmEsc((c.unit&&c.unit.l)||'')+'</p></div><div class="sheet-body">';
+  h+='<div class="sectlabel" style="padding-left:0">Anstrengung</div>';
+  h+='<div class="db-rpe">';
+  for(var i=1;i<=10;i++){
+    h+='<button type="button" class="db-rpe-b'+(_gmDbRpe===i?' on':'')+'" onclick="gmDbSetRpe('+i+')">'+i+'</button>';
+  }
+  h+='</div><div class="mini-note">'+icon('info','xs')+'<div>1 = sehr locker · 10 = maximal. Das ist die einzige Zahl, die die App nicht selbst ausrechnen kann.</div></div>';
+  h+='<div class="sectlabel" style="padding-left:0">Schmerzen?</div>';
+  h+='<div class="seg"><button type="button" class="seg-b'+(!_gmDbPain?' on':'')+'" onclick="if('+(_gmDbPain?'true':'false')+')gmDbTogglePain()">Nein</button>'+
+     '<button type="button" class="seg-b'+(_gmDbPain?' on':'')+'" onclick="if('+(_gmDbPain?'false':'true')+')gmDbTogglePain()">Ja</button></div>';
+
+  /* Der Grund wird NUR erfragt, wenn eine Abweichung erkannt wurde. */
+  var pre=null;try{var SD=gmDbMod();if(SD&&c.planned&&c.actual)pre=SD.debrief({planned:c.planned,actual:c.actual,zones:c.zones||null});}catch(_){ }
+  if(pre&&pre.judged&&(pre.adherence==='abgebrochen'||pre.adherence==='zu langsam'||pre.adherence==='zu schnell')){
+    h+='<div class="sectlabel" style="padding-left:0">Woran lag es?</div><div class="db-reasons">';
+    GM_DB_REASONS.forEach(function(r){
+      h+='<button type="button" class="db-reason'+(_gmDbReason===r[0]?' on':'')+'" onclick="gmDbSetReason(\''+r[0]+'\')">'+gmEsc(r[1])+'</button>';
+    });
+    h+='</div>';
+  }
+  h+='<button class="mini-btn primary" style="width:100%;margin-top:14px" onclick="gmDbSave()">Speichern</button>';
+  h+='</div>';
+  try{gmOpenSheet('debrief',h);}catch(_){ }
+}
+
+var _gmDbReason=null;
+function gmDbSetReason(r){_gmDbReason=(_gmDbReason===r)?null:r;gmRenderDebriefSheet();}
+var GM_DB_REASONS=[
+  ['fatigue','Müde / schwere Beine'],['time','Zeit gefehlt'],['pain','Beschwerden'],
+  ['weather','Wetter / Strecke'],['illness','Krank / angeschlagen'],['felt_good','Ging leicht'],
+  ['other','Anderes']
+];
+
+function gmDbSave(){
+  if(!_gmDbCtx)return;
+  var c=_gmDbCtx,st=gmDbStore();if(!st)return;
+  var SD=gmDbMod();
+  /* KANONISCHER PERSISTENZVERTRAG (v8-289): Der Record entsteht im reinen,
+     in Node testbaren Builder — die Tests bauen ihre Debriefs mit DERSELBEN
+     Funktion. Er traegt id, userId, planId, planRevision, createdAt,
+     completed und die OCCURRENCE-Session-ID (nicht die Template-ID). */
+  var _cp=null;
+  try{_cp=(typeof _gmCanonPlan!=='undefined'&&_gmCanonPlan&&_gmCanonPlan.plan)?_gmCanonPlan.plan:null;}catch(_e){}
+  var rec=(window.ORVIA&&ORVIA.debriefRecord)
+    ? ORVIA.debriefRecord.build({
+        key:c.key, date:c.date, unit:c.unit,
+        planned:c.planned, actual:c.actual, zones:c.zones||null,
+        rpe:_gmDbRpe, pain:_gmDbPain, reason:_gmDbReason||null,
+        userId:(window.ORVIA&&ORVIA.user&&ORVIA.user.id)||null,
+        /* DIESELBE IDENTITAETSQUELLE WIE DIE VORHERSAGE (v8-297): kanonisch,
+           sonst weekplan:<Woche des Debrief-Datums> + Inhalts-Revision.
+           Vorher blieb beides bei gespeichertem Altplan null — und resolve()
+           haette jedes Altplan-Debrief als not_comparable verworfen. */
+        planId:(function(){try{return (typeof gmPlanIdentity==='function')?gmPlanIdentity(c.date).planId:(_cp?_cp.planId:null);}catch(_e){return _cp?_cp.planId:null;}})(),
+        planRevision:(function(){try{return (typeof gmPlanIdentity==='function')?gmPlanIdentity(c.date).planRevision:(_cp?_cp.revision:null);}catch(_e){return _cp?_cp.revision:null;}})(),
+        now:new Date().toISOString(), SD:SD })
+    : { key:c.key, date:c.date, rpe:_gmDbRpe, pain:_gmDbPain, reason:_gmDbReason||null };
+
+  /* Dedup nach po:-Identitaet (debrief-record@3): Zwillinge mit
+     verschiedenen Template-IDs ueberschreiben sich NIE mehr; Bestandsrecords
+     ohne ID werden einmalig per Schluessel migriert. */
+  if(window.ORVIA&&ORVIA.debriefRecord&&ORVIA.debriefRecord.upsert){
+    ORVIA.debriefRecord.upsert(st,rec);
+  } else {
+    var prev=gmDbFind(c.key);
+    if(prev){for(var k in rec)prev[k]=rec[k];}
+    else st.push(rec);
+  }
+  try{if(typeof saveProfile==='function')saveProfile();}catch(_){ }
+  /* DROSSEL-BUST (v8-297): Ein neues Debrief IST ein neuer Datenstand —
+     die naechste Beobachtung darf nicht im Minutenfenster haengen. */
+  try{if(typeof _gmObsLast!=='undefined'&&_gmObsLast)_gmObsLast.key=null;}catch(_){ }
+
+  /* Entscheidungs-Log: das Debrief ist eine Rueckmeldung, keine Planentscheidung —
+     protokolliert wird es trotzdem, weil es spaeter die Grundwahrheit liefert. */
+  try{
+    if(window.ORVIA&&ORVIA.decisionLog&&ORVIA.decisionLog.logDecision){
+      /* IDENTITAET WIE IM PROFIL (v8-292): Das Log ist append-only mit
+         unique(user_id, decision_id) — 'db:'+key kollidierte fuer Zwillinge
+         (gleiches Datum|Sport|Label) UND fuer jedes erneute Speichern
+         derselben Einheit. Jetzt: Occurrence-ID des Records + Ereigniszeit —
+         Zwillinge unterscheiden sich per Template-ID, Wiederholungen per
+         Zeitstempel, und jede Korrektur ist ein NEUER Eintrag (genau das
+         Append-only-Versprechen von 0032). */
+      ORVIA.decisionLog.logDecision({
+        timestamp:new Date().toISOString(), decisionType:'user_override',
+        decisionId:(rec.id||('db:'+c.key))+'@'+(rec.debriefedAt||new Date().toISOString()),
+        weekId:null, planId:rec.planId||null, registry:ORVIA,
+        inputs:{sessionType:rec.sessionType,rpe:rec.rpe,pain:rec.pain},
+        selected:{adherence:rec.adherence,executionScore:rec.executionScore}
+      });
+    }
+  }catch(_){ }
+
+  /* Prediction Observer (v8-293): Aufloesung NACH dem Speichern — das
+     Speichern hat Vorrang und ist zu diesem Zeitpunkt abgeschlossen; ein
+     werfender Observer kann es nicht mehr beruehren. Hinter demselben
+     Flag wie predict(). */
+  try{
+    if(window.ORVIA&&ORVIA.resolveDebriefPrediction)ORVIA.resolveDebriefPrediction(rec);
+  }catch(_){ }
+
+  _gmDbCtx=null;_gmDbRpe=null;_gmDbPain=false;_gmDbReason=null;
+  try{gmCloseSheets();}catch(_){ }
+  try{renderGMPlan();}catch(_){ }
+  try{toast('Rückmeldung gespeichert');}catch(_){ }
+}
+
+/* Verträglichkeitsstand — beantwortet „was weiß die App über mich". */
+function gmDebriefState(){
+  try{
+    var SD=gmDbMod();if(!SD)return null;
+    var st=gmDbStore()||[];
+    return SD.toleranceState(st.filter(function(d){return d&&d.judged;}),{});
+  }catch(_){return null;}
+}
+/* Bindeglied Plankarte -> Debrief. Sammelt Plan, Ist und Zonen an EINER Stelle,
+   damit die Karte nur eine Koordinate uebergeben muss. */
+function gmOpenDebriefAt(di,ii,clickDateIso){
+  try{
+    var week=activeWeekPlan()||[];var it=(week[di]||[])[ii];if(!it)return;
+    /* v8-310a (Gians P0): Der Datumskontext kommt vom KLICK (gerenderte
+       Karte), nicht aus einer erneuten Wochenversatz-Rechnung — der Versatz
+       koennte sich zwischen Render und Klick geaendert haben, und genau diese
+       Rekonstruktion ist per Vertrag verboten. Legacy-Fallback nur ohne
+       Argument. Debrief fuer VERGANGENE absolvierte Einheiten ist der Zweck
+       des Zurueckblaetterns; die ZUKUNFT bleibt gesperrt — es gibt nichts
+       rueckzumelden, was noch nicht stattgefunden hat. */
+    var dateIso=clickDateIso||null;
+    /* v8-310a-Haertung: KEINE _wOff-Rekonstruktion mehr — ohne Klick-Datum
+       gibt es keine Rueckmeldung (missing_date_context), denn ein erratenes
+       Datum wuerde das Debrief an den falschen Tag binden. */
+    if(!dateIso){
+      if(typeof toast==='function')toast('Keine Rückmeldung möglich — fehlender Datumskontext.');
+      return;
+    }
+    if(dateIso>todayStr()){
+      if(typeof toast==='function')toast('Keine Rückmeldung möglich — diese Einheit liegt in der Zukunft.');
+      return;
+    }
+
+    /* Ist-Werte aus dem Resolver — dieselbe Quelle wie die Anzeige „Absolviert". */
+    var actual=null;
+    try{
+      var r=(planActualResolveForDates([dateIso])||{}).byOcc||{};
+      var key=Object.keys(r).filter(function(x){return x.indexOf(dateIso)===0;})[0];
+      var res=key?r[key]:null;
+      if(res&&res.actual)actual={distanceKm:res.actual.distanceKm,durationMin:res.actual.durationMin,
+        paceSecPerKm:(res.actual.distanceKm>0&&res.actual.durationMin>0)?Math.round(res.actual.durationMin*60/res.actual.distanceKm):null};
+    }catch(_){ }
+
+    /* Geplante Vorgabe inkl. Zielpace — ohne sie gibt es kein Urteil (C3). */
+    /* GEMEINSAME QUELLE (v8-298): identisch zur Vorhersage-Seite. */
+    var sportId=(typeof gmSportIdOfUnit==='function')?gmSportIdOfUnit(it)
+      :((String(it.t||'').toLowerCase().indexOf('lauf')>=0)?'running':null);
+    var zones=null,planned={t:it.t,l:it.l,d:it.d,sportId:sportId};
+    try{
+      if(window.ORVIA&&ORVIA.performanceZones&&sportId){
+        /* Wiederverwendung der Aufloesung aus dem letzten Render — eine Quelle,
+           damit das Urteil zur angezeigten Vorgabe passt. */
+        var all=ORVIA._lastPlanPerf||null;
+        zones=all&&all.sports?all.sports[sportId]:null;
+        var tg=zones?ORVIA.performanceZones.paceForUnit(it,zones):null;
+        if(tg&&tg.ok){planned.targetLoSecPerKm=tg.loSecPerKm;planned.targetHiSecPerKm=tg.hiSecPerKm;planned.zone=tg.zone;}
+      }
+    }catch(_){ }
+    /* LEAKAGE-FIX (v8-289): planned bekommt NIE Ist-Werte. Vorher stand hier
+       planned.durationMin=actual.durationMin — damit diktierte die Ausfuehrung
+       rueckwirkend die Erwartung (expectedRpe skaliert mit der Dauer!) und
+       completionPct war konstruktionsbedingt 1. Die geplante Dauer kommt aus
+       dem Planfeld oder bleibt null (dann Tabellenerwartung, als solche
+       ausgewiesen). */
+    try{
+      var _pd=(window.ORVIA&&ORVIA.debriefRecord)?ORVIA.debriefRecord.plannedDurationOf(it):null;
+      if(_pd!=null)planned.durationMin=_pd;
+    }catch(_e){}
+    gmOpenDebrief(dateIso,it,planned,actual);
+    if(_gmDbCtx)_gmDbCtx.zones=zones;
+  }catch(_){ }
+}

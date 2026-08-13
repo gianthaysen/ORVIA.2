@@ -33,3 +33,11 @@ sync17/
 Upload-ORVIA.2-*/
 .g1g_sw_blob_tmp.js
 orvia_app_sync*/
+
+# Auslieferungs- und Prüfpakete (reproduzierbar aus dem Arbeitsbaum, v8-342)
+orvia-v8-*.tar.gz
+orvia-v8-*.tgz
+gw-stage.tar.gz
+gw-probe-stage.tar.gz
+_to_delete*
+UPLOAD-github-*/

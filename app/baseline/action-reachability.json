@@ -1,0 +1,129 @@
+{
+  "baselineTag": "v8-219-audit-baseline",
+  "capturedAt": "2026-08-02T16:57:34.242Z",
+  "tool": "tools/probe_actions_live.mjs",
+  "purpose": "Dokumentiert den IST-Zustand der Aktions-Erreichbarkeit. Keine Bewertung als Soll.",
+  "totalActions": 13,
+  "resolvable": 13,
+  "unresolvable": 0,
+  "silentlyDead": 2,
+  "tabbarTabs": [
+    "heute",
+    "plan",
+    "akt",
+    "dash",
+    "mehr"
+  ],
+  "domTargets": {
+    "tabbar button[data-tab=\"training\"]": false,
+    "#tab-training": true,
+    "#todaySummary sichtbar": false
+  },
+  "limitation": "probeActions() prueft NUR die Aufloesbarkeit des Entry-Points. Ein aufloesbarer Handler, der intern auf ein fehlendes DOM-Ziel trifft und undefined liefert, gilt weiterhin als handled. Genau diese Klasse ist unter silentlyDead ausgewiesen.",
+  "actions": [
+    {
+      "action": "training_start",
+      "entryPoint": "orvia:workoutUI.openTrainingTab",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": true,
+      "note": "Entry-Point aufloesbar, aber openTrainingTab() sucht .tabbar button[data-tab=\"training\"] — dieser Button existiert nicht. Handler liefert undefined, runActionEx meldet handled. Siehe baseline/known-failures.json KF-001/KF-003."
+    },
+    {
+      "action": "checkin_morning",
+      "entryPoint": "orvia:quickActions.gotoMorningCheckin",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "checkin_evening",
+      "entryPoint": "orvia:quickActions.gotoEveningCheckin",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "activity_log",
+      "entryPoint": "openManualActivity",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "routines_check",
+      "entryPoint": "orvia:quickActions.gotoRoutines",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "weight_update",
+      "entryPoint": "openPerformanceManager",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "complaint_log",
+      "entryPoint": "openModulePicker",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "goal_add",
+      "entryPoint": "openGoalsManager",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "measurement_log",
+      "entryPoint": "openPerformanceManager",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "appointment_add",
+      "entryPoint": "openFixedEventEditor",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "training_continue",
+      "entryPoint": "orvia:workoutUI.openTrainingTab",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": true,
+      "note": "Entry-Point aufloesbar, aber openTrainingTab() sucht .tabbar button[data-tab=\"training\"] — dieser Button existiert nicht. Handler liefert undefined, runActionEx meldet handled. Siehe baseline/known-failures.json KF-001/KF-003."
+    },
+    {
+      "action": "profile_complete",
+      "entryPoint": "openProfileCenterEntry",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    },
+    {
+      "action": "complaint_update",
+      "entryPoint": "openModulePicker",
+      "resolvable": true,
+      "reason": "handled",
+      "silentlyDead": false,
+      "note": null
+    }
+  ]
+}

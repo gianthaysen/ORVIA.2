@@ -1,0 +1,194 @@
+{
+  "_status": [
+    "ERSTE QUELLE MIT ECHTEM INHALT. Die PDF war abrufbar, ich habe sie",
+    "gelesen — und die entscheidenden Zahlen mit einem ZWEITEN, unabhaengigen",
+    "Auslesen desselben Dokuments gegengeprueft. Beide Lesungen stimmen ueberein.",
+    "",
+    "EINE UNTERSCHEIDUNG, DIE ICH FAST FALSCH GEMACHT HAETTE:",
+    "Die 5-6 Saetze gelten PRO MUSKELGRUPPE, nicht pro Uebung. Sie auf",
+    "session.sets zu legen waere ein Einheitenfehler gewesen — aus 5 Saetzen",
+    "fuer den Quadrizeps waeren 5 Saetze Beinpresse UND 5 Saetze Kniebeuge",
+    "geworden. Deshalb liegt diese Regel auf plan.saetze_je_muskelgruppe,",
+    "einem Ziel, das die Factory (noch) nicht konsumiert. Lieber wirkungslos",
+    "und richtig als wirksam und falsch."
+  ],
+  "sport": "gym",
+  "quelle": {
+    "id": "SRC-FRIEDMANN-2007",
+    "art": "review",
+    "titel": "Neuere Entwicklungen im Krafttraining. Muskulaere Anpassungsreaktionen bei verschiedenen Krafttrainingsmethoden",
+    "wer": "Birgit Friedmann — Deutsche Zeitschrift fuer Sportmedizin 58(1), S. 12-18",
+    "jahr": 2007,
+    "url": "https://www.germanjournalsportsmedicine.com/fileadmin/content/archiv2007/heft01/11-18.pdf",
+    "sportarten": [
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitsportler",
+      "krafttraining_fortgeschritten"
+    ],
+    "worum_gehts": [
+      "hypertrophie",
+      "trainingsmethoden",
+      "anpassungsreaktionen"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Der Uebersichtsartikel ordnet die muskulaeren Anpassungen an verschiedene Krafttrainingsmethoden ein. Zuerst passt sich die Ansteuerung an, erst danach folgen morphologische Veraenderungen: groesserer Muskelquerschnitt und eine Verschiebung der Fasertypen von Typ IIX zu Typ IIA. Fuer Hypertrophie beschreibt die Autorin als besonders wirksam sechzig bis fuenfundachtzig Prozent des Einwiederholungsmaximums, sechs bis zwanzig Wiederholungen, fuenf bis sechs Saetze je Muskelgruppe und zwei bis drei Minuten Satzpause. Der fuer eine Trainings-App wichtigste Befund ist ein anderer: die Streuung zwischen einzelnen Menschen ist enorm. Fuer neuere Verfahren reicht die Datenlage nicht aus.",
+    "grenzen": "Uebersichtsarbeit, keine eigene Untersuchung — sie referiert Studienlage, sie erzeugt sie nicht. Erschienen 2007, also rund neunzehn Jahre alt; gerade beim Krafttraining hat sich die Studienlage seither bewegt, etwa bei Volumen-Wirkungs-Beziehung und Abstand zum Muskelversagen. Die Zahlenangaben sind Beschreibungen dessen, was sich in den zitierten Studien als wirksam zeigte, nicht als Empfehlung der Autorin formuliert. Die Autorin sagt ausdruecklich, dass es fuer die neueren Methoden weiterer Untersuchungen bedarf, bevor allgemeine Empfehlungen moeglich sind. Keine Aussage fuer Kinder, Jugendliche, Aeltere ueber vierzig oder Personen mit Vorerkrankungen. Ich habe die PDF ueber ein Abrufwerkzeug gelesen, nicht Seite fuer Seite selbst — die Zahlen sind mit einem zweiten unabhaengigen Auslesen gegengeprueft, ein Uebertragungsfehler bleibt trotzdem moeglich.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "GYM-HYP-001",
+      "thema": "pausenlaenge",
+      "aussage": "Zwischen den Saetzen eines auf Muskelaufbau ausgerichteten Krafttrainings liegen zwei bis drei Minuten Pause.",
+      "art": "studie",
+      "quellen": [
+        "SRC-FRIEDMANN-2007"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "krafttraining_anfaenger",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Angabe beschreibt, was in den referierten Studien angewendet wurde, nicht eine abgeleitete Optimaldosis",
+        "Uebersichtsarbeit von 2007 — neuere Arbeiten zur Pausenlaenge sind nicht beruecksichtigt",
+        "Kein Unterschied nach Uebung, Muskelgruppe oder Trainingszustand angegeben"
+      ],
+      "wenn_unsicher": "Im Zweifel laenger pausieren. Eine zu kurze Pause kostet Last im naechsten Satz, eine zu lange kostet nur Zeit.",
+      "wirkt_auf": [
+        "session.rest_seconds"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "zahlen": {
+        "eingabe_einheit": "Minuten Pause zwischen zwei Saetzen",
+        "ausgabe_einheit": "Sekunden Satzpause",
+        "bereich": {
+          "min": 120,
+          "max": 180
+        },
+        "gilt_fuer": "Hypertrophieorientiertes Krafttraining bei gesunden Erwachsenen zwischen achtzehn und vierzig Jahren",
+        "so_steht_es_da": "Die Autorin nennt eine Pausendauer von zwei bis drei Minuten zwischen den einzelnen Saetzen als Teil dessen, was sich fuer Hypertrophie als besonders wirksam gezeigt hat.",
+        "umrechnung": "Minuten mal sechzig",
+        "unsicherheit": "Spannbreite aus referierten Studien, keine gemessene Dosis-Wirkungs-Kurve. Der untere Rand ist der vorsichtige Wert.",
+        "nicht_bei": [
+          "akute Verletzung",
+          "Krafttraining-Anfaenger ohne Technikgrundlage"
+        ],
+        "sicherheitsgrenzen": "Die Pause ist eine Untergrenze, keine Obergrenze — sie darf jederzeit verlaengert werden. Wird die Bewegungsqualitaet im Folgesatz schlechter, gilt das vor der Zahl."
+      }
+    },
+    {
+      "id": "GYM-HYP-002",
+      "thema": "satzzahl",
+      "aussage": "Der Umfang wird je Muskelgruppe geplant, nicht je Uebung: fuenf bis sechs Saetze pro Muskelgruppe und Einheit, verteilt ueber alle Uebungen, die diese Muskelgruppe belasten.",
+      "art": "studie",
+      "quellen": [
+        "SRC-FRIEDMANN-2007"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "krafttraining_anfaenger",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Einheit ist Muskelgruppe, nicht Uebung — wer das verwechselt, verdoppelt oder verdreifacht den Umfang",
+        "Uebersichtsarbeit von 2007; die Volumen-Wirkungs-Diskussion ist seither weitergegangen",
+        "Keine Angabe zur Wochenfrequenz, ohne die eine Satzzahl je Einheit wenig aussagt"
+      ],
+      "wenn_unsicher": "Im Zweifel am unteren Rand bleiben. Zusaetzliches Volumen erhoeht die Ermuedung zuverlaessiger als den Zuwachs.",
+      "wirkt_auf": [
+        "plan.saetze_je_muskelgruppe"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "zahlen": {
+        "eingabe_einheit": "Saetze pro Muskelgruppe und Trainingseinheit",
+        "ausgabe_einheit": "Saetze pro Muskelgruppe und Trainingseinheit",
+        "bereich": {
+          "min": 5,
+          "max": 6
+        },
+        "gilt_fuer": "Hypertrophieorientiertes Krafttraining bei gesunden Erwachsenen zwischen achtzehn und vierzig Jahren",
+        "so_steht_es_da": "Die Autorin nennt fuenf bis sechs Saetze pro Muskelgruppe. Ausdruecklich pro Muskelgruppe, nicht pro Uebung.",
+        "umrechnung": "keine — und ausdruecklich KEINE Umrechnung auf Saetze je Uebung. Diese Zahl darf session.sets nicht speisen.",
+        "unsicherheit": "Beschreibung aus referierten Studien, keine abgeleitete Optimaldosis. Ohne Wochenfrequenz nur begrenzt aussagekraeftig.",
+        "nicht_bei": [
+          "akute Verletzung",
+          "Krafttraining-Anfaenger ohne Technikgrundlage"
+        ],
+        "sicherheitsgrenzen": "Gilt nur bei sauberer Technik. Wird die Bewegungsausfuehrung schlechter, endet die Einheit vor der Satzzahl."
+      }
+    },
+    {
+      "id": "GYM-HYP-003",
+      "thema": "last_und_wiederholungen",
+      "aussage": "Muskelaufbau entsteht ueber einen breiten Lastbereich von etwa sechzig bis fuenfundachtzig Prozent des Einwiederholungsmaximums bei sechs bis zwanzig Wiederholungen je Satz. Es gibt keinen engen Wiederholungskorridor, ausserhalb dessen nichts passiert.",
+      "art": "studie",
+      "quellen": [
+        "SRC-FRIEDMANN-2007"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "krafttraining_anfaenger",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Der Bereich ist breit, weil die referierten Studien breit streuen — nicht, weil die Breite selbst belegt waere",
+        "Ohne Angabe des Abstands zum Muskelversagen ist eine Prozentangabe allein nicht steuerbar",
+        "Uebersichtsarbeit von 2007"
+      ],
+      "wenn_unsicher": "Im Zweifel in der Mitte des Bereichs arbeiten und die Last ueber Wochen steigern, statt den Rand zu suchen.",
+      "wirkt_auf": [
+        "session.last_prozent_1rm",
+        "session.repetitions"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "GYM-VAR-001",
+      "thema": "erwartungsrahmen",
+      "aussage": "Die Reaktion auf dasselbe Krafttraining faellt zwischen einzelnen Menschen extrem unterschiedlich aus: nach zwoelf Wochen standardisiertem Armkrafttraining reichten die Querschnittsaenderungen von minus drei bis plus neunundfuenfzig Prozent, die Kraftzuwaechse von null bis zweihundertfuenfzig Prozent. Eine App darf deshalb keinen individuellen Zuwachs versprechen.",
+      "art": "studie",
+      "quellen": [
+        "SRC-FRIEDMANN-2007"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_anfaenger",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [],
+      "unsicherheiten": [
+        "Die Streuung stammt aus einer einzelnen grossen Untersuchung, die in der Uebersicht referiert wird",
+        "Die Ursachen der Streuung sind darin nicht aufgeloest — genetisch, methodisch und messbedingt ist nicht getrennt",
+        "Die Spannbreite ist eine beobachtete Streuung, keine Vorhersage — sie darf nie als erwartbarer Zuwachs angezeigt werden"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Prognose ausgeben. Eine Spannbreite ohne Einordnung ist irrefuehrender als gar keine Zahl.",
+      "wirkt_auf": [
+        "plan.erwartungsrahmen"
+      ],
+      "braucht": [],
+      "_warum_keine_zahlen": "Erst hatte ich die Spannbreite -3 bis +59 Prozent als 'zahlen' eingetragen. Der Vertrag stufte die Regel daraufhin als 'darf eine Zahl vorgeben' ein — also als VERORDNUNG. Das ist genau falsch herum: diese Zahlen begruenden den VERZICHT auf eine Prognose, sie sind keine. Ein Feld 'zahlen' bedeutet im Format 'die Regel schreibt einen Wert vor'. Eine illustrative Zahl hat dort nichts zu suchen. Die Werte stehen jetzt in der Aussage und in der Kernaussage der Quelle."
+    }
+  ]
+}

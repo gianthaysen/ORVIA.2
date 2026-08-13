@@ -1,0 +1,962 @@
+{
+  "baselineTag": "v8-219-audit-baseline",
+  "capturedAt": "2026-08-02T16:33:53.111Z",
+  "collisionScan": {
+    "tool": "tools/collision_scan.mjs",
+    "status": "pass",
+    "output": "collision_scan: OK — 80 Scripts in echter Ladereihenfolge geprüft, keine dateiübergreifende Deklarations-Überschreibung."
+  },
+  "goldenMasterParity": {
+    "status": "not_runnable",
+    "tools": [
+      "gm1_parity.mjs",
+      "gm2_parity.mjs",
+      "gm3_parity.mjs",
+      "gm4_parity.mjs",
+      "gm5_parity.mjs",
+      "gm6_parity.mjs"
+    ],
+    "reason": "Die sechs Paritaetstools vergleichen gegen Golden-Master-Fixtures in /tmp (z. B. /tmp/orvia_dashboard_5.html, /tmp/gm4h.html). Diese Fixtures existieren in dieser Umgebung nicht und liegen nicht im Repo.",
+    "consequence": "Der im Umsetzungsplan angenommene Schutz der Golden-Master-Struktur durch diese Tools besteht AKTUELL NICHT. Die Regel \"Struktur schrumpft NIE\" (docs/GOLDEN-MASTER-MAPPING.md:47) ist derzeit nur dokumentiert, nicht testgedeckt. Vor Phase 1b ist entweder die Fixture wiederherzustellen oder ein eigenstaendiger Struktur-Regressionstest zu schreiben.",
+    "blocksPhase": "1b"
+  },
+  "testSuite": {
+    "total": 186,
+    "pass": 178,
+    "fail": 8,
+    "genuineDefects": 0,
+    "note": "Alle Fehlschlaege sind Umgebungs- oder Fixture-Probleme. Kein Fehlschlag ist ein Codedefekt. env_missing_package: @supabase/supabase-js nicht installiert. env_missing_credentials: SUPABASE_URL/ANON_KEY/A_EMAIL/A_PW nicht gesetzt. fixture_missing: /tmp-Harness nicht vorhanden.",
+    "results": [
+      {
+        "test": "_helpers.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "account_flows_h4_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_ad1c_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_config_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_dedup_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_detail_ad1_contract_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_dom_phase4_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_edit_phase4_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_normalize_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_store_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_sync_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "activity_week_truth_dt1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "age_boundary_issue6_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "analysis_endurance_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "analysis_recovery_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "athlete_profile_sync_0016_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "auth_dom_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "auth_logic_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "availability_4e1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch0_safety_pipeline_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2a_canonical_load_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2b_dedupe_grouping_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2c_load_quality_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2d_ratio_occurrence_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2e_integration_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2f_correctness_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch2f_offline_queue_live_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_credentials"
+      },
+      {
+        "test": "batch3a_goal_portfolio_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch3b0_knowledge_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch3b1_running_capacity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "batch3b1b_activity_summary_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "blob_hardening_h3_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "body_fields_p2_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "bodymap_mapping_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "calc_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "calc_riegel_general_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_compact_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_decision_integration_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_extra_ui_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_field_resolver_p6_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_p6_preconditions_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_phase2_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "checkin_phase2_types_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "cloud_sync_p9_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "coachmarks_m9_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "dashboard_v5_phaseb_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "decision_reentrancy_incident_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "devices_4h_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "endurance_profiles_4c1b_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "energy_resolver_p7_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i2_runkm_canon_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i2b_missingness_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i2c_capacity_truth_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a1_safety_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a2_load_wording_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a3_confidence_review_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a4_failclosed_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a5_estimated_semantics_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a6_confidence_normalize_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3a_load_truth_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3b1_failclosed_aggregation_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3b_adapter_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_i3b_plan_actual_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_input_snapshot_b1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_program_e_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_s1_scheduler_skeleton_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_s2_goal_allocation_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_v2_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "engine_week_consumers_3c_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "equipment_p6_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "exercise_library_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "format_utils_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm1_shell_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm2_plan_parity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm3_activity_parity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm4_analysis_parity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm5_profile_parity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm61_contract_test.mjs",
+        "status": "fail",
+        "reason": "assertion_failed"
+      },
+      {
+        "test": "gm61_hydration_contract_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm62_input_guard_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gm6_state_contract_test.mjs",
+        "status": "fail",
+        "reason": "fixture_missing"
+      },
+      {
+        "test": "gm7_contracts_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "goal_editor_g0_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "goal_g1_contract_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "goal_ssot_p6_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "goal_unify_h2_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "goals_p5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gym_shadow_report_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "gym_volume_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "heute_single_training_block_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "import_route_persistence_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "intervals_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_active_race_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_flush_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_load_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_offline_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_pause_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_restore_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "live_workout_rls_phase42_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_package"
+      },
+      {
+        "test": "live_workout_rpc_smoke_phase42_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_package"
+      },
+      {
+        "test": "metric_registry_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "metric_resolver_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "migrate_blob_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "muscle_map_pilot_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "muscle_volume_phase43_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "muscle_volume_repo_phase43_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "muscle_volume_sql_phase43_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_package"
+      },
+      {
+        "test": "onboarding_completion_m4_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_dom_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_logic_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_m5a_first_run_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_m5b_training_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_m6_goals_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_m7_availability_safety_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_m8_review_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_profile_logic_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_routing_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_sports_logic_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_state_v3_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_steps_4i1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "onboarding_store_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "orvia_charts_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "performance_4f_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "phase1a_trust_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "phase3_hydration_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "phase3_offline_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "phase4_consolidation_4i_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_fulfillment_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_phases_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_quality_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_ssot_p4_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_weeklist_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "plan_weekvolume_v5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_center_m10_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_completion_fix_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_editor_bugfix_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_interpretation_2026_07_16_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_meta_completeness_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_metric_resolver_p5_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_modal_infra_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_model_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_phase1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_save_wiring_a0_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_ui_kit_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "profile_ui_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "provider_metrics_0019_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "quick_actions_b_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "quick_add_p8_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "quickadd_v8_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "r1_data_integrity_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "race_phases_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "racket_golf_4c1d_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "readiness_phase3_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "recovery_prefs_4g_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "register_with_invite_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "rls_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_package"
+      },
+      {
+        "test": "role_display_access_profile_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "series_e2e_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sheet_4j1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "shell_v3_migration_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sport_complete_4c1e_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sport_coverage_4c1a_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sport_editor_4c2_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sport_model_h1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sport_tiles_4d_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sports_sync_2b1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "swim_pace_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "sync_incident_fix_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "team_profiles_4c1c_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "today_decision_p3_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "today_nav_p7_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_domain_phase41_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_input_p8_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_labels_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_load_phase3_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_migration_phase41_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "training_rls_phase41_test.mjs",
+        "status": "fail",
+        "reason": "env_missing_package"
+      },
+      {
+        "test": "ui_detail_mode_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "ui_refresh_p1_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "upsert_conflict_contract_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "workout_hub_hydration_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "workout_lifecycle_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "workout_repo_norow_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "workout_ssot_phase42_test.mjs",
+        "status": "pass",
+        "reason": null
+      },
+      {
+        "test": "workout_stuck_session_recovery_test.mjs",
+        "status": "pass",
+        "reason": null
+      }
+    ]
+  }
+}

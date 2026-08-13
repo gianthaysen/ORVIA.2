@@ -94,8 +94,27 @@
     placed.placements.forEach(function (p, idx) {
       var req = reqs.filter(function (r) { return r.id === p.id; })[0] || {};
       var ev = (input.evidence && input.evidence[p.sportId]) || null;
+      /* v8-341 — HIER ENDETE DIE EINSPEISEKETTE BISHER.
+         `buildPrescription` kennt seit v8-336 einen Parameter `knowledge`,
+         und die Factory zieht daraus Zahlen mit Herkunft. Nur uebergeben hat
+         ihn niemand: die gesamte Kette lief ausschliesslich in Pruefskripten.
+         Ein eingespeistes Paket aenderte am Verhalten der App nichts.
+
+         Der Consumer ist fail-closed: gibt es kein Paket fuer die Sportart,
+         fehlt ein Modul oder stimmt ein Hash nicht, kommt `ok:false` mit
+         Grund zurueck und die Factory arbeitet exakt wie zuvor mit
+         Produktwerten. Der Grund wird geflaggt, damit "kein Wissen" nicht
+         wie "Wissen sagt nichts" aussieht. */
+      var wissen = null;
+      var KCons = O.knowledgeConsumer;
+      if (KCons && typeof KCons.wissenFuer === 'function') {
+        var w = KCons.wissenFuer(req.sportId);
+        if (w && w.ok === true) wissen = w;
+        else if (w && w.grund && w.grund !== 'kein_paket_fuer_sportart') flags.push('wissen_nicht_verfuegbar:' + w.grund);
+      }
       var pr = PF.buildPrescription({ sportId: req.sportId, sessionType: req.sessionType,
-        durationMin: req.durationMin, priority: req.priority, exercises: req.exercises }, ev);
+        durationMin: req.durationMin, priority: req.priority, exercises: req.exercises,
+        knowledge: wissen }, ev);
       if (!pr.ok) { blockedPrescriptions.push({ id: p.id, blocked: pr.blocked }); return; }
       sessions.push({
         sessionId: 'ps:v2:' + input.weekKey + ':' + idx,                 // deterministisch, kein Zufall

@@ -1,0 +1,59 @@
+{
+  "_status": [
+    "VORBEREITET, NOCH NICHT EINSPEISBAR — gleicher Grund wie bei Pauls:",
+    "books.google.de ist fuer mein Abrufwerkzeug per robots.txt gesperrt.",
+    "Und selbst mit Zugriff duerfte ich S. 42 nicht abschreiben.",
+    "",
+    "Inhaltlich ist das die relevanteste deiner bisherigen Quellen: DLV",
+    "A-Trainer, 20 Marathons unter drei Stunden, und das Kapitel trifft genau",
+    "deine Kombination Laufen + Kraft mit Halbmarathonziel.",
+    "",
+    "DU FUELLST: kernaussage, grenzen, eigene_worte, geprueft_am, regeln.",
+    "Was ich konkret brauche, wenn du S. 42 vor dir hast:",
+    "  - Welche Kraftuebungen nennt er fuer Laeufer, und welche schliesst er aus?",
+    "  - Wie viele Krafteinheiten pro Woche, in welcher Trainingsphase?",
+    "  - Saetze, Wiederholungen, Last — falls er Zahlen nennt",
+    "  - Wie legt er Kraft- und harte Laufeinheiten zeitlich zueinander?",
+    "  - Wofuer sagt er ausdruecklich NICHTS oder warnt ab?",
+    "Drei bis fuenf Saetze sinngemaess reichen. Keine Abschrift."
+  ],
+
+  "sport": "running",
+
+  "quelle": {
+    "id": "SRC-BECK-MARATHON-2015",
+    "art": "lehrbuch",
+    "titel": "Das grosse Buch vom Marathon: Lauftraining mit System, S. 42 (Krafttraining bei Laeufern)",
+    "wer": "Hubert Beck (Dipl.-Ing., DLV A-Trainer; 20 Marathons unter 3 Stunden)",
+    "jahr": 2015,
+    "url": "https://books.google.de/books?id=FoddEAAAQBAJ&pg=PA42",
+    "_verlag": "Stiebner Verlag, 368 Seiten, ISBN 9783767920248",
+    "sportarten": ["running", "gym"],
+    "gilt_fuer": ["freizeitlaeufer", "halbmarathon", "marathon"],
+    "worum_gehts": ["krafttraining_fuer_laeufer", "uebungsauswahl", "trainingsplanung"],
+    "qualitaet": "mittel",
+    "_qualitaet_begruendung": [
+      "Trainerfachbuch, keine wissenschaftliche Arbeit. Die Qualifikation ist",
+      "einschlaegig (DLV A-Trainer, eigene Wettkampfpraxis auf hohem Niveau)",
+      "und damit deutlich belastbarer als ein Video — aber es bleibt",
+      "strukturiertes Erfahrungswissen ohne Methodenteil, ohne Quellenapparat",
+      "und ohne Begutachtung. Ausgabe 2015, also elf Jahre alt.",
+      "",
+      "REGELROLLE: wahrscheinlich 'coachkonsens' (expert_consensus), NICHT",
+      "'studie'. Das begrenzt die Evidenzklasse auf C — bewusst. Wenn eine",
+      "Aussage von ihm sich mit Friedmann 2007 oder Llanos-Lagos 2024 deckt,",
+      "sag es mir: dann tragen zwei Saeulen statt einer, und die Regel steigt.",
+      "",
+      "ACHTUNG bei Zahlen: 'Saetze pro Uebung' und 'Saetze pro Muskelgruppe'",
+      "sind verschiedene Einheiten. Sag mir, was genau dasteht — die",
+      "Verwechslung hat in v8-339 fast den Umfang verdoppelt."
+    ],
+
+    "kernaussage": "",
+    "grenzen": "",
+    "eigene_worte": false,
+    "geprueft_am": ""
+  },
+
+  "regeln": []
+}

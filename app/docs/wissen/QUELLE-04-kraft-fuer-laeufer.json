@@ -1,0 +1,90 @@
+{
+  "_status": [
+    "VOLLSTAENDIG — und zwar ohne Erfindung, weil ich diese beiden Quellen",
+    "tatsaechlich gelesen habe (PubMed-Abstracts, ueber WebFetch abgerufen).",
+    "",
+    "WICHTIGE EINSCHRAENKUNG, steht auch in 'grenzen': ich habe die ABSTRACTS",
+    "gelesen, nicht die Volltexte. Effektgroessen und Populationsangaben sind",
+    "daraus uebernommen, alles andere nicht.",
+    "",
+    "'eigene_worte': true ist hier wahr — die Saetze sind von mir formuliert."
+  ],
+
+  "sport": "running",
+
+  "quellen": [
+    {
+      "id": "SRC-LLANOS-2024",
+      "art": "metaanalyse",
+      "titel": "Effect of Strength Training Programs in Middle- and Long-Distance Runners' Economy at Different Running Speeds",
+      "wer": "Llanos-Lagos, Ramirez-Campillo, Moran, Saez de Villarreal — Sports Medicine",
+      "jahr": 2024,
+      "doi": "10.1007/s40279-023-01978-y",
+      "sportarten": ["running", "gym"],
+      "gilt_fuer": ["freizeitlaeufer", "gut_trainierte_laeufer"],
+      "worum_gehts": ["laufoekonomie", "krafttraining"],
+      "qualitaet": "mittel",
+      "kernaussage": "Krafttraining verbessert die Laufoekonomie von Mittel- und Langstreckenlaeufern, aber die Groesse des Effekts haengt stark von der Methode ab. Am besten schnitten kombinierte Programme ab, danach schweres Training mit hoher Last; plyometrisches Training half nur bei langsameren Geschwindigkeiten bis etwa 12 km/h. Submaximales und isometrisches Training zeigte keinen belastbaren Effekt. Die eingeschlossenen Programme liefen sechs bis vierundzwanzig Wochen mit ein bis vier Einheiten pro Woche.",
+      "grenzen": "Ich habe nur das Abstract gelesen, nicht den Volltext. Die Arbeit vergleicht Methoden, sie leitet keine optimale Dosis ab — die Angabe ein bis vier Einheiten pro Woche beschreibt, was untersucht wurde, nicht was empfohlen wird. Die Autoren bewerten die Sicherheit der Evidenz als moderat, fuer kombinierte Verfahren als niedrig. Konkrete Satz- und Wiederholungszahlen waren zwischen den Studien uneinheitlich und werden deshalb hier nicht uebernommen. Keine Aussage fuer Anfaenger ohne Krafterfahrung und keine fuer Wettkampfwochen.",
+      "eigene_worte": true,
+      "geprueft_am": "2026-08-13"
+    },
+    {
+      "id": "SRC-RAMOS-2025",
+      "art": "uebersichtsarbeit",
+      "titel": "The Effect of Strength Training on Endurance Performance Determinants in Middle- and Long-Distance Endurance Athletes: An Umbrella Review",
+      "wer": "Ramos-Campo, Andreu-Caravaca, Clemente-Suarez, Rubio-Arias — Journal of Strength and Conditioning Research",
+      "jahr": 2025,
+      "doi": "10.1519/JSC.0000000000005056",
+      "sportarten": ["running", "gym"],
+      "gilt_fuer": ["freizeitlaeufer", "gut_trainierte_laeufer"],
+      "worum_gehts": ["laufoekonomie", "vo2max", "krafttraining"],
+      "qualitaet": "mittel",
+      "kernaussage": "Diese Dachuebersicht fasst siebzehn systematische Reviews zusammen und findet ueber alle hinweg mittlere bis grosse Verbesserungen der Laufoekonomie durch Krafttraining, waehrend sich die maximale Sauerstoffaufnahme nicht bedeutsam veraendert. Plyometrisches Training wirkte auf die Ausdauerleistung nur schwach. Der Nutzen von Krafttraining fuer Ausdauersportler liegt danach in der Oekonomie der Bewegung, nicht in der aeroben Kapazitaet.",
+      "grenzen": "Ich habe nur das Abstract gelesen, nicht den Volltext. Die Autoren benennen selbst die entscheidende Schwaeche: die meisten eingeschlossenen Reviews hatten niedrige oder sehr niedrige methodische Vertrauenswuerdigkeit, mit Maengeln bei der Literatursuche, bei der Begruendung von Ausschluessen und im Umgang mit Publikationsbias. Eine Dachuebersicht ist nicht besser als das, was sie zusammenfasst. Keine Dosisangabe, keine Aussage fuer Anfaenger, keine fuer Wettkampfwochen.",
+      "eigene_worte": true,
+      "geprueft_am": "2026-08-13"
+    }
+  ],
+
+  "regeln": [
+    {
+      "id": "RUN-KRAFT-001",
+      "thema": "krafttraining_fuer_laeufer",
+      "aussage": "Laeufer trainieren Kraft, um die Laufoekonomie zu verbessern, nicht um die maximale Sauerstoffaufnahme zu steigern. Wirksam sind schwere Lasten und kombinierte Programme; submaximales und isometrisches Training zeigt keinen belastbaren Effekt.",
+      "art": "studie",
+      "quellen": ["SRC-LLANOS-2024", "SRC-RAMOS-2025"],
+      "quellen_zusammenspiel": "haupt_plus_zusatz",
+      "_zusammenspiel_begruendung": "Llanos-Lagos ist die Hauptquelle (Sports Medicine, GRADE-bewertet, eigene Effektgroessen). Ramos-Campo stuetzt sie, traegt sie aber nicht: die Autoren stufen die Vertrauenswuerdigkeit der eingeschlossenen Reviews selbst als niedrig ein. Nicht 'jede_reicht' — die Dachuebersicht allein wuerde diese Regel nicht tragen.",
+      "gilt_fuer": ["freizeitlaeufer", "gut_trainierte_laeufer"],
+      "nicht_fuer": ["krafttraining_anfaenger", "wettkampfwoche", "akute_verletzung"],
+      "unsicherheiten": [
+        "Die Effektgroessen sind klein bis mittel (ES -0,27 fuer hohe Last, -0,43 fuer kombinierte Methoden) — messbar, aber kein Leistungssprung",
+        "Die Sicherheit der Evidenz wird von den Autoren als moderat bis niedrig bewertet",
+        "Beide Arbeiten nur als Abstract gelesen, nicht im Volltext",
+        "Der Uebertrag auf eine konkrete Halbmarathonzeit ist in keiner der beiden Quellen beziffert"
+      ],
+      "wenn_unsicher": "Im Zweifel bei schwerer Last mit deutlichem Abstand zum Muskelversagen bleiben und die Krafteinheit nicht in die 48 Stunden vor einer harten Laufeinheit legen.",
+      "wirkt_auf": ["session.exercises", "plan.strength_focus"],
+      "braucht": ["profile.sports", "profile.goal"]
+    },
+    {
+      "id": "RUN-KRAFT-002",
+      "thema": "plyometrie",
+      "aussage": "Sprungkrafttraining wirkt auf die Laufoekonomie nur im langsameren Geschwindigkeitsbereich bis etwa zwoelf Kilometer pro Stunde und traegt zur Ausdauerleistung insgesamt wenig bei. Es ersetzt kein schweres Krafttraining.",
+      "art": "studie",
+      "quellen": ["SRC-LLANOS-2024", "SRC-RAMOS-2025"],
+      "quellen_zusammenspiel": "haupt_plus_zusatz",
+      "_zusammenspiel_begruendung": "Llanos-Lagos ist die Hauptquelle (Sports Medicine, GRADE-bewertet, eigene Effektgroessen). Ramos-Campo stuetzt sie, traegt sie aber nicht: die Autoren stufen die Vertrauenswuerdigkeit der eingeschlossenen Reviews selbst als niedrig ein. Nicht 'jede_reicht' — die Dachuebersicht allein wuerde diese Regel nicht tragen.",
+      "gilt_fuer": ["freizeitlaeufer"],
+      "nicht_fuer": ["krafttraining_anfaenger", "wettkampfwoche", "akute_verletzung"],
+      "unsicherheiten": [
+        "Die Geschwindigkeitsgrenze von zwoelf Kilometern pro Stunde stammt aus der Moderatoranalyse einer Meta-Analyse, nicht aus einer eigens dafuer angelegten Untersuchung",
+        "Sprungbelastung erhoeht die Sehnenbelastung — dazu sagen beide Quellen nichts"
+      ],
+      "wenn_unsicher": "Im Zweifel weglassen. Der belegte Nutzen ist klein, die Belastung fuer Achillessehne und Knie ist es nicht.",
+      "wirkt_auf": ["session.exercises"],
+      "braucht": ["profile.goal"]
+    }
+  ]
+}

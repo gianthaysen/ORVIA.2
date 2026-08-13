@@ -1,0 +1,82 @@
+{
+  "designer": {
+    "version": "week-plan-designer@1",
+    "contentHash": "dec4a7d0"
+  },
+  "policy": {
+    "version": "week-plan-policy@1",
+    "contentHash": "b640f452"
+  },
+  "loadProfile": {
+    "version": "load-profile@1",
+    "contentHash": "7f605eb2"
+  },
+  "variants": {
+    "version": "plan-variants@1",
+    "contentHash": "dc0898f4"
+  },
+  "zones": {
+    "version": "performance-zones@2",
+    "contentHash": "ea31e026"
+  },
+  "flags": {
+    "version": "feature-flags@2",
+    "contentHash": "9a59962d"
+  },
+  "log": {
+    "version": "decision-log@4",
+    "contentHash": "ac90067c"
+  },
+  "evidence": {
+    "version": "evidence@2",
+    "contentHash": "5aa39adb"
+  },
+  "resolver": {
+    "version": "performance-resolver@2",
+    "contentHash": "296c1ee6"
+  },
+  "perfInput": {
+    "version": "performance-input@1",
+    "contentHash": "9e70fe42"
+  },
+  "debrief": {
+    "version": "session-debrief@3",
+    "contentHash": "52d6ac37"
+  },
+  "history": {
+    "version": "load-history@3",
+    "contentHash": "c9a352b1"
+  },
+  "progression": {
+    "version": "progression@9",
+    "contentHash": "277a9c73"
+  },
+  "feasibility": {
+    "version": "goal-feasibility@4",
+    "contentHash": "e8c03a48"
+  },
+  "shadow": {
+    "version": "shadow-adaptive@12",
+    "contentHash": "d006e28d"
+  },
+  "translator": {
+    "version": "plan-translator@2",
+    "contentHash": "8787f96d"
+  },
+  "prediction": {
+    "version": "prediction-observer@7",
+    "contentHash": "7bce664e"
+  },
+  "debriefRecord": {
+    "version": "debrief-record@5",
+    "contentHash": "7d2e35cc"
+  },
+  "observerInput": {
+    "version": "observer-input@5",
+    "contentHash": "690aee6c"
+  },
+  "observerSource": {
+    "version": "observer-source@2",
+    "contentHash": "483ea169"
+  }
+}

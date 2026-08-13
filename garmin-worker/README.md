@@ -13,6 +13,7 @@ validiert und idempotent nach Supabase schreibt (Migration
 | POST | `/connect` | Supabase-JWT | Garmin verbinden (`{email, password, mfa_code?}`); bei MFA → 409 `{mfaRequired:true}` |
 | POST | `/connect/mfa` | Supabase-JWT | MFA-Code nachreichen (`{mfa_code}`) |
 | POST | `/sync` | Supabase-JWT | Manuellen Sync anstoßen (202, läuft im Hintergrund) |
+| POST | `/workout/push` | Supabase-JWT | Kraft-Workout an Garmin übertragen (K5). **Im Regelbetrieb gesperrt** — siehe unten |
 | DELETE | `/connection` | Supabase-JWT | Verbindung trennen (Tokens löschen; `user_metrics` bleiben) |
 | GET | `/status` | Supabase-JWT | Verbindungs-/Sync-Status |
 | GET | `/healthz` | keine | Healthcheck |
@@ -20,6 +21,39 @@ validiert und idempotent nach Supabase schreibt (Migration
 Das Passwort wird nur transient für den Login-Request verwendet, nie
 gespeichert. Session-Tokens werden Fernet-verschlüsselt in
 `provider_credentials` abgelegt (service_role-only, keine Nutzer-RLS-Policies).
+
+## Kraft-Workout-Push (`/workout/push`, Kraftplan v2 K5)
+
+Kontrollierter Spike, **keine Freigabe für produktive Garmin-Workouts.**
+
+Zwei Zahlen, die Garmin Connect für ein Kraft-Workout erwartet, sind nicht
+belegt: die numerische Sport-ID (`SportType` in `garminconnect/workout.py`
+kennt nur running…other und nennt sich selbst „common values") und die
+numerische ID der Abbruchbedingung `reps` (`ConditionType` kennt sie nicht).
+Der Exporter in der App schreibt sie deshalb als `null`, und dieser Endpunkt
+weist solche Payloads im Regelbetrieb mit `422 invalid_workout` ab. Ebenso
+Payloads mit `weightValue`, solange die Schreibskalierung nicht bestätigt ist
+(Gate G3) — der Worker ergänzt und skaliert **nie** ein Gewicht.
+
+Für einen Gerätetest wird `STRENGTH_PUSH_DEVICE_TEST=true` gesetzt **und** im
+Body `deviceTest: true` mitgeschickt. Beides ist nötig; das Client-Flag allein
+schaltet nichts frei. Nach dem Test wieder ausschalten.
+
+Idempotenz läuft über `(user_id, client_ref)` — den Unique-Index aus Migration
+`0035_strength_targets_and_garmin_link.sql`. Gleicher `clientRef` und gleicher
+`payloadHash` ⇒ `409 already_pushed`. Gleicher `clientRef`, **anderer** Hash ⇒
+`409 client_ref_conflict`; ein bestehendes Garmin-Workout wird niemals still
+ersetzt. `status` wird erst nach einer Antwort mit belastbarer `workoutId` auf
+`pushed` gesetzt — eine unklare Antwort gilt nicht als Erfolg.
+
+| Antwort | Bedeutung |
+| --- | --- |
+| `200 {workoutId, status}` | übertragen und persistiert |
+| `409 {code:"already_pushed", workoutId, status}` | identischer Wiederholungsversuch |
+| `409 {code:"client_ref_conflict", workoutId, status}` | Plan hat sich seit dem Push geändert |
+| `401 {code:"reauthentication_required"}` | Token fehlt oder greift nicht (kein Passwort-Fallback) |
+| `422 {code:"invalid_workout", details:[…]}` | Gate G1/G3 zu, oder Payload unbrauchbar |
+| `502 {code:"garmin_unavailable", retryAfter?, detail?}` | Garmin weg, Rate-Limit oder Antwort ohne `workoutId` |
 
 ## Deployment auf Railway
 

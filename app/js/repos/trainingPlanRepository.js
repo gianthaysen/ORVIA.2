@@ -51,7 +51,10 @@
         plan_day_id: planDayId, exercise_id: ex.exerciseId || null, order_index: ex.order || 0,
         planned_sets: ex.plannedSets != null ? ex.plannedSets : null, min_reps: ex.minReps != null ? ex.minReps : null,
         max_reps: ex.maxReps != null ? ex.maxReps : null, target_rir: ex.targetRir != null ? ex.targetRir : null,
-        rest_seconds: ex.restSeconds != null ? ex.restSeconds : null, notes: ex.notes || null
+        rest_seconds: ex.restSeconds != null ? ex.restSeconds : null, notes: ex.notes || null,
+        /* v8-322: Zielgewicht. Ohne dieses Feld war die Spalte aus Migration 0035
+           tot — angelegt, aber von keinem Schreibpfad gefuellt. */
+        target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null
       });
     },
     // Vorlage → persönlicher Plan kopieren (Tage + Übungen). Vorlage bleibt unverändert/lesbar.

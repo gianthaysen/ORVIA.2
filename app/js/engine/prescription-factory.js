@@ -75,36 +75,94 @@
     return { type: 'pace', min: Math.round(sec * lowPct), max: Math.round(sec * highPct), unit: 's_per_km' };
   }
 
+  /* ---------- v8-337 · ALLE Produktzahlen an EINEM Ort ----------
+     Bis hierher lagen die Zahlen verstreut im Code: `_rpeTarget(7)` mitten in
+     einem ternaeren Ausdruck, `0.25` und `0.15` als nackte Faktoren, `repMin
+     = 4`. Sie sahen aus wie Fachwissen, waren aber Produktentscheidungen —
+     und niemand konnte sie finden, pruefen oder ersetzen.
+
+     Sie sind NICHT falsch. Sie sind ORVIA-Entscheidungen ohne Quelle, und
+     genau so muessen sie dastehen: benannt, an einer Stelle, mit [A]
+     gekennzeichnet und aus eingespeistem Wissen ueberschreibbar. Der
+     Unterschied zu vorher ist nicht der Wert, sondern die Sichtbarkeit.
+
+     Die PACE-FAKTOREN stehen bewusst NICHT hier: sie sind der fachliche Kern
+     der Templates, in phase7_s5 einzeln geprueft und in Probe F1 abgesichert.
+     Sie hierher zu ziehen wuerde sie zu beliebig aussehen lassen. */
+  var DEFAULTS = {
+    /* [A] Anteile der Einheit fuer Auf- und Auswaermen. Faustwerte, keine
+       Messung. Untergrenzen, damit eine kurze Einheit nicht ohne Aufwaermen
+       dasteht. */
+    warmupAnteil: 0.25, warmupMinMin: 10,
+    cooldownAnteil: 0.15, cooldownMinMin: 5,
+    /* [A] Zuschnitt eines VO2-Intervalls. */
+    intervallMin: 4, trabpauseMin: 3, intervalleMin: 3, intervalleMax: 6,
+    /* [A] RPE-Rueckfallwerte, wenn keine belastbare Pace-Evidenz vorliegt.
+       Sie ersetzen kein Tempo — sie sagen "nach Gefuehl, so ungefaehr". Der
+       Rueckfall wird ohnehin geflaggt (no_pace_evidence_rpe_fallback). */
+    rpeEasy: 3, rpeLong: 4, rpeTempo: 7, rpeIntervall: 8,
+    /* [A] Aufwaermen laeuft locker. */
+    rpeWarmup: 3,
+    /* [A] Zielwert einer Kraftuebung ohne eigene RIR-Angabe. */
+    rpeKraft: 7
+  };
+  /* Eine Zahl aus eingespeistem Wissen schlaegt den Produktwert — und sagt
+     im Flag, woher sie kommt. Ohne Wissen bleibt der Produktwert, ebenfalls
+     benannt: `produktwert:rpeTempo`. Damit ist an jeder Verordnung ablesbar,
+     welche Zahl eine Quelle hat und welche nicht. */
+  function _zahl(schluessel, ziel, req, flags) {
+    var w = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;
+    if (w && ziel) {
+      for (var i = 0; i < w.length; i++) {
+        var v = w[i];
+        if (v && v.ziel === ziel && v.art === 'zahl' && v.wert) {
+          flags.push(schluessel + '_aus_wissen:' + v.regelId);
+          return v.wert.min;
+        }
+      }
+    }
+    flags.push('produktwert:' + schluessel);
+    return DEFAULTS[schluessel];
+  }
+
   /* ---------- Endurance-Templates (Daten, versioniert) ----------
      buildFn(durMin, ev, flags) → blocks[]. Faktoren relativ zur Schwellenpace:
      easy 1.25–1.40 · long 1.20–1.35 · tempo 1.02–1.08 · vo2-Intervall 0.92–0.98. */
   var TEMPLATES = {
-    endurance_easy: { v: 1, goal: 'aerobic_base', build: function (durMin, ev, flags) {
-      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.25, 1.40) : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(3));
+    endurance_easy: { v: 1, goal: 'aerobic_base', build: function (durMin, ev, flags, req) {
+      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.25, 1.40)
+        : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(_zahl('rpeEasy', 'session.rpe_easy', req, flags)));
       return [{ type: 'work', completion: { type: 'duration', value: durMin * 60, unit: 's' }, target: t }];
     } },
-    endurance_long: { v: 1, goal: 'long_endurance', build: function (durMin, ev, flags) {
-      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.20, 1.35) : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(4));
+    endurance_long: { v: 1, goal: 'long_endurance', build: function (durMin, ev, flags, req) {
+      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.20, 1.35)
+        : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(_zahl('rpeLong', 'session.rpe_long', req, flags)));
       return [{ type: 'work', completion: { type: 'duration', value: durMin * 60, unit: 's' }, target: t }];
     } },
-    endurance_tempo: { v: 1, goal: 'threshold', build: function (durMin, ev, flags) {
-      var wu = Math.max(10, Math.round(durMin * 0.25)), cd = Math.max(5, Math.round(durMin * 0.15));
+    endurance_tempo: { v: 1, goal: 'threshold', build: function (durMin, ev, flags, req) {
+      var wu = Math.max(_zahl('warmupMinMin', null, req, flags), Math.round(durMin * _zahl('warmupAnteil', 'session.warmup_anteil', req, flags)));
+      var cd = Math.max(_zahl('cooldownMinMin', null, req, flags), Math.round(durMin * _zahl('cooldownAnteil', 'session.cooldown_anteil', req, flags)));
       var core = durMin - wu - cd;
-      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.02, 1.08) : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(7));
+      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 1.02, 1.08)
+        : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(_zahl('rpeTempo', 'session.rpe_tempo', req, flags)));
       return [
-        { type: 'warmup', completion: { type: 'duration', value: wu * 60, unit: 's' }, target: _rpeTarget(3) },
+        { type: 'warmup', completion: { type: 'duration', value: wu * 60, unit: 's' }, target: _rpeTarget(_zahl('rpeWarmup', 'session.rpe_warmup', req, flags)) },
         { type: 'work', completion: { type: 'duration', value: core * 60, unit: 's' }, target: t },
         { type: 'cooldown', completion: { type: 'duration', value: cd * 60, unit: 's' }, target: { type: 'open' } }
       ];
     } },
-    endurance_intervals: { v: 1, goal: 'vo2max', build: function (durMin, ev, flags) {
-      var wu = Math.max(10, Math.round(durMin * 0.25)), cd = Math.max(5, Math.round(durMin * 0.15));
+    endurance_intervals: { v: 1, goal: 'vo2max', build: function (durMin, ev, flags, req) {
+      var wu = Math.max(_zahl('warmupMinMin', null, req, flags), Math.round(durMin * _zahl('warmupAnteil', 'session.warmup_anteil', req, flags)));
+      var cd = Math.max(_zahl('cooldownMinMin', null, req, flags), Math.round(durMin * _zahl('cooldownAnteil', 'session.cooldown_anteil', req, flags)));
       var core = durMin - wu - cd;
-      var repMin = 4, recMin = 3;
-      var iters = Math.max(3, Math.min(6, Math.floor(core / (repMin + recMin))));
-      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 0.92, 0.98) : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(8));
+      var repMin = _zahl('intervallMin', 'session.intervall_min', req, flags);
+      var recMin = _zahl('trabpauseMin', 'session.trabpause_min', req, flags);
+      var iters = Math.max(_zahl('intervalleMin', null, req, flags),
+        Math.min(_zahl('intervalleMax', null, req, flags), Math.floor(core / (repMin + recMin))));
+      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 0.92, 0.98)
+        : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(_zahl('rpeIntervall', 'session.rpe_intervall', req, flags)));
       return [
-        { type: 'warmup', completion: { type: 'duration', value: wu * 60, unit: 's' }, target: _rpeTarget(3) },
+        { type: 'warmup', completion: { type: 'duration', value: wu * 60, unit: 's' }, target: _rpeTarget(_zahl('rpeWarmup', 'session.rpe_warmup', req, flags)) },
         { type: 'repeat', iterations: iters, blocks: [
           { type: 'work', completion: { type: 'duration', value: repMin * 60, unit: 's' }, target: t },
           { type: 'recovery', completion: { type: 'duration', value: recMin * 60, unit: 's' }, target: { type: 'open' } }
@@ -116,11 +174,54 @@
       var exs = (req && Array.isArray(req.exercises) && req.exercises.length) ? req.exercises : null;
       if (!exs) { flags.push('no_exercise_list_generic_session'); return [
         { type: 'exercise', exercise_id: 'generic_strength_session', sets: 1, repetitions: null, rest_seconds: null,
-          target: _rpeTarget(7), notes: 'Übungsliste folgt aus dem Kraft-Pack — keine erfundene Übungsauswahl.' }]; }
+          target: _rpeTarget(_zahl('rpeKraft', 'session.rpe_kraft', req, flags)),
+          notes: 'Übungsliste folgt aus dem Kraft-Pack — keine erfundene Übungsauswahl.' }]; }
+      /* v8-336 — WIDERSPRUCH IM EIGENEN PROJEKT, hier behoben.
+         Hier stand `sets: e.sets >= 1 ? e.sets : 3` und `rest_seconds: … : 120`.
+         Beides waren geratene Zahlen — und `strength-plan@1` verbietet genau
+         das woertlich: "Satzanzahl ist Pflicht. Kein Default — 3 waere
+         geraten." Zwei Module desselben Projekts widersprachen sich, und die
+         Factory gewann still.
+
+         Neu gilt die Reihenfolge: (1) was die Uebung selbst mitbringt,
+         (2) was aus eingespeistem WISSEN kommt — mit Herkunft, (3) gar
+         nichts, sichtbar als Flag. Geraten wird an keiner Stelle mehr. */
+      var wissen = (req && req.knowledge) || null;
+      var ausWissen = function (ziel) {
+        if (!wissen || !Array.isArray(wissen.vorgaben)) return null;
+        for (var i = 0; i < wissen.vorgaben.length; i++) {
+          var v = wissen.vorgaben[i];
+          if (v && v.ziel === ziel && v.art === 'zahl' && v.wert) return v;
+        }
+        return null;
+      };
+      var setsV = ausWissen('session.sets'), restV = ausWissen('session.rest_seconds');
+      if (setsV) flags.push('sets_aus_wissen:' + setsV.regelId);
+      if (restV) flags.push('rest_aus_wissen:' + restV.regelId);
       return exs.map(function (e) {
-        return { type: 'exercise', exercise_id: String(e.exerciseId || e.id), sets: e.sets >= 1 ? e.sets : 3,
-          repetitions: e.reps != null ? e.reps : null, rest_seconds: e.restSeconds != null ? e.restSeconds : 120,
-          target: (e.rir != null) ? { type: 'rir', value: e.rir } : _rpeTarget(7) };
+        var sets = (e.sets >= 1) ? e.sets : (setsV ? setsV.wert.min : null);
+        var rest = (e.restSeconds != null) ? e.restSeconds : (restV ? restV.wert.min : null);
+        /* v8-338 — GEFUNDEN BEIM ERSTEN ECHTEN DURCHLAUF MIT EINGESPEISTEM
+           WISSEN. Hier stand `String(e.exerciseId || e.id)`. Fehlen beide,
+           ergibt das die Zeichenkette "undefined" — und auf der Wochenkarte
+           stand woertlich:
+
+               undefined — 4 × 5 · RPE 7 · 3 min Pause
+
+           Kein Fehler, kein Flag, keine Sperre: eine Uebung ohne Kennung
+           wurde zu einer Uebung NAMENS "undefined". Genau die Sorte
+           Fail-Open, die der Rest der Factory seit v8-336 vermeidet.
+           Jetzt: keine Kennung ⇒ null ⇒ der Validator sperrt die Verordnung,
+           so wie er es bei fehlender Satzzahl auch tut. */
+        var eid = (typeof e.exerciseId === 'string' && e.exerciseId) ? e.exerciseId
+          : (typeof e.id === 'string' && e.id) ? e.id : null;
+        var eidText = eid === null ? '(ohne Kennung)' : eid;
+        if (eid === null) flags.push('uebung_ohne_kennung');
+        if (sets === null) flags.push('sets_unbekannt:' + eidText);
+        if (rest === null) flags.push('pause_unbekannt:' + eidText);
+        return { type: 'exercise', exercise_id: eid, sets: sets,
+          repetitions: e.reps != null ? e.reps : null, rest_seconds: rest,
+          target: (e.rir != null) ? { type: 'rir', value: e.rir } : _rpeTarget(_zahl('rpeKraft', 'session.rpe_kraft', req, flags)) };
       });
     } }
   };

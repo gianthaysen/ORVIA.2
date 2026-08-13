@@ -1,0 +1,106 @@
+{
+  "_status": [
+    "ACHTUNG — DAS IST FUSSBALL, NICHT LAUFEN.",
+    "Der Link zeigt auf eine Arbeit ueber Elitefussballer. Falls du eine",
+    "Lauf-Arbeit aus demselben Archivheft meintest, sag Bescheid.",
+    "",
+    "TROTZDEM WERTVOLL, und zwar aus einem bestimmten Grund: hier steht das",
+    "Protokoll, auf das sich Sperlich 2015 mit 'ca. 4-5 Serien a 3-4",
+    "Wiederholungen' bezieht — vier Serien zu vier Wiederholungen EINER",
+    "halbtiefen Kniebeuge. Damit ist die Einheitenfrage aus v8-340 geklaert:",
+    "die Satzzahl gilt fuer die Grunduebung, nicht fuer die Summe aller",
+    "Uebungen. Zwei Quellen, die sich gegenseitig lesbar machen.",
+    "",
+    "Die Population bleibt Fussball. Die Uebertragung auf Laufen ist meine",
+    "Schlussfolgerung und steht so in 'grenzen'."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-HOFF-2006",
+    "art": "uebersichtsarbeit",
+    "titel": "Training und Testing physischer Kapazitaeten bei Elitefussballern",
+    "wer": "Hoff J, Kaehler N, Helgerud J — Deutsche Zeitschrift fuer Sportmedizin 57(5), S. 116-124",
+    "jahr": 2006,
+    "url": "https://www.germanjournalsportsmedicine.com/fileadmin/content/archiv2006/heft05/116-124.pdf",
+    "sportarten": [
+      "running",
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitlaeufer",
+      "gut_trainierte_laeufer"
+    ],
+    "worum_gehts": [
+      "krafttraining",
+      "laufoekonomie"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Die Uebersicht beschreibt Test- und Trainingsverfahren fuer Elitefussballer. Zwei Protokolle sind auch ausserhalb des Fussballs von Bedeutung, weil sie in der Ausdauerliteratur immer wieder auftauchen: vier Laufintervalle von vier Minuten bei neunzig bis fuenfundneunzig Prozent der maximalen Herzfrequenz mit je drei Minuten lockerem Traben dazwischen, und vier Serien zu vier Wiederholungen halbtiefer Kniebeugen mit betont maximaler Beschleunigung in der ueberwindenden Phase. Das Kraftprotokoll verbesserte die Laufoekonomie um vier Komma sieben Prozent und das Einwiederholungsmaximum um etwa zwei Prozent je Trainingseinheit bei bis zu drei Einheiten pro Woche.",
+    "grenzen": "Die Arbeit untersucht FUSSBALLSPIELER auf Elite- und Champions-League-Niveau, nicht Laeufer. Jede Uebertragung auf Freizeitlauf ist eine Schlussfolgerung von mir, kein Befund der Arbeit. Die Stichproben sind klein und die Ausgangswerte hoch (VO2max fuenfundfuenfzig bis achtundsechzig, Kniebeuge hundertzwanzig bis hundertachtzig Kilogramm) — wer dort startet, reagiert anders als ein Einsteiger. Es ist eine Uebersicht der eigenen Arbeitsgruppe, keine unabhaengige Synthese. Keine Aussage fuer Frauen, Jugendliche oder Verletzte. Ich habe die Arbeit als Textextraktion der PDF gelesen.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-DOSE-001",
+      "thema": "maximalkraft_dosis",
+      "aussage": "Das in der Ausdauerliteratur wiederkehrende Maximalkraftprotokoll besteht aus vier Serien zu vier Wiederholungen EINER halbtiefen Kniebeuge mit betont maximaler Beschleunigung in der ueberwindenden Phase. Die Satzzahl bezieht sich auf die Grunduebung, nicht auf die Summe aller Uebungen einer Einheit.",
+      "art": "studie",
+      "quellen": [
+        "SRC-HOFF-2006"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Untersucht wurden Elitefussballer, nicht Laeufer — die Uebertragung ist meine Schlussfolgerung",
+        "Die Ausgangswerte lagen hoch (Kniebeuge 120-180 kg); fuer Einsteiger sagt das Protokoll nichts",
+        "Uebersicht der eigenen Arbeitsgruppe, keine unabhaengige Synthese",
+        "Der Bewegungsauftrag maximale Beschleunigung ist wesentlich und laesst sich nicht als Zahl abbilden"
+      ],
+      "wenn_unsicher": "Im Zweifel weniger Saetze einer sauber beherrschten Grunduebung statt vieler Saetze ueber viele Uebungen.",
+      "wirkt_auf": [
+        "plan.maximalkraft_dosis"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-DOSE-002",
+      "thema": "progression",
+      "aussage": "Die berichtete Kraftzunahme lag bei etwa zwei Prozent des Einwiederholungsmaximums je Trainingseinheit, bei bis zu drei Einheiten pro Woche. Das ist eine beobachtete Rate unter Studienbedingungen, keine planbare Zusage.",
+      "art": "studie",
+      "quellen": [
+        "SRC-HOFF-2006"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Beobachtete Rate bei Elitefussballern mit hoher Ausgangskraft, nicht bei Freizeitlaeufern",
+        "Eine gleichbleibende Prozentrate je Einheit ist ueber laengere Zeitraeume rechnerisch unmoeglich — sie gilt nur fuer die untersuchte Phase",
+        "Uebersicht der eigenen Arbeitsgruppe"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Zuwachsrate anzeigen. Eine hochgerechnete Prozentrate erzeugt Erwartungen, die niemand belegt hat.",
+      "wirkt_auf": [
+        "plan.erwartungsrahmen"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    }
+  ]
+}

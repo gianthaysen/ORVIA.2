@@ -1,0 +1,839 @@
+{
+  "schemaVersion": 1,
+  "sourcePriority": {
+    "lab_test": 100,
+    "device_measurement": 90,
+    "provider_calculation": 80,
+    "manual_override": 70,
+    "manual_entry": 60,
+    "orvia_estimate": 40,
+    "historical": 20
+  },
+  "editModes": [
+    "manual_editable",
+    "automatic_locked",
+    "automatic_override_allowed",
+    "calculated_read_only"
+  ],
+  "capabilityStatuses": [
+    "supported",
+    "unsupported",
+    "observed",
+    "not_observed",
+    "temporarily_unavailable",
+    "permission_missing",
+    "insufficient_history",
+    "sync_failed",
+    "unknown"
+  ],
+  "providerTypes": [
+    "garmin_unofficial",
+    "garmin_official",
+    "apple_health",
+    "health_connect",
+    "strava",
+    "manual"
+  ],
+  "overrideReasons": [
+    "garmin_value_wrong",
+    "external_measurement_more_accurate",
+    "lab_test_available",
+    "manual_correction",
+    "other"
+  ],
+  "metrics": [
+    {
+      "id": "weight_kg",
+      "label": "Gewicht",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "kg",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        30,
+        250
+      ],
+      "jumpMax": 3,
+      "staleDays": 30,
+      "dailySingleton": true
+    },
+    {
+      "id": "body_fat_pct",
+      "label": "Körperfett",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "%",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        3,
+        60
+      ],
+      "jumpMax": 2.5,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "bmi",
+      "label": "BMI",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "kg/m²",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        10,
+        60
+      ],
+      "jumpMax": 1.5,
+      "staleDays": 30,
+      "dailySingleton": true
+    },
+    {
+      "id": "muscle_mass_kg",
+      "label": "Muskelmasse",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "kg",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        10,
+        100
+      ],
+      "jumpMax": 2.5,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "body_water_pct",
+      "label": "Körperwasser",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "%",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        30,
+        75
+      ],
+      "jumpMax": 5,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "bone_mass_kg",
+      "label": "Knochenmasse",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "kg",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        1,
+        8
+      ],
+      "jumpMax": 0.5,
+      "staleDays": 90,
+      "dailySingleton": true
+    },
+    {
+      "id": "visceral_fat_rating",
+      "label": "Viszerales Fett",
+      "category": "body",
+      "valueKind": "numeric",
+      "unit": "Index",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        1,
+        30
+      ],
+      "jumpMax": 3,
+      "staleDays": 90,
+      "dailySingleton": true
+    },
+    {
+      "id": "resting_hr",
+      "label": "Ruhepuls",
+      "category": "cardio",
+      "valueKind": "numeric",
+      "unit": "bpm",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        25,
+        110
+      ],
+      "jumpMax": 15,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "hrv_ms",
+      "label": "HRV (Nacht)",
+      "category": "cardio",
+      "valueKind": "numeric",
+      "unit": "ms",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        10,
+        200
+      ],
+      "jumpMax": 40,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "hrv_status",
+      "label": "HRV-Status",
+      "category": "cardio",
+      "valueKind": "text",
+      "unit": null,
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": null,
+      "jumpMax": null,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "max_hr",
+      "label": "Maximale Herzfrequenz",
+      "category": "cardio",
+      "valueKind": "numeric",
+      "unit": "bpm",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        120,
+        220
+      ],
+      "jumpMax": 8,
+      "staleDays": 365,
+      "dailySingleton": true
+    },
+    {
+      "id": "lactate_threshold_hr",
+      "label": "Schwellen-Herzfrequenz",
+      "category": "cardio",
+      "valueKind": "numeric",
+      "unit": "bpm",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        100,
+        210
+      ],
+      "jumpMax": 10,
+      "staleDays": 180,
+      "dailySingleton": true
+    },
+    {
+      "id": "lactate_threshold_pace",
+      "label": "Schwellenpace",
+      "category": "cardio",
+      "valueKind": "numeric",
+      "unit": "s/km",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        150,
+        600
+      ],
+      "jumpMax": 30,
+      "staleDays": 180,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_duration_min",
+      "label": "Schlafdauer",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        0,
+        960
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_score",
+      "label": "Sleep Score",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_need_min",
+      "label": "Schlafbedarf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        300,
+        720
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_deep_min",
+      "label": "Tiefschlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        480
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_light_min",
+      "label": "Leichtschlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        720
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_rem_min",
+      "label": "REM-Schlaf",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        480
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "sleep_awake_min",
+      "label": "Wachphasen",
+      "category": "sleep",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        300
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "steps",
+      "label": "Schritte",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Schritte",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100000
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "active_kcal",
+      "label": "Aktive Kalorien",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "kcal",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        10000
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "resting_kcal",
+      "label": "Ruhekalorien",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "kcal",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        800,
+        4000
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "total_kcal_provider",
+      "label": "Gesamtkalorien (Provider)",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "kcal",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        1000,
+        12000
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "intensity_minutes",
+      "label": "Intensitätsminuten",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        600
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "stress_avg",
+      "label": "Stress (Tag)",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "stress_max",
+      "label": "Stress-Maximum (Tag)",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "body_battery",
+      "label": "Body Battery",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "spo2_avg",
+      "label": "SpO₂ (Nacht)",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "%",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        70,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "respiration_avg",
+      "label": "Atemfrequenz",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Atemzüge/min",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        6,
+        30
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "floors_climbed",
+      "label": "Stockwerke",
+      "category": "daily_activity",
+      "valueKind": "numeric",
+      "unit": "Stockwerke",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        500
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "vo2max_running",
+      "label": "VO₂max Laufen",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "ml/kg/min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        20,
+        90
+      ],
+      "jumpMax": 4,
+      "staleDays": 90,
+      "dailySingleton": true
+    },
+    {
+      "id": "vo2max_cycling",
+      "label": "VO₂max Radfahren",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "ml/kg/min",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        20,
+        90
+      ],
+      "jumpMax": 4,
+      "staleDays": 90,
+      "dailySingleton": true
+    },
+    {
+      "id": "ftp_watts",
+      "label": "FTP",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "W",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_override_allowed",
+      "plausible": [
+        80,
+        500
+      ],
+      "jumpMax": 40,
+      "staleDays": 180,
+      "dailySingleton": true
+    },
+    {
+      "id": "race_prediction_5k",
+      "label": "Race Prediction 5 km",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "s",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        720,
+        3600
+      ],
+      "jumpMax": 120,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "race_prediction_10k",
+      "label": "Race Prediction 10 km",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "s",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        1500,
+        7200
+      ],
+      "jumpMax": 240,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "race_prediction_half",
+      "label": "Race Prediction Halbmarathon",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "s",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        3300,
+        16200
+      ],
+      "jumpMax": 600,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "race_prediction_marathon",
+      "label": "Race Prediction Marathon",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "s",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        7200,
+        32400
+      ],
+      "jumpMax": 1500,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "endurance_score",
+      "label": "Endurance Score",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        12000
+      ],
+      "jumpMax": null,
+      "staleDays": 30,
+      "dailySingleton": true
+    },
+    {
+      "id": "hill_score",
+      "label": "Hill Score",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 30,
+      "dailySingleton": true
+    },
+    {
+      "id": "running_tolerance",
+      "label": "Running Tolerance",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "km/Woche",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        300
+      ],
+      "jumpMax": null,
+      "staleDays": 30,
+      "dailySingleton": true
+    },
+    {
+      "id": "fitness_age",
+      "label": "Fitnessalter",
+      "category": "performance",
+      "valueKind": "numeric",
+      "unit": "Jahre",
+      "decimals": 1,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        15,
+        90
+      ],
+      "jumpMax": null,
+      "staleDays": 60,
+      "dailySingleton": true
+    },
+    {
+      "id": "training_readiness",
+      "label": "Training Readiness",
+      "category": "load_recovery",
+      "valueKind": "numeric",
+      "unit": "Score",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        100
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    },
+    {
+      "id": "training_status",
+      "label": "Training Status",
+      "category": "load_recovery",
+      "valueKind": "text",
+      "unit": null,
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": null,
+      "jumpMax": null,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "acute_load",
+      "label": "Acute Load",
+      "category": "load_recovery",
+      "valueKind": "numeric",
+      "unit": "Load",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        3000
+      ],
+      "jumpMax": null,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "load_ratio",
+      "label": "Load Ratio",
+      "category": "load_recovery",
+      "valueKind": "numeric",
+      "unit": "Ratio",
+      "decimals": 2,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        5
+      ],
+      "jumpMax": null,
+      "staleDays": 7,
+      "dailySingleton": true
+    },
+    {
+      "id": "recovery_time_h",
+      "label": "Recovery Time",
+      "category": "load_recovery",
+      "valueKind": "numeric",
+      "unit": "h",
+      "decimals": 0,
+      "dataClass": "auto_measurable",
+      "editMode": "automatic_locked",
+      "plausible": [
+        0,
+        96
+      ],
+      "jumpMax": null,
+      "staleDays": 2,
+      "dailySingleton": true
+    }
+  ]
+}

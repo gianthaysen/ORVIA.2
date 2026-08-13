@@ -1,0 +1,86 @@
+{
+  "_hinweis": [
+    "So speist du Wissen in ORVIA ein. Kopiere diese Datei, trage deine Quelle",
+    "und die Regeln ein, dann:",
+    "",
+    "    node tools/knowledge-ingest.mjs docs/wissen/DEINE-DATEI.json",
+    "",
+    "Das Werkzeug prüft und sagt bei jedem fehlenden Punkt, WAS zu tun ist.",
+    "Erst wenn alles stimmt, entsteht ein Wissenspaket.",
+    "",
+    "WICHTIG — Urheberrecht: 'kernaussage' und 'aussage' müssen DEINE eigenen",
+    "Formulierungen sein. Fakten und Zahlen darfst du frei verwenden, fremde",
+    "Sätze nicht. Deshalb gibt es eine Längengrenze und die Bestätigung",
+    "'eigene_worte'. Ein Transkript gehört hier nicht hinein.",
+    "",
+    "Felder, die mit _ beginnen, werden ignoriert — sie sind nur Notizen."
+  ],
+
+  "sport": "gym",
+
+  "quelle": {
+    "id": "SRC-BEISPIEL-COACH-2025",
+    "art": "coachvideo",
+    "_art_erlaubt": "video, coachvideo, coach, coachprogramm, lehrbuch, verband, leitlinie, konsens, uebersichtsarbeit, metaanalyse, studie, rct, kohorte, review, praxissynthese",
+    "titel": "Krafttraining für Läufer — worauf es wirklich ankommt",
+    "wer": "Beispiel-Coach (ersetzen)",
+    "jahr": 2025,
+    "url": "https://example.org/video",
+    "_alternativ": "statt url auch doi (beginnt mit 10.) oder pmid",
+    "sportarten": ["gym", "running"],
+    "gilt_fuer": ["freizeitlaeufer"],
+    "worum_gehts": ["uebungsauswahl", "laufoekonomie"],
+    "qualitaet": "mittel",
+    "_qualitaet_erlaubt": "hoch, mittel, niedrig, unklar",
+    "kernaussage": "Für Läufer bringt schweres, wenig ermüdendes Krafttraining mehr als klassisches Hypertrophietraining: wenige Wiederholungen mit deutlichem Abstand zum Muskelversagen, damit die Beine am nächsten Tag noch laufbereit sind. Einbeinige Übungen werden bevorzugt, weil sie der Anforderung beim Laufen näher kommen.",
+    "grenzen": "Erfahrungsbericht eines Coaches, keine kontrollierte Untersuchung. Keine Aussage für Anfänger ohne Krafterfahrung und keine für Wettkampfwochen.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-12"
+  },
+
+  "regeln": [
+    {
+      "id": "GYM-RUN-001",
+      "thema": "uebungsauswahl",
+      "aussage": "Für Läufer wird das Unterkörpertraining laufspezifisch ausgelegt: einbeinige Übungen vor beidbeinigen, schwere Last bei geringer Wiederholungszahl, deutlicher Abstand zum Muskelversagen.",
+      "art": "coachkonsens",
+      "_art_erlaubt": "studie, evidenz, fachkonsens, coachkonsens, erfahrung, produktentscheidung, notfallregel",
+      "quellen": ["SRC-BEISPIEL-COACH-2025"],
+      "gilt_fuer": ["freizeitlaeufer"],
+      "nicht_fuer": ["krafttraining_anfaenger", "wettkampfwoche"],
+      "unsicherheiten": [
+        "Erfahrungswissen eines einzelnen Coaches, nicht kontrolliert untersucht",
+        "Der Übertrag auf die Halbmarathonleistung ist nicht beziffert"
+      ],
+      "wenn_unsicher": "Im Zweifel beidbeinig und mit mehr Abstand zum Muskelversagen — lieber unterfordert als am nächsten Tag nicht laufbereit.",
+      "wirkt_auf": ["session.exercises"],
+      "braucht": ["profile.sports", "profile.goal"],
+
+      "_zahlen_optional": "Nur ausfüllen, wenn die Regel eine konkrete Zahl vorgibt. Ohne Geltungsbereich und Sicherheitsgrenze wird sie abgelehnt.",
+      "zahlen": {
+        "eingabe_einheit": "Trainingseinheit",
+        "ausgabe_einheit": "harte Sätze je Übung",
+        "bereich": { "min": 2, "max": 4 },
+        "gilt_fuer": "Freizeitläufer mit mindestens einem Jahr Krafterfahrung",
+        "so_steht_es_da": "Der Coach empfiehlt zwei bis vier schwere Sätze je Übung.",
+        "umrechnung": "keine",
+        "unsicherheit": "grobe Größenordnung, keine gemessene Dosis-Wirkung",
+        "nicht_bei": ["akute Verletzung", "Wettkampfwoche"],
+        "sicherheitsgrenzen": "Nie mehr als zwei harte Beineinheiten pro Woche und keine schwere Beineinheit innerhalb von 48 Stunden vor einer harten Laufeinheit."
+      }
+    },
+
+    {
+      "id": "GYM-RUN-002",
+      "thema": "pausenlaenge",
+      "aussage": "Zwischen schweren Sätzen wird lange genug pausiert, dass die nächste Wiederholung technisch sauber bleibt.",
+      "art": "coachkonsens",
+      "quellen": ["SRC-BEISPIEL-COACH-2025"],
+      "gilt_fuer": ["freizeitlaeufer"],
+      "nicht_fuer": [],
+      "unsicherheiten": ["Keine gemessene Pausenlänge, nur Praxiserfahrung"],
+      "wenn_unsicher": "Im Zweifel länger pausieren.",
+      "wirkt_auf": ["session.rest_seconds"]
+    }
+  ]
+}

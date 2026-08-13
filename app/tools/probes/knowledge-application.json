@@ -1,0 +1,179 @@
+{
+  "target": "js/engine/knowledge/knowledge-application.js",
+  "test": "supabase/tests/knowledge_application_test.mjs",
+  "note": "Die letzte Stelle vor der Vorgabe. Der Schwerpunkt liegt auf dem Glaetten von Widerspruechen: das ist die bequemste und zugleich falscheste Aufloesung, und sie faellt in Tests kaum auf, weil das Ergebnis plausibel aussieht.",
+  "probes": [
+    {
+      "id": "V1",
+      "pattern": "neighbour_guard",
+      "title": "bei Gleichstand wird still die erste Regel genommen statt Konflikt zu melden",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      if (gleichstand) {",
+      "replace": "      if (false) {",
+      "expectTest": "zwei gleich stark belegte Regeln zum selben Ziel ⇒ KEINE Vorgabe"
+    },
+    {
+      "id": "V2",
+      "pattern": "value_not_type",
+      "title": "eine schwaechere Quelle darf eine staerkere ueberstimmen",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        if (r > besterRang) { besterRang = r; beste = v; gleichstand = false; }",
+      "replace": "        if (r >= besterRang) { besterRang = r; beste = v; gleichstand = false; }",
+      "expectTest": "zwei gleich stark belegte Regeln zum selben Ziel ⇒ KEINE Vorgabe"
+    },
+    {
+      "id": "V3",
+      "pattern": "neighbour_guard",
+      "title": "das Ueberstimmen wird nicht mehr protokolliert",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      beste.ueberstimmt = zahlen.filter(function (v) { return v !== beste; }).map(function (v) { return v.regelId; });",
+      "replace": "      beste.ueberstimmt = [];",
+      "expectTest": "… das Überstimmen wird PROTOKOLLIERT",
+      "history": "Anker in v8-341 nachgezogen (zweites Mal in zwei Fassungen): die Verfeinerung der Konfliktregel hat die Zeile umgeschrieben. 'not_applied' ist KEIN gruener Lauf."
+    },
+    {
+      "id": "V4",
+      "pattern": "fixture_masks",
+      "title": "eine nicht freigegebene Zahl wird trotzdem als Vorgabe ausgegeben",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        if (KC.prescriptiveNumberAllowed(c, sourcesById, regel)) { mitZahl = c; break; }",
+      "replace": "        { mitZahl = c; break; }",
+      "expectTest": "eine Notfallregel wird ausgewählt, gibt aber KEINE Zahl vor",
+      "history": "blieb im Probenlauf v8-335 gruen: alle bisherigen Faelle wurden schon vom Vertrag aussortiert und erreichten die Zahlenpruefung gar nicht. Geschlossen mit einer Notfallregel — sie wird ausgewaehlt, darf aber nie eine Zahl vorschreiben."
+    },
+    {
+      "id": "V5",
+      "pattern": "value_not_type",
+      "title": "der Wertebereich wird beim Durchreichen veraendert",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        eintrag.wert = { min: q.validRange.min, max: q.validRange.max };",
+      "replace": "        eintrag.wert = { min: q.validRange.min, max: q.validRange.max + 1 };",
+      "expectTest": "sie trägt den Wertebereich aus der Quelle — unverändert"
+    },
+    {
+      "id": "V6",
+      "pattern": "neighbour_guard",
+      "title": "die Herkunft faellt aus der Vorgabe (Anzeigepflicht umgangen)",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        herkunft: offen,",
+      "replace": "        herkunft: null,",
+      "expectTest": "sie trägt ihre HERKUNFT mit"
+    },
+    {
+      "id": "V7",
+      "pattern": "value_not_type",
+      "title": "der Anzeigesatz nennt den Wert ohne Herkunft",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "    return teile.join(' ') + ' (' + basis + ', Klasse ' + klasse + ')';",
+      "replace": "    return teile.join(' ');",
+      "expectTest": "der Satz für die Anzeige nennt Wert UND Herkunft"
+    },
+    {
+      "id": "V8",
+      "pattern": "data_lacks_var",
+      "title": "die Sicherheitsgrenze faellt aus der Vorgabe",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        eintrag.grenzen = q.safetyBounds;",
+      "replace": "        eintrag.grenzen = null;",
+      "expectTest": "sie trägt Sicherheitsgrenze, Ausschlüsse und den vorsichtigen Weg"
+    },
+    {
+      "id": "V9",
+      "pattern": "neighbour_guard",
+      "title": "ausgeschlossene Regeln werden verschwiegen (halbe Wissensbasis sieht voll aus)",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      ausgeschlossen: ausgeschlossen.concat(stumm.map(function (s) {",
+      "replace": "      ausgeschlossen: [].concat([].map(function (s) {",
+      "expectTest": "… und der Grund bleibt sichtbar",
+      "history": "Anker musste in v8-340 nachgezogen werden: die Mehrpaket-Faehigkeit hat die Zeile umgeschrieben. Ein 'not_applied' ist KEIN gruener Lauf — die Zusicherung war bis zur Korrektur ungeprueft."
+    },
+    {
+      "id": "V10",
+      "pattern": "fixture_masks",
+      "title": "eine blockierte Auswahl wird als leeres Ergebnis ausgegeben statt als Blockade",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "    if (!sel || sel.blocked === true || !Array.isArray(sel.rules)) {",
+      "replace": "    if (!sel || !Array.isArray(sel.rules)) {",
+      "expectTest": "ein fehlender Pin blockiert"
+    },
+    {
+      "id": "V11",
+      "pattern": "value_not_type",
+      "title": "der Modus wird auf production gestellt (eingespeistes Wissen kaeme nie durch)",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      mode: 'advisory',",
+      "replace": "      mode: 'production',",
+      "expectTest": "es entsteht genau eine Vorgabe für das genannte Ziel"
+    },
+    {
+      "id": "KA_M1",
+      "pattern": "neighbour_guard",
+      "title": "alle Pakete werden gegen die Pins des ERSTEN geprueft",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      var e = _einPaket(liste[p], KC);",
+      "replace": "      var e = _einPaket(Object.assign({}, liste[p], { pins: liste[0].pins }), KC);",
+      "expectTest": "… jedes Paket wird gegen seine EIGENEN Pins geprüft, nicht gegen fremde",
+      "history": "Der Kern der Mehrpaket-Faehigkeit (v8-340). Wuerden die Pins des ersten Pakets auch auf die uebrigen angewandt, blockierten die sich grundlos — und die Faehigkeit waere wertlos, ohne dass ein einziger bestehender Test rot wuerde."
+    },
+    {
+      "id": "KA_M2",
+      "pattern": "value_not_type",
+      "title": "ein blockiertes Paket schaltet die uebrigen stumm",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        blockiert.push({ index: p, grund: e.grund,",
+      "replace": "        return { ok: false, grund: e.grund, vorgaben: [], konflikte: [], ausgeschlossen: [], version: VERSION }; blockiert.push({ index: p, grund: e.grund,",
+      "expectTest": "… ein blockiertes Paket reißt die übrigen NICHT mit",
+      "history": "Eine falsch gepinnte Datei wuerde die gesamte Wissensbasis abschalten. Fail-closed am falschen Ort: nicht die Regel wird gesperrt, sondern alles andere gleich mit."
+    },
+    {
+      "id": "KA_M3",
+      "pattern": "neighbour_guard",
+      "title": "sind alle Pakete blockiert, wird ein leeres ok gemeldet",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "    if (liste.length > 1 && blockiert.length === liste.length) {",
+      "replace": "    if (false) {",
+      "expectTest": "… sind ALLE Pakete blockiert, ist das ein Fehlschlag, kein leeres ok",
+      "history": "Ein 'ok' mit leerer Vorgabenliste liest sich als 'es gibt nichts zu sagen' statt 'nichts war pruefbar'. Genau die Verwechslung, an der die App vor v8-330 still schwieg."
+    },
+    {
+      "id": "KA_K1",
+      "pattern": "neighbour_guard",
+      "title": "qualitative Vorgaben konkurrieren wieder miteinander (Zustand vor v8-341)",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      qualitativ.forEach(function (v) { vorgaben.push(v); });",
+      "replace": "      if (qualitativ.length === 1) vorgaben.push(qualitativ[0]);",
+      "expectTest": "zwei qualitative Regeln zum selben Ziel stehen NEBENEINANDER",
+      "history": "Der Befund selbst (v8-341): zwei sich ergaenzende Saetze aus DERSELBEN Quelle schalteten einander stumm. Je mehr Wissen eingespeist wurde, desto haeufiger schwieg die App."
+    },
+    {
+      "id": "KA_K2",
+      "pattern": "value_not_type",
+      "title": "deckungsgleiche Zahlbereiche werden als Widerspruch gemeldet",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "    return a.wert.min === b.wert.min && a.wert.max === b.wert.max;",
+      "replace": "    return false;",
+      "expectTest": "… zwei deckungsgleiche Zahlbereiche sind Bestätigung, kein Konflikt",
+      "history": "Zwei uebereinstimmende Quellen gegeneinander auszuspielen ist die Umkehrung dessen, wofuer ein Quellenregister da ist."
+    },
+    {
+      "id": "KA_K3",
+      "pattern": "fixture_masks",
+      "title": "auch verschiedene Zahlen gleicher Klasse werden als Bestaetigung durchgelassen",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        var einig = spitze.every(function (v) { return _gleicherBereich(v, spitze[0]); });",
+      "replace": "        var einig = true;",
+      "expectTest": "… zwei VERSCHIEDENE Zahlen gleicher Klasse ergeben weiterhin KEINE Vorgabe",
+      "history": "Die Zusicherung, die bei der Verfeinerung von v8-341 NICHT fallen durfte. Waere sie mitgefallen, haette die Lockerung genau den Fall aufgeweicht, um den es der urspruenglichen Regel ging: zwei Zahlen, gleich gut belegt, unvereinbar."
+    },
+    {
+      "id": "KA_K4",
+      "pattern": "data_lacks_var",
+      "title": "der Konflikt nennt die Regeln, aber nicht mehr die Werte",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "          werte: spitze.map(function (v) { return v.wert || null; }),",
+      "replace": "",
+      "expectTest": "… und der Konflikt nennt die widersprüchlichen Werte, nicht nur die Regeln",
+      "history": "Ein Konflikt ohne die strittigen Zahlen laesst sich nicht entscheiden — er verlagert die Arbeit nur zurueck in den Quelltext."
+    }
+  ]
+}

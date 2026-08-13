@@ -1,0 +1,384 @@
+{
+  "baselineTag": "v8-219-audit-baseline",
+  "capturedAt": "2026-08-02T16:33:53.111Z",
+  "tool": "tools/real_app_smoke.mjs",
+  "invocation": "node tools/real_app_smoke.mjs /home/claude/gm741-final/app baseline-v8-219",
+  "invocationNote": "appRoot MUSS absolut sein. Ein relativer Pfad (\".\") laesst den Pfad-Guard (f.startsWith(APP), Zeile 78) fehlschlagen; der Server liefert dann fuer JEDE Datei 404 und der Lauf meldet 48 Fehlschlaege, die nicht existieren.",
+  "fixture": "synthetisch (deterministisch) — 30 Tage, keine echten Gesundheitsdaten",
+  "total": 74,
+  "passed": 74,
+  "failed": 0,
+  "summary": "real_app_smoke [baseline-v8-219]: Bestanden: 74/74",
+  "assertions": [
+    {
+      "passed": true,
+      "name": "Dashboard rendert sichtbaren Inhalt (>400 Zeichen)",
+      "detail": "len=1703"
+    },
+    {
+      "passed": true,
+      "name": "Dashboard: ORVIA-Score-Hero vorhanden",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "Dashboard: KEINE separate Tagesentscheidung-Altkarte",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "Dashboard: Deltas vs. gestern/14-T-Ø sind echte Werte (nicht beide „—\")",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "Dashboard: Ziel-Label ist lesbar, rohe ID half_marathon erscheint NIRGENDS",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "Dashboard: Belastungs-Beitrag als Tageslast (sRPE) ausgewiesen",
+      "detail": "nie als „ATL pro Einheit\""
+    },
+    {
+      "passed": true,
+      "name": "Score-Sheet: Aufschlüsselung mit echten Beiträgen (+n)",
+      "detail": "72"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: #gmAkt ist gefüllt (Totalausfall behoben)",
+      "detail": "html=19329"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: Host ist sichtbar (height>100px)",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: Hero „Training starten\" vorhanden",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: Wochendistanz zeigt echten Wert (12,5-km-Fixture-Lauf zählt)",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "REGRESSION „—\"≠Wert: Distanz-KPI ist nicht „—\"",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: kanonischer Renderer aktiv (ORVIA.activity.render === renderAkt-Pfad)",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT Monat: nicht komplett „—\" (Einheiten/Distanz gefüllt)",
+      "detail": "dashCount=27"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: Woche(1 Wo)≠Monat(4 Wo)",
+      "detail": "unterschiedliche Fenster — {\"wWeeks\":1,\"mWeeks\":4,\"wCnt\":3,\"mCnt\":9}"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄT: Monatsfenster ≥ Wochenfenster (mehr/ gleich Einheiten)",
+      "detail": "{\"wWeeks\":1,\"mWeeks\":4,\"wCnt\":3,\"mCnt\":9}"
+    },
+    {
+      "passed": true,
+      "name": "LAST-SHEET: nutzt dieselbe Serie wie die Übersicht (kein „keine Serie gespeichert\")",
+      "detail": "Trainingsbelastung"
+    },
+    {
+      "passed": true,
+      "name": "LAST-SHEET: zeigt CTL/ATL + 1M/3M/6M-Umschalter",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "ERHOLUNG-SHEET: Composite-Erklärung + HRV/Ruhepuls/Schlaf",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Hypnogramm rendert echte Segmente (SVG rects > 10)",
+      "detail": "{\"rects\":21,\"svgs\":1}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: mehrfaches Öffnen ⇒ keine DOM-Akkumulation (genau 1 SVG)",
+      "detail": "svgs=1"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Intraday-Stresskurve rendert echten Pfad",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "SERIES: fehlende Serie ⇒ Leerzustand (kein SVG, kein „0\")",
+      "detail": "{\"svgs\":0,\"txt\":\"Noch nicht verfügbar — kein zeitlicher Verlauf für diesen Tag gespeichert.\"}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Nachtverlauf HF rendert echten Pfad",
+      "detail": "{\"hr\":true,\"stress\":true,\"bb\":true,\"resp\":true}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Nachtverlauf Stress rendert echten Pfad",
+      "detail": "{\"hr\":true,\"stress\":true,\"bb\":true,\"resp\":true}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Nachtverlauf Body Battery rendert echten Pfad",
+      "detail": "{\"hr\":true,\"stress\":true,\"bb\":true,\"resp\":true}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Nachtverlauf Atmung rendert echten Pfad",
+      "detail": "{\"hr\":true,\"stress\":true,\"bb\":true,\"resp\":true}"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: HRV-Sheet nächtlicher Verlauf rendert echten Pfad",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Body-Battery-Sheet Intraday-Kurve rendert echten Pfad",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Sheet (Nachtverlauf) kein horizontaler Overflow @320px",
+      "detail": "overflow=0"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Sheet (Nachtverlauf) kein horizontaler Overflow @390px",
+      "detail": "overflow=0"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: Schlaf-Sheet (Nachtverlauf) kein horizontaler Overflow @430px",
+      "detail": "overflow=0"
+    },
+    {
+      "passed": true,
+      "name": "SERIES: synthetische Garmin-Aktivität mit metrics.streams injiziert",
+      "detail": "{\"ok\":true,\"id\":\"act:local:msc0q9k5q2ev1\"}"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄTSDETAIL: Messreihen-Karte vorhanden",
+      "detail": "{\"hasTitle\":true,\"paths\":5,\"mentionsPace\":false}"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄTSDETAIL: mind. 2 echte Stream-Kurven gerendert (HF+Geschwindigkeit/Höhe/Kadenz)",
+      "detail": "{\"hasTitle\":true,\"paths\":5,\"mentionsPace\":false}"
+    },
+    {
+      "passed": true,
+      "name": "AKTIVITÄTSDETAIL: Geschwindigkeit (mps) nicht als „Tempo\" fehlbeschriftet",
+      "detail": "{\"hasTitle\":true,\"paths\":5,\"mentionsPace\":false}"
+    },
+    {
+      "passed": true,
+      "name": "ICON: Dashboard-Tab nutzt GM-Grid (nicht #i-home)",
+      "detail": "href=#i-nav-dash"
+    },
+    {
+      "passed": true,
+      "name": "HERO: Ambient-Aura vorhanden (status-getönt)",
+      "detail": "aura=ready"
+    },
+    {
+      "passed": true,
+      "name": "P0 Pill („Reduzieren empfohlen\") liegt vollständig im Score-Ring (kein Overflow)",
+      "detail": "{\"pillInRing\":true,\"heroLeft\":18,\"heroW\":354,\"modLeft\":18,\"modW\":354,\"auraV\":\"ready\",\"pillStatus\":\"ready\",\"recoCount\":1}"
+    },
+    {
+      "passed": true,
+      "name": "P0 Hero und erstes Modul teilen dieselbe horizontale Achse (Left±2, Breite±2)",
+      "detail": "hero[18,354] mod[18,354]"
+    },
+    {
+      "passed": true,
+      "name": "P0 Aura-Ton entspricht dem Status-Pill (data-aura ↔ sp-<status>)",
+      "detail": "aura=ready pill=ready"
+    },
+    {
+      "passed": true,
+      "name": "P0 Genau EINE Tagesentscheidung im Hero (keine doppelte/alte Karte)",
+      "detail": "recoCount=1"
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-A Heute-Guard: heutiges metricDate ⇒ „heute\"",
+      "detail": "{\"today\":\"heute\",\"old\":\"Stand 01.01.\",\"nullVal\":null,\"hasToday\":true}"
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-A Heute-Guard: älteres metricDate ⇒ NICHT „heute\" (Stand-Datum)",
+      "detail": "old=Stand 01.01."
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-A Heute-Guard: fehlender Wert ⇒ null (kein Label)",
+      "detail": "nullVal=null"
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-A gmMetricToday-Helfer vorhanden",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-2 Group-1: alle Metriken haben ein Detail-Sheet-Def (openMetric)",
+      "detail": "{\"defs\":10,\"inRcv\":3,\"total\":10}"
+    },
+    {
+      "passed": true,
+      "name": "GM7.4-2 Group-1: load_recovery-Kacheln im Erholungsraster vorhanden",
+      "detail": "inRcv=3"
+    },
+    {
+      "passed": true,
+      "name": "PLAN rendert Inhalt",
+      "detail": "len=1774"
+    },
+    {
+      "passed": true,
+      "name": "REGRESSION 2953: keine 4-stellige Wochenzahl in Phasen",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "PLAN: Session-Karten tragen Umfang (min/km/m) im Untertitel",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "ANALYSE rendert Inhalt",
+      "detail": "len=1173"
+    },
+    {
+      "passed": true,
+      "name": "ANALYSE: CTL als sRPE-Skala ausgewiesen",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "ANALYSE: Wettkampfprognose vorhanden und als Prognose gekennzeichnet",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "KÖRPER: anatomische Karte aktiv (Polygone, keine Blockfigur)",
+      "detail": "{\"anat\":true,\"polys\":33,\"blocks\":0,\"state\":null}"
+    },
+    {
+      "passed": true,
+      "name": "PROFIL rendert Inhalt",
+      "detail": "len=599"
+    },
+    {
+      "passed": true,
+      "name": "PROFIL: Einheiten-KPI zeigt echte Gesamtzahl (nicht „—\")",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "PROFIL: Fitness-KPI mit sRPE-Skala beschriftet",
+      "detail": null
+    },
+    {
+      "passed": true,
+      "name": "DESKTOP: Profil ist zentrierte 430-px-Spalte (kein Vollbild)",
+      "detail": "{\"tabMehrWidth\":430,\"tabMehrLeft\":505,\"fabRight\":1440,\"barRight\":1440,\"vw\":1440}"
+    },
+    {
+      "passed": true,
+      "name": "DESKTOP: Profil zentriert (left>300px bei 1440)",
+      "detail": "left=505"
+    },
+    {
+      "passed": true,
+      "name": "DESKTOP: FAB sitzt an der App-Spalte, nicht am Viewport-Rand (Abstand≈Bar)",
+      "detail": "fabRight=1440, barRight=1440"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 320px/heute: kein horizontaler Overflow",
+      "detail": "scrollW=320 clientW=320"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 320px/plan: kein horizontaler Overflow",
+      "detail": "scrollW=320 clientW=320"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 320px/akt: kein horizontaler Overflow",
+      "detail": "scrollW=320 clientW=320"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 320px/dash: kein horizontaler Overflow",
+      "detail": "scrollW=320 clientW=320"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 390px/heute: kein horizontaler Overflow",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 390px/plan: kein horizontaler Overflow",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 390px/akt: kein horizontaler Overflow",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 390px/dash: kein horizontaler Overflow",
+      "detail": "scrollW=390 clientW=390"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 430px/heute: kein horizontaler Overflow",
+      "detail": "scrollW=430 clientW=430"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 430px/plan: kein horizontaler Overflow",
+      "detail": "scrollW=430 clientW=430"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 430px/akt: kein horizontaler Overflow",
+      "detail": "scrollW=430 clientW=430"
+    },
+    {
+      "passed": true,
+      "name": "RESPONSIVE 430px/dash: kein horizontaler Overflow",
+      "detail": "scrollW=430 clientW=430"
+    },
+    {
+      "passed": true,
+      "name": "Keine ungefangenen JS-Fehler / console.error",
+      "detail": null
+    }
+  ]
+}

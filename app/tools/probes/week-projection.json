@@ -1,0 +1,64 @@
+{
+  "target": "js/engine/week-projection.js",
+  "test": "supabase/tests/phase8_week_projection_test.mjs",
+  "note": "Die Bruecke zwischen Scheduler und Wochenkarte. Genau hier faellt heute die `prescription` weg — das Modul ist damit der naechste Umbauort und muss vorher unter Proben stehen.",
+  "probes": [
+    {
+      "id": "J1",
+      "pattern": "data_lacks_var",
+      "title": "Session ohne Vorgabe wird trotzdem projiziert (statt begruendet gemeldet)",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (!pr || typeof pr !== 'object' || Array.isArray(pr)) return { ok: false, reason: 'prescription_missing', detail: null };",
+      "replace": "    if (!pr || typeof pr !== 'object' || Array.isArray(pr)) pr = {};",
+      "expectTest": "Session OHNE Vorgabe wird BEGRÜNDET gemeldet",
+      "history": "blieb im Probenlauf v8-331 gruen: die Fixture enthielt keine Session ohne prescription. Beim Schliessen fiel zusaetzlich auf, dass Arrays den Waechter passierten (typeof [] === object) und mit dem FALSCHEN Grund gemeldet wurden."
+    },
+    {
+      "id": "J2",
+      "pattern": "value_not_type",
+      "title": "unbekannte Sportart wird geraten statt gemeldet",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (!t) return { ok: false, reason: 'sport_unknown', detail: sportId };",
+      "replace": "    if (!t) t = 'Training';",
+      "expectTest": "unbekannte Sportart wird BEGRÜNDET gemeldet"
+    },
+    {
+      "id": "J3",
+      "pattern": "value_not_type",
+      "title": "unbekannter Einheitentyp wird mit einem Sammelnamen ueberdeckt",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (!l) return { ok: false, reason: 'unknown_session_type', detail: sportId + '/' + (pr.session_type == null ? 'null' : pr.session_type) };",
+      "replace": "    if (!l) l = 'Einheit';",
+      "expectTest": "unbekannter Einheitentyp wird gemeldet statt geraten"
+    },
+    {
+      "id": "J4",
+      "pattern": "data_lacks_var",
+      "title": "Umfang 0 s wird als Label ausgegeben statt leer zu bleiben",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (!isFiniteNum(seconds) || seconds <= 0) return null;",
+      "replace": "    if (!isFiniteNum(seconds)) return null;",
+      "expectTest": "… und volumeLabel weist 0, negative und untypische Werte direkt ab",
+      "history": "blieb im Probenlauf v8-331 gruen: die Fixture enthielt keine Einheit mit Dauer 0."
+    },
+    {
+      "id": "J5",
+      "pattern": "data_lacks_var",
+      "title": "mehr als sieben Tage werden ins Wochenmodell uebernommen",
+      "file": "js/engine/week-projection.js",
+      "find": "    for (var i = 0; i < Math.min(7, days.length); i++) {",
+      "replace": "    for (var i = 0; i < days.length; i++) {",
+      "expectTest": "die Vergleichsform ignoriert überzählige Tage",
+      "history": "blieb im Probenlauf v8-331 gruen: die Sieben-Tage-Grenze sitzt in weekPlanToComparable (Vergleichsform Plan/Engine), nicht in projectWeek — dieser Eingang wurde nie geprueft. Ein achter Tag waere mit weekday:undefined in den Gate-Vergleich gelaufen."
+    },
+    {
+      "id": "J6",
+      "pattern": "value_not_type",
+      "title": "unbekannter Wochentag landet auf Montag statt gemeldet zu werden",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (di < 0) return { ok: false, reason: 'weekday_unknown', detail: s.weekday == null ? null : String(s.weekday) };",
+      "replace": "    if (di < 0) di = 0;",
+      "expectTest": "unbekannter Wochentag wird gemeldet"
+    }
+  ]
+}

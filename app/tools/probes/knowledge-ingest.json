@@ -1,0 +1,145 @@
+{
+  "target": "js/engine/knowledge/knowledge-ingest.js",
+  "test": "supabase/tests/knowledge_ingest_test.mjs",
+  "note": "Der Weg, auf dem fremdes Wissen in die App kommt. Die Proben liegen auf der Trennlinie, um die es geht: aufgefuellt werden darf NUR Formales. Jede Mutation hier bedeutet, dass die App sich eine inhaltliche Randbedingung selbst ausdenkt — genau das, was sie nie tun soll.",
+  "probes": [
+    {
+      "id": "N1",
+      "pattern": "fixture_masks",
+      "title": "Governance wird als bereits geprueft eingespeist (fingierte Freigabe)",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "        technicalStatus: 'draft',\n        scientificReviewStatus: 'unreviewed',",
+      "replace": "        technicalStatus: 'reviewed',\n        scientificReviewStatus: 'approved',",
+      "expectTest": "die Governance startet UNGEPRÜFT"
+    },
+    {
+      "id": "N2",
+      "pattern": "value_not_type",
+      "title": "Risk-of-Bias wird als formal bewertet behauptet",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "        riskOfBias: 'not_formally_assessed'",
+      "replace": "        riskOfBias: 'low'",
+      "expectTest": "das Risk-of-Bias-Urteil ist ehrlich"
+    },
+    {
+      "id": "N3",
+      "pattern": "value_not_type",
+      "title": "fehlende Uebertragbarkeits-Grenzen werden mit einem Platzhalter aufgefuellt",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    if (!limits) _err(errs, 'quelle.grenzen', 'grenzen_fehlen',",
+      "replace": "    if (!limits) limits = 'keine Angabe'; if (false) _err(errs, 'quelle.grenzen', 'grenzen_fehlen',",
+      "expectTest": "jedes inhaltliche Quellenfeld ist Pflicht"
+    },
+    {
+      "id": "N4",
+      "pattern": "fixture_masks",
+      "title": "unbekannte Quellenart wird auf gut Glueck als Coachpraxis eingeordnet",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    var sourceType = artRoh ? ART[artRoh.toLowerCase()] : null;",
+      "replace": "    var sourceType = artRoh ? (ART[artRoh.toLowerCase()] || 'expert_practice') : null;",
+      "expectTest": "eine unbekannte Quellenart wird abgewiesen"
+    },
+    {
+      "id": "N5",
+      "pattern": "value_not_type",
+      "title": "unabhaengige Validierung laesst sich per Eingabefeld behaupten",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "      independentValidation: false,",
+      "replace": "      independentValidation: z.unabhaengig_validiert === true,",
+      "expectTest": "„unabhängig validiert\" lässt sich NICHT"
+    },
+    {
+      "id": "N6",
+      "pattern": "value_not_type",
+      "title": "die Laengengrenze der Paraphrase wird aufgehoben (Transkripte kaemen durch)",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    else if (summary.length > MAX_PARAPHRASE) {",
+      "replace": "    else if (false) {",
+      "expectTest": "eine überlange Zusammenfassung wird abgewiesen"
+    },
+    {
+      "id": "N7",
+      "pattern": "value_not_type",
+      "title": "die Bestaetigung der eigenen Worte wird nicht mehr verlangt",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    if (q.eigene_worte !== true) {",
+      "replace": "    if (false) {",
+      "expectTest": "ohne die ausdrückliche Bestätigung „eigene_worte\" wird abgewiesen"
+    },
+    {
+      "id": "N8",
+      "pattern": "neighbour_guard",
+      "title": "bei Fehlern werden die gueltigen Teile trotzdem gebaut (halbes Ergebnis)",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    if (errs.length) return { ok: false, sources: [], rules: [], fehler: errs, version: VERSION };",
+      "replace": "    if (errs.length) return { ok: false, sources: sources, rules: rules, fehler: errs, version: VERSION };",
+      "expectTest": "bei Fehlern wird NICHTS gebaut"
+    },
+    {
+      "id": "N9",
+      "pattern": "data_lacks_var",
+      "title": "Sicherheitsgrenzen einer Zahl sind nicht mehr Pflicht",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    var grenzen = f('sicherheitsgrenzen', 'sicherheitsgrenzen', 'Wo ist Schluss?",
+      "replace": "    var grenzen = str(z.sicherheitsgrenzen) || 'keine'; var _unused = ('Wo ist Schluss?",
+      "expectTest": "jedes Feld des Geltungsbereichs ist Pflicht"
+    },
+    {
+      "id": "N10",
+      "pattern": "value_not_type",
+      "title": "medizinisch heikle Regeln werden nicht mehr als pruefpflichtig markiert",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "        medicalSafetyReviewStatus: medizinisch ? 'required_unreviewed' : 'not_required',",
+      "replace": "        medicalSafetyReviewStatus: 'not_required',",
+      "expectTest": "mit Sicherheitsgrenzen wird sie angenommen"
+    },
+    {
+      "id": "N11",
+      "pattern": "data_lacks_var",
+      "title": "Kombinationsart bei mehreren Quellen ist nicht mehr Pflicht",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "      if (!sourceCombination) {\n        _err(errs, 'regel.quellen_zusammenspiel', 'zusammenspiel_fehlt',",
+      "replace": "      if (false) {\n        _err(errs, 'regel.quellen_zusammenspiel', 'zusammenspiel_fehlt',",
+      "expectTest": "bei MEHREREN Quellen ist das Zusammenspiel Pflicht"
+    },
+    {
+      "id": "N12",
+      "pattern": "value_not_type",
+      "title": "eine Regel ohne Quelle wird auch als abgeleitete Regel akzeptiert",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "    if (!quellen && decisionRole !== 'product_policy' && decisionRole !== 'fallback') {",
+      "replace": "    if (false) {",
+      "expectTest": "eine Regel ohne Quelle geht nur als ausdrückliche Produktentscheidung durch"
+    },
+    {
+      "id": "I_UEB",
+      "pattern": "neighbour_guard",
+      "title": "der Schreibweg ueberschreibt ein bestehendes Paket wieder kommentarlos",
+      "file": "tools/knowledge-ingest.mjs",
+      "find": "  if (bestehende.length && !ueberschreiben) {",
+      "replace": "  if (false) {",
+      "expectTest": "der Lauf bricht ab statt zu schreiben (Exit 3)",
+      "history": "Gefunden vor dem ersten echten Schreiblauf (v8-338): --schreiben haette running-knowledge-pack.js mit 14 handgepflegten Regeln durch eine Datei mit 2 Regeln ersetzt. Ohne Warnung, ohne Sicherung. Der Normalfall, nicht der Randfall — wer eine zweite Quelle einspeist, hat fast immer schon ein Paket."
+    },
+    {
+      "id": "I_WIRE",
+      "pattern": "neighbour_guard",
+      "title": "ein eingespeistes Paket wird nicht mehr in index.html eingebunden",
+      "file": "index.html",
+      "find": "<script src=\"js/engine/knowledge/gym-knowledge-pack.js\"></script>",
+      "replace": "<!-- gym-knowledge-pack.js nicht eingebunden -->",
+      "expectTest": "jedes ist in index.html eingebunden",
+      "history": "Gefunden beim ersten echten Schreiblauf (v8-339): --schreiben erzeugt die Moduldateien, verdrahtet sie aber nicht. Alle Tests laufen ueber require(), nicht ueber die Seite — ein Paket, das in index.html fehlt, waere im Browser schlicht nicht da und keine Zusicherung haette es gemerkt. Dasselbe Muster wie v8-335 (eingespeist, aber niemand liest es), eine Ebene frueher."
+    },
+    {
+      "id": "I_SW",
+      "pattern": "neighbour_guard",
+      "title": "ein eingespeistes Paket faellt aus dem Offline-Vorrat",
+      "file": "sw.js",
+      "find": "'./js/engine/knowledge/gym-knowledge-pack.js',",
+      "replace": "",
+      "expectTest": "jedes liegt im Offline-Vorrat von sw.js",
+      "history": "Zweite Haelfte desselben Befunds: eingebunden, aber nicht im Vorrat — die App laeuft online und bricht offline. Getrennte Probe, weil es getrennt schiefgehen kann."
+    }
+  ]
+}

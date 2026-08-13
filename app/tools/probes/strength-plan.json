@@ -1,0 +1,90 @@
+{
+  "target": "js/engine/strength-plan.js",
+  "test": "supabase/tests/strength_plan_contract_test.mjs",
+  "note": "Datenvertrag strength-plan@1. Proben nach den vier Lueckenmustern aus v8-329 — Schwerpunkt value_not_type, weil dieses Modul fast nur Wertgrenzen zusichert.",
+  "probes": [
+    {
+      "id": "S1",
+      "pattern": "value_not_type",
+      "title": "umgekehrte Wiederholungsspanne (8-6) wird akzeptiert statt abgewiesen",
+      "file": "js/engine/strength-plan.js",
+      "find": "      if (isInt(minR) && isInt(maxR) && minR > maxR) {",
+      "replace": "      if (false) {",
+      "expectTest": "verdrehter Wiederholungsbereich wird abgewiesen"
+    },
+    {
+      "id": "S2",
+      "pattern": "value_not_type",
+      "title": "negatives Zielgewicht wird zugelassen (Vertrag: abweisen, nicht auf 0 ziehen)",
+      "file": "js/engine/strength-plan.js",
+      "find": "    weightKg: [0, 500],",
+      "replace": "    weightKg: [-500, 500],",
+      "expectTest": "negatives Zielgewicht wird abgewiesen"
+    },
+    {
+      "id": "S3",
+      "pattern": "value_not_type",
+      "title": "fehlende Satzanzahl wird auf 3 geraten (genau das verbietet der Vertrag)",
+      "file": "js/engine/strength-plan.js",
+      "find": "    if (sets === null) errors.push({ field: 'sets', code: 'missing', got: raw.sets });",
+      "replace": "    if (sets === null) sets = 3;",
+      "expectTest": "fehlende Satzanzahl wird ABGEWIESEN"
+    },
+    {
+      "id": "S4",
+      "pattern": "value_not_type",
+      "title": "Obergrenze der Uebungsanzahl um eins verschoben (Off-by-one)",
+      "file": "js/engine/strength-plan.js",
+      "find": "      if (out.length >= LIMITS.maxExercises) {",
+      "replace": "      if (out.length > LIMITS.maxExercises) {",
+      "expectTest": "die Obergrenze schneidet sichtbar ab"
+    },
+    {
+      "id": "S5",
+      "pattern": "value_not_type",
+      "title": "nicht bewertbares Volumen wird als 0 kg gemeldet statt als nicht anwendbar",
+      "file": "js/engine/strength-plan.js",
+      "find": "    if (!counted) return { applicable: false, kg: null, counted: 0, skipped: skipped };",
+      "replace": "    if (!counted) return { applicable: true, kg: 0, counted: 0, skipped: skipped };",
+      "expectTest": "gar nichts bewertbar"
+    },
+    {
+      "id": "S6",
+      "pattern": "data_lacks_var",
+      "title": "Uebung ohne Zielgewicht zaehlt mit 0 kg ins Volumen statt uebersprungen zu werden",
+      "file": "js/engine/strength-plan.js",
+      "find": "      if (e.targetWeightKg === null || e.minReps === null) { skipped++; continue; }",
+      "replace": "      if (e.minReps === null) { skipped++; continue; }",
+      "expectTest": "eine Uebung MIT Wdh. aber OHNE Zielgewicht"
+    },
+    {
+      "id": "S7",
+      "pattern": "value_not_type",
+      "title": "ueberlange Notiz wird nicht mehr gekuerzt",
+      "file": "js/engine/strength-plan.js",
+      "find": "    if (note && note.length > LIMITS.noteChars) note = note.slice(0, LIMITS.noteChars);",
+      "replace": "",
+      "expectTest": "ueberlange Notiz wird auf die Vertragsgrenze gekuerzt",
+      "history": "blieb im Probenlauf v8-330 gruen: die Kuerzung auf noteChars war beschrieben, aber von keinem Test gedeckt."
+    },
+    {
+      "id": "S8",
+      "pattern": "neighbour_guard",
+      "title": "fehlgeschlagenes Einfuegen liefert eine LEERE statt der unveraenderten Liste",
+      "file": "js/engine/strength-plan.js",
+      "find": "    if (!one.ok) return { ok: false, exercises: cur, errors: one.errors.map(function (e) { return { index: -1, field: e.field, code: e.code, got: e.got }; }) };",
+      "replace": "    if (!one.ok) return { ok: false, exercises: [], errors: one.errors.map(function (e) { return { index: -1, field: e.field, code: e.code, got: e.got }; }) };",
+      "expectTest": "fehlgeschlagenes Einfuegen laesst die bestehende Liste UNVERAENDERT",
+      "history": "blieb im Probenlauf v8-330 gruen: der Editor haelt seinen Zustand selbst, dadurch fiel der Listenverlust nirgends auf. Teuerster denkbarer Regressionsfall."
+    },
+    {
+      "id": "S9",
+      "pattern": "value_not_type",
+      "title": "Pausenzeit-Standardwert weicht von TIME.defaultRestSeconds ab (Dauerschaetzung)",
+      "file": "js/engine/strength-plan.js",
+      "find": "      var rest = e.restSeconds === null ? TIME.defaultRestSeconds : e.restSeconds;",
+      "replace": "      var rest = e.restSeconds === null ? 0 : e.restSeconds;",
+      "expectTest": "eine kleine Einheit ergibt 25 min"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "target": "js/engine/garmin-workout-export.js + js/engine/garmin-exercise-map.js",
+  "test": "supabase/tests/garmin_workout_export_test.mjs",
+  "note": "Exporter und Zuordnung. Schwerpunkt data_lacks_var und fixture_masks: alle 10 Katalogeintraege tragen status 'mapped', dadurch laufen die Zweige ambiguous/unmapped bei realen Daten NIE — und die unbelegten Garmin-Zahlen (G1/G3) sind per Vertrag null, wodurch ein versehentliches Festschreiben leicht unbemerkt bliebe.",
+  "probes": [
+    {
+      "id": "E1",
+      "pattern": "value_not_type",
+      "title": "Gewichtsfaktor kg->Gramm auf 100 verstellt (falscher, aber plausibler Wert)",
+      "file": "js/engine/garmin-workout-export.js",
+      "find": "var WEIGHT_SCALE_ASSUMPTION = { unit: 'gram', factorFromKg: 1000, verified: false, gate: 'G3' };",
+      "replace": "var WEIGHT_SCALE_ASSUMPTION = { unit: 'gram', factorFromKg: 100, verified: false, gate: 'G3' };",
+      "expectTest": "… ein positiver Wert wird mit der beschrifteten Annahme skaliert"
+    },
+    {
+      "id": "E2",
+      "pattern": "fixture_masks",
+      "title": "unbelegte Sport-ID wird als belegte Wahrheit festgeschrieben (G1 vorweggenommen)",
+      "file": "js/engine/garmin-workout-export.js",
+      "find": "    sportStrength: { id: null, key: 'strength_training', displayOrder: 5, verified: false, gate: 'G1', candidateId: 10,",
+      "replace": "    sportStrength: { id: 10, key: 'strength_training', displayOrder: 5, verified: true, gate: 'G1', candidateId: 10,",
+      "expectTest": "die Sport-ID ist standardmässig NICHT gesetzt"
+    },
+    {
+      "id": "E3",
+      "pattern": "fixture_masks",
+      "title": "unbelegte reps-Abbruchbedingung wird als belegt festgeschrieben",
+      "file": "js/engine/garmin-workout-export.js",
+      "find": "    condReps: { id: null, key: 'reps', displayOrder: 10, verified: false, gate: 'G1', candidateId: 10,",
+      "replace": "    condReps: { id: 10, key: 'reps', displayOrder: 10, verified: true, gate: 'G1', candidateId: 10,",
+      "expectTest": "die reps-Bedingung hat standardmässig KEINE erfundene Zahl"
+    },
+    {
+      "id": "E4",
+      "pattern": "data_lacks_var",
+      "title": "nicht zugeordnete Uebung wird trotzdem exportiert (Zweig laeuft bei 10/10 nie)",
+      "file": "js/engine/garmin-exercise-map.js",
+      "find": "    if (e.status !== 'mapped') return { ok: false, reason: 'not_mapped', status: e.status, slug: slug };",
+      "replace": "",
+      "expectTest": "nur die zugeordnete Übung landet in der Payload",
+      "test": "supabase/tests/garmin_workout_export_test.mjs"
+    },
+    {
+      "id": "E5",
+      "pattern": "data_lacks_var",
+      "title": "unbekannter Slug liefert einen Treffer statt unmapped",
+      "file": "js/engine/garmin-exercise-map.js",
+      "find": "    if (!e) return { ok: false, reason: 'unknown_slug', status: 'unmapped', slug: slug || null };",
+      "replace": "    if (!e) e = ENTRIES['bench_press'];",
+      "expectTest": "nur die zugeordnete Übung landet in der Payload",
+      "test": "supabase/tests/garmin_workout_export_test.mjs"
+    },
+    {
+      "id": "E6",
+      "pattern": "data_lacks_var",
+      "title": "mehrdeutiger Rueckweg waehlt einfach den ersten Treffer statt ambiguous zu melden",
+      "file": "js/engine/garmin-exercise-map.js",
+      "find": "    if (hits.length > 1) return { ok: false, reason: 'ambiguous_reverse', candidates: hits };",
+      "replace": "    if (hits.length > 1) return hits[0];",
+      "expectTest": "mehrdeutiger Rückweg meldet ambiguous_reverse",
+      "test": "supabase/tests/garmin_exercise_map_test.mjs",
+      "history": "blieb im Probenlauf v8-330 gruen: mit 10 eindeutigen Eintraegen ist der Zweig durch reale Daten unerreichbar. Geschlossen durch die Prueffoeffnung fromGarmin(cat,name,entries)."
+    }
+  ]
+}

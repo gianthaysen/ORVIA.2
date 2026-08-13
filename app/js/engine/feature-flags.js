@@ -26,14 +26,17 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'feature-flags@1';
+  var VERSION = 'feature-flags@2';
   var TABLE = 'user_feature_flags';
   var TTL_MS = 5 * 60 * 1000;
 
   /* Bekannte Flags — identisch zum CHECK-Constraint in Migration 0031. Ein hier
      unbekannter Name wird NICHT abgefragt, sondern gilt sofort als aus; sonst
      wäre ein Tippfehler nicht von „bewusst nicht aktiviert" zu unterscheiden. */
-  var KNOWN = ['engine_v2_plan', 'engine_v2_readiness', 'canary_diagnostics'];
+  var KNOWN = ['engine_v2_plan', 'engine_v2_readiness', 'canary_diagnostics',
+    /* v8-293: Schalter der Beobachtungs-Sammlung — faellt erst nach gruenem
+       Live-Test (0034 erweitert den CHECK-Constraint identisch). */
+    'prediction_observer'];
 
   /* state: flag -> { enabled, at, source, reason, cohort } */
   var _state = {};

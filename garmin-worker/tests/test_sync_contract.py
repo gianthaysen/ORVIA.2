@@ -124,7 +124,15 @@ def test_sync_writes_expected_rows(fake_db, test_crypto, test_settings, fake_gar
     assert by_rec["19788811002"]["sport_id"] == "gym"
     assert by_rec["19788811003"]["sport_id"] == "other"
     assert by_rec["19788811003"]["metrics"]["source_sport_raw"] == "ice_hockey"
-    assert all(a["source"] == "garmin" and a["status"] == "final" for a in acts)
+    # Testkorrektur 2026-08-12: die Erwartung stand auf 'final'. Diesen Wert
+    # gab es im Enum nie — supabase/migrations/0009_canonical_activities.sql
+    # erlaubt per activities_status_chk ausschliesslich
+    # ('completed','aborted','cancelled','planned'). sync.py schreibt seit der
+    # Live-Verifikation vom 2026-07-17 korrekt 'completed' (siehe Kommentar
+    # dort); nur diese Erwartung wurde damals nicht mitgezogen.
+    # KEINE Produktaenderung — haette man umgekehrt sync.py auf 'final'
+    # gezogen, waere jeder Aktivitaets-Insert am CHECK gescheitert.
+    assert all(a["source"] == "garmin" and a["status"] == "completed" for a in acts)
     assert by_rec["19788811001"]["ended_at"] == "2026-07-16 16:48:05"
 
     # Capabilities beobachtet

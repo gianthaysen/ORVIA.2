@@ -1,0 +1,47 @@
+{
+  "target": "js/engine/knowledge/knowledge-consumer.js",
+  "test": "supabase/tests/knowledge_consumer_test.mjs",
+  "note": "Der Anschluss zwischen Wissenspaket und Wochenplan (v8-341). Die Proben zielen auf die Stellen, an denen 'kein Wissen' und 'Wissen sagt nichts' verwechselbar waeren.",
+  "probes": [
+    {
+      "id": "KCO1",
+      "pattern": "neighbour_guard",
+      "title": "ein fehlendes Modul wird als leeres Wissen behandelt statt als Ladefehler",
+      "file": "js/engine/knowledge/knowledge-consumer.js",
+      "find": "      if (!pack || !registry) return leer('modul_fehlt:' + e.id);",
+      "replace": "      if (!pack || !registry) continue;",
+      "expectTest": "ein fehlendes Registermodul ergibt einen benannten Ladefehler",
+      "history": "Der Unterschied traegt die ganze Konstruktion: 'nichts zu sagen' und 'die Datei ist nicht da' duerfen nie dasselbe Ergebnis liefern."
+    },
+    {
+      "id": "KCO2",
+      "pattern": "value_not_type",
+      "title": "die Pins werden aus dem Paket gelesen statt unabhaengig hinterlegt",
+      "file": "js/engine/knowledge/knowledge-consumer.js",
+      "find": "        expectedPackContentHash: 'fnv1a-6d2e4658',",
+      "replace": "        expectedPackContentHash: (O.knowledgePack_gym || {}).contentHash,",
+      "expectTest": "… und wird nirgends aus dem Paket selbst gelesen",
+      "history": "Laese der Consumer den erwarteten Hash zur Laufzeit aus dem Paket, bestaetigte das Paket sich selbst und die Pinpruefung waere wertlos. Der Wissensvertrag verlangt die unabhaengige Hinterlegung ausdruecklich."
+    },
+    {
+      "id": "KCO3",
+      "pattern": "data_lacks_var",
+      "title": "eine unbekannte Sportart liefert ein leeres ok statt eines Grundes",
+      "file": "js/engine/knowledge/knowledge-consumer.js",
+      "find": "    if (!Array.isArray(eintraege) || !eintraege.length) return leer('kein_paket_fuer_sportart');",
+      "replace": "    if (!Array.isArray(eintraege) || !eintraege.length) return { ok: true, vorgaben: [], konflikte: [], ausgeschlossen: [], version: VERSION };",
+      "expectTest": "eine unbekannte Sportart liefert einen benannten Grund, kein leeres ok",
+      "history": "Ein 'ok' ohne Vorgaben liest sich als 'das Wissen sagt zu dieser Sportart nichts'. Tatsaechlich gibt es fuer 22 von 24 Sportarten ueberhaupt kein Paket — der Unterschied darf nicht verschwinden."
+    },
+    {
+      "id": "KCO4",
+      "pattern": "neighbour_guard",
+      "title": "der Scheduler reicht das Wissen nicht mehr an die Factory weiter",
+      "file": "js/engine/scheduler-v2.js",
+      "find": "        knowledge: wissen }, ev);",
+      "replace": "        knowledge: null }, ev);",
+      "expectTest": "scheduler-v2 reicht das Wissen tatsächlich weiter",
+      "history": "Der Befund von v8-341 selbst: genau diese Uebergabe fehlte, und die gesamte Einspeisekette lief ausschliesslich in Pruefskripten. Sie faellt lautlos wieder weg, wenn niemand darauf zeigt."
+    }
+  ]
+}

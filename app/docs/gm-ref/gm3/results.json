@@ -1,0 +1,130 @@
+{
+ "a_week": {
+  "pct": 0.61,
+  "px": 3522
+ },
+ "a_week_top": {
+  "pct": 0.54,
+  "px": 2073
+ },
+ "a_week_mid": {
+  "pct": 0.92,
+  "px": 3554
+ },
+ "a_week_bot": {
+  "pct": 0.92,
+  "px": 3555
+ },
+ "f_week": {
+  "pct": 0.53,
+  "px": 3523
+ },
+ "f_week_top": {
+  "pct": 0.17,
+  "px": 660
+ },
+ "f_week_mid": {
+  "pct": 0.92,
+  "px": 3554
+ },
+ "f_week_bot": {
+  "pct": 0.92,
+  "px": 3555
+ },
+ "p_week": {
+  "pct": 0.53,
+  "px": 3523
+ },
+ "p_week_top": {
+  "pct": 0.17,
+  "px": 660
+ },
+ "p_week_mid": {
+  "pct": 0.92,
+  "px": 3554
+ },
+ "p_week_bot": {
+  "pct": 0.92,
+  "px": 3555
+ },
+ "f_month": {
+  "pct": 1.39,
+  "px": 9141
+ },
+ "f_month_top": {
+  "pct": 1.62,
+  "px": 6278
+ },
+ "f_month_mid": {
+  "pct": 0.92,
+  "px": 3554
+ },
+ "f_month_bot": {
+  "pct": 0.92,
+  "px": 3555
+ },
+ "f_filter_none": {
+  "pct": 0.8,
+  "px": 3524
+ },
+ "f_filter_none_top": {
+  "pct": 0.86,
+  "px": 3323
+ },
+ "f_filter_none_mid": {
+  "pct": 0.92,
+  "px": 3553
+ },
+ "f_filter_none_bot": {
+  "pct": 0.92,
+  "px": 3553
+ },
+ "detail_run_gps": {
+  "pct": 0.54,
+  "px": 3720
+ },
+ "detail_gym": {
+  "pct": 0.59,
+  "px": 2278
+ },
+ "sheet_start": {
+  "pct": 0.27,
+  "px": 451
+ },
+ "sheet_prestart": {
+  "pct": 0.2,
+  "px": 502
+ },
+ "sheet_prestart_missing": {
+  "pct": 0.2,
+  "px": 502
+ },
+ "a390": {
+  "pct": 0.65,
+  "px": 3522
+ },
+ "f390": {
+  "pct": 0.58,
+  "px": 3524
+ },
+ "p390": {
+  "pct": 0.58,
+  "px": 3524
+ },
+ "detail_run_gps390": {
+  "pct": 0.61,
+  "px": 3838
+ },
+ "detail_gym390": {
+  "pct": 1.08,
+  "px": 3776
+ },
+ "sheet_start390": {
+  "pct": 0.27,
+  "px": 415
+ },
+ "sheet_prestart390": {
+  "pct": 0.2,
+  "px": 469
+ }
+}

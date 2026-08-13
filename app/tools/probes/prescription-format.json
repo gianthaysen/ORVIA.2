@@ -1,0 +1,95 @@
+{
+  "target": "js/engine/prescription-format.js",
+  "test": "supabase/tests/prescription_format_test.mjs",
+  "note": "Das Modul, das die Vorgabe sichtbar macht. Seine einzige harte Zusage lautet: es wird NICHTS erfunden. Genau deshalb liegen die Proben auf den Stellen, an denen ein Wert stillschweigend entstehen koennte — Ersatzwerte, Sammelbegriffe, geteilte Strukturen.",
+  "probes": [
+    {
+      "id": "R1", "pattern": "value_not_type",
+      "title": "untaugliche Pace ergibt 0:00 statt gar nichts",
+      "file": "js/engine/prescription-format.js",
+      "find": "    if (s === null || s <= 0) return null;\n    var t = Math.round(s);",
+      "replace": "    if (s === null) s = 0;\n    var t = Math.round(s);",
+      "expectTest": "untaugliche Pace ergibt NICHTS statt 0:00"
+    },
+    {
+      "id": "R2", "pattern": "value_not_type",
+      "title": "Distanzeinheit wird ignoriert (1 km wird zu 1 m)",
+      "file": "js/engine/prescription-format.js",
+      "find": "      if (c.unit === 'km') return distanceText(v * 1000);",
+      "replace": "      if (c.unit === 'km') return distanceText(v);",
+      "expectTest": "die Einheit der Abbruchbedingung wird ernst genommen"
+    },
+    {
+      "id": "R3", "pattern": "value_not_type",
+      "title": "unbekannte Distanzeinheit wird als Meter geraten statt verschwiegen",
+      "file": "js/engine/prescription-format.js",
+      "find": "      return null;                                   // unbekannte Einheit ⇒ lieber schweigen",
+      "replace": "      return distanceText(v);",
+      "expectTest": "die Einheit der Abbruchbedingung wird ernst genommen"
+    },
+    {
+      "id": "R4", "pattern": "data_lacks_var",
+      "title": "Pace-Bereich wird in Eingabereihenfolge geschrieben (5:24-5:06 statt 5:06-5:24)",
+      "file": "js/engine/prescription-format.js",
+      "find": "      return (lo <= hi ? a + '–' + b : b + '–' + a) + u;",
+      "replace": "      return a + '–' + b + u;",
+      "expectTest": "Pace-Bereich wird von schnell nach langsam geschrieben"
+    },
+    {
+      "id": "R5", "pattern": "fixture_masks",
+      "title": "unbekannter Zieltyp wird mit dem Rohwert ausgegeben statt verschwiegen",
+      "file": "js/engine/prescription-format.js",
+      "find": "    return null;                                     // unbekannter Zieltyp ⇒ schweigen, nicht raten",
+      "replace": "    return _range(t, function (n) { return String(n); }, null);",
+      "expectTest": "ein offenes oder unbekanntes Ziel erzeugt KEINEN Text"
+    },
+    {
+      "id": "R6", "pattern": "fixture_masks",
+      "title": "unbekannter Blocktyp wird mit einem Sammelbegriff ueberdeckt",
+      "file": "js/engine/prescription-format.js",
+      "find": "      warnings.push({ code: 'unknown_block_type', at: path, got: b.type });\n      return null;                                   // NICHT mit einem Sammelbegriff ueberdecken",
+      "replace": "      return { kind: 'open', label: 'Einheit', completion: null, target: null, text: 'Einheit' };",
+      "expectTest": "unbekannter Blocktyp wird GEMELDET"
+    },
+    {
+      "id": "R7", "pattern": "value_not_type",
+      "title": "Wiederholungsgruppe mit 0 Durchgaengen wird dargestellt statt gemeldet",
+      "file": "js/engine/prescription-format.js",
+      "find": "      if (it === null || it < 1 || Math.floor(it) !== it) {",
+      "replace": "      if (it === null) {",
+      "expectTest": "Wiederholungsgruppe mit 0, -1 oder gebrochener Anzahl"
+    },
+    {
+      "id": "R8", "pattern": "neighbour_guard",
+      "title": "die Zusammenfassung nimmt auch Aufwaermen und Auslaufen auf",
+      "file": "js/engine/prescription-format.js",
+      "find": "      return l.kind === 'group' || l.kind === 'work' || l.kind === 'exercise';",
+      "replace": "      return true;",
+      "expectTest": "Tempolauf: die Zusammenfassung nennt die BELASTUNG"
+    },
+    {
+      "id": "R9", "pattern": "value_not_type",
+      "title": "Uebung ohne aufgeloesten Namen bekommt einen erfundenen Sammelnamen",
+      "file": "js/engine/prescription-format.js",
+      "find": "    var name = (typeof nameOf === 'function' && nameOf(b.exercise_id)) || b.exercise_id || null;",
+      "replace": "    var name = (typeof nameOf === 'function' && nameOf(b.exercise_id)) || 'Übung';",
+      "expectTest": "… ohne Namensauflösung steht die exercise_id da"
+    },
+    {
+      "id": "R10", "pattern": "neighbour_guard",
+      "title": "die Verordnung wird als VERWEIS ins Anzeige-Item gelegt statt als Kopie",
+      "file": "js/engine/week-projection.js",
+      "find": "      rx: _clone(pr)",
+      "replace": "      rx: pr",
+      "expectTest": "… aber als KOPIE, nicht als geteilte Struktur"
+    },
+    {
+      "id": "R11", "pattern": "data_lacks_var",
+      "title": "die Verordnung wird gar nicht erst durchgereicht (Zustand vor v8-332)",
+      "file": "js/engine/week-projection.js",
+      "find": "      rx: _clone(pr)\n    };",
+      "replace": "      rxEntfernt: null\n    };",
+      "expectTest": "die Verordnung erreicht das Anzeige-Item"
+    }
+  ]
+}

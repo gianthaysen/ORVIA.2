@@ -64,7 +64,49 @@
      strikte Typprüfung, konservative Evidenzklasse (A nur bei high +
      riskOfBias low; not_formally_assessed nie A/high), Pflicht-Pin
      expectedKnowledgeContractVersion. */
-  var KNOWLEDGE_CONTRACT_VERSION = 5;
+  /* v6 (Vorgabefähigkeit): Der Vertrag hat bis v5 zwei verschiedene Fragen
+     an dieselbe Achse gehängt — "wie gut ist die Evidenz?" (Klasse A–D) und
+     "darf die App dem Nutzer überhaupt etwas Konkretes sagen?". Folge: weil
+     jede Engine-Wirkung eine ORVIA-Produktentscheidung enthält, war der
+     Ceiling ALLER Regeln D, und D durfte nichts. Eine Trainings-App, die
+     nichts vorschreiben darf, ist als Produkt tot.
+
+     v6 trennt die beiden Achsen. Die Evidenzlogik bleibt UNVERÄNDERT streng;
+     neu ist ausschließlich, dass eine schwach belegte Regel vorschreiben
+     DARF, sofern sie ihre Herkunft OFFENLEGT:
+
+     - MODUS 'advisory' zwischen 'shadow' und 'production'. Er hebt genau
+       eine Sperre auf: die wissenschaftliche Freigabepflicht. Die
+       medizinische Freigabepflicht, die technische Prüfpflicht und
+       'rejected' gelten in JEDEM Modus unverändert.
+     - OFFENLEGUNGSPFLICHT statt Blockade: selectRules liefert je Regel ein
+       disclosure-Objekt (Klasse, Confidence, Basis, Reviewstatus,
+       Quellen-IDs, deutschsprachiges Label). Nicht-mutierend, deterministisch.
+       Wer im Advisory-Modus auswählt, bekommt die Regel UND die Pflicht,
+       ihre Herkunft anzuzeigen.
+     - QUANTITATIVE STRUKTUR ≠ QUANTITATIVE AUTORISIERUNG. Bis v5 machte ein
+       quantitativer Claim ohne Autorisierung die ganze Regel — und damit das
+       ganze Pack — UNGÜLTIG. Es war also unmöglich, überhaupt eine Zahl in
+       ein Pack zu schreiben. Neu prüft validateClaim nur noch die STRUKTUR
+       (quantitativeSchemaValid); ob die Zahl benutzt werden darf, ist eine
+       Laufzeitfrage: quantitativeUseAllowed (production, unverändert streng)
+       bzw. prescriptiveNumberAllowed (advisory).
+     - prescriptiveNumberAllowed ist FAIL-CLOSED gegenüber der Regel: ohne
+       Regelkontext keine Zahl, bei medicalSafetyRelevant ohne medizinische
+       Freigabe keine Zahl, bei decisionRole 'fallback' keine Zahl. Ein
+       Fallback ist eine Notlösung und darf nie eine Vorgabe begründen.
+     - NEUE QUELLENTYPEN, damit Praxiswissen überhaupt einspeisbar ist:
+       coach_practice_video, coach_curriculum, textbook, practice_synthesis
+       (Ceiling C) und federation_guideline (Ceiling B). Sie können per
+       Konstruktion nie Klasse A erreichen — Verbreitung ist kein Evidenzmaß.
+
+     Was v6 NICHT tut: keine Lockerung bei Medizin/Sicherheit, keine
+     Aufweichung der Pin-Pflicht, keine Änderung an production/shadow.
+
+     v5-Erbe (Korrekturbatch 3b.0d): strikt boolesche medicalSafetyRelevant,
+     typisierte Source-Felder, versioniertes Quant-Schema, fail-closed
+     maxConfidenceFor bei Klassen-Kurzform, feldbezogene Fehler statt Catch. */
+  var KNOWLEDGE_CONTRACT_VERSION = 6;
   var QUANT_SCHEMA_VERSION = 1;
 
   function _deepFreeze(o) {
@@ -80,7 +122,15 @@
     A: { rank: 4, label: 'Leitlinie/Konsens/hochwertige systematische Übersicht — abgeleitet' },
     B: { rank: 3, label: 'Peer-reviewte Primärstudie / validiertes Modell — abgeleitet' },
     C: { rank: 2, label: 'Experten-/Konsensregel bzw. abgestufte Evidenz — abgeleitet' },
-    D: { rank: 1, label: 'ORVIA-Produktheuristik/Fallback — nie allein hohe Confidence, nie quantitativ' }
+    D: { rank: 1, label: 'ORVIA-Produktheuristik/Fachpraxis — im Advisory-Modus vorgabefähig MIT Offenlegung; nie hohe Confidence, in production nie quantitativ' }
+  };
+  /* Deutschsprachige Offenlegungs-Labels (v6). Die UI darf eine Vorgabe nur
+     zusammen mit dem Label ihrer Basis anzeigen. */
+  var BASIS_LABELS = {
+    evidence: 'aus Studienlage abgeleitet',
+    expert_consensus: 'Fach-/Coachkonsens',
+    product_policy: 'ORVIA-Produktentscheidung',
+    fallback: 'konservative Notfallregel'
   };
   var DECISION_ROLES = ['evidence', 'product_policy', 'expert_consensus', 'fallback'];
   var CLAIM_USES = ['qualitative', 'ordinal', 'quantitative'];
@@ -92,8 +142,13 @@
   var TECHNICAL_STATUSES = ['draft', 'reviewed'];
   var SCIENTIFIC_STATUSES = ['unreviewed', 'approved', 'rejected'];
   var MEDICAL_STATUSES = ['not_required', 'required_unreviewed', 'approved', 'rejected'];
-  var MODES = ['production', 'shadow'];
-  var SOURCE_TYPES = ['consensus_statement', 'position_stand', 'systematic_review', 'rct', 'cohort_study', 'primary_study', 'narrative_review', 'expert_practice', 'orvia_internal_contract'];
+  /* 'advisory' (v6): darf vorschreiben, muss offenlegen. Reihenfolge ist
+     KEINE Rangordnung — jeder Modus hat eigene Sperren. */
+  var MODES = ['production', 'advisory', 'shadow'];
+  var SOURCE_TYPES = ['consensus_statement', 'position_stand', 'systematic_review', 'rct', 'cohort_study', 'primary_study', 'narrative_review', 'expert_practice', 'orvia_internal_contract',
+    /* v6 — Praxisquellen. Bewusst am unteren Ende: ein Coachvideo kann sehr
+       nützlich und trotzdem nie Klasse A sein. */
+    'federation_guideline', 'coach_curriculum', 'coach_practice_video', 'textbook', 'practice_synthesis'];
   /* Typisierte Qualifikationsbereiche. Produkt-/Entwicklerrollen sind bewusst
      KEINEM Freigabe-Scope zugeordnet. */
   var QUALIFICATION_TYPES = ['sports_science_academic', 'exercise_physiology_academic', 'physician', 'physician_sports_medicine', 'licensed_physiotherapist', 'product_owner', 'software_engineer'];
@@ -141,7 +196,12 @@
     if (!src || typeof src !== 'object') return 0;
     if (src.sourceType === 'orvia_internal_contract') return 1;
     var typeCeiling = (src.sourceType === 'consensus_statement' || src.sourceType === 'position_stand' || src.sourceType === 'systematic_review') ? 4
-      : (src.sourceType === 'rct' || src.sourceType === 'cohort_study' || src.sourceType === 'primary_study' || src.sourceType === 'narrative_review') ? 3
+      : (src.sourceType === 'rct' || src.sourceType === 'cohort_study' || src.sourceType === 'primary_study' || src.sourceType === 'narrative_review' ||
+        src.sourceType === 'federation_guideline') ? 3
+        /* v6: coach_curriculum, coach_practice_video, textbook,
+           practice_synthesis, expert_practice — Ceiling C. Auch tausend
+           übereinstimmende Videos ergeben keine Klasse A: Häufigkeit misst
+           Verbreitung, nicht Richtigkeit. */
         : 2;
     var ap = (src.appraisal && typeof src.appraisal === 'object') ? src.appraisal : {};
     var r = typeCeiling;
@@ -227,6 +287,27 @@
       typeof r.min === 'number' && isFinite(r.min) &&
       typeof r.max === 'number' && isFinite(r.max) && r.min <= r.max);
   }
+  /* STRUKTUR (v6): Ist das quantitative Paket vollständig und typrichtig?
+     Diese Frage ist von der Frage "darf die Zahl benutzt werden?" getrennt.
+     Bis v5 waren beide verschmolzen — Folge: ein quantitativer Claim ohne
+     Autorisierung machte Regel UND Pack ungültig, es war also unmöglich,
+     überhaupt eine Zahl zu hinterlegen. independentValidation muss hier
+     VORHANDEN und boolesch sein; ob es true sein MUSS, entscheidet erst die
+     jeweilige Autorisierung. */
+  function quantitativeSchemaValid(claim) {
+    if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+    var q = claim.quantitative;
+    if (!q || typeof q !== 'object' || Array.isArray(q)) return false;
+    if (q.schemaVersion !== QUANT_SCHEMA_VERSION) return false;                 // versioniert
+    for (var i = 0; i < QUANT_STRING_FIELDS.length; i++) { if (!_isNonEmptyString(q[QUANT_STRING_FIELDS[i]])) return false; }
+    if (!_validRangeTyped(q.validRange)) return false;                          // eindeutig typisiert {min,max}
+    if (!Array.isArray(q.exclusions) || !q.exclusions.every(_isNonEmptyString)) return false;
+    if (typeof q.independentValidation !== 'boolean') return false;             // vorhanden + boolesch (Wert prüft die Autorisierung)
+    return true;
+  }
+  /* AUTORISIERUNG production (v6 verhaltensgleich zu v5): Klasse A/B UND
+     formal bewertete Quellen UND vollständige Struktur UND
+     independentValidation EXAKT true. */
   function quantitativeUseAllowed(claim, sourcesById) {
     if (!claim || typeof claim !== 'object' || claim.use !== 'quantitative') return false;
     var cls = deriveClaimEvidenceClass(claim, sourcesById);
@@ -239,14 +320,69 @@
       var rob = s && s.appraisal && s.appraisal.riskOfBias;
       if (rob !== 'low' && rob !== 'some_concerns') return false;
     }
-    var q = claim.quantitative;
-    if (!q || typeof q !== 'object' || Array.isArray(q)) return false;
-    if (q.schemaVersion !== QUANT_SCHEMA_VERSION) return false;                 // versioniert
-    for (var i = 0; i < QUANT_STRING_FIELDS.length; i++) { if (!_isNonEmptyString(q[QUANT_STRING_FIELDS[i]])) return false; }
-    if (!_validRangeTyped(q.validRange)) return false;                          // eindeutig typisiert {min,max}
-    if (!Array.isArray(q.exclusions) || !q.exclusions.every(_isNonEmptyString)) return false;
-    if (q.independentValidation !== true) return false;                         // EXAKT Boolean true — 'ja'/1/{} unzulässig
+    if (!quantitativeSchemaValid(claim)) return false;
+    if (claim.quantitative.independentValidation !== true) return false;        // EXAKT Boolean true — 'ja'/1/{} unzulässig
     return true;
+  }
+  /* AUTORISIERUNG advisory (v6, NEU): Hier darf auch eine Klasse-D-Regel eine
+     konkrete Zahl vorgeben — das ist der ganze Zweck der Änderung. Die
+     Strenge verlagert sich von der Evidenzklasse auf den GELTUNGSBEREICH:
+     Einheiten, Gültigkeitsbereich, Ausschlüsse, Unsicherheit und
+     Sicherheitsgrenzen müssen deklariert sein, sonst keine Zahl.
+
+     FAIL-CLOSED gegenüber der Regel — ohne Regelkontext niemals eine Zahl:
+     - ruleCtx fehlt/kein Objekt              ⇒ false
+     - ruleCtx.medicalSafetyRelevant === true ⇒ false, solange die medizinische
+                                                Freigabe nicht 'approved' ist
+     - decisionRole 'fallback'                ⇒ false (eine Notlösung begründet
+                                                nie eine Vorgabe)
+     - Governance 'rejected'                  ⇒ false */
+  function prescriptiveNumberAllowed(claim, sourcesById, ruleCtx) {
+    if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+    if (claim.use !== 'quantitative') return false;
+    if (!ruleCtx || typeof ruleCtx !== 'object' || Array.isArray(ruleCtx)) return false;
+    if (claim.decisionRole === 'fallback') return false;
+    if (DECISION_ROLES.indexOf(claim.decisionRole) < 0) return false;
+    var g = ruleCtx.governance;
+    if (!g || typeof g !== 'object' || Array.isArray(g)) return false;
+    if (g.technicalStatus !== 'reviewed') return false;
+    if (g.scientificReviewStatus === 'rejected' || g.medicalSafetyReviewStatus === 'rejected') return false;
+    if (ruleCtx.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') return false;
+    if (!quantitativeSchemaValid(claim)) return false;
+    /* Eine Vorgabe ohne Sicherheitsgrenze ist keine Vorgabe, sondern ein
+       Risiko: safetyBounds ist bereits Pflicht-Stringfeld der Struktur. */
+    return true;
+  }
+  /* Offenlegung (v6): Was die UI zwingend mitanzeigen muss, wenn sie eine
+     Regel als Vorgabe verwendet. Rein abgeleitet, nicht-mutierend,
+     deterministisch. basis = schwächste Rolle der essenziellen Claims —
+     eine Regel ist nie besser begründet als ihre schwächste tragende Säule. */
+  var _BASIS_STRENGTH = { evidence: 4, expert_consensus: 3, product_policy: 2, fallback: 1 };
+  function disclosureFor(rule, sourcesById) {
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return null;
+    var claims = Array.isArray(rule.claims) ? rule.claims.filter(function (c) { return c && c.essential === true; }) : [];
+    var basis = null, weakest = 99, refs = {}, order = [];
+    claims.forEach(function (c) {
+      var s = _BASIS_STRENGTH[c.decisionRole];
+      if (typeof s === 'number' && s < weakest) { weakest = s; basis = c.decisionRole; }
+      (Array.isArray(c.sourceRefs) ? c.sourceRefs : []).forEach(function (id) {
+        if (_isNonEmptyString(id) && !refs[id]) { refs[id] = true; order.push(id); }
+      });
+    });
+    var g = (rule.governance && typeof rule.governance === 'object' && !Array.isArray(rule.governance)) ? rule.governance : {};
+    return {
+      ruleId: typeof rule.ruleId === 'string' ? rule.ruleId : null,
+      evidenceClass: ruleEvidenceCeiling(rule, sourcesById),
+      confidence: maxConfidenceFor(rule, sourcesById),
+      basis: basis,
+      basisLabel: basis ? BASIS_LABELS[basis] : null,
+      scientificReviewStatus: g.scientificReviewStatus || null,
+      medicalSafetyReviewStatus: g.medicalSafetyReviewStatus || null,
+      sourceRefs: order,
+      /* Pflicht, keine Empfehlung: eine Vorgabe ohne sichtbare Herkunft ist
+         genau das, was v6 verhindern soll. */
+      mustDisplaySource: true
+    };
   }
 
   /* ---------- semantische Hilfsprüfungen ---------- */
@@ -347,7 +483,13 @@
           CONSISTENCY.indexOf(claim.synthesis.consistency) < 0) err('claim_missing_synthesis_consistency');
       }
     }
-    if (claim.use === 'quantitative' && !quantitativeUseAllowed(claim, sourcesById)) err('claim_quantitative_not_authorized');
+    /* v6: Die VALIDIERUNG prüft nur noch die Struktur des quantitativen
+       Pakets. Bis v5 wurde hier die Autorisierung geprüft — dadurch machte
+       jede noch nicht autorisierte Zahl das gesamte Pack ungültig, und es
+       war unmöglich, Zahlen überhaupt zu hinterlegen. Ob die Zahl benutzt
+       werden darf, entscheidet zur Laufzeit quantitativeUseAllowed
+       (production) bzw. prescriptiveNumberAllowed (advisory). */
+    if (claim.use === 'quantitative' && !quantitativeSchemaValid(claim)) err('claim_quantitative_schema_invalid');
     return errors;
   }
 
@@ -592,17 +734,42 @@
         if (r.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') {
           excluded.push({ ruleId: r.ruleId, code: 'medical_safety_review_pending' }); return false;
         }
+        /* 'advisory' (v6) hebt GENAU DIESE Sperre auf — und nur sie. Die
+           technische Prüfpflicht, die medizinische Freigabepflicht und
+           'rejected' oben/unten gelten in advisory unverändert. */
         if (mode === 'production' && g.scientificReviewStatus !== 'approved') {
           excluded.push({ ruleId: r.ruleId, code: 'scientific_review_pending' }); return false;
         }
         if (g.scientificReviewStatus === 'rejected' || g.medicalSafetyReviewStatus === 'rejected') {
           excluded.push({ ruleId: r.ruleId, code: 'review_rejected' }); return false;
         }
+        /* OFFENLEGUNGSPFLICHT: Wer im Advisory-Modus vorschreiben darf, muss
+           die Herkunft anzeigen können. Eine Regel ohne ableitbare
+           Offenlegung wird ausgeschlossen statt ohne Herkunft ausgeliefert.
+
+           EHRLICHE EINORDNUNG: Dieser Zweig ist unter dem AKTUELLEN Vertrag
+           nicht erreichbar — validatePack läuft vorher und blockiert bereits
+           bei fehlendem essenziellem Claim (rule_no_essential_claim) oder
+           unbekannter decisionRole (claim_unknown_decision_role). Er ist
+           bewusst als Verteidigung in der Tiefe stehengelassen, falls die
+           Validierung später gelockert wird. Er zählt NICHT als
+           nachgewiesener Schutz; die Zusicherung wird stattdessen direkt an
+           disclosureFor geprüft (Test PR7b). */
+        if (mode === 'advisory') {
+          var d = disclosureFor(r, pv.sourcesById);
+          if (!d || !d.basis || !d.evidenceClass) {
+            excluded.push({ ruleId: r.ruleId, code: 'disclosure_underivable' }); return false;
+          }
+        }
         return true;
       })
       .slice()
       .sort(function (a, b) { return a.ruleId < b.ruleId ? -1 : (a.ruleId > b.ruleId ? 1 : 0); });
-    return { rules: rules, blocked: false, errors: [], excluded: excluded, sourceRegistryHash: regHash };
+    /* Offenlegung als eigenes, nicht-mutierendes Feld: die Regelobjekte des
+       Packs werden nie verändert (der Pack-Hash bleibt gültig). */
+    var disclosures = {};
+    rules.forEach(function (r) { disclosures[r.ruleId] = disclosureFor(r, pv.sourcesById); });
+    return { rules: rules, blocked: false, errors: [], excluded: excluded, sourceRegistryHash: regHash, mode: mode, disclosures: disclosures };
   }
   /* Letzter Fail-closed-Guard des gesamten Selektionspfads: interne
      Programmfehler liefern NIE Regeln, sondern blocked + internal_error. */
@@ -624,6 +791,10 @@
       { id: 'user_data', label: 'Nutzerspezifische Mess- und Verlaufsdaten', owner: 'EngineInputSnapshot / kanonische Aktivitäten — NIE mit Wissen vermischt' }
     ],
     principle: 'geprüftes ORVIA-Wissen + kanonische Nutzerdaten → deterministische Engine-Entscheidung',
+    /* v6: Die App denkt nicht selbst — sie leitet ab und legt offen. Der
+       Unterschied zu "erfundener Zahl" ist nicht Schweigen, sondern
+       nachvollziehbare Herkunft. */
+    prescriptionPolicy: 'Vorgabefähigkeit ist von der Evidenzklasse ENTKOPPELT: im Modus advisory darf auch eine Klasse-D-Regel konkret vorschreiben, aber nur MIT Offenlegung (disclosure) und nur mit deklariertem Geltungsbereich (quantitatives Schema inkl. validRange, exclusions, uncertaintyRange, safetyBounds). Medizinisch relevante Regeln bleiben in JEDEM Modus bis zur medizinischen Freigabe gesperrt.',
     llmPolicy: 'LLM darf erklären und formulieren, aber keine verbindlichen Trainings-, Belastungs- oder Sicherheitsregeln erfinden oder überschreiben; kein Live-Wissensbezug aus LLM oder Internet.',
     verificationHonesty: 'Software prüft ausschließlich hinterlegte Verifikationsdatensätze (Qualifikation/Review) — nicht die reale Echtheit von Abschlüssen oder Identitäten.'
   };
@@ -655,6 +826,7 @@
     SOURCE_REQUIRED: SOURCE_REQUIRED,
     CLAIM_REQUIRED: CLAIM_REQUIRED,
     KNOWLEDGE_ARCHITECTURE: KNOWLEDGE_ARCHITECTURE,
+    BASIS_LABELS: BASIS_LABELS,
     packContentHash: packContentHash,
     ruleEvidenceHash: ruleEvidenceHash,
     registryContentHash: registryContentHash,
@@ -662,7 +834,10 @@
     deriveClaimEvidenceClass: deriveClaimEvidenceClass,
     ruleEvidenceCeiling: ruleEvidenceCeiling,
     maxConfidenceFor: maxConfidenceFor,
+    quantitativeSchemaValid: quantitativeSchemaValid,
     quantitativeUseAllowed: quantitativeUseAllowed,
+    prescriptiveNumberAllowed: prescriptiveNumberAllowed,
+    disclosureFor: disclosureFor,
     reviewBindsToRule: reviewBindsToRule,
     validateSource: validateSource,
     validateClaim: validateClaim,

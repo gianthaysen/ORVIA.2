@@ -1452,6 +1452,43 @@
       });
     }
     var maxS = (p.availability && p.availability.maxSessionsPerWeek != null) ? p.availability.maxSessionsPerWeek : null;
+    /* ============================================================
+       FIX (2026-08-06, Nutzerbefund „6× laufen, kein Ruhetag, überall Doppel"):
+       Drei im Profil erfassbare Felder wurden vom AKTIVEN Plangenerator nie
+       gelesen — sie standen in der Feldmatrix als `status: 'prepared'` und
+       hatten als Konsumenten nur die Shadow-Engine, die nichts steuert:
+
+         • availability.days[d].restDay          — harter Ruhetag
+         • availability.preferredRestDays        — gewünschter Ruhetag
+         • availability.days[d].doubleSession    — DARF an diesem Tag doppelt
+                                                   trainiert werden?
+
+       Wirkung: Der Nutzer setzte einen Ruhetag und sah ihn in der Profil-
+       Zusammenfassung („Ruhe: So") — geplant wurde trotzdem darauf. Und
+       „Doppeleinheit möglich" wurde vom Auffüllen als „Doppeleinheit
+       erwünscht" behandelt, an JEDEM Tag.
+
+       Diese drei Listen sind additiv; kein bestehendes Feld ändert sich.
+       Sie sind der Grund, warum week-plan-policy.js überhaupt entscheiden kann.
+       ============================================================ */
+    var restDayIdx = [], doubleAllowedDayIdx = [];
+    if (days && typeof days === 'object') {
+      WEEKDAYS.forEach(function (d, i) {
+        var w = days[d];
+        if (w && typeof w === 'object') {
+          if (w.restDay === true) restDayIdx.push(i);
+          if (w.doubleSession && w.doubleSession.enabled === true) doubleAllowedDayIdx.push(i);
+        }
+      });
+    }
+    var preferredRestDayIdx = [];
+    try {
+      var prd = (p.availability && p.availability.preferredRestDays) || [];
+      (Array.isArray(prd) ? prd : []).forEach(function (d) {
+        var i = WEEKDAYS.indexOf(d);
+        if (i >= 0 && preferredRestDayIdx.indexOf(i) < 0) preferredRestDayIdx.push(i);
+      });
+    } catch (e) {}
     var targetDays = null, daysSource = 'none';
     if (availableDayIdx.length) {
       targetDays = availableDayIdx.length;
@@ -1468,6 +1505,9 @@
     return {
       targetDays: targetDays, availableDayIdx: availableDayIdx, daysSource: daysSource,
       maxSessionsPerWeek: maxS, gymDays: gymDays,
+      restDayIdx: restDayIdx, preferredRestDayIdx: preferredRestDayIdx,
+      doubleAllowedDayIdx: doubleAllowedDayIdx,
+      maxIntenseSessions: (p.availability && p.availability.maxIntenseSessions != null) ? p.availability.maxIntenseSessions : null,
       adaptationMode: prefs.adaptationMode || p.adaptationMode || null,
       riskTolerance: prefs.riskTolerance || p.riskTolerance || null
     };

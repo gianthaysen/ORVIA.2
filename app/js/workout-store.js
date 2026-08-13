@@ -117,8 +117,53 @@
     if (O.workout.session.started_at == null) O.workout.session.started_at = startedAtISO; // Sicherung gegen Repo-Null
     if (O.workout.session.total_paused_seconds == null) O.workout.session.total_paused_seconds = 0;
     O.workout.exercises = []; O.workout.currentIndex = 0; O.workout.startedAt = O.workout.session.started_at; O.workout.dirty = false;
-    O.workout.syncStatus = r.sync_status; saveLocal();
-    return res(true, { session: O.workout.session }, null, r.source, r.sync_status);
+    O.workout.syncStatus = r.sync_status;
+    /* v8-322: die im Plan-Snapshot mitgereichten Kraftvorgaben werden JETZT zu
+       echten Uebungen der Session. Das Ergebnis wandert ins Resultat, damit die
+       Oberflaeche eine misslungene Uebernahme melden kann statt sie zu
+       verschlucken. */
+    let plannedApplied = null;
+    if (opts.planSnapshot && opts.planSnapshot.plannedExercises) {
+      plannedApplied = await applyPlannedExercises(opts.planSnapshot.plannedExercises);
+    }
+    saveLocal();
+    return res(true, { session: O.workout.session, plannedApplied: plannedApplied }, null, r.source, r.sync_status);
+  }
+
+  /* ---- v8-322: geplante Kraftvorgaben in die laufende Session uebernehmen ----
+     Der Wochenplan trug die Vorgaben seit v8-321 im Datenvertrag, aber der
+     ECHTE Startpfad (startPlannedUnit -> workoutUI.startSport ->
+     startFreeWorkout) legte grundsaetzlich eine leere Session an. Der einzige
+     Pfad, der ueberhaupt Planuebungen anlegte — startPlannedWorkout — hat bis
+     heute NULL Aufrufer. Damit war jede geplante Uebung beim Start weg.
+
+     FAIL-CLOSED an der richtigen Stelle: eine Uebung, die sich nicht anlegen
+     laesst, wird GEZAEHLT und gemeldet, nicht verschluckt. Der Anzeigename ist
+     dagegen bewusst fail-open — die exercise_id ist die Wahrheit, ein fehlender
+     Name darf die Uebung nicht verhindern (offline gibt es die Bibliothek
+     nicht). */
+  async function applyPlannedExercises(planned) {
+    const SP = O.strengthPlan;
+    if (!SP) return { applied: 0, failed: 0, planned: 0, reason: 'no_contract' };
+    const list = SP.normalizePlanned(planned).exercises;
+    if (!list.length) return { applied: 0, failed: 0, planned: 0 };
+    const byId = {};
+    try {
+      if (online() && O.repos && O.repos.exercise) {
+        const r = await O.repos.exercise.list();
+        if (r && r.success) for (const e of (r.data || [])) byId[e.id] = e;
+      }
+    } catch (e) { /* Name bleibt leer — die Uebung wird trotzdem angelegt. */ }
+    let applied = 0, failed = 0;
+    for (const p of list) {
+      const r = await addExercise(p.exerciseId, {
+        plannedSets: p.sets, minReps: p.minReps, maxReps: p.maxReps,
+        targetRir: p.targetRir, targetWeightKg: p.targetWeightKg,
+        restSeconds: p.restSeconds, notes: p.note, exercise: byId[p.exerciseId] || null
+      });
+      if (r && r.success) applied++; else failed++;
+    }
+    return { applied: applied, failed: failed, planned: list.length };
   }
 
   async function startPlannedWorkout(planDayId) {
@@ -131,7 +176,7 @@
       // Geplante Übungen NUR über das Repository laden (keine direkte Supabase-Abfrage im Store).
       try {
         const pres = O.repos.trainingPlan ? await O.repos.trainingPlan.getPlanDayExercises(planDayId) : { success: false };
-        if (pres.success) for (const pe of (pres.data || [])) await addExercise(pe.exercise_id, { plannedSets: pe.planned_sets, minReps: pe.min_reps, maxReps: pe.max_reps, targetRir: pe.target_rir, restSeconds: pe.rest_seconds, notes: pe.notes });
+        if (pres.success) for (const pe of (pres.data || [])) await addExercise(pe.exercise_id, { plannedSets: pe.planned_sets, minReps: pe.min_reps, maxReps: pe.max_reps, targetRir: pe.target_rir, targetWeightKg: pe.target_weight_kg, restSeconds: pe.rest_seconds, notes: pe.notes });
       } catch (e) {}
     }
     saveLocal();
@@ -449,7 +494,7 @@
   async function addExercise(exerciseId, opts) {
     opts = opts || {}; const s = O.workout.session; if (!s) return res(false, null, { message: 'keine aktive Session' }, 'empty', 'failed');
     const clientExerciseId = cid('we'); const order = O.workout.exercises.length;
-    const exRow = { clientExerciseId: clientExerciseId, exerciseId: exerciseId, order: order, plannedSets: opts.plannedSets, minReps: opts.minReps, maxReps: opts.maxReps, targetRir: opts.targetRir, targetRpe: opts.targetRpe, restSeconds: opts.restSeconds, notes: opts.notes };
+    const exRow = { clientExerciseId: clientExerciseId, exerciseId: exerciseId, order: order, plannedSets: opts.plannedSets, minReps: opts.minReps, maxReps: opts.maxReps, targetRir: opts.targetRir, targetRpe: opts.targetRpe, targetWeightKg: opts.targetWeightKg, restSeconds: opts.restSeconds, notes: opts.notes };
     let r;
     if (online() && s.id) r = await O.repos.workout.addExercise(s.id, exRow);
     else r = await offlineUpsert('workout_exercises', buildExerciseRow(s, exRow), 'user_id,client_exercise_id', { clientId: clientExerciseId, parentClientId: s.client_session_id, fkField: 'workout_session_id' });
@@ -586,17 +631,34 @@
     return { user_id: uid(), local_date: s.localDate, status: s.status || 'active', started_at: s.startedAt || s.started_at || null, finished_at: s.finishedAt || s.finished_at || null,
       sport: s.sport || null, sport_key: sportKey || null, session_type: s.sessionType || null, notes: s.notes || null,
       planned_session_id: s.plannedSessionId || s.planned_session_id || null,   // Batch 2b: Offline-Queue-Parität zum Repository-Mapping
+      /* v8-322 — Paritaetsluecke geschlossen: plan_id, plan_day_id und
+         perceived_effort standen im Online-Mapper, fehlten hier aber. Wer
+         offline startete, verlor den Planbezug dauerhaft (plan_day_id wurde
+         nur online nachgepatcht) und perceived_effort schrieb ueberhaupt
+         KEIN Pfad. Nur senden, wenn belegt — sonst waeren es stille NULLs,
+         die einen bereits gesetzten Wert ueberschreiben koennten. */
+      ...(s.planId || s.plan_id ? { plan_id: s.planId || s.plan_id } : {}),
+      ...(s.planDayId || s.plan_day_id ? { plan_day_id: s.planDayId || s.plan_day_id } : {}),
+      ...(s.perceivedEffort != null ? { perceived_effort: s.perceivedEffort } : {}),
       /* Batch 2d (H3-Muster): planned_session_snapshot NUR senden wenn belegt —
          kompatibel mit Instanzen, auf denen Migration 0025 noch nicht läuft. */
       ...(s.plannedSessionSnapshot ? { planned_session_snapshot: s.plannedSessionSnapshot } : {}),
       paused_at: s.pausedAt || s.paused_at || null, total_paused_seconds: s.totalPausedSeconds != null ? s.totalPausedSeconds : (s.total_paused_seconds != null ? s.total_paused_seconds : 0),
       readiness_snapshot: s.readinessSnapshot || null, decision_snapshot: s.decisionSnapshot || null, source: s.source || 'manual', client_session_id: s.clientSessionId || null };
   }
+  /* v8-322 — Feldparitaet zum Online-Mapper (js/repos/workoutRepository.js:addExercise).
+     Vorher fehlten hier target_rpe, completed und replaced_by_exercise_id: wer offline
+     eine Uebung anlegte, verlor genau diese drei Angaben dauerhaft, weil die
+     Offline-Queue die Payload unveraendert durchschreibt. target_weight_kg kommt
+     neu dazu — ohne es waere die Spalte aus 0035 auf dem Offline-Weg tot. */
   function buildExerciseRow(session, ex) {
     return { user_id: uid(), workout_session_id: session.id || null, client_exercise_id: ex.clientExerciseId, exercise_id: ex.exerciseId || null,
       order_index: ex.order != null ? ex.order : 0, planned_sets: ex.plannedSets != null ? ex.plannedSets : null,
       min_reps: ex.minReps != null ? ex.minReps : null, max_reps: ex.maxReps != null ? ex.maxReps : null,
-      target_rir: ex.targetRir != null ? ex.targetRir : null, rest_seconds: ex.restSeconds != null ? ex.restSeconds : null, notes: ex.notes || null };
+      target_rir: ex.targetRir != null ? ex.targetRir : null, target_rpe: ex.targetRpe != null ? ex.targetRpe : null,
+      target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null,
+      rest_seconds: ex.restSeconds != null ? ex.restSeconds : null, notes: ex.notes || null,
+      completed: !!ex.completed, replaced_by_exercise_id: ex.replacedBy || null };
   }
   function buildSetRow(e, set) {
     const row = M ? M.setToRow(set) : Object.assign({}, set);
@@ -639,7 +701,7 @@
   }
 
   O.workoutStore = {
-    startFreeWorkout, startPlannedWorkout, restoreActiveWorkout, pauseWorkout, resumeWorkout, finishWorkout, cancelWorkout,
+    startFreeWorkout, startPlannedWorkout, applyPlannedExercises, restoreActiveWorkout, pauseWorkout, resumeWorkout, finishWorkout, cancelWorkout,
     correctFinishedDuration,
     addExercise, replaceExercise, removeExercise, reorderExercises,
     addSet, updateSet, deleteSet, completeSet, validateSet,

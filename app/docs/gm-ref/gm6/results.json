@@ -1,0 +1,594 @@
+{
+ "f_good_430": {
+  "pct": 1.86,
+  "px": 7181,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1794
+  ],
+  "group": "vollständig",
+  "gmScen": "good",
+  "prodState": "good"
+ },
+ "a_good_430": {
+  "pct": 1.19,
+  "px": 4609,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1561
+  ],
+  "group": "vollständig",
+  "gmScen": "good",
+  "prodState": "good"
+ },
+ "p_good_430": {
+  "pct": 1.25,
+  "px": 4825,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   3150
+  ],
+  "group": "vollständig",
+  "gmScen": "good",
+  "prodState": "good"
+ },
+ "f_ciopen_430": {
+  "pct": 1.09,
+  "px": 4210,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1734
+  ],
+  "group": "vollständig",
+  "gmScen": "good",
+  "prodState": "ciopen"
+ },
+ "f_attention_430": {
+  "pct": 1.96,
+  "px": 7585,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1794
+  ],
+  "group": "vollständig",
+  "gmScen": "attention",
+  "prodState": "attention"
+ },
+ "p_crit_430": {
+  "pct": 0.53,
+  "px": 2034,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   3508
+  ],
+  "group": "vollständig",
+  "gmScen": "crit",
+  "prodState": "crit"
+ },
+ "a_loading_430": {
+  "pct": 0.02,
+  "px": 70,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   834
+  ],
+  "group": "Laden",
+  "gmScen": "loading",
+  "prodState": "loading"
+ },
+ "f_loading_430": {
+  "pct": 0.5,
+  "px": 1942,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   956
+  ],
+  "group": "Laden",
+  "gmScen": "loading",
+  "prodState": "loading"
+ },
+ "p_loading_430": {
+  "pct": 0,
+  "px": 13,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   968
+  ],
+  "group": "Laden",
+  "gmScen": "loading",
+  "prodState": "loading"
+ },
+ "a_empty_430": {
+  "pct": 0.01,
+  "px": 30,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1106
+  ],
+  "group": "leer",
+  "gmScen": "empty",
+  "prodState": "empty"
+ },
+ "f_empty_430": {
+  "pct": 0.56,
+  "px": 2161,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1031
+  ],
+  "group": "leer",
+  "gmScen": "empty",
+  "prodState": "empty"
+ },
+ "p_empty_430": {
+  "pct": 0,
+  "px": 13,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1043
+  ],
+  "group": "leer",
+  "gmScen": "empty",
+  "prodState": "empty"
+ },
+ "a_offline_cache_430": {
+  "pct": 0.01,
+  "px": 44,
+  "shift": 68,
+  "cut": 117,
+  "group": "offline mit Cache",
+  "gmScen": "good",
+  "prodState": "offline_cache",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 36.6,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_offline_cache_430": {
+  "pct": 0.01,
+  "px": 40,
+  "shift": 68,
+  "cut": 107,
+  "group": "offline mit Cache",
+  "gmScen": "good",
+  "prodState": "offline_cache",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 34.11,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "p_offline_cache_430": {
+  "pct": 0.03,
+  "px": 397,
+  "shift": 68,
+  "cut": 120,
+  "group": "offline mit Cache",
+  "gmScen": "good",
+  "prodState": "offline_cache",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 30.5,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_offline_nav_430": {
+  "pct": 0.01,
+  "px": 40,
+  "shift": 68,
+  "cut": 107,
+  "group": "offline (navigator)",
+  "gmScen": "good",
+  "prodState": "offline_cache_nav",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 34.11,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_offline_sync_430": {
+  "pct": 0.01,
+  "px": 40,
+  "shift": 68,
+  "cut": 107,
+  "group": "offline (syncState)",
+  "gmScen": "good",
+  "prodState": "offline_cache_sync",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 34.11,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_offline_nodata_430": {
+  "pct": 1.74,
+  "px": 5383,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   720
+  ],
+  "group": "offline ohne Daten",
+  "gmScen": "error",
+  "prodState": "offline_nodata"
+ },
+ "f_error_430": {
+  "pct": 0.01,
+  "px": 40,
+  "shift": 68,
+  "cut": 107,
+  "group": "behebbarer Ladefehler",
+  "gmScen": "good",
+  "prodState": "error",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 34.11,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_error_nodata_430": {
+  "pct": 1.74,
+  "px": 5383,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   720
+  ],
+  "group": "Ladefehler ohne Daten",
+  "gmScen": "error",
+  "prodState": "error_nodata"
+ },
+ "f_partial_430": {
+  "pct": 1.85,
+  "px": 7174,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1790
+  ],
+  "group": "teilweise vorhanden",
+  "gmScen": "good",
+  "prodState": "partial"
+ },
+ "f_local_only_430": {
+  "pct": 1.86,
+  "px": 7181,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1794
+  ],
+  "group": "nur lokal (Negativkontrolle)",
+  "gmScen": "good",
+  "prodState": "local_only"
+ },
+ "f_pending_430": {
+  "pct": 1.86,
+  "px": 7181,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   1794
+  ],
+  "group": "Sync ausstehend (Negativkontrolle)",
+  "gmScen": "good",
+  "prodState": "pending"
+ },
+ "f_good_390": {
+  "pct": 0.58,
+  "px": 2021,
+  "gm": [
+   390,
+   900
+  ],
+  "prod": [
+   390,
+   1813
+  ],
+  "group": "vollständig",
+  "gmScen": "good",
+  "prodState": "good"
+ },
+ "f_loading_390": {
+  "pct": 0.63,
+  "px": 2205,
+  "gm": [
+   390,
+   900
+  ],
+  "prod": [
+   390,
+   956
+  ],
+  "group": "Laden",
+  "gmScen": "loading",
+  "prodState": "loading"
+ },
+ "f_empty_390": {
+  "pct": 0.59,
+  "px": 2086,
+  "gm": [
+   390,
+   900
+  ],
+  "prod": [
+   390,
+   1031
+  ],
+  "group": "leer",
+  "gmScen": "empty",
+  "prodState": "empty"
+ },
+ "f_offline_cache_390": {
+  "pct": 0.01,
+  "px": 92,
+  "shift": 68,
+  "cut": 107,
+  "group": "offline mit Cache",
+  "gmScen": "good",
+  "prodState": "offline_cache",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 32.06,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_error_390": {
+  "pct": 0.01,
+  "px": 92,
+  "shift": 68,
+  "cut": 107,
+  "group": "behebbarer Ladefehler",
+  "gmScen": "good",
+  "prodState": "error",
+  "gated": "prod-vs-prod (§2)",
+  "gmInfo": 32.06,
+  "note": "kein GM-Referenzzustand (§2) — GM-Wert nur informativ"
+ },
+ "f_partial_390": {
+  "pct": 0.57,
+  "px": 2016,
+  "gm": [
+   390,
+   900
+  ],
+  "prod": [
+   390,
+   1809
+  ],
+  "group": "teilweise vorhanden",
+  "gmScen": "good",
+  "prodState": "partial"
+ },
+ "komponente_sk_card": {
+  "pct": 0,
+  "px": 0,
+  "gm": [
+   394,
+   111
+  ],
+  "prod": [
+   394,
+   111
+  ],
+  "group": "Komponente (unmaskiert)"
+ },
+ "komponente_sk_kcard": {
+  "pct": 0,
+  "px": 0,
+  "gm": [
+   191,
+   120
+  ],
+  "prod": [
+   191,
+   120
+  ],
+  "group": "Komponente (unmaskiert)"
+ },
+ "komponente_empty_card": {
+  "pct": 0.91,
+  "px": 809,
+  "gm": [
+   394,
+   226
+  ],
+  "prod": [
+   394,
+   226
+  ],
+  "group": "Komponente (unmaskiert)"
+ },
+ "komponente_errbar": {
+  "pct": 1.79,
+  "px": 388,
+  "gm": [
+   394,
+   55
+  ],
+  "prod": [
+   394,
+   55
+  ],
+  "group": "Komponente (unmaskiert)"
+ },
+ "komponente_retry_btn": {
+  "pct": 0,
+  "px": 0,
+  "gm": [
+   151,
+   66
+  ],
+  "prod": [
+   151,
+   66
+  ],
+  "group": "Komponente (unmaskiert)"
+ },
+ "gmtab_tage": {
+  "loadingVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  },
+  "errorVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  }
+ },
+ "gmtab_act": {
+  "loadingVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  },
+  "errorVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  }
+ },
+ "gmtab_ana": {
+  "loadingVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  },
+  "errorVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  }
+ },
+ "gmtab_prof": {
+  "loadingVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  },
+  "errorVsGood": {
+   "pct": 0,
+   "px": 0,
+   "gm": [
+    430,
+    900
+   ],
+   "prod": [
+    430,
+    900
+   ]
+  }
+ },
+ "gmsub_settings": {
+  "pct": 0,
+  "px": 0,
+  "gm": [
+   430,
+   900
+  ],
+  "prod": [
+   430,
+   900
+  ]
+ }
+}

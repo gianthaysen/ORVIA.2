@@ -254,7 +254,9 @@
     host.innerHTML = main + hubTail(); renderHistory();
   }
   // Schnellstart-Kacheln DYNAMISCH aus der Nutzer-Sportauswahl (keine feste Fünferliste).
-  const HUB_SPRITE = { run: 1, bike: 1, swim: 1, dumbbell: 1, stretch: 1, pulse: 1 };
+  // v8-312: 'ball' ergaenzt — siehe activity.js SPRITE_ICONS-Kommentar, identische Lücke
+  // fuer Fussball-Nutzer hier (Hub-Schnellstart fiel bisher auf 'pulse' zurück).
+  const HUB_SPRITE = { run: 1, bike: 1, swim: 1, dumbbell: 1, stretch: 1, ball: 1, pulse: 1 };
   function hubIcon(sportId) { const ic = (O.activityConfig && O.activityConfig.sportIcon) ? O.activityConfig.sportIcon(sportId) : 'pulse'; return HUB_SPRITE[ic] ? ic : 'pulse'; }
   function _quickTilesHTML() {
     let tiles = [];
@@ -414,6 +416,15 @@
     const r = await WS().startFreeWorkout({ sport: sport || 'Gym', plannedSessionId: (opts && opts.plannedSessionId) || null, planSnapshot: (opts && opts.planSnapshot) || null, sessionType: (opts && opts.plannedSessionId) ? 'planned' : null }); _busy = false;
     if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
     if (r.sync_status === 'pending') toastIt('Offline gestartet – wird synchronisiert ⏳');
+    /* v8-323 (K2, Gians Vorgabe): eine teilweise misslungene Uebernahme der
+       geplanten Uebungen darf KEIN stiller Erfolg sein. applyPlannedExercises
+       liefert {planned, applied, failed}; failed>0 wird sichtbar gemeldet. */
+    const pa = r.data && r.data.plannedApplied;
+    if (pa && pa.failed > 0) {
+      toastIt(pa.applied > 0
+        ? pa.applied + ' von ' + pa.planned + ' geplanten Übungen übernommen — ' + pa.failed + ' fehlgeschlagen.'
+        : 'Keine der ' + pa.planned + ' geplanten Übungen konnte übernommen werden.');
+    }
     O.workoutUI.open();
   };
 

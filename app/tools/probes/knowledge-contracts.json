@@ -1,0 +1,110 @@
+{
+  "target": "js/engine/knowledge/knowledge-contracts.js",
+  "test": "supabase/tests/batch3b0_knowledge_test.mjs",
+  "note": "Wissensvertrag v6. M6/M7/M10/M11 deckten in v8-329 echte Testlücken auf; die zugehörigen Tests (QN1c, PX2b, PR6c, PR8) sind seither ergänzt. Dieser Katalog hält den Nachweis dauerhaft.",
+  "probes": [
+    {
+      "id": "M1",
+      "pattern": "direct",
+      "title": "medizinische Sperre in prescriptiveNumberAllowed entfernt",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    if (ruleCtx.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') return false;\n",
+      "replace": "",
+      "expectTest": "QN5"
+    },
+    {
+      "id": "M2",
+      "pattern": "direct",
+      "title": "medizinische Sperre im Selektor fuer advisory umgangen",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "        if (r.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') {",
+      "replace": "        if (mode !== 'advisory' && r.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') {",
+      "expectTest": "PR3"
+    },
+    {
+      "id": "M3",
+      "pattern": "direct",
+      "title": "fallback-Rolle darf eine Zahl vorgeben",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    if (claim.decisionRole === 'fallback') return false;\n",
+      "replace": "",
+      "expectTest": "QN6"
+    },
+    {
+      "id": "M4",
+      "pattern": "direct",
+      "title": "production-Sperre aufgehoben",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "        if (mode === 'production' && g.scientificReviewStatus !== 'approved') {",
+      "replace": "        if (false && g.scientificReviewStatus !== 'approved') {",
+      "expectTest": "PR2"
+    },
+    {
+      "id": "M5",
+      "pattern": "direct",
+      "title": "validRange-Pflicht in der Quant-Struktur entfernt",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    if (!_validRangeTyped(q.validRange)) return false;                          // eindeutig typisiert {min,max}\n",
+      "replace": "",
+      "expectTest": "QN7"
+    },
+    {
+      "id": "M6",
+      "pattern": "value_not_type",
+      "title": "independentValidation-Pflicht in production entfernt (gueltiger, aber falscher Wert)",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    if (claim.quantitative.independentValidation !== true) return false;        // EXAKT Boolean true — 'ja'/1/{} unzulässig\n",
+      "replace": "",
+      "expectTest": "QN1c",
+      "history": "blieb in v8-329 gruen: die Suite prueft nur typwidrige Werte ('ja', 1, {}), nie boolesches false. Geschlossen durch QN1c."
+    },
+    {
+      "id": "M7",
+      "pattern": "fixture_masks",
+      "title": "Verbandsleitlinie auf Klasse-A-Ceiling angehoben",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "        src.sourceType === 'federation_guideline') ? 3",
+      "replace": "        src.sourceType === 'federation_guideline') ? 4",
+      "expectTest": "PX2b",
+      "history": "blieb in v8-329 gruen: das Fixture trug moderate/not_formally_assessed, wodurch die A-Bremse ohnehin auf 3 deckelte. Geschlossen durch PX2b mit bestem denkbaren Appraisal."
+    },
+    {
+      "id": "M8",
+      "pattern": "direct",
+      "title": "Coachquellen auf Ceiling B angehoben",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "        : 2;\n    var ap =",
+      "replace": "        : 3;\n    var ap =",
+      "expectTest": "PX2"
+    },
+    {
+      "id": "M9",
+      "pattern": "direct",
+      "title": "Anzeigepflicht der Herkunft abgeschaltet",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "      mustDisplaySource: true",
+      "replace": "      mustDisplaySource: false",
+      "expectTest": "PR6"
+    },
+    {
+      "id": "M10",
+      "pattern": "data_lacks_var",
+      "title": "Basis = staerkste statt schwaechste Saeule",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "var _BASIS_STRENGTH = { evidence: 4, expert_consensus: 3, product_policy: 2, fallback: 1 };",
+      "replace": "var _BASIS_STRENGTH = { evidence: 4, expert_consensus: 3, product_policy: 5, fallback: 1 };",
+      "expectTest": "PR6c",
+      "history": "blieb in v8-329 gruen: die realen Pack-Regeln tragen je nur EINE essenzielle Rolle, dadurch blieb die Rangtabelle ungeprueft. Geschlossen durch PR6c mit synthetisch gemischten Rollen."
+    },
+    {
+      "id": "M11",
+      "pattern": "neighbour_guard",
+      "title": "Offenlegung ins Regelobjekt geschrieben (mutierend)",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    rules.forEach(function (r) { disclosures[r.ruleId] = disclosureFor(r, pv.sourcesById); });",
+      "replace": "    rules.forEach(function (r) { disclosures[r.ruleId] = disclosureFor(r, pv.sourcesById); r.disclosure = disclosures[r.ruleId]; });",
+      "expectTest": "PR8",
+      "history": "blieb in v8-329 gruen: Object.freeze verschluckte die Zuweisung still, gemessen wurde das Einfrieren statt des Selektors. Geschlossen durch PR8 gegen ein aufgetautes Pack."
+    }
+  ]
+}

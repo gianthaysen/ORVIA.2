@@ -104,7 +104,9 @@
         min_reps: ex.minReps != null ? ex.minReps : null, max_reps: ex.maxReps != null ? ex.maxReps : null,
         target_rir: ex.targetRir != null ? ex.targetRir : null, target_rpe: ex.targetRpe != null ? ex.targetRpe : null,
         rest_seconds: ex.restSeconds != null ? ex.restSeconds : null, notes: ex.notes || null,
-        completed: !!ex.completed, replaced_by_exercise_id: ex.replacedBy || null
+        completed: !!ex.completed, replaced_by_exercise_id: ex.replacedBy || null,
+        /* v8-322: Zielgewicht — Referenz fuer den spaeteren Soll-Ist-Vergleich (K7). */
+        target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null
       }, ex.clientExerciseId ? 'user_id,client_exercise_id' : undefined);
     },
     async updateExercise(id, patch) {

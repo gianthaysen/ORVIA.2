@@ -1,0 +1,228 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — die staerkste Quelle bisher.",
+    "",
+    "Anders als bei Friedmann habe ich hier nicht ueber ein Abrufwerkzeug",
+    "zusammenfassen lassen, sondern den Text der PDF selbst extrahiert und",
+    "gelesen (6 Seiten, 39.484 Zeichen). Alle Zahlen unten stehen woertlich",
+    "so im Text.",
+    "",
+    "Du hast dieselbe Datei dreimal hochgeladen — alle drei sind byteidentisch",
+    "(SHA-256 e55beb72). Einmal reicht.",
+    "",
+    "KEINE 'zahlen'-Bloecke in diesem Paket, bewusst: die Prozentwerte sind",
+    "ERGEBNISSE (so viel besser wurde die Oekonomie), keine VORGABEN (so viel",
+    "sollst du trainieren). Genau die Verwechslung habe ich in v8-339 einmal",
+    "gemacht. Die einzige echte Dosisangabe (4-5 x 3-4 Wdh) laesst offen, ob",
+    "sie pro Haupthebung oder pro Einheit gilt — deshalb liegt sie auf",
+    "plan.maximalkraft_dosis und nicht auf session.sets."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-SPERLICH-2015",
+    "art": "uebersichtsarbeit",
+    "titel": "Trainingsinterventionen zur Modifikation der Laufoekonomie im Mittel- und Langstreckenlauf",
+    "wer": "Sperlich B, Engel FA, Zinner C — Deutsche Zeitschrift fuer Sportmedizin 66(9), S. 229-234; Univ. Wuerzburg / KIT",
+    "jahr": 2015,
+    "doi": "10.5960/dzsm.2015.192",
+    "sportarten": [
+      "running",
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitlaeufer",
+      "gut_trainierte_laeufer",
+      "halbmarathon",
+      "marathon"
+    ],
+    "worum_gehts": [
+      "laufoekonomie",
+      "krafttraining",
+      "intervalltraining",
+      "hoehentraining"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Die Uebersicht wertet sechsundvierzig begutachtete Studien dazu aus, welche Trainingsformen die Laufoekonomie veraendern. Krafttraining parallel zum Lauftraining verbessert sie bei Freizeit- und trainierten Laeufern um drei bis sieben Prozent, die Laufleistung um zwei bis sechs Prozent; negative Effekte sind in keiner Studie dokumentiert. Am staerksten wirken Maximalkraft und plyometrisches Explosivkrafttraining, waehrend Kraftausdauertraining in der Mehrheit der Studien nichts bewirkt. Hochintensives Intervalltraining bringt im Mittel gut drei Prozent. Den groessten Zusammenhang mit der Laufoekonomie zeigen jedoch die ueber Jahre angesammelten Trainingsumfaenge.",
+    "grenzen": "Uebersichtsarbeit, keine eigene Untersuchung. Erschienen 2015 — die neuere Meta-Analyse von Llanos-Lagos 2024 kommt bei Plyometrie zu einem zurueckhaltenderen Ergebnis. Die Autoren nennen die Datenlage bei Maximalkraft ausdruecklich widerspruechlich und bei Hoehentraining uneinheitlich. Entscheidend fuer eine Mehrnutzer-App: Untersuchungen mit Laeuferinnen fehlen nach Angabe der Autoren fast gaenzlich — die Befunde stuetzen sich praktisch auf maennliche Laeufer. Keine Aussage fuer Verletzte, Kinder oder Jugendliche. Angaben zu finanziellen Interessen: keine. Ich habe den Volltext als Textextraktion der PDF gelesen, nicht das Layout.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-RE-001",
+      "thema": "krafttraining_fuer_laeufer",
+      "aussage": "Krafttraining zusaetzlich zum Lauftraining verbessert die Laufoekonomie um drei bis sieben Prozent und die Laufleistung um zwei bis sechs Prozent. Es veraendert dabei weder Koerpermasse noch fettfreie Masse noch Extremitaetenumfaenge — der Gewinn ist neuromuskulaer, nicht muskelaufbaubedingt.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SPERLICH-2015"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "halbmarathon",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Die Datenlage zum Maximalkrafttraining nennen die Autoren ausdruecklich widerspruechlich: Studien mit aehnlicher Intensitaet, Dauer und Haeufigkeit zeigten teils keine Veraenderung",
+        "Fast alle eingeschlossenen Studien fuehrten das Krafttraining ZUSAETZLICH zum normalen Lauftraining durch — ueber einen Ersatz sagt die Arbeit nichts",
+        "Untersuchungen mit Laeuferinnen fehlen nach Angabe der Autoren fast gaenzlich",
+        "Interventionsdauer der Studien bis zehn Wochen — laengerfristige Effekte sind nicht abgedeckt"
+      ],
+      "wenn_unsicher": "Im Zweifel Krafttraining ergaenzend zum Laufumfang planen, nicht anstelle davon.",
+      "wirkt_auf": [
+        "session.exercises",
+        "plan.strength_focus"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    },
+    {
+      "id": "RUN-RE-002",
+      "thema": "kraftausdauertraining",
+      "aussage": "Kraftausdauertraining mit hoher Wiederholungszahl und wenig oder keinem Zusatzgewicht verbessert die Laufoekonomie in der Mehrheit der Studien nicht. Fuer Laeufer ist es die am schlechtesten belegte Kraftform und keine Alternative zu schwerem Training.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SPERLICH-2015"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "halbmarathon",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Zwei der eingeschlossenen Studien fanden doch eine Verbesserung um 2,4 bis 4 Prozent — der Befund ist nicht einstimmig",
+        "Die 3-km-Laufleistung blieb auch dort unveraendert",
+        "Ueber andere Ziele als Laufoekonomie — etwa Verletzungspraevention oder Technikgrundlage — sagt der Befund nichts",
+        "Untersuchungen mit Laeuferinnen fehlen fast gaenzlich"
+      ],
+      "wenn_unsicher": "Im Zweifel weglassen und die Zeit in schweres Krafttraining oder Laufumfang stecken. Wer es aus anderen Gruenden macht, sollte es nicht als Oekonomietraining verbuchen.",
+      "wirkt_auf": [
+        "session.exercises"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    },
+    {
+      "id": "RUN-RE-003",
+      "thema": "maximalkraft_dosis",
+      "aussage": "Die in den erfolgreichen Studien verwendete Maximalkraftdosis waren hohe Lasten mit etwa vier bis fuenf Serien zu drei bis vier Wiederholungen je Trainingseinheit ueber sechs bis zehn Wochen.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SPERLICH-2015"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "halbmarathon",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Die Arbeit schreibt 'pro Trainingseinheit' und laesst offen, ob sich das auf die Haupthebung oder auf die gesamte Einheit bezieht — deshalb speist diese Zahl NICHT session.sets",
+        "Es ist die in Studien angewendete Dosis, keine abgeleitete Optimaldosis",
+        "Studien mit gleicher Dosis zeigten teils keinen Effekt — die Zahl garantiert nichts",
+        "Untersuchungen mit Laeuferinnen fehlen fast gaenzlich"
+      ],
+      "wenn_unsicher": "Im Zweifel wenige schwere Saetze einer Grunduebung statt vieler Saetze ueber viele Uebungen — und nicht innerhalb von 48 Stunden vor einer harten Laufeinheit.",
+      "wirkt_auf": [
+        "plan.maximalkraft_dosis"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    },
+    {
+      "id": "RUN-RE-004",
+      "thema": "plyometrie",
+      "aussage": "Plyometrisches und Explosivkrafttraining wurde in den erfolgreichen Studien ueber sechs bis zwoelf Wochen mit zwei bis drei Einheiten pro Woche durchgefuehrt, mit Spruengen und Sprints bei geringem bis keinem Zusatzgewicht. Die Ergebnislage ist uneinheitlich.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SPERLICH-2015"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "halbmarathon",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Von elf Studien zeigten sieben Untergruppen eine Verbesserung und sieben weitere keine signifikante Veraenderung — das ist ein Muenzwurf, kein Befund",
+        "Die neuere Meta-Analyse Llanos-Lagos 2024 stuft Plyometrie zurueckhaltender ein: kleiner Effekt und nur bis etwa zwoelf Kilometer pro Stunde. Diese Uebersicht von 2015 zaehlt sie dagegen zu den wirksamsten Formen — ein offener Widerspruch zwischen zwei Quellen",
+        "Zur Sehnenbelastung durch Sprungtraining sagt die Arbeit nichts",
+        "Untersuchungen mit Laeuferinnen fehlen fast gaenzlich"
+      ],
+      "wenn_unsicher": "Im Zweifel weglassen. Bei uneinheitlicher Wirksamkeit und unbezifferter Sehnenbelastung ist die vorsichtige Variante der Verzicht.",
+      "wirkt_auf": [
+        "session.exercises",
+        "plan.plyometrie_frequenz"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    },
+    {
+      "id": "RUN-RE-005",
+      "thema": "erwartungsrahmen",
+      "aussage": "Den staerksten Zusammenhang mit der Laufoekonomie zeigen nicht einzelne Trainingsformen, sondern die ueber Jahre angesammelten Trainingsjahre und Trainingsumfaenge. Kurzfristige Interventionen bewegen sich im Bereich weniger Prozent.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SPERLICH-2015"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "halbmarathon",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Es handelt sich um einen Zusammenhang, nicht um einen nachgewiesenen Ursache-Wirkungs-Beleg — wer jahrelang viel laeuft, unterscheidet sich auch sonst",
+        "Die Autoren beziffern den Zusammenhang im Text nicht als Effektgroesse",
+        "Untersuchungen mit Laeuferinnen fehlen fast gaenzlich"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Prozentprognose ausgeben, sondern die Groessenordnung nennen und auf die Dauer verweisen.",
+      "wirkt_auf": [
+        "plan.erwartungsrahmen"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    }
+  ]
+}

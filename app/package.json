@@ -4,13 +4,14 @@
   "description": "ORVIA — Test-Abhängigkeiten. Die App selbst hat KEINEN Build-Step und lädt ihre Skripte direkt in index.html; dieses Paket dient ausschließlich der Testsuite.",
   "//": "KEIN \"type\": \"module\" eintragen! Die App-Module (js/*.js) sind bewusst so geschrieben, dass sie im Browser als klassische Skripte UND in node per require() ladbar sind (module.exports am Dateiende). Ein type:module würde alle .js-Dateien als ESM interpretieren — beim Versuch am 2026-08-06 sind daraufhin 42 Testdateien gebrochen. Die Testdateien selbst tragen die Endung .mjs und laufen unabhängig davon als ESM.",
   "scripts": {
-    "test": "node supabase/tests/run-all.mjs",
-    "test:quiet": "node supabase/tests/run-all.mjs --quiet"
+    "test": "node supabase/tests/run-all.mjs || node ../supabase/tests/run-all.mjs",
+    "test:quiet": "node supabase/tests/run-all.mjs --quiet || node ../supabase/tests/run-all.mjs --quiet"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2"
   },
   "devDependencies": {
     "playwright": "^1.49.0"
-  }
+  },
+  "//test": "Zwei Layouts: kanonisch liegen die Tests unter app/supabase/tests, umstrukturiert unter ../supabase/tests neben app/. npm test findet beide."
 }

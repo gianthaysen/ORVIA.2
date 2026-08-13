@@ -1,0 +1,74 @@
+{
+  "target": "js/workout-store.js",
+  "test": "supabase/tests/strength_target_wiring_test.mjs",
+  "note": "Die Schreibpfade. Zwei Eigenheiten machen dieses Modul anfaellig: (1) es gibt einen Online- und einen Offline-Weg, die auseinanderlaufen koennen — genau das war die Paritaetsluecke aus v8-322; (2) 'nur senden wenn belegt' ist richtig, aber eine falsch gesetzte Bedingung faellt nicht auf, weil das Feld dann einfach fehlt statt zu stoeren. T2/T2b bewusst als Paar: dieselbe Bedeutungsfrage muss in BEIDEN Schreibwegen geprueft sein.",
+  "probes": [
+    {
+      "id": "T1",
+      "pattern": "value_not_type",
+      "title": "Zielgewicht faellt aus der Offline-Zeile (Spalte aus 0035 waere auf dem Offline-Weg tot)",
+      "file": "js/workout-store.js",
+      "find": "      target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null,",
+      "replace": "",
+      "expectTest": "workout_exercises: KEINE Spalte nur online"
+    },
+    {
+      "id": "T2",
+      "pattern": "value_not_type",
+      "title": "Zielgewicht 0 wird OFFLINE als fehlend behandelt (0 heisst ausdruecklich OHNE Zusatzlast)",
+      "file": "js/workout-store.js",
+      "find": "      target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null,",
+      "replace": "      target_weight_kg: ex.targetWeightKg ? ex.targetWeightKg : null,",
+      "expectTest": "… und OFFLINE ebenso (0 überlebt die Queue",
+      "history": "blieb im Probenlauf v8-331 gruen: strength-plan@1 haelt fest, dass 0 kg \"ohne Zusatzlast\" heisst [A1] — eine truthy-Pruefung haette daraus \"keine Angabe\" gemacht."
+    },
+    {
+      "id": "T3",
+      "pattern": "neighbour_guard",
+      "title": "fehlgeschlagene Uebung wird nicht mehr gezaehlt (verschluckt statt gemeldet)",
+      "file": "js/workout-store.js",
+      "find": "      if (r && r.success) applied++; else failed++;",
+      "replace": "      if (r && r.success) applied++;",
+      "expectTest": "beide Fehlschläge werden GEZÄHLT und gemeldet"
+    },
+    {
+      "id": "T4",
+      "pattern": "fixture_masks",
+      "title": "fehlender Anzeigename verhindert die Uebung (fail-open wird zu fail-closed)",
+      "file": "js/workout-store.js",
+      "find": "    } catch (e) { /* Name bleibt leer — die Uebung wird trotzdem angelegt. */ }",
+      "replace": "    } catch (e) { return { applied: 0, failed: 0, planned: 0, reason: 'name_lookup_failed' }; }",
+      "expectTest": "scheiternde Namensabfrage verhindert die Planübungen NICHT",
+      "history": "blieb im Probenlauf v8-331 gruen: geprueft war nur der Erfolgsfall MIT Uebungsbibliothek, nie der Offline-Fall ohne sie. Beim Schliessen fiel auf, dass der Zweig NUR online erreichbar ist — ein Offline-Test waere wertlos geblieben."
+    },
+    {
+      "id": "T5",
+      "pattern": "value_not_type",
+      "title": "plan_day_id wird auch unbelegt gesendet (stille NULL ueberschreibt einen gesetzten Wert)",
+      "file": "js/workout-store.js",
+      "find": "      ...(s.planDayId || s.plan_day_id ? { plan_day_id: s.planDayId || s.plan_day_id } : {}),",
+      "replace": "      plan_day_id: s.planDayId || s.plan_day_id || null,",
+      "expectTest": "ohne Planbezug fahren die Felder NICHT als stille NULL mit"
+    },
+    {
+      "id": "T6",
+      "pattern": "value_not_type",
+      "title": "ohne Vertragsmodul wird still nichts angelegt statt den Grund zu melden",
+      "file": "js/workout-store.js",
+      "find": "    if (!SP) return { applied: 0, failed: 0, planned: 0, reason: 'no_contract' };",
+      "replace": "    if (!SP) return { applied: 0, failed: 0, planned: 0 };",
+      "expectTest": "ohne Datenvertrag wird der GRUND gemeldet",
+      "history": "blieb im Probenlauf v8-331 gruen: ohne den Grund liesse sich ein kaputter Aufbau nicht von einem leeren Plan unterscheiden."
+    },
+    {
+      "id": "T2b",
+      "pattern": "value_not_type",
+      "title": "Zielgewicht 0 wird ONLINE als fehlend behandelt (dieselbe Bedeutungsfrage im zweiten Schreibweg)",
+      "file": "js/repos/workoutRepository.js",
+      "find": "        target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null",
+      "replace": "        target_weight_kg: ex.targetWeightKg ? ex.targetWeightKg : null",
+      "expectTest": "0 kg erreicht ONLINE als echte 0 die Datenbank",
+      "history": "ergaenzt im Probenlauf v8-331: T2 trifft nur den Offline-Builder. Ohne diese zweite Probe waere die Online-Seite derselben Zusicherung ungeprueft geblieben — genau die Art Paritaetsluecke, die in v8-322 schon einmal auftrat."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "_status": [
+    "MEDIZINISCH HEIKEL — und deshalb absichtlich gesperrt.",
+    "",
+    "Die Regel ist mit medizinisch_heikel true markiert. Der Vertrag waehlt",
+    "sie damit in JEDEM Modus ab, bis eine medizinische Freigabe vorliegt.",
+    "Das ist kein Fehler, sondern der Zweck: eine App, die aus einer",
+    "Querschnittstudie Aussagen ueber deine Achillessehne ableitet, waere",
+    "genau das Falsche.",
+    "",
+    "Der Befund ist trotzdem eingespeist, weil er dokumentiert werden soll —",
+    "nicht, weil er wirken soll."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-HIRSCHMUELLER-2005",
+    "art": "studie",
+    "titel": "Quantifizierung der Kraftfaehigkeiten und der neuromuskulaeren Effizienz bei Gesunden und Laeufern mit chronischen Achillessehnenbeschwerden",
+    "wer": "Hirschmueller A, Baur H, Mueller S, Mayer F — Deutsche Zeitschrift fuer Sportmedizin 56(2), S. 39-44",
+    "jahr": 2005,
+    "url": "https://www.germanjournalsportsmedicine.com/fileadmin/content/archiv2005/heft02/39-44.pdf",
+    "sportarten": [
+      "running",
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitlaeufer",
+      "gut_trainierte_laeufer"
+    ],
+    "worum_gehts": [
+      "achillessehne",
+      "kraftdefizit"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Die Querschnittstudie vergleicht zweiundsiebzig maennliche Laeufer mit chronischen, einseitigen Achillessehnenbeschwerden mit zwanzig beschwerdefreien Laeufern, alle mit mehr als zweiunddreissig Kilometern pro Woche. Die Betroffenen zeigten geringere maximale Drehmomente der Plantarflexion, gleichzeitig aber HOEHERE Muskelaktivitaet — sie brauchten also mehr Ansteuerung fuer weniger Kraft. Der daraus gebildete Quotient neuromuskulaerer Effizienz war in der Patientengruppe deutlich niedriger. Bei der Dorsalextension fanden sich keine Unterschiede, und zwischen dem betroffenen und dem gesunden Bein ebenfalls nicht.",
+    "grenzen": "Querschnittstudie: sie zeigt einen Zusammenhang und KEINE Ursache. Ob das Kraftdefizit die Beschwerden mitverursacht oder aus ihnen folgt, laesst sich daraus nicht entscheiden. Die Autoren sagen ausdruecklich, dass eine diagnostische Erkennung im EINZELFALL nicht moeglich ist und dass sich die Ursache eines Unterschieds aus dem Quotienten allein nicht ablesen laesst. Ein von ihnen selbst benannter Schwachpunkt ist der Altersunterschied der Gruppen, neununddreissig gegen achtundzwanzig Jahre. Nur maennliche Laeufer. Ich habe die Arbeit als Textextraktion der PDF gelesen.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-ACH-001",
+      "thema": "achillessehne",
+      "aussage": "Laeufer mit chronischen Achillessehnenbeschwerden zeigen im Gruppenvergleich geringere Wadenkraft bei gleichzeitig hoeherer Muskelansteuerung. Ob das Defizit Ursache oder Folge der Beschwerden ist, ist ungeklaert — und eine Einzelfallbeurteilung ist daraus ausdruecklich nicht ableitbar.",
+      "art": "studie",
+      "quellen": [
+        "SRC-HIRSCHMUELLER-2005"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "laeuferinnen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Querschnittstudie — Zusammenhang, kein Ursache-Wirkungs-Beleg",
+        "Die Autoren schliessen eine diagnostische Erkennung im Einzelfall ausdruecklich aus",
+        "Die Gruppen unterschieden sich im Alter deutlich (39 gegen 28 Jahre); das haben die Autoren selbst als Schwachpunkt benannt",
+        "Nur maennliche Laeufer mit mehr als 32 km pro Woche",
+        "Kein Unterschied zwischen betroffenem und gesundem Bein — das spricht gegen eine einfache lokale Erklaerung"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Aussage machen. Bei Achillesbeschwerden gehoert die Beurteilung zu Aerztin oder Physiotherapie, nicht in eine App.",
+      "wirkt_auf": [
+        "plan.achillessehne_hinweis"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "medizinisch_heikel": true,
+      "sicherheitsgrenzen": [
+        "Diese Regel darf nie zu einer Verdachtsdiagnose oder Entwarnung im Einzelfall fuehren",
+        "Bei Schmerz an der Achillessehne endet die Zustaendigkeit der App: Verweis auf aerztliche oder physiotherapeutische Abklaerung",
+        "Kein Trainingsvorschlag zur Behandlung von Sehnenbeschwerden ohne fachliche Freigabe"
+      ]
+    }
+  ]
+}

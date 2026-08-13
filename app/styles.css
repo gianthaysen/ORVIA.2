@@ -1511,6 +1511,60 @@ body.story-open{overflow:hidden}
 .pe-add .btn{width:48px;flex:none;padding:9px;margin:0}
 
 /* ============================================================
+   ORVIA · Kraftplanung im Wochenplan (v8-323, K2)
+   Zwei Orte: die Uebungsliste AUF der Wochenplan-Karte (.sc-plex) und der
+   Uebungs-Editor im Wochenplan-Editor (.pe-expanel).
+   Grundsatz: eine nicht aufloesbare Uebungskennung wird sichtbar markiert,
+   nicht schoengefaerbt — deshalb eine eigene, ruhige Warnfarbe statt Rot.
+   ============================================================ */
+.sc-plex{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+.sc-plex li{font-size:12px;line-height:1.45;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-plex li::before{content:'·';margin-right:6px;opacity:.55}
+.sc-plex li.sc-plex-unknown{color:var(--warn,#d8a657)}
+.sc-plex li.sc-plex-unknown::before{content:''}
+
+/* v8-332b · Die Ausdauer-Vorgabe auf der Karte (.sc-rx).
+   Sie darf mehrzeilig umbrechen — "5 × (Belastung 4 min @ 4:36–4:54 min/km ·
+   Pause 3 min)" abzuschneiden waere schlimmer als eine zweite Zeile: dann
+   fehlte genau die Zahl, wegen der die Zeile ueberhaupt dasteht.
+   Aufwaermen und Auslaufen treten zurueck, verschwinden aber nicht — sonst
+   fehlte dem Nutzer die halbe Einheit. */
+.sc-plex.sc-rx li{white-space:normal;overflow:visible;text-overflow:clip}
+.sc-plex.sc-rx li.sc-rx-soft{opacity:.62}
+
+.pe-chip{align-items:flex-start}
+.pe-exbtn{background:rgba(201,174,124,.16)!important;border:1px solid rgba(201,174,124,.34)!important;
+  border-radius:999px!important;padding:2px 9px!important;color:var(--text)!important;font-weight:600;font-size:11px!important}
+.pe-exbtn.on{background:var(--accent,#c9ae7c)!important;color:#101720!important}
+.pe-expanel{flex-basis:100%;margin:8px 0 2px;padding:10px;border:1px solid var(--border);
+  border-radius:12px;background:var(--card-2,#0f1620)}
+.pe-exrow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:start;
+  padding:8px 0;border-bottom:1px solid var(--border)}
+.pe-exrow:last-of-type{border-bottom:0}
+.pe-exname{font-size:13px;font-weight:600;color:var(--text)}
+.pe-exname-unknown{color:var(--warn,#d8a657)}
+.pe-exhint{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+.pe-exfields{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.pe-exfields label{display:flex;flex-direction:column;gap:2px;font-size:10px;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--muted);flex:1 1 62px;min-width:62px}
+.pe-exfields input{background:var(--card,#131b26);border:1px solid var(--border);border-radius:8px;
+  padding:7px 6px;color:var(--text);font-size:13px;width:100%;text-align:center}
+.pe-exact{display:flex;gap:4px;align-self:start}
+.pe-exact button{background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);
+  font-size:13px;line-height:1;padding:6px 8px;cursor:pointer}
+.pe-exact button[disabled]{opacity:.32;cursor:default}
+.pe-exadd{display:flex;gap:6px;margin-top:10px;align-items:center}
+.pe-exadd select{flex:1;min-width:0;background:var(--card,#131b26);border:1px solid var(--border);
+  border-radius:10px;padding:9px;color:var(--text);font-size:13px}
+.pe-exadd input{width:56px;flex:none;background:var(--card,#131b26);border:1px solid var(--border);
+  border-radius:10px;padding:9px 6px;color:var(--text);font-size:13px;text-align:center}
+.pe-exadd .btn{width:auto;flex:none;padding:9px 12px;margin:0;font-size:12px}
+.pe-exmeta{font-size:11px;color:var(--muted);margin:8px 0 0}
+.pe-exerr{font-size:12px;color:var(--danger,#e0685f);margin:8px 0 0;font-weight:600}
+.pe-exwarn{font-size:12px;color:var(--warn,#d8a657);margin:10px 0 0;line-height:1.5}
+
+/* ============================================================
    ORVIA · Nutzer-Level (Anfänger / Fortgeschritten / Profi)
    ============================================================ */
 .lvl-opts{display:flex;flex-direction:column;gap:8px}
@@ -2216,6 +2270,11 @@ details.acc .acc-body{margin-top:14px}
   --attention:#EDB44E; --attention-t:rgba(237,180,78,.15);
   --crit:#F0637A; --crit-t:rgba(240,99,122,.15);
   --sleep:#9585ED; --sleep-t:rgba(149,133,237,.15);
+  /* v8-312: eigene Sport-Kachel-Farben Fussball/Mobility — bewusst NICHT identisch mit
+     einer bereits semantisch belegten Farbe (--attention/--crit=Warnung/kritisch,
+     --sleep=Schlaf, --ready=Laufen), siehe ui.js gmOpenStartSheet-Kommentar. */
+  --team:#DD7E4A; --team-t:rgba(221,126,74,.15);
+  --recovery:#CC8C9E; --recovery-t:rgba(204,140,158,.15);
   --gold-grad:linear-gradient(135deg,#DCC79A,#C9AE7C 55%,#8E7647);
 }
 /* Liquid-Glass-Tabbar: konsolidierte Definition steht am DATEIENDE (2026-08-06) —
@@ -2387,6 +2446,7 @@ details.acc .acc-body{margin-top:14px}
   --ready:#43D693; --ready-t:rgba(67,214,147,.15); --activity:#5AA0F0; --activity-t:rgba(90,160,240,.15);
   --attention:#EDB44E; --attention-t:rgba(237,180,78,.15); --crit:#F0637A; --crit-t:rgba(240,99,122,.15);
   --sleep:#9585ED; --sleep-t:rgba(149,133,237,.15); --cyan:#4FD3D3; --cyan-t:rgba(79,211,211,.15);
+  --team:#DD7E4A; --team-t:rgba(221,126,74,.15); --recovery:#CC8C9E; --recovery-t:rgba(204,140,158,.15);
   --r-card:22px; --r-mid:16px; --r-ctrl:12px; --r-pill:999px; --shadow:0 14px 34px rgba(4,5,8,.5);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
@@ -3020,6 +3080,10 @@ body{font-family:var(--font);color:var(--text);min-height:100vh;background:radia
 .pq{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 11px}
 .pq .pqt{font-size:10.5px;color:var(--muted);font-weight:650}.pq .pqv{font-size:14px;font-weight:800;margin-top:3px}
 .pq-track{height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:7px;overflow:hidden}.pq-track i{display:block;height:100%;border-radius:4px}
+/* v8-316: Grund fuer eine nicht bewertbare Kachel. Bewusst klein und gedaempft —
+   es ist eine Erklaerung, keine Warnung: „nur eine Sportart aktiv" ist kein
+   Mangel des Plans. */
+.pq .pq-na{font-size:9.5px;color:var(--faint);margin-top:6px;line-height:1.25}
 .fc-corridor{position:relative;height:70px;margin:12px 2px 6px;border-radius:12px;background:linear-gradient(180deg,rgba(90,160,240,.10),transparent);border:1px solid var(--border);overflow:hidden}
 .fc-band{position:absolute;top:20px;bottom:20px;background:linear-gradient(90deg,rgba(67,214,147,.15),rgba(67,214,147,.35));border-radius:8px}
 .fc-mid{position:absolute;top:10px;bottom:10px;width:2px;background:var(--ready)}
@@ -3811,3 +3875,60 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
   .tabbar.compact ~ #navPlus.fab,.tabbar.compact + #navPlus.fab{transform:none}
   #navPlus.fab::after{display:none}
 }
+
+/* ============================================================
+   G1 · Leistungsdaten-Erfassung (Bauplan Stufe 1, 2026-08-07)
+   Formularblock im Profil. Bewusst schlicht und an den bestehenden
+   Karten-/Zeilenstil angelehnt — die Seite soll nicht wie ein fremdes
+   Formular wirken, sondern wie der Rest des Profils.
+   ============================================================ */
+.perf-form{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:15px;
+  background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--border);margin-bottom:9px}
+.perf-form.perf-open{border-color:rgba(201,174,124,.35)}
+.perf-form label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:650;color:var(--muted)}
+.perf-form input,.perf-form select{font-family:var(--font);font-size:15px;color:var(--text);
+  background:#0c131d;border:1px solid var(--border);border-radius:11px;padding:11px 12px;
+  -webkit-appearance:none;appearance:none;min-height:44px}
+.perf-form input:focus,.perf-form select:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(201,174,124,.18)}
+.perf-form .mini-btn{margin-top:2px;min-height:44px}
+[data-theme="light"] .perf-form input,[data-theme="light"] .perf-form select{background:#fff}
+/* Rueckmeldung nach einer Eingabe. Drei Zustaende, weil eine unvollstaendige
+   Eingabe kein Fehler ist, sondern eine offene Frage. */
+.mini-note.perf-ok{border-color:rgba(106,168,120,.45)}
+.mini-note.perf-warn{border-color:rgba(201,174,124,.5)}
+.mini-note.perf-bad{border-color:rgba(198,110,102,.5)}
+
+/* C3 · Debrief-Erfassung (Bauplan Stufe 2, 2026-08-07)
+   Zwei Eingaben im Normalfall — die RPE-Skala ist deshalb die einzige
+   auffaellige Bedienflaeche. Tippziele mindestens 40 px. */
+.db-rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin-bottom:10px}
+.db-rpe-b{min-height:44px;font-family:var(--font);font-size:14px;font-weight:700;color:var(--muted);
+  background:#0c131d;border:1px solid var(--border);border-radius:10px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.db-rpe-b.on{background:linear-gradient(135deg,var(--accent),var(--accent-dim));color:#0a0f17;border-color:transparent}
+.db-rpe-b:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,174,124,.18)}
+.db-reasons{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
+.db-reason{min-height:40px;padding:8px 13px;font-family:var(--font);font-size:13px;font-weight:650;color:var(--muted);
+  background:#0c131d;border:1px solid var(--border);border-radius:11px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.db-reason.on{border-color:var(--accent);color:var(--text)}
+[data-theme="light"] .db-rpe-b,[data-theme="light"] .db-reason{background:#fff}
+
+/* ===== Adaptive Karte (Sichtscheibe auf den Schattenbetrieb, v8-283) =====
+   Bewusst ohne Schaltflaechen: Die Karte zeigt, sie handelt nicht. */
+.adx-card{margin-top:14px;padding:14px 16px;border-radius:14px;background:var(--card,rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.08)}
+.adx-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.adx-badge{font-size:.72rem;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.adx-ok{background:rgba(52,199,89,.14);color:#34c759}
+.adx-partial{background:rgba(255,159,10,.16);color:#ff9f0a}
+.adx-stale{background:rgba(142,142,147,.18);color:#aeaeb2}
+.adx-row{display:flex;justify-content:space-between;gap:12px;margin:6px 0;font-size:.9rem}
+.adx-row span{opacity:.65}
+.adx-why{font-size:.82rem;opacity:.75;margin:2px 0 8px}
+.adx-blocked{font-size:.8rem;color:#ff9f0a;margin:2px 0 8px}
+.adx-model{font-size:.78rem;opacity:.6;font-style:italic;margin:4px 0 8px}
+.adx-sub{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;opacity:.55}
+.adx-changes{margin:8px 0}
+.adx-chg{font-size:.85rem;margin:4px 0}
+.adx-chg i{opacity:.55;font-style:normal;font-size:.78rem}
+.adx-gap{font-size:.82rem;color:#ff9f0a;margin:6px 0}
+.adx-foot{font-size:.75rem;opacity:.5;margin:10px 0 0}

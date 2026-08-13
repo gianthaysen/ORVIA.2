@@ -1,0 +1,12 @@
+{
+  "name": "orvia-repo",
+  "private": true,
+  "description": "Repo-Stamm: npm test laeuft von hier UND aus app/ (Dual-Layout).",
+  "scripts": {
+    "test": "node supabase/tests/run-all.mjs || node app/supabase/tests/run-all.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "_status": [
+    "VORBEREITET, NOCH NICHT EINSPEISBAR.",
+    "",
+    "Hier ist der Grund ein anderer als bei den Videos: books.google.de ist",
+    "per robots.txt fuer mein Abrufwerkzeug gesperrt. Und selbst mit Zugriff",
+    "duerfte ich Seite 93 nicht abschreiben — Buchtext ist urheberrechtlich",
+    "geschuetzt. Was ORVIA aufnimmt, sind FAKTEN und ZAHLEN in DEINEN Worten,",
+    "nie fremde Saetze.",
+    "",
+    "Die Buchdaten unten sind geprueft (Google-Books-Katalogseite).",
+    "DU FUELLST: kernaussage, grenzen, eigene_worte, und die Regeln.",
+    "Sag mir, was auf S. 93 steht — sinngemaess, nicht woertlich —, dann baue",
+    "ich daraus die vertragskonformen Regeln."
+  ],
+
+  "sport": "gym",
+
+  "quelle": {
+    "id": "SRC-PAULS-KRAFT-2015",
+    "art": "lehrbuch",
+    "titel": "Das grosse Buch vom Krafttraining, S. 93",
+    "wer": "Jan Pauls (Sportwissenschaftler, Trainingstherapie; zuvor Sportinstitut Uni Goettingen)",
+    "jahr": 2015,
+    "url": "https://books.google.de/books?id=BIddEAAAQBAJ&pg=PA93",
+    "_verlag": "Stiebner Verlag, 208 Seiten, ISBN 9783767920163, Erstausgabe 11.03.2015",
+    "sportarten": ["gym"],
+    "gilt_fuer": ["krafttraining_anfaenger", "freizeitsportler"],
+    "worum_gehts": ["trainingslehre", "methodik"],
+    "_worum_gehts_pruefen": "Platzhalter — bitte durch das ersetzen, worum es auf S. 93 tatsaechlich geht.",
+    "qualitaet": "mittel",
+    "_qualitaet_begruendung": [
+      "Lehrbuch eines Sportwissenschaftlers mit Hochschulhintergrund — das ist",
+      "die belastbarste der drei Quellen. Zwei Abzuege:",
+      "1) Ein Lehrbuch ist geordnetes Fachwissen, keine Primaerevidenz. Es",
+      "   referiert Studienlage, es erzeugt sie nicht.",
+      "2) Erstausgabe 2015, also gut 11 Jahre alt. Gerade beim Krafttraining",
+      "   hat sich die Studienlage seither bewegt (Volumen-Wirkungs-Beziehung,",
+      "   Abstand zum Muskelversagen, Effort-Metriken). Aeltere",
+      "   Wiederholungszahl-Zonen sind heute strittig.",
+      "Deshalb 'mittel'. Wenn du eine neuere Auflage hast: Jahr korrigieren."
+    ],
+
+    "kernaussage": "",
+    "grenzen": "",
+    "eigene_worte": false,
+    "geprueft_am": ""
+  },
+
+  "regeln": []
+}

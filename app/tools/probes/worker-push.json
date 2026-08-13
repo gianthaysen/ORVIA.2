@@ -1,0 +1,48 @@
+{
+  "target": "garmin-worker/orvia_worker/workout_push.py",
+  "test": "tests/test_workout_push.py",
+  "runner": "pytest",
+  "root": "AUFRUF MIT --root <repo>/garmin-worker (der Worker laeuft nur dort, wo seine Umgebung steht)",
+  "note": "Sicherheitskritischster Teil der Kette: hier verlaesst etwas die App in Richtung Garmin. Schwerpunkt value_not_type (Reihenfolge und Zustandswerte der Idempotenz) und neighbour_guard (die DB-Unique-Bedingung koennte Fehler im Anwendungscode verdecken).",
+  "probes": [
+    {
+      "id": "W1",
+      "pattern": "value_not_type",
+      "title": "geaenderter Plan wird still ueberschrieben statt als Konflikt gemeldet",
+      "file": "orvia_worker/workout_push.py",
+      "find": "        if row.get(\"payload_hash\") != payload_hash:",
+      "replace": "        if False:",
+      "expectTest": "test_same_client_ref_other_hash_is_conflict"
+    },
+    {
+      "id": "W2",
+      "pattern": "value_not_type",
+      "title": "Wiederholung wird erneut gepusht statt als already_pushed abgewiesen",
+      "file": "orvia_worker/workout_push.py",
+      "find": "        if row.get(\"status\") in (\"pushed\", \"scheduled\") and row.get(\"garmin_workout_id\"):",
+      "replace": "        if False:",
+      "expectTest": "test_repeated_identical_push_is_already_pushed"
+    },
+    {
+      "id": "W3",
+      "pattern": "fixture_masks",
+      "title": "Reauth-Code wird ungefiltert in die Datenbank geschrieben",
+      "file": "orvia_worker/workout_push.py",
+      "find": "             \"last_error_code\": safe},",
+      "replace": "             \"last_error_code\": code},",
+      "expectTest": "test_reauth_code_never_carries_foreign_text",
+      "history": "blieb im Probenlauf v8-330 gruen und deckte einen ECHTEN Befund auf: _safe_code wurde nur mit Konstanten aufgerufen, die einzige Stelle mit Fremddaten umging es. Behoben durch SAFE_REAUTH_CODES in _set_reauth."
+    },
+    {
+      "id": "W4",
+      "pattern": "value_not_type",
+      "title": "fehlende Tokens fuehren zum Passwort-Fallback statt zur Neuanmeldung",
+      "file": "orvia_worker/workout_push.py",
+      "find": "        await _set_reauth(db, user_id, \"TOKENS_MISSING\")",
+      "replace": "        pass",
+      "expectTest": "test_missing_tokens_also_set_the_reauth_flag",
+      "history": "blieb im Probenlauf v8-330 gruen: der bestehende Test prueft Antwortcode, Status und last_error, aber nicht das Reauth-Flag."
+    }
+  ],
+  "requiresRoot": "<repo>/garmin-worker"
+}

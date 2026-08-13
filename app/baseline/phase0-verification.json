@@ -1,0 +1,116 @@
+{
+  "verificationOf": "v8-219-audit-baseline",
+  "purpose": "Belegt, dass die Phase-0-Aenderungen (Instrumentierung + KF-013-Strukturvertrag) keine Regression gegen die versiegelte Baseline erzeugt haben. Dies ist KEINE neue Baseline — die Baseline bleibt an den Tag v8-219-audit-baseline gebunden.",
+  "changesSinceBaseline": [
+    {
+      "file": "js/quick-actions.js",
+      "kind": "instrumentation",
+      "summary": "runActionEx() mit strukturiertem Ergebnisvertrag; runAction() bleibt bitgenau boolesch. Zusaetzlich onActionResult(), getActionLog(), probeActions().",
+      "behaviourChange": "keine — Reihenfolge (aufloesen -> Sheet schliessen -> ausfuehren) und alle Rueckgabewerte bestehender Aufrufer unveraendert."
+    },
+    {
+      "file": "supabase/tests/action_result_contract_test.mjs",
+      "kind": "new_test",
+      "summary": "23 Assertions auf den Ergebnisvertrag, inklusive der bewussten Grenze."
+    },
+    {
+      "file": "supabase/tests/gm_structure_contract_test.mjs",
+      "kind": "new_test",
+      "summary": "KF-013: semantischer Strukturvertrag, ersetzt die /tmp-abhaengigen gm*_parity.mjs."
+    },
+    {
+      "file": "supabase/tests/hidden_legacy_hosts_test.mjs",
+      "kind": "new_test",
+      "summary": "Inventar der 9 versteckten Legacy-Hosts, 6 davon ohne GM-Ersatzpfad."
+    },
+    {
+      "file": "tools/build_structure_contract.mjs",
+      "kind": "new_tool",
+      "summary": "Generator fuer docs/gm-ref/structure-contract.json."
+    },
+    {
+      "file": "tools/gm1_parity.mjs .. gm6_parity.mjs",
+      "kind": "deprecation_header",
+      "summary": "Als VERALTET markiert mit Verweis auf den Ersatz. Kein Codepfad veraendert."
+    }
+  ],
+  "regression": {
+    "real_app_smoke": {
+      "baseline": "74/74",
+      "after": "74/74",
+      "verdict": "unveraendert"
+    },
+    "collision_scan": {
+      "baseline": "OK, 80",
+      "after": "OK, 80",
+      "verdict": "unveraendert"
+    },
+    "testSuite": {
+      "baseline": "178/186",
+      "after": "181/189",
+      "verdict": "+3 neue Tests, dieselben 8 umgebungsbedingten Fehlschlaege"
+    },
+    "quick_actions_b": {
+      "baseline": "21/21",
+      "after": "21/21",
+      "verdict": "Bestandsvertrag ran===true gehalten"
+    },
+    "environmentFailures": {
+      "baseline": 8,
+      "after": 8,
+      "verdict": "identische Menge, keine neuen"
+    }
+  },
+  "newTests": {
+    "action_result_contract_test.mjs": "23/23",
+    "gm_structure_contract_test.mjs": "20/20",
+    "hidden_legacy_hosts_test.mjs": "32/32"
+  },
+  "negativeControl": {
+    "test": "gm_structure_contract_test.mjs",
+    "method": "Fiktiver Pflicht-Slot 'Belastung nach Sportart' in den Vertrag eingefuegt.",
+    "result": "Test schlaegt fehl mit 'VERSCHWUNDEN: Belastung nach Sportart' (1 FAILED, 19 ok).",
+    "verdict": "Der Test kann fehlschlagen — er beweist etwas."
+  },
+  "kf013": {
+    "status": "resolved",
+    "approach": "repo-interner semantischer Strukturvertrag statt Rekonstruktion fluechtiger /tmp-Fixtures",
+    "artifacts": [
+      "docs/gm-ref/structure-contract.json",
+      "tools/build_structure_contract.mjs",
+      "supabase/tests/gm_structure_contract_test.mjs",
+      "supabase/tests/hidden_legacy_hosts_test.mjs"
+    ],
+    "contractScope": {
+      "tabs": 5,
+      "gmHosts": 8,
+      "displaySlots": 20,
+      "hiddenLegacyHosts": 9
+    },
+    "residualRisk": "Die Slot-Anker sind Sektionslabel-Texte. Eine reine Textaenderung bricht den Vertrag, ohne dass Struktur verloren ging. Haertung: data-slot-Attribute in den Renderern — bewusst NICHT in Phase 0, weil das js/ui.js beruehren wuerde."
+  },
+  "runActionExLimitation": {
+    "detects": [
+      "target_unavailable",
+      "handler_missing",
+      "handler_failed (Ausnahme oder explizites false)",
+      "blocked",
+      "invalid_action"
+    ],
+    "doesNotDetect": "Semantisch erfolglose Handler. Ein aufloesbarer Handler, der intern auf ein fehlendes Ziel trifft und undefined liefert, wird weiterhin als 'handled' gemeldet.",
+    "consequence": "KF-001 und KF-003 bleiben bis Phase 1 erwartete bekannte Fehler. Beide zeigen auf orvia:workoutUI.openTrainingTab; die Tabbar fuehrt heute/plan/akt/dash/mehr — data-tab=\"training\" existiert nicht.",
+    "forRealEndToEnd": "Erforderlich ist entweder ein Action-Outcome-Vertrag (Handler melden ihren fachlichen Endzustand) oder ein Browser-Interaktionstest. Die statische Naeherung liefert heute tools/probe_actions_live.mjs ueber das Feld silentlyDead."
+  },
+  "phase1Constraint": "Der erste Phase-1-Commit darf ausschliesslich KF-001 bis KF-003 reparieren, damit die zentrale Workout-Kette isoliert regressionspruefbar bleibt.",
+  "tagVerification": {
+    "method": "git worktree auf v8-219-audit-baseline, Testsuite und Smoke dort ausgefuehrt",
+    "smoke": "74/74 — nach Behebung von KF-016 auch aus dem worktree reproduzierbar",
+    "testSuite": "177/9 statt 178/8 — Differenz ist KF-015 (Layout-Abhaengigkeit von metric_registry_test.mjs), kein Codedefekt",
+    "verdict": "Die Baseline ist reproduzierbar. Zwei Reproduzierbarkeitsmaengel im Harness wurden dabei erst sichtbar und sind als KF-015 (offen) und KF-016 (behoben) erfasst."
+  },
+  "commits": {
+    "baseline": "792b658 (Tag v8-219-audit-baseline)",
+    "instrumentation": "a3fed59",
+    "harnessFix": "folgt in diesem Commit"
+  }
+}

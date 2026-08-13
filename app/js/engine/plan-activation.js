@@ -52,10 +52,60 @@
      Zufall. Dient NUR dem Idempotenz-Test „hat sich überhaupt etwas geändert".
      Ohne ihn stiege die Revisionsnummer bei jedem Öffnen des Plans um eins und
      die Historie wäre nach einem Tag unlesbar. */
+  /* Kurzform der Verordnung (v8-332b). BEFUND: Bis hierher verglich der
+     Fingerabdruck nur Tag, Sportart, Einheitenname und Umfangstext. Damit war
+     er BLIND fuer die Verordnung selbst — gemessen:
+
+       4 × 5 min  →  "1|Laufen|Intervalle|32 min"
+       5 × 4 min  →  "1|Laufen|Intervalle|32 min"   (identisch!)
+       gleiche Struktur, anderes Pace-Fenster       (identisch!)
+
+     Folge: Passt die Engine die Intervallstruktur an oder verschiebt sie das
+     Tempofenster, weil eine neue Schwellenpace gemessen wurde, meldet
+     activate() 'unchanged' und aktiviert NICHT. Der Nutzer bekaeme die neue
+     Vorgabe nie — und wuerde sich irgendwann wundern, warum sich sein Tempo
+     nie anpasst. Genau die Vorgabe, die v8-332 sichtbar gemacht hat, waere im
+     Betrieb eingefroren gewesen.
+
+     Warum das die Idempotenz NICHT kaputtmacht: die prescription-factory ist
+     nachweislich rein (kein Date.now, kein Math.random, byte-identisch bei
+     identischer Eingabe). Gleiche Lage ⇒ gleiche Verordnung ⇒ gleicher
+     Fingerabdruck. Es entsteht also weiterhin keine Revision beim blossen
+     Oeffnen des Plans — der urspruengliche Grund fuer den Fingerabdruck
+     bleibt gewahrt.
+
+     Bewusst der VOLLE Strukturvergleich statt einer Auswahl einzelner Felder:
+     eine Auswahl waere wieder blind fuer alles, woran heute niemand denkt. */
+  function _rxPrint(rx) {
+    if (rx == null) return '';                       // Legacy-Einheiten: unveraendert
+    try { return _fnv(JSON.stringify(rx)); } catch (e) { }
+    /* Notfallweg, falls sich eine Verordnung nicht serialisieren laesst
+       (Zyklus, BigInt). Ein fester Ersatzwert waere hier das Schlechteste:
+       dann traegen ALLE unserialisierbaren Verordnungen denselben Abdruck und
+       der Vergleich waere wieder blind — genau der Fehler, den v8-332b
+       behebt. Stattdessen ein grober, aber stabiler Strukturabdruck. */
+    try {
+      var n = (rx.blocks && rx.blocks.length) || 0;
+      var typen = [];
+      for (var i = 0; i < n; i++) {
+        var b = rx.blocks[i] || {};
+        typen.push(String(b.type) + ':' + (b.iterations == null ? '' : b.iterations) +
+          ':' + ((b.completion && b.completion.value) || '') +
+          ':' + ((b.target && (b.target.value != null ? b.target.value : b.target.min)) || ''));
+      }
+      return 'rx!' + _fnv(String(rx.session_type) + '|' + n + '|' + typen.join(','));
+    } catch (e2) { return 'rx?'; }                   // wirklich letzter Ausweg
+  }
+  function _fnv(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ('0000000' + h.toString(16)).slice(-8);
+  }
   function baselineFingerprint(sessions) {
     return (Array.isArray(sessions) ? sessions : []).map(function (s) {
       var it = (s && s.session) || {};
-      return [s && s.dayIndex, it.t || '', it.l || '', it.d == null ? '' : it.d].join('|');
+      return [s && s.dayIndex, it.t || '', it.l || '', it.d == null ? '' : it.d,
+        _rxPrint(it.rx)].join('|');
     }).sort().join(';');
   }
 

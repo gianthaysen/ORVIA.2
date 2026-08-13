@@ -240,7 +240,10 @@ function deleteActivity(date, typ) {
 
 /* ---- Aktivität-Tab (Inkrement 2A: kanonische Quelle + klar abgegrenzter Legacy-Adapter) ---- */
 // Sprite-Icons sind begrenzt → kanonischer Fallback 'pulse' statt falscher Zuordnung.
-var SPRITE_ICONS = { run: 1, bike: 1, swim: 1, dumbbell: 1, stretch: 1, pulse: 1, plus: 1, list: 1, chart: 1 };
+// v8-312: 'ball' ergaenzt — Sprite #i-ball existiert bereits in index.html und ist laut
+// Sport-Katalog (onboarding-sports-logic.js) die kanonische Fussball-Ikone; sie fehlte
+// hier und fiel deshalb bisher fälschlich auf 'pulse' zurück (Aktivitätenliste).
+var SPRITE_ICONS = { run: 1, bike: 1, swim: 1, dumbbell: 1, stretch: 1, ball: 1, pulse: 1, plus: 1, list: 1, chart: 1 };
 function _iconForSport(sportId) {
   var ic = (window.ORVIA && ORVIA.activityConfig) ? ORVIA.activityConfig.sportIcon(sportId) : 'pulse';
   return SPRITE_ICONS[ic] ? ic : 'pulse';
@@ -395,7 +398,10 @@ function activityDetailViewModel(a) {
     source: a.source || null,
     sourceRecordId: a.sourceRecordId || null,
     workoutSessionId: a.workoutSessionId || null,
-    planLink: a.plannedSessionId || (m && m.plannedSessionId) || null,
+    planLink: (function () {
+      try { var st = window.ORVIA && ORVIA.activityStore; if (st && st.planLinkOf) return st.planLinkOf(a); } catch (_) {}
+      return a.plannedSessionId || (m && m.plannedSessionId) || null;
+    })(),
     workoutDetail: null, workoutDetailState: null, storyRef: null, missing: {},
     /* GM7.3: kanonische Route direkt aus dem Activity-Record (metrics.route) — überlebt
        ohne Legacy-Blob und ist cloud-/geräteübergreifend. Fallback bleibt storyRef→Blob. */
@@ -496,6 +502,7 @@ function _activityDetailHtml(vm, context) {
     '<div class="wc-title">' + escH(vm.title || vm.sportLabel || 'Aktivität') + '</div>' +
     '<div class="wc-day">' + escH(vm.sportLabel || '') + '</div>' +
     '<div class="wc-stats">' + rows.join('') + '</div>' + wd + '</div>' + story +
+    (vm.planLink ? '<button class="btn sec" style="margin-top:12px" onclick="unlinkActivityPlanCanonical(\'' + escH(vm.id) + '\',\'' + escH(vm.planLink) + '\')">Vom Wochenplan lösen</button>' : '') +
     '<button class="btn sec danger-btn" style="margin-top:12px" onclick="deleteActivityCanonical(\'' + escH(vm.id) + '\')">Aktivität löschen</button>' +
     '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">Schließen</button></div>';
 }
@@ -553,7 +560,12 @@ function openActivityDetail(activityId, context) {
 function resolvePlannedActivity(occurrenceId) {
   if (!occurrenceId) return { status: 'none' };
   var list = []; try { list = listActivitiesUnified(200) || []; } catch (e) { list = []; }
-  var hits = list.filter(function (a) { return a && (a.plannedSessionId === occurrenceId || (a.metrics && a.metrics.plannedSessionId === occurrenceId)); });
+  var store = window.ORVIA && ORVIA.activityStore;
+  var hits = list.filter(function (a) {
+    if (!a) return false;
+    var link = (store && store.planLinkOf) ? store.planLinkOf(a) : (a.plannedSessionId || (a.metrics && a.metrics.plannedSessionId) || null);
+    return link === occurrenceId;
+  });
   if (hits.length === 1) return { status: 'unique', id: hits[0].clientRecordId || hits[0].id };
   if (hits.length > 1) return { status: 'ambiguous', ids: hits.map(function (h) { return h.clientRecordId || h.id; }) };
   return { status: 'none' };
@@ -575,6 +587,35 @@ function deleteActivityCanonical(activityId) {
   run();
 }
 
+/* v8-310b · Korrekturpfad 2: NUR die Plan-Zuordnung loesen. Die Aktivitaet
+   bleibt vollstaendig erhalten; insbesondere entstehen weder Tombstone noch
+   Workout-Loeschung. Der Store schreibt eine explizite Korrektur-Provenance,
+   die beim Cloud-Upsert und bei spaeteren Snapshot-Retries gewinnt. */
+function unlinkActivityPlanCanonical(activityId, expectedOccurrenceId) {
+  var a = _resolveActivityAny(activityId);
+  var store = window.ORVIA && ORVIA.activityStore;
+  if (!a || !store || !store.unlinkActivityFromPlan) return { ok: false, code: 'unavailable' };
+  var run = function () {
+    var r = store.unlinkActivityFromPlan(a.clientRecordId || a.id || activityId, expectedOccurrenceId || null);
+    if (!r || !r.ok) {
+      if (typeof toast === 'function') toast('Zuordnung nicht geändert' + (r && r.code ? ': ' + r.code : '.'));
+      return r;
+    }
+    try { closeActivityDetail(); } catch (_) {}
+    try { if (typeof gmCloseActivityPage === 'function') gmCloseActivityPage(); } catch (_) {}
+    try { if (typeof renderAkt === 'function') renderAkt(); } catch (_) {}
+    try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { planLinkCorrected: true, activityId: activityId } })); } catch (_) {}
+    try { if (ORVIA.activitySync && ORVIA.activitySync.flushPendingActivities) ORVIA.activitySync.flushPendingActivities(); } catch (_) {}
+    if (typeof toast === 'function') toast('Aktivität bleibt erhalten · Planzuordnung gelöst');
+    return r;
+  };
+  if (typeof orviaConfirm === 'function') {
+    orviaConfirm({ title: 'Vom Wochenplan lösen?', text: 'Die Aktivität und alle Trainingsdaten bleiben erhalten. Nur die Zuordnung zu dieser Planeinheit wird entfernt.', okLabel: 'Zuordnung lösen', onOk: run });
+    return { ok: true, code: 'confirmation_open' };
+  }
+  return run();
+}
+
 // ---- Löschen (manuell/Workout/Legacy) mit Bestätigung, offline-fest ----
 // AD1b: Kompatibilitäts-Adapter → EIN Löschpfad (deleteActivityCanonical, genau eine Bestätigung).
 function confirmDeleteActivity(aid) { return deleteActivityCanonical(aid); }
@@ -590,6 +631,7 @@ function doDeleteActivity(aid) {
   // 3) Aktiven Workout-Store-Datensatz mitnehmen (falls dieselbe Session lokal aktiv wäre — selten).
   // 4) Sofort neu rendern + Statistiken aktualisieren.
   try { closeActivity(); } catch (e) {}
+  try { if (typeof gmCloseActivityPage === 'function') gmCloseActivityPage(); } catch (e) {}
   try { if (typeof _mvRerender === 'function') _mvRerender(); } catch (e) {}
   if (typeof renderAkt === 'function') renderAkt();
   try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { deleted: true } })); } catch (e) {}
@@ -635,7 +677,8 @@ if (typeof window !== 'undefined') {
     activityDetailViewModel: activityDetailViewModel,
     resolvePlannedActivity: resolvePlannedActivity,
     closeActivityDetail: closeActivityDetail,
-    deleteActivityCanonical: deleteActivityCanonical
+    deleteActivityCanonical: deleteActivityCanonical,
+    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical
   };
 }
 

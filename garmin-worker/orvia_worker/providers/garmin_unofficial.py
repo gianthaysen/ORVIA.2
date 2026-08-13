@@ -134,6 +134,45 @@ class GarminUnofficialProvider:
         self._api = garmin
         return garmin.client.dumps()
 
+    # -- Workout-Push (Kraftplan v2, K5) --------------------------------------
+
+    @staticmethod
+    def _extract_workout_id(resp: Any) -> str | None:
+        """Holt die workoutId aus der Garmin-Antwort — oder None.
+
+        FAIL CLOSED: eine Antwort ohne belastbare ID gilt NICHT als Erfolg.
+        Akzeptiert werden nur nicht-leere Zeichenketten und ganze Zahlen;
+        alles andere (None, leer, Fliesskomma, verschachtelter Unsinn) fuehrt
+        zu None, und der Aufrufer meldet den Push als fehlgeschlagen.
+        """
+        if not isinstance(resp, dict):
+            return None
+        for key in ("workoutId", "workoutid", "id"):
+            v = resp.get(key)
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int) and v > 0:
+                return str(v)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return None
+
+    def upload_strength_workout(self, payload: dict) -> str | None:
+        """Legt ein Kraft-Workout in Garmin Connect an; Rueckgabe: workoutId.
+
+        Laeuft ausschliesslich auf der bereits per Token hergestellten Session
+        — KEIN Passwort-Fallback. Ohne Session: AuthError (fail closed).
+        Keine Logs von Payload oder Antwort.
+        """
+        api = self._api
+        if api is None:
+            raise AuthError("Keine aktive Garmin-Session")
+        try:
+            resp = api.upload_workout(payload)
+        except Exception as e:
+            raise _map_exception(e) from None
+        return self._extract_workout_id(resp)
+
     def login_with_tokens(self, token_str: str) -> None:
         """Session aus gespeicherten Tokens (>512 Zeichen -> als String erkannt)."""
         garmin = self._new_garmin()

@@ -13,6 +13,12 @@ PROTECTED = [
     ("POST", "/connect/mfa", {"mfa_code": "123456"}),
     ("POST", "/connect/token-import", {"token_data": "t" * 600}),
     ("POST", "/sync", None),
+    # K5: der Kraft-Workout-Push ist ebenso geschuetzt wie alles andere.
+    ("POST", "/workout/push", {
+        "clientRef": "r", "occurrenceId": "po:2026-08-12:ps:g1",
+        "payloadVersion": "p", "mappingVersion": "m", "payloadHash": "h",
+        "workout": {}, "stepBindings": [],
+    }),
     ("DELETE", "/connection", None),
 ]
 

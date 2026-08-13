@@ -1,0 +1,24 @@
+{
+  "frozenAt": "2026-08-08",
+  "appVersion": "v8-299",
+  "key": "023ee59b",
+  "versions": {
+    "shadow": "shadow-adaptive@12",
+    "shadowPolicy": "shadow-policy@2",
+    "history": "load-history@3",
+    "historyPolicy": "lh-policy@2",
+    "debrief": "session-debrief@3",
+    "evidence": "evidence@2",
+    "loadProfile": "load-profile@1",
+    "progression": "progression@9",
+    "progressionPolicy": "prog-policy@9",
+    "feasibility": "goal-feasibility@4",
+    "feasibilityPolicy": "gf-policy@2",
+    "translator": "plan-translator@2",
+    "translatorPolicy": "pt-policy@1",
+    "designer": "week-plan-designer@1",
+    "weekPolicy": "week-plan-policy@1",
+    "input": "observer-input@5",
+    "source": "observer-source@2"
+  }
+}

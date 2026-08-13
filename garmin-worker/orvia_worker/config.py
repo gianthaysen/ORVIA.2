@@ -31,6 +31,11 @@ def _int_env(env: dict, name: str, default: int) -> int:
         raise ConfigError(f"{name} muss eine Ganzzahl sein, nicht {raw!r}") from e
 
 
+def _bool_env(env: dict, name: str) -> bool:
+    """Nur ausdrueckliche Zustimmung zaehlt. Alles andere ist False."""
+    return (env.get(name) or "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _parse_legacy_keys(raw: str) -> dict[int, str]:
     """Parst "1:key,2:key" zu {1: key, 2: key}."""
     out: dict[int, str] = {}
@@ -64,6 +69,11 @@ class Settings:
     allowed_origins: tuple[str, ...] = ()
     port: int = 8000
     log_level: str = "INFO"
+    # K5 (Kraftplan v2): schaltet den Geraetetestmodus fuer POST /workout/push
+    # frei. Standard AUS. Ein Client-Flag allein darf ihn nicht oeffnen —
+    # solange die Sport- und reps-IDs unbelegt sind (Gate G1), ist der
+    # produktive Pfad ohnehin gesperrt.
+    strength_push_device_test: bool = False
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -95,6 +105,7 @@ class Settings:
             allowed_origins=origins,
             port=_int_env(env, "PORT", 8000),
             log_level=(env.get("LOG_LEVEL") or "INFO").strip().upper(),
+            strength_push_device_test=_bool_env(env, "STRENGTH_PUSH_DEVICE_TEST"),
         )
 
 

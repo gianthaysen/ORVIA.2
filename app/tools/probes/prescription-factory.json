@@ -1,0 +1,140 @@
+{
+  "target": "js/engine/prescription-factory.js",
+  "test": "supabase/tests/phase7_s5_prescription_test.mjs",
+  "note": "Hier entstehen die konkreten Vorgaben. Die harte Zusage ist RUN-INT-001: ohne belastbare Pace-Evidenz darf NIRGENDS ein Pace-Ziel stehen — sonst erfindet die App Zahlen, und genau das soll sie nie tun.",
+  "probes": [
+    {
+      "id": "F1",
+      "pattern": "data_lacks_var",
+      "title": "Tempo-Pace-Fenster verschoben (1.02-1.08 -> 0.80-0.85)",
+      "file": "js/engine/prescription-factory.js",
+      "find": "_paceRange(ev.thresholdPaceSecPerKm, 1.02, 1.08)",
+      "replace": "_paceRange(ev.thresholdPaceSecPerKm, 0.80, 0.85)",
+      "expectTest": "Tempo · das Arbeitsfenster liegt bei 1.02–1.08",
+      "history": "blieb im Probenlauf v8-331 gruen: geprueft war nur das Easy-Fenster. Tempo- und VO2-Fenster waren ungeprueft — genau die Zahlen, die entscheiden, ob ein Tempolauf ein Schwellenreiz oder ein Wettkampf wird."
+    },
+    {
+      "id": "F2",
+      "pattern": "fixture_masks",
+      "title": "ohne Pace-Evidenz wird trotzdem ein Pace-Ziel gesetzt (RUN-INT-001 verletzt)",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      var t = _paceEvidence(ev) ? _paceRange(ev.thresholdPaceSecPerKm, 0.92, 0.98)\n        : (flags.push('no_pace_evidence_rpe_fallback'), _rpeTarget(_zahl('rpeIntervall', 'session.rpe_intervall', req, flags)));",
+      "replace": "      var t = _paceRange((ev && ev.thresholdPaceSecPerKm) || 300, 0.92, 0.98);",
+      "expectTest": "RUN-INT-001 · ohne Evidenz: KEIN pace-Ziel"
+    },
+    {
+      "id": "F3",
+      "pattern": "value_not_type",
+      "title": "zu kurze Dauer wird akzeptiert statt blockiert",
+      "file": "js/engine/prescription-factory.js",
+      "find": "req.durationMin >= 15",
+      "replace": "req.durationMin >= 0",
+      "expectTest": "fehlende/zu kurze Dauer ⇒ blocked"
+    },
+    {
+      "id": "F4",
+      "pattern": "value_not_type",
+      "title": "unbekannter Einheitentyp faellt still auf endurance_easy zurueck",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    var tpl = TEMPLATES[req.sessionType];",
+      "replace": "    var tpl = TEMPLATES[req.sessionType] || TEMPLATES.endurance_easy;",
+      "expectTest": "unbekannter sessionType ⇒ blocked"
+    },
+    {
+      "id": "F5",
+      "pattern": "data_lacks_var",
+      "title": "Kraft ohne Uebungsliste erfindet eine Uebung statt generisch zu bleiben",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      var exs = (req && Array.isArray(req.exercises) && req.exercises.length) ? req.exercises : null;",
+      "replace": "      var exs = (req && Array.isArray(req.exercises) && req.exercises.length) ? req.exercises : [{ exerciseId: 'back_squat', sets: 3, reps: 10 }];",
+      "expectTest": "Kraft · ohne Übungsliste: generische Session"
+    },
+    {
+      "id": "F6",
+      "pattern": "value_not_type",
+      "title": "repeat mit 0 Durchgaengen wird vom Validator durchgelassen",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (!(b.iterations >= 1) || b.iterations !== Math.floor(b.iterations)) errs.push(path + ':repeat_iterations');",
+      "replace": "      if (b.iterations !== Math.floor(b.iterations)) errs.push(path + ':repeat_iterations');",
+      "expectTest": "Validator · repeat mit 0, -1 oder gebrochenen",
+      "history": "blieb im Probenlauf v8-331 gruen: eine Wiederholungsgruppe mit 0 oder -1 Durchgaengen waere durchgelaufen und auf der Uhr als leere Gruppe erschienen."
+    },
+    {
+      "id": "F7",
+      "pattern": "value_not_type",
+      "title": "die geratene 3 als Satz-Default kehrt zurueck (Zustand vor v8-336)",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        var sets = (e.sets >= 1) ? e.sets : (setsV ? setsV.wert.min : null);",
+      "replace": "        var sets = (e.sets >= 1) ? e.sets : 3;",
+      "expectTest": "eine Übung OHNE Satzangabe erzeugt keine erfundene 3",
+      "history": "BEFUND v8-336: hier stand `sets: e.sets >= 1 ? e.sets : 3`, waehrend strength-plan@1 woertlich verbietet, die Satzzahl zu raten. Zwei Module desselben Projekts widersprachen sich, und die Factory gewann still."
+    },
+    {
+      "id": "F8",
+      "pattern": "value_not_type",
+      "title": "die geratenen 120 s Pause kehren zurueck",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        var rest = (e.restSeconds != null) ? e.restSeconds : (restV ? restV.wert.min : null);",
+      "replace": "        var rest = (e.restSeconds != null) ? e.restSeconds : 120;",
+      "expectTest": "fehlt die Angabe, springt eingespeistes WISSEN ein"
+    },
+    {
+      "id": "F9",
+      "pattern": "neighbour_guard",
+      "title": "die Herkunft der Wissensvorgabe wird nicht mehr protokolliert",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (setsV) flags.push('sets_aus_wissen:' + setsV.regelId);",
+      "replace": "      if (false) flags.push('sets_aus_wissen:' + setsV.regelId);",
+      "expectTest": "… und die Herkunft steht im Flag, nicht nur im Wert"
+    },
+    {
+      "id": "F10",
+      "pattern": "fixture_masks",
+      "title": "eine qualitative Vorgabe wird als Zahl missbraucht",
+      "file": "js/engine/prescription-factory.js",
+      "find": "          if (v && v.ziel === ziel && v.art === 'zahl' && v.wert) return v;",
+      "replace": "          if (v && v.ziel === ziel && v.wert) return v;",
+      "expectTest": "… und eine als „Empfehlung\" markierte Vorgabe wird auch dann nicht als Zahl benutzt",
+      "history": "blieb im ersten Lauf gruen: die Pruefung auf art===zahl war redundant zur Wertpruefung, weil knowledge-application nie beides gleichzeitig liefert. Geschlossen mit einem fehlerhaften Aufrufer, der art und wert widerspruechlich setzt."
+    },
+    {
+      "id": "F11",
+      "pattern": "neighbour_guard",
+      "title": "Produktwerte werden wieder still benutzt (kein Flag)",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    flags.push('produktwert:' + schluessel);",
+      "replace": "    if (false) flags.push('produktwert:' + schluessel);",
+      "expectTest": "jede benutzte Produktzahl steht als Flag in der Verordnung",
+      "history": "BEFUND v8-337: die Zahlen lagen unsichtbar verstreut im Code und sahen aus wie Fachwissen. Ohne Flag waere nicht erkennbar, welche Zahl auf einer Quelle beruht und welche nicht."
+    },
+    {
+      "id": "F12",
+      "pattern": "value_not_type",
+      "title": "eingespeistes Wissen wird beim Ersetzen ignoriert",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    var w = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;",
+      "replace": "    var w = null;",
+      "expectTest": "eingespeistes Wissen ersetzt den Produktwert und nennt die Regel"
+    },
+    {
+      "id": "F13",
+      "pattern": "value_not_type",
+      "title": "der Aufwaermanteil kippt auf einen anderen Wert",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    warmupAnteil: 0.25, warmupMinMin: 10,",
+      "replace": "    warmupAnteil: 0.05, warmupMinMin: 10,",
+      "expectTest": "… und die Ersetzung wirkt sich messbar auf die Verordnung aus",
+      "history": "die Bilanzpruefung toleriert +-10 %, deshalb faellt eine Aufwaermverschiebung dort nicht auf. Rot wird stattdessen der Test, der die MESSBARE Wirkung einer Ersetzung prueft — er vergleicht mit dem Produktwert."
+    },
+    {
+      "id": "F14",
+      "pattern": "value_not_type",
+      "title": "eine Uebung ohne Kennung heisst wieder \"undefined\"",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        var eid = (typeof e.exerciseId === 'string' && e.exerciseId) ? e.exerciseId\n          : (typeof e.id === 'string' && e.id) ? e.id : null;",
+      "replace": "        var eid = String(e.exerciseId || e.id);",
+      "expectTest": "die Verordnung wird gesperrt statt ausgeliefert",
+      "history": "Gefunden im ERSTEN echten Durchlauf mit eingespeistem Wissen (v8-338), nicht von einem Test: die Karte zeigte woertlich \"undefined — 4 x 5 · RPE 7\". String(undefined) ergibt eine Zeichenkette, die jede Schemapruefung passiert. Kein Flag, keine Sperre — der einzige Fail-Open, den v8-336 in der Factory uebersehen hatte."
+    }
+  ]
+}

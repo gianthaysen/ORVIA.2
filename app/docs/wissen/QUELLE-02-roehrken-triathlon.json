@@ -1,0 +1,42 @@
+{
+  "_status": [
+    "VORBEREITET, NOCH NICHT EINSPEISBAR — gleicher Grund wie bei Quelle 01:",
+    "ich habe das Video nicht gesehen.",
+    "",
+    "DU FUELLST: kernaussage, grenzen, eigene_worte, und die Regeln.",
+    "Fuer dich besonders relevant, weil das direkt auf dein Ironman-Ziel zielt:",
+    "wie verteilt er Umfang auf Schwimmen/Rad/Laufen, wo sitzt die Intensitaet,",
+    "wie oft Kraft, und ab welchem Zeitpunkt vor dem Wettkampf aendert sich was."
+  ],
+
+  "sport": "triathlon",
+  "_sport_pruefen": "Falls ORVIA 'triathlon' nicht als Sportart kennt, auf 'running' setzen und die Radteile als Regeln mit nicht_fuer markieren.",
+
+  "quelle": {
+    "id": "SRC-ROEHRKEN-TRI-2024",
+    "art": "coachvideo",
+    "titel": "Wie sieht der PERFEKTE TRIATHLON-Plan aus?",
+    "wer": "Dr. Golo Roehrken (Kanal: doc_golo, Health & Performance)",
+    "jahr": 2024,
+    "_jahr_unsicher": "Veroeffentlichungsdatum nicht abrufbar — bitte auf der Videoseite pruefen und korrigieren.",
+    "url": "https://www.youtube.com/watch?v=NsYbFnZ1NT0",
+    "sportarten": ["triathlon", "running", "cycling", "swimming"],
+    "gilt_fuer": ["altersklassenathlet", "freizeitlaeufer"],
+    "worum_gehts": ["planstruktur", "periodisierung", "intensitaetsverteilung"],
+    "qualitaet": "mittel",
+    "_qualitaet_begruendung": [
+      "Arzt mit eigener Triathlon-Praxis — fachlich deutlich besser abgestuetzt",
+      "als reines Influencer-Material. Trotzdem ein Video: keine Begutachtung,",
+      "keine Studie, keine nachvollziehbare Methodik. Der Titel ('der PERFEKTE",
+      "Plan') ist eine Klick-Formulierung; der Inhalt ist mutmasslich",
+      "differenzierter. Deshalb 'mittel', nicht 'hoch'."
+    ],
+
+    "kernaussage": "",
+    "grenzen": "",
+    "eigene_worte": false,
+    "geprueft_am": ""
+  },
+
+  "regeln": []
+}

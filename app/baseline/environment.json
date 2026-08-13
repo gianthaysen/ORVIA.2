@@ -1,0 +1,1745 @@
+{
+  "baselineTag": "v8-219-audit-baseline",
+  "capturedAt": "2026-08-02T16:33:53.111Z",
+  "purpose": "Reproduzierbarer IST-Zustand vor Phase 1. Dokumentiert Verhalten, nicht Korrektheit.",
+  "runtime": {
+    "node": "v22.22.2",
+    "platform": "linux",
+    "arch": "x64",
+    "playwrightBrowser": "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+  },
+  "appVersion": "v8-219",
+  "vcs": {
+    "workingCopyUnderGit": false,
+    "note": "Das Arbeitsverzeichnis ist kein Git-Checkout. Der Live-Repo-Klon liegt separat (github.com/gianthaysen/ORVIA.2). Das Einfrieren erfolgt hier ueber manifest.sha256 je Datei. Beim naechsten Upload in das Repo ist zusaetzlich der Tag \"v8-219-audit-baseline\" zu setzen."
+  },
+  "fileCount": 345,
+  "manifestHash": "10679734102ddff964a72a2b59b8d7928568f8e13a6873160928bf241846d9b3",
+  "files": [
+    {
+      "path": "docs/gm-ref/color_bestTimes_390.json",
+      "bytes": 9232,
+      "sha256": "ced07651f906f88840ac9490a6b0216b8948b85f2790d19a80e3012d3e34abf2"
+    },
+    {
+      "path": "docs/gm-ref/color_bestTimes.json",
+      "bytes": 9232,
+      "sha256": "4c351cc7f6d0a7e78e9afc22e1596845e74e54278bd3ef3def9ab6e3934ffd92"
+    },
+    {
+      "path": "docs/gm-ref/color_milestones_390.json",
+      "bytes": 9683,
+      "sha256": "afc0f6a0ecca8b117f445183cb5db5a9ad3f8fcfb38d526c7fbbc3fa5c8facfe"
+    },
+    {
+      "path": "docs/gm-ref/color_milestones.json",
+      "bytes": 9683,
+      "sha256": "299fcf433a41b5ee478923dc05f1cd4d13494b5303698d20b4914e7cdac255fe"
+    },
+    {
+      "path": "docs/gm-ref/gm_dash_domspec.json",
+      "bytes": 37490,
+      "sha256": "6e046973264338b68e39d78f0b16fb205c2d56ee11d1cc05e27e302439cd4dab"
+    },
+    {
+      "path": "docs/gm-ref/gm1/results.json",
+      "bytes": 418,
+      "sha256": "4e10513660dbb52c0a1cd2c3297ae90b261e6a4b5b74908672ef34f4dbf536db"
+    },
+    {
+      "path": "docs/gm-ref/gm2/results.json",
+      "bytes": 924,
+      "sha256": "7d308c957de798a14d78c52a9a67ce0354c7dbbd0a0c1ee6666ac0be3c09eda8"
+    },
+    {
+      "path": "docs/gm-ref/gm3/results.json",
+      "bytes": 1595,
+      "sha256": "e5da189d765fe42ddf553f8f99d1d44b0ead085b3f19a418c590d0fbabb51768"
+    },
+    {
+      "path": "docs/gm-ref/gm4/results.json",
+      "bytes": 2011,
+      "sha256": "7b7511daa8a8054dd19057faefc22ad503af363b042904187bd8781c97602909"
+    },
+    {
+      "path": "docs/gm-ref/gm6/gm6_gm_domspec.json",
+      "bytes": 571979,
+      "sha256": "f43816cbf90469837ad52e5f347f579e8fae7f5b7603fbb02f090bacdb0c6fda"
+    },
+    {
+      "path": "docs/gm-ref/gm6/results.json",
+      "bytes": 8163,
+      "sha256": "21ce9c002419c6577fd718f03ce9e86592cd32dbe33efe262123bcf62903993c"
+    },
+    {
+      "path": "docs/gm-ref/goalline_390.json",
+      "bytes": 354,
+      "sha256": "2d877756af4dfae713a1fd9e5bebd8188ac96151f16f5c2849b2d3377179cbc3"
+    },
+    {
+      "path": "docs/gm-ref/goalline_430.json",
+      "bytes": 354,
+      "sha256": "bdbe2bb1ca8286222984bf34267e05186a65c727236835d37ec8f876bb0116e7"
+    },
+    {
+      "path": "docs/gm-ref/medal_contract.json",
+      "bytes": 17922,
+      "sha256": "ac5576d52e607420f89ff73a0e2b9c79a96946abf474ddef0d441442328f98ba"
+    },
+    {
+      "path": "docs/gm-ref/results.json",
+      "bytes": 2239,
+      "sha256": "d46b495965b5032c33f47a41bcef2e51416784fd19beb82acfcf4b2a416aedb7"
+    },
+    {
+      "path": "docs/gm-ref/rowgeom_bestTimes_390.json",
+      "bytes": 14540,
+      "sha256": "570c3371bd9132c5a38bc303581623af3b0ec38b8af4cf281c0f963d7f11541d"
+    },
+    {
+      "path": "docs/gm-ref/rowgeom_bestTimes.json",
+      "bytes": 14540,
+      "sha256": "95ff9c643e2888063fb8c40bb3807f5c75213f4645c5cd13a92a0791b10ad062"
+    },
+    {
+      "path": "docs/gm-ref/rowgeom_milestones_390.json",
+      "bytes": 26282,
+      "sha256": "29eba1ea5e8d2038d0b215d4990d4a4a6d86e4c4e6292beef1c0fed3ef2184a3"
+    },
+    {
+      "path": "docs/gm-ref/rowgeom_milestones.json",
+      "bytes": 26282,
+      "sha256": "21e83f3f20f8a552c095e1731e44b1660a9243d2e65be4d312181ef876386ffa"
+    },
+    {
+      "path": "env.example.js",
+      "bytes": 168,
+      "sha256": "96e725283b6b22b38ef6085ab3f5b132df9ea817503de36f20ca60c4668524a4"
+    },
+    {
+      "path": "env.js",
+      "bytes": 449,
+      "sha256": "a783ade07923dcf12e398ffe3c85ebca180f90affaf811753e16cba7176ca7fc"
+    },
+    {
+      "path": "index.html",
+      "bytes": 38113,
+      "sha256": "9e6b9199e7fe2e83096e226c9dfef0e86f0d840a66a36ed412e270407025fa3a"
+    },
+    {
+      "path": "js/activity-config.js",
+      "bytes": 64717,
+      "sha256": "461d01010743f28c1b76a9238c62602befb02e8cdeb212604750c78766a69715"
+    },
+    {
+      "path": "js/activity-normalize.js",
+      "bytes": 20741,
+      "sha256": "b03055dad7fd2468696fbc9264bd014ad4f519827138a5d9d6c0c1e4eea4923b"
+    },
+    {
+      "path": "js/activity-store.js",
+      "bytes": 15432,
+      "sha256": "21316bea9fcf1ac7a4a23fef9b82a2d884973fdaba61aa32c4f7b379f675618b"
+    },
+    {
+      "path": "js/activity-sync.js",
+      "bytes": 6650,
+      "sha256": "c9494fb2cd192f8fba837e794ac4e42efc7d0efa939def772d98ea081a0c7177"
+    },
+    {
+      "path": "js/activity.js",
+      "bytes": 77216,
+      "sha256": "d78758620fefc3385cedc8879e539ee0d2baa9336b3135003e86bddecb3394e0"
+    },
+    {
+      "path": "js/auth-logic.js",
+      "bytes": 3638,
+      "sha256": "eb31333a1d4b0df1b12ed670de7ac798ca0d1df254f5c77d578d1398231fc0e5"
+    },
+    {
+      "path": "js/auth.js",
+      "bytes": 44399,
+      "sha256": "940625db8481b4fba27bb4bc661985a312782e258a70d8b10b33113a06146859"
+    },
+    {
+      "path": "js/avatar-store.js",
+      "bytes": 6499,
+      "sha256": "e40e5407b4d6b5ed20c8cfe727e3f072f23ba312ee5b40e793d3e6e3cf3f028d"
+    },
+    {
+      "path": "js/calc.js",
+      "bytes": 93523,
+      "sha256": "f3cf43ba9f3f921ffff4de08c3707a5fd713a4e11ada4ada9028b3f936e10ea0"
+    },
+    {
+      "path": "js/charts.js",
+      "bytes": 4591,
+      "sha256": "0a47a9759ac8765691bc25c5d47c51a4f1646591a013f3233d97e4d0c0bace3d"
+    },
+    {
+      "path": "js/checkin-extra.js",
+      "bytes": 8052,
+      "sha256": "d5c642217f29ff12a3f0416ce312096120addfd7b11ec11254a1d668deeaaeda"
+    },
+    {
+      "path": "js/checkin-field-resolver.js",
+      "bytes": 4778,
+      "sha256": "4b850bff3798fa5aa10e9d99329077694e9f210a16981d228d574a083dbf0ef9"
+    },
+    {
+      "path": "js/checkin-fields.js",
+      "bytes": 8336,
+      "sha256": "5a7f1d5e95e356577a0e4a5d04b88ed167f5fd08286e843302b2af92e0e86257"
+    },
+    {
+      "path": "js/checkin-store.js",
+      "bytes": 12188,
+      "sha256": "b86215c241f67174cedf71a8a67cc650c32aa692f1374d0545ac8c732024d978"
+    },
+    {
+      "path": "js/clock.js",
+      "bytes": 1168,
+      "sha256": "8fd399d3246e35ed116ec3018bcc1b412c75a13fbd0d56bd2a078a4ad84cb28d"
+    },
+    {
+      "path": "js/coachmarks.js",
+      "bytes": 5491,
+      "sha256": "dce0f5991fa92b89063ba9e028be1cc23e32d4975972109c3522bf353a0e6edd"
+    },
+    {
+      "path": "js/config.js",
+      "bytes": 2802,
+      "sha256": "ade619f04559c7dd1048c97da74db0b431203eb451504c6793ee9ad035924327"
+    },
+    {
+      "path": "js/data.js",
+      "bytes": 15277,
+      "sha256": "104607b06d40e4875fd1b5efc79675424288ddadf97f7dd483cde69bd592ac99"
+    },
+    {
+      "path": "js/engine/decision-engine-v2.js",
+      "bytes": 12698,
+      "sha256": "14b964b929f0d7d98b2e235aa2548ba3175a69367104aa9a5d5ba734e3b45334"
+    },
+    {
+      "path": "js/engine/engine-contracts.js",
+      "bytes": 11629,
+      "sha256": "3ec694096eb151eae5a72eb4d65ac09e9cc558f06713cf17dce3d119caf189fc"
+    },
+    {
+      "path": "js/engine/goal-portfolio.js",
+      "bytes": 38321,
+      "sha256": "b7c88c21aa354327cc955a40f8985507d6c180e1e60bd1bd8f84624a8a4698f9"
+    },
+    {
+      "path": "js/engine/knowledge/knowledge-contracts.js",
+      "bytes": 44078,
+      "sha256": "feb8f8990fbcaedb4cf67c79672962bdc95ff9c64dada7b06e583d3a068635c4"
+    },
+    {
+      "path": "js/engine/knowledge/knowledge-sources.js",
+      "bytes": 21095,
+      "sha256": "b786437d1d68a9ab9d0105829e1e259656c0a44e8494e24bedd48754518ff8f1"
+    },
+    {
+      "path": "js/engine/knowledge/running-knowledge-pack.js",
+      "bytes": 34465,
+      "sha256": "42ca48f4ae127eb7351369ce5321d7e534200813e3d57e95b27cd295159a2c15"
+    },
+    {
+      "path": "js/engine/knowledge/sport-coverage-matrix.js",
+      "bytes": 4122,
+      "sha256": "83ca3bceee9f03bf26750c359acfbc3afa61793826d9f3ee40fddd390151eaa8"
+    },
+    {
+      "path": "js/engine/plan-engine-v2.js",
+      "bytes": 8388,
+      "sha256": "87ae448a53bf7f5ccb42c105275bfcba6772cdb00c78426335a441725ec523ff"
+    },
+    {
+      "path": "js/engine/readiness-engine-v2.js",
+      "bytes": 7324,
+      "sha256": "9032a0ab0918074009ddff28da3e266526d6eb7c8baef5361e55e73b3a4517bd"
+    },
+    {
+      "path": "js/engine/running-capacity-factory.js",
+      "bytes": 52267,
+      "sha256": "46068558a40390bd2a57071e4b4387eb2a6b9329463ba7168cbaae89cbff0ae7"
+    },
+    {
+      "path": "js/engine/scheduler-goal-allocation.js",
+      "bytes": 17940,
+      "sha256": "d228c6132d18ee5f4b7634a0cc99cc205856d751c9ae3d3252850cb6bb1305cc"
+    },
+    {
+      "path": "js/engine/scheduler-input-factory.js",
+      "bytes": 15880,
+      "sha256": "5606a98ddd8a9c23e07a5cde9806693a895332f944b86014a2bdabedbb6ce4ec"
+    },
+    {
+      "path": "js/engine/scheduler-v1.js",
+      "bytes": 11477,
+      "sha256": "f309502e25f56a9e19fb7d2a4ff50972891c86860927160e89dc426948e804ed"
+    },
+    {
+      "path": "js/engine/shadow-runner.js",
+      "bytes": 6352,
+      "sha256": "348240cb39fd63e963816205f8a23ce36eec9f6650f0d48215fade6791e7032e"
+    },
+    {
+      "path": "js/engine/training-input-resolver.js",
+      "bytes": 30535,
+      "sha256": "4c292c3ec67926332217cf6294efe69d878788da9b16d52555ec5ace4514c7ee"
+    },
+    {
+      "path": "js/extras.js",
+      "bytes": 9999,
+      "sha256": "1eecf12492c8f31969e2af9b50280432392048a7cf0aee448b58b3ba2844e359"
+    },
+    {
+      "path": "js/format-utils.js",
+      "bytes": 5177,
+      "sha256": "cbdb20ea6a71f45d0adeaba384d7941272efe9936eb69376e2081a6ff2ae64ca"
+    },
+    {
+      "path": "js/gm-icons.js",
+      "bytes": 6699,
+      "sha256": "60dae9e53f425e756f5cc0efad9206e470badd965db21e52fb8d6bf3fed43388"
+    },
+    {
+      "path": "js/gym-volume.js",
+      "bytes": 53927,
+      "sha256": "1a58cb3598d8caad38a48893f65852343dfb33f6fee786ac52a84373705d6222"
+    },
+    {
+      "path": "js/insights.js",
+      "bytes": 8769,
+      "sha256": "2a8686501baf9826afafa6c9f9f92c5ecbe8406a1ffcdff22d8fd8b1163da15a"
+    },
+    {
+      "path": "js/intelligence.js",
+      "bytes": 12101,
+      "sha256": "4707da5a4b1160022cea5da2041a6aa267a9ba4d8b6717a86347d457ba3cc028"
+    },
+    {
+      "path": "js/issues.js",
+      "bytes": 19075,
+      "sha256": "afe567682bd159551cfcd96dae479141c0b62bc38e92ff3e950cfe676e786c03"
+    },
+    {
+      "path": "js/metrics/energy-expenditure-resolver.js",
+      "bytes": 6404,
+      "sha256": "3e7900e351310f2e28321f071724f70d524963ba018a1f470d889fd4ec3bfbf7"
+    },
+    {
+      "path": "js/metrics/export-registry.mjs",
+      "bytes": 702,
+      "sha256": "0a5e28f1e786ab79c8fa3f0ecdd66c78a96d80f8372ab191813e898e46dd2ffe"
+    },
+    {
+      "path": "js/metrics/metric-registry.js",
+      "bytes": 11538,
+      "sha256": "d8dd8aa63b7c95df47245e9b1794813dc651bb3ae65f4f1eb7bf5c85442c36da"
+    },
+    {
+      "path": "js/metrics/metric-resolver.js",
+      "bytes": 14929,
+      "sha256": "ea26fb64dfa294d28994b303de02cdffeaf2df576d5cf4df3b4db14da28ad4f5"
+    },
+    {
+      "path": "js/metrics/profile-metric-resolver.js",
+      "bytes": 11142,
+      "sha256": "f416bf6b8a26591b0575f6d7a22e0a4122f757d55ca5fdda628fbbf30c74b26c"
+    },
+    {
+      "path": "js/migrate-blob.js",
+      "bytes": 8542,
+      "sha256": "433bd745b8819b580134e17e5277f98b8392785c994ccc41a2af46abf4add64f"
+    },
+    {
+      "path": "js/nutrition.js",
+      "bytes": 16476,
+      "sha256": "d50267b41ca7c847bf3f97c03b20de4bc927dc5914c5263736b9651e36555988"
+    },
+    {
+      "path": "js/offline-queue.js",
+      "bytes": 9069,
+      "sha256": "e93a6fc49bebd2b707874f0013e6dd11b39880ab010130d29755e49305d2c62e"
+    },
+    {
+      "path": "js/onboarding/onboarding-logic.js",
+      "bytes": 38912,
+      "sha256": "0ac595f7bc966d4393b38778cb55c0251bc7bfdd04dca19c023550009e512436"
+    },
+    {
+      "path": "js/onboarding/onboarding-profile-logic.js",
+      "bytes": 8739,
+      "sha256": "ad3f84611a573ec76394e5cf0dcad737e029b8e892f857a07c02160799939f03"
+    },
+    {
+      "path": "js/onboarding/onboarding-sports-logic.js",
+      "bytes": 21832,
+      "sha256": "5169829ac8f5098ace1c431ab138ab9d4f28492e546f13ce7a94cd8fd4fa2651"
+    },
+    {
+      "path": "js/onboarding/onboarding-steps.js",
+      "bytes": 1737,
+      "sha256": "c6f74eed9c8fba403955f8a3032591a3c610283219df2aeb02f25289e54ff40a"
+    },
+    {
+      "path": "js/onboarding/onboarding-store.js",
+      "bytes": 2372,
+      "sha256": "d99b23a07ccee16bb49d9f86ef0ea9ed884d9b60cae445d1f5c3a6c2d2eb491f"
+    },
+    {
+      "path": "js/onboarding/onboarding-ui.js",
+      "bytes": 92736,
+      "sha256": "ddb65dba7f698a1d9cd71ca923df143314943327ebabb91f1eaf0767613e36c8"
+    },
+    {
+      "path": "js/orvia-charts.js",
+      "bytes": 10279,
+      "sha256": "5d4d6166de45ebe3aeb321f53d85483731ad4c1c8d813201bf76cb954fabdbc7"
+    },
+    {
+      "path": "js/orvia-pro.js",
+      "bytes": 21013,
+      "sha256": "562394d49cfc401cc68eb8cb50a30eba53d1bed6532ec71117cb47d42fe0493a"
+    },
+    {
+      "path": "js/profile-center.js",
+      "bytes": 21458,
+      "sha256": "ad2e18e6e01b13b9c9e28b061db37ece9fe5f1efb89b8cb764cf2aae2ff2aad9"
+    },
+    {
+      "path": "js/profile-model.js",
+      "bytes": 138627,
+      "sha256": "d89b7dd2b6013cf9efa83cdf868cdd8c81b95e077c34a7f19fc8c881e86b313a"
+    },
+    {
+      "path": "js/profile-store.js",
+      "bytes": 39282,
+      "sha256": "b6eacac4263b06f5c3d2d1fd9e01b0e7a7015642b054c2c63993f84f7c2a27cb"
+    },
+    {
+      "path": "js/profile-ui-kit.js",
+      "bytes": 14809,
+      "sha256": "0695d92d17a4a9778fc50ec10f16ac4b70d1ec92d0e6b2d5203187ccc3bb2b8d"
+    },
+    {
+      "path": "js/profile.js",
+      "bytes": 177324,
+      "sha256": "002f1d40f7601f301151fa4827c8ce96844658677ad9bd15e264400c6620defc"
+    },
+    {
+      "path": "js/quick-actions.js",
+      "bytes": 20239,
+      "sha256": "5c992e5a1e5132878db575a1c30bf2dbedb0a447819a24e25a5990ee0444f880"
+    },
+    {
+      "path": "js/race.js",
+      "bytes": 4168,
+      "sha256": "38d455fb253e05a71d0efcceba24d8e9422c20aa6fad6dd3aad2288611e94c4d"
+    },
+    {
+      "path": "js/readiness-source.js",
+      "bytes": 7760,
+      "sha256": "59398ae8898a6982596a9a1c0cfb657e0a6b421c7d354e38a41d381ea17eaafc"
+    },
+    {
+      "path": "js/readiness-store.js",
+      "bytes": 8579,
+      "sha256": "423c671d6225d9d9d3a27d795d621e78b0b945fd7926d46ff9a86e9ce848bd47"
+    },
+    {
+      "path": "js/repos/activityRepository.js",
+      "bytes": 4924,
+      "sha256": "2ec512dfeec3421afaf069df17c2057da82ded2c8ea83dc074d22549dbabdec8"
+    },
+    {
+      "path": "js/repos/availabilityRepository.js",
+      "bytes": 2012,
+      "sha256": "b6b65a561800bec452ce6d1c3f14411aa892fb7fb80f349c6225df679fb5b580"
+    },
+    {
+      "path": "js/repos/checkinRepository.js",
+      "bytes": 4460,
+      "sha256": "eeb68f3d5505e16aebb937d521b2451510afb87eba1bd9bd4552a6d46eb94ea6"
+    },
+    {
+      "path": "js/repos/constraintRepository.js",
+      "bytes": 1542,
+      "sha256": "deb2244bb9477eaf83c477afa78c98c28d1942128f16b002a6a99baad2c84fd4"
+    },
+    {
+      "path": "js/repos/energyRepository.js",
+      "bytes": 1973,
+      "sha256": "6a91616afa3bf1eeb82a3ffeabfd879b80657508d44eaaf46f33478c4336b841"
+    },
+    {
+      "path": "js/repos/exerciseRepository.js",
+      "bytes": 2846,
+      "sha256": "d040c84b214847259c197bf88d1b7ea9dceb30fa1d7a78ebbc3a7ffd53275a06"
+    },
+    {
+      "path": "js/repos/goalRepository.js",
+      "bytes": 5832,
+      "sha256": "a50fba44e445186eff30621eafafd8b85ac901c13c0e7a9004fa496dd5b8cf8c"
+    },
+    {
+      "path": "js/repos/metricsRepository.js",
+      "bytes": 7795,
+      "sha256": "54e61d050baa9ad7f0fe31a608b7cd850a8507d2766e8f40122b07a6aa4db2a3"
+    },
+    {
+      "path": "js/repos/profileRepository.js",
+      "bytes": 2796,
+      "sha256": "47812297e878c0acedcccb4c7530e3d781b3dafba659ceef9cb9eb7729972f45"
+    },
+    {
+      "path": "js/repos/readinessRepository.js",
+      "bytes": 2793,
+      "sha256": "a7504695bf055c4d0ded0da3b1e0493902b447b770fe214f3459e86805e85017"
+    },
+    {
+      "path": "js/repos/repoBase.js",
+      "bytes": 4909,
+      "sha256": "15bde775d4d797f41eb17b8794bca21a4a4c87ccc95e34d3c1b5b5ab9bf289f3"
+    },
+    {
+      "path": "js/repos/sportRepository.js",
+      "bytes": 4459,
+      "sha256": "5c5a0914d7be08ea30b42b6ed1667c1a8a4fe622c88f582fd51149f444a000b7"
+    },
+    {
+      "path": "js/repos/trainingLoadRepository.js",
+      "bytes": 6828,
+      "sha256": "1bfb11dbb51c796852fffd99a22474be95146720d3c8bde060a10910354991f0"
+    },
+    {
+      "path": "js/repos/trainingPlanRepository.js",
+      "bytes": 4710,
+      "sha256": "4ebb37bbe0a82511c2591ffc0691aac3dba781927510e1a4fc58dcc93993b767"
+    },
+    {
+      "path": "js/repos/workoutRepository.js",
+      "bytes": 14519,
+      "sha256": "5faeaeabb6c9d1b99d52161143fc9ed0ca2c8c75f5d15893bf56d32243e355cc"
+    },
+    {
+      "path": "js/series-reader.js",
+      "bytes": 8457,
+      "sha256": "72e123802b197876769d17fcbfe208bbed9e557db28b80f7922c58a17d4bbd82"
+    },
+    {
+      "path": "js/story.js",
+      "bytes": 15706,
+      "sha256": "8b0c614bd34c0aaed6e634bc637d3a594f5b805f114105e895c9d78772acee05"
+    },
+    {
+      "path": "js/supplements.js",
+      "bytes": 12340,
+      "sha256": "bff6c151d5e5b97589c93ea1dcd978c7274e02612583f445c6e4d8fe275d123f"
+    },
+    {
+      "path": "js/sync.js",
+      "bytes": 14570,
+      "sha256": "c3182995162a7a4430e33acb510809dc05242983add46f25adbc5ad1ed8ddd4c"
+    },
+    {
+      "path": "js/training-domain.js",
+      "bytes": 14306,
+      "sha256": "d7f0f9e46d60332b7dac8355323fd8384f38d6cfc0daf8c8c12441a84e0dec8e"
+    },
+    {
+      "path": "js/training-migration.js",
+      "bytes": 3002,
+      "sha256": "58dedb941ca07536bd18b5a9ac2fc7c4481ab624cad69c79d0400e08fba291f6"
+    },
+    {
+      "path": "js/ui-refresh.js",
+      "bytes": 8712,
+      "sha256": "e156adcf8aa456f7b20a0d0e0f3f7428fa8b5651355daa70194a49d9ebecc924"
+    },
+    {
+      "path": "js/ui.js",
+      "bytes": 647139,
+      "sha256": "2c0e031a4e5b82884d42e509e818b884e15c75a25de9a57ab64db7b772a7152a"
+    },
+    {
+      "path": "js/workout-store.js",
+      "bytes": 36046,
+      "sha256": "82bab2c1ff84c9c6fb76919a14d297f6e8d8f25af6f008ebc214c83e26d4f5bc"
+    },
+    {
+      "path": "js/workout-ui.js",
+      "bytes": 58431,
+      "sha256": "3a61c5d910da3bcd00cd52aa7d4f86ec53f77152f852424b74e26430cb1ab3f1"
+    },
+    {
+      "path": "manifest.webmanifest",
+      "bytes": 648,
+      "sha256": "e02da2035b98ac725bbde044e523177c9221d489cce9885dc5add3829ac6d7a7"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 3923,
+      "sha256": "b88f4bf2f351d39344f55b37d815cc484e6815a6a612244224782f804bbd45d9"
+    },
+    {
+      "path": "package.json",
+      "bytes": 68,
+      "sha256": "7f522744c68c6dbdad3409f75e50293d007a4750940843635bdc208b9539b1e4"
+    },
+    {
+      "path": "styles.css",
+      "bytes": 294745,
+      "sha256": "94bf5e89892f96e59fa79a343c8623df828526fcc6171cf01c24ceb6607a212c"
+    },
+    {
+      "path": "supabase/.temp/linked-project.json",
+      "bytes": 129,
+      "sha256": "5b57ad04fd4eda76ee485c9d478d4ad876eeed69254f25a2174bf0f5de17eb59"
+    },
+    {
+      "path": "supabase/functions/register-with-invite/handler.mjs",
+      "bytes": 13553,
+      "sha256": "09d6ab66efbe3683c35c009c7531eb950abc43ead1f939a33b662eaa1df701f3"
+    },
+    {
+      "path": "supabase/migrations_drafts/0009_canonical_activities.DRAFT.sql",
+      "bytes": 8159,
+      "sha256": "dd9bd46cbf40aaed07e7a570849fe79d18d55a4b4cedb91c149dcd016ece22e4"
+    },
+    {
+      "path": "supabase/migrations/0002_core_data_foundation.sql",
+      "bytes": 24235,
+      "sha256": "dbd56bdff102a7e71db3f02d1bc2e7c12c0f868f0c0b6e0cc85ee7eca5ecfabd"
+    },
+    {
+      "path": "supabase/migrations/0003_training_domain.sql",
+      "bytes": 37799,
+      "sha256": "893d706347d41b2bc6ca9723429f27e27e2d7116615f1fc6bfe8ca83a4160626"
+    },
+    {
+      "path": "supabase/migrations/0004_live_workout.sql",
+      "bytes": 2812,
+      "sha256": "a187f651a433d0c72ab42249170c279cf12e7eab3f7a46906f5d463c5e03a0ff"
+    },
+    {
+      "path": "supabase/migrations/0005_live_workout_hardening.sql",
+      "bytes": 1491,
+      "sha256": "83fd3d9016bad2c353253802dc9a58c98af0695f19861099a39a85f1f70aae1e"
+    },
+    {
+      "path": "supabase/migrations/0006_exercise_library_expansion.sql",
+      "bytes": 14532,
+      "sha256": "f42644566876175bc2bbaa73226e4d092566b55635f3af75877ad17a03cb2bf4"
+    },
+    {
+      "path": "supabase/migrations/0007_workout_terminal_rpc.sql",
+      "bytes": 3787,
+      "sha256": "622991e794cc5991f23ff062804673f0e76693a874dc4ba2ec441c64c15a48df"
+    },
+    {
+      "path": "supabase/migrations/0008_muscle_volume_rpc.sql",
+      "bytes": 3387,
+      "sha256": "846fc4d9a42989768afc71c74badba191dde1d1b7a7d92f134a37647a9a95913"
+    },
+    {
+      "path": "supabase/migrations/0009_canonical_activities.sql",
+      "bytes": 12793,
+      "sha256": "483552e7a12ce4c6194ec3641d32a2dce69c696bd02f7e85ab5b19c012bb6aa0"
+    },
+    {
+      "path": "supabase/migrations/0010_delete_workout_rpc.sql",
+      "bytes": 2055,
+      "sha256": "a1e1d99b52e64dc8a4bf6d6bd5c97dbbe3e6c7c250952bd8dfd2f82742a5351b"
+    },
+    {
+      "path": "supabase/migrations/0011_user_sports_sync.sql",
+      "bytes": 2058,
+      "sha256": "bb54b2d92dd7bddd468878b3c96d67facae3690b209759f2ad2a31ae997567b7"
+    },
+    {
+      "path": "supabase/migrations/0012_goal_enums_and_fields.sql",
+      "bytes": 2020,
+      "sha256": "216cf85aa11b0c5c1e4643f642aa4b8499c717acc03ce9c63bf9181f1da47267"
+    },
+    {
+      "path": "supabase/migrations/0013_availability_profile_sync.sql",
+      "bytes": 1686,
+      "sha256": "b441bc41cc71e1ae6a1c8ce3c34e0d81edc8d7565d4281b86d12c3fe8d4671d9"
+    },
+    {
+      "path": "supabase/migrations/0014_user_constraints.sql",
+      "bytes": 3317,
+      "sha256": "2d936733134ff7f92bf30cedc489813f2839f09650b93f3cf5ea426cf18bb392"
+    },
+    {
+      "path": "supabase/migrations/0015_checkin_evening_fields.sql",
+      "bytes": 1209,
+      "sha256": "fb0989e456c3eeb983137b848cfe546b02f1cfce61e1ee935092cb0eed814fd3"
+    },
+    {
+      "path": "supabase/migrations/0016_athlete_profile_sync.sql",
+      "bytes": 3830,
+      "sha256": "9c16fd3d29f10200184b07f5b8b75e5c03bcad6e1d862a803370e8e8c943908a"
+    },
+    {
+      "path": "supabase/migrations/0017_daily_checkins_unique.sql",
+      "bytes": 2651,
+      "sha256": "f48387e2f2d153fdabca8411395a5b66de6bc9a6a2994590b531262b28080407"
+    },
+    {
+      "path": "supabase/migrations/0018_recovery_preferences_sync.sql",
+      "bytes": 1420,
+      "sha256": "bb20648aaef18fc9dc454f98b521ca52a6e1f1f55727e5b995d32ef53f649c0d"
+    },
+    {
+      "path": "supabase/migrations/0019_provider_metrics_foundation.sql",
+      "bytes": 19133,
+      "sha256": "eb08014ea94dea388cee0d1e6634b00e9c5bff3983d57121dd73fa3c7173bb3c"
+    },
+    {
+      "path": "supabase/migrations/0020_fix_user_metrics_on_conflict.sql",
+      "bytes": 1610,
+      "sha256": "5ac50cf657bf672ef13378d5fd55755a660210921ee63daf014d2d633e5fe9b7"
+    },
+    {
+      "path": "supabase/migrations/0021_checkin_auto_sources.sql",
+      "bytes": 991,
+      "sha256": "2342ae577602be716b9184c2dbea287ff0d6a985b609d4d078255bead642267d"
+    },
+    {
+      "path": "supabase/migrations/0022_daily_energy_expenditure.sql",
+      "bytes": 3279,
+      "sha256": "61085f1293269e6b0acb4e4bbfcfac61652fbf84a13088aee5755fdd782d2db9"
+    },
+    {
+      "path": "supabase/migrations/0023_readiness_engine_version_fix.sql",
+      "bytes": 1323,
+      "sha256": "48b218b5bf7a14599fd3948ce58990d91c1b5a097c17627b2922e61cebc28c50"
+    },
+    {
+      "path": "supabase/migrations/0024_checkin_red_flags.sql",
+      "bytes": 1351,
+      "sha256": "0c15791875247dc02ccd088ee77cc9683ce314245f241367b8f009f8c4c59a72"
+    },
+    {
+      "path": "supabase/migrations/0025_workout_planned_snapshot.sql",
+      "bytes": 1404,
+      "sha256": "57e21fd4baa2c84826518fc68901dc039698e5078f40bf2000fc756046410d86"
+    },
+    {
+      "path": "supabase/migrations/0026_protect_planned_anchor.sql",
+      "bytes": 5679,
+      "sha256": "43ac9bf74930a15e561cd065e7298c3c58636ffbb1df2cd6da43b77c403931d1"
+    },
+    {
+      "path": "supabase/migrations/0027_goal_g1_detail_fields.sql",
+      "bytes": 3025,
+      "sha256": "71d0b1800b870062b9b49b58cc3a8efba28dbb55fa147804788247b70f4f1687"
+    },
+    {
+      "path": "supabase/migrations/0028_user_metric_series_rollback.sql",
+      "bytes": 597,
+      "sha256": "ca0c46d7a92bb5412b3310b96ec59d0ee52016f13f884a13d036e6d2a5e6419f"
+    },
+    {
+      "path": "supabase/migrations/0028_user_metric_series.sql",
+      "bytes": 3676,
+      "sha256": "d3925f1caf203f77d4cf466c7ab44d36957489280f960a6ab91002505badd6bd"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "bytes": 21693,
+      "sha256": "0bc994ef3a21e9a7910db3d928f68458175a6292c0ad1d9bf0ba5272d53ef9cd"
+    },
+    {
+      "path": "supabase/tests/_helpers.mjs",
+      "bytes": 7050,
+      "sha256": "2a7a1764f92925c65f34df9bc34936994a4a6a6d181468d51bc14f2f876f30c4"
+    },
+    {
+      "path": "supabase/tests/account_flows_h4_test.mjs",
+      "bytes": 3110,
+      "sha256": "2d948835a58f67412bb8c4003adcbd9c577452e2e69d21557a32b8df4f2b256f"
+    },
+    {
+      "path": "supabase/tests/activity_ad1c_test.mjs",
+      "bytes": 14496,
+      "sha256": "6702a21035d21044527ec9b0d57867f92762e77e1f1d24f8a538680af4d94895"
+    },
+    {
+      "path": "supabase/tests/activity_config_test.mjs",
+      "bytes": 18874,
+      "sha256": "9af02821296c0212f92c30eca747567f0c08d16cc3cf26dda0d36e5a9bd00566"
+    },
+    {
+      "path": "supabase/tests/activity_dedup_phase42_test.mjs",
+      "bytes": 1590,
+      "sha256": "ecbb519a6f729d3ccb7f0a64a4abf7327b819f2fb02c8307eeb9c24467875666"
+    },
+    {
+      "path": "supabase/tests/activity_detail_ad1_contract_test.mjs",
+      "bytes": 20110,
+      "sha256": "bcfe47ece8675a1ae3b4cdbe9da81466ede034998b367570095bbbb9742c9a15"
+    },
+    {
+      "path": "supabase/tests/activity_dom_phase4_test.mjs",
+      "bytes": 2542,
+      "sha256": "a602f0c7fea228b164ac1beacf31213dfa9d350c0f94010a358d1c78a64111ee"
+    },
+    {
+      "path": "supabase/tests/activity_edit_phase4_test.mjs",
+      "bytes": 7327,
+      "sha256": "b759eb0dcae8e788bbb2dee729e46af559ca7146a2632db8ce2b10622ec8e5bf"
+    },
+    {
+      "path": "supabase/tests/activity_normalize_test.mjs",
+      "bytes": 5410,
+      "sha256": "401608459683b6954bc4be495b04a1600baf33ebe182adfbb77326aca2e24c9c"
+    },
+    {
+      "path": "supabase/tests/activity_store_test.mjs",
+      "bytes": 7680,
+      "sha256": "c63d646760c6905c01071d3b48292ce65d67d44ba97f60e7fd9abc990677f72c"
+    },
+    {
+      "path": "supabase/tests/activity_sync_test.mjs",
+      "bytes": 9339,
+      "sha256": "079a0c496cf0fd3255080726663c0e4bd1d7490c58ce786eca1264271bba0787"
+    },
+    {
+      "path": "supabase/tests/activity_week_truth_dt1_test.mjs",
+      "bytes": 12137,
+      "sha256": "ec1ae932a6adb69798023f5082cf034881cfc2dcd4b8dfcc132a13e94eccdfe9"
+    },
+    {
+      "path": "supabase/tests/age_boundary_issue6_test.mjs",
+      "bytes": 6337,
+      "sha256": "d10852bd9ea1f0be53d0fa5e651348511defb378db76c6944ca601a9fdb14897"
+    },
+    {
+      "path": "supabase/tests/analysis_endurance_v5_test.mjs",
+      "bytes": 6732,
+      "sha256": "eb78b1fd0f39e50f0200ad07a7a2d6b064322554f5ab05f8bc4fa6766b31e298"
+    },
+    {
+      "path": "supabase/tests/analysis_recovery_v5_test.mjs",
+      "bytes": 7280,
+      "sha256": "0ecb30ca6474b7a9c84b6649d466994162a41ee6a7115c4ab4b0b46d7d06fbc5"
+    },
+    {
+      "path": "supabase/tests/athlete_profile_sync_0016_test.mjs",
+      "bytes": 12757,
+      "sha256": "1e3851190ada17578da56ba07fe08ccf0c02177a06a1071fbaf408030b846e4b"
+    },
+    {
+      "path": "supabase/tests/auth_dom_test.mjs",
+      "bytes": 14236,
+      "sha256": "18c1ccdb5fc8f8a1ce18a760fe2f139a60475fe2fdc3589df92835c30ad1beb5"
+    },
+    {
+      "path": "supabase/tests/auth_logic_test.mjs",
+      "bytes": 4661,
+      "sha256": "efeaa627f7d7db8a7cbef0007c5f412005176f86fd08074c229e061ca324cd35"
+    },
+    {
+      "path": "supabase/tests/availability_4e1_test.mjs",
+      "bytes": 8514,
+      "sha256": "49ce34ef4ca70a0f8c8c6cebcd938eb5ad03560f652c709e5c962183c12812c8"
+    },
+    {
+      "path": "supabase/tests/batch0_safety_pipeline_test.mjs",
+      "bytes": 11992,
+      "sha256": "f1d78b91dd8b46f28b9054aaa31c4b0c61be66ddc179c62ee27e23151ba5cef7"
+    },
+    {
+      "path": "supabase/tests/batch2a_canonical_load_test.mjs",
+      "bytes": 11028,
+      "sha256": "41c593e886ebfb5178f39b2f1f961269fba8286c37250e7dc12a7e3d179bd36a"
+    },
+    {
+      "path": "supabase/tests/batch2b_dedupe_grouping_test.mjs",
+      "bytes": 11239,
+      "sha256": "5b81da9e741751dba038a6e334adcf619f49cf8bff597f1f4c2d87c40cf90c87"
+    },
+    {
+      "path": "supabase/tests/batch2c_load_quality_test.mjs",
+      "bytes": 14603,
+      "sha256": "87fdde190fd504584c5d26d53cf4ba30e1792e281888db0b8d4afdc4553b7ef5"
+    },
+    {
+      "path": "supabase/tests/batch2d_ratio_occurrence_test.mjs",
+      "bytes": 13488,
+      "sha256": "80e14fc27b20a6f7f5065c20e4c63491aba8d3cee0b2723c01a741cb3d4c0292"
+    },
+    {
+      "path": "supabase/tests/batch2e_integration_test.mjs",
+      "bytes": 13154,
+      "sha256": "92ec0020e62fa081c00d2d6eb1178d026504e79b9ad449733a9ca08b8aca641b"
+    },
+    {
+      "path": "supabase/tests/batch2f_correctness_test.mjs",
+      "bytes": 20856,
+      "sha256": "5681d1994ee28763defc91f1bcb3e9e117ee378923e8fdf225122c3f48fb4079"
+    },
+    {
+      "path": "supabase/tests/batch2f_offline_queue_live_test.mjs",
+      "bytes": 16234,
+      "sha256": "5e75a1619c8e55e0ded32f6d4039654b3ae1dde2cbf8225438b75f9e3ecdcfcf"
+    },
+    {
+      "path": "supabase/tests/batch3a_goal_portfolio_test.mjs",
+      "bytes": 35786,
+      "sha256": "9aacc3a7a81113aa5b8e4d6512d7c8353697f43b868e8f12442ca1bac2625ccc"
+    },
+    {
+      "path": "supabase/tests/batch3b0_knowledge_test.mjs",
+      "bytes": 45058,
+      "sha256": "dad204059b0612e6ad9193515f26f8e13a9194f9dcf6a2d959cadf32eb647f94"
+    },
+    {
+      "path": "supabase/tests/batch3b1_running_capacity_test.mjs",
+      "bytes": 65008,
+      "sha256": "cbac8309a846fea0dd85b739beaa338ef827d6953cf9776047e73649aa90665c"
+    },
+    {
+      "path": "supabase/tests/batch3b1b_activity_summary_test.mjs",
+      "bytes": 9956,
+      "sha256": "c4ad2771e2f74b3d61ba4ebaea36c8f3accaeaf13dd6e475d0b4096a7442d8c2"
+    },
+    {
+      "path": "supabase/tests/blob_hardening_h3_test.mjs",
+      "bytes": 9055,
+      "sha256": "a7178cb0791ee4472846c8a36ae9ae6aa7745340d2003e267e1dbba64e398f62"
+    },
+    {
+      "path": "supabase/tests/body_fields_p2_test.mjs",
+      "bytes": 10695,
+      "sha256": "dd86dff568171d7f5cf9e521306038807a89f3e4e43586d0f09beb0179705001"
+    },
+    {
+      "path": "supabase/tests/bodymap_mapping_test.mjs",
+      "bytes": 4079,
+      "sha256": "63d3715bb7e0a0ca088d7e8b914b4c19e1a6d0a1d8c062a2ecf425651ab68916"
+    },
+    {
+      "path": "supabase/tests/calc_phase42_test.mjs",
+      "bytes": 3196,
+      "sha256": "f1eacbe94a2298676d2c4ab5aa24576986ad420ee3d949fcdd3295767ae6ef92"
+    },
+    {
+      "path": "supabase/tests/calc_riegel_general_test.mjs",
+      "bytes": 3105,
+      "sha256": "103c3cefd2d274163c07cbcbb46abed2cb0dff975deb2ea8ec2de2f51f4b8356"
+    },
+    {
+      "path": "supabase/tests/checkin_compact_test.mjs",
+      "bytes": 3001,
+      "sha256": "2fad113bf5a359ab7b45deaf15374fafabd80b89f70321263cabed6ee5627f2e"
+    },
+    {
+      "path": "supabase/tests/checkin_decision_integration_test.mjs",
+      "bytes": 4553,
+      "sha256": "a99c7ca5e95f4d0a4ad9a51baba90319a59f003db59c96813a16b3c7db5c9f06"
+    },
+    {
+      "path": "supabase/tests/checkin_extra_ui_test.mjs",
+      "bytes": 7495,
+      "sha256": "0c92aa65e46c08d4ed0eb366e5885c1ce4f05d6e4038e6e515154c6189873c9f"
+    },
+    {
+      "path": "supabase/tests/checkin_field_resolver_p6_test.mjs",
+      "bytes": 14772,
+      "sha256": "4deeadecf3c3507f9f4f847461b31ea2fa855c4df81041c5e42c1d9bee2333bc"
+    },
+    {
+      "path": "supabase/tests/checkin_p6_preconditions_test.mjs",
+      "bytes": 10052,
+      "sha256": "9a4fb8b889cee575b2be4b2519a3fcb5606d7c2e76f24d2bc753431171967144"
+    },
+    {
+      "path": "supabase/tests/checkin_phase2_test.mjs",
+      "bytes": 9480,
+      "sha256": "aadc91a3ddb3a8b5b8f31ba354f4e244504f539e8c81262fcc232eb6f82c807f"
+    },
+    {
+      "path": "supabase/tests/checkin_phase2_types_test.mjs",
+      "bytes": 8842,
+      "sha256": "61c003e23214a7d53de3684e71b024f3faaaddddef9f59e6cce672713af79a7c"
+    },
+    {
+      "path": "supabase/tests/cloud_sync_p9_test.mjs",
+      "bytes": 15552,
+      "sha256": "4819697feaa7b7db256b44ab81ce573f2294c64b252e9079cc8e85fc9b87ebe4"
+    },
+    {
+      "path": "supabase/tests/coachmarks_m9_test.mjs",
+      "bytes": 5976,
+      "sha256": "7bc8377cd5458348e8b890c5a77b815029fe218ca4c52d9eb243d5918eda09f6"
+    },
+    {
+      "path": "supabase/tests/dashboard_v5_phaseb_test.mjs",
+      "bytes": 1545,
+      "sha256": "edfe17013e5a5da106f3c08253b12f52321d2ce534d6d3d759554ee4041aff8e"
+    },
+    {
+      "path": "supabase/tests/decision_reentrancy_incident_test.mjs",
+      "bytes": 9597,
+      "sha256": "fb6847a5ca38b3bbb5c187253e166b599ca2bdfa23d0d57b133bb07bee077e93"
+    },
+    {
+      "path": "supabase/tests/devices_4h_test.mjs",
+      "bytes": 6666,
+      "sha256": "5c8cea0bd59e43998aef0750b4d02a843b71f5263623dd62b2b966895e73ec3d"
+    },
+    {
+      "path": "supabase/tests/endurance_profiles_4c1b_test.mjs",
+      "bytes": 5610,
+      "sha256": "46e16761664349313f76416f1dc9b667e6b1b9e87f4881674e2b356535574eff"
+    },
+    {
+      "path": "supabase/tests/energy_resolver_p7_test.mjs",
+      "bytes": 10821,
+      "sha256": "d1927fe7113e7859c773e7b8185082740b70475d8323e7a8c91d41cfa3105cc8"
+    },
+    {
+      "path": "supabase/tests/engine_i2_runkm_canon_test.mjs",
+      "bytes": 4334,
+      "sha256": "744da0cb222cf94e7ee47f24d1380b07cda0177fadea3744b66a110312c64d0d"
+    },
+    {
+      "path": "supabase/tests/engine_i2b_missingness_test.mjs",
+      "bytes": 12172,
+      "sha256": "c42274024e96f21f997aee064b379656afc74e32b0e6c3f5b97a7f88d0980047"
+    },
+    {
+      "path": "supabase/tests/engine_i2c_capacity_truth_test.mjs",
+      "bytes": 11505,
+      "sha256": "9bb7c2e249590f9f60d8c494b62f6b575f7bdcb3b5048c61491754cb29868bfa"
+    },
+    {
+      "path": "supabase/tests/engine_i3a_load_truth_test.mjs",
+      "bytes": 10284,
+      "sha256": "8ac8660e4416ac0b99abe59373133ed74a363696657f2e515f1018dc79c5d757"
+    },
+    {
+      "path": "supabase/tests/engine_i3a1_safety_test.mjs",
+      "bytes": 8239,
+      "sha256": "2729d40cc4853285744b88a9c4712b254abdec9adf4757382f85b47898c2a4c6"
+    },
+    {
+      "path": "supabase/tests/engine_i3a2_load_wording_test.mjs",
+      "bytes": 9020,
+      "sha256": "3948b5cabea8000a6d4f53c626621f2e5e055237b9fd1733be8595dcd99b8bf7"
+    },
+    {
+      "path": "supabase/tests/engine_i3a3_confidence_review_test.mjs",
+      "bytes": 9109,
+      "sha256": "acd2f71a1508bd1cd8139d39fb7efa6e94b44e9195c73e52ca72de321dd1c1a3"
+    },
+    {
+      "path": "supabase/tests/engine_i3a4_failclosed_test.mjs",
+      "bytes": 12312,
+      "sha256": "3c5dca8d6385464b11aaac4ff19f72642d0b8f103d3d55b66db80b6c6ac215f5"
+    },
+    {
+      "path": "supabase/tests/engine_i3a5_estimated_semantics_test.mjs",
+      "bytes": 9785,
+      "sha256": "340c10ff99fe0f53d7e4fb29fe1cc621f71c04e235903cec625a11f46c2e5b76"
+    },
+    {
+      "path": "supabase/tests/engine_i3a6_confidence_normalize_test.mjs",
+      "bytes": 8910,
+      "sha256": "246fc5b3321a45d856795ca06161b79d65f412158a31a7bd7973f95964245796"
+    },
+    {
+      "path": "supabase/tests/engine_i3b_adapter_test.mjs",
+      "bytes": 6554,
+      "sha256": "99c0d62370d4e2a7983c71d08e782b587c04bf1ad65d012303abb64708645100"
+    },
+    {
+      "path": "supabase/tests/engine_i3b_plan_actual_test.mjs",
+      "bytes": 13600,
+      "sha256": "3144abaf1e2f654ade11006f89a5224111fff84b81a770862a98f381adb85511"
+    },
+    {
+      "path": "supabase/tests/engine_i3b1_failclosed_aggregation_test.mjs",
+      "bytes": 12556,
+      "sha256": "012cfc179a402de6b0b44f1619c0debbfc7de2b8240bc845d264016005b91a12"
+    },
+    {
+      "path": "supabase/tests/engine_input_snapshot_b1_test.mjs",
+      "bytes": 10895,
+      "sha256": "899a1ec7196f64a0f454d185f260128b98385d0fb165911d7e821e1c9ce2d643"
+    },
+    {
+      "path": "supabase/tests/engine_program_e_test.mjs",
+      "bytes": 11138,
+      "sha256": "152b010c2a831d9544b58ddf10e9533f97b2a207e76dca00581ff9942db48c0b"
+    },
+    {
+      "path": "supabase/tests/engine_s1_scheduler_skeleton_test.mjs",
+      "bytes": 18606,
+      "sha256": "5a69e74c0c36c529998247e9182daf52eec4c680dc101369bdf59a072f4106ed"
+    },
+    {
+      "path": "supabase/tests/engine_s2_goal_allocation_test.mjs",
+      "bytes": 19690,
+      "sha256": "80f1cd1d2e12c20e2707d4d60d87c4f8e9dce70a5756d66c99ed04f392975584"
+    },
+    {
+      "path": "supabase/tests/engine_v2_test.mjs",
+      "bytes": 15435,
+      "sha256": "2726bd3c87f67f910834c027ef1c3db7f55495739e4bd105c99194b8023d07ef"
+    },
+    {
+      "path": "supabase/tests/engine_week_consumers_3c_test.mjs",
+      "bytes": 4437,
+      "sha256": "7e8f7caf101ac8a8b67c507c7d5a0871e26697b56948f2bfe8dba7b475925fe1"
+    },
+    {
+      "path": "supabase/tests/equipment_p6_test.mjs",
+      "bytes": 5973,
+      "sha256": "e7dee0a4ca70708e75213a629ed94da1a7a7933b3aa8e6e63a4b8b8487da2ae3"
+    },
+    {
+      "path": "supabase/tests/exercise_library_phase42_test.mjs",
+      "bytes": 4095,
+      "sha256": "cad67871ee54843598bda3f9c6b8f935aca7309b2ed6551ff37e236deaefc54d"
+    },
+    {
+      "path": "supabase/tests/fixtures/series_e2e.json",
+      "bytes": 93526,
+      "sha256": "28ee4d407b4eeba1da579a5faf104e353b44acb8f71c8cbeb79b1749e10b9899"
+    },
+    {
+      "path": "supabase/tests/format_utils_test.mjs",
+      "bytes": 5530,
+      "sha256": "9c623f0f15f7326ac04ffefa623cf153013c0e75308fd04acf3adfdce9a6769d"
+    },
+    {
+      "path": "supabase/tests/gm1_shell_test.mjs",
+      "bytes": 5241,
+      "sha256": "20b07b5ac82a8f36d1b4667412ec5ef769e64e0ca46fa3417965f9341b4a15ba"
+    },
+    {
+      "path": "supabase/tests/gm2_plan_parity_test.mjs",
+      "bytes": 9894,
+      "sha256": "aacdc83cb3256a460f53f97e3a66b577013df9620e0b41ecf62d6b7045b56dbe"
+    },
+    {
+      "path": "supabase/tests/gm3_activity_parity_test.mjs",
+      "bytes": 19264,
+      "sha256": "1224cb11b347ad3271ba72ecde6dd9444bce7a06db2cea67853e7c7e48e9ef76"
+    },
+    {
+      "path": "supabase/tests/gm4_analysis_parity_test.mjs",
+      "bytes": 20863,
+      "sha256": "587174cc9fa6928756842bee1a09b267677c34527d2a711f0ee948587694b8c1"
+    },
+    {
+      "path": "supabase/tests/gm5_profile_parity_test.mjs",
+      "bytes": 29600,
+      "sha256": "ab0af1310de4afb7a37552fae359b25b222733a19e5a7e7323ed2f1bfc1484fc"
+    },
+    {
+      "path": "supabase/tests/gm6_state_contract_test.mjs",
+      "bytes": 45753,
+      "sha256": "c8df3a75d95e07cd56f14a659a31fed42b9113e22b53c4a75e0404d893e603b1"
+    },
+    {
+      "path": "supabase/tests/gm61_contract_test.mjs",
+      "bytes": 44441,
+      "sha256": "36e901b7eb73a92417bb3433a16b1682278278c8034f554a6583ca240a268787"
+    },
+    {
+      "path": "supabase/tests/gm61_hydration_contract_test.mjs",
+      "bytes": 15294,
+      "sha256": "a02a4fc1f7dfe6a9b63fc9bb0b36a97cc3f2021c9ab422e57c0f46bbac72d42b"
+    },
+    {
+      "path": "supabase/tests/gm62_input_guard_test.mjs",
+      "bytes": 17004,
+      "sha256": "2d13b4b3a3471b5026f45a00a7c00803f707a6139027df8ba63685b29d2069fa"
+    },
+    {
+      "path": "supabase/tests/gm7_contracts_test.mjs",
+      "bytes": 3799,
+      "sha256": "fd2bfa6dab44c513ea66e43af1f4d129bee2e0ddccaa544fcd539f4eb3bbbce2"
+    },
+    {
+      "path": "supabase/tests/goal_editor_g0_test.mjs",
+      "bytes": 9783,
+      "sha256": "171e9c4ce4fe2f573c4ea1e88c4f3c53cf4bd90e958987961cb53e60e1f861cd"
+    },
+    {
+      "path": "supabase/tests/goal_g1_contract_test.mjs",
+      "bytes": 15168,
+      "sha256": "dcccaf68647d7c34e2a07c9e5a3f7d3eff64bd7fa4653bc478e820b0bdb8acdb"
+    },
+    {
+      "path": "supabase/tests/goal_ssot_p6_test.mjs",
+      "bytes": 12660,
+      "sha256": "a7474d2f50742bb73a8c633209a350e284e71d83a0a6a337ec7d27ec2ed1621e"
+    },
+    {
+      "path": "supabase/tests/goal_unify_h2_test.mjs",
+      "bytes": 6307,
+      "sha256": "6fb90886dbbd779e7a1b7e55d7f941804c4a7753e5acf199f81f80ae2bcf5b43"
+    },
+    {
+      "path": "supabase/tests/goals_p5_test.mjs",
+      "bytes": 6279,
+      "sha256": "7ed6b729c3d96394d28591b2738ca38b3c308e3be10588841ab9e387d0e9bc81"
+    },
+    {
+      "path": "supabase/tests/gym_shadow_report_test.mjs",
+      "bytes": 20385,
+      "sha256": "2516a708d24ce058abaa0ed8d87f3717896025a10a64bf1c4cca44c68066d414"
+    },
+    {
+      "path": "supabase/tests/gym_volume_test.mjs",
+      "bytes": 10033,
+      "sha256": "7210ce895d26676fe29c0092989fa64f4a9391279a6c9f6e0b080ea62d7e558c"
+    },
+    {
+      "path": "supabase/tests/heute_single_training_block_test.mjs",
+      "bytes": 2047,
+      "sha256": "e45e27453dcee33a77e29f8e4529128cc283e790b346815771f2e6ff6156f531"
+    },
+    {
+      "path": "supabase/tests/import_route_persistence_test.mjs",
+      "bytes": 4158,
+      "sha256": "b0c797809e6ba0d75e10fe299fbe8fc91e38ea0a3c9989eb2da9a4043cd7ecfd"
+    },
+    {
+      "path": "supabase/tests/intervals_phase42_test.mjs",
+      "bytes": 1675,
+      "sha256": "da9a9ad4d7d67285a2869189ad737dc72a3ed279860c78370a376bd40b64a858"
+    },
+    {
+      "path": "supabase/tests/live_workout_active_race_phase42_test.mjs",
+      "bytes": 2810,
+      "sha256": "2823899db1d0e27f9c95beef5fece85648b526eb28248d189fcf4183e065cc44"
+    },
+    {
+      "path": "supabase/tests/live_workout_flush_phase42_test.mjs",
+      "bytes": 7891,
+      "sha256": "cd7ed64d0fbf42dc0aa27a2fdcc64c92992013e573c49bd3a310222ff3b5327b"
+    },
+    {
+      "path": "supabase/tests/live_workout_load_phase42_test.mjs",
+      "bytes": 5678,
+      "sha256": "62681076873e4bca4a613dcea732f3eb2468a42023cd5f9cf1bc5ef00d3e80a9"
+    },
+    {
+      "path": "supabase/tests/live_workout_offline_phase42_test.mjs",
+      "bytes": 4761,
+      "sha256": "03abd89fb3eaef51d569aa6f360376fc84bbfd5673d485763933d7721c986f7f"
+    },
+    {
+      "path": "supabase/tests/live_workout_pause_phase42_test.mjs",
+      "bytes": 5808,
+      "sha256": "38a3e2f32349ec219588bba8514ee50c529df18101818daa1020f45d16b2a0c4"
+    },
+    {
+      "path": "supabase/tests/live_workout_phase42_test.mjs",
+      "bytes": 9091,
+      "sha256": "3a624e7005548179c5f0f160685040e489cc0ff252f11e91d242832199544a42"
+    },
+    {
+      "path": "supabase/tests/live_workout_restore_phase42_test.mjs",
+      "bytes": 6027,
+      "sha256": "84e34c9d03a4ba85d4291cfebf35a21f5ccbad59495f826bab168bbff95cafb6"
+    },
+    {
+      "path": "supabase/tests/live_workout_rls_phase42_test.mjs",
+      "bytes": 7511,
+      "sha256": "d0325826f7dccfe9f925257a513d473465c332532255a235d3ff6139315fc87a"
+    },
+    {
+      "path": "supabase/tests/live_workout_rpc_smoke_phase42_test.mjs",
+      "bytes": 3866,
+      "sha256": "99f81064c77bc181bafeb6db812b75161eead1c587b44fca6240f5cb002a9e3a"
+    },
+    {
+      "path": "supabase/tests/metric_registry_test.mjs",
+      "bytes": 5335,
+      "sha256": "21dfaf5de1e9ad64cbd10505c544cab79bd5ab3fd3e70196d0a136f517ebfd19"
+    },
+    {
+      "path": "supabase/tests/metric_resolver_test.mjs",
+      "bytes": 14913,
+      "sha256": "48a6b0aa5ef633e079483cb48510c364e86ca2438d17be99bab81e1d1987c292"
+    },
+    {
+      "path": "supabase/tests/migrate_blob_test.mjs",
+      "bytes": 14502,
+      "sha256": "6cf5385e1080e4ef9ab2eb13a0afd0d124412de48dedbe731f0622efca506d58"
+    },
+    {
+      "path": "supabase/tests/muscle_map_pilot_test.mjs",
+      "bytes": 6692,
+      "sha256": "787838caff88beb2196e0964333a59cafe92739d32337c09cf76564aabcaa772"
+    },
+    {
+      "path": "supabase/tests/muscle_volume_phase43_test.mjs",
+      "bytes": 3086,
+      "sha256": "044e889adff0c549f12895a797dc1ced9e7223294bd998d1e821902ddc44dbbf"
+    },
+    {
+      "path": "supabase/tests/muscle_volume_repo_phase43_test.mjs",
+      "bytes": 2690,
+      "sha256": "67e3efe05ad3609833b762721544d28ef2b5670dfafdcad545bee6a0cecae59c"
+    },
+    {
+      "path": "supabase/tests/muscle_volume_sql_phase43_test.mjs",
+      "bytes": 9414,
+      "sha256": "e2b53788fd264d09cb3be6af3575e80e8ab4e729eca9aa35829f7e17e9281b6f"
+    },
+    {
+      "path": "supabase/tests/onboarding_completion_m4_test.mjs",
+      "bytes": 9488,
+      "sha256": "7126fadb781678c9db43d3ce0dfb70878d9b6aabd441f01a3850f787ceb14e47"
+    },
+    {
+      "path": "supabase/tests/onboarding_dom_test.mjs",
+      "bytes": 43341,
+      "sha256": "f4cebbf5a30eb98de28759ad3b24b488a05a38344ff173e88c6c09be94e98858"
+    },
+    {
+      "path": "supabase/tests/onboarding_logic_test.mjs",
+      "bytes": 21978,
+      "sha256": "800053c9833e79755dad4333fb912c8283cc109e5b477732d662af91cc448f4c"
+    },
+    {
+      "path": "supabase/tests/onboarding_m5a_first_run_test.mjs",
+      "bytes": 13089,
+      "sha256": "98bcc6b69e6b680f6cc817b9e7d81986f606803c65779624a14f9ce680000350"
+    },
+    {
+      "path": "supabase/tests/onboarding_m5b_training_test.mjs",
+      "bytes": 23981,
+      "sha256": "f8238a40a227fc0bd6c941ce0a0ab06e563daf721097e4eaf6663c6714da380d"
+    },
+    {
+      "path": "supabase/tests/onboarding_m6_goals_test.mjs",
+      "bytes": 16887,
+      "sha256": "bba6c39cf5af9559d30c7b1b75b31ec340904239e89f275c18c6afbdc8dde095"
+    },
+    {
+      "path": "supabase/tests/onboarding_m7_availability_safety_test.mjs",
+      "bytes": 20405,
+      "sha256": "6b894ff2054d6f3e96f603642ee2f7ffdc281ba71bfb7dbc42437e219c459b03"
+    },
+    {
+      "path": "supabase/tests/onboarding_m8_review_test.mjs",
+      "bytes": 9618,
+      "sha256": "178290714493fde46cb9f802cd614f75dbd64c79bec77647dec7044677ba98f3"
+    },
+    {
+      "path": "supabase/tests/onboarding_profile_logic_test.mjs",
+      "bytes": 6461,
+      "sha256": "e314f79b62d477207436bd3df76f2290cf852baff2ec890c9bf4a904a45907e2"
+    },
+    {
+      "path": "supabase/tests/onboarding_routing_test.mjs",
+      "bytes": 4843,
+      "sha256": "ae39a5b36c53c8accd761e8b40d220f6e161c2d63323fec960ff8a4aebdcb03d"
+    },
+    {
+      "path": "supabase/tests/onboarding_sports_logic_test.mjs",
+      "bytes": 12590,
+      "sha256": "39c97df50908008d8d7d289c6e59ba4e5c70a7c359d285000f9990dbb8ceffe8"
+    },
+    {
+      "path": "supabase/tests/onboarding_state_v3_test.mjs",
+      "bytes": 12571,
+      "sha256": "72cad2ae7a3d246873e7635019ffecca2b9e8e1e451cff950b632e044bdf20b0"
+    },
+    {
+      "path": "supabase/tests/onboarding_steps_4i1_test.mjs",
+      "bytes": 9009,
+      "sha256": "496bfb0892460b1d26057be49f3b6e140ec7023c03386d61417dd637638dd74b"
+    },
+    {
+      "path": "supabase/tests/onboarding_store_test.mjs",
+      "bytes": 3516,
+      "sha256": "76214c708b4100903c060cc2ca501e93167417e78a11be2078316a9deeb2f938"
+    },
+    {
+      "path": "supabase/tests/orvia_charts_test.mjs",
+      "bytes": 2895,
+      "sha256": "2af5249d018cf08d0a914b2591ce4bd94eb2c119f599aa39909bd7f29e647926"
+    },
+    {
+      "path": "supabase/tests/performance_4f_test.mjs",
+      "bytes": 8806,
+      "sha256": "57833590432739f9f6dccfd77b68b761cd62731a4477609d42c622ed20e9b132"
+    },
+    {
+      "path": "supabase/tests/phase1a_trust_test.mjs",
+      "bytes": 8146,
+      "sha256": "01289a0bb7375516651814a3fd6bee6ceb45d1bc80601bef4a6e0f5b4fdbe5e6"
+    },
+    {
+      "path": "supabase/tests/phase3_hydration_test.mjs",
+      "bytes": 4211,
+      "sha256": "982767f1a280e899227585ef122a98a0bafae265cb8bdc4d955df080e59b7bb1"
+    },
+    {
+      "path": "supabase/tests/phase3_offline_test.mjs",
+      "bytes": 4484,
+      "sha256": "61b827b6df65349851136db8471edfede3d9060b7732bf3a69baf0db821a721f"
+    },
+    {
+      "path": "supabase/tests/phase4_consolidation_4i_test.mjs",
+      "bytes": 5624,
+      "sha256": "8869ba4908e764b7f2d1db585f058e292f24ac4dbd9e264a23ded56c14d1fa28"
+    },
+    {
+      "path": "supabase/tests/plan_fulfillment_phase42_test.mjs",
+      "bytes": 1464,
+      "sha256": "53dc11e34a930dfb79a68a871565bee6f244b732a3a182656d14a2363c859b40"
+    },
+    {
+      "path": "supabase/tests/plan_phases_v5_test.mjs",
+      "bytes": 5388,
+      "sha256": "30927ac19be5a8657da702369cae66fa209581366f410bfe00eddb15fbc6dd69"
+    },
+    {
+      "path": "supabase/tests/plan_quality_v5_test.mjs",
+      "bytes": 7097,
+      "sha256": "1e1923aed1cf496383a6a70990a21615565ff4b0955905866dcd9a62dabbe19b"
+    },
+    {
+      "path": "supabase/tests/plan_ssot_p4_test.mjs",
+      "bytes": 8384,
+      "sha256": "13235eb206674f132434fce5339c67cee87c6ab1d39f2a48bc347f074f60b647"
+    },
+    {
+      "path": "supabase/tests/plan_weeklist_v5_test.mjs",
+      "bytes": 8979,
+      "sha256": "c913fc7048a5e8b02b83ee35b60bdb4ff061394a3371eec482a4431bccbd3af4"
+    },
+    {
+      "path": "supabase/tests/plan_weekvolume_v5_test.mjs",
+      "bytes": 5778,
+      "sha256": "797d268616faa4fe12a8d4a67cca07b51f605c706ff70b7eab4365d5969a6e88"
+    },
+    {
+      "path": "supabase/tests/profile_center_m10_test.mjs",
+      "bytes": 11000,
+      "sha256": "4a57ceb2941346c4875e542b9dff39523fc5fbce980ff65f81ac067bbeb82baa"
+    },
+    {
+      "path": "supabase/tests/profile_completion_fix_test.mjs",
+      "bytes": 16139,
+      "sha256": "c3537ddaabb3392c0f064245757b4d5e95b28480083b0f6bc4360f3f661ffd04"
+    },
+    {
+      "path": "supabase/tests/profile_editor_bugfix_test.mjs",
+      "bytes": 9483,
+      "sha256": "da4e3803675f91db1b99e4c32a4ffeb232c58e449311e2b3cbaa977b500440ae"
+    },
+    {
+      "path": "supabase/tests/profile_interpretation_2026_07_16_test.mjs",
+      "bytes": 8494,
+      "sha256": "5d483f42e0ad2973a6e0c5519fd51c4ddb7194cfb842366ff57a5505ca1af7df"
+    },
+    {
+      "path": "supabase/tests/profile_meta_completeness_test.mjs",
+      "bytes": 12072,
+      "sha256": "6df80d655c969a2d34f0ea05e41386538fcbb4708d0a8c399ef3a0c3b2c2f263"
+    },
+    {
+      "path": "supabase/tests/profile_metric_resolver_p5_test.mjs",
+      "bytes": 22631,
+      "sha256": "a2ef96a4103923b5269697183f630d07e750fb0e5a75196a2016f3ea8bbec59c"
+    },
+    {
+      "path": "supabase/tests/profile_modal_infra_test.mjs",
+      "bytes": 4882,
+      "sha256": "ae8654622bd32beb413a3effa75ffe418a64ea27b5981d037d84e8601e8fce77"
+    },
+    {
+      "path": "supabase/tests/profile_model_test.mjs",
+      "bytes": 26697,
+      "sha256": "a49493df59a6fd9ed36529bc24aa7a280a0945605d7417efdec72d6bf66c4127"
+    },
+    {
+      "path": "supabase/tests/profile_phase1_test.mjs",
+      "bytes": 7906,
+      "sha256": "9337b1aa15c34e8b46833b83931783d4a00a862ed7d62e863e391216451fc508"
+    },
+    {
+      "path": "supabase/tests/profile_save_wiring_a0_test.mjs",
+      "bytes": 6358,
+      "sha256": "af105bdc9204b06ac6bccd5beb4b09fe8f27bab913ded3ff65d90051e6468f87"
+    },
+    {
+      "path": "supabase/tests/profile_ui_kit_test.mjs",
+      "bytes": 11178,
+      "sha256": "64b3bca5bd50fef42410638cd01e0462320ef67eafa17de4aece0313fdb0abaa"
+    },
+    {
+      "path": "supabase/tests/profile_ui_test.mjs",
+      "bytes": 20878,
+      "sha256": "4a749406ac9063f994e1a9c5312cab68db73cac01b7e31617b087e02e7acf058"
+    },
+    {
+      "path": "supabase/tests/provider_metrics_0019_test.mjs",
+      "bytes": 8227,
+      "sha256": "5fe3b825fc3b140570a87ac8260c17b7af1c303d9cc5035115ee915092478bde"
+    },
+    {
+      "path": "supabase/tests/quick_actions_b_test.mjs",
+      "bytes": 8747,
+      "sha256": "633a806aecf9024d1c98c097980505124fa291cf533b0b77c5fe99504032e9c0"
+    },
+    {
+      "path": "supabase/tests/quick_add_p8_test.mjs",
+      "bytes": 5883,
+      "sha256": "d53ef83badb76ad5298b8f18bee511be0e1a409aa87870a3d6ceb498fe9a4cb4"
+    },
+    {
+      "path": "supabase/tests/quickadd_v8_test.mjs",
+      "bytes": 5866,
+      "sha256": "21db8afd3b54229dd8bff253a2cc6bd4198963f7f49b7a1d048958c9f716e2dc"
+    },
+    {
+      "path": "supabase/tests/r1_data_integrity_test.mjs",
+      "bytes": 29350,
+      "sha256": "ea2d2abc767696fc76abdba37128a83e660887a82f77a35c035371d476c22141"
+    },
+    {
+      "path": "supabase/tests/race_phases_phase42_test.mjs",
+      "bytes": 1981,
+      "sha256": "bc1cf34f6e0ef61969f0f6a372c4edfbe9421e2f040f699609dc9f92748963e6"
+    },
+    {
+      "path": "supabase/tests/racket_golf_4c1d_test.mjs",
+      "bytes": 4679,
+      "sha256": "abc177ec20ca2a099578145a25c0c864e726eb01569c2f22f9ddaaefe684515b"
+    },
+    {
+      "path": "supabase/tests/readiness_phase3_test.mjs",
+      "bytes": 9324,
+      "sha256": "894113db5beedff3aeb74a5fc8475b5135013f7a8fa197a309f43ba6e4d394e9"
+    },
+    {
+      "path": "supabase/tests/recovery_prefs_4g_test.mjs",
+      "bytes": 7430,
+      "sha256": "22de88aae772239418d1a451492fef8a2186f2d6172f2f297f4c9bb984171c76"
+    },
+    {
+      "path": "supabase/tests/register_with_invite_test.mjs",
+      "bytes": 13508,
+      "sha256": "04efa35447721a119cc3c07a23698e068cef230476242833d1129f4809a63ccd"
+    },
+    {
+      "path": "supabase/tests/rls_test.mjs",
+      "bytes": 11608,
+      "sha256": "0a402ce9e75a6e0994b8f934cf49f0d492e104115b0cca3c9002c42c35bd2836"
+    },
+    {
+      "path": "supabase/tests/role_display_access_profile_test.mjs",
+      "bytes": 9824,
+      "sha256": "5b7a8dc1b65bda2c5087de589bf5088366e66fa8a1f8eb02758be1abedd60dd7"
+    },
+    {
+      "path": "supabase/tests/series_e2e_test.mjs",
+      "bytes": 10969,
+      "sha256": "4811491f3abc27f7cc5c568db0dfa07419e2e9b4a83d44f40acff8e2f58dbaa1"
+    },
+    {
+      "path": "supabase/tests/sheet_4j1_test.mjs",
+      "bytes": 10837,
+      "sha256": "771a80a7e58ba477e683b5b7d5f25eba907301ead467f4a5286bdbac0f28b26d"
+    },
+    {
+      "path": "supabase/tests/shell_v3_migration_test.mjs",
+      "bytes": 5350,
+      "sha256": "d92bca2ebce6043390f41eb7c5d8d34ba86b1ae3de1376ad348428f68b10c085"
+    },
+    {
+      "path": "supabase/tests/sport_complete_4c1e_test.mjs",
+      "bytes": 5926,
+      "sha256": "6c3b3806a32d5eda269e37ae8509f2e37b1dc6632b397f54fb89e4940c26042c"
+    },
+    {
+      "path": "supabase/tests/sport_coverage_4c1a_test.mjs",
+      "bytes": 5326,
+      "sha256": "f072b47ff13993d2ca3db699345744a5194cefa2fa597b99782604ab6626ceab"
+    },
+    {
+      "path": "supabase/tests/sport_editor_4c2_test.mjs",
+      "bytes": 6792,
+      "sha256": "3222f43aeb3a3ab6628a9ece2cf82aae9b43cfbaf3c187227d139d0710435423"
+    },
+    {
+      "path": "supabase/tests/sport_model_h1_test.mjs",
+      "bytes": 6665,
+      "sha256": "3c17eb1f04ba34721adc441a91a9d18bf30f1c7974357a4936173081955991d7"
+    },
+    {
+      "path": "supabase/tests/sport_tiles_4d_test.mjs",
+      "bytes": 5702,
+      "sha256": "97011bae0534b68256fb56316d337900def2e1fcdacbbf7738e1aafd4e8b11d1"
+    },
+    {
+      "path": "supabase/tests/sports_sync_2b1_test.mjs",
+      "bytes": 23117,
+      "sha256": "40c2d69435043fafddd37fdbc9cf9b2fa206051201c414a1fa9b28cb1d5286bf"
+    },
+    {
+      "path": "supabase/tests/swim_pace_phase42_test.mjs",
+      "bytes": 572,
+      "sha256": "e1c32aadbd52d35ddb6e053a2685186b9b615528ecfe5764a623f9c4ef99cb26"
+    },
+    {
+      "path": "supabase/tests/sync_incident_fix_test.mjs",
+      "bytes": 3784,
+      "sha256": "f0afaf8d4f8ed94e2e6a83e118ea1f1177b419b0f580fed37c4f1c66a02cf211"
+    },
+    {
+      "path": "supabase/tests/team_profiles_4c1c_test.mjs",
+      "bytes": 5587,
+      "sha256": "f48eac64996b7068e1dad1a8a56a04caec2bb9789ad9a9743fb1cb8b343460e5"
+    },
+    {
+      "path": "supabase/tests/today_decision_p3_test.mjs",
+      "bytes": 5295,
+      "sha256": "e91ddd8c0ce93da4f480043a400598f53aa0558ae47a03e6edeb4c59a762de8c"
+    },
+    {
+      "path": "supabase/tests/today_nav_p7_test.mjs",
+      "bytes": 4115,
+      "sha256": "474bf5ae64f35d1e221f5c9d89a3289c1e51968e9b971288b275c7016d8e9805"
+    },
+    {
+      "path": "supabase/tests/training_domain_phase41_test.mjs",
+      "bytes": 11542,
+      "sha256": "4e821886cbe31c94c0f090cc3d258d8bb2a011020974884f8ebd376bfbaaf92a"
+    },
+    {
+      "path": "supabase/tests/training_input_p8_test.mjs",
+      "bytes": 17552,
+      "sha256": "a2e469da9be662bb155bec12c7af5213ab22d90135a226ba25636b464e12f501"
+    },
+    {
+      "path": "supabase/tests/training_labels_phase42_test.mjs",
+      "bytes": 1777,
+      "sha256": "60b56192040578df1788d0b548f6706dc0846b4a23dd48f4501e9cf60601eb70"
+    },
+    {
+      "path": "supabase/tests/training_load_phase3_test.mjs",
+      "bytes": 6251,
+      "sha256": "e92d732e5e30a885bdb5f616482e7e6dac86afacdd444b7dff67a7d8a2dc2970"
+    },
+    {
+      "path": "supabase/tests/training_migration_phase41_test.mjs",
+      "bytes": 2833,
+      "sha256": "3ebacac02224b978f2ee1182670c4e1843406825f751da617b3cca74d5c10dc9"
+    },
+    {
+      "path": "supabase/tests/training_rls_phase41_test.mjs",
+      "bytes": 13620,
+      "sha256": "e0b4044c50ec85a797f832ed44d961990184441f531a462c474dec07b05e27bb"
+    },
+    {
+      "path": "supabase/tests/ui_detail_mode_test.mjs",
+      "bytes": 2892,
+      "sha256": "de18aae4f2cacdd63add9f3fa28c6056a399a5636e46fc568bef1098dadac5e3"
+    },
+    {
+      "path": "supabase/tests/ui_refresh_p1_test.mjs",
+      "bytes": 7824,
+      "sha256": "b7d15936a1f5371c62da4600c8b0bc1fb8b0375940823b2088bfd5bda3a663ea"
+    },
+    {
+      "path": "supabase/tests/upsert_conflict_contract_test.mjs",
+      "bytes": 4414,
+      "sha256": "8ec87089028ac51547c51fc0fbe6a0b8122538ac74ab2dcd35fd9a9befaf46c0"
+    },
+    {
+      "path": "supabase/tests/workout_hub_hydration_phase42_test.mjs",
+      "bytes": 5114,
+      "sha256": "b2fd000956fbcc83ce1288907c6d6557baf471bbcf62c742d05b9ab507a85d51"
+    },
+    {
+      "path": "supabase/tests/workout_lifecycle_phase42_test.mjs",
+      "bytes": 6835,
+      "sha256": "826ff047fd0e0a900eaf2b35c1d29c1a545d1c27a5f7cc88c32b1ae5ad8cc637"
+    },
+    {
+      "path": "supabase/tests/workout_repo_norow_phase42_test.mjs",
+      "bytes": 3863,
+      "sha256": "cf522ab00141c8ea43ead9476194546fee116547f58cb84ace1bb3aeb523c864"
+    },
+    {
+      "path": "supabase/tests/workout_ssot_phase42_test.mjs",
+      "bytes": 3490,
+      "sha256": "b7bcae455f604bbee71d32df5d54dc3ad5596c1637e43440aaff8e6f2687750c"
+    },
+    {
+      "path": "supabase/tests/workout_stuck_session_recovery_test.mjs",
+      "bytes": 7397,
+      "sha256": "f93ef280a7516d9e0e2295e9b4af8c654153a814c7acff6b891ecbc04bc787a8"
+    },
+    {
+      "path": "sw.js",
+      "bytes": 5139,
+      "sha256": "5200955eb6e24671514c90e1674de84175378e332f8c296980a20552330d4bcf"
+    },
+    {
+      "path": "tools/build_baseline.mjs",
+      "bytes": 15151,
+      "sha256": "db194421b27490cd0ff492785584582a006946760823b4fecc2e17a5e30dd264"
+    },
+    {
+      "path": "tools/collision_scan.mjs",
+      "bytes": 5474,
+      "sha256": "64d6b9fa1c3427abd74737e23f70be8c0c0d8bed346d1d183039e174605c9bc5"
+    },
+    {
+      "path": "tools/gm1_parity.mjs",
+      "bytes": 13224,
+      "sha256": "d789a1bcbdd004d3dd2f08c5527e35f2032ff7a9e6f38c59653b95b74a2af1e4"
+    },
+    {
+      "path": "tools/gm2_parity.mjs",
+      "bytes": 21871,
+      "sha256": "3d5d154cb8bf61f42a5b7167d864bee780eb4828f8a3deaefe83531a54f75376"
+    },
+    {
+      "path": "tools/gm3_parity.mjs",
+      "bytes": 24260,
+      "sha256": "098fad5b92e99030036173fadc65b02cec1c2bbd60dfbecbd85f511342d2a0f7"
+    },
+    {
+      "path": "tools/gm4_parity.mjs",
+      "bytes": 21738,
+      "sha256": "c186a5b8b41fa8589e7260e6e65800edbdc75b6be9cc9d7a06e20be9d05b1620"
+    },
+    {
+      "path": "tools/gm5_parity.mjs",
+      "bytes": 60133,
+      "sha256": "033f7044c2b884861af00c7ff5dcbb3aebfe2c39b86cf6b88813689a52f1eb36"
+    },
+    {
+      "path": "tools/gm6_parity.mjs",
+      "bytes": 41931,
+      "sha256": "a1985c52446db7783422c9a29b80cf92c3fa3df10e9fdfbcbacc283747728eaa"
+    },
+    {
+      "path": "tools/real_app_smoke.mjs",
+      "bytes": 32779,
+      "sha256": "9655d1b9b4c73f332e932368a90bcd87f6400afd01db1a25a398cc54edd0f2f3"
+    }
+  ]
+}

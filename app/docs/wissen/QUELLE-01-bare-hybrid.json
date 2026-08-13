@@ -1,0 +1,45 @@
+{
+  "_status": [
+    "VORBEREITET, NOCH NICHT EINSPEISBAR.",
+    "",
+    "Alles, was ich ueberpruefen konnte, steht drin: Titel, Kanal, Art, URL.",
+    "Was fehlt, kann ich nicht liefern: ich habe das Video nicht gesehen.",
+    "Die YouTube-Seite ist fuer mein Abrufwerkzeug gesperrt (HTTP 429), und",
+    "selbst mit Zugriff gaebe es kein Transkript. Eine Kernaussage zu",
+    "schreiben, ohne die Quelle zu kennen, waere genau das Erfinden, das",
+    "dieser Vertrag verhindern soll.",
+    "",
+    "DU FUELLST: kernaussage, grenzen, eigene_worte, und die Regeln.",
+    "3-5 Saetze reichen: was empfiehlt er KONKRET, mit welchen Zahlen, fuer wen."
+  ],
+
+  "sport": "running",
+
+  "quelle": {
+    "id": "SRC-BARE-HYBRID-2024",
+    "art": "coachvideo",
+    "titel": "Build Your Hybrid Athlete Program (Running + Lifting)",
+    "wer": "Nick Bare (Kanal: nickbarefitness)",
+    "jahr": 2024,
+    "_jahr_unsicher": "Veroeffentlichungsdatum nicht abrufbar — bitte auf der Videoseite pruefen und korrigieren.",
+    "url": "https://www.youtube.com/watch?v=3Ke4QbFDH4A",
+    "sportarten": ["running", "gym"],
+    "gilt_fuer": ["hybridathlet", "freizeitlaeufer"],
+    "worum_gehts": ["planstruktur", "kombination_kraft_ausdauer"],
+    "qualitaet": "niedrig",
+    "_qualitaet_begruendung": [
+      "Praxisvideo eines Athleten/Coaches, keine kontrollierte Untersuchung,",
+      "keine Begutachtung. Nick Bare ist Gruender von Bare Performance",
+      "Nutrition (Supplementhersteller) — ein wirtschaftliches Interesse am",
+      "Thema. Das macht die Inhalte nicht falsch, aber es gehoert unter",
+      "'grenzen' und es ist der Grund fuer 'niedrig'."
+    ],
+
+    "kernaussage": "",
+    "grenzen": "",
+    "eigene_worte": false,
+    "geprueft_am": ""
+  },
+
+  "regeln": []
+}

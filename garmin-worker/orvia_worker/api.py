@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from .providers.base import AuthError, MfaRequired, ProviderError, RateLimited
 from .sync import PROVIDER_TYPE, sync_user
+from .workout_push import push_strength_workout
 
 logger = logging.getLogger("orvia.api")
 
@@ -34,6 +35,26 @@ class ConnectBody(BaseModel):
 
 class MfaBody(BaseModel):
     mfa_code: str = Field(min_length=1)
+
+
+class WorkoutPushBody(BaseModel):
+    """Kraft-Workout-Push (K5).
+
+    `extra='forbid'`: ein mitgeschicktes `user_id` (oder irgendein anderes
+    Fremdfeld) fuehrt zu 422 statt still ignoriert zu werden. Der Nutzer kommt
+    AUSSCHLIESSLICH aus dem verifizierten JWT — dieses Modell hat gar kein
+    Feld dafuer.
+    """
+    model_config = {"extra": "forbid"}
+
+    clientRef: str = Field(min_length=1, max_length=200)
+    occurrenceId: str = Field(min_length=4, max_length=200)
+    payloadVersion: str = Field(min_length=1, max_length=100)
+    mappingVersion: str = Field(min_length=1, max_length=100)
+    payloadHash: str = Field(min_length=1, max_length=200)
+    workout: dict
+    stepBindings: list
+    deviceTest: bool = False
 
 
 class TokenImportBody(BaseModel):
@@ -287,6 +308,24 @@ def create_app(*, settings, db, crypto, provider_factory, registry=None) -> Fast
             return _err(409, "NOT_CONNECTED", "Garmin ist nicht verbunden.")
         background.add_task(_run_sync, user_id)
         return JSONResponse(status_code=202, content={"ok": True, "queued": True})
+
+    @app.post("/workout/push")
+    async def workout_push(
+        body: WorkoutPushBody,
+        user_id: str = Depends(current_user_id),
+    ):
+        """Kraft-Workout an Garmin uebertragen (K5, kontrollierter Spike).
+
+        Im Regelbetrieb gesperrt, solange die Sport- und reps-IDs unbelegt
+        sind (Gate G1) — dann antwortet der Endpunkt mit 422 invalid_workout.
+        """
+        result = await push_strength_workout(
+            user_id=user_id,
+            body=body.model_dump(),
+            db=db, crypto=crypto, settings=settings,
+            provider_factory=provider_factory,
+        )
+        return JSONResponse(status_code=result.status_code, content=result.body)
 
     @app.delete("/connection")
     async def disconnect(user_id: str = Depends(current_user_id)) -> dict:

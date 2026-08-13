@@ -65,7 +65,15 @@
     // metrics-jsonb — überlebt localStorage-Reload UND Cloud-Roundtrip (Batch-2b-metrics-Vertrag).
     var _pj = session.planned_session_id || session.plannedSessionId || (opts && opts.plannedSessionId) || null;
     var _baseMetrics = (existing && existing.metrics) || {};
-    var _metrics = _pj ? Object.assign({}, _baseMetrics, { plannedSessionId: _pj }) : _baseMetrics;
+    var _corr = _baseMetrics.planLinkCorrection;
+    var _metrics = Object.assign({}, _baseMetrics);
+    /* v8-310b: Eine bewusste Plan-Link-Korrektur gewinnt gegen spaetere
+       Retries desselben historischen Workout-Snapshots. Sonst wuerde ein
+       erneuter Upsert den geloesten Link wieder als Wahrheit einsetzen. */
+    if (_corr && Object.prototype.hasOwnProperty.call(_corr, 'toOccurrenceId')) {
+      delete _metrics.plannedSessionId;
+      if (_corr.toOccurrenceId) _metrics.plannedSessionId = _corr.toOccurrenceId;
+    } else if (_pj) _metrics.plannedSessionId = _pj;
     var rec = {
       id: (existing && existing.id) || null,
       clientRecordId: (existing && existing.clientRecordId) || cid(),
@@ -119,6 +127,54 @@
   }
 
   function getActivityById(id) { var all = readAll(); for (var i = 0; i < all.length; i++) if (all[i].id === id || all[i].clientRecordId === id) return all[i]; return null; }
+
+  /* v8-310b · Die Plan-Zuordnung ist eine korrigierbare AUSWERTUNG der
+     Activity, nicht ihre Identitaet. Der unveraenderliche Workout-Snapshot
+     bleibt als historische Eingangsbeobachtung erhalten. */
+  function planLinkOf(a) {
+    if (!a) return null;
+    var m = (a.metrics && typeof a.metrics === 'object') ? a.metrics : {};
+    var c = m.planLinkCorrection;
+    if (c && Object.prototype.hasOwnProperty.call(c, 'toOccurrenceId')) return c.toOccurrenceId || null;
+    return a.plannedSessionId || m.plannedSessionId || null;
+  }
+
+  /* Nur die Verknuepfung loesen. KEIN Tombstone: Aktivitaet, Saetze,
+     Belastung und Snapshot bleiben bestehen. expectedOccurrenceId schuetzt
+     davor, aus einer veralteten Ansicht eine inzwischen andere Zuordnung zu
+     entfernen. */
+  function unlinkActivityFromPlan(id, expectedOccurrenceId) {
+    if (!id) return { ok: false, code: 'missing_activity_id' };
+    var all = readAll(), idx = -1;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id || all[i].clientRecordId === id) { idx = i; break; }
+    }
+    if (idx < 0) return { ok: false, code: 'activity_not_found' };
+    var a = all[idx], current = planLinkOf(a);
+    if (!current) return { ok: true, code: 'already_unlinked', activity: a };
+    if (expectedOccurrenceId && current !== expectedOccurrenceId) {
+      return { ok: false, code: 'plan_link_changed', current: current };
+    }
+    var m = Object.assign({}, a.metrics || {});
+    delete m.plannedSessionId;
+    m.planLinkCorrection = {
+      schemaVersion: 1,
+      fromOccurrenceId: current,
+      toOccurrenceId: null,
+      reason: 'user_unlinked',
+      method: 'manual_correction',
+      correctedAt: now()
+    };
+    var corrected = Object.assign({}, a, {
+      plannedSessionId: null,
+      metrics: m,
+      syncStatus: 'pending',
+      updatedAt: now()
+    });
+    all[idx] = corrected;
+    if (!writeAll(all)) return { ok: false, code: 'persist_failed' };
+    return { ok: true, code: 'unlinked', activity: corrected, fromOccurrenceId: current };
+  }
 
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ABGESCHLOSSENEN
      Workouts nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze.
@@ -302,6 +358,7 @@
   var api = {
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
+    planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan,
     correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,

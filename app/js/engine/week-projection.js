@@ -61,6 +61,16 @@
      `repeat` zählt seine Kinder mal Wiederholungen. Blöcke ohne Dauerangabe
      (z. B. Kraftübungen mit Sätzen) tragen nichts bei; fehlt jede Angabe, ist das
      Ergebnis null und NICHT 0 — „unbekannt" und „null Minuten" sind verschieden. */
+  /* Tiefe Kopie (v8-332). Das Anzeigemodell darf keine Struktur mit dem
+     Scheduler-Output teilen — sonst veraendert eine Bearbeitung der Karte
+     rueckwirkend die Quelle. JSON-Klon genuegt: Verordnungen sind reine
+     Daten ohne Funktionen, Zyklen oder Datumsobjekte. */
+  function _clone(x) {
+    if (x == null) return x;
+    try { return JSON.parse(JSON.stringify(x)); }
+    catch (e) { return null; }                       // fail-closed: lieber nichts als etwas Geteiltes
+  }
+
   function durationSeconds(blocks) {
     if (!Array.isArray(blocks)) return null;
     var total = 0, seen = false;
@@ -101,7 +111,11 @@
     var t = SPORT_LABEL[sportId];
     if (!t) return { ok: false, reason: 'sport_unknown', detail: sportId };
     var pr = s.prescription;
-    if (!pr || typeof pr !== 'object') return { ok: false, reason: 'prescription_missing', detail: null };
+    /* Nicht-Array-Objekt (v8-331). `typeof [] === 'object'` — ein Array kam
+       bis hierher durch und wurde erst weiter unten mit dem FALSCHEN Grund
+       ('unknown_session_type') gemeldet. Das restliche Projekt prueft
+       ueberall ausdruecklich auf Nicht-Array-Objekt; hier fehlte es. */
+    if (!pr || typeof pr !== 'object' || Array.isArray(pr)) return { ok: false, reason: 'prescription_missing', detail: null };
     var byType = SESSION_LABEL[sportId] || {};
     var l = byType[pr.session_type];
     if (!l) return { ok: false, reason: 'unknown_session_type', detail: sportId + '/' + (pr.session_type == null ? 'null' : pr.session_type) };
@@ -117,7 +131,22 @@
         priority: pr.priority || null,
         durationSec: sec,
         scheduler: (s.provenance && s.provenance.scheduler) || null,
-        templateId: (s.provenance && s.provenance.templateId) || null }
+        templateId: (s.provenance && s.provenance.templateId) || null },
+      /* v8-332 — DIE eigentliche Aenderung. Bis hierher wurde die Verordnung
+         an genau dieser Stelle weggeworfen: uebrig blieb "Tempolauf · 75 min",
+         und was der Nutzer tatsaechlich laufen soll — Aufwaermen, 4 × 1 km im
+         Schwellenfenster, Trabpausen, Auslaufen — war unsichtbar, obwohl die
+         Engine es jeden Tag ausgerechnet hat.
+
+         Bewusst die ROHE Verordnung, nicht fertiger Text: Formatieren ist
+         Sache von `prescription-format`, Sprache und Aussehen Sache der
+         Oberflaeche. Waere hier schon Text, koennte niemand mehr etwas
+         anderes daraus machen — und der Exporter braucht ohnehin die Struktur.
+
+         Eine KOPIE, kein Verweis: das Anzeigemodell darf den Scheduler-Output
+         nicht teilen, sonst veraendert eine spaetere Bearbeitung rueckwirkend
+         die Quelle (dieselbe Klasse Fehler wie A5/A6 in plan-activation). */
+      rx: _clone(pr)
     };
     return { ok: true, dayIndex: di, item: item };
   }

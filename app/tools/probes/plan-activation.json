@@ -1,0 +1,82 @@
+{
+  "target": "js/engine/plan-activation.js",
+  "test": "supabase/tests/phase8_plan_activation_test.mjs",
+  "note": "Das gefaehrlichste Modul der App: es UEBERSCHREIBT den Wochenplan des Nutzers. Jede hier ungeprueft gebliebene Zusicherung bedeutet im Ernstfall verlorene Planung — und Planung ist im Gegensatz zu Code nicht nachbaubar.",
+  "probes": [
+    {
+      "id": "A1",
+      "pattern": "value_not_type",
+      "title": "leere Projektion aktiviert trotzdem (nimmt dem Nutzer den Plan wortlos weg)",
+      "file": "js/engine/plan-activation.js",
+      "find": "    if (count === 0) return no('projection_empty');",
+      "replace": "    if (false) return no('projection_empty');",
+      "expectTest": "leere Woche ⇒ projection_empty"
+    },
+    {
+      "id": "A2",
+      "pattern": "neighbour_guard",
+      "title": "verworfener Override blockiert die Aktivierung NICHT mehr (Datenverlust)",
+      "file": "js/engine/plan-activation.js",
+      "find": "    if (drop > 0) {\n      return no('would_drop_overrides', { droppedDetail: (r.dropped || []).slice(0, 5) });\n    }",
+      "replace": "    if (false) {\n      return no('would_drop_overrides', { droppedDetail: (r.dropped || []).slice(0, 5) });\n    }",
+      "expectTest": "ein Override, der verloren ginge, verhindert die Aktivierung"
+    },
+    {
+      "id": "A3",
+      "pattern": "value_not_type",
+      "title": "Override-Buchhaltung darf nicht mehr aufgehen (ein Override verschwindet still)",
+      "file": "js/engine/plan-activation.js",
+      "find": "    if (kept + retar + conf + drop !== before.length) {",
+      "replace": "    if (kept + retar + conf + drop > before.length + 99) {",
+      "expectTest": "ein Override, der aus der Buchhaltung verschwindet"
+    },
+    {
+      "id": "A4",
+      "pattern": "value_not_type",
+      "title": "Idempotenz aufgehoben: identische Baseline erzeugt trotzdem eine Revision",
+      "file": "js/engine/plan-activation.js",
+      "find": "    if (baselineFingerprint(newBaseline.sessions) === baselineFingerprint(plan.baseline.sessions)) {",
+      "replace": "    if (false) {",
+      "expectTest": "dieselbe Engine-Woche ein zweites Mal"
+    },
+    {
+      "id": "A5",
+      "pattern": "neighbour_guard",
+      "title": "previous ist nur eine Referenz statt einer echten Kopie (Rueckweg zeigt auf den mutierten Plan)",
+      "file": "js/engine/plan-activation.js",
+      "find": "    return { applied: true, reason: 'applied', plan: r.plan, previous: _clone(plan), event: ev,",
+      "replace": "    return { applied: true, reason: 'applied', plan: r.plan, previous: plan, event: ev,",
+      "expectTest": "previous ist eine echte Kopie des Zustands davor"
+    },
+    {
+      "id": "A6",
+      "pattern": "neighbour_guard",
+      "title": "revert liefert die Referenz statt einer Kopie zurueck",
+      "file": "js/engine/plan-activation.js",
+      "find": "    return { ok: true, reason: 'reverted', plan: _clone(previous) };",
+      "replace": "    return { ok: true, reason: 'reverted', plan: previous };",
+      "expectTest": "revert liefert eine echte KOPIE",
+      "history": "blieb im Probenlauf v8-331 gruen: geprueft wurde nur die GLEICHHEIT von back.plan und r.previous — die erfuellt eine blosse Referenz genauso."
+    },
+    {
+      "id": "A7",
+      "pattern": "data_lacks_var",
+      "title": "der Fingerabdruck wird wieder blind fuer die Verordnung (Zustand vor v8-332b)",
+      "file": "js/engine/plan-activation.js",
+      "find": "      return [s && s.dayIndex, it.t || '', it.l || '', it.d == null ? '' : it.d,\n        _rxPrint(it.rx)].join('|');",
+      "replace": "      return [s && s.dayIndex, it.t || '', it.l || '', it.d == null ? '' : it.d].join('|');",
+      "expectTest": "4 × 5 min → 5 × 4 min wird als Änderung ERKANNT",
+      "history": "BEFUND v8-332b: der Fingerabdruck verglich nur Tag, Sportart, Name und Umfangstext. '4 × 5 min' und '5 × 4 min' galten damit als dieselbe Woche, ebenso zwei Einheiten mit verschobenem Pace-Fenster. Die Engine haette ihre neue Vorgabe nie ausliefern koennen — die Testfixtures trugen alle dieselbe simple Ein-Block-Verordnung, dadurch fiel es nicht auf."
+    },
+    {
+      "id": "A8",
+      "pattern": "neighbour_guard",
+      "title": "unserialisierbare Verordnungen werden alle gleich abgebildet (Vergleich wieder blind)",
+      "file": "js/engine/plan-activation.js",
+      "find": "      return 'rx!' + _fnv(String(rx.session_type) + '|' + n + '|' + typen.join(','));",
+      "replace": "      return 'rx?';",
+      "expectTest": "eine nicht serialisierbare Verordnung bleibt trotzdem unterscheidbar",
+      "history": "Nebenbefund aus dem ersten A8-Anlauf: der catch-Zweig warf ALLE unserialisierbaren Verordnungen auf denselben Ersatzwert — fuer genau diese Faelle waere der Vergleich wieder blind gewesen."
+    }
+  ]
+}
