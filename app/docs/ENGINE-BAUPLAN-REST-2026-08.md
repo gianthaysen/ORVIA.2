@@ -4249,3 +4249,106 @@ schwer mutierbar.
 - `knowledge_v7_test.mjs` 24 → **32 Zusicherungen**
 - 41 Quittungen (zwei weniger als gestern)
 - Kohorten-Pin `023ee59b` unverändert, Wissensmodule vor/nach gehasht: unverändert
+
+## 39 · Die Behauptung war nie gemessen (v8-349)
+
+Der Auftrag lautete: es darf nirgends stehen, dass etwas nicht wirkt. Was
+dabei herauskam, war schlimmer als die Formulierung — **die Behauptung war nie
+gemessen worden.**
+
+### 39.1 Der Befund
+
+`_ziele-ohne-leser.json` führte 45 Ziele mit dem Vermerk „wirkt derzeit auf
+nichts". Diese Zahl stammte aus keiner Messung, sondern aus einem Abgleich mit
+dem Zielregister: was die Verordnung nicht als **Zahl** einbaut, galt als
+wirkungslos. Das ist in beide Richtungen unbelegt.
+
+- Es *nannte* recherchiertes, geprüftes, eingespeistes Wissen folgenlos, ohne
+  je geprüft zu haben, ob es nicht auf anderem Weg ankommt.
+- Und es hätte umgekehrt ein Ziel als versorgt gezählt, das die Verordnung
+  zwar liest, dessen Vorgabe aber unterwegs ausgeschlossen wird.
+
+### 39.2 Die Kette endet nicht mehr an der Zahl
+
+```
+Vorgabe ohne Zahl → hinweise (Verordnung)
+                  → hinweisZeilen (Format)
+                  → scheduler-v2 → week-projection → Wochenkarte
+```
+
+Ein Satz wie „aus isolierten Krafttests lässt sich die Laufleistung nicht
+vorhersagen" ändert keine Satzzahl. Er ändert, **was der Nutzer von seinen
+Werten erwartet.** Das ist Wirkung, und sie gehört angezeigt — mit Herkunft,
+Grenzen und Ausschlüssen an derselben Zeile.
+
+**Nicht getan:** eine Aussage umgedreht. „Kein Zusammenhang" bleibt „kein
+Zusammenhang". Es steht jetzt nur nicht mehr wirkungslos herum. Einen Befund
+ins Gegenteil zu verkehren wäre Erfindung, kein Fortschritt.
+
+### 39.3 Der Sensor misst, statt zu raten
+
+`knowledge_targets_test.mjs` baut Verordnungen über **alle** Templates und
+sieht nach, was drinsteht — statt ein Register zu befragen.
+
+| | Ziele | als Wert | als Hinweis | gesperrt | unerklärt weg |
+|---|---|---|---|---|---|
+| Pakete | 30 | 1 | 24 | 5 | **0** |
+| Notizen | 25 | — | 21¹ | 4 | **0** |
+
+¹ nach technischer Freigabe; die Simulation ist im Test als solche
+ausgewiesen und lässt die medizinische Sperre ausdrücklich stehen.
+
+Die 9 gesperrten Ziele hängen an `medical_safety_review_pending`. Das ist eine
+**Entscheidung**, kein Versäumnis — und der Test verlangt für jede Sperre
+einen benannten Code, damit ein Defekt nie wie eine Sicherheitssperre aussehen
+kann.
+
+### 39.4 Vier eigene Fehler
+
+| | Was schiefging | Wie es auffiel |
+|---|---|---|
+| **Die Naht** | `scheduler-v2` nahm aus der Verordnung nur `workout` und `flags` und warf `hinweise` weg; `week-projection` kannte das Feld nicht; die Oberfläche rief `hinweisZeilen` nirgends auf. Die Blöcke A–D des neuen Tests waren grün, und auf **keiner** Karte stand ein Hinweis | Suche nach Aufrufern von `hinweisZeilen` — es gab keinen |
+| **Ungeprüft gebaut** | der neue Weg hatte keinen einzigen Test | beim Nachziehen der Zielregister-Proben |
+| **Doppelter Satz** | GYM-HYP-003 nennt Last **und** Wiederholungen und trägt EINEN Satz — er stand wortgleich zweimal auf der Karte | beim **Lesen** der Testausgabe, nicht durch eine Zusicherung |
+| **Verlorene Abdeckung** | bis v8-348 fiel ein vertippter Zielname dadurch auf, dass nichts ankam. Seit v8-349 kommt die Aussage immer an — der Tippfehler wäre unsichtbar geworden | beim Nachziehen der Probe ZR5 |
+
+Der erste ist **zum vierten Mal dieselbe Fehlerklasse**: v8-335 (eingespeist,
+niemand liest es), v8-341 (Modul da, kein Aufrufer), v8-344 (Ziel benannt,
+kein Name), jetzt v8-349 (Hinweise erzeugt, niemand stellt sie dar). Sie fällt
+jedes Mal deshalb nicht auf, weil jedes Einzelstück geprüft ist und **die Naht
+nicht.** Geprüft werden muss die Naht.
+
+Der vierte ist die unangenehmste Sorte: eine Verbesserung nimmt einem Sensor
+eine Fähigkeit weg, ohne dass ein Test rot wird. Ersatz ist
+`_zielvokabular.json` — 55 Zielnamen mit einer Zeile Bedeutung. Ein Name, der
+dort nicht steht, ist rot. **Die Bremse sitzt jetzt am Namen statt an der
+Wirkung.**
+
+### 39.5 Die Quittungsliste: 45 → 1
+
+Sie hat auch eine engere Bedeutung bekommen. Sie führt nur noch eine **Zahl**,
+die der Vertrag zum Vorschreiben freigegeben hat und die niemand anwendet:
+
+- `plan.saetze_je_muskelgruppe` — 5 bis 6 Sätze je Muskelgruppe und **Woche**
+  (GYM-HYP-002). Der Anwender ist die Wochenplanung, nicht die Einheit. Das
+  ist offener Punkt 2, benannt statt verrechnet.
+
+Ein Hinweis braucht keinen Anwender: er wirkt, indem er angezeigt wird. Eine
+freigegebene Zahl braucht einen — sonst war die Freigabe umsonst.
+
+### 39.6 Nicht probengedeckt, offen gesagt
+
+Die Zusicherung „jedes vorhandene Paket wird auch gemessen" hängt an einer
+Liste **im Test**, und das Probenwerkzeug mutiert nur Dateien unter `app/`.
+Das ist eine bekannte Lücke, keine vergessene Probe — sie steht so im Katalog,
+damit er nicht vollständiger aussieht, als er ist.
+
+### 39.7 Stand
+
+- Gesamtsuite **260/0** bei 7 übersprungenen (267 Dateien)
+- **150 Proben in 18 Katalogen**, 146 gefahren / 4 übersprungen, jede schlägt an
+- neu: `knowledge_hinweise_test.mjs` (32 Zusicherungen, prüft die Naht bis zum
+  Anzeigemodell), `_zielvokabular.json` (55 Namen)
+- `knowledge_targets_test.mjs` 12 → **20 Zusicherungen**, Messung statt Ableitung
+- Quittungen **45 → 1**
+- Kohorten-Pin `023ee59b` unverändert

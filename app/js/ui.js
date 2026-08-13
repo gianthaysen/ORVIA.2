@@ -3359,6 +3359,51 @@ function gmRxLinesHTML(item){
     var kern=(l.kind==='group'||l.kind==='work'||l.kind==='exercise');
     html+='<li'+(kern?'':' class="sc-rx-soft"')+'>'+gmEsc(l.text)+'</li>';
   }
+  html+='</ul>';
+  return html+gmHinweisHTML(item);
+}
+
+/* v8-349 — WAS DIE QUELLE SAGT, ABER NICHT ALS ZAHL.
+   Die Kette Quelle → Regel → Vorgabe → Verordnung endete bis hierher an der
+   Zahl: was sich nicht in Saetze, Pausen oder Tempo giessen liess, kam nicht
+   an. Das war eine zu enge Vorstellung von Wirkung. Ein Satz wie „aus
+   isolierten Krafttests laesst sich die Laufleistung nicht vorhersagen"
+   aendert keine Satzzahl — er aendert, was der Nutzer von seinen Werten
+   erwartet.
+
+   DREI REGELN, die hier nicht verhandelbar sind:
+     • Ohne Wissen steht hier NICHTS. Kein allgemeiner Ratschlag, keine
+       Fuellzeile — die Hinweise sind belegt oder sie sind nicht da.
+     • Jeder Satz nennt seine Regel und seine Evidenzklasse. Ein Hinweis
+       ohne Herkunft waere eine anonyme Behauptung.
+     • Ausschluesse und Grenzen stehen SICHTBAR an der Zeile, nicht in einer
+       Fussnote. „gilt nicht für: akute_verletzung" ist kein Kleingedrucktes,
+       sondern die Haelfte der Aussage.
+
+   Formatiert wird ausschliesslich ueber `prescription-format.hinweisZeilen`
+   — aus demselben Grund wie oben bei der Verordnung: zwei Formatierungen
+   waeren zwei Wahrheiten. */
+function gmHinweisHTML(item){
+  if(!item||!item.hinweise||!item.hinweise.length)return '';
+  var F=(window.ORVIA&&ORVIA.prescriptionFormat)||null;
+  if(!F||typeof F.hinweisZeilen!=='function')return '';
+  var z;
+  try{z=F.hinweisZeilen(item.hinweise);}catch(_){return '';}
+  if(!z||!z.length)return '';
+  var html='<ul class="sc-plex sc-rx-hint">';
+  for(var i=0;i<z.length;i++){
+    var h=z[i];
+    html+='<li><span class="sc-hint-text">'+gmEsc(h.text)+'</span>';
+    if(h.herkunft||h.regelId){
+      html+='<span class="sc-hint-src">'+gmEsc([h.herkunft,h.regelId].filter(Boolean).join(' · '))+'</span>';
+    }
+    if(h.zusatz&&h.zusatz.length){
+      for(var j=0;j<h.zusatz.length;j++){
+        html+='<span class="sc-hint-note">'+gmEsc(h.zusatz[j])+'</span>';
+      }
+    }
+    html+='</li>';
+  }
   return html+'</ul>';
 }
 
@@ -10446,7 +10491,20 @@ function gmRxPreviewUnitHTML(it){
   }).join('');
   var warn=(r.warnings&&r.warnings.length)
     ? '<div class="muted" style="font-size:11px;margin-top:3px">'+gmEsc(r.warnings.length+' Block/Bloecke nicht darstellbar')+'</div>' : '';
-  return kopf+zeilen+warn;
+  /* v8-349: auch die Vorschau zeigt die Hinweise. Zwei Ansichten derselben
+     Einheit, von denen eine die Herkunft weglaesst, waeren zwei Wahrheiten
+     — und die Vorschau ist genau die Stelle, an der man nachsieht, ob das
+     eingespeiste Wissen wirklich ankommt. */
+  var hin='';
+  if(it.hinweise&&it.hinweise.length&&typeof F.hinweisZeilen==='function'){
+    try{
+      hin=F.hinweisZeilen(it.hinweise).map(function(h){
+        return '<div style="font-size:11px;margin-top:3px;opacity:.85">↳ '+gmEsc(h.text)+
+          (h.herkunft?(' <span class="muted">['+gmEsc(h.herkunft)+']</span>'):'')+'</div>';
+      }).join('');
+    }catch(_){hin='';}
+  }
+  return kopf+zeilen+warn+hin;
 }
 
 function gmRxPreviewSection(){

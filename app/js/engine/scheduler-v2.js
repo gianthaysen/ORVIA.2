@@ -116,7 +116,17 @@
         durationMin: req.durationMin, priority: req.priority, exercises: req.exercises,
         knowledge: wissen }, ev);
       if (!pr.ok) { blockedPrescriptions.push({ id: p.id, blocked: pr.blocked }); return; }
-      sessions.push({
+      /* v8-349 — UND HIER ENDETE SIE IMMER NOCH.
+         Seit v8-349 gibt die Factory `hinweise` zurueck: Wissen, das sich
+         nicht als Zahl einbauen laesst, mit Aussage, Herkunft, Grenzen und
+         Ausschluessen. Diese Stelle hat es weggeworfen — dieselbe
+         Fehlerklasse wie v8-341, nur eine Ebene weiter aussen, und aus
+         demselben Grund unsichtbar: die Verordnung war ja da.
+
+         Das Feld entsteht NUR, wenn es Hinweise gibt. Eine Woche ohne
+         Wissen sieht damit Zeichen fuer Zeichen aus wie vorher — kein
+         leeres Feld, das spaeter irgendwo als leerer Kasten auftaucht. */
+      var sess = {
         sessionId: 'ps:v2:' + input.weekKey + ':' + idx,                 // deterministisch, kein Zufall
         weekday: p.weekday, sportId: req.sportId,
         prescription: pr.workout,
@@ -124,7 +134,9 @@
         provenance: { scheduler: VERSION, policy: POLICY, solver: placed.solverVersion,
           factory: pr.provenance.factory, templateId: pr.provenance.templateId,
           paceEvidenceUsed: pr.provenance.paceEvidenceUsed, requirementId: p.id }
-      });
+      };
+      if (pr.hinweise && pr.hinweise.length) sess.hinweise = pr.hinweise;
+      sessions.push(sess);
     });
     return { ok: true, weekKey: input.weekKey, sessions: sessions,
       unplaced: placed.unplaced, conflicts: placed.conflicts,

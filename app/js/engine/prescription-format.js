@@ -239,7 +239,41 @@
     return quelle.map(function (l) { return l.text; }).join(' · ') || null;
   }
 
-  var api = { VERSION: VERSION,
+  /* ============================================================
+     v8-349 — HINWEISE ALS ZEILEN.
+
+     Die Verordnung liefert seit v8-349 `hinweise`: Wissen, das keine Zahl
+     ist und deshalb nicht in einen Block passt — „aus isolierten Krafttests
+     laesst sich die Laufleistung nicht vorhersagen", „Altersformeln
+     ueberschaetzen die maximale Herzfrequenz".
+
+     Dieselbe Regel wie im ganzen Modul: NICHTS wird ergaenzt. Was der
+     Hinweis nicht sagt, steht nicht da. Die Herkunft wird mitgefuehrt, weil
+     eine Aussage ohne Quelle in dieser App keine Aussage ist.
+     ============================================================ */
+  function hinweisZeilen(hinweise) {
+    if (!Array.isArray(hinweise) || !hinweise.length) return [];
+    var out = [];
+    hinweise.forEach(function (h) {
+      if (!h || typeof h.aussage !== 'string' || !h.aussage.trim()) return;
+      var zeile = { text: h.aussage.trim(), regelId: h.regelId || null, ziel: h.ziel || null };
+      var zusatz = [];
+      if (h.zahlGesperrt === true) zusatz.push('Zahl vorhanden, aber nicht freigegeben');
+      if (Array.isArray(h.giltNichtFuer) && h.giltNichtFuer.length) {
+        zusatz.push('gilt nicht für: ' + h.giltNichtFuer.join(', '));
+      }
+      if (Array.isArray(h.grenzen) && h.grenzen.length) zusatz.push('Grenze: ' + h.grenzen.join('; '));
+      if (h.wennUnsicher) zusatz.push('im Zweifel: ' + h.wennUnsicher);
+      if (zusatz.length) zeile.zusatz = zusatz;
+      if (h.herkunft && (h.herkunft.evidenceClass || h.herkunft.label)) {
+        zeile.herkunft = h.herkunft.label || ('Klasse ' + h.herkunft.evidenceClass);
+      }
+      out.push(zeile);
+    });
+    return out;
+  }
+
+  var api = { VERSION: VERSION, hinweisZeilen: hinweisZeilen,
     paceText: paceText, durationText: durationText, distanceText: distanceText,
     completionText: completionText, targetText: targetText,
     formatPrescription: formatPrescription, summaryLine: summaryLine };

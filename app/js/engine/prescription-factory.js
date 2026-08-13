@@ -110,6 +110,73 @@
      im Flag, woher sie kommt. Ohne Wissen bleibt der Produktwert, ebenfalls
      benannt: `produktwert:rpeTempo`. Damit ist an jeder Verordnung ablesbar,
      welche Zahl eine Quelle hat und welche nicht. */
+  /* ============================================================
+     v8-349 — WISSEN, DAS KEINE ZAHL IST, LANDET TROTZDEM AUF DER KARTE.
+
+     Bis hierher galt: was die Verordnung nicht als Zahl oder Liste einbauen
+     kann, wirkt nicht. 41 Ziele standen deshalb als „ohne Leser" in einer
+     Quittungsliste — Wissen, das jemand recherchiert, geprueft und
+     eingespeist hat, und das dann nirgends ankam.
+
+     Das war eine zu enge Vorstellung davon, was WIRKEN heisst. Ein Satz wie
+     „aus isolierten Krafttests laesst sich die Laufleistung nicht
+     vorhersagen" aendert keine Satzzahl — er aendert, was der Nutzer von
+     seinen Werten erwartet. Er gehoert angezeigt, nicht verwaltet.
+
+     Ab jetzt gibt jede Verordnung `hinweise` zurueck: jede Wissensvorgabe,
+     die nicht als Wert eingebaut wurde, mit Aussage, Herkunft, Grenzen und
+     Ausschluessen. `prescription-format` macht daraus Zeilen.
+
+     Die Grenzen bleiben: ein Hinweis aendert KEINE Zahl, sperrt nichts und
+     wird nicht erfunden. Ohne Wissen gibt es keine Hinweise — nicht etwa
+     allgemeine Ratschlaege. */
+  function _hinweiseAus(req, verwendeteZiele) {
+    var vorgaben = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;
+    if (!vorgaben || !vorgaben.length) return [];
+    var out = [], nachSatz = {};
+    for (var i = 0; i < vorgaben.length; i++) {
+      var v = vorgaben[i];
+      if (!v || !v.ziel) continue;
+      /* Was bereits als Zahl oder Liste in der Verordnung steht, wird nicht
+         noch einmal als Hinweis wiederholt — sonst stuende dieselbe Aussage
+         zweimal auf der Karte. */
+      if (verwendeteZiele.indexOf(v.ziel) >= 0) continue;
+      if (!v.aussage) continue;
+      /* DERSELBE SATZ NUR EINMAL. Eine Regel darf mehrere Ziele nennen —
+         GYM-HYP-003 nennt Last UND Wiederholungen — traegt aber EINEN Satz.
+         Ohne diese Zusammenfassung stuende er wortgleich zweimal
+         untereinander auf der Karte. Aufgefallen ist das im Ausgabetext von
+         knowledge_hinweise_test.mjs, nicht durch eine Zusicherung: eine
+         Doppelung ist technisch korrekt und trotzdem falsch. */
+      var schluessel = (v.regelId || '?') + ' ' + v.aussage;
+      if (nachSatz[schluessel]) {
+        if (nachSatz[schluessel].ziele.indexOf(v.ziel) < 0) nachSatz[schluessel].ziele.push(v.ziel);
+        continue;
+      }
+      var eintrag = {
+        ziel: v.ziel,
+        /* Alle Ziele, die derselbe Satz bedient — der Sensor liest diese
+           Liste, damit ein zusammengefasstes Ziel nicht als „kommt nicht
+           an" gezaehlt wird. */
+        ziele: [v.ziel],
+        regelId: v.regelId || null,
+        aussage: v.aussage,
+        /* Der vorsichtige Weg gehoert dazu, nicht in eine Fussnote. */
+        wennUnsicher: v.wennUnsicher || null,
+        grenzen: Array.isArray(v.sicherheitsgrenzen) ? v.sicherheitsgrenzen.slice()
+          : (typeof v.grenzen === 'string' ? [v.grenzen] : []),
+        giltNichtFuer: Array.isArray(v.giltNichtFuer) ? v.giltNichtFuer.slice() : [],
+        /* Ein Hinweis ohne Herkunft waere eine anonyme Behauptung. */
+        herkunft: v.herkunft || null,
+        /* Ehrlich mitgefuehrt: eine Zahl WAERE da, ist aber nicht freigegeben. */
+        zahlGesperrt: v.zahlGesperrt === true
+      };
+      nachSatz[schluessel] = eintrag;
+      out.push(eintrag);
+    }
+    return out;
+  }
+
   /* v8-347: Aufzaehlungen aus Wissen (Vertrag v7, art 'liste'). Bewusst OHNE
      Produktwert-Fallback: eine erfundene Uebungsliste waere schlimmer als
      keine. Gibt es nichts, gibt es null — der Aufrufer entscheidet sichtbar. */
@@ -281,7 +348,24 @@
       priority: req.priority || 'build', blocks: blocks };
     var errs = validateWorkout(workout);
     if (errs.length) return { ok: false, blocked: 'schema_invalid', errors: errs, workout: null };   // Selbstprüfung
-    return { ok: true, workout: workout, flags: flags,
+    /* Welche Ziele sind bereits als WERT eingebaut? Genau die stehen im
+       Register — sie werden nicht zusaetzlich als Hinweis wiederholt. */
+    var verwendet = [];
+    (flags || []).forEach(function (f) {
+      if (typeof f !== 'string') return;
+      if (f.indexOf('sets_aus_wissen:') === 0) verwendet.push('session.sets');
+      else if (f.indexOf('rest_aus_wissen:') === 0) verwendet.push('session.rest_seconds');
+      else if (f.indexOf('reps_aus_wissen:') === 0) verwendet.push('session.repetitions');
+      else if (f.indexOf('exercises_aus_wissen:') === 0) verwendet.push('session.exercises');
+      else if (f.indexOf('_aus_wissen:') > 0) {
+        var s2 = f.split('_aus_wissen:')[0];
+        verwendet.push('session.' + s2.replace(/^rpe/, 'rpe_').toLowerCase());
+      }
+    });
+    var hinweise = _hinweiseAus(req, verwendet);
+    if (hinweise.length) flags.push('hinweise_aus_wissen:' + hinweise.length);
+
+    return { ok: true, workout: workout, flags: flags, hinweise: hinweise,
       provenance: { factory: VERSION, templateId: req.sessionType, templateVersion: tpl.v,
         paceEvidenceUsed: _paceEvidence(evidence || null) } };
   }

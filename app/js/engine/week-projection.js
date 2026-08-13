@@ -148,6 +148,16 @@
          die Quelle (dieselbe Klasse Fehler wie A5/A6 in plan-activation). */
       rx: _clone(pr)
     };
+    /* v8-349 — die Hinweise reisen mit, aber GETRENNT von `rx`.
+       Warum nicht hinein: `rx` ist die Verordnung, und ihr Fingerabdruck
+       (`plan-activation._rxPrint`) entscheidet, ob eine Einheit als
+       geaendert gilt. Haengte man die Hinweise dort an, aenderte jede neue
+       Quelle den Fingerabdruck bestehender Wochen — der Nutzer saehe eine
+       Aenderungsmeldung fuer eine Einheit, die sich nicht geaendert hat.
+
+       Auch hier eine KOPIE und nur bei Inhalt, aus denselben Gruenden wie
+       bei `rx`: kein geteilter Verweis, kein leeres Feld im Altbestand. */
+    if (s.hinweise && s.hinweise.length) item.hinweise = _clone(s.hinweise);
     return { ok: true, dayIndex: di, item: item };
   }
 

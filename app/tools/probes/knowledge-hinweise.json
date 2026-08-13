@@ -1,0 +1,108 @@
+{
+  "target": "js/engine/prescription-factory.js",
+  "test": "supabase/tests/knowledge_hinweise_test.mjs",
+  "note": "Die letzte Meile: Wissen → Verordnung → Karte. Sie wurde in v8-349 gebaut und war zwei Stunden lang UNGEPRUEFT — aufgefallen erst beim Nachziehen der Zielregister-Proben. Dieselbe Fehlerklasse wie v8-335 (eingespeist, niemand liest es), v8-341 (Modul da, niemand ruft es auf) und v8-344 (Ziel benannt, niemand kennt den Namen). Diese Proben pruefen, ob der neue Test den Weg wirklich bewacht — oder nur zusieht.",
+  "probes": [
+    {
+      "id": "H1",
+      "pattern": "neighbour_guard",
+      "title": "derselbe Satz steht wieder zweimal auf der Karte",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (nachSatz[schluessel]) {\n        if (nachSatz[schluessel].ziele.indexOf(v.ziel) < 0) nachSatz[schluessel].ziele.push(v.ziel);\n        continue;\n      }",
+      "replace": "      if (false) { continue; }",
+      "expectTest": "kein Satz steht zweimal auf der Karte",
+      "history": "Der Originalbefund dieser Datei, und er kam nicht aus einer Zusicherung: GYM-HYP-003 nennt Last UND Wiederholungen und traegt EINEN Satz. Beim Lesen der Testausgabe stand er wortgleich zweimal untereinander. Technisch korrekt, fuer den Nutzer falsch — eine Karte, die sich wiederholt, wirkt wie eine Karte, die nicht weiss, was sie sagen will. Seither ist es eine Zusicherung."
+    },
+    {
+      "id": "H2",
+      "pattern": "data_lacks_var",
+      "title": "eine Zahl steht zusaetzlich als Ratschlag daneben",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (verwendeteZiele.indexOf(v.ziel) >= 0) continue;\n      if (!v.aussage) continue;",
+      "replace": "      if (!v.aussage) continue;",
+      "expectTest": "… und NICHT zusätzlich als Hinweis wiederholt",
+      "history": "Die Pause steht als Zahl im Workout (120 s aus GYM-HYP-001). Faellt dieser Filter weg, steht derselbe Inhalt zusaetzlich als Hinweis darunter — der Nutzer liest zweimal dasselbe und weiss nicht, welches gilt. Der Unterschied zwischen VORGABE und HINWEIS ist der ganze Sinn der Trennung."
+    },
+    {
+      "id": "H3",
+      "pattern": "value_not_type",
+      "title": "ohne Wissen erscheinen allgemeine Ratschlaege",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    if (!vorgaben || !vorgaben.length) return [];",
+      "replace": "    if (!vorgaben || !vorgaben.length) return [{ ziel: 'session.allgemein', ziele: ['session.allgemein'], regelId: null, aussage: 'Achte auf ausreichende Erholung.', wennUnsicher: null, grenzen: [], giltNichtFuer: [], herkunft: null, zahlGesperrt: false }];",
+      "expectTest": "ohne Wissen gibt es KEINE Hinweise",
+      "history": "Der gefaehrlichste Fall des ganzen Moduls und der Grund, warum es ihn ueberhaupt gibt. Eine Karte, die ohne Quelle „Achte auf ausreichende Erholung\" zeigt, ist nicht hilfreich, sondern eine anonyme Behauptung im Gewand einer belegten. Genau davon unterscheidet sich ORVIA — die Hinweise sind BELEGT oder sie sind nicht da. Der eingeschmuggelte Satz klingt harmlos; das ist der Punkt."
+    },
+    {
+      "id": "H4",
+      "pattern": "fixture_masks",
+      "title": "die Ausschluesse verschwinden von der Zeile",
+      "file": "js/engine/prescription-format.js",
+      "find": "      if (Array.isArray(h.giltNichtFuer) && h.giltNichtFuer.length) {\n        zusatz.push('gilt nicht für: ' + h.giltNichtFuer.join(', '));\n      }",
+      "replace": "      if (false) { zusatz.push('gilt nicht für: ' + h.giltNichtFuer.join(', ')); }",
+      "expectTest": "Ausschlüsse stehen an der Zeile",
+      "history": "„gilt nicht für: kinder_jugendliche, akute_verletzung\" ist kein Kleingedrucktes, sondern die Haelfte der Aussage. Ein Hinweis ohne seine Ausschluesse ist gefaehrlicher als gar keiner: er wirkt allgemeingueltig. Die Quelle hat die Einschraenkung genannt — sie wegzulassen hiesse, die Quelle falsch wiederzugeben."
+    },
+    {
+      "id": "H5",
+      "pattern": "value_not_type",
+      "title": "eine Zeile ohne Aussage wird trotzdem gezeigt",
+      "file": "js/engine/prescription-format.js",
+      "find": "      if (!h || typeof h.aussage !== 'string' || !h.aussage.trim()) return;",
+      "replace": "      if (!h) return;\n      if (typeof h.aussage !== 'string') h.aussage = '';",
+      "expectTest": "ein Hinweis ohne Aussage wird verworfen, nicht mit leerem Text gezeigt",
+      "history": "Fail-open in der Darstellung: aus einem Hinweis ohne Text wird eine leere Zeile auf der Karte statt gar keiner. Dieselbe Sorte stiller Ersatzwert wie die Uebung NAMENS „undefined\", die v8-336 in dieser Datei gefunden hat."
+    },
+    {
+      "id": "H6",
+      "pattern": "data_lacks_var",
+      "title": "die Herkunft faellt weg — die Aussage bleibt anonym stehen",
+      "file": "js/engine/prescription-format.js",
+      "find": "        zeile.herkunft = h.herkunft.label || ('Klasse ' + h.herkunft.evidenceClass);",
+      "replace": "        zeile.herkunft = h.herkunft.label || null;",
+      "expectTest": "die Evidenzklasse wird angezeigt, wenn kein Label da ist",
+      "history": "Die Vorgaben des Gym-Pakets tragen alle Klasse B und KEIN Label. Faellt der Rueckfall auf die Klasse weg, steht jede Aussage ohne Herkunft auf der Karte — genau die anonyme Behauptung, gegen die die ganze Quellenkette gebaut ist. Die Probe trifft den Fall, der im Bestand tatsaechlich vorkommt, nicht den theoretischen."
+    },
+    {
+      "id": "H7",
+      "pattern": "neighbour_guard",
+      "title": "das zusammengefasste Zweitziel geht bei der Messung verloren",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        ziele: [v.ziel],",
+      "replace": "        ziele: [],",
+      "expectTest": "kein Paketziel verschwindet unerklaert",
+      "test": "supabase/tests/knowledge_targets_test.mjs",
+      "history": "Die Zusammenfassung aus H1 hat einen Preis: wer nur `ziel` liest, haelt das zweite Ziel derselben Regel fuer nicht angekommen — oder, schlimmer, ein leeres `ziele` laesst BEIDE verschwinden. Diese Probe prueft die Naht zwischen der Verordnung und ihrem Sensor, also genau die Stelle, an der eine Verbesserung eine Messung kaputtmachen kann."
+    },
+    {
+      "id": "H8",
+      "pattern": "neighbour_guard",
+      "title": "der Scheduler wirft die Hinweise wieder weg",
+      "file": "js/engine/scheduler-v2.js",
+      "find": "      if (pr.hinweise && pr.hinweise.length) sess.hinweise = pr.hinweise;",
+      "replace": "",
+      "expectTest": "der Scheduler reicht die Hinweise weiter (statt sie wegzuwerfen)",
+      "history": "Genau diese eine Zeile hat gefehlt, und ohne sie waren die Bloecke A–D dieses Tests gruen, waehrend auf keiner Karte ein Hinweis stand. Die vierte Wiederholung derselben Fehlerklasse (v8-335, v8-341, v8-344, v8-349): jedes Einzelstueck geprueft, die NAHT nicht. Die Probe prueft die Naht."
+    },
+    {
+      "id": "H9",
+      "pattern": "data_lacks_var",
+      "title": "die Projektion laesst sie am Anzeigemodell vorbeilaufen",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (s.hinweise && s.hinweise.length) item.hinweise = _clone(s.hinweise);",
+      "replace": "",
+      "expectTest": "die Projektion trägt sie ins Anzeigemodell",
+      "history": "Die zweite Naht auf demselben Weg. week-projection ist die Stelle, an der v8-332 schon einmal die ganze Verordnung weggeworfen hat — uebrig blieb „Tempolauf · 75 min\". Dass dieselbe Funktion ein neues Feld erneut verschluckt, ist kein hypothetisches Risiko, sondern die Geschichte dieser Datei."
+    },
+    {
+      "id": "H10",
+      "pattern": "fixture_masks",
+      "title": "die Hinweise wandern in die Verordnung und aendern deren Fingerabdruck",
+      "file": "js/engine/week-projection.js",
+      "find": "    if (s.hinweise && s.hinweise.length) item.hinweise = _clone(s.hinweise);",
+      "replace": "    if (s.hinweise && s.hinweise.length) { item.hinweise = _clone(s.hinweise); item.rx.hinweise = _clone(s.hinweise); }",
+      "expectTest": "… ohne die Verordnung selbst anzufassen",
+      "history": "Der naheliegende Fehlgriff: Hinweise gehoeren doch zur Verordnung, also legt man sie hinein. Folge waere, dass `plan-activation._rxPrint` einen anderen Fingerabdruck bildet — jede neu eingespeiste Quelle wuerde bestehende Wochen als GEAENDERT melden, obwohl sich an der Vorgabe nichts geaendert hat. Eine Aenderungsmeldung, die nichts bedeutet, bringt den Nutzer dazu, alle zu ignorieren."
+    }
+  ]
+}

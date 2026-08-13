@@ -1533,6 +1533,22 @@ body.story-open{overflow:hidden}
 .sc-plex.sc-rx li{white-space:normal;overflow:visible;text-overflow:clip}
 .sc-plex.sc-rx li.sc-rx-soft{opacity:.62}
 
+/* v8-349 · Was die Quelle sagt, aber nicht als Zahl (.sc-rx-hint).
+   BEWUSST OPTISCH GETRENNT von der Verordnung darueber: das eine ist eine
+   Vorgabe („4 × 1 km @ 4:36"), das andere eine Einordnung („aus isolierten
+   Krafttests laesst sich die Laufleistung nicht vorhersagen"). Saehen beide
+   gleich aus, laese der Nutzer den Hinweis als Anweisung — und genau das
+   darf er nicht, denn ein Hinweis aendert keine Zahl.
+   Die Herkunft steht IMMER daneben, nie ausgeblendet: eine Aussage ohne
+   Quelle ist in ORVIA keine Aussage. */
+.sc-plex.sc-rx-hint{margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)}
+.sc-plex.sc-rx-hint li{white-space:normal;overflow:visible;text-overflow:clip;
+  display:block;opacity:.86;margin-top:5px}
+.sc-plex.sc-rx-hint li::before{content:'ℹ';opacity:.55;margin-right:6px}
+.sc-rx-hint .sc-hint-text{display:inline}
+.sc-rx-hint .sc-hint-src{display:block;font-size:10px;opacity:.6;margin-left:18px;letter-spacing:.02em}
+.sc-rx-hint .sc-hint-note{display:block;font-size:10px;opacity:.72;margin-left:18px}
+
 .pe-chip{align-items:flex-start}
 .pe-exbtn{background:rgba(201,174,124,.16)!important;border:1px solid rgba(201,174,124,.34)!important;
   border-radius:999px!important;padding:2px 9px!important;color:var(--text)!important;font-weight:600;font-size:11px!important}

@@ -1,7 +1,7 @@
 {
   "target": "js/engine/prescription-factory.js",
   "test": "supabase/tests/knowledge_targets_test.mjs",
-  "note": "Das Zielregister ist der Sensor dafuer, ob eingespeistes Wissen ueberhaupt einen Leser hat. Gemessen bei seiner Einfuehrung: 1 von 30 Zielen. Diese Proben sichern, dass der Sensor nicht selbst blind ist.",
+  "note": "Der Sensor dafuer, ob eingespeistes Wissen ueberhaupt ankommt. In v8-349 hat er seine Messmethode gewechselt: er raet nicht mehr aus dem Zielregister, sondern BAUT Verordnungen und sieht nach, was drinsteht. Dabei ist eine alte Abdeckung weggefallen (ein Tippfehler faellt nicht mehr durch Wirkungslosigkeit auf, weil die Aussage jetzt als Hinweis ankommt) und durch eine neue ersetzt worden (das Zielvokabular). Diese Proben sichern beides. ANMERKUNG ZUR ABDECKUNG: die Zusicherung „jedes vorhandene Paket wird auch gemessen\" ist NICHT durch eine Probe gesichert. Sie haengt an einer Liste IM TEST, und das Probenwerkzeug mutiert nur Dateien unter app/. Das ist eine bekannte Luecke, keine vergessene Probe — sie steht hier, damit der Katalog nicht vollstaendiger aussieht, als er ist.",
   "probes": [
     {
       "id": "ZR1",
@@ -11,7 +11,7 @@
       "find": "    'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',",
       "replace": "    'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo',",
       "expectTest": "kein gelesenes Ziel fehlt im Register",
-      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut. Anker zweimal nachgezogen (v8-347 session.exercises, v8-348 session.repetitions) — jeder neue Leser verschiebt diese Zeilen."
+      "history": "Ein unvollstaendiges Register ist schlimmer als keines: eine Zahl, die tatsaechlich angewendet wird, erschiene als „ohne Anwender\" und wuerde quittiert statt genutzt. Anker zweimal nachgezogen (v8-347 session.exercises, v8-348 session.repetitions) — jeder neue Leser verschiebt diese Zeilen."
     },
     {
       "id": "ZR2",
@@ -21,17 +21,17 @@
       "find": "    'session.sets', 'session.trabpause_min', 'session.warmup_anteil'];",
       "replace": "    'session.sets', 'session.trabpause_min', 'session.warmup_anteil', 'session.last_prozent_1rm'];",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
-      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE. Anker zweimal nachgezogen (v8-347 session.exercises, v8-348 session.repetitions) — jeder neue Leser verschiebt diese Zeilen."
+      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst eine freigegebene Zahl als angewendet erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE."
     },
     {
       "id": "ZR3",
       "pattern": "neighbour_guard",
-      "title": "ein neues wirkungsloses Ziel rutscht unquittiert durch",
+      "title": "eine freigegebene Zahl verliert ihren Anwender und niemand merkt es",
       "file": "js/engine/knowledge/gym-knowledge-pack.js",
       "find": "          \"session.rest_seconds\"",
       "replace": "          \"session.rest_secons\"",
-      "expectTest": "jedes Ziel ohne Leser ist quittiert",
-      "history": "Der Tippfehlerfall, wortwoertlich: aus rest_seconds wird rest_secons. Vorher waere die Pausenregel damit still wirkungslos geworden — die Verordnung haette 120 s nicht mehr gefunden und niemand haette es gemerkt, weil kein Test die Zielnamen kannte."
+      "expectTest": "jede freigegebene Zahl ohne Anwender ist quittiert",
+      "history": "Der Tippfehlerfall, wortwoertlich: aus rest_seconds wird rest_secons. Bis v8-348 fing ihn die Zusicherung „jedes Ziel ohne Leser ist quittiert\". Die gibt es nicht mehr — seit v8-349 kommt die Aussage der Regel ohnehin als Hinweis an. Gefangen wird der Fall jetzt schaerfer: 120–180 s sind eine vom Vertrag zum VORSCHREIBEN freigegebene Zahl, und die hat nach dem Tippfehler keinen Anwender mehr. Rot, obwohl der Satz auf der Karte steht."
     },
     {
       "id": "ZR4",
@@ -41,27 +41,37 @@
       "find": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.intervall_min',",
       "replace": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.erfunden_xy', 'session.intervall_min',",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
-      "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
+      "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt."
     },
     {
       "id": "ZR5",
       "pattern": "data_lacks_var",
-      "title": "ein wirkungsloses Ziel in einer NOTIZ rutscht durch, bevor es ein Paket gibt",
+      "title": "ein vertippter Zielname in einer NOTIZ rutscht durch",
       "file": "docs/wissen/QUELLE-11-kanjuh-kraftprofile-2026.json",
       "find": "        \"plan.kraftvergleich_normierung\"",
       "replace": "        \"plan.kraftvergleich_wasauchimmer\"",
-      "expectTest": "jedes Notizziel ohne Leser ist quittiert",
-      "history": "QUELLE-11 war der Anlass fuer das ganze Register: sie lief sauber durch Vertrag und Anwendung und wirkte auf nichts. Der Sensor kannte anfangs nur Pakete — eine Notiz konnte also weiter unbemerkt ins Leere zeigen, bis jemand die Arbeit des Paketbaus schon getan hatte."
+      "expectTest": "jeder Zielname steht im Vokabular (Tippfehlerbremse)",
+      "history": "QUELLE-11 war der Anlass fuer das ganze Register: sie lief sauber durch Vertrag und Anwendung und wirkte auf nichts. In v8-349 hat dieser Fall die Deckung gewechselt, und das gehoert offen gesagt: die Aussage dieser Regel kommt seither IMMER als Hinweis auf der Karte an, auch mit vertipptem Ziel — die alte Zusicherung „jedes Notizziel ohne Leser ist quittiert\" konnte den Tippfehler also nicht mehr finden. Ersatz ist das Zielvokabular: ein Name, der dort nicht steht, ist rot. Die Bremse sitzt jetzt am NAMEN statt an der Wirkung."
     },
     {
       "id": "ZR6",
       "pattern": "neighbour_guard",
-      "title": "eine Quittung wird zur Karteileiche, ohne dass es auffaellt",
-      "file": "js/engine/knowledge/running-knowledge-pack.js",
-      "find": "      outputs: ['experienceTier', 'historyReliability'],",
-      "replace": "      outputs: ['experienceTierAlt', 'historyReliability'],",
-      "expectTest": "keine Quittung ist überflüssig geworden",
-      "history": "Quittungen sind Schulden, keine Trophaeen. Bleibt eine liegen, deren Ziel es gar nicht mehr gibt, waechst die Liste, und niemand traut sich mehr, sie zu lesen. Zwei Feinheiten kamen beim Bau dieser Probe heraus: die Pruefung stand zuerst im falschen Block und hielt JEDE Notizquittung fuer ueberfluessig; und ein Ziel, das auch in einer Notizdatei vorkommt (plan.erwartungsrahmen), bleibt bekannt, selbst wenn man es aus dem Paket entfernt — deshalb zielt die Probe auf experienceTier, das es nur im Paket gibt."
+      "title": "ein Ziel verschwindet still aus der Verordnung",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (verwendeteZiele.indexOf(v.ziel) >= 0) continue;\n      if (!v.aussage) continue;",
+      "replace": "      if (verwendeteZiele.indexOf(v.ziel) >= 0) continue;\n      if (!v.aussage) continue;\n      if (v.ziel.indexOf('plan.') === 0) continue;",
+      "expectTest": "kein Paketziel verschwindet unerklaert",
+      "history": "Die Kernzusicherung von v8-349, gegengeprueft: wenn der Hinweisleser eine Gruppe von Zielen stillschweigend auslaesst, muss der Sensor das melden — OHNE dass jemand eine Quittungsliste anfasst. Genau diese Art von stillem Ausfall war der Ausgangsbefund (v8-335, v8-341, v8-344): es sah jedes Mal gruen aus. Die Probe unterdrueckt alle plan.*-Hinweise; die Zusicherung findet das, weil sie an GEBAUTEN Verordnungen misst und nicht an einer Absichtserklaerung."
+    },
+    {
+      "id": "ZR7",
+      "pattern": "data_lacks_var",
+      "title": "eine gesperrte Regel faellt ohne Begruendung aus",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "          excluded.push({ ruleId: r.ruleId, code: 'medical_safety_review_pending' }); return false;",
+      "replace": "          excluded.push({ ruleId: r.ruleId }); return false;",
+      "expectTest": "… jede Sperre nennt einen Code (kein stilles Ausfallen)",
+      "history": "Die Unterscheidung, auf der der neue Sensor ruht: ein Ziel, das nicht ankommt, ist entweder eine ENTSCHEIDUNG (medical_safety_review_pending) oder ein DEFEKT. Faellt der Code weg, sieht ein Defekt aus wie eine Sicherheitssperre — und niemand sieht mehr nach. Fuenf Laufziele haengen heute an genau diesem Code. Anker liegt in knowledge-contracts, nicht im Test: das Probenwerkzeug mutiert nur Dateien unter app/, Testdateien liegen ausserhalb."
     }
   ]
 }

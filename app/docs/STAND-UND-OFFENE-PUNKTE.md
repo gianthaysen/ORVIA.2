@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-348, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-348 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-349, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-349 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-348) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§38).
+`sw.js` (Versionsköpfe v8-329 bis v8-349) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§39).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -22,8 +22,9 @@ Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 ## Wo die Wissenskette steht
 
 ```
-Quelle → knowledge-ingest → Vertrag v6 (advisory) → knowledge-application
-      → knowledge-consumer → prescription-factory → prescription-format → Karte
+Quelle → knowledge-ingest → Vertrag v7 (advisory) → knowledge-application
+      → knowledge-consumer → prescription-factory → prescription-format
+      → scheduler-v2 → week-projection → Karte
 ```
 
 Die Kette ist **vollständig und gemessen**. Beleg (v8-341, echte Module, echtes Paket):
@@ -43,7 +44,9 @@ mit eigener Angabe 240 s → bleibt 240          ← Wissen ergänzt, überschre
 | davon wissenschaftlich geprüft | **0** |
 | davon im Produktivweg gelesen | **1** (Gym) |
 | Gym-Paket | 4 Regeln aus **einer** Übersichtsarbeit von 2007 |
-| Laufpaket | 14 Regeln, die derzeit **auf nichts wirken** — siehe Punkt 1 |
+| Laufpaket | 14 Regeln, rein qualitativ — sie kommen seit v8-349 als **Hinweis** auf der Karte an, nicht als Zahl (§39) |
+| Ziele, die nirgends ankommen | **0 von 30** — gemessen, nicht abgeleitet (`knowledge_targets_test.mjs`) |
+| davon bewusst gesperrt | **5**, alle mit Code `medical_safety_review_pending` |
 
 Beide Zeilen stehen seit v8-342 auch maschinenlesbar in
 `sport-coverage-matrix` (`knowledgePack` vs. `knowledgePackWired`) und werden
@@ -56,8 +59,23 @@ die Matrix nachzuziehen, bekommt einen roten Test.
 
 ## Offene Punkte, priorisiert
 
-### 1 · Laufen verdrahten — **erledigt durch Messung: es gibt nichts zu verdrahten**
-Dreimal bewertet, zuletzt mit der Zahl, die die Frage beendet:
+### 1 · Laufen verdrahten — **teils erledigt (v8-349), der Rest ist Erfassungsarbeit**
+
+**Was v8-349 geändert hat:** Die Formulierung „wirkt auf nichts" war nie
+gemessen worden. Sie stammte aus einem Abgleich mit dem Zielregister — was
+die Verordnung nicht als *Zahl* einbaut, galt als wirkungslos. Seit v8-349
+misst `knowledge_targets_test.mjs` durch die echte Kette, und das Ergebnis
+sieht anders aus:
+
+```
+30 Paketziele · 1 als Wert · 24 als Hinweis · 5 bewusst gesperrt
+             ·  0 unerklärt verschwunden
+```
+
+Die 14 Laufregeln kommen als **Hinweis mit Herkunft, Grenzen und
+Ausschlüssen** auf der Karte an. Was weiterhin fehlt, ist der Zahlwert — und
+darauf bezieht sich alles Folgende. Die alte Analyse bleibt gültig, nur ihre
+Schlussfolgerung war zu weit gefasst:
 
 ```
 Regeln mit maschinenlesbarem Zahlwert
@@ -71,9 +89,10 @@ Modul liest diese Namen**, auch `running-capacity-factory` nicht, für die sie
 gedacht waren (null Treffer im Quelltext, geprüft am 13.08.). `outputs` ist
 bei diesen Regeln eine Absichtserklärung, keine Schnittstelle.
 
-Verdrahten würde also nichts transportieren — es würde nur
-`knowledgePackWired: true` in die Matrix schreiben und wie Fortschritt
-aussehen. Deshalb bewusst **nicht gebaut**.
+Verdrahten würde also **keine Zahl** transportieren — es würde nur
+`knowledgePackWired: true` in die Matrix schreiben. Deshalb bewusst **nicht
+gebaut**. Die Aussagen selbst brauchen die Verdrahtung inzwischen nicht mehr:
+sie erreichen die Karte über den Hinweisweg.
 
 Was stattdessen möglich wäre, in aufsteigendem Ertrag:
 
@@ -149,6 +168,34 @@ Die Schnittmenge steht in **jeder** beteiligten Quelle. Gemittelt wird
 weiterhin nirgends: aus 3 und 5 Sätzen wird nicht 4, weil diese Bereiche sich
 nicht berühren und 4 niemand gesagt hat. Auswahllisten sind ausgenommen — eine
 leere Schnittmenge wäre ein stiller Ausfall statt einer Aussage.
+
+### 5 · Wissen, das keine Zahl ist — **erledigt in v8-349**
+Bis v8-348 endete die Kette an der Zahl: was sich nicht in Sätze, Pausen oder
+Tempo gießen ließ, kam nicht an und stand als „wirkungslos" in einer Liste.
+Diese Behauptung war **nie gemessen**, sondern aus dem Zielregister abgeleitet.
+
+Seit v8-349 gibt die Verordnung `hinweise` zurück; `prescription-format` macht
+Zeilen daraus, `scheduler-v2` und `week-projection` tragen sie bis ins
+Anzeigemodell, die Wochenkarte zeigt sie mit **Herkunft, Grenzen und
+Ausschlüssen**.
+
+```
+mit Wissen  → 3 Hinweise, jeder mit Regel-ID und Evidenzklasse
+ohne Wissen → KEINE Hinweise — kein Ersatzratschlag, keine Füllzeile
+als Zahl eingebaut → NICHT zusätzlich als Hinweis wiederholt
+```
+
+Vier eigene Fehler dabei, alle in §39 dokumentiert. Der wichtigste: die Kette
+endete zunächst **drei Zeilen vor dem Bildschirm** — `scheduler-v2` warf
+`hinweise` weg, und alle Tests waren trotzdem grün. Zum vierten Mal dieselbe
+Fehlerklasse (v8-335, v8-341, v8-344). Geprüft werden muss die **Naht**, nicht
+das Einzelstück; dafür gibt es jetzt `knowledge_hinweise_test.mjs` und die
+Proben H8–H10.
+
+**Grenze, die bleibt:** ein Hinweis ändert keine Zahl, sperrt nichts und wird
+nicht erfunden. Ein Befund wie „kein Zusammenhang zwischen Krafttest und
+Laufleistung" bleibt ein Befund — er steht jetzt nur nicht mehr wirkungslos
+herum, sondern dort, wo der Nutzer ihn braucht.
 
 ---
 
@@ -288,16 +335,20 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-348)
+## Zahlen zum Nachprüfen (v8-349)
 
-- Gesamtsuite **259/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
-  **Nur mit Chromium** — ohne Browser-Binary sind es 237/0 bei 29 übersprungenen,
+- Gesamtsuite **260/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
+  **Nur mit Chromium** — ohne Browser-Binary sind es 238/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **139 Proben in 17 Katalogen**, 135 gefahren / 4 übersprungen
-- **Ziele mit Leser: 1 von 30** aus Paketen, 0 von 14 aus Notizen — die
-  ehrlichste Zahl über den Stand der Wissenskette, siehe Punkt 3b
-- 41 Quittungen in `_ziele-ohne-leser.json`; `session.exercises` und
-  `session.repetitions` sind herausgefallen, weil sie jetzt gelesen werden
+- **150 Proben in 18 Katalogen**, 146 gefahren / 4 übersprungen, jede schlägt an
+- **Ziele, die ankommen: 30 von 30** aus Paketen (1 als Wert, 24 als Hinweis,
+  5 bewusst gesperrt mit Code) und 25 von 25 aus Notizen (21 nach technischer
+  Freigabe, 4 medizinisch gesperrt). **Gemessen** durch die echte Kette, nicht
+  aus dem Register abgeleitet — die alte Zahl „1 von 30" war eine Ableitung.
+- **1 Quittung** in `_ziele-ohne-leser.json` (vorher 41): `plan.saetze_je_muskelgruppe`
+  — eine freigegebene Zahl, deren Anwender die Wochenplanung wäre (Punkt 2)
+- **55 Zielnamen** in `_zielvokabular.json` — die Tippfehlerbremse, seit v8-349
+  am Namen statt an der Wirkung
 - **Wissensvertrag: Version 7**
 - **Zahlen: 2 Regeln führen sie strukturiert, 8 nennen sie nur im Text** — der
   Grund steht in Punkt 3b (das Feld fasst nur eine Größe)

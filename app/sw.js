@@ -1,4 +1,89 @@
-const C = 'orvia-v8-348';   /* DIE SCHNITTMENGE IST KEINE ERFINDUNG (2026-08-13) · v8-348:
+const C = 'orvia-v8-349';   /* WISSEN, DAS KEINE ZAHL IST, KOMMT JETZT AN (2026-08-13) · v8-349:
+
+   DER AUFTRAG WAR: es darf nirgends stehen, dass etwas nicht wirkt. Was ich
+   dabei gefunden habe, war schlimmer als die Formulierung — die Behauptung
+   war NIE GEMESSEN worden.
+
+   AUSGANGSLAGE. `_ziele-ohne-leser.json` fuehrte 45 Ziele mit dem Vermerk
+   „wirkt derzeit auf nichts". Diese Zahl stammte nicht aus einer Messung,
+   sondern aus einem Abgleich mit dem Zielregister: was die Verordnung nicht
+   als ZAHL einbaut, galt als wirkungslos. Das war in beide Richtungen
+   unbelegt — recherchiertes, geprueftes, eingespeistes Wissen wurde folgenlos
+   genannt, ohne dass jemand geprueft hatte, ob es nicht anders ankommt.
+
+   WAS SICH GEAENDERT HAT — die Kette endet nicht mehr an der Zahl:
+
+     Vorgabe ohne Zahl  →  hinweise (Verordnung)
+                        →  hinweisZeilen (Format)
+                        →  Wochenkarte, mit Herkunft und Ausschluessen
+
+   Ein Satz wie „aus isolierten Krafttests laesst sich die Laufleistung nicht
+   vorhersagen" aendert keine Satzzahl. Er aendert, was der Nutzer von seinen
+   Werten erwartet. Das IST Wirkung, und sie gehoert angezeigt.
+
+   WAS ICH NICHT GETAN HABE, obwohl der Auftrag es nahelegen koennte: eine
+   Aussage umdrehen. „Kein Zusammenhang" bleibt „kein Zusammenhang" — es steht
+   jetzt nur nicht mehr wirkungslos herum, sondern als Hinweis auf der Karte.
+   Einen Befund ins Gegenteil zu verkehren waere Erfindung, kein Fortschritt.
+
+   VIER EIGENE FEHLER AUF DEM WEG, alle beim Nachpruefen gefunden:
+
+   • DIE KETTE ENDETE DREI ZEILEN VOR DEM BILDSCHIRM. Die Bloecke A–D des
+     neuen Tests waren gruen, und auf KEINER Karte stand ein Hinweis:
+     `scheduler-v2` nahm aus der Verordnung nur `workout` und `flags`,
+     `week-projection` kannte das Feld nicht, die Oberflaeche rief
+     `hinweisZeilen` nirgends auf. Zum VIERTEN Mal dieselbe Fehlerklasse
+     (v8-335 eingespeist/niemand liest, v8-341 Modul/kein Aufrufer, v8-344
+     Ziel/kein Name). Sie faellt jedes Mal deshalb nicht auf, weil jedes
+     Einzelstueck geprueft ist und die NAHT nicht. Jetzt drei Proben auf die
+     Naht (H8, H9, H10).
+   • DER NEUE WEG WAR SELBST UNGEPRUEFT. `hinweisZeilen` hatte keinen
+     einzigen Test — aufgefallen erst beim Nachziehen der Zielregister-Proben.
+     Daher `knowledge_hinweise_test.mjs` mit 32 Zusicherungen.
+   • DERSELBE SATZ STAND ZWEIMAL AUF DER KARTE. GYM-HYP-003 nennt Last UND
+     Wiederholungen und traegt EINEN Satz. Aufgefallen nicht durch eine
+     Zusicherung, sondern beim LESEN der Testausgabe. Jetzt zusammengefasst
+     (`hinweise[].ziele`) und als Zusicherung festgehalten.
+   • DER SENSOR VERLOR EINE ABDECKUNG, DIE ER HATTE. Bis v8-348 fiel ein
+     vertippter Zielname dadurch auf, dass nichts ankam. Seit v8-349 kommt die
+     Aussage IMMER an — der Tippfehler waere unsichtbar geworden. Ersatz:
+     `_zielvokabular.json`, 55 Namen mit Bedeutung; ein Name, der dort nicht
+     steht, ist rot. Die Bremse sitzt jetzt am NAMEN statt an der Wirkung.
+
+   DER SENSOR RAET NICHT MEHR. `knowledge_targets_test.mjs` misst durch die
+   echte Kette: Paket → applyKnowledge → buildPrescription → hinweise/flags.
+   Gemessenes Ergebnis am 13.08.:
+
+       30 Paketziele · 1 als Wert · 24 als Hinweis · 5 bewusst gesperrt
+        0 unerklaert verschwunden
+       25 Notizziele · 21 kaemen nach technischer Freigabe an
+                     ·  4 bleiben medizinisch gesperrt
+
+   Die 5 + 4 gesperrten Ziele haengen an `medical_safety_review_pending`
+   (RUN-RTR-001, RUN-SAFE-001, RUN-ACH-001, GYM-RUMPF-002, RUN-ERHOL-001/002).
+   Das ist eine Entscheidung, kein Versaeumnis — und der Test verlangt fuer
+   jede Sperre einen benannten CODE, damit ein DEFEKT nie wie eine
+   Sicherheitssperre aussehen kann.
+
+   DIE QUITTUNGSLISTE IST VON 45 AUF 1 GESCHRUMPFT und hat eine engere
+   Bedeutung: sie fuehrt nur noch eine ZAHL, die der Vertrag zum Vorschreiben
+   freigegeben hat und die niemand anwendet. Der eine Eintrag ist
+   `plan.saetze_je_muskelgruppe` (5–6 Saetze je Muskelgruppe und WOCHE) — sein
+   Anwender ist die Wochenplanung, nicht die Einheit. Offener Punkt 2, benannt
+   statt verrechnet.
+
+   OFFEN GESAGT: die Zusicherung „jedes vorhandene Paket wird auch gemessen"
+   ist NICHT probengedeckt. Sie haengt an einer Liste im Test, und das
+   Probenwerkzeug mutiert nur Dateien unter app/. Steht so im Katalog.
+
+   GEAENDERT: prescription-factory.js (Zusammenfassung), scheduler-v2.js +
+   week-projection.js (die Naht), ui.js + styles.css (die Karte),
+   knowledge_targets_test.mjs (misst statt raet), knowledge_hinweise_test.mjs
+   (neu), _ziele-ohne-leser.json (45 → 1), _zielvokabular.json (neu).
+   Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   DIE SCHNITTMENGE IST KEINE ERFINDUNG (2026-08-13) · v8-348:
 
    ZWEI OFFENE PUNKTE ABGERAEUMT, beide aus der Liste, beide klein — und beide
    haben beim Bauen etwas ueber den Code verraten.
