@@ -42,7 +42,7 @@ const codes = res => (res.errors || []).map(e => e.code);
    Jeder Selector-Test nutzt PINS — außer den expliziten Pin-Negativtests. */
 const PINS = Object.freeze({
   mode: 'shadow',
-  expectedKnowledgeContractVersion: 6,
+  expectedKnowledgeContractVersion: 7,
   expectedKnowledgeVersion: 'kb-run-v3.0.0',
   expectedPackContentHash: KC.packContentHash(RP),
   expectedSourceRegistryVersion: 2,
@@ -50,7 +50,7 @@ const PINS = Object.freeze({
 });
 const pinsFor = (pack, registry, over) => Object.assign({
   mode: 'shadow',
-  expectedKnowledgeContractVersion: 6,
+  expectedKnowledgeContractVersion: 7,
   expectedKnowledgeVersion: pack.knowledgeVersion,
   expectedPackContentHash: KC.packContentHash(pack),
   expectedSourceRegistryVersion: registry.registryVersion,
@@ -90,10 +90,14 @@ const review = (rule, over) => Object.assign({
     return r.blocked === true && r.rules.length === 0 && codes(r).indexOf(expectCode[k]) >= 0;
   });
   ok('S0 Auswahl ohne JEDEN einzelnen der 5 Pins wird blockiert (je eigener stabiler Fehlercode)', all);
+  /* v8-347: Der Anker steht bewusst als LITERAL und wurde mit dem Vertrag von
+     6 auf 7 nachgezogen. Genau darum geht es: wer die Vertragssemantik
+     aendert, muss diese Zeile anfassen und weiss damit, dass jeder Pin im
+     Projekt nachgezogen gehoert. */
   ok('S0c falscher Contract-Version-Pin blockiert (Semantik des ausführenden Vertrags ist gepinnt)',
     (() => { const r = KC.selectRules(RP, KS, Object.assign({}, PINS, { expectedKnowledgeContractVersion: 5 }));
       return r.blocked === true && codes(r).indexOf('knowledge_contract_version_mismatch') >= 0; })() &&
-    KC.KNOWLEDGE_CONTRACT_VERSION === 6);
+    KC.KNOWLEDGE_CONTRACT_VERSION === 7);
   const noMode = Object.assign({}, PINS); delete noMode.mode;
   ok('S0b fehlender Modus blockiert (missing_or_unknown_mode); leerer Pin ebenfalls',
     KC.selectRules(RP, KS, noMode).blocked && codes(KC.selectRules(RP, KS, noMode)).indexOf('missing_or_unknown_mode') >= 0 &&

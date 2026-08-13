@@ -110,6 +110,22 @@
      im Flag, woher sie kommt. Ohne Wissen bleibt der Produktwert, ebenfalls
      benannt: `produktwert:rpeTempo`. Damit ist an jeder Verordnung ablesbar,
      welche Zahl eine Quelle hat und welche nicht. */
+  /* v8-347: Aufzaehlungen aus Wissen (Vertrag v7, art 'liste'). Bewusst OHNE
+     Produktwert-Fallback: eine erfundene Uebungsliste waere schlimmer als
+     keine. Gibt es nichts, gibt es null — der Aufrufer entscheidet sichtbar. */
+  function _ausWissenListe(ziel, req) {
+    /* Eigener Variablenname (nicht `w` wie in _zahl): sonst steht diese Zeile
+       zweimal wortgleich in der Datei und der Anker der Probe F12 wird
+       mehrdeutig. Das Probenwerkzeug hat genau das gemeldet. */
+    var vorgaben = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;
+    if (!vorgaben || !ziel) return null;
+    for (var i = 0; i < vorgaben.length; i++) {
+      var v = vorgaben[i];
+      if (v && v.ziel === ziel && v.art === 'liste' && Array.isArray(v.werte) && v.werte.length) return v;
+    }
+    return null;
+  }
+
   function _zahl(schluessel, ziel, req, flags) {
     var w = (req && req.knowledge && Array.isArray(req.knowledge.vorgaben)) ? req.knowledge.vorgaben : null;
     if (w && ziel) {
@@ -172,6 +188,23 @@
     } },
     strength_general: { v: 1, goal: 'strength', build: function (durMin, ev, flags, req) {
       var exs = (req && Array.isArray(req.exercises) && req.exercises.length) ? req.exercises : null;
+      /* v8-347 — SECHS REGELN AUS DREI QUELLEN zielen auf `session.exercises`,
+         und bis hierher endete das Ziel im Nichts: die Verordnung fuehrte eine
+         Uebungsliste, las sie aber ausschliesslich aus `req.exercises`.
+         Seit Vertrag v7 kann Wissen Aufzaehlungen tragen — also wird hier
+         gelesen, BEVOR die generische Einheit entsteht.
+
+         Die Reihenfolge bleibt streng: (1) was der Aufrufer mitgibt,
+         (2) was aus Wissen kommt — mit Herkunft im Flag, (3) die generische
+         Einheit mit Flag. Ohne Wissen aendert sich kein Zeichen am bisherigen
+         Verhalten; erfunden wird an keiner Stelle etwas. */
+      if (!exs) {
+        var wListe = _ausWissenListe('session.exercises', req);
+        if (wListe) {
+          flags.push('exercises_aus_wissen:' + wListe.regelId);
+          exs = wListe.werte.map(function (name) { return { exerciseId: name }; });
+        }
+      }
       if (!exs) { flags.push('no_exercise_list_generic_session'); return [
         { type: 'exercise', exercise_id: 'generic_strength_session', sets: 1, repetitions: null, rest_seconds: null,
           target: _rpeTarget(_zahl('rpeKraft', 'session.rpe_kraft', req, flags)),
@@ -272,10 +305,10 @@
      ist kein Vertragsbruch, sondern Wissen, das noch keine Verwendung hat.
      Der Unterschied gehoert sichtbar gemacht, nicht bestraft.
      ============================================================ */
-  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds',
-    'session.rpe_easy', 'session.rpe_intervall', 'session.rpe_kraft', 'session.rpe_long',
-    'session.rpe_tempo', 'session.rpe_warmup', 'session.sets', 'session.trabpause_min',
-    'session.warmup_anteil'];
+  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.intervall_min',
+    'session.rest_seconds', 'session.rpe_easy', 'session.rpe_intervall', 'session.rpe_kraft',
+    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup', 'session.sets',
+    'session.trabpause_min', 'session.warmup_anteil'];
 
   function _freeze(o) { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.keys(o).forEach(function (k) { _freeze(o[k]); }); Object.freeze(o); } return o; }
   O.prescriptionFactory = _freeze({ VERSION: VERSION, TEMPLATE_IDS: Object.keys(TEMPLATES).sort(),

@@ -187,6 +187,105 @@
     };
   }
 
+  /* ---------- v7: mehrere Groessen und Listen ----------
+     `zahlen` darf sein:
+       Objekt  {bereich:{…}, …}                  → gilt fuer ALLE Ziele (wie bis v6)
+       Liste   [{ziel:'session.sets', …}, …]     → jede Groesse an IHREM Ziel
+     `auswahl` ist die neue Wertart fuer Aufzaehlungen:
+       Liste   [{ziel:'session.exercises', werte:[…], …}, …]
+
+     Warum das Ziel zur Groesse gehoert: bis v6 hing die Zahl an der REGEL,
+     und `knowledge-application` gab sie jedem Ziel der Regel. Eine Regel mit
+     `session.last_prozent_1rm` UND `session.repetitions` haette denselben
+     Bereich fuer Last und Wiederholungen bedeutet. */
+  function buildWertBloecke(r, ausgaben, errs) {
+    var out = [];
+    var z = r.zahlen;
+    if (z !== undefined && z !== null) {
+      var liste = Array.isArray(z) ? z : [z];
+      if (Array.isArray(z) && !z.length) {
+        _err(errs, 'regel.zahlen', 'zahlen_leer', 'Leere Liste. Entweder Groessen angeben oder das Feld weglassen.');
+      }
+      liste.forEach(function (eintrag, i) {
+        var pfad = Array.isArray(z) ? ('regel.zahlen[' + i + ']') : 'regel.zahlen';
+        var ziel = (eintrag && typeof eintrag.ziel === 'string' && eintrag.ziel.trim()) ? eintrag.ziel.trim() : null;
+        if (ziel && ausgaben && ausgaben.indexOf(ziel) < 0) {
+          _err(errs, pfad + '.ziel', 'zahlen_ziel_unbekannt',
+            'Das Ziel "' + ziel + '" steht nicht in wirkt_auf. Eine Groesse ohne passendes Ziel wirkt nirgends.');
+        }
+        if (Array.isArray(z) && !ziel) {
+          _err(errs, pfad + '.ziel', 'zahlen_ziel_fehlt',
+            'Bei mehreren Groessen muss jede ihr Ziel nennen, z. B. "ziel": "session.sets".');
+        }
+        var q = buildQuantitative(eintrag, errs, pfad);
+        if (q) out.push({ art: 'quantitative', quant: q, ziel: ziel });
+      });
+    }
+    var a = r.auswahl;
+    if (a !== undefined && a !== null) {
+      if (!Array.isArray(a)) {
+        _err(errs, 'regel.auswahl', 'auswahl_form', 'Der Abschnitt "auswahl" muss eine Liste sein.');
+      } else {
+        a.forEach(function (eintrag, i) {
+          var pfad = 'regel.auswahl[' + i + ']';
+          var ziel = (eintrag && typeof eintrag.ziel === 'string' && eintrag.ziel.trim()) ? eintrag.ziel.trim() : null;
+          if (!ziel) {
+            _err(errs, pfad + '.ziel', 'auswahl_ziel_fehlt', 'Jede Auswahl muss ihr Ziel nennen, z. B. "ziel": "session.exercises".');
+          } else if (ausgaben && ausgaben.indexOf(ziel) < 0) {
+            _err(errs, pfad + '.ziel', 'auswahl_ziel_unbekannt',
+              'Das Ziel "' + ziel + '" steht nicht in wirkt_auf.');
+          }
+          var sel = buildSelection(eintrag, errs, pfad);
+          if (sel) out.push({ art: 'liste', selection: sel, ziel: ziel });
+        });
+      }
+    }
+    return out;
+  }
+
+  /* Eine Aufzaehlung traegt dieselben Pflichtangaben wie eine Zahl — nur der
+     Bereich wird durch die Werte ersetzt. Wer eine Uebungsliste vorschreibt,
+     schuldet dieselben Antworten wie bei einer Satzzahl. */
+  function buildSelection(a, errs, pfad) {
+    if (!isObj(a)) { _err(errs, pfad, 'auswahl_form', 'Jeder Auswahl-Eintrag muss ein Objekt sein.'); return null; }
+    var f = function (k, hinweis) {
+      var v = str(a[k]);
+      if (!v) _err(errs, pfad + '.' + k, 'auswahl_' + k + '_fehlt', hinweis);
+      return v;
+    };
+    var population = f('gilt_fuer', 'Fuer wen gilt die Auswahl? Eine Liste ohne Population ist keine Aussage.');
+    var quelltext = f('so_steht_es_da', 'Wie steht die Auswahl in der Quelle? Kurz, in eigenen Worten.');
+    var unsicherheit = f('unsicherheit', 'Wie belastbar ist die Auswahl? Z. B. "Beispiele, keine abschliessende Liste".');
+    var grenzen = f('sicherheitsgrenzen', 'Wo ist Schluss? Z. B. "keine Sprungbelastung bei akuten Beschwerden".');
+    var werte = strList(a.werte);
+    if (!werte || !werte.length) {
+      _err(errs, pfad + '.werte', 'auswahl_werte_fehlen', 'Welche Eintraege? Liste, z. B. ["kniebeuge", "ausfallschritt"].');
+    } else {
+      for (var i = 0; i < werte.length; i++) {
+        if (werte.indexOf(werte[i]) !== i) {
+          _err(errs, pfad + '.werte', 'auswahl_werte_doppelt', 'Der Eintrag "' + werte[i] + '" kommt doppelt vor.');
+          break;
+        }
+      }
+    }
+    if (!Array.isArray(a.nicht_bei)) {
+      _err(errs, pfad + '.nicht_bei', 'auswahl_ausschluesse_fehlen', 'Wann gilt die Auswahl NICHT? Leere Liste [] ist erlaubt, aber bewusst.');
+    }
+    if (errs.length) return null;
+    return {
+      schemaVersion: 1,
+      values: werte,
+      population: population,
+      exclusions: strList(a.nicht_bei) || [],
+      sourceSelectionStatement: quelltext,
+      uncertaintyNote: unsicherheit,
+      safetyBounds: grenzen,
+      /* Wie bei Zahlen: eine unabhaengige Validierung behauptet man nicht per
+         Eingabefeld. Bleibt false, bis sie wirklich vorliegt. */
+      independentValidation: false
+    };
+  }
+
   /* ---------- Quantitatives Paket ---------- */
   function buildQuantitative(z, errs, pfad) {
     if (z === undefined || z === null) return null;
@@ -295,11 +394,15 @@
     var ausgaben = strList(r.wirkt_auf);
     if (!ausgaben) _err(errs, 'regel.wirkt_auf', 'wirkung_fehlt', 'Worauf wirkt die Regel? Z. B. ["session.exercises"] oder ["session.sets"].');
 
-    var quant = buildQuantitative(r.zahlen, errs, 'regel.zahlen');
+    var bloecke = buildWertBloecke(r, ausgaben, errs);
     if (errs.length) return null;
 
-    var claim = {
-      claimId: id + '-C1',
+    /* v7: JE WERTBLOCK EIN CLAIM. Traegt die Regel keinen Wert, entsteht wie
+       bis v6 genau ein qualitativer Claim -C1. Traegt sie einen einzelnen
+       Zahlblock ohne `ziel`, entsteht ebenfalls genau -C1 ohne appliesTo —
+       Zeichen fuer Zeichen dasselbe Ergebnis wie vorher. Erst mehrere Groessen
+       erzeugen -C2, -C3 …, jede an ihr Ziel gebunden. */
+    var basis = {
       statement: aussage,
       sourceRefs: quellen || [],
       decisionRole: decisionRole,
@@ -307,16 +410,27 @@
       applicability: (r.wann ? str(r.wann) : null) || geltung.join(', '),
       outcome: thema,
       directness: (str(r.bezug) === 'indirekt') ? 'indirect' : ((str(r.bezug) === 'teilweise') ? 'partial' : 'direct'),
-      use: quant ? 'quantitative' : 'qualitative',
       uncertainties: unsicher,
       essential: true
     };
-    if (quant) claim.quantitative = quant;
-    if (sourceCombination) claim.sourceCombination = sourceCombination;
-    if (decisionRole === 'evidence') {
-      claim.supportBasis = str(r.beleg) || ('Aussage der Quelle zu: ' + thema);
-      claim.synthesis = { consistency: (quellen && quellen.length > 1) ? 'consistent' : 'single_source' };
+    function _claimAus(block, nr) {
+      var c = {}; for (var k in basis) if (Object.prototype.hasOwnProperty.call(basis, k)) c[k] = basis[k];
+      c.claimId = id + '-C' + nr;
+      c.use = block ? block.art : 'qualitative';
+      if (block && block.art === 'quantitative') c.quantitative = block.quant;
+      if (block && block.art === 'liste') c.selection = block.selection;
+      if (block && block.ziel) c.appliesTo = [block.ziel];
+      if (sourceCombination) c.sourceCombination = sourceCombination;
+      if (decisionRole === 'evidence') {
+        c.supportBasis = str(r.beleg) || ('Aussage der Quelle zu: ' + thema);
+        c.synthesis = { consistency: (quellen && quellen.length > 1) ? 'consistent' : 'single_source' };
+      }
+      return c;
     }
+    var claims = bloecke.length
+      ? bloecke.map(function (b, i) { return _claimAus(b, i + 1); })
+      : [_claimAus(null, 1)];
+    var claim = claims[0];
 
     return {
       ruleId: id,
@@ -335,7 +449,7 @@
       safetyLimits: safety || [],
       contraindications: strList(r.gegenanzeigen) || [],
       conservativeFallback: fallback,
-      claims: [claim],
+      claims: claims,
       medicalSafetyRelevant: medizinisch,
       /* NIE eine fingierte Freigabe. Alles Eingespeiste startet ungeprueft;
          freigeben kann nur ein qualifizierter Pruefer ueber den Vertragsweg. */

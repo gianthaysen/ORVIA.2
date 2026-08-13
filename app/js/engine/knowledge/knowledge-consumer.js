@@ -47,7 +47,7 @@
          am 2026-08-13. Ändert sich das Paket, gehören diese beiden Zeilen
          bewusst nachgezogen — sonst blockiert es, und das ist richtig so. */
       pins: {
-        expectedKnowledgeContractVersion: 6,
+        expectedKnowledgeContractVersion: 7,
         expectedKnowledgeVersion: 'kb-gym-v1.0.0',
         expectedPackContentHash: 'fnv1a-6d2e4658',
         expectedSourceRegistryVersion: 1,

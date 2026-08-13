@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/knowledge/knowledge-application.js",
+  "test": "supabase/tests/knowledge_v7_test.mjs",
+  "note": "Vertrag v7 bindet den Wert ans Ziel und fuehrt Aufzaehlungen ein. Diese Proben sichern, dass beides wirklich prueft — und dass die alte Form nicht heimlich mitveraendert wurde.",
+  "probes": [
+    {
+      "id": "V7A",
+      "pattern": "neighbour_guard",
+      "title": "appliesTo wird ignoriert — die Zahl landet wieder an jedem Ziel",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "        return !Array.isArray(c.appliesTo) || c.appliesTo.indexOf(ziel) >= 0;",
+      "replace": "        return true;",
+      "expectTest": "… und jede trägt IHREN Wert, nicht den der anderen",
+      "history": "Genau der Zustand bis v6: eine Regel mit session.sets UND session.repetitions haette denselben Bereich an beide gegeben. Aufgefallen ist es nie, weil keine Regel im Bestand beides mit Zahl fuehrte."
+    },
+    {
+      "id": "V7B",
+      "pattern": "value_not_type",
+      "title": "eine Auswahlliste darf ohne Autorisierung vorschreiben",
+      "file": "js/engine/knowledge/knowledge-contracts.js",
+      "find": "    if (!selectionSchemaValid(claim)) return false;\n    return _prescriptiveCommonAllowed(claim, sourcesById, rule);",
+      "replace": "    return true;",
+      "expectTest": "eine Notfallregel liefert eine Empfehlung, aber KEINE vorschreibende Liste",
+      "history": "Eine Uebungsliste aus einer schwachen Quelle darf so wenig vorschreiben wie eine Satzzahl daraus. Die erste Fassung dieser Probe zielte auf eine technisch ungepruefte Regel — die wird schon bei der AUSWAHL ausgeschlossen, die Probe blieb wirkungslos und meldete 'gap'. Jetzt trifft sie eine Notfallregel: die besteht die Auswahl und scheitert genau an der Vorschreib-Autorisierung."
+    },
+    {
+      "id": "V7C",
+      "pattern": "data_lacks_var",
+      "title": "zwei verschiedene Uebungslisten werden stillschweigend gemischt",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "      for (var i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;",
+      "replace": "      for (var i = 0; i < x.length; i++) if (false) return false;",
+      "expectTest": "zwei verschiedene Listen gleicher Klasse ergeben KEINE Vorgabe, sondern einen Konflikt",
+      "history": "Aus zwei Listen eine zu machen waere dasselbe wie aus 3 und 5 Saetzen 4 zu machen: ein Ergebnis, das keine Quelle genannt hat. Die erste Fassung dieser Probe zielte auf den Laengenvergleich — bei ['kniebeuge'] gegen ['beinpresse'] sind die Laengen gleich, die Probe blieb wirkungslos und meldete korrekt 'gap'."
+    },
+    {
+      "id": "V7D",
+      "pattern": "fixture_masks",
+      "title": "die Verordnung nimmt eine andere Uebungsliste als die Quelle nennt",
+      "file": "js/engine/prescription-factory.js",
+      "find": "      if (v && v.ziel === ziel && v.art === 'liste' && Array.isArray(v.werte) && v.werte.length) return v;",
+      "replace": "      if (v && v.ziel === ziel) return { regelId: v.regelId, werte: ['kniebeuge'] };",
+      "expectTest": "mit Wissen entstehen die Übungen der Quelle",
+      "history": "Der Rueckfall in die Gewohnheit, die v8-336 und v8-338 schon zweimal ausgeraeumt haben: lieber irgendetwas anzeigen als eine Luecke zugeben. Hier wuerde die Verordnung eine Liste bauen, die in keiner Quelle steht."
+    },
+    {
+      "id": "V7E",
+      "pattern": "value_not_type",
+      "title": "eine Groesse zeigt auf ein Ziel, das die Regel nicht nennt",
+      "file": "js/engine/knowledge/knowledge-ingest.js",
+      "find": "        if (ziel && ausgaben && ausgaben.indexOf(ziel) < 0) {",
+      "replace": "        if (false) {",
+      "expectTest": "eine Größe für ein Ziel, das die Regel nicht nennt, wird ABGEWIESEN",
+      "history": "Der Tippfehlerschutz. Ohne ihn wandert `session.rest_secons` durch die ganze Kette und wirkt nirgends — genau der Befund, der zum Zielregister gefuehrt hat."
+    }
+  ]
+}

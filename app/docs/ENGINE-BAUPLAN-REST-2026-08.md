@@ -4077,3 +4077,102 @@ Das sind wenige; den Großteil löst erst v7.
 - **Kein Produktivcode geändert**
 - Suite **258/0** bei 7 übersprungenen (265 Dateien), **130 Proben in 16
   Katalogen**, 126 gefahren / 4 übersprungen
+
+---
+
+## 37 · Vertrag v7 — der Wert gehört zum Ziel (v8-347)
+
+### 37.1 Der Befund, der beim Planen auftauchte
+
+§36 nannte zwei Grenzen: eine Zahl je Regel, keine Listen. Beim Schreiben des
+Umsetzungsplans kam die gemeinsame Wurzel zum Vorschein — und sie war ein
+echter Konstruktionsfehler, kein Platzproblem:
+
+**Der Wert hing an der Regel, nicht am Ziel.** `_ausRegel` erzeugte je Ziel
+eine Vorgabe und nahm dafür den ersten freigegebenen Zahl-Claim der Regel —
+unabhängig davon, für welches Ziel er gedacht war.
+
+```
+Regel mit outputs [session.last_prozent_1rm, session.repetitions]
+und einer Zahl {min:4,max:5}
+  → beide Ziele bekommen 4–5
+  → „Last in Prozent: 4–5" und „Wiederholungen: 4–5"
+```
+
+Aufgefallen ist es nie, weil keine Regel im Bestand zwei Ziele **und** eine
+Zahl führte. GYM-HYP-003 hat genau diese zwei Ziele — und keine Zahl.
+
+Gemessen und im Test festgehalten:
+
+```
+ALT: eine Zahl, zwei Ziele  →  beide {min:4,max:5} „Sätze"
+NEU: zwei Größen            →  4–5 Sätze UND 3–4 Wiederholungen
+```
+
+### 37.2 Was v7 ändert
+
+1. **`appliesTo`** bindet einen Claim an ein Ziel. Fehlt das Feld, gilt er für
+   alle Ziele — das Verhalten bis v6. Rückwärtskompatibilität ist damit keine
+   Zusatzarbeit, sondern der Normalfall des neuen Codes: **kein bestehendes
+   Paket musste angefasst werden.**
+2. **`use: 'liste'`** mit `selection` ist die neue Wertart für Aufzählungen.
+   Dieselben Pflichtangaben (Population, Quelltext, Unsicherheit,
+   Sicherheitsgrenzen, Ausschlüsse) und **dieselbe Autorisierung** wie eine
+   Zahl — die gemeinsame Kette steht jetzt in `_prescriptiveCommonAllowed`,
+   damit Listen nicht mit einer zweiten, leicht abweichenden Kopie geprüft
+   werden.
+3. **Tippfehlerschutz:** Eine Größe, die auf ein Ziel zeigt, das die Regel
+   nicht nennt, wird beim Einspeisen abgewiesen. Genau der Fall
+   (`session.rest_secons`), der zum Zielregister führte, fällt jetzt eine
+   Stufe früher auf.
+
+### 37.3 Zum ersten Mal bis auf die Karte
+
+`session.exercises` war Ziel von sechs Regeln aus drei Quellen und endete im
+Nichts.
+
+```
+mit Wissen  → ["kniebeuge","ausfallschritt"]
+              flags: exercises_aus_wissen:R-EX · sets_aus_wissen:R-SETS
+ohne Wissen → generische Einheit, Zeichen für Zeichen wie bisher
+Übungen ohne Satzzahl → Verordnung GESPERRT (schema_invalid) statt geraten
+```
+
+Der letzte Punkt ist der wichtigste: Eine Übungsliste allein reicht nicht.
+`strength-plan@1` verlangt eine Satzzahl ohne Default — und das gilt auch,
+wenn die Übungen aus Wissen kommen.
+
+### 37.4 Vier eigene Fehler, alle vom Werkzeug gefangen
+
+| | Was schiefging | Wie es auffiel |
+|---|---|---|
+| V7B | zielte auf eine technisch ungeprüfte Regel — die wird schon bei der **Auswahl** ausgeschlossen, die Mutation blieb wirkungslos | `gap`; dabei kam eine **echte Testlücke** heraus: die Listen-Autorisierung war ungeprüft. Jetzt trifft die Probe eine Notfallregel, die die Auswahl besteht |
+| V7C | zielte auf den Längenvergleich zweier Listen — bei einelementigen Listen wirkungslos | `gap` |
+| F12 | meine neue Hilfsfunktion dupliziert eine Zeile aus `_zahl` → der Anker einer **bestehenden** Probe wurde mehrdeutig | `ambiguous`; eigener Variablenname löst es |
+| 5 Proben | verloren durch die Umbauten ihren Anker | `not_applied` — kein Beleg, also alle nachgezogen |
+
+### 37.5 Migration
+
+- Vertragsversion 6 → 7; Pins in `knowledge-consumer` und
+  `running-capacity-factory` nachgezogen
+- Zwei Testdateien mit gepinnter Version angepasst. Dabei fiel auf, dass
+  `batch3b1` in der Überschrift noch „Contract 5" sagte, während 6 geprüft
+  wurde — ein Textfehler aus dem Sprung auf v6, jetzt beides auf 7
+- **Kohorten-Pin `023ee59b` nicht betroffen**, unverändert
+- Paket-Hashes unverändert, weil kein Paketinhalt geändert wurde
+
+### 37.6 Stand
+
+- Gesamtsuite **259/0** bei 7 übersprungenen (266 Dateien)
+- **135 Proben in 17 Katalogen**, 131 gefahren / 4 übersprungen
+- neuer Test `knowledge_v7_test.mjs` (24 Zusicherungen), neuer Katalog
+  `knowledge-v7` (5 Proben)
+- `session.exercises` ist aus `_ziele-ohne-leser.json` **verschwunden** — die
+  Quittungsliste schrumpft, wenn Wissen ankommt. Genau so ist sie gemeint.
+
+### 37.7 Offen
+
+Acht Regeln nennen Zahlen im Text, zwei führen sie strukturiert. Das ließe
+sich jetzt nachtragen — es verlangt aber Zuordnungen (welche Größe auf welches
+Ziel?) und Sicherheitsgrenzen am echten Quellenmaterial. Das ist eine
+fachliche Entscheidung an Gians Quellen, keine Programmierarbeit.

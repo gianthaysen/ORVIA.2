@@ -8,20 +8,20 @@
       "pattern": "value_not_type",
       "title": "das Register verschweigt ein Ziel, das die Verordnung wirklich liest",
       "file": "js/engine/prescription-factory.js",
-      "find": "    'session.rpe_tempo', 'session.rpe_warmup', 'session.sets', 'session.trabpause_min',",
-      "replace": "    'session.rpe_tempo', 'session.rpe_warmup', 'session.trabpause_min',",
+      "find": "    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup', 'session.sets',",
+      "replace": "    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',",
       "expectTest": "kein gelesenes Ziel fehlt im Register",
-      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut."
+      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
     },
     {
       "id": "ZR2",
       "pattern": "data_lacks_var",
       "title": "das Register erfindet ein Ziel, das niemand liest",
       "file": "js/engine/prescription-factory.js",
-      "find": "    'session.warmup_anteil'];",
-      "replace": "    'session.warmup_anteil', 'session.last_prozent_1rm'];",
+      "find": "    'session.trabpause_min', 'session.warmup_anteil'];",
+      "replace": "    'session.trabpause_min', 'session.warmup_anteil', 'session.last_prozent_1rm'];",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
-      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE."
+      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
     },
     {
       "id": "ZR3",
@@ -38,10 +38,10 @@
       "pattern": "fixture_masks",
       "title": "das Register bestaetigt sich selbst aus dem eigenen Quelltext",
       "file": "js/engine/prescription-factory.js",
-      "find": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds',",
-      "replace": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds', 'session.erfunden_xy',",
+      "find": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.intervall_min',",
+      "replace": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.erfunden_xy', 'session.intervall_min',",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
-      "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt."
+      "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
     },
     {
       "id": "ZR5",

@@ -60,7 +60,7 @@
     /* v8-329: bewusst auf Wissensvertrag v6 nachgezogen. Die Capacity-Factory
        bleibt im Modus 'shadow' — der neue Modus 'advisory' ist NICHT für die
        Capacity-Berechnung gedacht, sondern für Vorgaben (Prescription). */
-    expectedKnowledgeContractVersion: 6,
+    expectedKnowledgeContractVersion: 7,
     expectedKnowledgeVersion: 'kb-run-v3.0.0',
     expectedPackContentHash: 'fnv1a-544d89fa',
     expectedSourceRegistryVersion: 2,

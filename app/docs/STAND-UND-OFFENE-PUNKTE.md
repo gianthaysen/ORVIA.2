@@ -1,9 +1,10 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-346, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-346 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-347, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-347 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-346) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§36).
+`sw.js` (Versionsköpfe v8-329 bis v8-347) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§37).
+Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
 > Suite und Proben stimmten. Zwei Aussagen nicht: die Coverage-Matrix führte
@@ -96,41 +97,43 @@ Zusicherung von der Factory auf den Wochenplan gehoben.
 `running-knowledge-pack-*.js` geschrieben und nicht verdrahtet. Blockiert
 durch Punkt 1.
 
-### 3b · Warum nur 1 von 30 ankommt — **zwei Grenzen des Vertrags**
-Der Sensor (v8-344/345) misst den Zustand; am 13.08. kam die Ursache dazu, und
-sie ist keine Nachlässigkeit beim Einspeisen.
+### 3b · Die zwei Grenzen — **mit v7 aufgehoben**
+Bis v8-346 galt: von 30 Zielen kommt eines an, und schuld waren zwei Grenzen
+des Vertrags. Beide sind seit **v8-347 (Vertrag v7)** weg.
 
-**Grenze 1 — der Vertrag kennt nur EINEN Zahlbereich je Regel.**
-`zahlen` fasst `{min, max}` mit *einer* Ausgabe-Einheit. Reale Dosisangaben
-sind mehrdimensional:
+**Die eigentliche Wurzel** fand sich erst beim Planen: Der Wert hing an der
+**Regel**, nicht am **Ziel**. Eine Regel mit zwei Zielen und einer Zahl gab
+diese Zahl beiden Zielen — bei `session.last_prozent_1rm` + `session.repetitions`
+hätte derselbe Bereich für Last und Wiederholungen gegolten.
 
 ```
-RUN-RE-003 (Sperlich): „vier bis fünf Serien zu drei bis vier Wiederholungen
-                        je Trainingseinheit über sechs bis zehn Wochen"
-                        → drei Größen, ein Feld
+ALT: eine Zahl, zwei Ziele  → beide {min:4,max:5} „Sätze"
+NEU: zwei Größen            → 4–5 Sätze UND 3–4 Wiederholungen
 ```
 
-Deshalb tragen **8 Regeln eine Zahl im Text, aber nur 2 im Feld `zahlen`**.
-Wer das den Einspeisenden vorwirft, verlangt etwas, das die Struktur nicht
-hergibt. Der Test weist die Zahl seit v8-346 bei jedem Lauf aus — als
-Ausgabe, nicht als Rot, genau aus diesem Grund.
+Was v7 kann:
 
-**Grenze 2 — der Vertrag kennt keine Listen.**
-`session.exercises` ist das Ziel von **sechs Regeln aus drei Quellen** und
-damit der lohnendste Anschluss im Projekt. Eine Übungsliste ist aber kein
-Zahlbereich; der Vertrag kann sie überhaupt nicht ausdrücken. Der Anschluss
-scheitert nicht an der Leitung und nicht an der Erfassung, sondern daran,
-dass es keine Wertart dafür gibt.
+| | |
+|---|---|
+| **Mehrere benannte Größen je Regel** | `zahlen: [{ziel:'session.sets', …}, {ziel:'session.repetitions', …}]`. Mehrdimensionale Dosis ist erfassbar. |
+| **Aufzählungen** | `auswahl: [{ziel:'session.exercises', werte:[…]}]` — mit denselben Pflichtangaben und derselben Autorisierung wie eine Zahl. |
+| **Tippfehlerschutz** | Eine Größe für ein Ziel, das die Regel nicht nennt, wird beim Einspeisen abgewiesen. |
+| **Rückwärtskompatibel** | Ein Zahlblock ohne `ziel` verhält sich exakt wie bis v6. Kein bestehendes Paket musste geändert werden. |
 
-**Was das für „alle Probleme beheben" heißt:** Der nächste echte Schritt ist
-eine Vertragserweiterung v6 → v7 mit (a) mehreren benannten Größen je Regel
-und (b) einer Listen-Wertart. Das berührt Pins, Paket-Hashes, die
-Kohortenprüfung und alle bestehenden Pakete — also nichts, was nebenbei
-passiert. Umsetzungsplan steht aus, Freigabe ebenso.
+**`session.exercises` kommt an** — zum ersten Mal reicht die Kette von der
+Quelle bis auf die Trainingskarte:
 
-Was **ohne** Vertragsänderung geht und nichts kostet: die Regeln mit genau
-einer Größe (`plan.plyometrie_frequenz`: zwei bis drei Einheiten je Woche)
-nachtragen. Das sind wenige — den Großteil löst erst v7.
+```
+mit Wissen  → ["kniebeuge","ausfallschritt"]  flags exercises_aus_wissen:…
+ohne Wissen → generische Einheit, unverändert
+Übungen ohne Satzzahl → Verordnung GESPERRT statt geraten
+```
+
+**Offen bleibt die Erfassungsarbeit.** Acht Regeln nennen Zahlen im Text, zwei
+führen sie strukturiert. Das ließe sich jetzt nachtragen — es verlangt aber
+Zuordnungen (welche Größe auf welches Ziel?) und Sicherheitsgrenzen am echten
+Quellenmaterial. Das ist deine Entscheidung, nicht meine; der Test weist die
+Quote bei jedem Lauf aus.
 
 ### 4 · Konfliktlösung — noch offene Feinheit
 Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
@@ -277,15 +280,17 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-346)
+## Zahlen zum Nachprüfen (v8-347)
 
-- Gesamtsuite **258/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
-  **Nur mit Chromium** — ohne Browser-Binary sind es 236/0 bei 29 übersprungenen,
+- Gesamtsuite **259/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
+  **Nur mit Chromium** — ohne Browser-Binary sind es 237/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **130 Proben in 16 Katalogen**, 126 gefahren / 4 übersprungen
+- **135 Proben in 17 Katalogen**, 131 gefahren / 4 übersprungen
 - **Ziele mit Leser: 1 von 30** aus Paketen, 0 von 14 aus Notizen — die
   ehrlichste Zahl über den Stand der Wissenskette, siehe Punkt 3b
-- 38 Quittungen in `_ziele-ohne-leser.json`, jede mit Begründung
+- 37 Quittungen in `_ziele-ohne-leser.json` — eine **weniger** als gestern:
+  `session.exercises` hat seit v7 einen Leser und ist herausgefallen
+- **Wissensvertrag: Version 7**
 - **Zahlen: 2 Regeln führen sie strukturiert, 8 nennen sie nur im Text** — der
   Grund steht in Punkt 3b (das Feld fasst nur eine Größe)
 - **Regeln mit maschinenlesbarem Zahlwert: Gym 2 von 4, Laufen 0 von 14** —

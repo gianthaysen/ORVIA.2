@@ -36,10 +36,10 @@
       "pattern": "fixture_masks",
       "title": "eine nicht freigegebene Zahl wird trotzdem als Vorgabe ausgegeben",
       "file": "js/engine/knowledge/knowledge-application.js",
-      "find": "        if (KC.prescriptiveNumberAllowed(c, sourcesById, regel)) { mitZahl = c; break; }",
-      "replace": "        { mitZahl = c; break; }",
+      "find": "          if (KC.prescriptiveNumberAllowed(c, sourcesById, regel)) { if (!mitZahl) mitZahl = c; }",
+      "replace": "          if (true) { if (!mitZahl) mitZahl = c; }",
       "expectTest": "eine Notfallregel wird ausgewählt, gibt aber KEINE Zahl vor",
-      "history": "blieb im Probenlauf v8-335 gruen: alle bisherigen Faelle wurden schon vom Vertrag aussortiert und erreichten die Zahlenpruefung gar nicht. Geschlossen mit einer Notfallregel — sie wird ausgewaehlt, darf aber nie eine Zahl vorschreiben."
+      "history": "blieb im Probenlauf v8-335 gruen: alle bisherigen Faelle wurden schon vom Vertrag aussortiert und erreichten die Zahlenpruefung gar nicht. Geschlossen mit einer Notfallregel — sie wird ausgewaehlt, darf aber nie eine Zahl vorschreiben. Anker in v8-347 nachgezogen: die Claim-Auswahl haengt seit Vertrag v7 am Ziel (appliesTo), die Zeile hat sich dadurch geaendert."
     },
     {
       "id": "V5",
@@ -170,10 +170,10 @@
       "pattern": "data_lacks_var",
       "title": "der Konflikt nennt die Regeln, aber nicht mehr die Werte",
       "file": "js/engine/knowledge/knowledge-application.js",
-      "find": "          werte: spitze.map(function (v) { return v.wert || null; }),",
-      "replace": "",
+      "find": "          werte: spitze.map(function (v) { return (v.art === 'liste') ? (v.werte || null) : (v.wert || null); }),",
+      "replace": "          werte: [],",
       "expectTest": "… und der Konflikt nennt die widersprüchlichen Werte, nicht nur die Regeln",
-      "history": "Ein Konflikt ohne die strittigen Zahlen laesst sich nicht entscheiden — er verlagert die Arbeit nur zurueck in den Quelltext."
+      "history": "Ein Konflikt ohne die strittigen Zahlen laesst sich nicht entscheiden — er verlagert die Arbeit nur zurueck in den Quelltext. Anker in v8-347 nachgezogen: die Zeile nennt seit v7 auch Auswahllisten."
     }
   ]
 }

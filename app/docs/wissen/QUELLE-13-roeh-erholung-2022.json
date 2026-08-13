@@ -1,0 +1,166 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — 66 Seiten, selbst extrahiert.",
+    "",
+    "HOECHSTE QUALIFIKATIONSSTUFE DER SAMMLUNG: kumulative Habilitationsschrift,",
+    "LMU Muenchen, Klinik fuer Psychiatrie und Psychotherapie, 2022. Sie baut auf",
+    "eigenen BEGUTACHTETEN Originalarbeiten auf (Roeh et al. 2018, 2019a, 2019b,",
+    "2020a, 2021b). Anders als bei Kanjuh oder Halbeck/Schultze ist die",
+    "Begutachtungshuerde hier genommen — deshalb 'mittel' und nicht 'niedrig'.",
+    "",
+    "NEUES THEMENFELD: Erholung nach Extrembelastung. Das deckt keine andere",
+    "Quelle der Sammlung ab, und es ist fuer dein Ironman-Ziel unmittelbar",
+    "relevanter als alles bisher Eingespeiste.",
+    "",
+    "ZWEI VON DREI REGELN SIND MEDIZINISCH HEIKEL und damit vom Vertrag in jedem",
+    "Modus abgewaehlt. Das ist Absicht: Herzfunktion nach einem Marathon und",
+    "Obergrenzen der Belastung sind nichts, worueber eine App Aussagen zu einer",
+    "einzelnen Person treffen darf. Die Befunde sollen dokumentiert sein.",
+    "",
+    "WAS ICH BEWUSST NICHT GEBAUT HABE: eine Regel aus den TMS-Daten. Die waren",
+    "zum Zeitpunkt der Schrift unveroeffentlicht.",
+    "",
+    "Auf unveroeffentlichte Daten stuetzt sich hier nichts."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-ROEH-2022",
+    "art": "studie",
+    "titel": "Auswirkungen von regelmaessiger Bewegung, akuter sportlicher Extrembelastung und Erholung anhand eines Marathonlaufes auf neurokognitive, psychopathologische und kardiovaskulaere Funktionen (Habilitationsschrift)",
+    "wer": "Dr. Astrid Roeh — Klinik und Poliklinik fuer Psychiatrie und Psychotherapie, LMU Muenchen",
+    "jahr": 2022,
+    "url": "https://edoc.ub.uni-muenchen.de/",
+    "sportarten": [
+      "running",
+      "triathlon"
+    ],
+    "gilt_fuer": [
+      "freizeitlaeufer",
+      "gut_trainierte_laeufer",
+      "marathon"
+    ],
+    "worum_gehts": [
+      "erholung",
+      "herzfunktion",
+      "extrembelastung",
+      "kognition"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Die kumulative Habilitationsschrift buendelt eigene begutachtete Originalarbeiten zu den Wirkungen von regelmaessigem Training, einer akuten Extrembelastung in Form eines Marathonlaufs und der anschliessenden Erholung. Drei Befunde stechen heraus. Nach dem Marathon war die diastolische Herzfunktion eingeschraenkt, und zwar ueber den gesamten Beobachtungszeitraum von zweiundsiebzig Stunden hinweg; die systolische Funktion blieb unberuehrt. Herzschaedigungsmarker normalisierten sich in derselben Zeit. Und kognitiv profitierten die Teilnehmenden am staerksten von der Kombination aus regelmaessigem Training UND zusaetzlichen akuten intensiven Einheiten, nicht vom regelmaessigen Training allein.",
+    "grenzen": "Habilitationsschrift, kumulativ auf begutachteten Originalarbeiten aufgebaut — das ist eine hoehere Stufe als eine Master- oder Bachelorarbeit, aber weiterhin die Darstellung der eigenen Arbeitsgruppe. Ob die beobachteten Herzveraenderungen bleibende Schaeden oder voruebergehende Anpassungen sind, konnte die Autorin nicht abschliessend klaeren; die Datenlage zu nachteiligen Effekten sehr hoher Belastungen ist insgesamt duenner als die zu positiven. Ein Teil der berichteten Messungen war zum Zeitpunkt der Schrift unveroeffentlicht; darauf stuetzt sich hier nichts. Die Autorin nennt als uebergreifendes Problem, dass Sportstudien mangels einheitlicher Vorgaben schlecht vergleichbar sind. Keine Aussage fuer Kinder oder Menschen mit Herzerkrankungen.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-ERHOL-001",
+      "thema": "erholung_nach_wettkampf",
+      "aussage": "Nach einem Marathonlauf war die diastolische Herzfunktion ueber den gesamten beobachteten Zeitraum von zweiundsiebzig Stunden eingeschraenkt, waehrend die systolische Funktion unbeeintraechtigt blieb und die Herzschaedigungsmarker sich in derselben Zeit normalisierten.",
+      "art": "studie",
+      "quellen": [
+        "SRC-ROEH-2022"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "herzerkrankung",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Ob es sich um voruebergehende Anpassungen oder um bleibende Veraenderungen handelt, konnte die Arbeit nicht klaeren",
+        "Der Beobachtungszeitraum endete nach zweiundsiebzig Stunden — was danach geschah, ist nicht erfasst",
+        "Andere Arbeiten fanden Marker fuer Zellschaeden bis zu sieben Tage erhoeht",
+        "Gemessen an Marathonteilnehmenden, nicht an Halbmarathon oder kuerzeren Wettkaempfen"
+      ],
+      "wenn_unsicher": "Im Zweifel nach einem Marathon laenger locker bleiben, als sich der Koerper anfuehlt — und keine Freigabe zu harten Einheiten aus einer App ableiten.",
+      "wirkt_auf": [
+        "plan.wettkampf_nachlauf"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ],
+      "medizinisch_heikel": true,
+      "sicherheitsgrenzen": [
+        "Diese Regel darf nie zu einer Aussage ueber die Herzgesundheit einer einzelnen Person werden",
+        "Kein Freigabe- oder Entwarnungssignal fuer die Rueckkehr ins Training",
+        "Bei Beschwerden nach einem Wettkampf endet die Zustaendigkeit der App: Verweis auf aerztliche Abklaerung"
+      ]
+    },
+    {
+      "id": "RUN-ERHOL-002",
+      "thema": "belastungsobergrenze",
+      "aussage": "Fuer sehr hohe und exzessive Belastungsumfaenge sind in der Literatur nachteilige Effekte bis hin zur Gesamtsterblichkeit beschrieben, unter anderem ueber ein hoeheres Risiko fuer Herzrhythmusstoerungen. Ab welchem Umfang das gilt, ist nicht abschliessend definiert.",
+      "art": "studie",
+      "quellen": [
+        "SRC-ROEH-2022"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "herzerkrankung",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Grenze ist nach Angabe der Autorin nicht abschliessend definiert — es gibt keine Zahl, die eine App anwenden koennte",
+        "Die Datenlage zu nachteiligen Effekten ist deutlich duenner als die zu positiven",
+        "Beobachtungsdaten, keine Interventionsstudien: wer sehr viel trainiert, unterscheidet sich auch sonst",
+        "Der weit ueberwiegende Teil der Belege spricht fuer den Nutzen regelmaessiger Aktivitaet"
+      ],
+      "wenn_unsicher": "Im Zweifel Umfangssteigerungen langsam halten und keine Obergrenze behaupten, die niemand kennt.",
+      "wirkt_auf": [
+        "plan.umfangsobergrenze"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ],
+      "medizinisch_heikel": true,
+      "sicherheitsgrenzen": [
+        "Aus dieser Regel darf keine Zahl fuer eine maximale Wochenbelastung abgeleitet werden",
+        "Sie darf nie als Warnung vor dem Training einer einzelnen Person angezeigt werden",
+        "Fragen zu Herzrhythmus oder Belastbarkeit gehoeren zur aerztlichen Abklaerung, nicht in die App"
+      ]
+    },
+    {
+      "id": "RUN-KOGN-001",
+      "thema": "kognitiver_nutzen",
+      "aussage": "Der kognitive Nutzen von Sport entstand am staerksten aus der Kombination von regelmaessigem Training und zusaetzlichen akuten intensiven Einheiten. Regelmaessiges Training allein zeigte diesen Effekt nicht im selben Ausmass.",
+      "art": "studie",
+      "quellen": [
+        "SRC-ROEH-2022"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer",
+        "marathon"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "herzerkrankung",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Zielgroesse ist KOGNITION, nicht Laufleistung — eine Uebertragung auf die sportliche Leistung waere unbelegt",
+        "Beobachtet an einer Marathongruppe gegen eine sitzende Kontrollgruppe, ohne Zufallszuteilung",
+        "Der zugrunde liegende Wirkweg ueber retinale Gefaessanpassungen ist ein Erklaerungsversuch, kein Nachweis"
+      ],
+      "wenn_unsicher": "Im Zweifel nichts zur Kognition versprechen. Der Befund begruendet, warum eine Mischung aus ruhigem Umfang und wenigen harten Einheiten sinnvoll ist — mehr nicht.",
+      "wirkt_auf": [
+        "plan.kognitiver_nutzen"
+      ],
+      "braucht": [
+        "profile.sports",
+        "profile.goal"
+      ]
+    }
+  ]
+}

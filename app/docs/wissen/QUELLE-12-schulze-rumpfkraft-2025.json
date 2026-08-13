@@ -1,0 +1,125 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — 8 Seiten, selbst extrahiert. Begutachtete Zeitschrift",
+    "(Die Orthopaedie, Springer), Open Access CC BY 4.0.",
+    "",
+    "ACHTUNG, POPULATION: Soldaten, nicht Laeufer. Und der Leistungstest ist",
+    "ein Fuenfzig-Meter-Sprint — mit deinem Halbmarathonziel hat das wenig zu",
+    "tun. Die Uebertragung ist meine Schlussfolgerung und steht in 'grenzen'.",
+    "",
+    "DER WERT LIEGT WIEDER IM NEGATIVEN BEFUND. Die Arbeit misst Rumpfkraft",
+    "ueber sechs Jahre und findet KEINEN statistischen Zusammenhang zwischen",
+    "ihrer Entwicklung und der Sprintleistung — obwohl beide sich verbesserten.",
+    "Zusammen mit Kanjuh 2026 ist das die zweite Quelle, in der ein Kraftwert",
+    "eine Leistung NICHT vorhersagt. Das ist ein Muster.",
+    "",
+    "EINE SCHWACHSTELLE, DIE ICH BENENNE: die Autoren schreiben in der",
+    "Diskussion, die Sprintverbesserung sei mit staerkerer Rumpfextensionskraft",
+    "einhergegangen — ihre eigene Korrelationsanalyse zeigt genau das nicht.",
+    "Das steht so unter 'unsicherheiten'.",
+    "",
+    "GYM-RUMPF-002 IST ALS MEDIZINISCH HEIKEL MARKIERT und damit vom Vertrag",
+    "in jedem Modus abgewaehlt. Grund: eine schwache Korrelation zwischen",
+    "Koerpermasse und Sprintzeit koennte in einer App leicht zu einer",
+    "Gewichtsempfehlung werden. Der Befund soll dokumentiert sein, nicht wirken."
+  ],
+  "sport": "gym",
+  "quelle": {
+    "id": "SRC-SCHULZE-2025",
+    "art": "kohorte",
+    "titel": "Sportmedizinische Langzeitbetreuung von Soldaten: Bedeutung von Rumpfkraft und Leistungsfaehigkeit",
+    "wer": "Schulze C, Fehrmann S, Buenzen C, Geissler D — Die Orthopaedie 54, S. 601-608",
+    "jahr": 2025,
+    "doi": "10.1007/s00132-025-04677-w",
+    "sportarten": [
+      "gym",
+      "running"
+    ],
+    "gilt_fuer": [
+      "freizeitsportler",
+      "gut_trainierte_laeufer"
+    ],
+    "worum_gehts": [
+      "rumpfkraft",
+      "leistungsfaehigkeit",
+      "langzeitbeobachtung"
+    ],
+    "qualitaet": "niedrig",
+    "kernaussage": "Die rueckblickende Auswertung begleitet hundertfuenfzehn Soldaten ueber sechs Jahre mit vier sportmedizinischen Untersuchungen im Abstand von etwa achtzehn bis vierundzwanzig Monaten. Rumpfkraft wurde isokinetisch gemessen, dazu Laktatleistungsdiagnostik, Fuenfzig-Meter-Sprint, Koerpermasse und Laborwerte. Sprintzeit, Rumpfstreckkraft und HDL-Cholesterin verbesserten sich, die maximale Laufbandgeschwindigkeit blieb konstant, Gewicht und Bauchumfang stiegen minimal und nach Einschaetzung der Autoren klinisch bedeutungslos. Ein statistischer Zusammenhang zwischen der Entwicklung der Rumpfkraft und der Sprintleistung liess sich ausdruecklich NICHT nachweisen.",
+    "grenzen": "Rueckblickende Auswertung ohne Kontrollgruppe: eine Verbesserung ueber sechs Jahre laesst sich der Betreuung nicht zurechnen. Der berichtete Trainingsumfang stieg im selben Zeitraum von vier auf fuenf Stunden pro Woche — der Effekt ist damit mindestens vermengt. Von vierhundertdreiundvierzig anfangs erfassten Soldaten blieben hundertfuenfzehn mit vollstaendigen Daten; wer ausschied oder ausfiel, fehlt in der Auswertung, was Verbesserungen systematisch beguenstigt. Nur Maenner, alle in einer koerperlich anspruchsvollen Verwendung und dafuer ausgewaehlt. Die Autoren nennen selbst, dass Krankheits- und Ausfallzeiten nicht mitausgewertet werden konnten. Keine Aussage fuer Laufleistung ueber Sprintstrecken hinaus.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "GYM-RUMPF-001",
+      "thema": "rumpfkraft",
+      "aussage": "Eine Zunahme der Rumpfkraft ist messbar und trainierbar, aber ein Zusammenhang mit der Sprintleistung liess sich in dieser Untersuchung nicht nachweisen. Beide Groessen verbesserten sich nebeneinander, ohne dass ein statistischer Zusammenhang belegt wurde. Eine App darf aus Rumpfkraft keine Leistungszusage ableiten.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SCHULZE-2025"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "frauen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Rueckblickende Auswertung ohne Kontrollgruppe — Verbesserungen sind der Betreuung nicht zurechenbar",
+        "Der Trainingsumfang stieg im selben Zeitraum; die Effekte sind vermengt",
+        "Von 443 Soldaten blieben 115 mit vollstaendigen Daten — wer ausfiel, fehlt, was Verbesserungen beguenstigt",
+        "Die Autoren stellen in der Diskussion eine Verbindung zwischen Rumpfkraft und Sprint her, obwohl ihre eigene Korrelationsanalyse keinen Zusammenhang zeigt",
+        "Gemessen wurde ein Fuenfzig-Meter-Sprint, nicht Ausdauerleistung",
+        "Nur Maenner in einer ausgewaehlten, koerperlich anspruchsvollen Verwendung"
+      ],
+      "wenn_unsicher": "Im Zweifel Rumpfkraft als eigenstaendiges Ziel behandeln, nicht als Hebel fuer Laufleistung.",
+      "wirkt_auf": [
+        "plan.rumpfkraft_erwartung"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "GYM-RUMPF-002",
+      "thema": "koerperzusammensetzung",
+      "aussage": "Die Zusammenhaenge zwischen Koerpermassen und Sprintzeit waren mit Korrelationen um minus zwei Zehntel sehr schwach und erklaeren nur einen kleinen Teil der Unterschiede. Sie taugen nicht als Grundlage fuer eine Gewichts- oder Koerperfettempfehlung an eine einzelne Person.",
+      "art": "studie",
+      "quellen": [
+        "SRC-SCHULZE-2025"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "frauen_evidenzluecke",
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Korrelationen um minus null Komma zwei bis minus null Komma zwei sechs erklaeren rund vier bis sieben Prozent der Unterschiede — der Rest liegt woanders",
+        "Zusammenhang, keine Ursache: schnellere Menschen trainieren anders, nicht nur anders schwer",
+        "Erhoben an maennlichen Soldaten in einer ausgewaehlten Verwendung",
+        "Die beobachteten Gewichtsaenderungen selbst bezeichnen die Autoren als klinisch bedeutungslos"
+      ],
+      "wenn_unsicher": "Im Zweifel gar nichts zu Koerpergewicht anzeigen. Eine schwache Korrelation als persoenliche Empfehlung auszugeben, richtet mehr Schaden an als sie nuetzt.",
+      "wirkt_auf": [
+        "plan.koerperzusammensetzung_hinweis"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "medizinisch_heikel": true,
+      "sicherheitsgrenzen": [
+        "Diese Regel darf nie zu einer Gewichts-, Koerperfett- oder Ernaehrungsempfehlung fuehren",
+        "Kein Zielgewicht und kein Zielkoerperfettanteil darf daraus abgeleitet oder angezeigt werden",
+        "Bei Fragen zu Koerpergewicht endet die Zustaendigkeit der App: Verweis auf aerztliche oder ernaehrungsfachliche Beratung"
+      ]
+    }
+  ]
+}

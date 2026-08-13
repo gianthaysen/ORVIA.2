@@ -57,12 +57,26 @@
       /* Der erste essenzielle Claim mit freigegebener Zahl bestimmt den Wert.
          Gibt es keinen, bleibt es bei einer qualitativen Empfehlung — das ist
          KEIN Fehler, sondern der Normalfall bei Erfahrungswissen. */
-      var mitZahl = null, gesperrt = null;
+      /* v7 — DER WERT GEHOERT ZUM ZIEL. Bis v6 wurde der erste freigegebene
+         Zahl-Claim der Regel genommen, egal fuer welches Ziel er gedacht war:
+         eine Regel mit `session.last_prozent_1rm` UND `session.repetitions`
+         haette denselben Bereich an beide Ziele gegeben. Traegt ein Claim
+         `appliesTo`, gilt er nur dort; fehlt das Feld, gilt er wie bisher fuer
+         alle Ziele der Regel. */
+      var fuerDiesesZiel = function (c) {
+        return !Array.isArray(c.appliesTo) || c.appliesTo.indexOf(ziel) >= 0;
+      };
+      var mitZahl = null, mitListe = null, gesperrt = null;
       for (var i = 0; i < claims.length; i++) {
         var c = claims[i];
-        if (c.use !== 'quantitative') continue;
-        if (KC.prescriptiveNumberAllowed(c, sourcesById, regel)) { mitZahl = c; break; }
-        gesperrt = c;
+        if (!fuerDiesesZiel(c)) continue;
+        if (c.use === 'quantitative') {
+          if (KC.prescriptiveNumberAllowed(c, sourcesById, regel)) { if (!mitZahl) mitZahl = c; }
+          else if (!gesperrt) gesperrt = c;
+        } else if (c.use === 'liste' && typeof KC.prescriptiveListAllowed === 'function') {
+          if (KC.prescriptiveListAllowed(c, sourcesById, regel)) { if (!mitListe) mitListe = c; }
+          else if (!gesperrt) gesperrt = c;
+        }
       }
       var eintrag = {
         ziel: ziel,
@@ -83,6 +97,18 @@
         eintrag.nichtBei = Array.isArray(q.exclusions) ? q.exclusions.slice() : [];
         eintrag.grenzen = q.safetyBounds;
         eintrag.art = 'zahl';
+      } else if (mitListe) {
+        /* Eine Auswahl ist ein Wert wie jeder andere: mit Herkunft, Grenzen
+           und Ausschluessen. Sie wird NICHT zusammengefuegt oder ergaenzt —
+           was die Quelle nennt, steht da, sonst nichts. */
+        var sel = mitListe.selection;
+        eintrag.wert = null;
+        eintrag.werte = sel.values.slice();
+        eintrag.einheit = null;
+        eintrag.unsicherheit = sel.uncertaintyNote;
+        eintrag.nichtBei = Array.isArray(sel.exclusions) ? sel.exclusions.slice() : [];
+        eintrag.grenzen = sel.safetyBounds;
+        eintrag.art = 'liste';
       } else {
         eintrag.wert = null;
         eintrag.art = 'empfehlung';
@@ -99,7 +125,17 @@
   /* Zwei Zahlbereiche sind deckungsgleich, wenn beide Grenzen uebereinstimmen.
      Das ist Bestaetigung, kein Widerspruch. */
   function _gleicherBereich(a, b) {
-    if (!a || !b || !a.wert || !b.wert) return false;
+    if (!a || !b) return false;
+    /* v7: Zwei Auswahllisten sind deckungsgleich, wenn sie dieselben Eintraege
+       enthalten — die Reihenfolge ist Darstellung, keine Aussage. */
+    if (a.art === 'liste' || b.art === 'liste') {
+      if (!Array.isArray(a.werte) || !Array.isArray(b.werte)) return false;
+      if (a.werte.length !== b.werte.length) return false;
+      var x = a.werte.slice().sort(), y = b.werte.slice().sort();
+      for (var i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+      return true;
+    }
+    if (!a.wert || !b.wert) return false;
     return a.wert.min === b.wert.min && a.wert.max === b.wert.max;
   }
 
@@ -156,7 +192,10 @@
          Vorgaben gehen unangetastet durch — sie stehen nebeneinander, wie
          Anmerkungen es tun. */
       var zahlen = [], qualitativ = [];
-      liste.forEach(function (v) { (v.art === 'zahl' ? zahlen : qualitativ).push(v); });
+      /* v7: Auswahllisten konkurrieren wie Zahlen — zwei verschiedene
+         Uebungslisten fuer dasselbe Ziel sind ein Widerspruch, den niemand
+         automatisch aufloesen darf. Qualitative Saetze bleiben davon frei. */
+      liste.forEach(function (v) { ((v.art === 'zahl' || v.art === 'liste') ? zahlen : qualitativ).push(v); });
       qualitativ.forEach(function (v) { vorgaben.push(v); });
 
       if (!zahlen.length) return;
@@ -187,7 +226,7 @@
         konflikte.push({ ziel: ziel, grund: 'gleichrangig_widersprüchlich',
           regeln: spitze.map(function (v) { return v.regelId; }),
           klasse: (beste.herkunft && beste.herkunft.evidenceClass) || null,
-          werte: spitze.map(function (v) { return v.wert || null; }),
+          werte: spitze.map(function (v) { return (v.art === 'liste') ? (v.werte || null) : (v.wert || null); }),
           hinweis: 'Mehrere gleich stark belegte Regeln nennen für "' + ziel +
             '" UNTERSCHIEDLICHE Werte. Es wird KEINE Vorgabe erzeugt — entscheide, welche gilt, oder ergänze eine bessere Quelle.' });
         return;

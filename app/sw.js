@@ -1,4 +1,82 @@
-const C = 'orvia-v8-346';   /* DAS FELD IST ZU KLEIN FUER DIE AUSSAGE (2026-08-13) · v8-346:
+const C = 'orvia-v8-347';   /* VERTRAG v7 — DER WERT GEHOERT ZUM ZIEL (2026-08-13) · v8-347:
+
+   ERST DER BEFUND, DER BEIM PLANEN AUFTAUCHTE. Eine Regel darf mehrere
+   `outputs` nennen, trug aber genau EINE Zahl — und die Anwendung gab diese
+   Zahl JEDEM Ziel der Regel. Eine Regel mit `session.last_prozent_1rm` UND
+   `session.repetitions` haette denselben Bereich fuer Last in Prozent und
+   fuer Wiederholungen bedeutet. Nur weil keine Regel im Bestand beides mit
+   Zahl fuehrt, ist es nie aufgefallen. Gemessen und im Test festgehalten:
+
+       ALT: eine Zahl, zwei Ziele → beide bekommen {min:4,max:5} „Saetze"
+       NEU: zwei Groessen         → 4–5 Saetze UND 3–4 Wiederholungen
+
+   Die beiden bekannten Grenzen (§36) waren nur Folgen davon.
+
+   WAS v7 AENDERT, und sonst nichts:
+     1. `appliesTo` bindet einen Claim an ein Ziel. Fehlt das Feld, gilt er
+        fuer alle Ziele — das Verhalten bis v6. Deshalb bleibt jedes
+        bestehende Paket gueltig, ohne dass eine Zeile daran zu aendern war.
+     2. `use:'liste'` mit `selection` ist die neue Wertart fuer Aufzaehlungen,
+        mit denselben Pflichtangaben und DERSELBEN Autorisierung wie eine
+        Zahl. Eine Uebungsliste aus schwacher Quelle darf so wenig
+        vorschreiben wie eine Satzzahl daraus.
+
+   ZUM ERSTEN MAL BIS AUF DIE KARTE. `session.exercises` war das Ziel von
+   sechs Regeln aus drei Quellen und endete im Nichts. Jetzt:
+
+       mit Wissen  → ["kniebeuge","ausfallschritt"]
+                     flags exercises_aus_wissen:R-EX, sets_aus_wissen:R-SETS
+       ohne Wissen → generische Einheit, unveraendert
+       Uebungen ohne Satzzahl → Verordnung GESPERRT statt geraten
+
+   NEU AUCH: ein Tippfehlerschutz. Eine Groesse, die auf ein Ziel zeigt, das
+   die Regel nicht nennt, wird beim Einspeisen abgewiesen. Genau der Fall
+   (`session.rest_secons`), der zum Zielregister gefuehrt hat, faellt jetzt
+   schon eine Stufe frueher auf.
+
+   VIER EIGENE FEHLER, alle vom Werkzeug gefangen:
+   • Die erste Fassung von Probe V7B zielte auf eine technisch ungepruefte
+     Regel — die wird schon bei der AUSWAHL ausgeschlossen, die Probe blieb
+     wirkungslos ('gap'). Jetzt trifft sie eine Notfallregel, die die Auswahl
+     besteht und genau an der Vorschreib-Autorisierung scheitert. Dabei kam
+     eine echte Testluecke heraus, die jetzt geschlossen ist.
+   • V7C zielte auf den Laengenvergleich zweier Listen — bei einelementigen
+     Listen wirkungslos.
+   • Meine neue Hilfsfunktion dupliziert eine Zeile aus `_zahl`; damit wurde
+     der Anker der bestehenden Probe F12 MEHRDEUTIG. Eigener Variablenname,
+     Anker wieder eindeutig.
+   • Fuenf weitere Proben verloren durch die Umbauten ihren Anker
+     ('not_applied'). Alle nachgezogen — not_applied ist kein Beleg.
+
+   MIGRATION: Vertragsversion 6 → 7, Pins in knowledge-consumer und
+   running-capacity-factory nachgezogen, zwei Testdateien mit gepinnter
+   Version angepasst (dabei fiel auf, dass batch3b1 in der Ueberschrift noch
+   „Contract 5" sagte, waehrend 6 geprueft wurde — beides steht jetzt auf 7).
+   Der Kohorten-Pin 023ee59b ist NICHT betroffen und unveraendert.
+
+   NICHT GETAN: die acht Zahlen aus den Notizen erfassen. Das ist jetzt
+   moeglich, verlangt aber Zuordnungen und Sicherheitsgrenzen am echten
+   Quellenmaterial — Gians Entscheidung, nicht meine.
+
+   NACHTRAG BEIM AUSLIEFERN, zum zweiten Mal an einem Tag: waehrend dieser
+   Arbeit sind QUELLE-12 (Schulze, Rumpfkraft) und QUELLE-13 (Roeh, Erholung)
+   dazugekommen. Der Sensor wurde auf dem Geraet sofort rot und nannte fuenf
+   neue wirkungslose Ziele, die es im Container nicht gab. Quittiert, jetzt 42
+   Eintraege. Auffaellig: vier der fuenf sind NEGATIVaussagen („kein
+   Zusammenhang mit der Sprintleistung", „sehr schwache Korrelationen") —
+   Wissen, das verhindern soll, dass jemand etwas hineinliest. Dafuer braucht
+   es einen anderen Lesertyp als fuer Dosisangaben: eine Sperre, keine Zahl.
+
+   GEAENDERT: knowledge-contracts.js (v7, Listen), knowledge-ingest.js
+   (mehrere Groessen, auswahl), knowledge-application.js (Claim je Ziel,
+   Listen, Konfliktlogik), knowledge-consumer.js + running-capacity-factory.js
+   (Pins), prescription-factory.js (Uebungsleser, Register).
+   Suite 259/0 bei 7 uebersprungenen (266 Dateien), 135 Proben in 17
+   Katalogen, 131 gefahren / 4 uebersprungen. Wissensmodule vor/nach dem
+   Probenlauf gehasht: unveraendert.
+
+   ============================================================
+   DAS FELD IST ZU KLEIN FUER DIE AUSSAGE (2026-08-13) · v8-346:
 
    AUFTRAG WAR „behebe alle Probleme". Die verbleibenden liessen sich nicht
    beheben, sondern nur AUFKLAEREN — und das Ergebnis ist wichtiger als jede

@@ -106,8 +106,36 @@
      v5-Erbe (Korrekturbatch 3b.0d): strikt boolesche medicalSafetyRelevant,
      typisierte Source-Felder, versioniertes Quant-Schema, fail-closed
      maxConfidenceFor bei Klassen-Kurzform, feldbezogene Fehler statt Catch. */
-  var KNOWLEDGE_CONTRACT_VERSION = 6;
+  /* ============================================================
+     v7 (2026-08-13) — DER WERT GEHOERT ZUM ZIEL, NICHT ZUR REGEL
+
+     BEFUND, der v7 ausgeloest hat: Eine Regel darf mehrere `outputs` nennen,
+     trug aber genau EINE Zahl. `knowledge-application` gab diese eine Zahl
+     JEDEM Ziel der Regel. Bei GYM-HYP-003 (`session.last_prozent_1rm` UND
+     `session.repetitions`) haette derselbe Bereich fuer Last in Prozent und
+     fuer Wiederholungen gegolten — zwei voellig verschiedene Groessen. Nur
+     weil diese Regel gar keine Zahl fuehrt, ist es nie aufgefallen.
+
+     Die Folgen derselben Wurzel: mehrdimensionale Dosisangaben („vier bis
+     fuenf Serien zu drei bis vier Wiederholungen ueber sechs bis zehn
+     Wochen\") liessen sich nicht erfassen, und Aufzaehlungen (Uebungen) schon
+     gar nicht — ein Zahlbereich ist keine Liste.
+
+     v7 aendert genau zwei Dinge:
+       1. Ein Claim darf `appliesTo: [ziel, …]` tragen. Fehlt das Feld, gilt
+          er fuer ALLE Ziele der Regel — das ist das Verhalten bis v6, und
+          deshalb bleibt jedes bestehende Paket unveraendert gueltig.
+       2. Neben `use:'quantitative'` gibt es `use:'liste'` mit dem Block
+          `selection` (Werte + Herkunftsangaben). Die Autorisierung ist
+          DIESELBE wie bei Zahlen — eine Uebungsliste aus einer schwachen
+          Quelle ist so wenig vorschreibbar wie eine Satzzahl daraus.
+
+     Was v7 NICHT tut: keine Lockerung bei Medizin/Sicherheit, keine
+     Aenderung an den Evidenzklassen, keine Aufweichung der Pin-Pflicht.
+     ============================================================ */
+  var KNOWLEDGE_CONTRACT_VERSION = 7;
   var QUANT_SCHEMA_VERSION = 1;
+  var SELECTION_SCHEMA_VERSION = 1;
 
   function _deepFreeze(o) {
     if (o && typeof o === 'object' && !Object.isFrozen(o)) {
@@ -133,7 +161,7 @@
     fallback: 'konservative Notfallregel'
   };
   var DECISION_ROLES = ['evidence', 'product_policy', 'expert_consensus', 'fallback'];
-  var CLAIM_USES = ['qualitative', 'ordinal', 'quantitative'];
+  var CLAIM_USES = ['qualitative', 'ordinal', 'quantitative', 'liste'];
   var DIRECTNESS = ['direct', 'partial', 'indirect'];
   var METHOD_QUALITY = ['high', 'moderate', 'low', 'unclear'];
   var RISK_OF_BIAS = ['low', 'some_concerns', 'high', 'not_formally_assessed'];
@@ -305,6 +333,42 @@
     if (typeof q.independentValidation !== 'boolean') return false;             // vorhanden + boolesch (Wert prüft die Autorisierung)
     return true;
   }
+  /* ---------- v7: LISTEN ----------
+     Eine Aufzaehlung (Uebungen, Modalitaeten) ist keine Zahl, unterliegt aber
+     denselben Fragen: Wer sagt das, fuer wen gilt es, wo ist Schluss? Deshalb
+     dieselben Pflichtangaben wie beim Zahlblock — nur `validRange` wird durch
+     `values` ersetzt. Eine Liste ohne Population oder ohne Sicherheitsgrenze
+     ist so wenig eine Aussage wie eine Zahl ohne beides. */
+  function selectionSchemaValid(claim) {
+    if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+    var s = claim.selection;
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+    if (s.schemaVersion !== SELECTION_SCHEMA_VERSION) return false;
+    if (!Array.isArray(s.values) || !s.values.length) return false;
+    if (!s.values.every(_isNonEmptyString)) return false;
+    /* Doppelte Eintraege sind ein Erfassungsfehler, kein Inhalt. */
+    for (var i = 0; i < s.values.length; i++) {
+      if (s.values.indexOf(s.values[i]) !== i) return false;
+    }
+    if (!_isNonEmptyString(s.population)) return false;
+    if (!_isNonEmptyString(s.sourceSelectionStatement)) return false;
+    if (!_isNonEmptyString(s.uncertaintyNote)) return false;
+    if (!_isNonEmptyString(s.safetyBounds)) return false;
+    if (!Array.isArray(s.exclusions) || !s.exclusions.every(_isNonEmptyString)) return false;
+    if (typeof s.independentValidation !== 'boolean') return false;
+    return true;
+  }
+
+  /* Vorschreibbarkeit einer Liste — bewusst DIESELBE Kette wie bei Zahlen.
+     Eine Uebungsliste aus einem Coachvideo darf so wenig vorschreiben wie
+     eine Satzzahl daraus; der Unterschied liegt im Datentyp, nicht im
+     Anspruch an den Beleg. */
+  function prescriptiveListAllowed(claim, sourcesById, rule) {
+    if (!claim || claim.use !== 'liste') return false;
+    if (!selectionSchemaValid(claim)) return false;
+    return _prescriptiveCommonAllowed(claim, sourcesById, rule);
+  }
+
   /* AUTORISIERUNG production (v6 verhaltensgleich zu v5): Klasse A/B UND
      formal bewertete Quellen UND vollständige Struktur UND
      independentValidation EXAKT true. */
@@ -337,9 +401,12 @@
      - decisionRole 'fallback'                ⇒ false (eine Notlösung begründet
                                                 nie eine Vorgabe)
      - Governance 'rejected'                  ⇒ false */
-  function prescriptiveNumberAllowed(claim, sourcesById, ruleCtx) {
-    if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
-    if (claim.use !== 'quantitative') return false;
+  /* v7: die Kette, die fuer JEDE vorschreibbare Aussage gilt — unabhaengig
+     davon, ob sie eine Zahl oder eine Liste traegt. Bis v6 stand sie inline
+     in prescriptiveNumberAllowed; herausgezogen, damit Listen nicht mit einer
+     zweiten, leicht abweichenden Kopie geprueft werden. Inhaltlich
+     unveraendert — die Bedingungen sind Zeile fuer Zeile dieselben. */
+  function _prescriptiveCommonAllowed(claim, sourcesById, ruleCtx) {
     if (!ruleCtx || typeof ruleCtx !== 'object' || Array.isArray(ruleCtx)) return false;
     if (claim.decisionRole === 'fallback') return false;
     if (DECISION_ROLES.indexOf(claim.decisionRole) < 0) return false;
@@ -348,6 +415,13 @@
     if (g.technicalStatus !== 'reviewed') return false;
     if (g.scientificReviewStatus === 'rejected' || g.medicalSafetyReviewStatus === 'rejected') return false;
     if (ruleCtx.medicalSafetyRelevant === true && g.medicalSafetyReviewStatus !== 'approved') return false;
+    return true;
+  }
+
+  function prescriptiveNumberAllowed(claim, sourcesById, ruleCtx) {
+    if (!claim || typeof claim !== 'object' || Array.isArray(claim)) return false;
+    if (claim.use !== 'quantitative') return false;
+    if (!_prescriptiveCommonAllowed(claim, sourcesById, ruleCtx)) return false;
     if (!quantitativeSchemaValid(claim)) return false;
     /* Eine Vorgabe ohne Sicherheitsgrenze ist keine Vorgabe, sondern ein
        Risiko: safetyBounds ist bereits Pflicht-Stringfeld der Struktur. */
@@ -835,6 +909,9 @@
     ruleEvidenceCeiling: ruleEvidenceCeiling,
     maxConfidenceFor: maxConfidenceFor,
     quantitativeSchemaValid: quantitativeSchemaValid,
+    SELECTION_SCHEMA_VERSION: SELECTION_SCHEMA_VERSION,
+    selectionSchemaValid: selectionSchemaValid,
+    prescriptiveListAllowed: prescriptiveListAllowed,
     quantitativeUseAllowed: quantitativeUseAllowed,
     prescriptiveNumberAllowed: prescriptiveNumberAllowed,
     disclosureFor: disclosureFor,

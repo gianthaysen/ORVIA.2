@@ -134,8 +134,12 @@ function mkEv(over) {
   ok('B1 nur 12 SHADOW-Regeln konsumiert; RUN-SAFE-001 + RUN-RTR-001 ausgeschlossen',
     r.usedRuleIds.length === 12 && r.usedRuleIds.indexOf('RUN-SAFE-001') < 0 && r.usedRuleIds.indexOf('RUN-RTR-001') < 0 &&
     r.excludedRuleIds.indexOf('RUN-SAFE-001') >= 0 && r.excludedRuleIds.indexOf('RUN-RTR-001') >= 0);
-  ok('B2 Ergebnis trägt exakt die festen Consumer-Pins (mode shadow, Contract 5, kb-run-v3.0.0)',
-    r.mode === 'shadow' && r.pins.expectedKnowledgeContractVersion === 6 && r.pins.expectedKnowledgeVersion === 'kb-run-v3.0.0' &&
+  /* v8-347: Die Überschrift sagte „Contract 5", geprüft wurde 6 — der Text
+     war seit dem Sprung auf v6 nicht nachgezogen worden. Beides steht jetzt
+     auf 7 und trägt dieselbe Zahl, damit die Zeile beim nächsten Sprung nicht
+     wieder auseinanderläuft. */
+  ok('B2 Ergebnis trägt exakt die festen Consumer-Pins (mode shadow, Contract 7, kb-run-v3.0.0)',
+    r.mode === 'shadow' && r.pins.expectedKnowledgeContractVersion === 7 && r.pins.expectedKnowledgeVersion === 'kb-run-v3.0.0' &&
     r.pins.expectedSourceRegistryVersion === 2 && /^fnv1a-/.test(r.pins.expectedPackContentHash) && /^fnv1a-/.test(r.pins.expectedSourceRegistryHash));
   ok('B2b hinterlegte Pins passen zum aktuellen Pack/Register (Consumer-Stand aktuell)',
     r.pins.expectedPackContentHash === KC.packContentHash(RP) && r.pins.expectedSourceRegistryHash === KC.registryContentHash(KS));

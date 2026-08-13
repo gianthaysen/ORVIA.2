@@ -13,10 +13,11 @@
     "Fehlt sie ganz, ist der Test rot — ein fehlender Beleg ist kein Beleg.",
     "",
     "„dito“ zaehlt nicht: der Test verlangt je Eintrag eine echte Begruendung.",
-    "Seit v8-345 werden auch die Notizdateien in docs/wissen geprueft — ein wirkungsloses Ziel soll auffallen, BEVOR jemand ein Paket dafuer baut."
+    "Seit v8-345 werden auch die Notizdateien in docs/wissen geprueft — ein wirkungsloses Ziel soll auffallen, BEVOR jemand ein Paket dafuer baut.",
+    "v8-347: session.exercises ist aus dieser Liste VERSCHWUNDEN, weil die Verordnung es seit Vertrag v7 wirklich liest. Genau so ist die Datei gemeint — sie schrumpft, wenn Wissen ankommt."
   ],
   "quittiertAm": "2026-08-13",
-  "appVersion": "v8-345",
+  "appVersion": "v8-347",
   "ziele": {
     "plan.saetze_je_muskelgruppe": "GYM-HYP-002. Woechentlicher Umfang je Muskelgruppe — die Verordnung baut EINE Einheit und kennt die Woche nicht. Braucht einen Leser im Wochenplan (scheduler-v2), nicht in der Verordnung.",
     "session.last_prozent_1rm": "GYM-HYP-003. Die Verordnung fuehrt kein Lastfeld in Prozent des Einwiederholungsmaximums. Waere ein echter Zugewinn, ist aber neue Funktion, kein blosser Anschluss.",
@@ -47,7 +48,6 @@
     "hardDaySpacingRequirement": "RUN-MECH-001. Mindestabstand harter Tage. Kein Leser; der constraint-solver platziert nach Verfuegbarkeit und kennt keine Abstandsregel.",
     "aspirationSeparationFlag": "RUN-GOAL-001. Trennung Wunsch und Prognose. Kein Leser im Code.",
     "dataEligibilityState": "RUN-DATA-001. Taugt die Datenlage fuer Aussagen. Kein Leser im Code.",
-    "session.exercises": "QUELLE-04 (RUN-KRAFT-001/002) und QUELLE-07 (RUN-RE-001/002/004). FUENF Regeln aus zwei Quellen zielen hierauf — das ist die fachliche Grundlage fuer den offenen Punkt 2 (Uebungsauswahl). Die Verordnung fuehrt zwar eine Uebungsliste, liest sie aber aus req.exercises und nie aus Wissen. Der lohnendste Anschluss von allen — braucht aber zuerst maschinenlesbare Angaben WELCHE Uebungen, die in den Notizen noch fehlen.",
     "plan.strength_focus": "QUELLE-04 (RUN-KRAFT-001) und QUELLE-07 (RUN-RE-001). Ausrichtung des Krafttrainings fuer Laeufer (schwere Lasten statt Kraftausdauer). Kein Leser; waere eine Planungsentscheidung im Wochenplan.",
     "plan.maximalkraft_dosis": "QUELLE-07 (RUN-RE-003) und QUELLE-08 (RUN-DOSE-001). Dosis des Maximalkrafttrainings. Kein Leser; die Zahlen stehen im Fliesstext der Notiz, sind aber nicht im Feld `zahlen` erfasst — deshalb auch nichts zu uebernehmen.",
     "plan.plyometrie_frequenz": "QUELLE-07 (RUN-RE-004). Haeufigkeit plyometrischen Trainings (im Text: zwei bis drei Einheiten je Woche ueber sechs bis zwoelf Wochen). Kein Leser, und die Zahl ist nicht maschinenlesbar hinterlegt.",
@@ -55,6 +55,11 @@
     "plan.kraftvergleich_normierung": "QUELLE-11 (RUN-KRAFTPROFIL-001). Kraftwerte auf die Koerpermasse normiert vergleichen. Kein Leser; die App zeigt derzeit ueberhaupt keinen Kraftvergleich zwischen Personen an.",
     "plan.leistungsprognose": "QUELLE-11 (RUN-KRAFTPROFIL-002). Aus isolierten Krafttests laesst sich die Laufleistung NICHT vorhersagen — eine Negativaussage, die vor allem verhindern soll, dass jemand aus Kraftwerten eine Prognose baut. Kein Leser; waere als SPERRE sinnvoll, nicht als Wert.",
     "plan.stabilitaetsfokus": "QUELLE-11 (RUN-KRAFTPROFIL-003). Hoehere Hueftabduktionskraft ging mit geringerer seitlicher Knieabweichung einher — der einzige koerpernahe Zusammenhang der Arbeit. Dieselbe Regel zielt auch auf session.exercises; kein Leser fuer beides.",
-    "plan.kraftreferenz": "QUELLE-11 (RUN-KRAFTPROFIL-004). Referenzbereiche der Stichprobe zur EINORDNUNG, ausdruecklich nicht als Zielwert. Kein Leser; die App zeigt keine Kraftreferenzen an. Klasse D (n=47, nicht begutachtet) — darf nichts vorschreiben."
+    "plan.kraftreferenz": "QUELLE-11 (RUN-KRAFTPROFIL-004). Referenzbereiche der Stichprobe zur EINORDNUNG, ausdruecklich nicht als Zielwert. Kein Leser; die App zeigt keine Kraftreferenzen an. Klasse D (n=47, nicht begutachtet) — darf nichts vorschreiben.",
+    "plan.rumpfkraft_erwartung": "QUELLE-12 (GYM-RUMPF-001). Rumpfkraft ist trainierbar, ein Zusammenhang mit der Sprintleistung liess sich aber NICHT zeigen. Eine Negativaussage: sie soll verhindern, dass jemand Rumpftraining als Sprintmassnahme verkauft. Kein Leser; waere ein Erwartungsrahmen in der Darstellung, keine Vorgabe.",
+    "plan.koerperzusammensetzung_hinweis": "QUELLE-12 (GYM-RUMPF-002). Zusammenhaenge zwischen Koerpermassen und Sprintzeit waren sehr schwach (Korrelationen um minus 0,2). Kein Leser; die App zeigt keine Koerperzusammensetzungs-Prognose an — und soll aus so schwachen Zusammenhaengen auch keine bauen.",
+    "plan.wettkampf_nachlauf": "QUELLE-13 (RUN-ERHOL-001). Nach einem Marathon war die diastolische Herzfunktion ueber 72 Stunden eingeschraenkt. Kein Leser; waere eine Sperre fuer harte Einheiten nach einem Wettkampf — genau die Sorte Regel, die einen qualitativen Leser braucht statt einer Zahl.",
+    "plan.umfangsobergrenze": "QUELLE-13 (RUN-ERHOL-002). Fuer exzessive Umfaenge sind nachteilige Effekte beschrieben. Kein Leser; eine Obergrenze im Wochenplan waere denkbar, ist aber ohne belastbare Schwelle nicht vorschreibbar.",
+    "plan.kognitiver_nutzen": "QUELLE-13 (RUN-KOGN-001). Kognitiver Nutzen aus regelmaessigem Training plus akuten intensiven Einheiten. Kein Leser; betrifft die Begruendung von Training, nicht seine Dosierung."
   }
 }
