@@ -3997,3 +3997,83 @@ Werkzeugs hätte diese Probe für immer grün gemeldet, ohne je etwas zu prüfen
 2. **`session.exercises` aus Wissen lesen.** Danach greifen fünf Regeln aus
    zwei Quellen, und Punkt 2 ist gelöst.
 3. Erst dann stellt sich die Frage nach dem Verdrahten überhaupt wieder.
+
+---
+
+## 36 · Das Feld ist zu klein für die Aussage (v8-346)
+
+### 36.1 Die Frage hinter der Zahl
+
+„1 von 30 Zielen wird gelesen" beschreibt den Zustand. §34 und §35 haben ihn
+gemessen, aber die Ursache lag eine Ebene tiefer als „es fehlen Leser".
+
+### 36.2 Grenze 1 — ein Zahlbereich je Regel
+
+Das Feld `zahlen` einer Notizregel fasst `{min, max}` mit **einer**
+Ausgabe-Einheit und acht Pflichtangaben. Trainingswissen ist selten so
+eindimensional:
+
+```
+RUN-RE-003 (Sperlich 2015)
+  „vier bis fünf Serien zu drei bis vier Wiederholungen
+   je Trainingseinheit über sechs bis zehn Wochen"
+  → Serien 4–5 · Wiederholungen 3–4 · Dauer 6–10 Wochen
+  → ein Feld
+```
+
+Gemessen über alle Notizen: **8 Regeln nennen eine Zahl im Text, 2 führen sie
+strukturiert.** Das ist keine Nachlässigkeit beim Einspeisen — es passt
+nicht hinein.
+
+Der Test gibt diese Zahl ab jetzt bei jedem Lauf aus, ausdrücklich **als
+Ausgabe und nicht als rote Zusicherung**. Ein Rot würde etwas verlangen, das
+die Struktur nicht hergibt, und die Einspeisenden für ein Vertragsproblem
+bestrafen.
+
+### 36.3 Grenze 2 — keine Listen
+
+`session.exercises` ist das Ziel von **sechs Regeln aus drei Quellen**
+(QUELLE-04, QUELLE-07, QUELLE-11) und damit der lohnendste Anschluss im
+Projekt: die Verordnung *führt* eine Übungsliste, liest sie aber nur aus
+`req.exercises`.
+
+Eine Übungsliste ist kein Zahlbereich. Der Vertrag kann sie nicht ausdrücken
+— nicht „noch nicht verdrahtet", sondern **nicht formulierbar**.
+
+### 36.4 Was ich deshalb nicht getan habe
+
+Der Auftrag lautete „behebe alle Probleme". Naheliegend wäre gewesen, die
+acht Zahlen nachzutragen. Bei sechs davon hätte ich wählen müssen, welche
+der drei Größen ins eine Feld kommt — die anderen wären verschwunden. Eine
+Dosis, von der zwei Drittel fehlen, ist keine Erfassung, sondern eine neue
+Behauptung mit Belegkette. Dasselbe bei den Pflichtfeldern
+`sicherheitsgrenzen` und `unsicherheit`: die hätte ich mir ausdenken müssen.
+
+Das ist genau die Grenze, die dieses Projekt an anderer Stelle mühsam
+verteidigt — „aus Coach A sagt 3 Sätze und Coach B sagt 5 wird nicht 4".
+
+### 36.5 Was fällig ist: Vertrag v7
+
+Zwei Erweiterungen, beide klein im Konzept und groß in der Wirkung:
+
+| | Was | Berührt |
+|---|---|---|
+| **a** | mehrere **benannte Größen** je Regel (`zahlen: [{groesse:'serien', bereich:{…}}, …]`) statt eines einzigen Blocks | ingest, contracts, application, alle Pakete, Paket-Hashes, Pins |
+| **b** | eine **Listen-Wertart** für Übungen und ähnliche Aufzählungen | dieselben, zusätzlich prescription-factory als erster Leser |
+
+Beides ändert die Vertragsversion und damit jeden Pin und jeden Paket-Hash;
+die Kohortenprüfung schlägt an, und das ist richtig so. Umsetzungsplan und
+Freigabe stehen aus — nichts davon passiert nebenbei.
+
+Ohne Vertragsänderung nachtragbar sind nur die Regeln mit **genau einer**
+Größe, etwa `plan.plyometrie_frequenz` (zwei bis drei Einheiten je Woche).
+Das sind wenige; den Großteil löst erst v7.
+
+### 36.6 Stand
+
+- `knowledge_targets_test.mjs`: Zahlen-Ausgabe ergänzt (11 Zusicherungen unverändert)
+- `STAND-UND-OFFENE-PUNKTE.md`: Punkt 3b neu gefasst — die zwei Grenzen statt
+  der alten Vermutung „es fehlen Leser"
+- **Kein Produktivcode geändert**
+- Suite **258/0** bei 7 übersprungenen (265 Dateien), **130 Proben in 16
+  Katalogen**, 126 gefahren / 4 übersprungen

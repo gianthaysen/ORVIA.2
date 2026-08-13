@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-345, 2026-08-13** (v8-343 ist veröffentlicht, v8-344/345 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-346, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-346 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-345) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§35).
+`sw.js` (Versionsköpfe v8-329 bis v8-346) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§36).
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
 > Suite und Proben stimmten. Zwei Aussagen nicht: die Coverage-Matrix führte
@@ -96,49 +96,41 @@ Zusicherung von der Factory auf den Wochenplan gehoben.
 `running-knowledge-pack-*.js` geschrieben und nicht verdrahtet. Blockiert
 durch Punkt 1.
 
-### 3b · QUELLE-11 (Kanjuh) — vertragsfest, aber ohne Wirkung
-Am 13.08. eingespeist, eine Regel (`RUN-KRAFTPROFIL-001`: Kraftwerte auf die
-Körpermasse normiert vergleichen, nicht absolut). Gegen die echten Module
-gefahren: `ingest` **ok**, `applyKnowledge` **ok**, eine Vorgabe, kein Konflikt.
+### 3b · Warum nur 1 von 30 ankommt — **zwei Grenzen des Vertrags**
+Der Sensor (v8-344/345) misst den Zustand; am 13.08. kam die Ursache dazu, und
+sie ist keine Nachlässigkeit beim Einspeisen.
 
-Und trotzdem wirkungslos — aus einem Grund, der über diese eine Quelle
-hinausgeht:
-
-```
-wirkt_auf: "plan.kraftvergleich_normierung"
-→ kommt in app/js NIRGENDS vor. Niemand liest dieses Ziel.
-```
-
-**Der Vertrag prüft Zielnamen nicht.** Es gibt keine Liste erlaubter Ziele;
-jeder String wird angenommen. Damit sieht eine Regel „eingespeist und
-angewendet" aus und bewirkt nichts — und ein Tippfehler
-(`session.rest_secons`) verhält sich exakt genauso. Das ist zum **dritten
-Mal** dieselbe Fehlerklasse: v8-335 („eingespeist, aber niemand liest es"),
-v8-341 (`applyKnowledge` ohne Aufrufer), jetzt das Ziel ohne Leser.
-
-**Seit v8-344 gibt es den Sensor dafür:** `prescriptionFactory.GELESENE_ZIELE`
-(zwölf Ziele, als Literal, beidseitig gegen den Quelltext geprüft) und
-`knowledge_targets_test.mjs`. Jedes Paketziel ohne Leser muss in
-`_ziele-ohne-leser.json` **mit Begründung** stehen; ein neues wirkungsloses
-Ziel wird rot. Aktueller Stand, ehrlich: **1 von 30 Zielen wird gelesen.**
-
-**Seit v8-345 prüft der Sensor auch die Notizdateien**, also Wissen, *bevor*
-daraus ein Paket wird. Das hat sofort sechs weitere wirkungslose Ziele
-gefunden — und darunter das wichtigste Fundstück dieser Sitzung:
+**Grenze 1 — der Vertrag kennt nur EINEN Zahlbereich je Regel.**
+`zahlen` fasst `{min, max}` mit *einer* Ausgabe-Einheit. Reale Dosisangaben
+sind mehrdimensional:
 
 ```
-session.exercises  ← 6 Regeln aus 3 Quellen (QUELLE-04, QUELLE-07, QUELLE-11)
+RUN-RE-003 (Sperlich): „vier bis fünf Serien zu drei bis vier Wiederholungen
+                        je Trainingseinheit über sechs bis zehn Wochen"
+                        → drei Größen, ein Feld
 ```
 
-Die Verordnung **führt** eine Übungsliste, liest sie aber nur aus
-`req.exercises` und nie aus Wissen. Das ist die fachliche Grundlage für
-Punkt 2 und der lohnendste Anschluss im Projekt. Was fehlt, ist nicht die
-Leitung, sondern die Angabe **welche** Übungen: die steht in den Notizen nur
-im Fließtext, nicht im Feld `zahlen`.
+Deshalb tragen **8 Regeln eine Zahl im Text, aber nur 2 im Feld `zahlen`**.
+Wer das den Einspeisenden vorwirft, verlangt etwas, das die Struktur nicht
+hergibt. Der Test weist die Zahl seit v8-346 bei jedem Lauf aus — als
+Ausgabe, nicht als Rot, genau aus diesem Grund.
 
-Das Register **verbietet weiterhin nichts**. Ein Ziel ohne Leser ist kein
-Vertragsbruch, sondern Wissen ohne Verwendung — der Unterschied gehört
-sichtbar gemacht, nicht bestraft.
+**Grenze 2 — der Vertrag kennt keine Listen.**
+`session.exercises` ist das Ziel von **sechs Regeln aus drei Quellen** und
+damit der lohnendste Anschluss im Projekt. Eine Übungsliste ist aber kein
+Zahlbereich; der Vertrag kann sie überhaupt nicht ausdrücken. Der Anschluss
+scheitert nicht an der Leitung und nicht an der Erfassung, sondern daran,
+dass es keine Wertart dafür gibt.
+
+**Was das für „alle Probleme beheben" heißt:** Der nächste echte Schritt ist
+eine Vertragserweiterung v6 → v7 mit (a) mehreren benannten Größen je Regel
+und (b) einer Listen-Wertart. Das berührt Pins, Paket-Hashes, die
+Kohortenprüfung und alle bestehenden Pakete — also nichts, was nebenbei
+passiert. Umsetzungsplan steht aus, Freigabe ebenso.
+
+Was **ohne** Vertragsänderung geht und nichts kostet: die Regeln mit genau
+einer Größe (`plan.plyometrie_frequenz`: zwei bis drei Einheiten je Woche)
+nachtragen. Das sind wenige — den Großteil löst erst v7.
 
 ### 4 · Konfliktlösung — noch offene Feinheit
 Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
@@ -285,7 +277,7 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-345)
+## Zahlen zum Nachprüfen (v8-346)
 
 - Gesamtsuite **258/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
   **Nur mit Chromium** — ohne Browser-Binary sind es 236/0 bei 29 übersprungenen,
@@ -294,6 +286,8 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 - **Ziele mit Leser: 1 von 30** aus Paketen, 0 von 14 aus Notizen — die
   ehrlichste Zahl über den Stand der Wissenskette, siehe Punkt 3b
 - 38 Quittungen in `_ziele-ohne-leser.json`, jede mit Begründung
+- **Zahlen: 2 Regeln führen sie strukturiert, 8 nennen sie nur im Text** — der
+  Grund steht in Punkt 3b (das Feld fasst nur eine Größe)
 - **Regeln mit maschinenlesbarem Zahlwert: Gym 2 von 4, Laufen 0 von 14** —
   der Grund, warum Punkt 1 kein Verdrahtungsproblem ist
 - Kohorten-Pin `023ee59b`, geprüft von `shadow_adaptive_test.mjs` gegen

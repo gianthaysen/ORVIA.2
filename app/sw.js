@@ -1,4 +1,51 @@
-const C = 'orvia-v8-345';   /* ES GIBT NICHTS ZU VERDRAHTEN (2026-08-13) · v8-345:
+const C = 'orvia-v8-346';   /* DAS FELD IST ZU KLEIN FUER DIE AUSSAGE (2026-08-13) · v8-346:
+
+   AUFTRAG WAR „behebe alle Probleme". Die verbleibenden liessen sich nicht
+   beheben, sondern nur AUFKLAEREN — und das Ergebnis ist wichtiger als jede
+   Verkabelung, die ich stattdessen haette bauen koennen.
+
+   FRAGE: Warum kommt von 30 Zielen genau EINES an? Bisherige Antwort:
+   „es fehlen Leser". Die richtige Antwort liegt eine Ebene tiefer.
+
+   GRENZE 1 · DER VERTRAG KENNT NUR EINEN ZAHLBEREICH JE REGEL.
+   `zahlen` fasst {min,max} mit EINER Ausgabe-Einheit. Reale Dosisangaben
+   sind mehrdimensional:
+
+       RUN-RE-003: „vier bis fuenf Serien zu drei bis vier Wiederholungen
+                    je Trainingseinheit ueber sechs bis zehn Wochen"
+                    → drei Groessen, ein Feld
+
+   GEMESSEN: 8 Regeln nennen eine Zahl im Text, 2 fuehren sie strukturiert.
+   Das ist keine Nachlaessigkeit der Einspeisenden — es passt schlicht nicht
+   hinein. Der Test weist die Zahl ab jetzt bei jedem Lauf aus, ausdruecklich
+   als AUSGABE und nicht als Rot: wer das rot faerbt, verlangt etwas, das die
+   Struktur nicht hergibt.
+
+   GRENZE 2 · DER VERTRAG KENNT KEINE LISTEN.
+   `session.exercises` ist das Ziel von SECHS Regeln aus DREI Quellen und
+   damit der lohnendste Anschluss im Projekt. Eine Uebungsliste ist aber kein
+   Zahlbereich. Der Anschluss scheitert nicht an der Leitung und nicht an der
+   Erfassung, sondern daran, dass es fuer ihn keine Wertart gibt.
+
+   WAS ICH DESHALB NICHT GETAN HABE: Zahlen „nachtragen". Bei sechs der acht
+   Kandidaten haette ich waehlen muessen, WELCHE der drei Groessen ins eine
+   Feld kommt — und die anderen beiden waeren verschwunden. Eine Dosis, von
+   der zwei Drittel fehlen, ist keine Erfassung, sondern eine neue Behauptung.
+   Dasselbe gilt fuer die Pflichtfelder `sicherheitsgrenzen` und
+   `unsicherheit`: die haette ich mir ausdenken muessen.
+
+   WAS FAELLIG IST: Vertrag v6 → v7 mit (a) mehreren benannten Groessen je
+   Regel und (b) einer Listen-Wertart. Das beruehrt Pins, Paket-Hashes, die
+   Kohortenpruefung und jedes bestehende Paket — nichts, was nebenbei
+   passiert. Umsetzungsplan und Freigabe stehen aus.
+
+   GEAENDERT: supabase/tests/knowledge_targets_test.mjs (Zahlen-Ausgabe),
+   docs/STAND-UND-OFFENE-PUNKTE.md (Punkt 3b neu). Kein Produktivcode.
+   Suite 258/0 bei 7 uebersprungenen, 130 Proben in 16 Katalogen,
+   126 gefahren / 4 uebersprungen. Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   ES GIBT NICHTS ZU VERDRAHTEN (2026-08-13) · v8-345:
 
    AUFTRAG WAR „mache alles\" — also Sensor auf die Notizdateien erweitern UND
    das Laufpaket verdrahten. Der erste Teil ist gebaut. Der zweite nicht, und

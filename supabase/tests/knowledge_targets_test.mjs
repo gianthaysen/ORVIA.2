@@ -201,6 +201,36 @@ sec('C · Ziele der Notizdateien in docs/wissen');
       zieleNotiz.size > 0 || notizen.length === unbrauchbar.length,
       zieleNotiz.size + ' Ziele aus Notizen');
 
+    /* ══ Die Zahl, die erklaert, warum so wenig ankommt ══
+       Ein Ziel ohne Leser ist das eine. Eine Regel, die eine Zahl NENNT, sie
+       aber nicht im Feld `zahlen` fuehrt, ist das andere: sie kann selbst mit
+       Leser nichts setzen. Gemessen am 13.08.: 8 Regeln nennen eine Zahl im
+       Text, nur 2 fuehren sie strukturiert.
+
+       KEINE Zusicherung, sondern eine Ausgabe. Ein hartes Rot waere hier
+       falsch: die meisten dieser Zahlen sind MEHRDIMENSIONAL (vier bis fuenf
+       Serien zu drei bis vier Wiederholungen ueber sechs bis zehn Wochen),
+       und das Feld `zahlen` fasst genau EINEN Bereich mit EINER Einheit. Wer
+       das rot faerbt, verlangt etwas, das der Vertrag nicht kann. */
+    const ZAHL_IM_TEXT = /\b(zwei|drei|vier|fuenf|fünf|sechs|sieben|acht|neun|zehn|elf|zwoelf|zwölf|\d+([.,]\d+)?)\s*(bis|und|-)?\s*(zwei|drei|vier|fuenf|fünf|sechs|sieben|acht|neun|zehn|elf|zwoelf|zwölf|\d+([.,]\d+)?)?\s*(prozent|minuten|sekunden|wochen|einheiten|serien|saetze|sätze|wiederholungen|kilometer|newton)/i;
+    let genannt = 0, gefuehrt = 0;
+    const offeneZahlen = [];
+    notizen.forEach(f => {
+      let n; try { n = JSON.parse(readFileSync(join(wissenDir, f), 'utf8')); } catch (e) { return; }
+      let r; try { r = KI.ingest(n); } catch (e) { return; }
+      if (!r || r.ok !== true) return;
+      (n.regeln || []).forEach(rr => {
+        if (rr.zahlen) { gefuehrt++; return; }
+        if (ZAHL_IM_TEXT.test(rr.aussage || '')) {
+          genannt++;
+          offeneZahlen.push(f.replace(/^QUELLE-|\.json$/g, '') + '/' + rr.id);
+        }
+      });
+    });
+    console.log('   Zahlen: ' + gefuehrt + ' Regeln führen sie strukturiert · '
+      + genannt + ' nennen sie nur im Text');
+    if (offeneZahlen.length) console.log('     ' + offeneZahlen.join(', '));
+
     KARTEILEICHEN.notizZiele = [...zieleNotiz.keys()];
     const alleBekannt = new Set(KARTEILEICHEN.paketZiele.concat(KARTEILEICHEN.notizZiele));
     const gelesenSet = PF.GELESENE_ZIELE || [];
