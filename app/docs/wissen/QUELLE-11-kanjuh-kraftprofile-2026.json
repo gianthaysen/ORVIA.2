@@ -1,33 +1,43 @@
 {
   "_status": [
-    "TEILWEISE GELESEN — und die Datei, die ankam, war nicht die Arbeit.",
+    "VOLLTEXT GELESEN — 179 Seiten, 298.483 Zeichen, selbst extrahiert.",
     "",
-    "Der Zip enthielt einen Bildschirmabzug des PDF-Betrachters (1 Seite,",
-    "346 KB) statt der 179-seitigen Arbeit. Titelseite und Abstract waren im",
-    "Abzug lesbar, alles Weitere nicht. Ein Werkzeug wie Microlink bildet die",
-    "BETRACHTERSEITE ab, nicht das Dokument — bei OPUS liefert der direkte",
-    "Download-Knopf die echte PDF.",
+    "KORREKTUR MEINER FRUEHEREN EINSCHAETZUNG. Auf Basis des Abstracts hatte",
     "",
-    "EINE REGEL, nicht mehr. Der Abstract traegt genau eine Aussage, die noch",
-    "keine andere Quelle abdeckt: der Normierungsbefund. Alles Uebrige aus dem",
-    "Abstract (Kraft ist nur ein Baustein, grosse Streuung) sagen Sperlich 2015",
-    "und Friedmann 2007 bereits auf HOEHERER Evidenzstufe — eine dritte Stimme",
-    "auf niedrigerer Stufe fuegt dort nichts hinzu.",
+    "EINE EIGENE KORREKTUR WAEHREND DER ERFASSUNG: ich hatte 'qualitaet'",
+    "zuerst auf 'mittel' gesetzt, weil die Methodik ueberzeugt. Damit landete",
+    "die Arbeit auf Klasse B — derselben Stufe wie Sperlich 2015, ein",
+    "begutachtetes Review ueber 46 Studien. Das ist zu grosszuegig: Begutachtung",
+    "ist eine echte Huerde, die diese Arbeit nicht genommen hat. Zurueck auf",
+    "'niedrig', also Klasse C. Praktisch heisst das: RUN-KRAFTPROFIL-002 kann",
+    "eine Klasse-B-Regel NICHT ueberstimmen — und das ist richtig so, denn ein",
+    "Nullbefund aus n=47 soll keine Meta-Analyse aushebeln.",
+    "ich geschrieben, die Arbeit trage genau eine Aussage und sei methodisch",
+    "schwach. Der Volltext widerlegt das: der Autor korrigiert fuer multiples",
+    "Testen (FDR q = 0.05), nutzt geschwindigkeitslinearisierte Kennwerte als",
+    "primaere Auswertung und warnt ausdruecklich davor, seine Nullbefunde als",
+    "Beleg fuer fehlende Zusammenhaenge zu lesen. Das ist sorgfaeltiger als",
+    "manche begutachtete Arbeit.",
     "",
-    "WAS SICH LOHNEN WUERDE: die Referenzbereiche fuer Kraftkennwerte aus dem",
-    "Volltext. Die gibt es in keiner der bisherigen Quellen. Sie bleiben zwar",
-    "Klasse D (n=47, nicht begutachtet) und duerfen nichts vorschreiben, waeren",
-    "aber als Einordnungshilfe brauchbar.",
+    "DER WERT DIESER QUELLE IST GROSSTEILS NEGATIV — und gerade deshalb hoch:",
+    "fuenf von sechs Hypothesen NICHT bestaetigt. Isolierte Krafttests sagen",
+    "hier weder Laufoekonomie noch Leistungsniveau vorher. Fuer ORVIA ist das",
+    "die wichtigste Aussage aller bisherigen Quellen, weil sie einer naheliegenden",
+    "Produktidee widerspricht: aus einem Krafttest eine Leistungsprognose zu bauen.",
     "",
-    "URHEBERRECHT: die Arbeit ist ausdruecklich als urheberrechtlich geschuetzt",
-    "gekennzeichnet. Nur eigene Formulierungen, keine Uebernahme."
+    "KEIN WIDERSPRUCH ZU SPERLICH/LLANOS-LAGOS, und das ist wichtig: die messen,",
+    "ob KrafttraiNING die Oekonomie verbessert. Kanjuh misst, ob ein KraftWERT",
+    "sie vorhersagt. Beides kann gleichzeitig wahr sein.",
+    "",
+    "KEINE 'zahlen'-Bloecke: die Referenzbereiche sind Beschreibungen einer",
+    "Stichprobe, keine Vorgaben. Dieselbe Unterscheidung wie in v8-339."
   ],
   "sport": "running",
   "quelle": {
     "id": "SRC-KANJUH-2026",
     "art": "studie",
     "titel": "Erstellung von Kraftprofilen bei Mittel- und Langstreckenlaeufer*innen (Masterthesis)",
-    "wer": "Mario Kanjuh — Hochschule Offenburg, M.Sc. Applied Research, Human Motion and Emotion, Fakultaet Maschinenbau und Verfahrenstechnik",
+    "wer": "Mario Kanjuh — Hochschule Offenburg, M.Sc. Applied Research, Human Motion and Emotion",
     "jahr": 2026,
     "url": "https://opus.hs-offenburg.de/frontdoor/index/index/docId/11984",
     "sportarten": [
@@ -41,11 +51,12 @@
     "worum_gehts": [
       "kraftprofil",
       "laufoekonomie",
+      "laufbiomechanik",
       "geschlechtsunterschiede"
     ],
     "qualitaet": "niedrig",
-    "kernaussage": "Die Querschnittarbeit misst bei siebenundvierzig Mittel- und Langstreckenlaeuferinnen und -laeufern isometrische Kraftkennwerte und setzt sie in Beziehung zu Laufoekonomie sowie zu raum-zeitlichen und kinematischen Laufparametern. Kraftdiagnostik, dreidimensionale Laufbandanalyse und Spiroergometrie liefen in einem gemeinsamen Messprotokoll. Ein durchgaengiges Muster: Maenner erreichen hoehere absolute Kraftwerte, doch nach Normierung auf die Koerpermasse schwaechen sich die geschlechtsspezifischen Unterschiede deutlich ab. Die gefundenen Zusammenhaenge zwischen Kraft und Laufmerkmalen fallen ueberwiegend klein bis moderat aus und haengen stark davon ab, welche Zielgroesse betrachtet wird.",
-    "grenzen": "Masterthesis, keine begutachtete Veroeffentlichung. Querschnittdesign — Zusammenhang, keine Ursache. Der Autor benennt die entscheidende Einschraenkung selbst: die Einteilung in Leistungsgruppen ist bei den sehr kleinen Teilgruppen primaer als beschreibende Orientierung zu lesen, nicht als belastbarer Gruppenvergleich. Er ordnet Kraftkennwerte ausdruecklich als EINEN Baustein in einem vielschichtigen System aus Technik, muskulaer-tendinoeser Funktion, Koerperbau, Trainingserfahrung und Ermuedung ein. Ich habe nur Titelseite und Abstract gelesen — der Volltext mit den Referenzbereichen lag nicht vor.",
+    "kernaussage": "Die Querschnittarbeit misst bei siebenundvierzig Mittel- und Langstreckenlaeuferinnen und -laeufern vier isometrische Kraftwerte der unteren Extremitaet und prueft, ob sie mit Laufoekonomie, Leistungsniveau und Laufbiomechanik zusammenhaengen. Von sechs Hypothesen wurde eine teilweise bestaetigt, fuenf nicht. Weder normierte noch mittlere Kraft hing mit dem Energieaufwand pro Strecke oder der Zehn-Kilometer-Leistung zusammen; die Effekte lagen nahe null. Einzig die absolute Hueftabduktionskraft blieb nach Korrektur fuer multiples Testen mit einer geringeren seitlichen Knieabweichung verbunden. Absolut sind Maenner staerker, nach Normierung gleichen sich die Werte weitgehend an.",
+    "grenzen": "Masterthesis, nicht begutachtet — methodisch aber sorgfaeltiger als der Abstract vermuten laesst: Korrektur fuer multiples Testen nach FDR, geschwindigkeitslinearisierte Kennwerte als primaere Auswertung. Querschnittdesign, also Zusammenhang und keine Ursache. Der Autor warnt ausdruecklich davor, die Nullbefunde als Beleg fuer fehlende Zusammenhaenge zu lesen: die Teilgruppen sind klein, die Elite-Gruppe der Frauen umfasst eine Person, und die statistische Empfindlichkeit ist begrenzt. Nur vier Krafttests, nur die dominante Seite; Rumpf, Hueftstrecker, Knieheber und Kniebeuger fehlen. Isometrische Messungen reagieren auf Aufwaermen, Instruktion und Motivation. Urheberrechtlich geschuetzt.",
     "eigene_worte": true,
     "geprueft_am": "2026-08-13"
   },
@@ -53,7 +64,7 @@
     {
       "id": "RUN-KRAFTPROFIL-001",
       "thema": "kraftvergleich",
-      "aussage": "Kraftwerte von Laeuferinnen und Laeufern werden auf die Koerpermasse normiert verglichen, nicht absolut. Absolut betrachtet erscheinen Maenner staerker; nach Normierung schwaecht sich der Unterschied deutlich ab. Ein absoluter Vergleich bildet damit vor allem Koerpergroesse ab, nicht Leistungsfaehigkeit.",
+      "aussage": "Kraftwerte von Laeuferinnen und Laeufern werden auf die Koerpermasse normiert verglichen, nicht absolut. Absolut erscheinen Maenner deutlich staerker; nach Normierung gleichen sich die Werte weitgehend an. Ein absoluter Vergleich bildet vor allem Koerpergroesse ab.",
       "art": "studie",
       "quellen": [
         "SRC-KANJUH-2026"
@@ -64,17 +75,113 @@
       ],
       "nicht_fuer": [
         "kinder_jugendliche",
-        "akute_verletzung"
+        "akute_verletzung",
+        "krafttraining_anfaenger"
       ],
       "unsicherheiten": [
-        "Masterthesis, nicht begutachtet — die Einordnung stuetzt sich auf die Angaben des Autors",
-        "Querschnittdesign mit siebenundvierzig Personen; die Leistungsgruppen sind laut Autor nur beschreibend zu lesen",
-        "Nur Titelseite und Abstract gelesen, kein Volltext",
-        "Die Groesse der Abschwaechung nach Normierung ist im Abstract nicht beziffert"
+        "Querschnittdesign mit siebenundvierzig Personen, davon dreizehn Frauen",
+        "Masterthesis, nicht begutachtet",
+        "Die Angleichung nach Normierung ist deutlich, aber nicht vollstaendig: bei Plantarflexion und Hueftabduktion bleiben Maenner tendenziell hoeher",
+        "Nur die dominante Seite gemessen"
       ],
-      "wenn_unsicher": "Im Zweifel gar keinen Kraftvergleich zwischen Personen anzeigen. Ein normierter Vergleich ist besser als ein absoluter, aber beide sagen wenig ueber die Laufleistung.",
+      "wenn_unsicher": "Im Zweifel gar keinen Kraftvergleich zwischen Personen anzeigen.",
       "wirkt_auf": [
         "plan.kraftvergleich_normierung"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-KRAFTPROFIL-002",
+      "thema": "leistungsprognose",
+      "aussage": "Aus isolierten isometrischen Krafttests laesst sich weder die Laufoekonomie noch das Leistungsniveau vorhersagen. In der untersuchten Stichprobe lagen die Zusammenhaenge nahe null und ueberstanden die Korrektur fuer multiples Testen nicht. Eine App darf aus einem Krafttest keine Leistungsprognose ableiten.",
+      "art": "studie",
+      "quellen": [
+        "SRC-KANJUH-2026"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "krafttraining_anfaenger"
+      ],
+      "unsicherheiten": [
+        "Das ist ein Nullbefund bei begrenzter statistischer Empfindlichkeit — der Autor warnt ausdruecklich davor, ihn als Beleg fuer fehlende Zusammenhaenge zu lesen",
+        "Fehlende Evidenz ist nicht dasselbe wie belegte Wirkungslosigkeit",
+        "Nur vier Krafttests; Rumpf, Hueftstrecker, Knieheber und Kniebeuger wurden nicht gemessen",
+        "Reaktive Kraft und sehnenspezifische Kennwerte liegen dem Laufen naeher als isolierte Maximalkrafttests und fehlen hier",
+        "Kein Widerspruch zu Sperlich 2015 oder Llanos-Lagos 2024: die messen, ob KrafttraiNING die Oekonomie verbessert, nicht ob ein KraftWERT sie vorhersagt"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Prognose ausgeben. Ein Krafttest beschreibt einen Ist-Zustand, keine Laufleistung.",
+      "wirkt_auf": [
+        "plan.leistungsprognose"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-KRAFTPROFIL-003",
+      "thema": "hueftabduktion",
+      "aussage": "Eine hoehere absolute Hueftabduktionskraft ging mit einer geringeren seitlichen Knieabweichung beim Laufen einher. Es ist der einzige Zusammenhang der Arbeit, der die Korrektur fuer multiples Testen ueberstanden hat, und der mit dem groessten erklaerten Varianzanteil.",
+      "art": "studie",
+      "quellen": [
+        "SRC-KANJUH-2026"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "krafttraining_anfaenger"
+      ],
+      "unsicherheiten": [
+        "Querschnittdesign — der Zusammenhang belegt keine Ursache und kein Trainingseffekt ist damit gezeigt",
+        "Der Befund gilt fuer die ABSOLUTE Kraft; normiert auf die Koerpermasse war er nicht signifikant, was gegen eine einfache Deutung spricht",
+        "Ein Zusammenhang mit Verletzungen wird in der Arbeit NICHT untersucht und darf daraus nicht abgeleitet werden",
+        "Die Richtung des Befunds haengt an Achsdefinition und Vorzeichenkonvention des Modells"
+      ],
+      "wenn_unsicher": "Im Zweifel Hueftabduktion als sinnvolle, risikoarme Ergaenzung behandeln — ohne Versprechen zur Knie- oder Verletzungssituation.",
+      "wirkt_auf": [
+        "session.exercises",
+        "plan.stabilitaetsfokus"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-KRAFTPROFIL-004",
+      "thema": "referenzbereiche",
+      "aussage": "Die gemessenen Kraftbereiche dieser Stichprobe dienen der Einordnung, nicht als Zielwert: Beinpresse rund vierunddreissig Newton je Kilogramm, Plantarflexion rund drei Newtonmeter je Kilogramm, Hueftabduktion rund zwei Komma drei, Inversion rund null Komma drei fuenf — jeweils mit erheblicher Streuung zwischen einzelnen Personen.",
+      "art": "studie",
+      "quellen": [
+        "SRC-KANJUH-2026"
+      ],
+      "gilt_fuer": [
+        "freizeitlaeufer",
+        "gut_trainierte_laeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "krafttraining_anfaenger"
+      ],
+      "unsicherheiten": [
+        "Es sind BESCHREIBENDE Werte einer Stichprobe von siebenundvierzig Personen, keine Norm und kein Zielwert",
+        "Die Streuung ist erheblich: die Beinpresse reichte von siebzehn bis achtundvierzig Newton je Kilogramm",
+        "Gemessen isometrisch auf der dominanten Seite mit einem bestimmten Geraeteaufbau — mit anderer Messung nicht vergleichbar",
+        "Da die Arbeit selbst keinen Zusammenhang zwischen diesen Werten und der Laufleistung findet, sagt ein Platz in diesem Bereich nichts ueber die Leistung"
+      ],
+      "wenn_unsicher": "Im Zweifel keinen Referenzwert anzeigen. Ein Wert ohne belegten Leistungsbezug erzeugt Vergleichsdruck ohne Nutzen.",
+      "wirkt_auf": [
+        "plan.kraftreferenz"
       ],
       "braucht": [
         "profile.sports"

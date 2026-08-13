@@ -3808,3 +3808,98 @@ mutiert nur Dateien unterhalb der App-Wurzel, kann ihn also nicht
 anfassen. Belegt ist er durch drei gemessene Läufe — das ist schwächer als
 eine wiederholbare Probe und wird hier deshalb ausdrücklich genannt statt
 als Fußnote geführt.
+
+---
+
+## 34 · Eins von dreißig (v8-344)
+
+### 34.1 Die Zahl
+
+Bevor dieses Register existierte, hat niemand geprüft, ob eingespeistes
+Wissen überhaupt einen Leser hat. Gemessen an den beiden vorhandenen
+Paketen:
+
+| Paket | Ziele | davon gelesen |
+|---|---|---|
+| Gym (4 Regeln) | 5 | **1** (`session.rest_seconds`) |
+| Laufen (14 Regeln) | 25 | **0** |
+| zusammen | 30 | **1** |
+
+Das eine ist die Pausenregel, an der seit v8-341 die ganze Kette vorgeführt
+wird. Alle übrigen 29 Ziele erzeugen Vorgaben, die niemand abholt.
+
+### 34.2 Wie es auffiel
+
+QUELLE-11 (Kanjuh) lief sauber durch Einspeisung, Vertrag und Anwendung und
+erzeugte eine Vorgabe für `plan.kraftvergleich_normierung` — ein Ziel, das in
+der gesamten App nicht vorkommt. Der Vertrag prüft Zielnamen nicht; jede
+Zeichenkette wird angenommen. Ein Tippfehler (`session.rest_secons`) hätte
+sich identisch verhalten: still, grün, wirkungslos.
+
+Dritte Wiederholung derselben Fehlerklasse: v8-335 (eingespeist, aber niemand
+liest es), v8-341 (`applyKnowledge` ohne Aufrufer), jetzt das Ziel ohne Leser.
+Die Kette ist jedes Mal ein Stück länger geworden — und jedes Mal endete sie
+kurz vor dem Ort, an dem sie etwas bewirkt hätte.
+
+### 34.3 Was gebaut wurde
+
+`prescriptionFactory.GELESENE_ZIELE`: die zwölf Ziele, die diese Verordnung
+wirklich liest, als **Literal**. `knowledge_targets_test.mjs` prüft
+
+- **beidseitig** gegen den Quelltext: keines fehlt, keines ist erfunden;
+- jedes Paketziel: hat es keinen Leser, muss es in `_ziele-ohne-leser.json`
+  **mit Begründung** stehen.
+
+Ein neues wirkungsloses Ziel wird rot. Fehlt die Quittungsdatei, ist der Test
+rot — dieselbe fail-closed-Regel wie beim Kohorten-Pin seit v8-343; bewusstes
+Neusetzen über `ORVIA_QUITTIERE_ZIELE=JJJJ-MM-TT`.
+
+**Warum quittieren statt verbieten.** Ein Ziel ohne Leser ist kein
+Vertragsbruch, sondern Wissen, das noch keine Verwendung hat. Es zu verbieten
+hieße, 29 gepflegte Regeln wegzuwerfen; es stillschweigend durchzulassen
+hieße, sich reicher zu rechnen, als man ist. Die Quittungsdatei erzwingt die
+dritte Möglichkeit: hinschreiben, warum.
+
+### 34.4 Zwei eigene Fehler, beide gefangen
+
+Die erste Fassung der Quittungen enthielt vierzehnmal „dito." — der Test
+verlangt je Eintrag eine Begründung von mindestens zwanzig Zeichen und wurde
+prompt rot. Gut so: eine Quittung ohne Grund ist eine Unterschrift unter ein
+leeres Blatt.
+
+Ernster war der zweite: Der Test sucht die gelesenen Ziele im Quelltext der
+Verordnung — und das Register **steht in genau diesem Quelltext**. Ohne
+Vorkehrung fände er jeden erfundenen Eintrag dort wieder und bestätigte ihn,
+dieselbe Selbstbestätigung wie ein Paket, das seinen eigenen Hash pinnt.
+Deshalb schneidet er den Registerblock vorher heraus; Probe ZR4 sichert genau
+das ab.
+
+### 34.5 Was NICHT gebaut wurde — und warum
+
+Freigegeben war „Zielregister **und** Laufen verdrahten". Die zweite Hälfte
+ist nach der Messung gestoppt: die 14 Laufregeln erzeugen ausschließlich
+Analysegrößen (`experienceTier`, `dimensionBudgets.*`, `safetyGateState` …).
+An den `knowledge-consumer` gehängt käme davon **nichts** in der Verordnung
+an — sie sprechen eine andere Sprache. Das wäre Arbeit ohne Wirkung gewesen,
+und sie hätte in der Coverage-Matrix ausgesehen wie ein Fortschritt.
+
+Die Entscheidung liegt bei Gian; drei Wege stehen in
+`STAND-UND-OFFENE-PUNKTE.md` unter Punkt 1, empfohlen ist **A** (den Leser im
+Wochenplan bauen, wo die Regeln von Anfang an hingehörten).
+
+### 34.6 Stand
+
+- `prescription-factory.js` rein additiv geändert (Registerliteral + Export)
+- neu: `knowledge_targets_test.mjs` (9 Zusicherungen),
+  `_ziele-ohne-leser.json` (29 begründete Quittungen),
+  `tools/probes/knowledge-targets.json` (4 Proben, alle angeschlagen)
+- Gesamtsuite **258/0** bei 7 übersprungenen (265 Dateien)
+- **128 Proben in 16 Katalogen**, 124 gefahren / 4 übersprungen
+- Kohorten-Pin `023ee59b` unverändert, Wissensmodule vor/nach gehasht: unverändert
+
+### 34.7 Offen
+
+Der Sensor prüft Pakete, nicht die Notizdateien in `docs/wissen/`. QUELLE-11
+fällt deshalb noch nicht auf — erst wenn daraus ein Paket wird. Die
+Erweiterung wäre billig und würde den Fehler zeigen, **bevor** jemand ein
+Paket dafür baut.

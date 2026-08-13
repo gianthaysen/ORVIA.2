@@ -1,4 +1,66 @@
-const C = 'orvia-v8-343';   /* DAS PRUEFWERKZEUG WAR SELBST UNGEPRUEFT (2026-08-13) · v8-343:
+const C = 'orvia-v8-344';   /* EIN VON DREISSIG (2026-08-13) · v8-344:
+
+   DIE ZAHL ZUERST. Bevor dieses Register existierte, hat NIEMAND geprueft,
+   ob ein eingespeistes Wissen ueberhaupt einen Leser hat. Gemessen an den
+   beiden vorhandenen Paketen:
+
+       Gym-Paket      1 von 5 Zielen wird gelesen
+       Laufpaket      0 von 25
+       zusammen       1 von 30
+
+   Das eine ist `session.rest_seconds` — die Pausenregel, an der seit v8-341
+   die ganze Wissenskette vorgefuehrt wird. Alle anderen 29 Ziele erzeugen
+   Vorgaben, die niemand abholt.
+
+   WIE ES AUFFIEL. QUELLE-11 (Kanjuh) lief sauber durch Einspeisung, Vertrag
+   und Anwendung und erzeugte eine Vorgabe fuer
+   `plan.kraftvergleich_normierung` — ein Ziel, das in der ganzen App nicht
+   vorkommt. Der Vertrag prueft Zielnamen nicht; jede Zeichenkette wird
+   angenommen. Ein Tippfehler haette sich identisch verhalten: still, gruen,
+   wirkungslos. Dritte Wiederholung derselben Fehlerklasse nach v8-335
+   (niemand liest es) und v8-341 (applyKnowledge ohne Aufrufer).
+
+   WAS JETZT DA IST.
+   `prescriptionFactory.GELESENE_ZIELE` — die zwoelf Ziele, die diese
+   Verordnung wirklich liest, als LITERAL. `knowledge_targets_test.mjs`
+   prueft die Liste BEIDSEITIG gegen den Quelltext (keines fehlt, keines ist
+   erfunden) und danach jedes Paketziel: hat es keinen Leser, muss es in
+   `_ziele-ohne-leser.json` mit BEGRUENDUNG stehen. Ein neues wirkungsloses
+   Ziel wird rot, ein bewusst quittiertes bleibt gruen. Fehlt die
+   Quittungsdatei, ist der Test rot — dieselbe fail-closed-Regel wie beim
+   Kohorten-Pin seit v8-343; bewusstes Neusetzen ueber
+   `ORVIA_QUITTIERE_ZIELE=JJJJ-MM-TT`.
+
+   WARUM QUITTIEREN STATT VERBIETEN. Ein Ziel ohne Leser ist kein
+   Vertragsbruch, sondern Wissen, das noch keine Verwendung hat. Es zu
+   verbieten hiesse, 29 gepflegte Regeln wegzuwerfen; es stillschweigend
+   durchzulassen hiesse, sich reicher zu rechnen als man ist. Die
+   Quittungsdatei zwingt zur dritten Moeglichkeit: hinschreiben, warum.
+
+   EIGENE FEHLER IN DIESER RUNDE, beide vom Test bzw. von Proben gefangen:
+   die erste Fassung der Quittungen enthielt vierzehnmal „dito.\" — der Test
+   verlangt je Eintrag eine echte Begruendung und wurde rot. Und ZR4 sichert,
+   dass der Test den Registerblock aus dem Quelltext SCHNEIDET, bevor er die
+   gelesenen Ziele sucht; ohne diesen Schnitt faende er jeden erfundenen
+   Eintrag im Register selbst wieder und bestaetigte ihn.
+
+   WAS DAS FUER DIE OFFENE LISTE HEISST — und was ich NICHT gebaut habe.
+   Punkt 1 („Laufen an den Consumer haengen\") war so nicht sinnvoll: die 14
+   Laufregeln erzeugen ausschliesslich Analysegroessen (`experienceTier`,
+   `dimensionBudgets.*`, `safetyGateState` …). Selbst perfekt verdrahtet
+   erreichte KEINE von ihnen die Verordnung — sie sprechen eine andere
+   Sprache. Die Verdrahtung ist deshalb gestoppt und liegt als Entscheidung
+   bei Gian; hier steht nur der Sensor, der das kuenftig sofort zeigt.
+
+   GEAENDERT: js/engine/prescription-factory.js (nur additiv: Registerliteral
+   + Export), neu supabase/tests/knowledge_targets_test.mjs,
+   supabase/tests/_ziele-ohne-leser.json, tools/probes/knowledge-targets.json.
+   Suite 258/0 bei 7 uebersprungenen (265 Dateien), 128 Proben in 16
+   Katalogen, 124 gefahren / 4 uebersprungen. Kohorten-Pin 023ee59b
+   unveraendert, Wissensmodule vor/nach gehasht: unveraendert.
+
+   ============================================================
+   DAS PRUEFWERKZEUG WAR SELBST UNGEPRUEFT (2026-08-13) · v8-343:
 
    ZUERST EIN EIGENER FEHLER, ZURUECKGENOMMEN. In v8-342 stand hier und in
    der Standdatei, der Kohorten-Pin `023ee59b` sei "nur Fliesstext, kein Test

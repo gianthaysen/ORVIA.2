@@ -247,8 +247,39 @@
         paceEvidenceUsed: _paceEvidence(evidence || null) } };
   }
 
+  /* ============================================================
+     DAS ZIELREGISTER (v8-344)
+
+     WOZU. Eine Wissensregel nennt in `outputs`, worauf sie wirken will.
+     Bis hierher hat das NIEMAND geprueft: jede Zeichenkette wurde
+     angenommen. Eine Regel mit dem Ziel `plan.kraftvergleich_normierung`
+     (QUELLE-11) lief durch Einspeisung, Vertrag und Anwendung, erzeugte
+     eine Vorgabe — und wirkte auf nichts, weil diese Verordnung das Ziel
+     gar nicht kennt. Ein Tippfehler (`session.rest_secons`) verhaelt sich
+     exakt genauso: still, gruen, wirkungslos.
+
+     GEMESSEN am 2026-08-13, bevor es dieses Register gab:
+       Gym-Paket     1 von 5 Zielen hatte einen Leser
+       Laufpaket     0 von 25
+
+     Die Liste steht hier als LITERAL und wird nicht zur Laufzeit aus dem
+     Code zusammengesucht. `knowledge_targets_test.mjs` prueft sie
+     BEIDSEITIG gegen die tatsaechlich im Quelltext gelesenen Ziele: keines
+     darf fehlen, keines zu viel drinstehen. Wer ein Ziel neu liest, traegt
+     es hier ein — wer eines entfernt, ebenso.
+
+     WAS DAS REGISTER NICHT TUT: es verbietet nichts. Ein Ziel ohne Leser
+     ist kein Vertragsbruch, sondern Wissen, das noch keine Verwendung hat.
+     Der Unterschied gehoert sichtbar gemacht, nicht bestraft.
+     ============================================================ */
+  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds',
+    'session.rpe_easy', 'session.rpe_intervall', 'session.rpe_kraft', 'session.rpe_long',
+    'session.rpe_tempo', 'session.rpe_warmup', 'session.sets', 'session.trabpause_min',
+    'session.warmup_anteil'];
+
   function _freeze(o) { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.keys(o).forEach(function (k) { _freeze(o[k]); }); Object.freeze(o); } return o; }
   O.prescriptionFactory = _freeze({ VERSION: VERSION, TEMPLATE_IDS: Object.keys(TEMPLATES).sort(),
+    GELESENE_ZIELE: GELESENE_ZIELE,
     validateWorkout: validateWorkout, buildPrescription: buildPrescription });
   if (typeof module !== 'undefined' && module.exports) module.exports = O.prescriptionFactory;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

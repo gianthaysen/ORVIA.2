@@ -1,0 +1,47 @@
+{
+  "target": "js/engine/prescription-factory.js",
+  "test": "supabase/tests/knowledge_targets_test.mjs",
+  "note": "Das Zielregister ist der Sensor dafuer, ob eingespeistes Wissen ueberhaupt einen Leser hat. Gemessen bei seiner Einfuehrung: 1 von 30 Zielen. Diese Proben sichern, dass der Sensor nicht selbst blind ist.",
+  "probes": [
+    {
+      "id": "ZR1",
+      "pattern": "value_not_type",
+      "title": "das Register verschweigt ein Ziel, das die Verordnung wirklich liest",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    'session.rpe_tempo', 'session.rpe_warmup', 'session.sets', 'session.trabpause_min',",
+      "replace": "    'session.rpe_tempo', 'session.rpe_warmup', 'session.trabpause_min',",
+      "expectTest": "kein gelesenes Ziel fehlt im Register",
+      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut."
+    },
+    {
+      "id": "ZR2",
+      "pattern": "data_lacks_var",
+      "title": "das Register erfindet ein Ziel, das niemand liest",
+      "file": "js/engine/prescription-factory.js",
+      "find": "    'session.warmup_anteil'];",
+      "replace": "    'session.warmup_anteil', 'session.last_prozent_1rm'];",
+      "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
+      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE."
+    },
+    {
+      "id": "ZR3",
+      "pattern": "neighbour_guard",
+      "title": "ein neues wirkungsloses Ziel rutscht unquittiert durch",
+      "file": "js/engine/knowledge/gym-knowledge-pack.js",
+      "find": "          \"session.rest_seconds\"",
+      "replace": "          \"session.rest_secons\"",
+      "expectTest": "jedes Ziel ohne Leser ist quittiert",
+      "history": "Der Tippfehlerfall, wortwoertlich: aus rest_seconds wird rest_secons. Vorher waere die Pausenregel damit still wirkungslos geworden — die Verordnung haette 120 s nicht mehr gefunden und niemand haette es gemerkt, weil kein Test die Zielnamen kannte."
+    },
+    {
+      "id": "ZR4",
+      "pattern": "fixture_masks",
+      "title": "das Register bestaetigt sich selbst aus dem eigenen Quelltext",
+      "file": "js/engine/prescription-factory.js",
+      "find": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds',",
+      "replace": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds', 'session.erfunden_xy',",
+      "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
+      "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt."
+    }
+  ]
+}

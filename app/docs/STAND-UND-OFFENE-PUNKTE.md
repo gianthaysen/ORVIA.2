@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-343, veröffentlicht am 2026-08-13.** Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-344, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 liegt bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-343) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§33).
+`sw.js` (Versionsköpfe v8-329 bis v8-344) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§34).
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
 > Suite und Proben stimmten. Zwei Aussagen nicht: die Coverage-Matrix führte
@@ -55,18 +55,37 @@ die Matrix nachzuziehen, bekommt einen roten Test.
 
 ## Offene Punkte, priorisiert
 
-### 1 · Laufen an den Consumer hängen
-**Neu begründet am 13.08.** — die alte Begründung stimmte nicht.
-`O.runningCapacityFactory` wird von **keiner Stelle der App** gerufen; die
-einzigen Nennungen im ganzen Repo sind ihre eigene Datei, ihr Unittest und
-`phase6_module_load_test`. Es gibt also nicht zwei Wege auf dieselben Regeln,
-sondern einen lebenden (Gym über `knowledge-consumer`) und einen toten. Das
-Risiko des Zusammenführens ist damit kleiner als angenommen — der Preis des
-Wartens dagegen unverändert: 14 gepflegte Laufregeln wirken auf nichts.
+### 1 · Laufen an den Consumer hängen — **gestoppt, Entscheidung nötig**
+Zweimal neu bewertet, zuletzt mit einer Messung, die den Plan gekippt hat.
 
-Zu entscheiden ist nur, in welche Richtung: die Factory abräumen und
-`running` in `PAKETE` eintragen (mit eigenen Pins als Literal), oder die
-Factory verdrahten und dafür Gym umhängen. Ersteres ist der kürzere Weg.
+Erst der harmlose Teil: `O.runningCapacityFactory` wird von **keiner Stelle
+der App** gerufen — nur die eigene Datei, ihr Unittest und
+`phase6_module_load_test` nennen sie. Es gibt keine zwei Wege auf dieselben
+Regeln, sondern einen lebenden (Gym) und einen toten.
+
+Der Teil, der alles ändert (gemessen am 13.08., v8-344):
+
+```
+Verordnung liest         12 Ziele, alle session.*
+Laufpaket erzeugt        25 Ziele — davon gelesen: 0
+```
+
+Die 14 Laufregeln liefern **Analysegrößen** (`experienceTier`,
+`dimensionBudgets.easy`, `safetyGateState` …), keine Verordnungswerte. An den
+`knowledge-consumer` gehängt käme davon **nichts** an. Das Verdrahten wäre
+Arbeit ohne Wirkung — deshalb nicht gebaut.
+
+Drei Wege, in aufsteigendem Aufwand:
+
+| Weg | Was passiert | Aufwand |
+|---|---|---|
+| **A · Leser bauen** | `scheduler-v2` liest die Wochengrößen (`dimensionBudgets.*`, `hardDaySpacingRequirement`, `frequencyBand`). Die Laufregeln bleiben wie sie sind — sie waren für genau das gedacht. | mittel |
+| **B · Regeln übersetzen** | Die 14 Regeln bekommen zusätzlich `session.*`-Ziele. Fachlich heikel: aus „Historienreife begrenzt jede Aussage" lässt sich keine Satzzahl machen, ohne etwas zu erfinden. | hoch, teils unmöglich |
+| **C · Factory verdrahten** | Die tote `running-capacity-factory` bekommt einen Aufrufer und bleibt der Leser der Laufregeln. Der zweite Weg neben dem Consumer bleibt damit bestehen. | mittel, aber zwei Wege dauerhaft |
+
+**Empfehlung: A.** Die Laufregeln sind für den Wochenplan geschrieben, nicht
+für die Einheit — dort gehört ihr Leser hin. Das räumt zugleich Punkt 2 mit
+ab, denn die Übungsauswahl hängt am selben Modul.
 
 ### 2 · Übungsauswahl für Gym
 `scheduler-v2` leitet für Gym keine Übungsliste ab → `no_exercise_list_generic_session`
@@ -102,9 +121,21 @@ angewendet" aus und bewirkt nichts — und ein Tippfehler
 Mal** dieselbe Fehlerklasse: v8-335 („eingespeist, aber niemand liest es"),
 v8-341 (`applyKnowledge` ohne Aufrufer), jetzt das Ziel ohne Leser.
 
-Fällig wäre ein **Zielregister**: die Verordnung meldet, welche Ziele sie
-kennt; die Einspeisung weist alles andere ab oder markiert es sichtbar als
-„noch ohne Leser". Gehört zusammen mit Punkt 1 gemacht.
+**Seit v8-344 gibt es den Sensor dafür:** `prescriptionFactory.GELESENE_ZIELE`
+(zwölf Ziele, als Literal, beidseitig gegen den Quelltext geprüft) und
+`knowledge_targets_test.mjs`. Jedes Paketziel ohne Leser muss in
+`_ziele-ohne-leser.json` **mit Begründung** stehen; ein neues wirkungsloses
+Ziel wird rot. Aktueller Stand, ehrlich: **1 von 30 Zielen wird gelesen.**
+
+Zwei Grenzen, die bewusst offen sind:
+
+1. Der Sensor prüft **Pakete** (`*-knowledge-pack.js`), nicht die Notizdateien
+   in `docs/wissen/`. QUELLE-11 fällt deshalb noch nicht auf — erst wenn
+   daraus ein Paket gebaut wird. Eine Erweiterung auf die Notizen wäre billig
+   und würde das Problem vor dem Bauen zeigen statt danach.
+2. Das Register **verbietet nichts**. Ein Ziel ohne Leser ist kein
+   Vertragsbruch, sondern Wissen ohne Verwendung. Der Unterschied gehört
+   sichtbar gemacht, nicht bestraft.
 
 ### 4 · Konfliktlösung — noch offene Feinheit
 Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
@@ -251,12 +282,14 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-343)
+## Zahlen zum Nachprüfen (v8-344)
 
-- Gesamtsuite **257/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
-  **Nur mit Chromium** — ohne Browser-Binary sind es 235/0 bei 29 übersprungenen,
+- Gesamtsuite **258/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
+  **Nur mit Chromium** — ohne Browser-Binary sind es 236/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **124 Proben in 15 Katalogen**, 120 gefahren / 4 übersprungen
+- **128 Proben in 16 Katalogen**, 124 gefahren / 4 übersprungen
+- **Ziele mit Leser: 1 von 30** (`session.rest_seconds`) — die ehrlichste Zahl
+  über den Stand der Wissenskette, siehe Punkt 3b
 - Kohorten-Pin `023ee59b`, geprüft von `shadow_adaptive_test.mjs` gegen
   `supabase/tests/_acceptance-cohort.json` (seit 2026-08-08 eingefroren)
 - `running-knowledge-pack.js` = `42ca48f4…`, `knowledge-sources.js` = `b786437d…`
