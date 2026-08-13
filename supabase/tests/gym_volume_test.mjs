@@ -101,5 +101,38 @@ ok('lower_back ist eigene Muskelgruppe', G.MUSCLES.indexOf('lower_back') >= 0 &&
 let cmp = G.compareToLegacy([{ exercises: [ex('Bankdrücken', [set(), set(), set()])] }], { chest: 3, triceps: 2.0 });
 ok('compareToLegacy: difference rückführbar', cmp.chest.difference === 0 && cmp.triceps.difference === -0.5 && cmp.triceps.contributions.length === 1);
 
+/* ══ v8-352 · Der Korridor sagt, woher er kommt ══
+   BEFUND: Bis v8-351 stand er auf der Muskelkarte als „Ziel: 6–12/Woche" —
+   ohne jeden Zusatz, waehrend jede Zahl aus eingespeistem Wissen daneben
+   ihre Evidenzklasse traegt. Eine unbelegte Zahl, die „Ziel" heisst, sieht
+   verbindlicher aus als eine belegte. Sie ist ein Produktwert; das gehoert
+   an die Zahl, nicht in den Profi-Modus. */
+{
+  const k = G.targetCorridor({ goal: 'hypertrophy', experience: 'intermediate', dataWeeks: 4 });
+  ok('v8-352 der Korridor nennt seine Basis', k.basis === 'produktwert', String(k.basis));
+  ok('v8-352 … und traegt ein Klartext-Label', typeof k.label === 'string' && k.label.length >= 20, k.label);
+  ok('v8-352 … das die fehlende Quelle ausdruecklich benennt',
+    /keine Quelle/i.test(k.label || ''), k.label);
+  ok('v8-352 … und seine Bezugsgroesse mitfuehrt (Woche, nicht Einheit)',
+    /Woche/.test(k.einheit || ''), k.einheit);
+
+  /* Das Label darf KEINE Herkunft vortaeuschen: keine Studie, kein Jahr,
+     keine Evidenzklasse. Ein Produktwert, der nach Beleg klingt, waere
+     schlimmer als einer ohne Label. */
+  ok('v8-352 … ohne eine Quelle zu erfinden',
+    !/Klasse [A-D]|Studie|20\d\d|et al/i.test(k.label || ''), k.label);
+
+  ok('v8-352 ohne Datengrundlage gibt es keinen Produktwert',
+    G.targetCorridor({ goal: 'hypertrophy', experience: 'beginner', dataWeeks: 1 }).basis === 'keine');
+  ok('v8-352 bei Kraftzielen ebenfalls nicht',
+    G.targetCorridor({ goal: 'strength', experience: 'advanced', dataWeeks: 8 }).basis === 'keine');
+
+  /* Die Abgrenzung zur Quellenzahl: 5–6 je EINHEIT (GYM-HYP-002) ist eine
+     andere Bezugsgroesse als 6–12 je WOCHE. Waeren beide gleich beschriftet,
+     laege die Verwechslung nahe — und sie waere teuer. */
+  ok('v8-352 der Korridor ist NICHT mit der Quellenzahl verwechselbar',
+    (k.einheit || '').indexOf('Woche') >= 0 && (k.einheit || '').indexOf('Einheit') < 0, k.einheit);
+}
+
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

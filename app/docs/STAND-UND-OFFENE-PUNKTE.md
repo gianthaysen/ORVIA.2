@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-351, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-351 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-352, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-352 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-351) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§41).
+`sw.js` (Versionsköpfe v8-329 bis v8-352) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§42).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -142,10 +142,12 @@ führt `exerciseId` als Datenbank-UUID, nicht als Slug — ob die Auflösung üb
 die Übungsbibliothek trägt, ist unbelegt. Unter ~60 % zuordenbar wäre der
 Prüfer mehr Rauschen als Nutzen.
 
-**Nebenbefund, gesondert zu bewerten:** `gym-volume.CORRIDORS` führt zum
-selben Gegenstand einen **unbelegten Produktwert** (6–12 Sätze je Muskelgruppe
-und Woche, `source: 'conservative_start:…'`). Er ist über die Wochenfrequenz
-mit der Quellenzahl verbunden — und genau die nennt die Quelle nicht.
+**Nebenbefund — erledigt in v8-352 (§42):** `gym-volume.CORRIDORS` stand als
+„Ziel: 6–12/Woche" ohne Herkunft auf der Muskelkarte, während daneben jede
+Zahl aus Wissen ihre Evidenzklasse trägt. Er heißt jetzt „Richtwert", nennt
+seine Basis (`produktwert`) und seine Bezugsgröße; die Quellenzahl steht mit
+ihrer eigenen Bezugsgröße daneben. Umgerechnet wird nicht — die Quelle nennt
+keine Wochenfrequenz.
 
 Die alte Zusicherung in `knowledge_consumer_test.mjs` bleibt gültig: sie
 schlägt an, sobald der Scheduler Übungen liefert.
@@ -383,7 +385,7 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 - Gesamtsuite **261/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
   **Nur mit Chromium** — ohne Browser-Binary sind es 239/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **159 Proben in 19 Katalogen**, 154 gefahren / 5 übersprungen, jede
+- **163 Proben in 20 Katalogen**, 158 gefahren / 5 übersprungen, jede
   gefahrene schlägt an
 - **Ziele, die ankommen: 30 von 30** aus Paketen (1 als Wert, 24 als Hinweis,
   5 bewusst gesperrt mit Code) und 25 von 25 aus Notizen (21 nach technischer

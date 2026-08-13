@@ -1,0 +1,47 @@
+{
+  "target": "js/gym-volume.js",
+  "test": "supabase/tests/gym_volume_test.mjs",
+  "note": "Der Zielkorridor ist ein PRODUKTWERT ohne Quelle — und stand bis v8-351 als „Ziel: 6–12/Woche\" neben Hinweisen, die ihre Evidenzklasse tragen. Die unbelegte Zahl sah damit verbindlicher aus als die belegte. Diese Proben sichern, dass die Herkunft an der Zahl bleibt und dass sie nicht mit der Quellenzahl (5–6 je EINHEIT) verwechselbar wird.",
+  "probes": [
+    {
+      "id": "KOR1",
+      "pattern": "data_lacks_var",
+      "title": "der Korridor verliert seine Basis",
+      "file": "js/gym-volume.js",
+      "find": "      basis: 'produktwert',",
+      "replace": "",
+      "expectTest": "v8-352 der Korridor nennt seine Basis",
+      "history": "Ohne `basis` kann die Darstellung nicht mehr unterscheiden, ob eine Zahl aus einer Quelle oder aus einer Produktentscheidung stammt — und wuerde beide gleich beschriften. Genau das war der Zustand bis v8-351."
+    },
+    {
+      "id": "KOR2",
+      "pattern": "value_not_type",
+      "title": "das Label taeuscht eine Quelle vor",
+      "file": "js/gym-volume.js",
+      "find": "      label: 'ORVIA-Richtwert, konservativ gesetzt — keine Quelle, fachlich ungeprüft',",
+      "replace": "      label: 'Evidenzbasierter Richtwert nach aktueller Studienlage (Klasse B)',",
+      "expectTest": "v8-352 … das die fehlende Quelle ausdruecklich benennt",
+      "history": "Die gefaehrlichere Richtung. Ein Produktwert ohne Label ist unvollstaendig; ein Produktwert MIT erfundenem Beleg ist eine Luege, und zwar eine gut aussehende. Die Probe schmuggelt genau die Formulierung ein, die man beim Schoenschreiben waehlen wuerde — inklusive Evidenzklasse, die es hier nicht gibt."
+    },
+    {
+      "id": "KOR3",
+      "pattern": "neighbour_guard",
+      "title": "die Bezugsgroesse verschwindet",
+      "file": "js/gym-volume.js",
+      "find": "      einheit: 'effektive Satzäquivalente je Muskelgruppe und Woche' };",
+      "replace": "      einheit: 'effektive Satzäquivalente je Muskelgruppe' };",
+      "expectTest": "v8-352 … und seine Bezugsgroesse mitfuehrt (Woche, nicht Einheit)",
+      "history": "„6–12 je Muskelgruppe\" ohne Zeitbezug ist neben „5–6 je Muskelgruppe und Einheit\" nicht mehr unterscheidbar — und die Verwechslung kostet den Faktor der Wochenfrequenz. Dieselbe Einheitenverwechslung, vor der v8-344 gewarnt hat, nur auf dem Bildschirm statt im Code."
+    },
+    {
+      "id": "KOR4",
+      "pattern": "fixture_masks",
+      "title": "ohne Datengrundlage entsteht doch ein Produktwert",
+      "file": "js/gym-volume.js",
+      "find": "      return { min: null, max: null, source: 'insufficient_data',\n        basis: 'keine', label: 'noch keine Datengrundlage' };",
+      "replace": "      return { min: 6, max: 12, source: 'insufficient_data', basis: 'produktwert', label: 'ORVIA-Richtwert, konservativ gesetzt — keine Quelle, fachlich ungeprüft' };",
+      "expectTest": "v8-352 ohne Datengrundlage gibt es keinen Produktwert",
+      "history": "Fail-open in der bequemsten Form: lieber irgendeinen Korridor zeigen als einen leeren Kasten. Der Nutzer saehe dann einen „Richtwert\" fuer eine Muskelgruppe, ueber die noch gar nichts bekannt ist — und wuerde sein Training danach ausrichten."
+    }
+  ]
+}

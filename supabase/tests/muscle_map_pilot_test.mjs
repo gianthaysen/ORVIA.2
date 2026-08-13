@@ -88,5 +88,34 @@ const p7=G.gymPipeline({days:7,serverActivities:[recent,oldA]});
 const p28=G.gymPipeline({days:28,serverActivities:[recent,oldA]});
 ok('9 7-Tage-Fenster schließt 12 Tage alte Einheit aus; 28-Tage schließt sie ein', p7.snapshots.length===1 && p28.snapshots.length===2);
 
+/* ══ (10) v8-352 · Der Korridor darf nicht mehr „Ziel" heissen ══
+   BEFUND: „Ziel: 6–12/Woche" stand ohne jede Herkunft auf der Karte, und
+   die Basis (`conservative_start`) wurde im Profi-Modus sogar noch aus dem
+   Text gestrichen. Daneben tragen die Hinweise aus eingespeistem Wissen
+   Evidenzklasse und Regel-ID. Die unbelegte Zahl sah damit verbindlicher
+   aus als die belegte — genau verkehrt herum. */
+const numK=M.mvDetailNumbers({muscleId:'chest',targetRange:{min:6,max:12,source:'conservative_start:hypertrophy:intermediate',basis:'produktwert',label:'ORVIA-Richtwert, konservativ gesetzt — keine Quelle, fachlich ungeprüft'}},null);
+ok('10a Basis und Label wandern bis in die Darstellung',
+  numK.targetBasis==='produktwert' && /keine Quelle/.test(numK.targetLabel||''), JSON.stringify({b:numK.targetBasis,l:numK.targetLabel}));
+ok('10b die Kennung wird nicht mehr unterwegs verkuerzt',
+  numK.targetSource==='conservative_start:hypertrophy:intermediate', numK.targetSource);
+
+/* Der Quelltext selbst: ein Produktwert, der „Ziel" heisst, ist eine
+   Vorgabe — auch wenn daneben steht, woher er kommt. Diese Zusicherung
+   haengt bewusst am Text, weil genau die Beschriftung der Befund war. */
+const uiKorr=ui.slice(ui.indexOf('function gmMuscleTile('), ui.indexOf('function gmMuscleTile(')+1200);
+ok('10c die Kachel nennt den Korridor Richtwert, nicht Ziel',
+  /Richtwert/.test(uiKorr) && !/· Ziel /.test(uiKorr));
+ok('10d das Detail nennt ihn ebenfalls Richtwert',
+  /'Richtwert: '\+fmtDe\(num.targetMin\)/.test(ui) && ui.indexOf("'Zielkorridor: '+fmtDe(num.targetMin)")<0);
+
+/* Und die Abgrenzung zur Quellenzahl existiert wirklich — mit dem Satz,
+   der das Umrechnen ausschliesst. Ohne ihn stuenden zwei Zahlen zum selben
+   Gegenstand nebeneinander und der Nutzer muesste raten, welche gilt. */
+ok('10e die Abgrenzung zur Quellenzahl steht im Detail',
+  /gmKorridorAbgrenzungHTML\(\)/.test(ui) && /nennt keine Wochenfrequenz/.test(ui));
+ok('10f … und rechnet die eine NICHT in die andere um',
+  !/wert\.min\s*\*|\*\s*einheitenProWoche|proWoche\s*\*/.test(ui.slice(ui.indexOf('function gmKorridorAbgrenzungHTML'), ui.indexOf('function mvDetailNumbers'))));
+
 console.log('\n'+(fail?fail+' FAILED':'muscle_map_pilot: ALL PASSED')+' ('+pass+' ok)');
 if(fail)process.exit(1);

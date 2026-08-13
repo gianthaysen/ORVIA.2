@@ -2372,6 +2372,52 @@ var MV_MAP_POS={
 if(typeof window!=='undefined'){window._mvSide=window._mvSide||'front';}
 function setMvSide(s){if(typeof window!=='undefined')window._mvSide=s;if(typeof renderMuscleVolume==='function')renderMuscleVolume();}
 function mvLabelDe(id){try{var L=(window.ORVIA&&ORVIA.gymVolume&&ORVIA.gymVolume.MUSCLE_LABEL);if(L&&L[id])return L[id];}catch(e){}return id;}
+/* v8-352 — ZWEI ZAHLEN ZUM SELBEN GEGENSTAND, und keine rechnet die andere aus.
+
+   ORVIA fuehrt zum Satzumfang je Muskelgruppe zwei Werte mit verschiedenen
+   Bezugsgroessen und sehr verschiedener Belegbarkeit:
+
+     Richtwert (gym-volume.CORRIDORS)   6–12 je Muskelgruppe und WOCHE
+                                        Produktwert, keine Quelle
+     Quelle (GYM-HYP-002, 2007)         5–6 je Muskelgruppe und EINHEIT
+                                        Klasse B, wissenschaftlich ungeprueft
+
+   Verbunden waeren sie ueber die Wochenfrequenz — und genau die nennt die
+   Quelle ausdruecklich NICHT: „Keine Angabe zur Wochenfrequenz, ohne die
+   eine Satzzahl je Einheit wenig aussagt." Zwei Einheiten je Woche ergaeben
+   10–12 und passten; drei ergaeben 15–18 und laegen darueber. Welche
+   Rechnung stimmt, weiss niemand.
+
+   Also wird NICHT gerechnet. Beide Zahlen stehen nebeneinander, jede mit
+   ihrer Bezugsgroesse und ihrer Herkunft, und der Unterschied wird benannt.
+   Das ist unbequemer als eine Zahl — und das einzige, was ehrlich ist.
+
+   Ohne eingespeistes Wissen steht hier nichts: kein Vergleich, kein Verweis
+   auf eine Quelle, die gar nicht geladen ist. */
+function gmKorridorAbgrenzungHTML(){
+  try{
+    var O=window.ORVIA||{};
+    var KC=O.knowledgeConsumer;
+    if(!KC||typeof KC.wissenFuer!=='function')return '';
+    var w=KC.wissenFuer('gym');
+    if(!w||w.ok!==true||!Array.isArray(w.vorgaben))return '';
+    var v=null;
+    for(var i=0;i<w.vorgaben.length;i++){
+      var c=w.vorgaben[i];
+      if(c&&c.ziel==='plan.saetze_je_muskelgruppe'&&c.art==='zahl'&&c.wert){v=c;break;}
+    }
+    if(!v)return '';
+    var klasse=(v.herkunft&&v.herkunft.evidenceClass)?('Klasse '+v.herkunft.evidenceClass):null;
+    return '<div class="md-corr-cmp">'+
+      '<b>Dazu aus einer Quelle:</b> '+escH(v.wert.min+'–'+v.wert.max)+' '+
+      escH(v.einheit||'Sätze je Muskelgruppe und Trainingseinheit')+
+      (klasse?' <span class="muted">['+escH(klasse+' · '+(v.regelId||''))+']</span>':'')+
+      '<br><span class="muted">Andere Bezugsgröße als der Richtwert oben — '+
+      'je <b>Einheit</b> statt je Woche. Umgerechnet wird nicht: die Quelle '+
+      'nennt keine Wochenfrequenz.</span></div>';
+  }catch(_){return '';}
+}
+
 // Reine, modusunabhängige Detail-Kennzahlen — exakt aus Engine, keine UI-Rechnung.
 function mvDetailNumbers(m,ex){
   m=m||{};
@@ -2381,6 +2427,9 @@ function mvDetailNumbers(m,ex){
     weeklyEquivalent:m.weeklyEquivalent,
     targetMin:(m.targetRange&&m.targetRange.min), targetMax:(m.targetRange&&m.targetRange.max),
     targetDisplay:(m.targetRange&&m.targetRange.displayStatus)||null, targetSource:(m.targetRange&&m.targetRange.source)||null,
+    /* v8-352: Basis und Klartext-Label wandern mit — sonst muesste die
+       Darstellung raten, was fuer eine Zahl sie da anzeigt. */
+    targetBasis:(m.targetRange&&m.targetRange.basis)||null, targetLabel:(m.targetRange&&m.targetRange.label)||null,
     confidence:m.confidence, confidenceReason:m.confidenceReason||null,
     exclusionCount:(ex&&ex.exclusions&&ex.exclusions.length)||0,
     statusKey:mvStatusModel(m).key
@@ -2434,14 +2483,20 @@ function showMuscleDetail(idOrGroup){
   function line(c){return '<div class="md-row"><span>'+escH(c.exerciseName)+'</span><b>'+c.completedWorkingSets+' '+(c.relationship==='direct'?'direkte':'indirekte')+' Sätze × '+fmtDe(c.coefficient)+' = '+fmtDe(c.contribution)+'</b></div>';}
   var corridor=(num.targetDisplay==='insufficient_data'||num.targetMin==null)
     ?'Noch nicht genug Daten für einen individuellen Zielkorridor.'
-    :'Zielkorridor: '+fmtDe(num.targetMin)+'–'+fmtDe(num.targetMax)+' effektive Satzäquivalente/Woche';
+    :'Richtwert: '+fmtDe(num.targetMin)+'–'+fmtDe(num.targetMax)+' effektive Satzäquivalente/Woche';
+  /* v8-352 — DIE HERKUNFT GEHOERT AN DIE ZAHL, nicht in den Profi-Modus.
+     Der Korridor stammt aus keiner Quelle. Das Label kommt aus der Engine
+     (gym-volume.targetCorridor), damit die Oberflaeche es nicht selbst
+     formuliert und dabei abschwaecht. */
+  var korridorHerkunft=(m&&m.targetRange&&m.targetRange.label)?m.targetRange.label:null;
   var head='<div class="md-head">'+mvChip(st)+'<span class="md-week">'+fmtDe(num.weeklyEquivalent)+' eff./Woche</span></div>';
   var body='';
   // Anfänger: Kernaussage + einfache nächste Handlung (Fachzahlen bleiben identisch, nur weniger davon).
   if(mode==='anfaenger'){
     body=head+
       '<p class="md-core">'+escH(mvLabelDe(m.muscleId))+': <b>'+escH(st.label)+'</b>. '+fmtDe(num.effectiveSetEquivalents)+' effektive Satzäquivalente in den letzten '+days+' Tagen.</p>'+
-      '<div class="md-corr">'+escH(corridor)+'</div>'+
+      '<div class="md-corr">'+escH(corridor)+
+        (korridorHerkunft?'<span class="md-corr-src">'+escH(korridorHerkunft)+'</span>':'')+'</div>'+
       '<p class="md-next"><b>Nächster Schritt:</b> '+escH(mvNextStep(st.key))+'</p>';
   } else {
     // Fortgeschritten: direkte/indirekte Sätze, Korridor, Entwicklung.
@@ -2451,7 +2506,9 @@ function showMuscleDetail(idOrGroup){
         '<div class="md-row"><span>Indirekte Satzäquivalente</span><b>'+fmtDe(num.indirectSetEquivalents)+'</b></div>'+
         '<div class="md-row"><span><b>Effektive Satzäquivalente</b></span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
       '</div>'+
-      '<div class="md-corr">'+escH(corridor)+'</div>'+
+      '<div class="md-corr">'+escH(corridor)+
+        (korridorHerkunft?'<span class="md-corr-src">'+escH(korridorHerkunft)+'</span>':'')+
+        gmKorridorAbgrenzungHTML()+'</div>'+
       (direct.length?'<div class="modlbl">Direkte Beiträge</div>'+direct.map(line).join(''):'')+
       (indirect.length?'<div class="modlbl">Indirekte Beiträge</div>'+indirect.map(line).join(''):'')+
       (!contribs.length?'<p class="muted" style="margin:6px 0 0">Keine Beiträge im Zeitraum.</p>':'')+
@@ -2464,7 +2521,8 @@ function showMuscleDetail(idOrGroup){
         '<div class="md-row"><span>Beitrag = Σ (reale Sätze × Koeffizient)</span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
         '<div class="md-row"><span>Zeitraum</span><b>'+days+' Tage ('+fmtDe(weeks)+' Wo.)</b></div>'+
         '<div class="md-row"><span>Konfidenz</span><b>'+(CONF[num.confidence]||num.confidence||'–')+(num.confidenceReason?' ('+escH(num.confidenceReason)+')':'')+'</b></div>'+
-        '<div class="md-row"><span>Korridor-Quelle</span><b>'+escH((num.targetSource||'–').replace('conservative_start:','').replace(':',' · '))+'</b></div>'+
+        '<div class="md-row"><span>Korridor-Basis</span><b>'+escH(num.targetBasis==='produktwert'?'Produktwert (keine Quelle)':(num.targetBasis||'–'))+'</b></div>'+
+        '<div class="md-row"><span>Korridor-Kennung</span><b>'+escH(num.targetSource||'–')+'</b></div>'+
         '<div class="md-row"><span>Ausgeschlossene Sätze</span><b>'+num.exclusionCount+'</b></div>'+
       '</div>';
     }
@@ -2502,9 +2560,13 @@ function renderMuscleVolume(){
     var CONF={low:'niedrig',medium:'mittel',high:'hoch'};
     var cards=model.muscles.map(function(m){
       var st=mvStatusModel(m);
+      /* v8-352: „Ziel" ohne Herkunft war die unglaubwuerdigste Zahl auf
+         dem Bildschirm — daneben tragen die Hinweise aus Wissen ihre
+         Evidenzklasse. Der Korridor ist ein ORVIA-Richtwert; das steht
+         jetzt dran, kurz auf der Kachel und ausfuehrlich im Detail. */
       var corr=(m.targetRange&&m.targetRange.displayStatus==='insufficient_data')
         ?'Noch kein individueller Zielkorridor'
-        :'Ziel: '+fmtDe(m.targetRange.min)+'–'+fmtDe(m.targetRange.max)+'/Woche';
+        :'Richtwert: '+fmtDe(m.targetRange.min)+'–'+fmtDe(m.targetRange.max)+'/Woche';
       var lines='';
       if(mode==='anfaenger'){
         lines='<div class="mvc-eff">'+fmtDe(m.effectiveSetEquivalents)+' effektive Sätze · letzte '+days+' T</div>'+
@@ -9669,7 +9731,9 @@ function gmMuscleTile(model,id){
   var hi=(m&&m.targetRange&&m.targetRange.max!=null)?m.targetRange.max:null;
   var conf='—';
   if(m&&m.confidence!=null){conf=(typeof m.confidence==='string')?(CONF_LABEL_DE[m.confidence]||m.confidence):Math.round(m.confidence*100)+'%';}
-  var sub=(eq!=null?fmtDe(eq)+' effektive Sätze':'—')+' · Ziel '+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?' · Konfidenz '+conf:'');
+  /* v8-352: „Ziel" → „Richtwert". Der Korridor ist ein Produktwert ohne
+     Quelle; wer ihn „Ziel" nennt, macht ihn zur Vorgabe. */
+  var sub=(eq!=null?fmtDe(eq)+' effektive Sätze':'—')+' · Richtwert '+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?' · Konfidenz '+conf:'');
   var bar='';
   if(eq!=null&&lo!=null&&hi!=null){
     var scaleMax=Math.max(hi*1.25,eq*1.1);

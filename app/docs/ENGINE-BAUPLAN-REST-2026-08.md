@@ -4527,3 +4527,82 @@ nicht.
 - `knowledge_hinweise_test.mjs` 32 → **51 Zusicherungen**
 - `_ziele-ohne-leser.json`: **1 → 0 Quittungen**
 - Kohorten-Pin `023ee59b` unverändert
+
+## 42 · Die unbelegte Zahl sah verbindlicher aus (v8-352)
+
+Ein Befund, der erst durch die eigene Sorgfalt entstanden ist.
+
+### 42.1 Der Widerspruch
+
+Seit v8-349 trägt auf der Trainingskarte jede Zahl aus eingespeistem Wissen
+ihre Herkunft: Evidenzklasse, Regel-ID, Ausschlüsse, Grenzen. Zwei
+Bildschirme weiter stand auf der Muskelkarte:
+
+```
+Ziel: 6–12/Woche
+```
+
+Ohne Quelle, ohne Klasse, ohne Hinweis, dass ORVIA sich diese Zahl selbst
+gegeben hat — und mit dem Wort **„Ziel"**, das sie zur Vorgabe macht.
+
+Das ist die unglaubwürdigste Stelle, die eine App haben kann: **die Sorgfalt
+an der belegten Zahl lässt die unbelegte daneben glaubwürdiger erscheinen,
+nicht weniger.** Wer nur die Muskelkarte sieht, hält 6–12 für dasselbe wie
+120 s Satzpause aus Friedmann 2007.
+
+Verschärfend: im Profi-Modus wurde die Basis sogar **weggestrichen**.
+`conservative_start:` wurde aus dem Text entfernt, übrig blieb
+„hypertrophy · intermediate" — genau der informative Teil fiel weg.
+
+### 42.2 Was sich geändert hat — nur die Ehrlichkeit
+
+| | |
+|---|---|
+| `targetCorridor` | gibt `basis: 'produktwert'`, ein Klartext-Label und die Bezugsgröße zurück. Wer die Zahl herausgibt, gibt ihre Herkunft mit heraus |
+| Beschriftung | „Richtwert" statt „Ziel" — an allen drei Stellen (Kachel, anatomische Karte, Detail) |
+| Profi-Modus | Basis **und** Kennung werden gezeigt, nicht mehr gekürzt |
+
+**Keine Zahl wurde geändert.** Kein Korridor verschoben, keine Quelle
+erfunden.
+
+### 42.3 Zwei Zahlen, und warum nicht gerechnet wird
+
+```
+Richtwert   6–12 je Muskelgruppe und WOCHE      Produktwert, keine Quelle
+Quelle      5–6  je Muskelgruppe und EINHEIT    Klasse B, GYM-HYP-002
+```
+
+Verbunden wären sie über die Wochenfrequenz — die die Quelle ausdrücklich
+**nicht** nennt (*„Keine Angabe zur Wochenfrequenz, ohne die eine Satzzahl je
+Einheit wenig aussagt"*).
+
+| Einheiten/Woche | 5–6 je Einheit ergibt | im Richtwert 6–12? |
+|---|---|---|
+| 2 | 10–12 | ja, am oberen Rand |
+| 3 | 15–18 | **nein** |
+
+Welche Rechnung stimmt, weiß niemand. Also steht **beides nebeneinander**,
+jede Zahl mit ihrer Bezugsgröße, und der Unterschied wird benannt. Das ist
+unbequemer als eine Zahl — und das einzige, was ehrlich ist.
+
+### 42.4 Die Probe, die den Fluchtweg schließt
+
+`KOR2` schmuggelt genau die Formulierung ein, die man beim Schönschreiben
+wählen würde:
+
+```
+label: 'Evidenzbasierter Richtwert nach aktueller Studienlage (Klasse B)'
+```
+
+Klingt gut, ist erfunden, und muss rot werden. Ein Produktwert ohne Label ist
+unvollständig; ein Produktwert **mit** erfundenem Beleg ist eine Lüge — und
+zwar eine gut aussehende.
+
+### 42.5 Stand
+
+- Gesamtsuite **261/0** bei 7 übersprungenen (268 Dateien)
+- **163 Proben in 20 Katalogen**, 158 gefahren / 5 übersprungen, jede
+  gefahrene schlägt an
+- `gym_volume_test.mjs` 45 → **53**, `muscle_map_pilot_test.mjs` 16 → **22**
+- neu: `tools/probes/gym-korridor.json`
+- Kohorten-Pin `023ee59b` unverändert

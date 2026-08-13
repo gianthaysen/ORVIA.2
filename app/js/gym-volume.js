@@ -206,21 +206,55 @@
 
   function weeklyEquivalent(effectiveSets, days) { days = (days == null || isNaN(days)) ? 7 : +days; if (days <= 0) return 0; return Math.round((+effectiveSets || 0) / days * 7 * 10) / 10; }
 
-  // Zielkorridore (konservativ, individuell anpassbar) — KEINE universelle 10–20-Regel.
-  // experience: beginner|intermediate|advanced; goal: hypertrophy|maintenance|strength.
+  /* ============================================================
+     ZIELKORRIDORE — konservativ, individuell anpassbar, KEINE universelle
+     10–20-Regel. experience: beginner|intermediate|advanced;
+     goal: hypertrophy|maintenance|strength.
+
+     v8-352 · WAS DIESE ZAHLEN SIND UND WAS NICHT. Sie sind ein
+     PRODUKTWERT: ein vorsichtiger Startbereich, den ORVIA gesetzt hat. Sie
+     stammen aus KEINER eingespeisten Quelle, tragen keine Evidenzklasse und
+     sind fachlich nie geprueft worden.
+
+     Bis v8-351 stand der Korridor auf der Muskelkarte als „Ziel:
+     6–12/Woche" — ohne jeden Zusatz. In derselben App traegt inzwischen
+     jede Zahl aus Wissen ihre Herkunft, ihre Evidenzklasse und ihre
+     Ausschluesse mit sich. Eine unbelegte Zahl daneben, die auch noch
+     „Ziel" heisst, ist damit die unglaubwuerdigste Stelle des Bildschirms:
+     sie sieht genauso verbindlich aus und ist es am wenigsten.
+
+     Deshalb fuehrt der Rueckgabewert jetzt `basis` und `label`. Wer die
+     Zahl herausgibt, gibt ihre Herkunft mit heraus — sie kann nicht mehr
+     unterwegs verlorengehen.
+
+     ZUR ABGRENZUNG von GYM-HYP-002 (5–6 Saetze je Muskelgruppe und
+     EINHEIT): das ist eine ANDERE Bezugsgroesse. Verbunden waeren beide
+     ueber die Wochenfrequenz — und die nennt die Quelle ausdruecklich
+     nicht („Keine Angabe zur Wochenfrequenz, ohne die eine Satzzahl je
+     Einheit wenig aussagt"). Hier wird deshalb NICHT umgerechnet.
+     ============================================================ */
   var CORRIDORS = {
     hypertrophy: { beginner: [4, 8], intermediate: [6, 12], advanced: [8, 16] },
     maintenance: { beginner: [3, 6], intermediate: [4, 8], advanced: [5, 9] }
   };
   function targetCorridor(opts) {
     opts = opts || {};
-    if (opts.dataWeeks != null && opts.dataWeeks < 2) return { min: null, max: null, source: 'insufficient_data' };
+    if (opts.dataWeeks != null && opts.dataWeeks < 2) {
+      return { min: null, max: null, source: 'insufficient_data',
+        basis: 'keine', label: 'noch keine Datengrundlage' };
+    }
     var goal = opts.goal || 'hypertrophy';
-    if (goal === 'strength') return { min: null, max: null, source: 'strength_movement_based' };  // bewegungs-/übungsspezifisch, nicht satzbasiert
+    if (goal === 'strength') {
+      return { min: null, max: null, source: 'strength_movement_based',
+        basis: 'keine', label: 'bei Kraftzielen bewegungsspezifisch, kein Satzkorridor' };
+    }
     var exp = opts.experience || 'beginner';
     var table = CORRIDORS[goal] || CORRIDORS.hypertrophy;
     var r = table[exp] || table.beginner;
-    return { min: r[0], max: r[1], source: 'conservative_start:' + goal + ':' + exp };
+    return { min: r[0], max: r[1], source: 'conservative_start:' + goal + ':' + exp,
+      basis: 'produktwert',
+      label: 'ORVIA-Richtwert, konservativ gesetzt — keine Quelle, fachlich ungeprüft',
+      einheit: 'effektive Satzäquivalente je Muskelgruppe und Woche' };
   }
 
   // Konfidenz aus Datenlage: Wochen, Gesamtsätze, Anteil unklassifiziert.

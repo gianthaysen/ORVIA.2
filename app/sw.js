@@ -1,4 +1,59 @@
-const C = 'orvia-v8-351';   /* EINE ZAHL ANWENDEN, OHNE SIE VORZUSCHREIBEN (2026-08-13) · v8-351:
+const C = 'orvia-v8-352';   /* DIE UNBELEGTE ZAHL SAH VERBINDLICHER AUS (2026-08-13) · v8-352:
+
+   DER BEFUND, direkt aus v8-351 heraus. Seit v8-349 traegt auf der Karte
+   jede Zahl aus eingespeistem Wissen ihre Herkunft: Evidenzklasse, Regel-ID,
+   Ausschluesse, Grenzen. Zwei Bildschirme weiter stand auf der Muskelkarte:
+
+       Ziel: 6–12/Woche
+
+   Ohne Quelle. Ohne Klasse. Ohne Hinweis, dass ORVIA sich diese Zahl selbst
+   gegeben hat. Und mit dem Wort „Ziel", das sie zur Vorgabe macht.
+
+   Das ist die unglaubwuerdigste Stelle, die eine App haben kann: die
+   Sorgfalt an der belegten Zahl laesst die unbelegte daneben glaubwuerdiger
+   erscheinen, nicht weniger. Wer nur die Muskelkarte sieht, haelt 6–12 fuer
+   dasselbe wie 120 s Satzpause aus Friedmann 2007.
+
+   WAS SICH GEAENDERT HAT — nur die Ehrlichkeit, keine Zahl:
+     • `targetCorridor` gibt `basis: 'produktwert'`, ein Klartext-Label
+       („ORVIA-Richtwert, konservativ gesetzt — keine Quelle, fachlich
+       ungeprueft") und seine Bezugsgroesse zurueck. Wer die Zahl herausgibt,
+       gibt ihre Herkunft mit heraus; sie kann unterwegs nicht mehr
+       verlorengehen.
+     • Auf dem Bildschirm heisst der Bereich „Richtwert" statt „Ziel" — an
+       allen drei Stellen (Kachel, anatomische Karte, Detail).
+     • Im Profi-Modus wurde die Basis bisher sogar WEGGESTRICHEN:
+       `conservative_start:` wurde aus dem Text entfernt und uebrig blieb
+       „hypertrophy · intermediate". Genau der informative Teil fiel weg.
+
+   DIE ZWEITE ZAHL, und warum nicht gerechnet wird. Zum selben Gegenstand
+   fuehrt ORVIA jetzt zwei Werte:
+
+       Richtwert   6–12 je Muskelgruppe und WOCHE     Produktwert, keine Quelle
+       Quelle      5–6  je Muskelgruppe und EINHEIT   Klasse B, GYM-HYP-002
+
+   Verbunden waeren sie ueber die Wochenfrequenz — die die Quelle
+   ausdruecklich NICHT nennt („Keine Angabe zur Wochenfrequenz, ohne die eine
+   Satzzahl je Einheit wenig aussagt"). Zwei Einheiten je Woche ergaeben
+   10–12 und passten; drei ergaeben 15–18 und laegen darueber. Welche
+   Rechnung stimmt, weiss niemand — also steht beides nebeneinander, jede
+   Zahl mit ihrer Bezugsgroesse, und der Unterschied wird benannt. Das ist
+   unbequemer als eine Zahl und das einzige, was ehrlich ist.
+
+   WAS NICHT PASSIERT IST: keine Zahl geaendert, kein Korridor verschoben,
+   keine Quelle erfunden. Die Probe KOR2 schmuggelt genau die Formulierung
+   ein, die man beim Schoenschreiben waehlen wuerde — „Evidenzbasierter
+   Richtwert nach aktueller Studienlage (Klasse B)" — und muss rot werden.
+
+   GEAENDERT: gym-volume.js (basis/label/einheit), ui.js (Beschriftung an
+   drei Stellen, Herkunft am Detail, Abgrenzung zur Quellenzahl), styles.css,
+   gym_volume_test (+8), muscle_map_pilot_test (+6), neuer Probenkatalog
+   gym-korridor.json (4). Suite 261/0 bei 7 uebersprungenen (268 Dateien),
+   163 Proben in 20 Katalogen, 158 gefahren / 5 uebersprungen, jede
+   angeschlagen. Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   EINE ZAHL ANWENDEN, OHNE SIE VORZUSCHREIBEN (2026-08-13) · v8-351:
 
    DIE LETZTE QUITTUNG IST WEG — und zwar nicht, weil sie gestrichen wurde,
    sondern weil `plan.saetze_je_muskelgruppe` jetzt wirklich angewendet wird.

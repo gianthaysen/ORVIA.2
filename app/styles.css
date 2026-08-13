@@ -1549,6 +1549,18 @@ body.story-open{overflow:hidden}
 .sc-rx-hint .sc-hint-src{display:block;font-size:10px;opacity:.6;margin-left:18px;letter-spacing:.02em}
 .sc-rx-hint .sc-hint-note{display:block;font-size:10px;opacity:.72;margin-left:18px}
 
+/* v8-352 · Die Herkunft des Zielkorridors (.md-corr-src) und die Abgrenzung
+   zur Quellenzahl (.md-corr-cmp).
+   BEWUSST NICHT versteckt und nicht ausklappbar: dass dieser Bereich ein
+   ORVIA-Richtwert ohne Quelle ist, gehoert zur Zahl selbst — nicht ins
+   Kleingedruckte. Die Quellenzahl daneben traegt eine andere Bezugsgroesse
+   (je Einheit statt je Woche) und wird deshalb abgesetzt dargestellt, damit
+   niemand sie fuer denselben Wert haelt. */
+.md-corr-src{display:block;font-size:10px;opacity:.62;margin-top:2px;letter-spacing:.02em}
+.md-corr-cmp{margin-top:8px;padding-top:7px;border-top:1px dashed var(--border);
+  font-size:11px;line-height:1.45}
+.md-corr-cmp .muted{opacity:.72}
+
 .pe-chip{align-items:flex-start}
 .pe-exbtn{background:rgba(201,174,124,.16)!important;border:1px solid rgba(201,174,124,.34)!important;
   border-radius:999px!important;padding:2px 9px!important;color:var(--text)!important;font-weight:600;font-size:11px!important}
