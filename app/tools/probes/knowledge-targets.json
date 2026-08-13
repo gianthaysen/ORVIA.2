@@ -42,6 +42,26 @@
       "replace": "  var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.intervall_min', 'session.rest_seconds', 'session.erfunden_xy',",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
       "history": "Der Test schneidet den Registerblock aus dem Quelltext, bevor er die gelesenen Ziele sucht. Ohne diesen Schnitt faende er jeden erfundenen Eintrag im Register selbst wieder und bestaetigte ihn — dieselbe Selbstbestaetigung wie ein Paket, das seinen eigenen Hash pinnt."
+    },
+    {
+      "id": "ZR5",
+      "pattern": "data_lacks_var",
+      "title": "ein wirkungsloses Ziel in einer NOTIZ rutscht durch, bevor es ein Paket gibt",
+      "file": "docs/wissen/QUELLE-11-kanjuh-kraftprofile-2026.json",
+      "find": "        \"plan.kraftvergleich_normierung\"",
+      "replace": "        \"plan.kraftvergleich_wasauchimmer\"",
+      "expectTest": "jedes Notizziel ohne Leser ist quittiert",
+      "history": "QUELLE-11 war der Anlass fuer das ganze Register: sie lief sauber durch Vertrag und Anwendung und wirkte auf nichts. Der Sensor kannte anfangs nur Pakete — eine Notiz konnte also weiter unbemerkt ins Leere zeigen, bis jemand die Arbeit des Paketbaus schon getan hatte."
+    },
+    {
+      "id": "ZR6",
+      "pattern": "neighbour_guard",
+      "title": "eine Quittung wird zur Karteileiche, ohne dass es auffaellt",
+      "file": "js/engine/knowledge/running-knowledge-pack.js",
+      "find": "      outputs: ['experienceTier', 'historyReliability'],",
+      "replace": "      outputs: ['experienceTierAlt', 'historyReliability'],",
+      "expectTest": "keine Quittung ist überflüssig geworden",
+      "history": "Quittungen sind Schulden, keine Trophaeen. Bleibt eine liegen, deren Ziel es gar nicht mehr gibt, waechst die Liste, und niemand traut sich mehr, sie zu lesen. Zwei Feinheiten kamen beim Bau dieser Probe heraus: die Pruefung stand zuerst im falschen Block und hielt JEDE Notizquittung fuer ueberfluessig; und ein Ziel, das auch in einer Notizdatei vorkommt (plan.erwartungsrahmen), bleibt bekannt, selbst wenn man es aus dem Paket entfernt — deshalb zielt die Probe auf experienceTier, das es nur im Paket gibt."
     }
   ]
 }

@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-344, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 liegt bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-345, 2026-08-13** (v8-343 ist veröffentlicht, v8-344/345 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-344) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§34).
+`sw.js` (Versionsköpfe v8-329 bis v8-345) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§35).
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
 > Suite und Proben stimmten. Zwei Aussagen nicht: die Coverage-Matrix führte
@@ -55,37 +55,32 @@ die Matrix nachzuziehen, bekommt einen roten Test.
 
 ## Offene Punkte, priorisiert
 
-### 1 · Laufen an den Consumer hängen — **gestoppt, Entscheidung nötig**
-Zweimal neu bewertet, zuletzt mit einer Messung, die den Plan gekippt hat.
-
-Erst der harmlose Teil: `O.runningCapacityFactory` wird von **keiner Stelle
-der App** gerufen — nur die eigene Datei, ihr Unittest und
-`phase6_module_load_test` nennen sie. Es gibt keine zwei Wege auf dieselben
-Regeln, sondern einen lebenden (Gym) und einen toten.
-
-Der Teil, der alles ändert (gemessen am 13.08., v8-344):
+### 1 · Laufen verdrahten — **erledigt durch Messung: es gibt nichts zu verdrahten**
+Dreimal bewertet, zuletzt mit der Zahl, die die Frage beendet:
 
 ```
-Verordnung liest         12 Ziele, alle session.*
-Laufpaket erzeugt        25 Ziele — davon gelesen: 0
+Regeln mit maschinenlesbarem Zahlwert
+  Gym      2 von 4    (Pause, Sätze je Muskelgruppe)
+  Laufen   0 von 14
 ```
 
-Die 14 Laufregeln liefern **Analysegrößen** (`experienceTier`,
-`dimensionBudgets.easy`, `safetyGateState` …), keine Verordnungswerte. An den
-`knowledge-consumer` gehängt käme davon **nichts** an. Das Verdrahten wäre
-Arbeit ohne Wirkung — deshalb nicht gebaut.
+Die 14 Laufregeln sind **rein qualitativ**. Ihr Feld `outputs` nennt
+`experienceTier`, `dimensionBudgets.easy`, `safetyGateState` — aber **kein
+Modul liest diese Namen**, auch `running-capacity-factory` nicht, für die sie
+gedacht waren (null Treffer im Quelltext, geprüft am 13.08.). `outputs` ist
+bei diesen Regeln eine Absichtserklärung, keine Schnittstelle.
 
-Drei Wege, in aufsteigendem Aufwand:
+Verdrahten würde also nichts transportieren — es würde nur
+`knowledgePackWired: true` in die Matrix schreiben und wie Fortschritt
+aussehen. Deshalb bewusst **nicht gebaut**.
 
-| Weg | Was passiert | Aufwand |
+Was stattdessen möglich wäre, in aufsteigendem Ertrag:
+
+| | Was zu tun ist | Ertrag |
 |---|---|---|
-| **A · Leser bauen** | `scheduler-v2` liest die Wochengrößen (`dimensionBudgets.*`, `hardDaySpacingRequirement`, `frequencyBand`). Die Laufregeln bleiben wie sie sind — sie waren für genau das gedacht. | mittel |
-| **B · Regeln übersetzen** | Die 14 Regeln bekommen zusätzlich `session.*`-Ziele. Fachlich heikel: aus „Historienreife begrenzt jede Aussage" lässt sich keine Satzzahl machen, ohne etwas zu erfinden. | hoch, teils unmöglich |
-| **C · Factory verdrahten** | Die tote `running-capacity-factory` bekommt einen Aufrufer und bleibt der Leser der Laufregeln. Der zweite Weg neben dem Consumer bleibt damit bestehen. | mittel, aber zwei Wege dauerhaft |
-
-**Empfehlung: A.** Die Laufregeln sind für den Wochenplan geschrieben, nicht
-für die Einheit — dort gehört ihr Leser hin. Das räumt zugleich Punkt 2 mit
-ab, denn die Übungsauswahl hängt am selben Modul.
+| **Zahlen nachtragen** | Die Notizen enthalten Zahlen im Fließtext („zwei bis drei Einheiten je Woche über sechs bis zwölf Wochen"), aber nicht im Feld `zahlen`. Nachpflegen macht sie maschinenlesbar. | hoch, geringes Risiko |
+| **Qualitative Leser** | Regeln wie „harte Tage nicht aufeinanderfolgend" als **Sperre** umsetzen statt als Zahl. Braucht pro Regel Code mit Belegbindung. | hoch, aber Neubau |
+| **Verdrahten** | `PAKETE.running` eintragen. | **null**, solange keine Werte da sind |
 
 ### 2 · Übungsauswahl für Gym
 `scheduler-v2` leitet für Gym keine Übungsliste ab → `no_exercise_list_generic_session`
@@ -127,15 +122,23 @@ v8-341 (`applyKnowledge` ohne Aufrufer), jetzt das Ziel ohne Leser.
 `_ziele-ohne-leser.json` **mit Begründung** stehen; ein neues wirkungsloses
 Ziel wird rot. Aktueller Stand, ehrlich: **1 von 30 Zielen wird gelesen.**
 
-Zwei Grenzen, die bewusst offen sind:
+**Seit v8-345 prüft der Sensor auch die Notizdateien**, also Wissen, *bevor*
+daraus ein Paket wird. Das hat sofort sechs weitere wirkungslose Ziele
+gefunden — und darunter das wichtigste Fundstück dieser Sitzung:
 
-1. Der Sensor prüft **Pakete** (`*-knowledge-pack.js`), nicht die Notizdateien
-   in `docs/wissen/`. QUELLE-11 fällt deshalb noch nicht auf — erst wenn
-   daraus ein Paket gebaut wird. Eine Erweiterung auf die Notizen wäre billig
-   und würde das Problem vor dem Bauen zeigen statt danach.
-2. Das Register **verbietet nichts**. Ein Ziel ohne Leser ist kein
-   Vertragsbruch, sondern Wissen ohne Verwendung. Der Unterschied gehört
-   sichtbar gemacht, nicht bestraft.
+```
+session.exercises  ← 6 Regeln aus 3 Quellen (QUELLE-04, QUELLE-07, QUELLE-11)
+```
+
+Die Verordnung **führt** eine Übungsliste, liest sie aber nur aus
+`req.exercises` und nie aus Wissen. Das ist die fachliche Grundlage für
+Punkt 2 und der lohnendste Anschluss im Projekt. Was fehlt, ist nicht die
+Leitung, sondern die Angabe **welche** Übungen: die steht in den Notizen nur
+im Fließtext, nicht im Feld `zahlen`.
+
+Das Register **verbietet weiterhin nichts**. Ein Ziel ohne Leser ist kein
+Vertragsbruch, sondern Wissen ohne Verwendung — der Unterschied gehört
+sichtbar gemacht, nicht bestraft.
 
 ### 4 · Konfliktlösung — noch offene Feinheit
 Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
@@ -282,14 +285,17 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-344)
+## Zahlen zum Nachprüfen (v8-345)
 
 - Gesamtsuite **258/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
   **Nur mit Chromium** — ohne Browser-Binary sind es 236/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **128 Proben in 16 Katalogen**, 124 gefahren / 4 übersprungen
-- **Ziele mit Leser: 1 von 30** (`session.rest_seconds`) — die ehrlichste Zahl
-  über den Stand der Wissenskette, siehe Punkt 3b
+- **130 Proben in 16 Katalogen**, 126 gefahren / 4 übersprungen
+- **Ziele mit Leser: 1 von 30** aus Paketen, 0 von 14 aus Notizen — die
+  ehrlichste Zahl über den Stand der Wissenskette, siehe Punkt 3b
+- 38 Quittungen in `_ziele-ohne-leser.json`, jede mit Begründung
+- **Regeln mit maschinenlesbarem Zahlwert: Gym 2 von 4, Laufen 0 von 14** —
+  der Grund, warum Punkt 1 kein Verdrahtungsproblem ist
 - Kohorten-Pin `023ee59b`, geprüft von `shadow_adaptive_test.mjs` gegen
   `supabase/tests/_acceptance-cohort.json` (seit 2026-08-08 eingefroren)
 - `running-knowledge-pack.js` = `42ca48f4…`, `knowledge-sources.js` = `b786437d…`

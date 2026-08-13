@@ -3903,3 +3903,97 @@ Der Sensor prüft Pakete, nicht die Notizdateien in `docs/wissen/`. QUELLE-11
 fällt deshalb noch nicht auf — erst wenn daraus ein Paket wird. Die
 Erweiterung wäre billig und würde den Fehler zeigen, **bevor** jemand ein
 Paket dafür baut.
+
+---
+
+## 35 · Es gibt nichts zu verdrahten (v8-345)
+
+### 35.1 Der Auftrag und sein Ende
+
+Freigegeben war „mache alles": den Sensor auf die Notizdateien erweitern
+**und** das Laufpaket verdrahten. Das erste ist gebaut. Das zweite nicht —
+und das ist das Ergebnis, nicht das Versäumnis.
+
+| Regeln mit maschinenlesbarem Zahlwert | |
+|---|---|
+| Gym | **2 von 4** (GYM-HYP-001 Pause, GYM-HYP-002 Sätze je Muskelgruppe) |
+| Laufen | **0 von 14** |
+
+Die 14 Laufregeln sind rein qualitativ. Ihr Feld `outputs` nennt Namen wie
+`experienceTier` oder `dimensionBudgets.easy` — aber **kein Modul liest diese
+Namen**, auch `running-capacity-factory` nicht, für die sie gedacht waren
+(null Treffer im Quelltext). Bei den Gym-Regeln ist `outputs` eine echte
+Schnittstellenangabe (`session.rest_seconds` wird tatsächlich gelesen); bei
+den Laufregeln ist es eine **Absichtserklärung**.
+
+Damit ist „Laufen an den Consumer hängen" in keiner Variante ein Verkabeln.
+Es gibt keinen Wert, der fließen könnte. Verdrahtet hätte es genau eine
+Wirkung gehabt: `knowledgePackWired: true` in der Coverage-Matrix — und das
+hätte wie Fortschritt ausgesehen. Genau die Sorte Fortschritt, die dieses
+Projekt sich zweimal selbst vorgemacht hat.
+
+### 35.2 Was der erweiterte Sensor sofort fand
+
+Block C prüft jetzt `docs/wissen/*.json`, also Wissen **bevor** daraus ein
+Paket wird. Sechs weitere wirkungslose Ziele — und eines davon ist das
+wichtigste Fundstück dieser Sitzung:
+
+```
+session.exercises  ← RUN-KRAFT-001, RUN-KRAFT-002 (QUELLE-04)
+                     RUN-RE-001, RUN-RE-002, RUN-RE-004 (QUELLE-07)
+```
+
+Fünf Regeln aus zwei Quellen zielen auf die Übungsliste. Die Verordnung
+**führt** eine Übungsliste — liest sie aber ausschließlich aus
+`req.exercises` und nie aus Wissen. Das ist die fachliche Grundlage für den
+offenen Punkt 2 und der lohnendste Anschluss im ganzen Projekt.
+
+Was fehlt, ist nicht die Leitung, sondern die Angabe **welche** Übungen. Die
+steht in den Notizen im Fließtext („schwere Lasten und kombinierte
+Trainingsformen", „zwei bis drei Einheiten je Woche über sechs bis zwölf
+Wochen") und **nicht im Feld `zahlen`**. Beim Einspeisen wurden die Zahlen
+gelesen, verstanden, zusammengefasst — und nicht maschinenlesbar erfasst.
+
+### 35.3 Notizen dürfen abgewiesen sein, ohne rot zu machen
+
+Fünf der elf Notizdateien weist der Vertrag ab: vier warten auf Inhalt
+(QUELLE-01, -02, -03, -06), eine ist bewusst abgelehnt (QUELLE-10). Der Test
+nennt sie einzeln und zählt sie, wertet sie aber nicht als Fehler. Eine
+wartende Notiz ist kein Defekt — sie rot zu färben hieße, den Unterschied
+zwischen „noch nicht da" und „kaputt" einzuebnen, den dieses Projekt an
+anderer Stelle mühsam verteidigt.
+
+### 35.4 Zwei eigene Fehler, beide vom Werkzeug gefangen
+
+**Die Karteileichen-Prüfung stand im falschen Block.** Nach der Erweiterung
+hielt sie jede Notizquittung für überflüssig — sie verglich die Quittungen
+nur gegen die Paketziele. Der Test meldete das selbst, bevor irgendetwas
+ausgeliefert war. Sie steht jetzt in Block C, wo beide Mengen bekannt sind.
+
+**Probe ZR6 war zuerst wirkungslos.** Sie zielte auf `plan.erwartungsrahmen`
+— das kommt AUCH in einer Notizdatei vor und bleibt deshalb bekannt, wenn man
+es aus dem Paket entfernt. Ergebnis: `wrong_test`. Jetzt zielt sie auf
+`experienceTier`, das es nur im Paket gibt. Ohne den `wrong_test`-Status des
+Werkzeugs hätte diese Probe für immer grün gemeldet, ohne je etwas zu prüfen.
+
+### 35.5 Stand
+
+- `knowledge_targets_test.mjs`: Block C (Notizen) + Umbau der
+  Karteileichen-Prüfung, 11 Zusicherungen
+- `_ziele-ohne-leser.json`: 35 Quittungen — davon **25 inhaltlich korrigiert**:
+  die Begründungen sagten „Analysegröße der running-capacity-factory", und die
+  Factory liest sie nicht
+- Probenkatalog `knowledge-targets`: 4 → **6 Proben**, alle schlagen an
+- **Kein Produktivcode der App geändert**
+- Gesamtsuite **258/0** bei 7 übersprungenen (265 Dateien)
+- **130 Proben in 16 Katalogen**, 126 gefahren / 4 übersprungen
+- Kohorten-Pin `023ee59b` unverändert, Wissensmodule vor/nach gehasht: unverändert
+
+### 35.6 Was als Nächstes wirklich lohnt
+
+1. **Zahlen in den Notizen nachtragen** (`zahlen`-Block). Sie stehen bereits
+   im Text; es ist Erfassungsarbeit, kein Neubau, und danach haben mehrere
+   Regeln Werte.
+2. **`session.exercises` aus Wissen lesen.** Danach greifen fünf Regeln aus
+   zwei Quellen, und Punkt 2 ist gelöst.
+3. Erst dann stellt sich die Frage nach dem Verdrahten überhaupt wieder.

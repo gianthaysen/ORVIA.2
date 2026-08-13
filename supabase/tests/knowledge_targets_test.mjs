@@ -45,6 +45,10 @@ let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
 
+/* Sammelstelle über beide Blöcke: Paketziele (B) und Notizziele (C) zusammen
+   ergeben erst die Menge, gegen die eine Quittung „überflüssig" sein kann. */
+const KARTEILEICHEN = { quittiert: [], paketZiele: [], notizZiele: [] };
+
 globalThis.ORVIA = globalThis.ORVIA || {};
 const KC = require(join(APP, 'js/engine/knowledge/knowledge-contracts.js'));
 globalThis.ORVIA.knowledgeContracts = KC;
@@ -119,9 +123,12 @@ sec('B · Ziele der Wissenspakete');
         ? 'NEUES WIRKUNGSLOSES ZIEL: ' + unquittiert.map(z => z + ' (' + ziele.get(z).join(', ') + ')').join(' · ')
           + ' — entweder einen Leser bauen oder in _ziele-ohne-leser.json begründen'
         : quittiert.length + ' quittiert');
-    ok('  … und keine Quittung ist überflüssig geworden', veraltet.length === 0,
-      veraltet.length ? 'hat jetzt einen Leser oder existiert nicht mehr: ' + JSON.stringify(veraltet)
-        : 'keine Karteileiche');
+    /* Die Karteileichenprüfung steht in Block C: dort sind Paket- UND
+       Notizziele bekannt. Sie hier zu führen hiesse, jede Notizquittung für
+       überflüssig zu halten — ein Fehler, den dieser Test selbst gemacht hat,
+       als Block C dazukam (v8-345). */
+    KARTEILEICHEN.quittiert = quittiert;
+    KARTEILEICHEN.paketZiele = [...ziele.keys()];
     ok('  … jede Quittung nennt einen Grund',
       quittiert.every(z => typeof q.ziele[z] === 'string' && q.ziele[z].trim().length >= 20),
       'ohne Begründung: ' + JSON.stringify(quittiert.filter(z => !(typeof q.ziele[z] === 'string' && q.ziele[z].trim().length >= 20))));
@@ -130,6 +137,79 @@ sec('B · Ziele der Wissenspakete');
   /* Die ehrliche Zahl, jedes Mal sichtbar — nicht als Fussnote. */
   ok('mindestens ein Paketziel wird tatsächlich gelesen',
     mitLeser.length > 0, mitLeser.length + ' von ' + ziele.size + ': ' + JSON.stringify(mitLeser));
+
+  /* KEINE Zusicherung, sondern eine Zahl, die man kennen muss: ein Ziel ohne
+     Leser ist das eine — eine REGEL OHNE WERT das andere. Sie kann selbst mit
+     Leser nichts setzen. Gemessen am 13.08.: Gym 2 von 4, Laufen 0 von 14. */
+  packDateien.forEach(f => {
+    const pack = require(join(dir, f));
+    const mitWert = (pack.rules || []).filter(r =>
+      (r.claims || []).some(c => Object.keys(c).some(k => /quant|number|value|range|zahl/i.test(k)))).length;
+    console.log('   ' + f.replace('-knowledge-pack.js', '') + ': ' + mitWert + ' von '
+      + (pack.rules || []).length + ' Regeln tragen überhaupt einen Zahlwert');
+  });
+}
+
+/* ══ C · Auch die Notizdateien, BEVOR daraus ein Paket wird ══ */
+sec('C · Ziele der Notizdateien in docs/wissen');
+{
+  /* WARUM HIER UND NICHT ERST BEIM PAKET: QUELLE-11 zeigte auf
+     `plan.kraftvergleich_normierung` und fiel niemandem auf, weil der Sensor
+     nur Pakete kannte. Ein Ziel ohne Leser soll auffallen, BEVOR jemand ein
+     Paket dafür baut — sonst ist die Arbeit schon getan, wenn es auffliegt. */
+  const wissenDir = join(APP, 'docs/wissen');
+  if (!existsSync(wissenDir)) {
+    ok('das Notizverzeichnis existiert', false, wissenDir);
+  } else {
+    const KI = require(join(APP, 'js/engine/knowledge/knowledge-ingest.js'));
+    const notizen = readdirSync(wissenDir).filter(f => /^QUELLE-.*\.json$/.test(f)).sort();
+    const gelesen = PF.GELESENE_ZIELE || [];
+    const zieleNotiz = new Map();
+    const unbrauchbar = [];
+
+    notizen.forEach(f => {
+      let n;
+      try { n = JSON.parse(readFileSync(join(wissenDir, f), 'utf8')); }
+      catch (e) { unbrauchbar.push(f + ' (kein gültiges JSON)'); return; }
+      let r;
+      try { r = KI.ingest(n); } catch (e) { unbrauchbar.push(f + ' (ingest warf)'); return; }
+      /* Eine Notiz, die der Vertrag ablehnt, ist hier KEIN Fehler: sie wartet
+         auf Inhalt oder wurde bewusst abgelehnt (QUELLE-10). Sie wird genannt,
+         nicht bestraft — sonst wäre der Test rot für etwas, das in Ordnung ist. */
+      if (!r || r.ok !== true) { unbrauchbar.push(f + ' (vom Vertrag abgewiesen)'); return; }
+      (r.rules || []).forEach(rule => (rule.outputs || []).forEach(z => {
+        if (!zieleNotiz.has(z)) zieleNotiz.set(z, []);
+        zieleNotiz.get(z).push(f.replace(/^QUELLE-/, '').replace(/\.json$/, '') + '/' + rule.ruleId);
+      }));
+    });
+
+    console.log('   ' + notizen.length + ' Notizdateien · ' + (notizen.length - unbrauchbar.length)
+      + ' vertragsfest · ' + unbrauchbar.length + ' (noch) nicht auswertbar');
+    unbrauchbar.forEach(u => console.log('     ⏭️  ' + u));
+
+    const ohneLeserNotiz = [...zieleNotiz.keys()].filter(z => !gelesen.includes(z)).sort();
+    if (existsSync(QUITTUNG)) {
+      const q = JSON.parse(readFileSync(QUITTUNG, 'utf8'));
+      const quittiert = Object.keys(q.ziele || {});
+      const offen = ohneLeserNotiz.filter(z => !quittiert.includes(z));
+      ok('jedes Notizziel ohne Leser ist quittiert', offen.length === 0,
+        offen.length
+          ? 'WIRKUNGSLOS, BEVOR ES EIN PAKET GIBT: ' + offen.map(z => z + ' (' + zieleNotiz.get(z).join(', ') + ')').join(' · ')
+          : ohneLeserNotiz.length + ' geprüft, alle quittiert');
+    }
+    ok('  … und die Notizen werden überhaupt ausgewertet',
+      zieleNotiz.size > 0 || notizen.length === unbrauchbar.length,
+      zieleNotiz.size + ' Ziele aus Notizen');
+
+    KARTEILEICHEN.notizZiele = [...zieleNotiz.keys()];
+    const alleBekannt = new Set(KARTEILEICHEN.paketZiele.concat(KARTEILEICHEN.notizZiele));
+    const gelesenSet = PF.GELESENE_ZIELE || [];
+    const veraltet = KARTEILEICHEN.quittiert.filter(z => !alleBekannt.has(z) || gelesenSet.includes(z));
+    ok('keine Quittung ist überflüssig geworden (Pakete UND Notizen)', veraltet.length === 0,
+      veraltet.length
+        ? 'hat jetzt einen Leser oder existiert nicht mehr: ' + JSON.stringify(veraltet)
+        : KARTEILEICHEN.quittiert.length + ' Quittungen, alle noch nötig');
+  }
 }
 
 console.log('\n' + '═'.repeat(62));

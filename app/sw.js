@@ -1,4 +1,73 @@
-const C = 'orvia-v8-344';   /* EIN VON DREISSIG (2026-08-13) · v8-344:
+const C = 'orvia-v8-345';   /* ES GIBT NICHTS ZU VERDRAHTEN (2026-08-13) · v8-345:
+
+   AUFTRAG WAR „mache alles\" — also Sensor auf die Notizdateien erweitern UND
+   das Laufpaket verdrahten. Der erste Teil ist gebaut. Der zweite nicht, und
+   das ist das eigentliche Ergebnis dieser Runde.
+
+   DIE MESSUNG, DIE DEN AUFTRAG BEENDET HAT:
+
+       Regeln mit einem maschinenlesbaren Zahlwert
+         Gym       2 von 4   (GYM-HYP-001 Pause, GYM-HYP-002 Saetze)
+         Laufen    0 von 14
+
+   Die 14 Laufregeln sind REIN QUALITATIV. Ihr Feld `outputs` nennt Namen wie
+   `experienceTier` oder `dimensionBudgets.easy` — aber kein Modul im Projekt
+   liest diese Namen, auch `running-capacity-factory` nicht, fuer die sie
+   gedacht waren (nachgeprueft: null Treffer im Quelltext). `outputs` ist bei
+   den Laufregeln eine ABSICHTSERKLAERUNG, keine Schnittstelle.
+
+   Damit ist „Laufen an den Consumer haengen\" in jeder Variante kein
+   Verkabeln, sondern Neubau: es gibt keinen Wert, der fliessen koennte.
+   Verdrahtet haette es genau eine Wirkung gehabt — in der Coverage-Matrix
+   waere `knowledgePackWired: true` erschienen und haette wie Fortschritt
+   ausgesehen. Genau die Sorte Fortschritt, die dieses Projekt sich zweimal
+   selbst vorgemacht hat (v8-335, v8-341). Deshalb: nicht gebaut, sondern
+   gemessen und aufgeschrieben.
+
+   WAS DER ERWEITERTE SENSOR SOFORT GEFUNDEN HAT. Block C prueft jetzt auch
+   `docs/wissen/*.json`, also Wissen, BEVOR daraus ein Paket wird. Ergebnis:
+   sechs weitere wirkungslose Ziele — darunter
+
+       session.exercises  ← SECHS Regeln aus DREI Quellen (04, 07, 11)
+
+   Das ist die fachliche Grundlage fuer den offenen Punkt 2 (Uebungsauswahl)
+   und der lohnendste Anschluss im ganzen Projekt: die Verordnung FUEHRT eine
+   Uebungsliste, liest sie aber ausschliesslich aus `req.exercises` und nie
+   aus Wissen. Was fehlt, ist nicht die Leitung, sondern die Angabe WELCHE
+   Uebungen — die steht in den Notizen nur im Fliesstext, nicht im Feld
+   `zahlen`. Dasselbe bei `plan.plyometrie_frequenz`: „zwei bis drei
+   Einheiten je Woche ueber sechs bis zwoelf Wochen\" steht da, aber
+   maschinenlesbar ist es nicht.
+
+   ZWEI EIGENE FEHLER, beide vom eigenen Werkzeug gefangen:
+   • Die Karteileichen-Pruefung stand im falschen Block und hielt nach der
+     Erweiterung JEDE Notizquittung fuer ueberfluessig. Der Test meldete das
+     selbst, bevor irgendetwas ausgeliefert wurde.
+   • Probe ZR6 zielte zuerst auf `plan.erwartungsrahmen` — das kommt AUCH in
+     einer Notiz vor und bleibt deshalb bekannt, wenn man es aus dem Paket
+     entfernt. Die Probe war wirkungslos und meldete `wrong_test`. Jetzt
+     zielt sie auf `experienceTier`, das es nur im Paket gibt.
+
+   GEAENDERT: supabase/tests/knowledge_targets_test.mjs (Block C + Umbau der
+   Karteileichen-Pruefung), _ziele-ohne-leser.json (35 Quittungen, davon 25
+   inhaltlich korrigiert: die Factory liest sie NICHT), Probenkatalog
+   knowledge-targets (4 → 6 Proben). KEIN Produktivcode der App.
+   NACHTRAG BEIM AUSLIEFERN: der Sensor hat sofort gegriffen. Auf Gians
+   Rechner war QUELLE-11 inzwischen von EINER auf VIER Regeln gewachsen — der
+   Test wurde auf dem Geraet rot und nannte drei neue wirkungslose Ziele
+   (plan.leistungsprognose, plan.stabilitaetsfokus, plan.kraftreferenz), die
+   im Container noch gar nicht existierten. Genau dafuer ist er gebaut: neue
+   Regeln fallen auf, bevor jemand sie fuer wirksam haelt. Quittiert, 38
+   Eintraege. RUN-KRAFTPROFIL-003 zielt zusaetzlich auf session.exercises —
+   damit sind es sechs Regeln aus drei Quellen, die auf die Uebungsliste
+   warten.
+
+   Suite 258/0 bei 7 uebersprungenen (265 Dateien), 130 Proben in 16
+   Katalogen, 126 gefahren / 4 uebersprungen. Kohorten-Pin 023ee59b
+   unveraendert, Wissensmodule vor/nach gehasht: unveraendert.
+
+   ============================================================
+   EIN VON DREISSIG (2026-08-13) · v8-344:
 
    DIE ZAHL ZUERST. Bevor dieses Register existierte, hat NIEMAND geprueft,
    ob ein eingespeistes Wissen ueberhaupt einen Leser hat. Gemessen an den
