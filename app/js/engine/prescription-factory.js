@@ -229,8 +229,14 @@
         return null;
       };
       var setsV = ausWissen('session.sets'), restV = ausWissen('session.rest_seconds');
+      /* v8-348: der kuerzeste offene Anschluss aus der Quittungsliste — das
+         Feld `repetitions` gab es hier laengst, es wurde nur nie aus Wissen
+         gefuellt. Reihenfolge wie ueberall: was die Uebung mitbringt, dann
+         Wissen mit Herkunft, sonst nichts. */
+      var repsV = ausWissen('session.repetitions');
       if (setsV) flags.push('sets_aus_wissen:' + setsV.regelId);
       if (restV) flags.push('rest_aus_wissen:' + restV.regelId);
+      if (repsV) flags.push('reps_aus_wissen:' + repsV.regelId);
       return exs.map(function (e) {
         var sets = (e.sets >= 1) ? e.sets : (setsV ? setsV.wert.min : null);
         var rest = (e.restSeconds != null) ? e.restSeconds : (restV ? restV.wert.min : null);
@@ -253,7 +259,7 @@
         if (sets === null) flags.push('sets_unbekannt:' + eidText);
         if (rest === null) flags.push('pause_unbekannt:' + eidText);
         return { type: 'exercise', exercise_id: eid, sets: sets,
-          repetitions: e.reps != null ? e.reps : null, rest_seconds: rest,
+          repetitions: (e.reps != null) ? e.reps : (repsV ? repsV.wert.min : null), rest_seconds: rest,
           target: (e.rir != null) ? { type: 'rir', value: e.rir } : _rpeTarget(_zahl('rpeKraft', 'session.rpe_kraft', req, flags)) };
       });
     } }
@@ -306,9 +312,9 @@
      Der Unterschied gehoert sichtbar gemacht, nicht bestraft.
      ============================================================ */
   var GELESENE_ZIELE = ['session.cooldown_anteil', 'session.exercises', 'session.intervall_min',
-    'session.rest_seconds', 'session.rpe_easy', 'session.rpe_intervall', 'session.rpe_kraft',
-    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup', 'session.sets',
-    'session.trabpause_min', 'session.warmup_anteil'];
+    'session.repetitions', 'session.rest_seconds', 'session.rpe_easy', 'session.rpe_intervall',
+    'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',
+    'session.sets', 'session.trabpause_min', 'session.warmup_anteil'];
 
   function _freeze(o) { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.keys(o).forEach(function (k) { _freeze(o[k]); }); Object.freeze(o); } return o; }
   O.prescriptionFactory = _freeze({ VERSION: VERSION, TEMPLATE_IDS: Object.keys(TEMPLATES).sort(),

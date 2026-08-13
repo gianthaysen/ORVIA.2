@@ -235,6 +235,71 @@ sec('K · die Verordnung liest die Übungen');
     (PF.GELESENE_ZIELE || []).indexOf('session.exercises') >= 0);
 }
 
+/* ══ S · Überlappende Zahlbereiche (v8-348) ══ */
+sec('S · die Schnittmenge ist keine Erfindung');
+{
+  const PAUSE = (min, max) => ({ eingabe_einheit: 'Trainingseinheit', ausgabe_einheit: 'Sekunden',
+    bereich: { min, max }, gilt_fuer: 'Freizeitsportler', so_steht_es_da: min + ' bis ' + max + ' Sekunden',
+    umrechnung: 'keine', unsicherheit: 'grobe Größenordnung', nicht_bei: [],
+    sicherheitsgrenzen: 'nie mehr als 300 Sekunden' });
+  const paar = (a, b) => anwenden([
+    Object.assign(REGEL('R-P1', ['session.rest_seconds']), { zahlen: PAUSE(a[0], a[1]) }),
+    Object.assign(REGEL('R-P2', ['session.rest_seconds']), { zahlen: PAUSE(b[0], b[1]) })]);
+
+  const ueber = paar([120, 180], [150, 240]);
+  const u = ueber.fehler ? null : vonZiel(ueber.erg, 'session.rest_seconds');
+  ok('überlappende Bereiche werden auf die Schnittmenge eingeengt',
+    !!u && u.wert.min === 150 && u.wert.max === 180 && (ueber.erg.konflikte || []).length === 0,
+    u ? JSON.stringify(u.wert) : 'keine Vorgabe');
+  ok('  … und die Herkunft nennt die URSPRÜNGLICHEN Bereiche, nicht den engen',
+    !!u && Array.isArray(u.eingeengtAus) && u.eingeengtAus.length === 2 &&
+    u.eingeengtAus[0].wert.min === 120 && u.eingeengtAus[0].wert.max === 180,
+    u ? JSON.stringify(u.eingeengtAus.map(x => x.wert)) : '—');
+
+  const disjunkt = paar([120, 140], [200, 240]);
+  ok('Bereiche OHNE Überschneidung bleiben ein Konflikt ohne Vorgabe',
+    !vonZiel(disjunkt.erg, 'session.rest_seconds') && (disjunkt.erg.konflikte || []).length === 1,
+    'aus 3 und 5 Sätzen wird weiterhin nicht 4');
+
+  const beruehrt = paar([120, 150], [150, 240]);
+  const b2 = beruehrt.fehler ? null : vonZiel(beruehrt.erg, 'session.rest_seconds');
+  ok('  … Bereiche, die sich nur berühren, ergeben genau diesen einen Wert',
+    !!b2 && b2.wert.min === 150 && b2.wert.max === 150, b2 ? JSON.stringify(b2.wert) : '—');
+
+  const drei = anwenden([
+    Object.assign(REGEL('R-D1', ['session.rest_seconds']), { zahlen: PAUSE(120, 200) }),
+    Object.assign(REGEL('R-D2', ['session.rest_seconds']), { zahlen: PAUSE(150, 240) }),
+    Object.assign(REGEL('R-D3', ['session.rest_seconds']), { zahlen: PAUSE(160, 180) })]);
+  const d3 = drei.fehler ? null : vonZiel(drei.erg, 'session.rest_seconds');
+  ok('  … bei drei Quellen zählt der engste gemeinsame Bereich',
+    !!d3 && d3.wert.min === 160 && d3.wert.max === 180, d3 ? JSON.stringify(d3.wert) : '—');
+
+  /* Listen bleiben ausgenommen — eine leere Schnittmenge wäre ein stiller
+     Ausfall, keine Aussage. */
+  const listen = anwenden([
+    Object.assign(REGEL('R-LA', ['session.exercises']), { auswahl: [AUSWAHL('session.exercises', ['kniebeuge'])] }),
+    Object.assign(REGEL('R-LB', ['session.exercises']), { auswahl: [AUSWAHL('session.exercises', ['beinpresse'])] })]);
+  ok('bei Auswahllisten wird NICHT geschnitten (leere Liste wäre keine Aussage)',
+    !vonZiel(listen.erg, 'session.exercises') && (listen.erg.konflikte || []).length === 1);
+}
+
+/* ══ W · session.repetitions (v8-348) ══ */
+sec('W · Wiederholungen aus Wissen');
+{
+  const a = anwenden([
+    Object.assign(REGEL('R-EXW', ['session.exercises']), { auswahl: [AUSWAHL('session.exercises', ['kniebeuge'])] }),
+    Object.assign(REGEL('R-SETW', ['session.sets']), { zahlen: ZAHL(null, 4, 5, 'Serien') }),
+    Object.assign(REGEL('R-REPW', ['session.repetitions']), { zahlen: ZAHL(null, 3, 4, 'Wiederholungen') })]);
+  const p = PF.buildPrescription({ sportId: 'gym', sessionType: 'strength_general',
+    durationMin: 60, priority: 'build', exercises: null, knowledge: a.erg }, null);
+  ok('die Wiederholungszahl kommt aus Wissen, mit Herkunft',
+    p.ok === true && (p.flags || []).some(f => f === 'reps_aus_wissen:R-REPW') &&
+    (p.workout.blocks || []).every(b => b.repetitions === 3),
+    JSON.stringify((p.workout && p.workout.blocks || []).map(b => b.repetitions)));
+  ok('  … und session.repetitions steht im Zielregister',
+    (PF.GELESENE_ZIELE || []).indexOf('session.repetitions') >= 0);
+}
+
 console.log('\n' + '═'.repeat(62));
 console.log('Ergebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

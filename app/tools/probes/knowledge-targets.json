@@ -8,20 +8,20 @@
       "pattern": "value_not_type",
       "title": "das Register verschweigt ein Ziel, das die Verordnung wirklich liest",
       "file": "js/engine/prescription-factory.js",
-      "find": "    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup', 'session.sets',",
-      "replace": "    'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',",
+      "find": "    'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo', 'session.rpe_warmup',",
+      "replace": "    'session.rpe_kraft', 'session.rpe_long', 'session.rpe_tempo',",
       "expectTest": "kein gelesenes Ziel fehlt im Register",
-      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
+      "history": "Ein unvollstaendiges Register ist schlimmer als keines: Wissen, das tatsaechlich ankaeme, wuerde als wirkungslos quittiert und der Anschluss nie gebaut. Anker zweimal nachgezogen (v8-347 session.exercises, v8-348 session.repetitions) — jeder neue Leser verschiebt diese Zeilen."
     },
     {
       "id": "ZR2",
       "pattern": "data_lacks_var",
       "title": "das Register erfindet ein Ziel, das niemand liest",
       "file": "js/engine/prescription-factory.js",
-      "find": "    'session.trabpause_min', 'session.warmup_anteil'];",
-      "replace": "    'session.trabpause_min', 'session.warmup_anteil', 'session.last_prozent_1rm'];",
+      "find": "    'session.sets', 'session.trabpause_min', 'session.warmup_anteil'];",
+      "replace": "    'session.sets', 'session.trabpause_min', 'session.warmup_anteil', 'session.last_prozent_1rm'];",
       "expectTest": "kein Registereintrag ist erfunden (jedes wird wirklich gelesen)",
-      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE. Anker in v8-347 nachgezogen: session.exercises kam ins Register, die Zeilen haben sich verschoben."
+      "history": "Die gefaehrlichere Richtung. Ein erfundener Eintrag laesst ein totes Ziel als versorgt erscheinen — genau die Selbstbestaetigung, die das Register verhindern soll. Gewaehlt wurde ein Ziel aus dem Gym-Paket, weil es der realistische Fehlgriff ist: man traegt ein, was man einbauen WOLLTE. Anker zweimal nachgezogen (v8-347 session.exercises, v8-348 session.repetitions) — jeder neue Leser verschiebt diese Zeilen."
     },
     {
       "id": "ZR3",

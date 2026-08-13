@@ -4176,3 +4176,76 @@ Acht Regeln nennen Zahlen im Text, zwei führen sie strukturiert. Das ließe
 sich jetzt nachtragen — es verlangt aber Zuordnungen (welche Größe auf welches
 Ziel?) und Sicherheitsgrenzen am echten Quellenmaterial. Das ist eine
 fachliche Entscheidung an Gians Quellen, keine Programmierarbeit.
+
+---
+
+## 38 · Die Schnittmenge ist keine Erfindung (v8-348)
+
+### 38.1 Punkt 4, seit v8-341 zurückgestellt
+
+Bis hierher galt jeder Unterschied zwischen zwei gleichrangigen Zahlbereichen
+als Widerspruch:
+
+```
+Quelle A: 120–180 s     Quelle B: 150–240 s
+→ beide gegenseitig stumm, KEINE Vorgabe
+```
+
+Dabei decken **beide** den Bereich 150–180 s ausdrücklich. Die Schnittmenge
+steht in jeder beteiligten Quelle — sie ist der engste Bereich, den alle
+tragen, und keine neue Behauptung.
+
+Der Unterschied zum Mitteln, das verboten bleibt: aus 3 und 5 Sätzen wird
+**nicht** 4. Diese Bereiche berühren sich nicht, und 4 hat niemand gesagt.
+
+Gemessen:
+
+| Eingang | Ergebnis |
+|---|---|
+| 120–180 / 150–240 | **150–180**, `eingeengtAus` nennt beide Originale |
+| 120–180 / 120–180 | 120–180, `bestätigtDurch` — nichts eingeengt |
+| 120–140 / 200–240 | **keine Vorgabe**, Konflikt bleibt |
+| 120–150 / 150–240 | genau 150 |
+| drei Bereiche | der engste gemeinsame |
+
+Auswahllisten sind ausgenommen: Die Schnittmenge zweier Listen wäre zwar
+ebenfalls gedeckt, könnte aber **leer** sein — und eine leere Übungsliste ist
+kein Ergebnis, sondern ein stiller Ausfall.
+
+### 38.2 Der kürzeste offene Anschluss
+
+`session.repetitions` stand seit v8-336 in der Verordnung und wurde nie aus
+Wissen gefüllt. Ein zweiter `ausWissen`-Aufruf, mehr war es nicht. Die
+Quittungsliste ist damit um zwei Einträge geschrumpft — `session.exercises`
+(v8-347) und `session.repetitions` (jetzt). **Genau so ist die Datei gemeint:
+sie schrumpft, wenn Wissen ankommt.**
+
+### 38.3 Drei eigene Fehler
+
+| | Was schiefging | Wie es auffiel |
+|---|---|---|
+| Herkunft | `eingeengtAus` zeigte beim ersten Eintrag bereits den **eingeengten** Bereich — das Objekt wird mutiert, bevor es protokolliert wird. Die Angabe hätte behauptet, die Quelle habe von vornherein den engeren Bereich genannt | erster Probelauf, von Hand nachgesehen |
+| Übergenauigkeit | `eingeengtAus` stand auch da, wenn gar nichts eingeengt wurde (zwei identische Bereiche) | beim Schreiben der Zusicherung |
+| Fernwirkung | die **bestehende** Probe KA_K2 wurde wirkungslos: sie zielte auf den Zweig für deckungsgleiche Zahlbereiche, den die Schnittmenge seither ohnehin abfängt | `gap` im Gesamtlauf |
+
+Der dritte ist der interessanteste: Eine Verbesserung kann einen alten Riegel
+**redundant** machen, ohne dass jemand es merkt. Der Zweig trägt jetzt vor
+allem die Auswahllisten — das steht als Kommentar im Code, und die Probe zielt
+entsprechend dorthin.
+
+### 38.4 Nicht probengedeckt, offen gesagt
+
+„Bei Auswahllisten wird nicht geschnitten" wird von zwei unabhängigen
+Bedingungen getragen (`art === 'zahl'` **und** vorhandenes `wert`-Feld). Jede
+Einzelmutation bleibt wirkungslos oder lässt den Test abstürzen, statt eine
+Zusicherung zu melden. Belegt ist die Regel nur durch den grünen Testfall,
+nicht durch eine Probe — Redundanz im Code ist gut, macht die Stelle aber
+schwer mutierbar.
+
+### 38.5 Stand
+
+- Gesamtsuite **259/0** bei 7 übersprungenen (266 Dateien)
+- **139 Proben in 17 Katalogen**, 135 gefahren / 4 übersprungen
+- `knowledge_v7_test.mjs` 24 → **32 Zusicherungen**
+- 41 Quittungen (zwei weniger als gestern)
+- Kohorten-Pin `023ee59b` unverändert, Wissensmodule vor/nach gehasht: unverändert

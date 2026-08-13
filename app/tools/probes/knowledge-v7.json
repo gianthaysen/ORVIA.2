@@ -1,7 +1,7 @@
 {
   "target": "js/engine/knowledge/knowledge-application.js",
   "test": "supabase/tests/knowledge_v7_test.mjs",
-  "note": "Vertrag v7 bindet den Wert ans Ziel und fuehrt Aufzaehlungen ein. Diese Proben sichern, dass beides wirklich prueft — und dass die alte Form nicht heimlich mitveraendert wurde.",
+  "note": "Vertrag v7 bindet den Wert ans Ziel und fuehrt Aufzaehlungen ein. Diese Proben sichern, dass beides wirklich prueft — und dass die alte Form nicht heimlich mitveraendert wurde. NICHT probengedeckt, offen gesagt: die Zusicherung „bei Auswahllisten wird nicht geschnitten\" wird von mehreren unabhaengigen Bedingungen getragen (art==='zahl' UND vorhandenes wert-Feld). Jede Einzelmutation bleibt wirkungslos oder laesst den Test abstuerzen statt eine Zusicherung zu melden — belegt ist sie nur durch den gruenen Testfall, nicht durch eine Probe.",
   "probes": [
     {
       "id": "V7A",
@@ -52,6 +52,46 @@
       "replace": "        if (false) {",
       "expectTest": "eine Größe für ein Ziel, das die Regel nicht nennt, wird ABGEWIESEN",
       "history": "Der Tippfehlerschutz. Ohne ihn wandert `session.rest_secons` durch die ganze Kette und wirkt nirgends — genau der Befund, der zum Zielregister gefuehrt hat."
+    },
+    {
+      "id": "V7F",
+      "pattern": "value_not_type",
+      "title": "aus zwei ueberlappenden Bereichen wird gemittelt statt geschnitten",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "            uMin = (uMin === null || v.wert.min > uMin) ? v.wert.min : uMin;",
+      "replace": "            uMin = (uMin === null) ? v.wert.min : Math.round((uMin + v.wert.min) / 2);",
+      "expectTest": "überlappende Bereiche werden auf die Schnittmenge eingeengt",
+      "history": "Der Unterschied, um den es hier geht: die Schnittmenge steht in JEDER Quelle, ein Mittelwert in keiner. Genau deshalb war dieser Punkt seit v8-341 zurueckgestellt — die Zahlenlogik ist die riskanteste Stelle des ganzen Vertrags."
+    },
+    {
+      "id": "V7G",
+      "pattern": "data_lacks_var",
+      "title": "disjunkte Bereiche werden ebenfalls zusammengezogen",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "          if (uMin <= uMax) {",
+      "replace": "          if (true) {",
+      "expectTest": "Bereiche OHNE Überschneidung bleiben ein Konflikt ohne Vorgabe",
+      "history": "Ohne diese Bedingung entstuende aus 120-140 und 200-240 der Bereich 200-140 - eine Vorgabe, die nicht einmal in sich stimmig ist, geschweige denn belegt."
+    },
+    {
+      "id": "V7H",
+      "pattern": "neighbour_guard",
+      "title": "die Herkunft wird erst NACH dem Einengen protokolliert",
+      "file": "js/engine/knowledge/knowledge-application.js",
+      "find": "            var eng = spitze[0];\n            var wurdeEnger = herkunft.some(function (h) { return h.wert.min !== uMin || h.wert.max !== uMax; });\n            eng.wert = { min: uMin, max: uMax };",
+      "replace": "            var eng = spitze[0];\n            var wurdeEnger = true;\n            eng.wert = { min: uMin, max: uMax };\n            herkunft = spitze.map(function (v) { return { regelId: v.regelId, wert: v.wert }; });",
+      "expectTest": "… und die Herkunft nennt die URSPRÜNGLICHEN Bereiche, nicht den engen",
+      "history": "Genau dieser Fehler steckte in der ersten Fassung: das erste Element wird mutiert, bevor es protokolliert wird — die Herkunft behauptete dann, die Quelle habe von vornherein den engeren Bereich genannt. Beim ersten Probelauf aufgefallen. Die erste Fassung DIESER Probe zielte nur auf die Wertkopie und blieb wirkungslos ('gap'), weil eine neue Zuweisung an eng.wert die alte Referenz nicht veraendert — es ist die REIHENFOLGE, die traegt."
+    },
+    {
+      "id": "V7J",
+      "pattern": "value_not_type",
+      "title": "die Wiederholungszahl wird wieder still ignoriert",
+      "file": "js/engine/prescription-factory.js",
+      "find": "        repetitions: (e.reps != null) ? e.reps : (repsV ? repsV.wert.min : null),",
+      "replace": "        repetitions: e.reps != null ? e.reps : null,",
+      "expectTest": "die Wiederholungszahl kommt aus Wissen, mit Herkunft",
+      "history": "Der Zustand bis v8-347: das Feld war da, das Wissen war da, nur die Verbindung fehlte. Dieselbe Sorte Luecke wie applyKnowledge ohne Aufrufer."
     }
   ]
 }

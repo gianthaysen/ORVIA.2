@@ -1,0 +1,139 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — 124 Seiten. STAERKSTE QUELLE DER SAMMLUNG.",
+    "",
+    "Kumulative Dissertation, Universitaet des Saarlandes 2025, aufgebaut auf drei",
+    "BEGUTACHTETEN Originalarbeiten (Frontiers in Sports and Active Living,",
+    "Sports Medicine Open, Acta Physiologica). Und es ist eine RANDOMISIERTE",
+    "KONTROLLIERTE STUDIE — die erste in der ganzen Sammlung.",
+    "",
+    "DER METHODISCHE KNIFF, der sie so wertvoll macht: der Energieverbrauch je",
+    "Einheit wurde konstant gehalten (401 kcal). Damit ist die Intensitaet",
+    "isoliert und nicht mit dem Umfang vermengt — genau die Trennung, die in",
+    "Beobachtungsstudien nie gelingt.",
+    "",
+    "ABER: untrainierte Erwachsene um 46 Jahre mit VO2max 34. Das ist NICHT",
+    "deine Ausgangslage. Die Uebertragung steht als meine Schlussfolgerung in",
+    "'grenzen' und nicht als Befund."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-REUTER-2025",
+    "art": "rct",
+    "titel": "Untersuchungen zum Einfluss der Intensitaet eines Ausdauertrainings auf die Entwicklung der koerperlichen Leistungsfaehigkeit und ausgewaehlte Gesundheitsindikatoren (kumulative Dissertation)",
+    "wer": "Marcel Reuter — Sport- und Praeventivmedizin, Universitaet des Saarlandes; Originalarbeiten in Frontiers in Sports and Active Living, Sports Medicine Open, Acta Physiologica",
+    "jahr": 2025,
+    "doi": "10.1186/s40798-023-00579-3",
+    "sportarten": [
+      "running",
+      "cycling",
+      "triathlon"
+    ],
+    "gilt_fuer": [
+      "untrainierte",
+      "freizeitlaeufer"
+    ],
+    "worum_gehts": [
+      "trainingsintensitaet",
+      "progression",
+      "responder"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Eine randomisierte kontrollierte Untersuchung ueber sechsundzwanzig Wochen mit einunddreissig untrainierten Erwachsenen haelt den Energieverbrauch je Einheit konstant und variiert nur die Intensitaet. Nach zehn Wochen moderatem Training wurde in zwei Gruppen geteilt: eine blieb moderat, die andere steigerte auf siebzig Prozent der Herzfrequenzreserve und danach auf hochintensives Intervalltraining. Die steigernde Gruppe verbesserte die maximale Sauerstoffaufnahme, die maximale Laufgeschwindigkeit und die Ruheherzfrequenz deutlich staerker. Bleiben die Vorgaben nach zehn Wochen unveraendert, werden weitere Anpassungen unwahrscheinlich.",
+    "grenzen": "Untersucht wurden UNTRAINIERTE Erwachsene mit einem Durchschnittsalter von sechsundvierzig Jahren und einer maximalen Sauerstoffaufnahme von vierunddreissig — eine Gruppe, die mit einem trainierten Zweiundzwanzigjaehrigen wenig gemein hat. Die Uebertragung auf Trainierte ist nicht belegt und bleibt meine Schlussfolgerung. Einunddreissig Teilnehmende sind wenig; die Streuung der Effekte ist entsprechend gross (plus drei Komma vier bei einer Streuung von zwei Komma sieben). Die Aussage zur Stagnation gilt fuer diese Studienbedingungen, nicht als allgemeines Zeitgesetz. Keine Aussage fuer Wettkampfvorbereitung oder fuer Umfaenge oberhalb dreier Einheiten pro Woche.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-INT-101",
+      "thema": "intensitaet_vs_umfang",
+      "aussage": "Bei gleichem Energieverbrauch je Einheit entscheidet die Intensitaet ueber das Ausmass der Anpassung. Eine Gruppe mit progressiv gesteigerter Intensitaet verbesserte maximale Sauerstoffaufnahme, maximale Laufgeschwindigkeit und Ruheherzfrequenz deutlich staerker als eine durchgehend moderat trainierende.",
+      "art": "studie",
+      "quellen": [
+        "SRC-REUTER-2025"
+      ],
+      "gilt_fuer": [
+        "untrainierte",
+        "freizeitlaeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Untrainierte Erwachsene um sechsundvierzig Jahre — die Uebertragung auf Trainierte ist unbelegt",
+        "Einunddreissig Teilnehmende, entsprechend grosse Streuung der Effekte",
+        "Der Energieverbrauch wurde konstant gehalten; in der Praxis aendern sich Umfang und Intensitaet meist gemeinsam",
+        "Die Herzfrequenzkurve verbesserte sich in BEIDEN Gruppen gleich stark — nicht jeder Anpassungsweg haengt an der Intensitaet"
+      ],
+      "wenn_unsicher": "Im Zweifel die Grundlage zuerst aufbauen und Intensitaet danach steigern, nicht umgekehrt.",
+      "wirkt_auf": [
+        "plan.intensitaetsverteilung"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-INT-102",
+      "thema": "progression",
+      "aussage": "Bleiben Umfang und Intensitaet ueber Monate unveraendert, werden weitere Anpassungen unwahrscheinlich. In der Untersuchung stagnierte die moderat weitertrainierende Gruppe, waehrend die steigernde Gruppe weiter zulegte.",
+      "art": "studie",
+      "quellen": [
+        "SRC-REUTER-2025"
+      ],
+      "gilt_fuer": [
+        "untrainierte",
+        "freizeitlaeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung",
+        "wettkampfwoche"
+      ],
+      "unsicherheiten": [
+        "Der Zeitpunkt von zehn Wochen stammt aus dem Studiendesign, nicht aus einer Messung des Stagnationsbeginns",
+        "Untrainierte Ausgangslage — bei Trainierten verlaufen Anpassungen langsamer und flacher",
+        "Stagnation eines Messwerts ist nicht dasselbe wie Stagnation der Leistungsfaehigkeit"
+      ],
+      "wenn_unsicher": "Im Zweifel eher die Intensitaet variieren als den Umfang erhoehen — der Umfang kostet mehr Erholung.",
+      "wirkt_auf": [
+        "plan.progressionsbedarf"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    },
+    {
+      "id": "RUN-INT-103",
+      "thema": "responder",
+      "aussage": "Auf denselben Trainingsreiz reagieren nicht alle: nach zehn Wochen moderatem Training galten sechzehn von einunddreissig Teilnehmenden als Responder. Ausbleibender Fortschritt ist damit ein bekanntes Ergebnis eines Reizes und kein Beleg fuer falsches Training.",
+      "art": "studie",
+      "quellen": [
+        "SRC-REUTER-2025"
+      ],
+      "gilt_fuer": [
+        "untrainierte",
+        "freizeitlaeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Einteilung in Responder haengt am gewaehlten Schwellenwert (technischer Messfehler) — eine andere Definition ergibt andere Raten",
+        "Gemessen an der maximalen Sauerstoffaufnahme; andere Zielgroessen koennen anders reagieren",
+        "Non-Response auf einen Reiz heisst nicht Non-Response auf jeden Reiz"
+      ],
+      "wenn_unsicher": "Im Zweifel den Reiz aendern, bevor man mehr vom selben macht.",
+      "wirkt_auf": [
+        "plan.erwartungsrahmen"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    }
+  ]
+}

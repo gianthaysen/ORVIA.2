@@ -148,12 +148,13 @@
     {
       "id": "KA_K2",
       "pattern": "value_not_type",
-      "title": "deckungsgleiche Zahlbereiche werden als Widerspruch gemeldet",
+      "title": "dieselbe Uebungsliste in anderer Reihenfolge gilt als Widerspruch",
       "file": "js/engine/knowledge/knowledge-application.js",
-      "find": "    return a.wert.min === b.wert.min && a.wert.max === b.wert.max;",
-      "replace": "    return false;",
-      "expectTest": "… zwei deckungsgleiche Zahlbereiche sind Bestätigung, kein Konflikt",
-      "history": "Zwei uebereinstimmende Quellen gegeneinander auszuspielen ist die Umkehrung dessen, wofuer ein Quellenregister da ist."
+      "find": "      var x = a.werte.slice().sort(), y = b.werte.slice().sort();",
+      "replace": "      var x = a.werte.slice(), y = b.werte.slice();",
+      "expectTest": "… dieselbe Liste in anderer Reihenfolge ist dagegen Bestätigung",
+      "history": "Bis v8-347 zielte diese Probe auf deckungsgleiche ZAHLbereiche. Seit der Schnittmengenregel (v8-348) faengt (3b) diesen Fall ohnehin ab — die Probe wurde wirkungslos und meldete 'gap'. Sie zielt jetzt auf den Zweig, der wirklich traegt: Auswahllisten, fuer die es keine Schnittmenge gibt. Die Reihenfolge einer Liste ist Darstellung, keine Aussage.",
+      "test": "supabase/tests/knowledge_v7_test.mjs"
     },
     {
       "id": "KA_K3",

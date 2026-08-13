@@ -1,9 +1,9 @@
 # ORVIA · Stand und offene Punkte
 
-**Stand: v8-347, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-347 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
+**Stand: v8-348, 2026-08-13** (v8-343 ist veröffentlicht, v8-344 bis v8-348 liegen bereit). Diese Datei ist der Einstiegspunkt für eine neue
 Sitzung. Sie ersetzt keinen Verlauf — die Begründungen stehen vollständig in
-`sw.js` (Versionsköpfe v8-329 bis v8-347) und in
-`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§37).
+`sw.js` (Versionsköpfe v8-329 bis v8-348) und in
+`docs/ENGINE-BAUPLAN-REST-2026-08.md` (§22–§38).
 Der Umsetzungsplan für v7 steht in `docs/PLAN-VERTRAG-V7.md`.
 
 > **Am 13.08. wurde jede Zahl dieser Datei gegen ausgeführten Code geprüft.**
@@ -135,12 +135,20 @@ Zuordnungen (welche Größe auf welches Ziel?) und Sicherheitsgrenzen am echten
 Quellenmaterial. Das ist deine Entscheidung, nicht meine; der Test weist die
 Quote bei jedem Lauf aus.
 
-### 4 · Konfliktlösung — noch offene Feinheit
-Seit v8-341 konkurrieren nur noch **Werte**. Ungelöst bleibt: zwei
-Zahlbereiche gleicher Klasse, die sich **überlappen** (z. B. 120–180 und
-150–240), gelten als Widerspruch. Die Schnittmenge wäre von beiden Quellen
-gedeckt und keine Erfindung. Bewusst nicht gebaut — Änderungen an der
-Zahlenlogik sind riskanter als an der qualitativen.
+### 4 · Konfliktlösung — **erledigt in v8-348**
+Zwei gleichrangige Zahlbereiche, die sich überlappen, werden auf die
+**Schnittmenge** eingeengt statt sich gegenseitig stumm zu schalten:
+
+```
+120–180 / 150–240  →  150–180   (eingeengtAus nennt beide Originale)
+120–180 / 120–180  →  120–180   (bestätigtDurch, nichts eingeengt)
+120–140 / 200–240  →  KEINE Vorgabe — Konflikt bleibt
+```
+
+Die Schnittmenge steht in **jeder** beteiligten Quelle. Gemittelt wird
+weiterhin nirgends: aus 3 und 5 Sätzen wird nicht 4, weil diese Bereiche sich
+nicht berühren und 4 niemand gesagt hat. Auswahllisten sind ausgenommen — eine
+leere Schnittmenge wäre ein stiller Ausfall statt einer Aussage.
 
 ---
 
@@ -280,16 +288,16 @@ Ohne diese Ansage bleibt der Test rot; ein fehlender Pin ist kein bestätigter.
 
 ---
 
-## Zahlen zum Nachprüfen (v8-347)
+## Zahlen zum Nachprüfen (v8-348)
 
 - Gesamtsuite **259/0** Dateien, 7 übersprungen (brauchen echte Supabase-Instanz).
   **Nur mit Chromium** — ohne Browser-Binary sind es 237/0 bei 29 übersprungenen,
   und der Runner sagt das seit v8-343 ausdrücklich dazu.
-- **135 Proben in 17 Katalogen**, 131 gefahren / 4 übersprungen
+- **139 Proben in 17 Katalogen**, 135 gefahren / 4 übersprungen
 - **Ziele mit Leser: 1 von 30** aus Paketen, 0 von 14 aus Notizen — die
   ehrlichste Zahl über den Stand der Wissenskette, siehe Punkt 3b
-- 37 Quittungen in `_ziele-ohne-leser.json` — eine **weniger** als gestern:
-  `session.exercises` hat seit v7 einen Leser und ist herausgefallen
+- 41 Quittungen in `_ziele-ohne-leser.json`; `session.exercises` und
+  `session.repetitions` sind herausgefallen, weil sie jetzt gelesen werden
 - **Wissensvertrag: Version 7**
 - **Zahlen: 2 Regeln führen sie strukturiert, 8 nennen sie nur im Text** — der
   Grund steht in Punkt 3b (das Feld fasst nur eine Größe)

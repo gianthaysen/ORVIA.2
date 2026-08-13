@@ -1,0 +1,82 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — 8 Seiten. BEGUTACHTET, ERSCHIENEN MAERZ 2026.",
+    "",
+    "SCHLIESST DIE GROESSTE DOKUMENTIERTE LUECKE DER SAMMLUNG. Sperlich 2015,",
+    "Hoff 2006, Hirschmueller 2005, Schulze 2025 — alle sagen ausdruecklich,",
+    "dass Untersuchungen mit Frauen fehlen oder nur Maenner eingeschlossen",
+    "wurden. Diese Arbeit handelt genau davon.",
+    "",
+    "Zweite Autorin ist Anja Hirschmueller — dieselbe wie in QUELLE-09.",
+    "",
+    "DIE REGEL IST MEDIZINISCH HEIKEL und damit gesperrt. Absichtlich: aus einer",
+    "erzaehlenden Uebersicht ohne eigene Daten darf keine geschlechtsabhaengige",
+    "Trainings- oder Risikoaussage werden. Was bleibt, ist die ehrliche",
+    "Kennzeichnung der Luecke — und die ist dokumentiert, nicht wirksam."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-KUBOSCH-2026",
+    "art": "review",
+    "titel": "Besonderheiten von Tendinopathien bei Athletinnen",
+    "wer": "Kubosch EJ, Hirschmueller A — Universitaetsklinikum Freiburg / Altius Swiss Sportmed Center; Orthopaedie und Traumatologie 42, S. 13-20",
+    "jahr": 2026,
+    "doi": "10.1016/j.orthtr.2026.02.003",
+    "sportarten": [
+      "running",
+      "gym",
+      "triathlon"
+    ],
+    "gilt_fuer": [
+      "athletinnen",
+      "freizeitlaeufer"
+    ],
+    "worum_gehts": [
+      "sehnen",
+      "tendinopathie",
+      "geschlechtsunterschiede"
+    ],
+    "qualitaet": "mittel",
+    "kernaussage": "Die Uebersichtsarbeit traegt zusammen, was zu geschlechtsspezifischen Besonderheiten bei Sehnenbeschwerden bekannt ist. Neuere Befunde sprechen fuer Unterschiede in Aufbau, Biologie und Mechanik der Sehnen zwischen den Geschlechtern; einzelne Tendinopathien treten bei Frauen oder Maennern gehaeuft auf, in Verbindung mit Achsverhaeltnissen, unterschiedlichen Ansteuerungsmustern und hormonellen Einfluessen. Auch die kurzfristige Reaktion auf Belastung und die laengerfristige Anpassung der Sehnen unterscheiden sich. Die Autorinnen benennen ausdruecklich eine Datenluecke zwischen den Geschlechtern.",
+    "grenzen": "Erzaehlende Uebersichtsarbeit, keine systematische Recherche und keine eigenen Daten. Die Autorinnen sagen selbst, dass die Datenlage unzureichend ist und ein Grossteil der Belege aus vorklinischer Forschung stammt. Daraus folgt KEINE andere Behandlung und keine andere Trainingsvorgabe fuer Frauen — die Arbeit begruendet Forschungsbedarf, keine geaenderte Praxis. Keine Zahlen zu Haeufigkeiten oder Risiken, die eine App anwenden koennte.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-EVID-101",
+      "thema": "uebertragbarkeit_geschlecht",
+      "aussage": "Befunde zu Sehnen und Sehnenbeschwerden aus ueberwiegend maennlichen Stichproben lassen sich nicht ohne Weiteres auf Frauen uebertragen: Aufbau, Biologie und mechanisches Verhalten der Sehnen unterscheiden sich, ebenso die Anpassung an Belastung. Eine App muss diese Luecke benennen, statt sie zu ueberdecken.",
+      "art": "studie",
+      "quellen": [
+        "SRC-KUBOSCH-2026"
+      ],
+      "gilt_fuer": [
+        "athletinnen",
+        "freizeitlaeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche"
+      ],
+      "unsicherheiten": [
+        "Erzaehlende Uebersicht ohne systematische Recherche und ohne eigene Daten",
+        "Ein Grossteil der angefuehrten Belege stammt aus vorklinischer Forschung",
+        "Die Autorinnen benennen die Datenlage selbst als unzureichend",
+        "Aus der Luecke folgt kein konkreter Unterschied in der Trainingsgestaltung — nur, dass er unbekannt ist"
+      ],
+      "wenn_unsicher": "Im Zweifel die Unsicherheit anzeigen statt eine Zahl. Eine benannte Luecke ist ehrlicher als ein uebertragener Wert.",
+      "wirkt_auf": [
+        "plan.evidenzluecke_geschlecht"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "medizinisch_heikel": true,
+      "sicherheitsgrenzen": [
+        "Diese Regel darf nie zu einer Aussage ueber das Verletzungsrisiko einer einzelnen Person werden",
+        "Kein abweichender Trainingsvorschlag nach Geschlecht — die Arbeit begruendet Forschungsbedarf, keine geaenderte Praxis",
+        "Bei Sehnenbeschwerden endet die Zustaendigkeit der App: Verweis auf aerztliche oder physiotherapeutische Abklaerung"
+      ]
+    }
+  ]
+}

@@ -1,4 +1,64 @@
-const C = 'orvia-v8-347';   /* VERTRAG v7 — DER WERT GEHOERT ZUM ZIEL (2026-08-13) · v8-347:
+const C = 'orvia-v8-348';   /* DIE SCHNITTMENGE IST KEINE ERFINDUNG (2026-08-13) · v8-348:
+
+   ZWEI OFFENE PUNKTE ABGERAEUMT, beide aus der Liste, beide klein — und beide
+   haben beim Bauen etwas ueber den Code verraten.
+
+   PUNKT 4 · UEBERLAPPENDE ZAHLBEREICHE. Seit v8-341 notiert und bewusst
+   zurueckgestellt, weil Aenderungen an der Zahlenlogik die riskantesten sind.
+   Bis hierher galt JEDER Unterschied als Widerspruch:
+
+       Quelle A: 120–180 s      Quelle B: 150–240 s
+       → beide gegenseitig stumm, KEINE Vorgabe
+
+   Dabei decken beide den Bereich 150–180 s ausdruecklich. Die Schnittmenge
+   steht in JEDER beteiligten Quelle — sie ist der engste Bereich, den alle
+   tragen. Der Unterschied zum Mitteln, das verboten bleibt: aus 3 und 5
+   Saetzen wird NICHT 4; diese Bereiche beruehren sich nicht, und 4 hat
+   niemand gesagt. Gemessen:
+
+       120–180 / 150–240   → 150–180, eingeengtAus nennt beide Originale
+       120–180 / 120–180   → 120–180, bestaetigtDurch (nichts eingeengt)
+       120–140 / 200–240   → KEINE Vorgabe, Konflikt bleibt
+       120–150 / 150–240   → genau 150
+       drei Bereiche       → der engste gemeinsame
+
+   NUR fuer Zahlen. Bei Auswahllisten waere die Schnittmenge zwar ebenfalls
+   gedeckt, koennte aber LEER sein — und eine leere Uebungsliste ist keine
+   Aussage, sondern ein stiller Ausfall.
+
+   PUNKT „kuerzester Weg" · session.repetitions. Das Feld gab es in der
+   Verordnung seit jeher, das Wissen seit v8-341 — nur die Verbindung fehlte.
+   Ein zweiter ausWissen-Aufruf, mehr war es nicht. Die Quittungsliste ist
+   damit um zwei Eintraege geschrumpft (session.exercises in v8-347,
+   session.repetitions jetzt).
+
+   DREI EIGENE FEHLER, alle vom Werkzeug gefangen:
+   • Die Herkunft `eingeengtAus` zeigte beim ersten Eintrag bereits den
+     EINGEENGTEN Bereich — ich mutiere das Objekt, bevor ich es protokolliere.
+     Die Angabe haette behauptet, die Quelle habe von vornherein den engeren
+     Bereich genannt. Beim ersten Probelauf sichtbar geworden.
+   • `eingeengtAus` stand auch dann da, wenn gar nichts eingeengt wurde (zwei
+     identische Bereiche). Jetzt nur noch bei echter Verengung.
+   • Die bestehende Probe KA_K2 wurde durch den Umbau WIRKUNGSLOS: sie zielte
+     auf den Zweig fuer deckungsgleiche Zahlbereiche, den die Schnittmenge
+     seither ohnehin abfaengt. Der Zweig traegt jetzt vor allem die
+     Auswahllisten — die Probe zielt entsprechend dorthin, und der Kommentar
+     im Code sagt, warum.
+
+   NICHT PROBENGEDECKT, offen gesagt: „bei Auswahllisten wird nicht
+   geschnitten" wird von zwei unabhaengigen Bedingungen getragen; jede
+   Einzelmutation bleibt wirkungslos oder laesst den Test abstuerzen, statt
+   eine Zusicherung zu melden. Belegt ist die Regel nur durch den gruenen
+   Testfall, nicht durch eine Probe.
+
+   GEAENDERT: knowledge-application.js (Schnittmenge, Herkunft),
+   prescription-factory.js (Wiederholungen, Register). Suite 259/0 bei 7
+   uebersprungenen, 139 Proben in 17 Katalogen, 135 gefahren / 4
+   uebersprungen, jede angeschlagen. Wissensmodule vor/nach gehasht:
+   unveraendert. Kohorten-Pin 023ee59b unveraendert.
+
+   ============================================================
+   VERTRAG v7 — DER WERT GEHOERT ZUM ZIEL (2026-08-13) · v8-347:
 
    ERST DER BEFUND, DER BEIM PLANEN AUFTAUCHTE. Eine Regel darf mehrere
    `outputs` nennen, trug aber genau EINE Zahl — und die Anwendung gab diese

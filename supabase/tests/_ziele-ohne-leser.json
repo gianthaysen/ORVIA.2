@@ -14,14 +14,14 @@
     "",
     "„dito“ zaehlt nicht: der Test verlangt je Eintrag eine echte Begruendung.",
     "Seit v8-345 werden auch die Notizdateien in docs/wissen geprueft — ein wirkungsloses Ziel soll auffallen, BEVOR jemand ein Paket dafuer baut.",
-    "v8-347: session.exercises ist aus dieser Liste VERSCHWUNDEN, weil die Verordnung es seit Vertrag v7 wirklich liest. Genau so ist die Datei gemeint — sie schrumpft, wenn Wissen ankommt."
+    "v8-347: session.exercises ist aus dieser Liste VERSCHWUNDEN, weil die Verordnung es seit Vertrag v7 wirklich liest. Genau so ist die Datei gemeint — sie schrumpft, wenn Wissen ankommt.",
+    "v8-348: session.repetitions ebenfalls entfallen — der Leser stand seit v8-336 bereit und wurde nur nie mit Wissen gefuellt."
   ],
   "quittiertAm": "2026-08-13",
-  "appVersion": "v8-347",
+  "appVersion": "v8-348",
   "ziele": {
     "plan.saetze_je_muskelgruppe": "GYM-HYP-002. Woechentlicher Umfang je Muskelgruppe — die Verordnung baut EINE Einheit und kennt die Woche nicht. Braucht einen Leser im Wochenplan (scheduler-v2), nicht in der Verordnung.",
     "session.last_prozent_1rm": "GYM-HYP-003. Die Verordnung fuehrt kein Lastfeld in Prozent des Einwiederholungsmaximums. Waere ein echter Zugewinn, ist aber neue Funktion, kein blosser Anschluss.",
-    "session.repetitions": "GYM-HYP-003. Das Feld EXISTIERT in der Verordnung, wird aber aus der Uebungsliste uebernommen statt aus Wissen gelesen. Der kuerzeste Weg von allen: ein zweiter ausWissen-Aufruf neben sets und rest_seconds.",
     "plan.erwartungsrahmen": "GYM-VAR-001. Qualitativer Erwartungsrahmen (die Streuung zwischen Personen ist gross). Gehoert in die Darstellung der Karte, nicht in die Zahlen der Verordnung.",
     "experienceTier": "RUN-HIST-001. Einstufung der Trainingserfahrung. GEPRUEFT 13.08.: kein Modul liest diesen Namen — auch running-capacity-factory nicht, fuer die er gedacht war. Das Feld `outputs` der Laufregeln ist eine Absichtserklaerung, keine Schnittstelle.",
     "historyReliability": "RUN-HIST-001. Belastbarkeit der Historie. Wie experienceTier: nirgends gelesen, auch nicht von der Factory. Reine Absichtserklaerung der Regel.",
@@ -60,6 +60,10 @@
     "plan.koerperzusammensetzung_hinweis": "QUELLE-12 (GYM-RUMPF-002). Zusammenhaenge zwischen Koerpermassen und Sprintzeit waren sehr schwach (Korrelationen um minus 0,2). Kein Leser; die App zeigt keine Koerperzusammensetzungs-Prognose an — und soll aus so schwachen Zusammenhaengen auch keine bauen.",
     "plan.wettkampf_nachlauf": "QUELLE-13 (RUN-ERHOL-001). Nach einem Marathon war die diastolische Herzfunktion ueber 72 Stunden eingeschraenkt. Kein Leser; waere eine Sperre fuer harte Einheiten nach einem Wettkampf — genau die Sorte Regel, die einen qualitativen Leser braucht statt einer Zahl.",
     "plan.umfangsobergrenze": "QUELLE-13 (RUN-ERHOL-002). Fuer exzessive Umfaenge sind nachteilige Effekte beschrieben. Kein Leser; eine Obergrenze im Wochenplan waere denkbar, ist aber ohne belastbare Schwelle nicht vorschreibbar.",
-    "plan.kognitiver_nutzen": "QUELLE-13 (RUN-KOGN-001). Kognitiver Nutzen aus regelmaessigem Training plus akuten intensiven Einheiten. Kein Leser; betrifft die Begruendung von Training, nicht seine Dosierung."
+    "plan.kognitiver_nutzen": "QUELLE-13 (RUN-KOGN-001). Kognitiver Nutzen aus regelmaessigem Training plus akuten intensiven Einheiten. Kein Leser; betrifft die Begruendung von Training, nicht seine Dosierung.",
+    "plan.intensitaetsverteilung": "QUELLE-14 (RUN-INT-101). Bei gleichem Energieverbrauch entscheidet die INTENSITAET ueber das Ausmass der Anpassung. Kein Leser; der Wochenplan verteilt heute nach beobachteter Kapazitaet, nicht nach einer Intensitaetsvorgabe. Waere ein Leser in scheduler-v2 — inhaltlich der staerkste Kandidat aus den neuen Quellen.",
+    "plan.progressionsbedarf": "QUELLE-14 (RUN-INT-102). Bleiben Umfang und Intensitaet ueber Monate gleich, werden weitere Anpassungen unwahrscheinlich. Kein Leser; waere ein Hinweis im Wochenplan („seit X Wochen unveraendert\"), keine Zahl.",
+    "plan.hf_zonen_herkunft": "QUELLE-15 (RUN-HF-101). Altersformeln ueberschaetzen die maximale Herzfrequenz systematisch (Fox im Mittel um 13 Schlaege). Kein Leser; die App fuehrt derzeit keine Herkunftsangabe fuer HF-Zonen. Waere ein Anzeigehinweis, sobald Zonen aus einer Formel statt aus einer Messung stammen.",
+    "plan.evidenzluecke_geschlecht": "QUELLE-16 (RUN-EVID-101). Sehnenbefunde aus ueberwiegend maennlichen Stichproben sind nicht ohne Weiteres uebertragbar. Kein Leser; eine Einschraenkung der Uebertragbarkeit, die zur Offenlegung gehoert — nicht zur Dosierung."
   }
 }

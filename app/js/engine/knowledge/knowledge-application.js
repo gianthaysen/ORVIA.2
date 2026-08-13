@@ -214,7 +214,14 @@
         });
         /* (3) Sagen alle gleichrangigen dasselbe, ist das Bestaetigung. Sie
            als Konflikt zu melden hiesse, zwei uebereinstimmende Quellen
-           gegeneinander auszuspielen. */
+           gegeneinander auszuspielen.
+
+           v8-348, ehrlich vermerkt: fuer ZAHLEN ist dieser Zweig seit der
+           Schnittmengenregel (3b) nur noch eine Abkuerzung — deckungsgleiche
+           Bereiche kaemen dort zum selben Ergebnis. Er traegt jetzt vor allem
+           die AUSWAHLLISTEN, fuer die es keine Schnittmenge gibt. Genau das
+           hat die Mutationsprobe KA_K2 gemeldet, als sie nach dem Umbau
+           wirkungslos wurde. */
         var einig = spitze.every(function (v) { return _gleicherBereich(v, spitze[0]); });
         if (einig) {
           var g = spitze[0];
@@ -222,13 +229,59 @@
           vorgaben.push(g);
           return;
         }
-        /* (4) Der echte Fall: verschiedene Zahlen, gleich gut belegt. */
+        /* (3b) v8-348 — DIE SCHNITTMENGE IST KEINE ERFINDUNG.
+           Bis hierher galt jeder Unterschied als Widerspruch. Zwei Quellen,
+           die 120–180 s und 150–240 s nennen, wurden gegenseitig stumm
+           geschaltet — obwohl beide den Bereich 150–180 s ausdruecklich
+           decken. Genau dieser Fall war seit v8-341 als offener Punkt notiert
+           und bewusst zurueckgestellt.
+
+           Der Unterschied zum Mitteln, das hier verboten bleibt: aus 3 und 5
+           Saetzen wird NICHT 4 — diese Bereiche beruehren sich nicht, und 4
+           hat niemand gesagt. Die Schnittmenge dagegen steht in JEDER der
+           beteiligten Quellen. Sie ist der engste Bereich, den alle tragen.
+
+           NUR fuer Zahlen. Bei Auswahllisten waere die Schnittmenge zwar
+           ebenfalls gedeckt, koennte aber LEER sein — und eine leere
+           Uebungsliste ist keine Aussage, sondern ein stiller Ausfall. */
+        var alleZahlen = spitze.every(function (v) { return v.art === 'zahl' && v.wert; });
+        if (alleZahlen) {
+          var uMin = null, uMax = null;
+          spitze.forEach(function (v) {
+            uMin = (uMin === null || v.wert.min > uMin) ? v.wert.min : uMin;
+            uMax = (uMax === null || v.wert.max < uMax) ? v.wert.max : uMax;
+          });
+          if (uMin <= uMax) {
+            /* ZUERST protokollieren, DANN einengen. Andersherum zeigte der
+               erste Eintrag bereits den eingeengten Wert — die Herkunft haette
+               behauptet, die Quelle habe von vornherein den engeren Bereich
+               genannt. Beim ersten Probelauf sichtbar geworden. */
+            var herkunft = spitze.map(function (v) {
+              return { regelId: v.regelId, wert: { min: v.wert.min, max: v.wert.max } };
+            });
+            var eng = spitze[0];
+            var wurdeEnger = herkunft.some(function (h) { return h.wert.min !== uMin || h.wert.max !== uMax; });
+            eng.wert = { min: uMin, max: uMax };
+            /* `eingeengtAus` NUR, wenn wirklich eingeengt wurde. Bei
+               deckungsgleichen Bereichen waere die Angabe irrefuehrend: es
+               wurde nichts verengt, die Quellen sind sich schlicht einig —
+               das steht in `bestaetigtDurch`. */
+            if (wurdeEnger) eng.eingeengtAus = herkunft;
+            eng.bestaetigtDurch = spitze.slice(1).map(function (v) { return v.regelId; });
+            vorgaben.push(eng);
+            return;
+          }
+        }
+
+        /* (4) Der echte Fall: Bereiche ohne jede Ueberschneidung — oder
+           Aussagen, die keine Zahl sind. Hier entscheidet niemand automatisch. */
         konflikte.push({ ziel: ziel, grund: 'gleichrangig_widersprüchlich',
           regeln: spitze.map(function (v) { return v.regelId; }),
           klasse: (beste.herkunft && beste.herkunft.evidenceClass) || null,
           werte: spitze.map(function (v) { return (v.art === 'liste') ? (v.werte || null) : (v.wert || null); }),
           hinweis: 'Mehrere gleich stark belegte Regeln nennen für "' + ziel +
-            '" UNTERSCHIEDLICHE Werte. Es wird KEINE Vorgabe erzeugt — entscheide, welche gilt, oder ergänze eine bessere Quelle.' });
+            '" Werte OHNE JEDE ÜBERSCHNEIDUNG. Es wird KEINE Vorgabe erzeugt — entscheide, welche gilt, oder ergänze eine bessere Quelle. ' +
+            '(Überlappende Bereiche werden seit v8-348 auf ihre Schnittmenge eingeengt, statt sich gegenseitig stumm zu schalten.)' });
         return;
       }
       beste.ueberstimmt = zahlen.filter(function (v) { return v !== beste; }).map(function (v) { return v.regelId; });

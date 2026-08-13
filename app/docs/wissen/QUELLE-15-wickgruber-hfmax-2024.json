@@ -1,0 +1,80 @@
+{
+  "_status": [
+    "VOLLTEXT GELESEN — 90 Seiten. TRIFFT ORVIA DIREKT.",
+    "",
+    "n = 268, Spiroergometrie nach ESC-Leitlinie gegen die ueblichen Formeln.",
+    "Fox (220 minus Alter): im Mittel 13,06 Schlaege zu hoch.",
+    "Tanaka (208 minus 0,7 mal Alter): im Mittel 9,29 Schlaege zu hoch.",
+    "Karvonen unterschaetzt die Trainingsherzfrequenz gegenueber VT1/VT2.",
+    "",
+    "WARUM DAS ZAEHLT: wenn ORVIA irgendwo Herzfrequenzzonen aus dem Alter",
+    "ableitet, sind sie systematisch rund zehn bis dreizehn Schlaege zu hoch —",
+    "und damit sind die Zonen zu weit oben. Das ist keine Randnotiz, das ist",
+    "eine falsche Steuergroesse. RUN-INT-001 im Laufpaket sagt bereits, dass",
+    "Altersformeln stark streuen; diese Arbeit beziffert es.",
+    "",
+    "Masterarbeit, nicht begutachtet — Klasse C. Sie kann die bestehende",
+    "Klasse-B-Regel nicht ueberstimmen, aber sie stuetzt sie mit Zahlen."
+  ],
+  "sport": "running",
+  "quelle": {
+    "id": "SRC-WICKGRUBER-2024",
+    "art": "studie",
+    "titel": "Der Wert der leistungsphysiologischen Untersuchung im Kontrast zur Standardisierung: normierte Trainingsformeln gegen individuelle Leistungsbeurteilung in der Spiroergometrie (Masterarbeit Humanmedizin)",
+    "wer": "Martina Wickgruber — Johannes Kepler Universitaet Linz",
+    "jahr": 2024,
+    "url": "https://epub.jku.at/",
+    "sportarten": [
+      "running",
+      "cycling",
+      "triathlon",
+      "gym"
+    ],
+    "gilt_fuer": [
+      "freizeitsportler",
+      "freizeitlaeufer"
+    ],
+    "worum_gehts": [
+      "herzfrequenz",
+      "trainingsbereiche",
+      "formeln"
+    ],
+    "qualitaet": "niedrig",
+    "kernaussage": "Die Querschnittuntersuchung vergleicht bei zweihundertachtundsechzig Personen die ueblichen Altersformeln fuer die maximale Herzfrequenz mit dem in der Spiroergometrie gemessenen Wert. Beide Formeln lagen systematisch zu hoch: die Fox-Formel im Mittel um dreizehn Schlaege pro Minute, die Tanaka-Formel um gut neun. Auch die aus diesen Werten abgeleiteten Trainingsbereiche wichen deutlich von den gemessenen ventilatorischen Schwellen ab. Rauchen, Koerpermasse und Vorerkrankungen erklaerten die Abweichung nicht.",
+    "grenzen": "Masterarbeit, nicht begutachtet. Querschnittuntersuchung an einer klinisch untersuchten Gruppe, nicht an Leistungssportlern. Gemessen wurde auf dem Fahrradergometer — die maximale Herzfrequenz faellt beim Laufen ueblicherweise hoeher aus, was die Abweichung fuer Laeufer veraendern kann. Es sind Mittelwerte: im Einzelfall kann eine Formel auch zu niedrig liegen. Die Arbeit zeigt die Abweichung, nicht deren Folgen fuer das Trainingsergebnis. Keine Aussage fuer Kinder oder Jugendliche.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "RUN-HF-101",
+      "thema": "herzfrequenzformeln",
+      "aussage": "Altersformeln ueberschaetzen die maximale Herzfrequenz systematisch: die Fox-Formel im Mittel um dreizehn Schlaege pro Minute, die Tanaka-Formel um gut neun. Aus ihnen abgeleitete Trainingsbereiche liegen entsprechend daneben. Eine gemessene Herzfrequenz ist einer berechneten immer vorzuziehen.",
+      "art": "studie",
+      "quellen": [
+        "SRC-WICKGRUBER-2024"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "freizeitlaeufer"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Masterarbeit, nicht begutachtet; Querschnittdaten einer klinisch untersuchten Gruppe",
+        "Gemessen auf dem Fahrradergometer — beim Laufen liegt die maximale Herzfrequenz ueblicherweise hoeher",
+        "Mittelwerte: im Einzelfall kann eine Formel auch zu niedrig liegen, die Streuung ist der eigentliche Punkt",
+        "Die Arbeit zeigt die Abweichung, nicht deren Auswirkung auf das Trainingsergebnis"
+      ],
+      "wenn_unsicher": "Im Zweifel keine formelbasierten Zonen anzeigen, sondern Belastung ueber Empfinden oder gemessene Werte steuern.",
+      "wirkt_auf": [
+        "plan.hf_zonen_herkunft"
+      ],
+      "braucht": [
+        "profile.sports"
+      ]
+    }
+  ]
+}
