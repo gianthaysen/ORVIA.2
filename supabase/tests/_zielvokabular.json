@@ -43,6 +43,8 @@
     "session.rpe_intervall": "Zielbelastung eines Intervalls auf der RPE-Skala.",
     "session.rpe_warmup": "Zielbelastung des Aufwaermens auf der RPE-Skala.",
     "session.rpe_kraft": "Zielbelastung einer Kraftuebung, wenn die Uebung keine eigene RIR-Angabe traegt.",
+    "session.uebungsreihenfolge": "In welcher Reihenfolge die Uebungen einer Einheit stehen — grosse Muskelgruppen vor kleinen, mehrgelenkig vor eingelenkig. Aussage ueber die Anordnung, nicht ueber die Auswahl.",
+    "session.geraetewahl": "Ob mit freien Gewichten, an Maschinen oder gemischt trainiert wird. Haengt an der Erfahrungsstufe und an dem, was verfuegbar ist.",
 
     "plan.saetze_je_muskelgruppe": "Satzsumme JE MUSKELGRUPPE innerhalb EINER Trainingseinheit, verteilt ueber alle Uebungen, die diese Muskelgruppe belasten. Darf session.sets nicht speisen (Quelle: umrechnung).",
     "plan.strength_focus": "Wozu Laeufer Krafttraining machen (Laufoekonomie, nicht VO2max) — steuert die Ausrichtung, nicht eine Zahl.",

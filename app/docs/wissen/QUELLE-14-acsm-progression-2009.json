@@ -1,0 +1,163 @@
+{
+  "_status": [
+    "GESUCHT WURDE eine Quelle, die eine ÜBUNGSAUSWAHL belegt — also die Liste,",
+    "die scheduler-v2 für Gym heute nicht hat (no_exercise_list_generic_session).",
+    "",
+    "DER BEFUND DER RECHERCHE IST EIN NEIN, und er ist wichtiger als die Quelle:",
+    "Es gibt keine wissenschaftliche Arbeit, die eine konkrete Übungsliste",
+    "vorgibt. Die Literatur zur Übungsauswahl ist PRINZIPIENBASIERT — sie sagt",
+    "'mehrgelenkig betonen', nicht 'Kniebeuge, Bankdrücken, Rudern'. Was in",
+    "Suchergebnissen wie eine Liste aussieht ('7 beste Übungen für Läufer'),",
+    "stammt durchweg aus Blogs und Verkaufsseiten und hält die Qualitätsschwelle",
+    "dieses Projekts nicht.",
+    "",
+    "FOLGE FÜR PUNKT 2, WEG C: Der Plan sagte, die Übungsauswahl 'braucht eine",
+    "Quelle, keine Programmierung'. Das war zu optimistisch. Die Quelle gibt es,",
+    "aber sie autorisiert ein PRINZIP, keine Liste. Der Schritt vom Prinzip zur",
+    "konkreten Übung bleibt eine Produktentscheidung — er lässt sich nicht",
+    "belegen, nur begründen.",
+    "",
+    "WAS DAMIT MÖGLICH WIRD, ist trotzdem viel: derselbe Weg wie v8-351. Die",
+    "Übungsbibliothek führt je Übung `category` (compound/isolation) und",
+    "`movement_pattern` — das ist eine Datenaussage, keine Erfindung. Eine selbst",
+    "geplante Einheit lässt sich also gegen dieses Prinzip PRÜFEN: liegt der",
+    "Schwerpunkt auf Mehrgelenkübungen, stehen sie vorn? Ein Prüfer, kein",
+    "Erzeuger — genau wie bei plan.saetze_je_muskelgruppe.",
+    "",
+    "WIE ICH SIE GELESEN HABE: eine PDF-Kopie des Positionspapiers auf einer",
+    "Drittseite, nicht die Verlagsfassung. Die Zitation habe ich unabhängig",
+    "über PubMed geprüft (PMID 19204579) — Titel, Zeitschrift, Jahrgang, Seiten",
+    "und DOI stimmen überein. Dass die Fassung nicht vom Verlag stammt, steht",
+    "in 'grenzen'.",
+    "",
+    "DIE QUELLE BEWERTET SICH SELBST, und das ist ihr Wert: sie vergibt je",
+    "Empfehlung eine Evidenzkategorie. Die Betonung der Mehrgelenkübungen trägt",
+    "A, die Reihenfolgeempfehlung nur C. Diese Abstufung steht bei jeder Regel",
+    "in 'unsicherheiten' — eine Quelle, die ihre eigenen schwachen Stellen",
+    "benennt, darf man nicht dadurch entwerten, dass man sie glättet.",
+    "",
+    "ALTER: 2009, also siebzehn Jahre. Für die Frage 'wie wähle ich Übungen aus'",
+    "ist das weniger kritisch als für Dosisfragen — die Volumendiskussion ist",
+    "seither weitergegangen, die Systematik der Übungsauswahl kaum."
+  ],
+  "sport": "gym",
+  "quelle": {
+    "id": "SRC-ACSM-2009",
+    "art": "verband",
+    "titel": "Position Stand: Progression Models in Resistance Training for Healthy Adults",
+    "wer": "American College of Sports Medicine (Schreibgruppe u. a. Ratamess NA, Alvar BA, Evetoch TK) — Medicine & Science in Sports & Exercise 41(3), S. 687-708",
+    "jahr": 2009,
+    "doi": "10.1249/MSS.0b013e3181915670",
+    "pmid": "19204579",
+    "sportarten": [
+      "gym",
+      "running"
+    ],
+    "gilt_fuer": [
+      "freizeitsportler",
+      "krafttraining_fortgeschritten"
+    ],
+    "worum_gehts": [
+      "uebungsauswahl",
+      "uebungsreihenfolge",
+      "progression"
+    ],
+    "qualitaet": "hoch",
+    "kernaussage": "Das Positionspapier eines Fachverbandes fasst zusammen, wie Krafttraining bei gesunden Erwachsenen aufgebaut und gesteigert werden sollte, getrennt nach drei Erfahrungsstufen. Zur Uebungsauswahl sagt es: ein- und mehrgelenkige Uebungen gehoeren beide ins Programm, der Schwerpunkt liegt auf den mehrgelenkigen, wenn es um die allgemeine Kraftentwicklung geht. Zur Reihenfolge empfiehlt es grosse Muskelgruppen vor kleinen und mehrgelenkige vor eingelenkigen Uebungen. Zur Geraeteart nennt es freie Gewichte und Maschinen gemeinsam fuer die unteren beiden Stufen und eine Betonung freier Gewichte fuer die oberste. Jede Empfehlung traegt eine eigene Evidenzkategorie.",
+    "grenzen": "Ein Positionspapier ist eine Zusammenfassung mit Empfehlungscharakter, keine eigene Untersuchung — die Empfehlungen sind Fachkonsens auf Basis der damaligen Studienlage. Die Arbeit ist von 2009; die Volumen- und Dosisdiskussion ist seither deutlich weitergegangen. Sie nennt AN KEINER STELLE konkrete Übungen: der Schritt vom Prinzip zur einzelnen Übung ist nicht durch sie gedeckt. Population sind gesunde Erwachsene allgemein, nicht Läufer und keine Personen mit Beschwerden. Gelesen wurde eine PDF-Kopie auf einer Drittseite, nicht die Verlagsfassung; die Zitation ist unabhängig über PubMed geprüft.",
+    "eigene_worte": true,
+    "geprueft_am": "2026-08-13"
+  },
+  "regeln": [
+    {
+      "id": "GYM-AUSWAHL-001",
+      "thema": "uebungsauswahl",
+      "aussage": "Ein Krafttraining enthaelt ein- und mehrgelenkige Uebungen, der Schwerpunkt liegt jedoch auf den mehrgelenkigen, wenn es um die allgemeine Kraftentwicklung geht. Das gilt fuer alle Erfahrungsstufen. Welche Uebung konkret gewaehlt wird, sagt die Quelle nicht.",
+      "art": "fachkonsens",
+      "quellen": [
+        "SRC-ACSM-2009"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Quelle vergibt fuer diese Empfehlung ihre hoechste Evidenzkategorie — das ist ihre eigene Einstufung, keine unabhaengige Bewertung",
+        "Positionspapier von 2009; die Empfehlung ist seither nicht widerlegt, aber auch nicht durch dieselbe Instanz erneuert worden",
+        "Sie nennt keine einzige konkrete Uebung. Jede Zuordnung von 'mehrgelenkig' zu einer Uebung der Bibliothek ist eine Produktentscheidung, keine Aussage der Quelle"
+      ],
+      "wenn_unsicher": "Im Zweifel bei wenigen, sauber beherrschten Mehrgelenkuebungen bleiben, statt die Einheit mit Isolationsuebungen zu verlaengern.",
+      "wirkt_auf": [
+        "session.exercises"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "beleg": "Abschnitt zur Uebungsauswahl im Krafttraining, Empfehlung fuer Einsteiger, Fortgeschrittene und weit Fortgeschrittene"
+    },
+    {
+      "id": "GYM-AUSWAHL-002",
+      "thema": "uebungsreihenfolge",
+      "aussage": "Innerhalb einer Einheit stehen grosse Muskelgruppen vor kleinen, mehrgelenkige Uebungen vor eingelenkigen und intensivere vor weniger intensiven. Der Grund ist die Ermuedung: was zuletzt kommt, wird mit weniger Kraft ausgefuehrt.",
+      "art": "fachkonsens",
+      "quellen": [
+        "SRC-ACSM-2009"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Die Quelle stuft AUSGERECHNET DIESE Empfehlung deutlich niedriger ein als die zur Uebungsauswahl — sie nennt dafuer ihre schwaechste Evidenzkategorie",
+        "Die Begruendung ueber Ermuedung ist plausibel, aber in der Quelle nicht mit einem Wirksamkeitsnachweis hinterlegt",
+        "Wer gezielt eine schwache Muskelgruppe entwickeln will, hat einen guten Grund, davon abzuweichen — die Empfehlung gilt der allgemeinen Kraftentwicklung"
+      ],
+      "wenn_unsicher": "Im Zweifel die Reihenfolge nicht erzwingen. Eine gut ausgefuehrte Einheit in anderer Reihenfolge ist besser als eine erzwungene nach Schema.",
+      "wirkt_auf": [
+        "session.uebungsreihenfolge"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "beleg": "Abschnitt zur Uebungsreihenfolge, Empfehlung fuer das Ganzkoerpertraining"
+    },
+    {
+      "id": "GYM-AUSWAHL-003",
+      "thema": "geraetewahl",
+      "aussage": "Einsteiger und Fortgeschrittene trainieren mit freien Gewichten UND an Maschinen. Erst bei weit Fortgeschrittenen empfiehlt die Quelle den Schwerpunkt auf freie Gewichte, wobei Maschinen ergaenzend sinnvoll bleiben.",
+      "art": "fachkonsens",
+      "quellen": [
+        "SRC-ACSM-2009"
+      ],
+      "gilt_fuer": [
+        "freizeitsportler",
+        "krafttraining_fortgeschritten"
+      ],
+      "nicht_fuer": [
+        "kinder_jugendliche",
+        "akute_verletzung"
+      ],
+      "unsicherheiten": [
+        "Fuer Einsteiger und Fortgeschrittene vergibt die Quelle ihre hoechste, fuer weit Fortgeschrittene ihre schwaechste Evidenzkategorie — dieselbe Empfehlung ist also unterschiedlich gut belegt",
+        "Die Einstufung 'weit fortgeschritten' definiert die Quelle ueber Trainingsjahre und Belastbarkeit, nicht ueber einen Testwert; die Zuordnung einer Person dazu bleibt eine Einschaetzung",
+        "Verfuegbarkeit entscheidet in der Praxis mit: wer keine Maschinen hat, kann diese Empfehlung nicht befolgen, ohne dass sein Training dadurch falsch waere"
+      ],
+      "wenn_unsicher": "Im Zweifel keine Geraeteart vorschreiben. Die Bewegungsausfuehrung entscheidet mehr als die Geraeteart.",
+      "wirkt_auf": [
+        "session.geraetewahl"
+      ],
+      "braucht": [
+        "profile.sports"
+      ],
+      "beleg": "Abschnitt zur Uebungsauswahl, getrennte Empfehlungen fuer Einsteiger/Fortgeschrittene und weit Fortgeschrittene"
+    }
+  ]
+}

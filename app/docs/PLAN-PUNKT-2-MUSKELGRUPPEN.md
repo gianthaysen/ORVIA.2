@@ -111,7 +111,7 @@ Krafttraining · Mo
 |---|---|---|---|---|
 | **A** | **Nutzerplan** — prüfen, was in `plannedExercises` steht | sofort wirksam für jeden, der Übungen plant; keine Erfindung; nutzt vorhandene, getestete Bausteine | Nutzer ohne geplante Übungen sehen nichts | **empfohlen** |
 | B | Produkt-Standardliste je Einheitentyp | Scheduler liefert immer Übungen | eine erfundene Auswahl im Gewand einer Empfehlung. Müsste als `product_policy`/Klasse D deklariert und sichtbar gemacht werden. Genau das Muster, das v8-336 aus der Factory entfernt hat | **abgelehnt** |
-| C | Gym-Kraft-Pack mit `auswahl`-Regel (Vertrag v7 kann es) | die saubere Lösung; Scheduler bekäme belegte Übungen | braucht eine **echte Quelle** zur Übungsauswahl, die es noch nicht gibt. Recherche + Einspeisung, nicht Code | **später, nicht jetzt** |
+| C | Gym-Kraft-Pack mit `auswahl`-Regel (Vertrag v7 kann es) | die saubere Lösung; Scheduler bekäme belegte Übungen | **recherchiert 13.08.: es gibt keine solche Quelle** — siehe §10 | **nicht erreichbar** |
 | D | gar nichts tun | — | die eine freigegebene Zahl bleibt ohne Anwender | — |
 
 **Empfehlung: A jetzt, C wenn eine Quelle vorliegt.** A und C schließen sich
@@ -329,3 +329,60 @@ Erst hier, weil er ohne die Schritte davor nicht sichtbar wird:
   eigene Einspeisung.
 - **Ob der Produktkorridor bleiben soll.** Eine unbelegte Zahl im Produkt ist
   ein eigener Befund. Er gehört bewertet, aber nicht nebenbei in diesem Schritt.
+
+
+---
+
+## 10 · Nachtrag 13.08.: Weg C ist nicht erreichbar
+
+Gesucht wurde eine Quelle, die eine **Übungsauswahl** belegt. Das Ergebnis ist
+ein Nein, und es ist wichtiger als die Quelle, die dabei gefunden wurde.
+
+**Es gibt keine wissenschaftliche Arbeit, die eine konkrete Übungsliste
+vorgibt.** Die Literatur zur Übungsauswahl ist prinzipienbasiert: sie sagt
+*„mehrgelenkig betonen"*, nicht *„Kniebeuge, Bankdrücken, Rudern"*. Was in
+Suchergebnissen wie eine Liste aussieht („7 beste Übungen für Läufer"), stammt
+durchweg aus Blogs und Verkaufsseiten und hält die Qualitätsschwelle dieses
+Projekts nicht.
+
+### 10.1 Was stattdessen eingespeist wurde
+
+**ACSM Position Stand 2009** (Med Sci Sports Exerc 41(3):687–708,
+DOI 10.1249/MSS.0b013e3181915670, PMID 19204579) — `QUELLE-14`, drei Regeln:
+
+| Regel | Aussage | Evidenzkategorie **der Quelle selbst** |
+|---|---|---|
+| GYM-AUSWAHL-001 | Schwerpunkt auf mehrgelenkigen Übungen | **A** (ihre höchste) |
+| GYM-AUSWAHL-002 | große Muskelgruppen vor kleinen, mehrgelenkig vor eingelenkig | **C** (ihre schwächste) |
+| GYM-AUSWAHL-003 | freie Gewichte **und** Maschinen; erst weit Fortgeschrittene betont freie Gewichte | A bzw. C |
+
+Die Quelle stuft ihre eigenen Empfehlungen unterschiedlich ein — ausgerechnet
+die Reihenfolgeregel trägt ihre schwächste Kategorie. Das steht bei jeder
+Regel in `unsicherheiten`. Eine Quelle, die ihre schwachen Stellen selbst
+benennt, darf man nicht dadurch entwerten, dass man sie glättet.
+
+Einstufung durch den Vertrag: **Klasse C, Fachkonsens, qualitativ.**
+
+### 10.2 Warum das die Übungsliste trotzdem nicht löst
+
+`session.exercises` erwartet Übungskennungen. Die Quelle nennt Kategorien.
+Der Schritt vom Prinzip zur konkreten Übung ist **nicht belegbar, nur
+begründbar** — er bleibt eine Produktentscheidung, und damit bleibt Weg B
+abgelehnt und Weg C unerreichbar.
+
+### 10.3 Was daraus gebaut werden kann
+
+Derselbe Weg wie §41: ein **Prüfer**. Die Übungsbibliothek führt je Übung
+`category` (compound/isolation) und `movement_pattern` — das ist eine
+Datenaussage, keine Erfindung. Eine selbst geplante Einheit lässt sich also
+gegen das Prinzip prüfen:
+
+- liegt der Schwerpunkt auf mehrgelenkigen Übungen?
+- stehen sie vorn?
+
+Prüfer, kein Erzeuger. Genau wie bei `plan.saetze_je_muskelgruppe`.
+
+**Noch nicht getan:** die Notiz ist eingespeist und vertragsfest, aber **nicht
+als Paket gebaut**. Dafür müsste das Gym-Paket aus QUELLE-05 + QUELLE-12 +
+QUELLE-14 neu erzeugt und im Consumer neu gepinnt werden — ein bewusster
+Schritt, der die laufende Gym-Kette anfasst.

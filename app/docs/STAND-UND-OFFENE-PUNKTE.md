@@ -59,6 +59,14 @@ die Matrix nachzuziehen, bekommt einen roten Test.
 
 ## Offene Punkte, priorisiert
 
+> **Recherchebefund vom 13.08. (QUELLE-14):** Für die Übungsauswahl gibt es
+> **keine** Quelle, die eine konkrete Liste vorgibt. Die Literatur ist
+> prinzipienbasiert. Eingespeist ist stattdessen das ACSM-Positionspapier von
+> 2009 mit drei Regeln (Betonung mehrgelenkiger Übungen, Reihenfolge,
+> Gerätewahl) — als Notiz, noch nicht als Paket. Damit ist Weg C aus
+> `PLAN-PUNKT-2-MUSKELGRUPPEN.md` **nicht erreichbar**; der gangbare Weg ist
+> ein weiterer Prüfer wie in §41.
+
 ### 1 · Laufen verdrahten — **erledigt in v8-353**
 
 > Seit v8-353 ist Laufen verdrahtet: `running-notizen-knowledge-pack` (17
