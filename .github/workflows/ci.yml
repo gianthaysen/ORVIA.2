@@ -1,0 +1,68 @@
+# ============================================================
+# ORVIA · CI (A-05)
+# ------------------------------------------------------------
+# WARUM AUF `entwicklung` UND NICHT AUF `main`.
+# Das Repo trägt zwei Layouts: `main` ist der AUSLIEFERUNGSZWEIG — dort liegt
+# die App in der Wurzel, weil GitHub Pages von `main` / (root) ausliefert.
+# Tests, Werkzeuge und Migrationen existieren dort nicht. Eine CI auf `main`
+# hätte also nichts zu prüfen und würde grün melden, ohne etwas getan zu haben
+# — genau die Sorte Grün, die dieses Projekt schon zweimal teuer bezahlt hat.
+# Der Entwicklungsstand liegt auf `entwicklung` (Push: git push origin main:entwicklung).
+#
+# WAS `main` STATTDESSEN SCHÜTZT: Branch-Protection in den Repo-Einstellungen —
+# vor allem das serverseitige Verbot von Force-Pushes. Ein Force-Push von `main`
+# aus dem lokalen Layout würde die App unter app/ schieben; Pages fände weder
+# index.html noch sw.js und die Live-App wäre sofort tot. Diese Datei kann das
+# nicht verhindern, nur die Einstellung im Repo.
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [entwicklung]
+  pull_request:
+    branches: [entwicklung, main]
+  workflow_dispatch:
+
+jobs:
+  suite:
+    name: Testsuite + Mutationsproben
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Kein Lockfile im Repo-Stamm → bewusst `npm install` statt `npm ci`.
+      - name: Abhängigkeiten
+        run: npm install --no-audit --no-fund
+
+      # Ohne Browser überspringt die Suite 22 Dateien und meldet trotzdem
+      # „GRÜN, aber UNVOLLSTÄNDIG". In CI ist das nicht akzeptabel: genau diese
+      # 22 prüfen die UI-Versionen, die im August nie abgedeckt waren.
+      - name: Chromium für die Browser-Tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Testsuite
+        run: node supabase/tests/run-all.mjs
+
+      # Grün allein beweist wenig: die Proben brechen den Code absichtlich und
+      # verlangen, dass ein Test es merkt. Sie laufen aus app/ heraus, weil die
+      # Werkzeuge dort liegen; --test-root .. zeigt auf die kanonische Sammlung.
+      - name: Mutationsproben
+        run: cd app && node tools/mutation-probe.mjs --test-root ..
+
+      # Prüft, dass der Live-Schema-Abgleich zum Migrationsstand passt.
+      # Läuft ohne Datenbankzugang — der Abgleich gegen die echte Instanz
+      # bleibt bewusst ein Schritt von Hand (siehe Kopf des Tests).
+      - name: Schema-Abgleich ist auf dem Stand
+        run: node supabase/tests/live_schema_parity_test.mjs
+
+      # Eine fehlende Datei in der handgepflegten SW-Liste bricht den
+      # Offline-Betrieb still. Exit 1, sobald ein lokales Skript fehlt.
+      - name: SW-Asset-Liste vollständig
+        run: python3 app/tools/sw_asset_check.py
