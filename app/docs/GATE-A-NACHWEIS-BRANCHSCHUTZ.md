@@ -124,5 +124,12 @@ Netzwerk-, Rechte- oder Tippfehler.
 2. Der Upload-Weg selbst ist unverändert manuell. Der neu gefasste Deploy-Auftrag
    (`app/docs/DEPLOY-AUFTRAG-STANDARD.md`) verbietet Force-Push in jeder Form ausdrücklich —
    ab jetzt scheitert ein Verstoß serverseitig statt still durchzugehen.
-3. `entwicklung` trägt dieselben zwei Regeln, ist aber nicht separat gegengeprüft worden.
-   Der Nachweis oben gilt für das Ruleset `Schutz Auslieferung`.
+3. Der Push-Nachweis oben gilt für das Ruleset `Schutz Auslieferung`. Für `entwicklung` ist
+   die Geltung geprüft, aber nicht durch einen abgelehnten Push belegt:
+   `rules?ref=refs%2Fheads%2Fentwicklung` zeigt `Schutz Entwicklung` — aktiv, *2 branch rules,
+   targeting 1 branch* (Screenshot 17.08.2026). Gegenprobe, dass die Regel den Arbeitsweg
+   nicht blockiert: `git push origin main:entwicklung` (d89a5bb..79ccf48) lief unverändert durch.
+
+4. Rückbau bestätigt: Nach dem Entfernen des Targets zeigt `Schutz Auslieferung` nur noch
+   `main`. Beleg ist die Löschung selbst — dieselbe Operation, die in 3.3 abgewiesen wurde,
+   ging in 3.5 durch.
