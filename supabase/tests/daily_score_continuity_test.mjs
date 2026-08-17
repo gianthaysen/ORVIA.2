@@ -342,7 +342,21 @@ sec('S7 · v8-318 · Referenzen wachsen mit — kein fester Idealwert');
      Schlafblock bewusst entzerrt (Skala 8 statt 12 Punkte/h, Gewicht 25 von 131
      statt 32 von 138). Damit faellt derselbe Effekt kleiner aus, ohne schwaecher
      zu sein: gemessen 87 → 94. Die Schwelle wird auf 6 skaliert
-     (8 × 19/23 ≈ 6,6) — nicht auf den Ist-Wert gesenkt, sonst prueft sie nichts. */
+     (8 × 19/23 ≈ 6,6) — nicht auf den Ist-Wert gesenkt, sonst prueft sie nichts.
+
+     NICHT VERWECHSELN (geklaert am 17.08.): Diese 87 → 94 sind KEIN v8→v9-
+     Vergleich. Verglichen werden zwei KONTEXTE innerhalb von v9 — links eine
+     falsche Fremdbaseline (rhrBase 55) plus 7 h Schlafschuld aus einem
+     unterstellten 8-h-Bedarf, rechts die eigene Baseline plus gemessenen
+     Bedarf. Gemessen wird also der Wert personalisierter Baselines, nicht der
+     Effekt der Score-Ueberarbeitung.
+     Die v9-Notiz nennt daneben „87 → 83". Das ist die ANGEZEIGTE Headline und
+     ebenfalls korrekt: bis v8 war rawScore = recovery (calc.js: rawScore =
+     _compIn.recovery != null ? _compIn.recovery : combineScore(...)), die
+     Headline war also identisch mit der Erholung. Seit v9 aggregiert
+     combineHeadline 60/25/15: 0,60·87 + 0,25·74 + 0,15·80 = 82,7 → 83.
+     Beide Zahlen sind richtig, sie messen verschiedene Groessen; die 87 auf
+     beiden Seiten ist Zufall. */
   ok('Gians typischer Tag (7 h gewohnt, 7 h geschlafen) kommt deutlich hoeher heraus',
     Calc.readiness(M(), gianNeu).score - Calc.readiness(M(), gianAlt).score >= 6,
     Calc.readiness(M(), gianAlt).score + ' → ' + Calc.readiness(M(), gianNeu).score);
