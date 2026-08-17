@@ -86,6 +86,10 @@
     "reentryTier": "Stufe des Wiedereinstiegs. Medizinisch pruefpflichtig.",
     "safetyGateState": "Zustand des Sicherheitsgatters bei Beschwerden. Medizinisch pruefpflichtig.",
     "loadModificationRequirement": "Notwendige Belastungsanpassung bei Beschwerden. Medizinisch pruefpflichtig.",
-    "escalationAdvice": "Wann aerztlich abgeklaert werden sollte. Medizinisch pruefpflichtig."
+    "escalationAdvice": "Wann aerztlich abgeklaert werden sollte. Medizinisch pruefpflichtig.",
+    "plan.evidenzluecke_geschlecht": "Benannte Luecke: Sehnen-Befunde stammen ueberwiegend aus maennlichen Stichproben und sind nicht ohne Weiteres auf Frauen uebertragbar. Bezeichnet die Unsicherheit selbst, NICHT eine abweichende Trainingsvorgabe. Medizinisch pruefpflichtig.",
+    "plan.hf_zonen_herkunft": "Herkunft der Herzfrequenzbereiche — gemessene maximale Herzfrequenz statt Altersformel. Altersformeln ueberschaetzen systematisch (Fox ~13, Tanaka ~9 Schlaege), daraus abgeleitete Zonen liegen entsprechend daneben.",
+    "plan.intensitaetsverteilung": "Verteilung der Intensitaet ueber die Einheiten. Bei gleichem Energieverbrauch je Einheit entscheidet die Intensitaet ueber das Ausmass der Anpassung — belegt an untrainierten Erwachsenen, Uebertragung auf Trainierte offen.",
+    "plan.progressionsbedarf": "Notwendigkeit, Umfang oder Intensitaet zu steigern, damit die Anpassung nicht stagniert. Bezeichnet den Bedarf, nicht die Schrittweite — belegte Rampenraten gibt es nicht."
   }
 }

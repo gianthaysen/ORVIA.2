@@ -236,7 +236,11 @@
       fixedCommitments: _copyArr(raw.fixedCommitments),
       constraints: _copyArr(raw.constraints) || [],
       preferences: raw.preferences ? Object.assign({}, raw.preferences) : null,
-      equipment: raw.equipment ? Object.assign({}, raw.equipment) : null,
+      /* B4 (2026-08-16): Ausruestung ist eine LISTE. `Object.assign({}, [...])`
+         machte daraus ein Objekt mit Zahlen-Schluesseln; jeder Leser mit
+         `Array.isArray` (z. B. scheduler-input-factory) sah danach nichts.
+         Kopie bleibt, Array-Natur auch. */
+      equipment: _copyArr(raw.equipment),
       recovery: recovery,
       currentMetrics: {
         values: {
@@ -518,8 +522,18 @@
       sports: (P && Array.isArray(P.sports)) ? P.sports : null,
       goals: (P && Array.isArray(P.goals)) ? P.goals : null,
       constraints: (P && Array.isArray(P.constraintsList)) ? P.constraintsList : [],
-      preferences: (P && P.trainingPreferences) || null,
-      equipment: (P && P.equipment) || null,
+      /* B4-Fix (2026-08-16): hier standen `P.trainingPreferences` und
+         `P.equipment` — zwei Schluessel, die im ganzen Baum NIEMAND schreibt.
+         `trainingPreferences` lieferte deshalb immer null; `P.equipment`
+         steht in PROFILE_DEFAULTS als [] und lieferte eine LEERE LISTE —
+         der Snapshot sah vollstaendig aus und war leer. Kanonisch sind
+         `PROFILE.preferences` (geschrieben in profile.js savePreferencesEditor,
+         Legacy-Quelle `trainingPrefs` wie in profile.js:1269/1551) und
+         `PROFILE.devices.equipment` (profile.js migrateGearToEquipment).
+         Leere Ausruestung bleibt null: nichts erfassen ist kein leeres Regal. */
+      preferences: (P && (P.preferences || P.trainingPrefs)) || null,
+      equipment: (P && P.devices && Array.isArray(P.devices.equipment) && P.devices.equipment.length)
+        ? _copyArr(P.devices.equipment) : null,
       availability: availability,
       fixedCommitments: null,
       plannedSession: planned,
