@@ -33,7 +33,18 @@ const uiSrc = readFileSync(new URL('ui.js', base), 'utf8');
   ok('[0-1] ui.js enthält NICHT mehr die alte "estimated=!hoch"-Formel (Widerspruch bei not_assessable)', uiSrc.indexOf("estimated:!!(_lc2&&_lc2!=='hoch')") === -1);
   ok('[0-2] ui.js: estimated hängt jetzt an assessable UND an "reduziert" (exakter Vertrag)', /estimated:\(_acwrAssessable&&_lc2===['"]reduziert['"]\)/.test(uiSrc));
   ok('[0-3] goalEngine (calc.js) unverändert seit I3a.4: Fail-closed-Marker weiterhin vorhanden', /load_confidence_missing/.test(calcSrc) && /load_confidence_invalid/.test(calcSrc));
-  ok('[0-4] I3a.1-Safety-Gate-Zeile in buildTrainingDecision unverändert vorhanden', calcSrc.indexOf("if(_loadNotAssessable&&state==='GREEN')state='YELLOW';") !== -1);
+  /* v9 (2026-08-16): Diese Zeile prüfte den Gate-Code WORTGLEICH. v9 hat ihn
+     bewusst geändert — „rein geschätzte Last" sperrt Grün nicht mehr, nur noch
+     `unknownDays > 0` (Entscheidung: geschätzt ≠ unbekannt). Der Wortlaut-Test
+     schlug deshalb an, ohne dass jemand es sah, weil diese Datei keinen
+     Exit-Code setzte.
+     Geprüft wird jetzt die EIGENSCHAFT statt der Momentaufnahme: es gibt eine
+     Regel, die GREEN herabstuft, wenn die Last nicht belastbar ist — und die
+     Ausnahme davon ist ausdrücklich benannt (`_loadOnlyEstimated`). Ein
+     stilles Aufweichen der Ausnahme fällt damit weiterhin auf, eine
+     Umformulierung des Ausdrucks nicht mehr. */
+  ok('[0-4] I3a.1-Sicherheitsgate: GREEN wird herabgestuft, Ausnahme namentlich begrenzt', /if\(_loadNotAssessable&&[^)]*state==='GREEN'\)state='YELLOW';/.test(calcSrc)
+    && /_loadOnlyEstimated/.test(calcSrc));
 }
 
 /* ================= Coach-Report-Harness (buildAIReview im Sandbox, wie I3a.4) ================= */
@@ -137,3 +148,8 @@ function buildReviewWith(confidence, acwrNum) {
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 console.log('I3a.5: ' + (fail === 0 ? 'GRÜN — acwrStatus.estimated ist jetzt genau dann true, wenn Confidence "reduziert" UND ein modellierter Wert vorhanden ist; kein Widerspruch mehr bei not_assessable.' : 'ROT — ' + fail + ' offen (erwartet vor dem Fix).'));
+
+/* Ohne diese Zeile meldete die Datei ihr eigenes ROT nur im Text und
+   verliess sich mit Exit 0 — der Runner zaehlte sie als bestanden.
+   Ein Test, dessen Ergebnis niemanden erreicht, ist kein Test. */
+process.exit(fail ? 1 : 0);

@@ -86,7 +86,12 @@ const dayOf = (r, d) => r.days.find(x => x.day === d);
   ok('[B2-2] E2E: kein Peak-Status', decUnknown.statusText !== 'Peak', 'status=' + decUnknown.statusText);
   ok('[B2-3] E2E: Entscheidung markiert loadAssessable === false', decUnknown.loadAssessable === false, 'la=' + decUnknown.loadAssessable);
   ok('[B2-4] E2E: keine Intensitätssteigerung (Session nicht „nach Plan hart"/KEEP bei GREEN)', decUnknown.todayAction !== 'KEEP' || decUnknown.dayState !== 'GREEN', 'action=' + decUnknown.todayAction + ' state=' + decUnknown.dayState);
-  ok('[B2-5] E2E: Begründung nennt die nicht belastbare Last', /[Ll]ast/.test((decUnknown.readinessReasons || []).join(' ')) && /belastbar|geschätzt|unbekannt|nicht bewertbar/.test((decUnknown.readinessReasons || []).join(' ')), JSON.stringify(decUnknown.readinessReasons));
+  /* v9 (2026-08-16): Der Begründungstext heißt jetzt „Trainingslast der letzten
+     7 Tage lückenhaft — konservativ bewertet, bis die Einheiten vollständig
+     sind". Die geprüfte Eigenschaft ist unverändert (die Begründung benennt die
+     nicht belastbare Last); nur das Wort fehlte in der Liste, weil v9 die
+     Formulierung „geschätzt/unbekannt" bewusst ersetzt hat. */
+  ok('[B2-5] E2E: Begründung nennt die nicht belastbare Last', /[Ll]ast/.test((decUnknown.readinessReasons || []).join(' ')) && /belastbar|geschätzt|unbekannt|nicht bewertbar|lückenhaft/.test((decUnknown.readinessReasons || []).join(' ')), JSON.stringify(decUnknown.readinessReasons));
 
   // Nur herabstufen, nie heraufstufen: bereits RED bleibt RED trotz nicht belastbarer Last.
   const decRed = Calc.buildTrainingDecision({ checkin: { readiness: 20, pain: 9, illness: false }, components: { recovery: 20 }, loads: { load3: 100, load7: 100, acuteAssessable: false }, plannedToday: { t: 'Laufen', hard: true }, profile: {}, dataQuality: { days: 40 } });
@@ -99,3 +104,8 @@ const dayOf = (r, d) => r.days.find(x => x.day === d);
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 console.log('I3a.1: ' + (fail === 0 ? 'GRÜN — autoritative vs. geschätzte Last getrennt; Decision-Pfad blockiert nicht belastbare akute Last fail-closed.' : 'ROT — ' + fail + ' offen (erwartet vor dem Fix).'));
+
+/* Ohne diese Zeile meldete die Datei ihr eigenes ROT nur im Text und
+   verliess sich mit Exit 0 — der Runner zaehlte sie als bestanden.
+   Ein Test, dessen Ergebnis niemanden erreicht, ist kein Test. */
+process.exit(fail ? 1 : 0);

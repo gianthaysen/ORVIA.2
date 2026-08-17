@@ -35,7 +35,18 @@ const Calc = globalThis.Calc;
   ok('[0-3] buildAIReview() nutzt Calc.loadConfidenceContract (kein Duplikat der Confidence-Logik)', (uiSrc.match(/loadConfidenceContract/g) || []).length >= 2);
   const calcSrc = readFileSync(new URL('calc.js', base), 'utf8');
   ok('[0-4] goalEngine fuehrt die strukturierten Gruende ctl_trend_estimated / ctl_trend_not_assessable', /ctl_trend_estimated/.test(calcSrc) && /ctl_trend_not_assessable/.test(calcSrc));
-  ok('[0-5] I3a.1-Sicherheitsgate-Zeile in buildTrainingDecision ist wortgleich unveraendert vorhanden', calcSrc.indexOf("if(_loadNotAssessable&&state==='GREEN')state='YELLOW';") !== -1);
+  /* v9 (2026-08-16): Diese Zeile prüfte den Gate-Code WORTGLEICH. v9 hat ihn
+     bewusst geändert — „rein geschätzte Last" sperrt Grün nicht mehr, nur noch
+     `unknownDays > 0` (Entscheidung: geschätzt ≠ unbekannt). Der Wortlaut-Test
+     schlug deshalb an, ohne dass jemand es sah, weil diese Datei keinen
+     Exit-Code setzte.
+     Geprüft wird jetzt die EIGENSCHAFT statt der Momentaufnahme: es gibt eine
+     Regel, die GREEN herabstuft, wenn die Last nicht belastbar ist — und die
+     Ausnahme davon ist ausdrücklich benannt (`_loadOnlyEstimated`). Ein
+     stilles Aufweichen der Ausnahme fällt damit weiterhin auf, eine
+     Umformulierung des Ausdrucks nicht mehr. */
+  ok('[0-5] I3a.1-Sicherheitsgate: GREEN wird herabgestuft, Ausnahme namentlich begrenzt', /if\(_loadNotAssessable&&[^)]*state==='GREEN'\)state='YELLOW';/.test(calcSrc)
+    && /_loadOnlyEstimated/.test(calcSrc));
 }
 
 /* ================= Fixtures ================= */
@@ -112,3 +123,8 @@ function baseOpts(extra) {
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 console.log('I3a.3: ' + (fail === 0 ? 'GRÜN — CTL-Trend-Veto und Coach-ACWR-Report respektieren die bestehende Last-Confidence (hoch/reduziert/not_assessable); Sicherheitsgate unveraendert.' : 'ROT — ' + fail + ' offen (erwartet vor dem Fix).'));
+
+/* Ohne diese Zeile meldete die Datei ihr eigenes ROT nur im Text und
+   verliess sich mit Exit 0 — der Runner zaehlte sie als bestanden.
+   Ein Test, dessen Ergebnis niemanden erreicht, ist kein Test. */
+process.exit(fail ? 1 : 0);

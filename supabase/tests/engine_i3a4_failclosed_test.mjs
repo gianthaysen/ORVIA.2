@@ -38,7 +38,18 @@ const uiSrc = readFileSync(new URL('ui.js', base), 'utf8');
   ok('[0-1] goalEngine nutzt KEIN fail-open `o.loadConfidence||\'hoch\'` mehr', calcSrc.indexOf("o.loadConfidence||'hoch'") === -1);
   ok('[0-2] goalEngine fuehrt die Reason-Codes load_confidence_missing UND load_confidence_invalid', /load_confidence_missing/.test(calcSrc) && /load_confidence_invalid/.test(calcSrc));
   ok('[0-3] buildAIReview begrenzt Legacy-acwr auf hohe Confidence (_acwrLegacy hoch-only)', /_acwrLegacy/.test(uiSrc) && /acwr:_acwrLegacy/.test(uiSrc));
-  ok('[0-4] I3a.1-Safety-Gate-Zeile in buildTrainingDecision unveraendert vorhanden', calcSrc.indexOf("if(_loadNotAssessable&&state==='GREEN')state='YELLOW';") !== -1);
+  /* v9 (2026-08-16): Diese Zeile prüfte den Gate-Code WORTGLEICH. v9 hat ihn
+     bewusst geändert — „rein geschätzte Last" sperrt Grün nicht mehr, nur noch
+     `unknownDays > 0` (Entscheidung: geschätzt ≠ unbekannt). Der Wortlaut-Test
+     schlug deshalb an, ohne dass jemand es sah, weil diese Datei keinen
+     Exit-Code setzte.
+     Geprüft wird jetzt die EIGENSCHAFT statt der Momentaufnahme: es gibt eine
+     Regel, die GREEN herabstuft, wenn die Last nicht belastbar ist — und die
+     Ausnahme davon ist ausdrücklich benannt (`_loadOnlyEstimated`). Ein
+     stilles Aufweichen der Ausnahme fällt damit weiterhin auf, eine
+     Umformulierung des Ausdrucks nicht mehr. */
+  ok('[0-4] I3a.1-Sicherheitsgate: GREEN wird herabgestuft, Ausnahme namentlich begrenzt', /if\(_loadNotAssessable&&[^)]*state==='GREEN'\)state='YELLOW';/.test(calcSrc)
+    && /_loadOnlyEstimated/.test(calcSrc));
   ok('[0-5] keine zweite Confidence-Logik: buildAIReview verwendet weiterhin Calc.loadConfidenceContract', (uiSrc.match(/loadConfidenceContract/g) || []).length >= 2);
 }
 
@@ -167,3 +178,8 @@ function buildReviewWith(confidence, acwrNum) {
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 console.log('I3a.4: ' + (fail === 0 ? 'GRÜN — fehlende/ungueltige Last-Confidence loest fail-closed KEIN hartes Veto aus; Legacy-acwr nur bei hoher Confidence numerisch; Safety-Gate unveraendert.' : 'ROT — ' + fail + ' offen (erwartet vor dem Fix).'));
+
+/* Ohne diese Zeile meldete die Datei ihr eigenes ROT nur im Text und
+   verliess sich mit Exit 0 — der Runner zaehlte sie als bestanden.
+   Ein Test, dessen Ergebnis niemanden erreicht, ist kein Test. */
+process.exit(fail ? 1 : 0);
