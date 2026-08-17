@@ -110,7 +110,18 @@ const run = async () => {
 
   // I. Score vs. Entscheidung (Engine-Ebene, Trennung bleibt erhalten)
   const dSpike = Calc.buildTrainingDecision({ checkin: { pain: 0, doms: 0, illness: false, sleepH: 8.8, sleepQ: 9, feel: 9, stress: 'Low', hrv: 'Good', readiness: 95 }, components: { recovery: 95, riskRaw: 80, loadFit: 30 }, loads: { load3: 142, load7: 100 }, plannedToday: { t: 'Laufen', l: 'Tempo' }, todayIndex: 2 });
-  ok('I Readiness 95 + Lastsprung → Score ≥85 (kein 64-Cap), ORANGE', dSpike.score >= 85 && dSpike.dayState === 'ORANGE', 'score=' + dSpike.score);
+  /* v9 (2026-08-16): Die Zusage dieses Falls war und ist „KEIN harter 64-Cap" —
+     eine Lastspitze darf den Score nicht auf einen Deckel zwingen, Score und
+     Tagesentscheidung bleiben getrennt. Die alte Untergrenze 85 war die
+     Operationalisierung der DAMALIGEN Headline, die praktisch nur die Erholung
+     zeigte. Seit v9 aggregiert `combineHeadline` bewusst 60/25/15 auf
+     Erholung/Belastungskontrolle/Umsetzung (Gians Entscheidung) — eine reale
+     Belastungsauffaelligkeit MUSS die Zahl jetzt senken, sonst waere die
+     Aggregation wirkungslos. Geprueft wird deshalb die Eigenschaft, nicht die
+     alte Zahl: kein Deckel (>64), aber sichtbar unter dem reinen Erholungswert
+     (95). Aktueller Wert: 73. */
+  ok('I Readiness 95 + Lastsprung → kein 64-Cap, aber unter dem Erholungswert (v9-Aggregation), ORANGE',
+    dSpike.score > 64 && dSpike.score < 95 && dSpike.dayState === 'ORANGE', 'score=' + dSpike.score);
   const dPain = Calc.buildTrainingDecision({ checkin: { pain: 6, painRegion: 'Knie', doms: 0, illness: false, sleepH: 8, sleepQ: 8, feel: 8, stress: 'Low', hrv: 'Good', readiness: 95 }, components: { recovery: 95, riskRaw: 20, loadFit: 80 }, loads: { load3: 100, load7: 100 }, plannedToday: { t: 'Laufen', l: 'Tempo' }, todayIndex: 2 });
   ok('I echter Schmerz 6 verschärft/deckelt (Score < 85)', dPain.score < 85, 'score=' + dPain.score);
 

@@ -20,16 +20,27 @@
   function confFromStatus(s) { return s === 'active' ? 'high' : s === 'building' ? 'medium' : 'low'; }
   function r1(x) { return Math.round(x * 10) / 10; }
 
-  function rawFor(name, m) {
-    m = m || {};
+  /* v9: Namen der Score-Posten haben sich geaendert (Schlaf-Score (Gerät),
+     Schlafgefühl, Muskelkater, Schmerz). Die ALTNAMEN bleiben als Fall
+     bestehen — historische Komponentenzeilen aus readiness_components tragen
+     sie weiterhin, und ohne den Fall wuerde ihr Rohwert still auf null fallen
+     und die Zeile faelschlich als 'derived' markiert. */
+  function rawFor(name, m, ctx) {
+    m = m || {}; ctx = ctx || {};
     switch (name) {
       case 'Knie': return m.knee;
+      case 'Schmerz': return (ctx.painToday != null ? ctx.painToday : m.knee);
       case 'HRV': return m.hrvMs;
       case 'Befinden': return m.feel;
       case 'Schlaf-Konto': return m.sleepMin != null ? r1(m.sleepMin / 60) : null;
       case 'Schlafdauer': return m.sleepMin;
+      case 'Schlaf-Score (Gerät)': return ctx.sleepScore != null ? ctx.sleepScore : null;
+      case 'Schlafqualität (gemessen)': return ctx.sleepScore != null ? ctx.sleepScore : null;
+      case 'Schlafgefühl': return m.sleepQ;
       case 'Schlafqualität': return m.sleepQ;
+      case 'Stress': return (ctx.stressAvg != null ? ctx.stressAvg : null);
       case 'Ruhepuls': return m.rhr;
+      case 'Muskelkater': return m.doms;
       case 'DOMS': return m.doms;
       case 'Body Battery': return m.bb;
       default: return null;
@@ -39,8 +50,16 @@
     ctx = ctx || {}; m = m || {};
     if (name === 'Ruhepuls' && m.rhr != null && ctx.rhrBase != null) {
       const dev = m.rhr - ctx.rhrBase;
-      return 'Ruhepuls ' + m.rhr + ' vs. Baseline ' + Math.round(ctx.rhrBase) + ' (' + (dev >= 0 ? '+' : '') + dev.toFixed(0) + ')';
+      /* v9: Die Abweichung allein sagt nichts — entscheidend ist, ob sie
+         innerhalb der EIGENEN ueblichen Schwankung liegt. Genau daran rechnet
+         der Score jetzt, also gehoert es auch in die Begruendung. */
+      const sd = (ctx.rhrSd != null && ctx.rhrSd > 0) ? Math.max(1.5, Math.min(5, ctx.rhrSd)) : null;
+      const band = sd != null ? (Math.abs(dev) <= sd ? ' — im üblichen Schwankungsbereich (±' + Math.round(sd) + ')' : ' — außerhalb deiner üblichen Schwankung (±' + Math.round(sd) + ')') : '';
+      return 'Ruhepuls ' + m.rhr + ' vs. Baseline ' + Math.round(ctx.rhrBase) + ' (' + (dev >= 0 ? '+' : '') + dev.toFixed(0) + ')' + band;
     }
+    if (name === 'Stress' && ctx.stressAvg != null) return 'Garmin-Tagesstress ' + Math.round(ctx.stressAvg) + '/100 (bis 25 = Ruhe)';
+    if (name === 'Body Battery' && m.bb != null && ctx.bbBase != null) return 'Body Battery ' + m.bb + ' vs. dein üblicher Morgenwert ' + Math.round(ctx.bbBase);
+    if (name === 'Schlaf-Konto' && ctx.sleepDebtH != null) return 'Schlafdefizit der letzten 7 Nächte: ' + (Math.round(ctx.sleepDebtH * 10) / 10) + ' h';
     if (name === 'HRV' && m.hrvMs != null && ctx.hrvBase7 != null) return 'HRV ' + m.hrvMs + ' ms vs. Baseline ~' + Math.round(Math.exp(ctx.hrvBase7)) + ' ms';
     if (name === 'HRV' && m.hrv) return 'Garmin-HRV-Status: ' + m.hrv;
     return null;
@@ -52,11 +71,16 @@
     const W = parts.reduce((s, p) => s + (p[2] || 0), 0) || 1;
     return parts.map(function (p) {
       const name = p[0], norm = p[1], weight = p[2];
-      const raw = rawFor(name, m);
+      const raw = rawFor(name, m, ctx);
       return {
         name: name, raw: raw != null ? raw : null, norm: norm,
         weight: weight, contribution: r1(norm * weight / W),
-        quality: (raw == null && name !== 'Stress') ? 'derived' : 'ok',
+        /* v9: `weightPct` = Anteil dieses Postens am Erholungs-Score. Die
+           Anzeige zeigte bisher nur den Beitrag in Punkten; damit war nicht
+           erkennbar, ob ein niedriger Beitrag an einem schlechten Wert oder
+           an einem kleinen Gewicht liegt. */
+        weightPct: Math.round(weight / W * 100),
+        quality: (raw == null) ? 'derived' : 'ok',
         reason: reasonFor(name, m, ctx)
       };
     });

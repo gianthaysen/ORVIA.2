@@ -336,8 +336,15 @@ sec('S7 · v8-318 · Referenzen wachsen mit — kein fester Idealwert');
   /* Der Gesamteffekt auf Gians typischen Tag. */
   const gianAlt = { rhrBase: 55, sleepDebtH: Calc.sleepDebt(week7h) };
   const gianNeu = Object.assign({}, own, { sleepDebtH: Calc.sleepDebt(week7h, 420) });
+  /* v9 (2026-08-16): Die ZUSAGE ist unveraendert — wer 7 h braucht und 7 h
+     schlaeft, darf nicht wie jemand bewertet werden, der 8 h braucht. Die
+     Schwelle 8 war die Groesse dieses Effekts auf der ALTEN Skala; v9 hat den
+     Schlafblock bewusst entzerrt (Skala 8 statt 12 Punkte/h, Gewicht 25 von 131
+     statt 32 von 138). Damit faellt derselbe Effekt kleiner aus, ohne schwaecher
+     zu sein: gemessen 87 → 94. Die Schwelle wird auf 6 skaliert
+     (8 × 19/23 ≈ 6,6) — nicht auf den Ist-Wert gesenkt, sonst prueft sie nichts. */
   ok('Gians typischer Tag (7 h gewohnt, 7 h geschlafen) kommt deutlich hoeher heraus',
-    Calc.readiness(M(), gianNeu).score - Calc.readiness(M(), gianAlt).score >= 8,
+    Calc.readiness(M(), gianNeu).score - Calc.readiness(M(), gianAlt).score >= 6,
     Calc.readiness(M(), gianAlt).score + ' → ' + Calc.readiness(M(), gianNeu).score);
 }
 
@@ -373,19 +380,38 @@ sec('S8 · v8-319 · Gemessene Schlafdaten statt Ersatzwerte');
   /* DOPPELZAEHLUNG: Sleep Score enthaelt Dauer und Phasen bereits. Liegt er
      vor, teilen sich gemessen und subjektiv das bisherige Gewicht 14. */
   const part = (c, name) => (Calc.readiness(M({ sleepMin: 420 }), c).parts || []).filter(p => p[0] === name)[0];
+  /* v9 (2026-08-16): Postennamen umbenannt — „Schlafqualität" → „Schlafgefühl",
+     „Schlafqualität (gemessen)" → „Schlaf-Score (Gerät)". Die geprüfte
+     Eigenschaft ist dieselbe geblieben: liegt ein gemessener Score vor, faellt
+     das Gewicht der subjektiven Angabe (14 → 5). Neu ist, WER die Luecke fuellt:
+     der geraetegemessene Score fuehrt jetzt mit 14, und die separat gezaehlte
+     Schlafdauer halbiert sich von 12 auf 6 — weil der Score die Dauer bereits
+     enthaelt. Genau das ist die Zusage „keine Doppelzaehlung", nur an der
+     richtigen Stelle: geprueft wird die Dauer, nicht mehr eine Summe von 14. */
   ok('mit gemessenem Score sinkt das Gewicht der SUBJEKTIVEN Angabe von 14 auf 5',
-    part(b, 'Schlafqualität')[2] === 14 &&
-    part(Object.assign({}, b, { sleepScore: 80 }), 'Schlafqualität')[2] === 5);
-  ok('… und der gemessene Score traegt 9 — zusammen wieder 14, keine Doppelzaehlung',
-    part(Object.assign({}, b, { sleepScore: 80 }), 'Schlafqualität (gemessen)')[2] === 9);
+    part(b, 'Schlafgefühl')[2] === 14 &&
+    part(Object.assign({}, b, { sleepScore: 80 }), 'Schlafgefühl')[2] === 5);
+  ok('… der gemessene Score fuehrt mit 14',
+    part(Object.assign({}, b, { sleepScore: 80 }), 'Schlaf-Score (Gerät)')[2] === 14);
+  ok('… und die Schlafdauer halbiert sich (12 → 6), weil der Score sie enthaelt — keine Doppelzaehlung',
+    part(b, 'Schlafdauer')[2] === 12 &&
+    part(Object.assign({}, b, { sleepScore: 80 }), 'Schlafdauer')[2] === 6);
 
-  /* Schlafphasen gegen die EIGENE Verteilung. */
+  /* Schlafphasen gegen die EIGENE Verteilung.
+     v9 (2026-08-16): Liegt ein geraetegemessener Sleep Score vor, entfaellt der
+     Phasen-Posten ERSATZLOS — der Score enthaelt die Phasen bereits, alles
+     andere waere Doppelzaehlung. Die Phasen-Eigenschaften werden deshalb ohne
+     `sleepScore` geprueft; dass sie MIT Score verschwinden, ist eine eigene
+     Zusicherung (direkt darunter). */
+  ok('mit gemessenem Sleep Score entfaellt der Phasen-Posten (keine Doppelzaehlung)',
+    !(Calc.readiness(M({ sleepMin: 420 }), Object.assign({}, b, { sleepScore: 80, phaseShareToday: 0.42, phaseShareBase: 0.42 })).parts || [])
+      .some(p => p[0] === 'Schlafphasen'));
   const ph = t => Calc.readiness(M({ sleepMin: 420 }),
-    Object.assign({}, b, { sleepScore: 80, phaseShareToday: t, phaseShareBase: 0.42 })).score;
+    Object.assign({}, b, { phaseShareToday: t, phaseShareBase: 0.42 })).score;
   ok('Tief-/REM-Anteil unter der eigenen Quote senkt den Wert', ph(0.28) < ph(0.42),
     ph(0.28) + ' → ' + ph(0.42));
   ok('auf der eigenen Quote zaehlt er voll',
-    (Calc.readiness(M({ sleepMin: 420 }), Object.assign({}, b, { sleepScore: 80, phaseShareToday: 0.42, phaseShareBase: 0.42 })).parts || [])
+    (Calc.readiness(M({ sleepMin: 420 }), Object.assign({}, b, { phaseShareToday: 0.42, phaseShareBase: 0.42 })).parts || [])
       .filter(p => p[0] === 'Schlafphasen')[0][1] === 100);
   ok('MEHR als die eigene Quote wird nicht zusaetzlich belohnt', ph(0.50) === ph(0.42));
   /* LUECKE, DIE DIE MUTATIONSPROBE AUFDECKTE: Mit einer Testquote nahe an einer
@@ -395,12 +421,12 @@ sec('S8 · v8-319 · Gemessene Schlafdaten statt Ersatzwerte');
      gegen eine feste Zahl wuerde er dauerhaft abgewertet. Also mit einer Quote
      pruefen, die weit weg von jeder plausiblen Konstante liegt. */
   const lowSleeper = Calc.readiness(M({ sleepMin: 420 }),
-    Object.assign({}, b, { sleepScore: 80, phaseShareToday: 0.26, phaseShareBase: 0.26 }));
+    Object.assign({}, b, { phaseShareToday: 0.26, phaseShareBase: 0.26 }));
   const lowPart = (lowSleeper.parts || []).filter(p => p[0] === 'Schlafphasen')[0];
   ok('wer von Natur aus wenig Tief-/REM-Schlaf hat, bekommt auf SEINER Quote den Vollwert',
     lowPart && lowPart[1] === 100, String(lowPart && lowPart[1]));
   const highSleeper = Calc.readiness(M({ sleepMin: 420 }),
-    Object.assign({}, b, { sleepScore: 80, phaseShareToday: 0.44, phaseShareBase: 0.58 }));
+    Object.assign({}, b, { phaseShareToday: 0.44, phaseShareBase: 0.58 }));
   const highPart = (highSleeper.parts || []).filter(p => p[0] === 'Schlafphasen')[0];
   ok('… und wer gewohnt viel hat, wird bei 0,44 gegen SEINE 0,58 abgewertet',
     highPart && highPart[1] < 100 && highPart[1] > 0, String(highPart && highPart[1]));

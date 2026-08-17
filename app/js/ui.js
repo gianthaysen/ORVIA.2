@@ -1056,9 +1056,16 @@ function recoveryCtx(dateStr){
   return{hrvBase7:ln7.length>=4?Calc.avg(ln7):null,hrvSd28:Calc.sd(ln28),hrvN:ln28.length,
     sleepNeedMeasured:_metricVal('sleep_need_min'),
     sleepScore:_metricVal('sleep_score'),
+    /* v9: gemessener Tages-Stress (Garmin 0–100) statt der Low/Med/High-Kategorie.
+       Die Metrik liegt seit GM7.4 in der Registry, wurde im Score aber nie gelesen. */
+    stressAvg:_metricVal('stress_avg'),
     phaseShareToday:_ph.today,phaseShareBase:_ph.base,phaseN:_ph.n,
     illSinceEnd:illSinceEnd,illDuration:illDuration,
     rhrBase:rhr28.length>=7?Calc.median(rhr28):null,rhrN:rhr28.length,
+    /* v9: eigene Streuung des Ruhepulses — Grundlage der neuen, streuungs-
+       basierten Bewertung in Calc.readiness. Braucht dieselben >=7 Tage wie
+       die Baseline; darunter null, dann greift dort der Ersatzwert. */
+    rhrSd:rhr28.length>=7?Calc.sd(rhr28):null,
     /* v8-318/319: die Schlafschuld zaehlt gegen den Bedarf, nicht gegen fest
        verdrahtete 8 h. RANGFOLGE (v8-319): Garmins GEMESSENER Schlafbedarf
        (sleep_need_min) schlaegt den 28-Tage-Median-Ersatz aus v8-318 — der war
@@ -1354,9 +1361,11 @@ function executionScore(){
 function orviaScore(){
   var d=(typeof getDecision==='function')?getDecision():null;if(!d)return null;
   var c={GREEN:'g',YELLOW:'y',ORANGE:'o',RED:'r'}[d.dayState]||'y';
-  var subs=[['Erholung',d.subscores.recovery.value],
-    [d.subscores.control.label,d.subscores.control.value],
-    ['Umsetzung',d.subscores.execution.value]];
+  /* v9: drittes Feld = tatsaechlich verwendetes Gewicht in Prozent. Ohne das
+     stand unter „So entsteht dein Score" eine Liste, die nichts erklaerte. */
+  var subs=[['Erholung',d.subscores.recovery.value,d.subscores.recovery.weight],
+    [d.subscores.control.label,d.subscores.control.value,d.subscores.control.weight],
+    ['Umsetzung',d.subscores.execution.value,d.subscores.execution.weight]];
   return{score:d.score,status:{l:d.statusText,c:c},subs:subs,
     r:d._r,ctx:d._ctx,m:d._m,recovery:d.subscores.recovery.value,
     dayState:d.dayState,safety:d.safety,decision:d};
@@ -5835,8 +5844,19 @@ function gmPastReadiness(dateKey){
 function gmReadinessDeltas(todayScore){
   if(todayScore==null)return [['flat','—'],['flat','—']];
   var t=new Date(todayStr()+'T12:00');
-  var y=new Date(t);y.setDate(t.getDate()-1);
-  var ys=gmPastReadiness(todayStr(y));
+  /* ═══ v9 · KEIN STRICH, WENN ES EINEN VERGLEICH GIBT ════════════════════
+     BEFUND (Gian, 16.08.): „Dieses versus gestern, und dann ist da 'n Strich."
+     Ursache: es wurde AUSSCHLIESSLICH auf gestern geschaut. Fehlt dort der
+     Morgen-Check-in (Ruhetag, verschlafen, Reise), stand dauerhaft „—",
+     obwohl vorgestern ein Wert vorlag. Ein Vergleich, der beim ersten
+     Datenloch aufgibt, ist in der Praxis fast nie da.
+     NEU: bis zu 7 Tage zurueck den letzten vorhandenen Wert nehmen und das
+     Label ehrlich mitfuehren („vs. vor 3 Tagen"). Kein geschaetzter Wert,
+     nur ein ehrlich benannter Bezugspunkt. */
+  var ys=null,ysAgo=0;
+  for(var q=1;q<=7;q++){var dq=new Date(t);dq.setDate(t.getDate()-q);var vq=gmPastReadiness(todayStr(dq));
+    if(vq!=null){ys=vq;ysAgo=q;break;}}
+  var ysLabel=ysAgo<=1?'vs. gestern':('vs. vor '+ysAgo+' Tagen');
   var vals=[];for(var i=1;i<=14;i++){var d=new Date(t);d.setDate(t.getDate()-i);var v=gmPastReadiness(todayStr(d));if(v!=null)vals.push(v);}
   var avg=vals.length>=5?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):null;
   /* GM7.6-Fix: Richtungscode 'dn' (GM-Vertrag arrow()/.delta.dn) — 'down' rendrte
@@ -5844,10 +5864,15 @@ function gmReadinessDeltas(todayScore){
   var mk=function(delta,lbl){if(delta==null)return ['flat',lbl+': —'];
     var dirn=delta>0?'up':delta<0?'dn':'flat';
     return [dirn,(delta>0?'+':'')+delta+' '+lbl];};
-  return [mk(ys!=null?todayScore-ys:null,'vs. gestern'),mk(avg!=null?todayScore-avg:null,'vs. 14-T-Ø')];
+  return [mk(ys!=null?todayScore-ys:null,ysLabel),mk(avg!=null?todayScore-avg:null,'vs. 14-T-Ø')];
 }
 /* Breakdown aus der kanonischen Komponentenrechnung (readiness-store.buildComponents). */
-var GM_BRK_COLOR={'Knie':'crit','HRV':'ready','Befinden':'cyan','Schlaf-Konto':'sleep','Schlafdauer':'sleep','Schlafqualität':'sleep','Stress':'activity','Ruhepuls':'ready','DOMS':'crit','Body Battery':'activity'};
+/* v9: Namen an die Engine angeglichen (Schlaf-Score (Gerät) / Schlafgefühl /
+   Muskelkater). Die Altnamen bleiben als Schlüssel stehen, damit historische
+   Komponentenzeilen aus der Datenbank weiterhin ihre Farbe bekommen. */
+var GM_BRK_COLOR={'Knie':'crit','Schmerz':'crit','HRV':'ready','Befinden':'cyan','Schlaf-Konto':'sleep','Schlafdauer':'sleep',
+  'Schlaf-Score (Gerät)':'sleep','Schlafgefühl':'sleep','Schlafphasen':'sleep','Schlafqualität':'sleep','Schlafqualität (gemessen)':'sleep',
+  'Stress':'activity','Ruhepuls':'ready','Muskelkater':'crit','DOMS':'crit','Body Battery':'activity'};
 function gmReadinessBreakdown(os){
   var out=null;
   try{var st=window.ORVIA&&ORVIA.readinessStore;
@@ -6795,15 +6820,32 @@ function openScore(){
   var d=gmDashVM();var sh=document.getElementById('detailSheet');if(!sh)return;
   var brk=(d.breakdown||[]).filter(function(b){return b[1]!=null;});
   var chips=brk.map(function(b){return '<span class="ci-val" style="border-color:'+(TINT[b[2]]||'var(--hair)')+'"><span class="fdot" style="background:'+(SC[b[2]]||'var(--neutral)')+';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px"></span>'+gmEsc(b[0])+' <b>+'+gmEsc(String(b[1]))+'</b></span>';}).join(' ');
+  /* v9: Gewicht sichtbar machen. Vorher standen hier drei Zahlen (85 / 74 / 80)
+     unter der Ueberschrift „So entsteht dein Score" — und die Headline war eine
+     vierte, die sich aus keiner von ihnen ergab. Jetzt steht an jeder Zeile,
+     mit welchem Anteil sie in die Zahl oben eingeht. */
   var rows=(os&&os.subs?os.subs:[]).filter(function(x){return x[1]!=null;}).map(function(x){var v=Math.round(x[1]);
-    return '<div class="brow"><div class="bl"><span class="fdot" style="background:'+(v>=70?'var(--ready)':v>=50?'var(--attention)':'var(--crit)')+'"></span>'+gmEsc(x[0])+'</div><div class="bbar"><i style="left:50%;width:'+(v/2)+'%;background:'+(v>=70?'var(--ready)':v>=50?'var(--attention)':'var(--crit)')+'"></i></div><div class="bv">'+v+'</div></div>';}).join('');
+    var wp=(x.length>2&&x[2]!=null)?x[2]:null;
+    return '<div class="brow"><div class="bl"><span class="fdot" style="background:'+(v>=70?'var(--ready)':v>=50?'var(--attention)':'var(--crit)')+'"></span>'+gmEsc(x[0])+(wp!=null?' <span style="color:var(--muted);font-weight:650">· '+wp+' %</span>':'')+'</div><div class="bbar"><i style="left:50%;width:'+(v/2)+'%;background:'+(v>=70?'var(--ready)':v>=50?'var(--attention)':'var(--crit)')+'"></i></div><div class="bv">'+v+'</div></div>';}).join('');
+  /* v9: Rechenweg als Klartextzeile — und der Sicherheitsdeckel wird sichtbar,
+     wenn er gegriffen hat. Vorher war eine gedeckelte Zahl von einer
+     gerechneten nicht zu unterscheiden. */
+  var _dec=(os&&os.decision)||null;
+  var _calcLine='';
+  if(_dec&&_dec.scoreParts&&_dec.scoreParts.length){
+    _calcLine='<p style="margin:10px 0 0;color:var(--muted);font-size:11.5px">'+
+      gmEsc(_dec.scoreParts.map(function(p){return p.name+' '+p.value+' × '+p.weight+' %';}).join('  +  '))+
+      '  =  <b style="color:var(--text)">'+_dec.scoreRaw+'</b></p>';
+    if(_dec.scoreCapped)_calcLine+='<p style="margin:6px 0 0;color:var(--attention);font-size:11.5px">'+
+      gmEsc('Sicherheitsgrenze aktiv: auf '+_dec.score+' begrenzt — '+((_dec.readinessReasons||[])[0]||'Zustand des Tages'))+'</p>';
+  }
   /* GM7.6 (Teilbereich 2): Aufschluesselung als GM-Faktorkarten (Prototyp factorRows:
      fcard mit Kopf, seg10-Fuellstand, Wert/Beitrag-Chips, Begruendung, Deeplink). Alle
      Werte stammen unveraendert aus buildComponents (norm 0-100, contribution, reason) —
      keine Neuberechnung, kein erfundener Faktor. Deeplink nur, wenn das Ziel-Sheet
      eine kanonische Metrik ist. */
-  var GM_FACTOR_ICON={'Schlafdauer':'moon','Schlafqualität':'moon','Schlaf-Konto':'moon','HRV':'pulse','Ruhepuls':'heart','Stress':'wind','Body Battery':'battery','Befinden':'heart','Knie':'knee','DOMS':'bolt','Ausgangswert':'db'};
-  var GM_FACTOR_LINK={'HRV':'hrv_ms','Ruhepuls':'resting_hr','Schlafdauer':'sleep_duration_min','Schlafqualität':'sleep_duration_min','Schlaf-Konto':'sleep_duration_min','Stress':'stress_avg','Body Battery':'body_battery'};
+  var GM_FACTOR_ICON={'Schlafdauer':'moon','Schlafqualität':'moon','Schlaf-Score (Gerät)':'moon','Schlafgefühl':'moon','Schlafphasen':'moon','Schlaf-Konto':'moon','HRV':'pulse','Ruhepuls':'heart','Stress':'wind','Body Battery':'battery','Befinden':'heart','Knie':'knee','Schmerz':'knee','Muskelkater':'bolt','DOMS':'bolt','Ausgangswert':'db'};
+  var GM_FACTOR_LINK={'HRV':'hrv_ms','Ruhepuls':'resting_hr','Schlafdauer':'sleep_duration_min','Schlafqualität':'sleep_duration_min','Schlaf-Score (Gerät)':'sleep_score','Schlafgefühl':'sleep_duration_min','Schlafphasen':'sleep_deep_min','Schlaf-Konto':'sleep_duration_min','Stress':'stress_avg','Body Battery':'body_battery'};
   var detail=brk.map(function(b,i){
     var col=SC[b[2]]||'var(--neutral)',tint=TINT[b[2]]||'var(--surface-2)';
     var norm=(b.length>4&&b[4]!=null)?Math.max(0,Math.min(100,b[4])):null;
@@ -6815,7 +6857,12 @@ function openScore(){
       '<div class="fraw" style="color:'+col+'">'+(norm!=null?norm:'—')+'</div><span class="fchev">'+icon('chev','sm')+'</span></div>'+
       '<div class="fbody"><div class="fbody-in">'+
         '<div class="seg10">'+Array.from({length:10},function(_,k){return '<i style="background:'+(k<fill?col:'#0a1019')+'"></i>';}).join('')+'</div>'+
-        '<div class="fchips"><span class="fchipv">Wert <b>'+(norm!=null?norm:'—')+'</b></span><span class="fchipv">Beitrag <b>+'+gmEsc(String(b[1]))+' Pkt</b></span></div>'+
+        /* v9: GEMESSENER Wert neben dem bewerteten. Gian, 16.08.: „Body Battery
+           100 — meine Body Battery war eigentlich bei 95." Beide Zahlen sind
+           richtig, aber nur eine stand da: 100 ist die BEWERTUNG (auf oder ueber
+           dem eigenen Normalwert), 95 der Messwert. Ohne den Messwert daneben
+           wirkt die Bewertung wie ein falscher Messwert. */
+        '<div class="fchips">'+((b.length>5&&b[5]!=null)?'<span class="fchipv">Gemessen <b>'+gmEsc(String(b[5]))+'</b></span>':'')+'<span class="fchipv">Bewertet <b>'+(norm!=null?norm:'—')+'</b>/100</span><span class="fchipv">Beitrag <b>+'+gmEsc(String(b[1]))+' Pkt</b></span></div>'+
         (b[3]?'<div class="fex">'+gmEsc(b[3])+'</div>':'')+
         (link?'<div class="deeplink" role="button" tabindex="0" onclick="openMetric(\''+link+'\')" onkeydown="if(event.key===\'Enter\')openMetric(\''+link+'\')">'+gmEsc(b[0])+' öffnen '+icon('chev','xs')+'</div>':'')+
       '</div></div></div>';}).join('');
@@ -6824,8 +6871,10 @@ function openScore(){
     '<div class="ring-c"><div style="font-size:26px;font-weight:800">'+(os?os.score:'—')+'</div></div></div>'+
     '<div><h3>ORVIA-Score</h3><div class="sh-sub" style="margin:3px 0 0"><span class="statuspill sp-'+d.statusColor+'" style="background:'+(TINT[d.statusColor]||'var(--surface)')+';color:'+(SC[d.statusColor]||'var(--muted)')+'">'+gmEsc(d.status)+'</span></div></div></div>'+
     (chips?'<div class="sh-block" style="padding-top:6px"><div class="ci-vals" style="flex-wrap:wrap;gap:6px">'+chips+'</div></div>':'')+
-    (rows?'<div class="sh-block"><div class="bh">So entsteht dein Score</div><div class="breakdown">'+rows+'</div></div>':'<div class="sh-block"><div class="bh">So entsteht dein Score</div><p>'+GM_NA+' — sobald dein Check-in vorliegt, erscheinen hier die Teilwerte.</p></div>')+
-    (detail?'<div class="sh-block"><div class="bh">Aufschlüsselung</div><div class="breakdown">'+detail+'</div></div>':'')+
+    (rows?'<div class="sh-block"><div class="bh">So entsteht dein Score</div><div class="breakdown">'+rows+'</div>'+_calcLine+'</div>':'<div class="sh-block"><div class="bh">So entsteht dein Score</div><p>'+GM_NA+' — sobald dein Check-in vorliegt, erscheinen hier die Teilwerte.</p></div>')+
+    /* v9: praezise Ueberschrift. „Aufschlüsselung" allein liess offen, WOVON —
+       es sind ausschliesslich die Bestandteile der Erholung, nicht des Scores. */
+    (detail?'<div class="sh-block"><div class="bh">Aufschlüsselung der Erholung</div><p style="margin:0 0 10px;color:var(--muted);font-size:11.5px">Diese Faktoren ergeben den Erholungswert oben. Die Punkte sind Beiträge zum Erholungswert — nicht zum Gesamtscore.</p><div class="breakdown">'+detail+'</div></div>':'')+
     /* GM7.5h: Datenqualitaet (GM openScore, Prototyp Z.944) — bereits berechnetes conf-VM
        (gmConfVM: dataConfidence()+Baseline-Status), identisch zu gmModReadinessPro. */
     (d.conf&&d.conf.levelLabel?'<div class="sh-block"><div class="bh">Datenqualität</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' Konfidenz <b style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+gmEsc(d.conf.levelLabel)+'</b></span>'+(d.conf.complete?'<span class="confchip">'+icon('db','xs')+' Daten <b>'+gmEsc(d.conf.complete)+'</b></span>':'')+'<span class="confchip">'+icon('pulse','xs')+' HRV-Abw. <b>'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</b></span></div>'+(d.conf.note?'<p style="margin-top:10px;color:var(--muted);font-size:11.5px">'+gmEsc(d.conf.note)+'</p>':'')+'</div>':'')+
