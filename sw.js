@@ -1,4 +1,14 @@
-const C = 'orvia-v8-354';   /* CACHE-REFRESH FUER DEN WEB-DEPLOY (2026-08-17) · v8-354:
+const C = 'orvia-v8-355';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
+
+   Der Upload von v8-354 war unvollstaendig: js/ und sw.js kamen an,
+   styles.css NICHT (live weiterhin `.toast{z-index:99}`). Der Cache-Name
+   stand aber schon auf v8-354 — Geraete, die das bereits geholt haben,
+   haetten die alte styles.css unter der NEUEN Version einbetoniert und
+   nie wieder nachgeladen. Deshalb eine weitere Versionsnummer: sie ist
+   der einzige Hebel, der einen falsch gefuellten Cache aufbricht.
+   Merksatz: die Versionsnummer darf erst steigen, wenn die Dateien
+   OBEN sind — nicht, wenn sie hochgeladen werden sollen.
+   (urspruenglicher v8-354-Text darunter unveraendert)
 
    v8-345 hat entschieden, Laufen NICHT zu verdrahten, und die Entscheidung
    mit einer Zahl begruendet:
