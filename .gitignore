@@ -41,3 +41,9 @@ gw-stage.tar.gz
 gw-probe-stage.tar.gz
 _to_delete*
 UPLOAD-github-*/
+
+# Aufraeumen 2026-08-17: Sammelort fuer Altlast. Loeschen muss Gian manuell
+# im Finder machen — die Cowork-Bruecke darf nicht unlinken, nur verschieben.
+_ZU-LOESCHEN/
+# Sicherung einer Parallelsitzung (Score v9), aus _dev/ herausgerettet.
+_sicherung-*/
