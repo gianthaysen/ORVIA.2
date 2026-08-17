@@ -21,6 +21,10 @@
     const s = (String(error.code || '') + ' ' + String(error.message || '')).toLowerCase();
     if (error.code === 'active_exists' || /23505|one_active/.test(s)) return 'Es läuft bereits ein Workout. Es wurde geöffnet.';
     if (/42501|row-level security|permission denied|rls/.test(s)) return 'Zugriff nicht möglich. Bitte melde dich erneut an.';
+    /* v8-354: fehlende Migration ist KEIN „bitte erneut versuchen" — Wiederholen hilft nie.
+       PostgREST meldet unbekannte Spalten als PGRST204 „Could not find the 'x' column ...
+       in the schema cache". Das muss als das benannt werden, was es ist. */
+    if (/pgrst204|schema cache|could not find the .* column/.test(s)) return 'Die App schreibt ein Feld, das diese Datenbank nicht kennt — eine Migration fehlt. Wiederholen hilft nicht.';
     if (/network|fetch|timeout|offline|verbindung/.test(s)) return 'Verbindung unterbrochen. Änderungen werden lokal gespeichert.';
     if (/foreign key|23503|fk/.test(s)) return 'Die Einheit konnte nicht vollständig geladen werden.';
     if (/validation/.test(s)) return error.message || 'Eingabe prüfen.';
@@ -852,7 +856,8 @@
     O.workoutUI.closePicker();
     if (O.workoutUI._cb) { const cb = O.workoutUI._cb; O.workoutUI._cb = null; cb(exId); return; }
     const r = await WS().addExercise(exId, { plannedSets: 3, exercise: ex, restSeconds: 90 });
-    if (!r.success) toastIt(humanErr(r.error)); else renderOverlay();
+    if (!r.success) { try { console.error('[addExercise]', r.error); } catch (e) {} toastIt(humanErr(r.error) + ' (Code: ' + ((r.error && r.error.code) || 'unbekannt') + ')'); return; }
+    renderOverlay();
   };
   O.workoutUI.closePicker = function () { const ov = document.getElementById('workoutPicker'); if (ov) ov.classList.add('hide'); };
   // ESC schließt Picker (Desktop/Tastatur).

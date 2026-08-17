@@ -1,4 +1,4 @@
-const C = 'orvia-v8-353';   /* LAUFEN IST VERDRAHTET — WEIL SICH DIE FRAGE GEAENDERT HAT (2026-08-13) · v8-353:
+const C = 'orvia-v8-354';   /* CACHE-REFRESH FUER DEN WEB-DEPLOY (2026-08-17) · v8-354:
 
    v8-345 hat entschieden, Laufen NICHT zu verdrahten, und die Entscheidung
    mit einer Zahl begruendet:
