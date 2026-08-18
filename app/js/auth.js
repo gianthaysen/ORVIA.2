@@ -270,22 +270,45 @@
       if (O.profileStore && O.profileStore.hydrateAvailability) { _t = _P.now(); await O.profileStore.hydrateAvailability(); _P.mark('onAuthed: profileStore.hydrateAvailability', _t); }
       if (O.profileStore && O.profileStore.hydrateGoals) { _t = _P.now(); await O.profileStore.hydrateGoals(); _P.mark('onAuthed: profileStore.hydrateGoals', _t); }
       if (O.profileStore && O.profileStore.hydrateConstraints) { _t = _P.now(); await O.profileStore.hydrateConstraints(); _P.mark('onAuthed: profileStore.hydrateConstraints', _t); }
-      // 0016: Avatar-Hydration (signierte URL vorladen) + kontrollierte Einmal-Migration
-      // eines lokalen Base64-Bilds in Storage (idempotent, nur bestätigter aktueller Nutzer).
-      if (O.avatarStore) { _t = _P.now(); await O.avatarStore.hydrate(); _P.mark('onAuthed: avatarStore.hydrate', _t); }
+      /* 0016 · Avatar-Hydration stand hier und ist am 17.08.2026 aus der Kette
+         genommen worden — sie laeuft jetzt NACH dem Rendern (siehe unten,
+         nach 'orvia:auth-ready'). Gemessen war sie mit 1296 ms von 4781 ms der
+         zweitgroesste Posten des Logins. Fuer ein Profilbild. */
       if (O.checkinStore) { _t = _P.now(); await O.checkinStore.hydrateRecentTypes(35, ['morning', 'live', 'pre', 'post', 'evening']); _P.mark('onAuthed: checkinStore.hydrateRecentTypes', _t); }
       if (O.readinessStore) { _t = _P.now(); await O.readinessStore.hydrateRecentScores(60); _P.mark('onAuthed: readinessStore.hydrateRecentScores', _t); }
       if (O.workoutUI && O.workoutUI.tryRestore) { _t = _P.now(); await O.workoutUI.tryRestore(); _P.mark('onAuthed: workoutUI.tryRestore', _t); }
     } catch (e) {}
     _P.mark('onAuthed: TOTAL login-init chain', _loginT0);
 
-    // GM6.1 (2026-07-27): Hydration abgeschlossen. Die letzten vier Schritte
-    // (avatar/checkin/readiness/workout) melden sich nicht selbst — readinessStore
+    // GM6.1 (2026-07-27): Hydration abgeschlossen. Die letzten Schritte
+    // (checkin/readiness/workout) melden sich nicht selbst — readinessStore
     // rendert gar nichts. Genau ein bereits erwartetes Signal am tatsächlichen
     // Ende der Kette; Konsumenten sind ORVIA.uiRefresh (sichtbarer Tab) und der
     // vorhandene Listener in activity-sync.js. Einmaligkeit garantiert der Latch
     // onAuthed._initFor oben — kein neues Feld, kein paralleler Ready-State.
     try { if (typeof CustomEvent === 'function' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:auth-ready')); } catch (e) {}
+
+    /* ═══ Avatar NACH dem kritischen Pfad ════════════════════════════════════
+       BEFUND (Messung 17.08.2026): avatarStore.hydrate lag mit 1296 ms auf Platz 2
+       der Login-Kette (4781 ms gesamt) — zwoelf sequenzielle await, deren Summe
+       per Konstruktion die Wartezeit IST. Ein Profilbild gehoert dort nicht hin.
+
+       WARUM DAS GEFAHRLOS IST: hydrate() rendert selbst nach, sobald die signierte
+       URL vorliegt (avatar-store.js: renderTopAvatar / renderProfileScreen /
+       renderGMProfile). Jeder Konsument liest ueber avatarStore.currentSrc() mit
+       Rueckfall auf PROFILE.avatar — bis das Bild da ist, steht das lokale Bild
+       oder die Initialen. Kein spaeterer Schritt der Kette liest den Avatar.
+
+       setTimeout(0) statt await: erst rendern, dann nachladen. Die Messmarke bleibt
+       bestehen — der Posten verschwindet aus der KETTE, nicht aus der MESSUNG. */
+    try {
+      if (O.avatarStore) setTimeout(function () {
+        var _tAv = _P.now();
+        Promise.resolve(O.avatarStore.hydrate())
+          .then(function () { _P.mark('avatarStore.hydrate (nachgelagert, ausserhalb der Login-Kette)', _tAv); })
+          .catch(function (e) { console.warn('[ORVIA auth] Avatar-Hydration fehlgeschlagen — Anzeige bleibt beim lokalen Bild.', e && e.message); });
+      }, 0);
+    } catch (e) {}
 
     try {
       // Onboarding nur bei pending öffnen. Dispatcher (onboarding-ui) öffnet AUSSCHLIESSLICH v2 (kein Legacy).
