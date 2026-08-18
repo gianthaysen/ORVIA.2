@@ -271,8 +271,8 @@
       if (O.profileStore && O.profileStore.hydrateGoals) { _t = _P.now(); await O.profileStore.hydrateGoals(); _P.mark('onAuthed: profileStore.hydrateGoals', _t); }
       if (O.profileStore && O.profileStore.hydrateConstraints) { _t = _P.now(); await O.profileStore.hydrateConstraints(); _P.mark('onAuthed: profileStore.hydrateConstraints', _t); }
       /* 0016 · Avatar-Hydration stand hier und ist am 17.08.2026 aus der Kette
-         genommen worden — sie laeuft jetzt NACH dem Rendern (siehe unten,
-         nach 'orvia:auth-ready'). Gemessen war sie mit 1296 ms von 4781 ms der
+         genommen worden — sie laeuft jetzt NACH dem Rendern (siehe unten, direkt
+         hinter dem Auth-Ready-Signal). Gemessen war sie mit 1296 ms von 4781 ms der
          zweitgroesste Posten des Logins. Fuer ein Profilbild. */
       if (O.checkinStore) { _t = _P.now(); await O.checkinStore.hydrateRecentTypes(35, ['morning', 'live', 'pre', 'post', 'evening']); _P.mark('onAuthed: checkinStore.hydrateRecentTypes', _t); }
       if (O.readinessStore) { _t = _P.now(); await O.readinessStore.hydrateRecentScores(60); _P.mark('onAuthed: readinessStore.hydrateRecentScores', _t); }
