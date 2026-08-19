@@ -219,8 +219,65 @@ function _profileSave(changedSections,source){var M=pmModel();
   saveProfile();
   try{if(typeof window!=='undefined'&&window.dispatchEvent)window.dispatchEvent(new CustomEvent('orvia:profile-updated',{detail:{changedSections:changedSections||[],updatedAt:PROFILE.updatedAt}}));}catch(e){}}
 // Persistiert goals[] atomar + Legacy-Projektion + Event. Plan-Impact separat über maybePlanImpact.
-function commitGoals(ng){PROFILE.goals=ng;_profileSave(['goals']);
+function commitGoals(ng,_ereignis){PROFILE.goals=ng;_profileSave(['goals']);
+  /* A-06 (2026-08-18): Zielereignis mitschreiben — BEOBACHTER, nie Beteiligter.
+     Steht bewusst NACH _profileSave: das Ziel ist gespeichert, bevor der
+     Beobachter ueberhaupt laeuft. logGoalEvent wirft nie; das try/catch ist die
+     zweite Sicherung, keine Entschuldigung fuer die erste. */
+  try{_goalShadowNote(_ereignis||'update');}catch(e){}
   try{renderProfileScreen();}catch(e){} try{if(window._goalsMgr)renderGoalsList();}catch(e){}}
+
+/* ═══ A-06 · Ziel-Shadow-Log ═══════════════════════════════════════════════
+   WOFUER: Band 1, A-06. Vor der Umstellung der Planlogik in B-01 soll ueber
+   mindestens 14 Tage belegt sein, wie oft `mainGoalOf()` (kanonisches Hauptziel)
+   und `goalOf()` (Bestand, filtert auf Laufdistanzziele) auseinanderlaufen.
+   Gate A, Kriterium 4.
+
+   KEINE VERHALTENSAENDERUNG: gelesen wird nur, was die App ohnehin liest;
+   geschrieben wird ausschliesslich in eine Tabelle, die niemand liest. Faellt
+   das Modul aus, fehlt ein Log-Eintrag — sonst nichts. */
+function _goalShadowNote(ereignis){
+  var O=window.ORVIA; if(!O||!O.goalShadow)return;
+  _goalShadowEnsureSink();
+  var haupt=null,bestand=null,aktiv=0;
+  try{ if(typeof mainGoalOf==='function')haupt=mainGoalOf(); }catch(e){}
+  try{ if(typeof goalOf==='function')bestand=goalOf(); }catch(e){}
+  try{ aktiv=(listGoals()||[]).filter(function(g){return g&&g.status==='active';}).length; }catch(e){}
+  var ver=null;
+  try{ var m=document.querySelector('meta[name="orvia-build"]'); ver=m?m.content:null; }catch(e){}
+  O.goalShadow.logGoalEvent({
+    eventType:ereignis, eventId:_goalShadowId(), now:new Date().toISOString(),
+    mainGoal:haupt, legacyGoal:bestand, activeGoalCount:aktiv, appVersion:ver,
+    gcat:(typeof gcat==='function')?gcat:null
+  });
+}
+function _goalShadowId(){
+  try{ if(window.crypto&&crypto.randomUUID)return 'gs_'+crypto.randomUUID(); }catch(e){}
+  return 'gs_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
+}
+/* Senke: schreibt in goal_shadow_log (Migration 0037). Liefert bewusst `null`,
+   wenn es keine Sitzung gibt — das ist KEIN Schreibfehler, sondern kein
+   Schreibversuch. Sonst waere die Fehlerzahl aus Gate A, Kriterium 4 wertlos. */
+/* Wird beim ERSTEN Zielereignis gesetzt, nicht beim Laden: profile.js laedt in
+   index.html vor js/engine/*, das Modul existiert zu diesem Zeitpunkt also noch
+   nicht. Eine Ladereihenfolge als stille Voraussetzung waere genau die Art
+   Abhaengigkeit, die beim naechsten Umsortieren unbemerkt bricht. */
+var _goalShadowSinkGesetzt=false;
+function _goalShadowEnsureSink(){
+  var O=window.ORVIA;
+  if(_goalShadowSinkGesetzt||!O||!O.goalShadow||!O.goalShadow.setSink)return;
+  _goalShadowSinkGesetzt=true;
+  O.goalShadow.setSink(function(rec){
+    var sb=O.sb, uid=(O.user&&O.user.id)||null;
+    if(!sb||!uid)return null;
+    var row=O.goalShadow.toRow(rec,uid);
+    if(!row)return null;
+    return sb.from('goal_shadow_log').insert(row).then(function(r){
+      if(r&&r.error)throw new Error(r.error.message||'insert_failed');
+      return r;
+    });
+  });
+}
 /* Öffentlicher Profil-Adapter: einzige produktive API für neue Oberflächen (lesen/schreiben/abonnieren). */
 (function(){var O=(typeof window!=='undefined'?window:globalThis).ORVIA=(typeof window!=='undefined'?window:globalThis).ORVIA||{};
   O.profile={
@@ -246,10 +303,10 @@ function commitGoals(ng){PROFILE.goals=ng;_profileSave(['goals']);
     needsOnboarding:function(){if(!PROFILE&&typeof ensureProfile==='function')ensureProfile();return !pmModel().isOnboardingComplete(PROFILE||{});},
     markOnboardingComplete:function(){if(!PROFILE)return;PROFILE.onboarding=pmModel().normalizeOnboarding(Object.assign({},PROFILE.onboarding,{status:'completed',completedAt:new Date().toISOString()}),PROFILE);_profileSave(['onboarding']);}
   };})();
-function goalAdd(input,reason){commitGoals(pmModel().addGoal(listGoals(),input));}
-function goalUpdate(id,patch,reason){commitGoals(pmModel().updateGoal(listGoals(),id,patch));}
-function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id));}
-function goalSetStatus(id,st){commitGoals(pmModel().setGoalStatus(listGoals(),id,st));}
+function goalAdd(input,reason){commitGoals(pmModel().addGoal(listGoals(),input),'add');}
+function goalUpdate(id,patch,reason){commitGoals(pmModel().updateGoal(listGoals(),id,patch),'update');}
+function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id),'remove');}
+function goalSetStatus(id,st){commitGoals(pmModel().setGoalStatus(listGoals(),id,st),'status');}
 /* ---- Profil-Zusammenfassung (Rollen, keine IDs/Kategorien) ---- */
 var GOAL_ROLE_DE={main:'Hauptziel',secondary:'Sekundäres Ziel',maintain:'Erhaltungsziel',longterm:'Langfristig'};
 function goalsSummaryHTML(){var M=pmModel();if(!M)return '';var act=listGoals().filter(function(g){return g.status==='active';}).slice().sort(function(a,b){return a.priority-b.priority;});
