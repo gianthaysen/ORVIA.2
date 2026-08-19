@@ -1,6 +1,6 @@
 -- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
--- Quelle: supabase/migrations/ (35 Dateien)
+-- Quelle: supabase/migrations/ (36 Dateien)
 -- Neu erzeugen: node app/tools/gen-live-check.mjs
 -- ============================================================
 -- Diese Abfrage beantwortet die eine Frage, die `public.schema_migrations`
@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 49 Tabellen + 63 Spalten = 112 Prüfungen.
+-- Umfang: 50 Tabellen + 63 Spalten = 113 Prüfungen.
 -- Bewusst NICHT geprüft (kein Zugriff über information_schema in dieser Form):
 -- Indizes, Constraints, Policies, Funktionen. Für Funktionen und RLS gibt es
 -- die Blöcke A und C in _live-check-bloecke.sql.
@@ -32,6 +32,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0003','tabelle','exercise_training_qualities',''),
   ('0003','tabelle','exercises',''),
   ('0002','tabelle','fixed_schedule_items',''),
+  ('0037','tabelle','goal_shadow_log',''),
   ('0019','tabelle','metric_anomalies',''),
   ('0003','tabelle','movement_patterns',''),
   ('0003','tabelle','muscle_groups',''),

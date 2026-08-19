@@ -1,0 +1,87 @@
+{
+  "target": "js/engine/goal-shadow.js",
+  "test": "supabase/tests/goal_shadow_test.mjs",
+  "note": "A-06 sammelt ueber 14 Tage den Beleg fuer Gate A, Kriterium 4. Ein Beobachter, der stillschweigend nicht schreibt, nicht vergleicht oder das Profil mutiert, wuerde diese Sammlung wertlos machen — und zwar erst nach zwei Wochen sichtbar. Diese Proben sichern, dass ein Test es vorher merkt.",
+  "probes": [
+    {
+      "id": "GS1",
+      "pattern": "neighbour_guard",
+      "title": "der Beobachter wird aus commitGoals herausgenommen — niemand ruft ihn mehr auf",
+      "file": "js/profile.js",
+      "find": "  try{_goalShadowNote(_ereignis||'update');}catch(e){}",
+      "replace": "  /* entfernt */",
+      "expectTest": "E1 commitGoals ruft den Beobachter im eigenen Rumpf auf",
+      "history": "Der teuerste Ausfall: nichts bricht, nichts meldet sich, und nach 14 Tagen ist das Log leer. Genau dieses Muster hatte ORVIA schon bei nicht verdrahteten Wissenspaketen."
+    },
+    {
+      "id": "GS2",
+      "pattern": "value_not_type",
+      "title": "alle Ereignisse melden denselben Typ — add/remove sind nicht mehr unterscheidbar",
+      "file": "js/profile.js",
+      "find": "function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id),'remove');}",
+      "replace": "function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id),'update');}",
+      "expectTest": "E4 goalRemove meldet den Ereignistyp 'remove'",
+      "history": "Ein gueltiger, aber falscher Wert. Die Auswertung nach 14 Tagen saehe plausibel aus und waere trotzdem falsch."
+    },
+    {
+      "id": "GS3",
+      "pattern": "fixture_masks",
+      "title": "der Widerspruch wird stillschweigend auf false gesetzt",
+      "file": "js/engine/goal-shadow.js",
+      "find": "      contradiction: felder.length > 0,",
+      "replace": "      contradiction: false,",
+      "expectTest": "B9 das Kennzeichen steht auch im Datensatz",
+      "history": "Der Messwert, um den es im ganzen Paket geht. Waere er konstant false, meldete der Report nach zwei Wochen 'kein Widerspruch' — und B-01 wuerde auf einer Luege aufsetzen."
+    },
+    {
+      "id": "GS4",
+      "pattern": "data_lacks_var",
+      "title": "ein fehlendes Hauptziel wird durch den Bestand ersetzt statt als null gemeldet",
+      "file": "js/engine/goal-shadow.js",
+      "find": "      mainGoal: mg,                                  // null ist gültig",
+      "replace": "      mainGoal: mg || lg,",
+      "expectTest": "A10 Hauptziel fehlt, Bestand liefert eins → mainGoal bleibt null (kein Ersatzwert)",
+      "history": "Datenluecke != Wert. Ein Ersatzwert an dieser Stelle macht aus 'kein Ziel' ein 'dieses Ziel' und verdeckt genau den Fall, den A-07 spaeter beheben soll."
+    },
+    {
+      "id": "GS5",
+      "pattern": "neighbour_guard",
+      "title": "der Beobachter haelt eine Referenz auf das Zielobjekt statt einer Kopie",
+      "file": "js/engine/goal-shadow.js",
+      "find": "    try { return JSON.parse(JSON.stringify(v)); } catch (e) { return null; }",
+      "replace": "    return v;",
+      "expectTest": "A7 der Beobachter mutiert die Eingabe nicht (Inhalt)",
+      "history": "Derselbe Fehler wie bei A-02: dort reichte .slice() nicht, die Elemente blieben geteilt und das Profil wurde doch veraendert. Ein Beobachter, der mutiert, ist ein Beteiligter."
+    },
+    {
+      "id": "GS6",
+      "pattern": "value_not_type",
+      "title": "ein Schreibfehler wird verschwiegen statt gezaehlt",
+      "file": "js/engine/goal-shadow.js",
+      "find": "         .catch(function () { _fehler++; });",
+      "replace": "         .catch(function () { });",
+      "expectTest": "C3b … und der Fehlerzähler ist gestiegen",
+      "history": "Gate A, Kriterium 4 verlangt '>= 14 Tage OHNE Schreibfehler'. Ohne Zaehler ist diese Aussage nicht belegbar, sondern nur behauptbar."
+    },
+    {
+      "id": "GS7",
+      "pattern": "fixture_masks",
+      "title": "kein Schreibversuch wird als erfolgreicher Schreibvorgang gewertet",
+      "file": "js/engine/goal-shadow.js",
+      "find": "      if (r === null || r === false || r === undefined)",
+      "replace": "      if (false)",
+      "expectTest": "C7 kein Schreibversuch (keine Sitzung) zaehlt NICHT als Schreibfehler",
+      "history": "Abgemeldet oder offline ist kein Fehler — aber auch kein Erfolg. Beides gleichzusetzen macht die Statistik in genau der Richtung falsch, in der sie beruhigt."
+    },
+    {
+      "id": "GS8",
+      "pattern": "value_not_type",
+      "title": "die Zeitumrechnung weicht von goalOf() ab — der Vergleich misst die Umrechnung",
+      "file": "js/engine/goal-shadow.js",
+      "find": "    if (g.unit === 's' || g.metricType === 'time') return g.targetValue / 60;",
+      "replace": "    if (g.unit === 's' || g.metricType === 'time') return g.targetValue;",
+      "expectTest": "B5 Sekunden werden wie in goalOf() umgerechnet (6300 s = 105 min)",
+      "history": "Weicht die Umrechnung ab, meldet der Report Widersprueche, die keine sind — und die echten gehen im Rauschen unter."
+    }
+  ]
+}
