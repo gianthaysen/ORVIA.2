@@ -3,6 +3,11 @@
 -- und widersprechen sich mainGoalOf() und goalOf()?
 -- Blockweise im Supabase-SQL-Editor ausfuehren.
 
+-- HINWEIS ZU TESTZEILEN: Am 20.08.2026 ist beim Funktionsnachweis eine Zeile mit
+-- app_version = 'probe' entstanden (Direktaufruf des Beobachters, nicht aus der App).
+-- Sie wird NICHT geloescht — ein Log, aus dem man Zeilen entfernt, ist kein Beleg
+-- mehr. Stattdessen filtern alle Bloecke auf echte App-Versionen.
+
 -- R1 · Laufzeit und Umfang. Erst wenn `tage_abgedeckt` >= 14 ist, ist die
 -- Frage ueberhaupt beantwortbar. Ein Log mit drei Eintraegen an einem Tag
 -- belegt nichts.
@@ -12,7 +17,8 @@ select count(*)                                             as ereignisse,
        (max(occurred_at)::date - min(occurred_at)::date)     as tage_abgedeckt,
        count(*) filter (where contradiction)                as widersprueche,
        round(100.0 * count(*) filter (where contradiction) / nullif(count(*),0), 1) as quote_prozent
-  from public.goal_shadow_log;
+  from public.goal_shadow_log
+ where app_version like 'orvia-v8-%';
 
 -- R2 · Nach Ereignistyp. Fehlt hier ein Typ vollstaendig, wurde er im
 -- Zeitraum nicht ausgeloest — das ist eine Luecke im BELEG, kein Beweis
@@ -20,6 +26,7 @@ select count(*)                                             as ereignisse,
 select event_type, count(*) as anzahl,
        count(*) filter (where contradiction) as widersprueche
   from public.goal_shadow_log
+ where app_version like 'orvia-v8-%'
  group by event_type
  order by anzahl desc;
 
@@ -28,6 +35,7 @@ select event_type, count(*) as anzahl,
 -- 'targetMin' heisst, sie meinen dasselbe Ziel mit verschiedenen Werten.
 select feld, count(*) as anzahl
   from public.goal_shadow_log, unnest(contradiction_fields) as feld
+ where app_version like 'orvia-v8-%'
  group by feld
  order by anzahl desc;
 
@@ -39,7 +47,7 @@ select occurred_at, event_type, contradiction_fields, active_goal_count,
        legacy_goal->>'type'    as bestand_typ,
        app_version
   from public.goal_shadow_log
- where contradiction
+ where contradiction and app_version like 'orvia-v8-%'
  order by occurred_at desc
  limit 50;
 

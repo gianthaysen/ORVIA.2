@@ -150,6 +150,26 @@ console.log('\nC · Der Beobachter darf nichts kaputtmachen');
   await new Promise(r => setTimeout(r, 10));
   ok('C3b … und der Fehlerzähler ist gestiegen', GS.stats().fehler > vorher,
     vorher + ' → ' + GS.stats().fehler);
+
+  /* Nachgetragen am 20.08.2026 nach einer Fehlmessung am lebenden System:
+     `geschrieben` steigt erst mit der Antwort der Datenbank. Wer stats() im selben
+     Ausdruck liest wie das Zielereignis, sieht 0 — und 0/0 bedeutete zweierlei.
+     `unterwegs` trennt "nichts passiert" von "laeuft noch". */
+  let aufloesen;
+  const s0 = GS.stats();
+  GS.setSink(() => new Promise(r => { aufloesen = r; }));
+  GS.logGoalEvent({ ...BASIS, eventId: 'e7', mainGoal: ZIEL, legacyGoal: LEGACY });
+  const s1 = GS.stats();
+  ok('C8 eine laufende Anfrage ist als `unterwegs` sichtbar, nicht als Nichts',
+    s1.unterwegs === s0.unterwegs + 1 && s1.geschrieben === s0.geschrieben,
+    JSON.stringify(s1));
+  aufloesen({});
+  await new Promise(r => setTimeout(r, 10));
+  const s2 = GS.stats();
+  ok('C9 … und wandert nach der Antwort in `geschrieben`',
+    s2.unterwegs === 0 && s2.geschrieben === s1.geschrieben + 1, JSON.stringify(s2));
+  ok('C10 stats() sagt ausserdem, ob ueberhaupt eine Senke gesetzt ist',
+    GS.stats().senke === true);
 }
 
 /* ---------- D · Passt die Zeile zu Migration 0037? ---------- */

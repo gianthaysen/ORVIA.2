@@ -58,8 +58,8 @@
       "pattern": "value_not_type",
       "title": "ein Schreibfehler wird verschwiegen statt gezaehlt",
       "file": "js/engine/goal-shadow.js",
-      "find": "         .catch(function () { _fehler++; });",
-      "replace": "         .catch(function () { });",
+      "find": "         .catch(function () { _unterwegs--; _fehler++; });",
+      "replace": "         .catch(function () { _unterwegs--; });",
       "expectTest": "C3b … und der Fehlerzähler ist gestiegen",
       "history": "Gate A, Kriterium 4 verlangt '>= 14 Tage OHNE Schreibfehler'. Ohne Zaehler ist diese Aussage nicht belegbar, sondern nur behauptbar."
     },

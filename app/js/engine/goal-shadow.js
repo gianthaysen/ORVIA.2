@@ -44,10 +44,18 @@
   var _sink = null;
   var _fehler = 0;          // gezählte Schreibfehler — Gate A, Kriterium 4
   var _geschrieben = 0;
+  var _unterwegs = 0;       // abgesetzt, aber noch nicht bestaetigt
 
   function setEnabled(v) { _enabled = !!v; }
   function setSink(fn) { _sink = (typeof fn === 'function') ? fn : null; }
-  function stats() { return { geschrieben: _geschrieben, fehler: _fehler, enabled: _enabled }; }
+  /* `unterwegs` ist am 20.08.2026 dazugekommen, nachdem eine Fehlmessung fast zu
+     einer Fehlersuche am falschen Ende gefuehrt haette: `geschrieben` steigt erst,
+     wenn die Datenbank antwortet. Wer stats() im selben Ausdruck aufruft wie das
+     Zielereignis, liest zwangsläufig 0 — und 0/0 bedeutete bis dahin zweierlei:
+     "nichts passiert" ODER "laeuft noch". Ein Zaehler, der zwei Zustaende gleich
+     anzeigt, ist als Diagnose untauglich. */
+  function stats() { return { geschrieben: _geschrieben, fehler: _fehler,
+    unterwegs: _unterwegs, enabled: _enabled, senke: !!_sink }; }
 
   /* Tiefe Kopie. `.slice()` reicht NICHT — bei A-02 hat genau das dazu geführt,
      dass Elemente geteilt blieben und das Profil doch mutiert wurde. */
@@ -167,8 +175,9 @@
       if (r === null || r === false || r === undefined)
         return { id: gebaut.record.eventId, stored: false, reason: 'sink_skipped', record: gebaut.record };
       if (r && typeof r.then === 'function') {
-        r.then(function () { _geschrieben++; })
-         .catch(function () { _fehler++; });
+        _unterwegs++;
+        r.then(function () { _unterwegs--; _geschrieben++; })
+         .catch(function () { _unterwegs--; _fehler++; });
       } else { _geschrieben++; }
       return { id: gebaut.record.eventId, stored: true, reason: null, record: gebaut.record };
     } catch (e) {
