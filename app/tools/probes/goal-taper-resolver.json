@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/goal-taper-resolver.js",
+  "test": "supabase/tests/goal_taper_resolver_test.mjs",
+  "note": "A-09 leitet aus dem Zieldatum die Trainingsphase ab. Verschiebt sich eine Grenze still oder wird 'race passed' als aktive Absenkung behandelt, plant die App in Phase B falsch — und der Fehler zeigt sich erst am Renntag.",
+  "probes": [
+    {
+      "id": "TR1",
+      "pattern": "value_not_type",
+      "title": "die Taper-Grenze wandert um einen Tag (14 statt 13)",
+      "file": "js/engine/goal-taper-resolver.js",
+      "find": "  var TAPER_MAX     = 13;  // 7..13 Tage → Taper (klassisch ~2 Wochen)",
+      "replace": "  var TAPER_MAX     = 14;  // 7..13 Tage → Taper (klassisch ~2 Wochen)",
+      "expectTest": "C3 der Resolver trägt genau diese Grenzen",
+      "history": "Eine um einen Tag verschobene Grenze laeuft an race.js vorbei — Anzeige und Steuerung meinten dann verschiedene Taper-Fenster."
+    },
+    {
+      "id": "TR2",
+      "pattern": "neighbour_guard",
+      "title": "ein bereits vergangener Wettkampf wird als aktive Absenkung geführt",
+      "file": "js/engine/goal-taper-resolver.js",
+      "find": "    if (d < 0)     return { phase: null, daysToRace: d, active: false, reason: 'race_passed', version: VERSION };",
+      "replace": "    if (d < 0)     return { phase: 'taper', daysToRace: d, active: true, reason: 'race_passed', version: VERSION };",
+      "expectTest": "B2 Datum in der Vergangenheit → phase null, reason race_passed",
+      "history": "Nach dem Rennen weiter zu tapern hiesse: dauerhaft reduziertes Volumen ohne Anlass. Der vergangene Termin muss die Phase beenden, nicht verlaengern."
+    },
+    {
+      "id": "TR3",
+      "pattern": "fixture_masks",
+      "title": "fehlendes Zieldatum liefert heimlich eine Phase statt null",
+      "file": "js/engine/goal-taper-resolver.js",
+      "find": "    if (!date) return { phase: null, daysToRace: null, active: false, reason: 'no_target_date', version: VERSION };",
+      "replace": "    if (!date) return { phase: 'build', daysToRace: null, active: false, reason: 'no_target_date', version: VERSION };",
+      "expectTest": "B1 kein Zieldatum → phase null, kein Wurf",
+      "history": "Ohne Datum gibt es keine Phase — 'build' zu behaupten waere ein erfundener Zustand. Datenluecke != Wert."
+    },
+    {
+      "id": "TR4",
+      "pattern": "value_not_type",
+      "title": "build wird als aktive Absenkung markiert",
+      "file": "js/engine/goal-taper-resolver.js",
+      "find": "      active: phase === 'race_week' || phase === 'taper',",
+      "replace": "      active: true,",
+      "expectTest": "B4 „active\" nur bei echter Absenkung",
+      "history": "'build' ist eine Phase, aber keine Absenkung. Waere active dort true, reduzierte Phase B das Volumen Wochen vor dem Rennen ohne Grund."
+    },
+    {
+      "id": "TR5",
+      "pattern": "data_lacks_var",
+      "title": "die Wettkampfwoche meldet das falsche progression-Vokabular",
+      "file": "js/engine/goal-taper-resolver.js",
+      "find": "      progressionPhase: phase === 'race_week' ? 'race_week' : (phase === 'taper' ? 'taper' : null),",
+      "replace": "      progressionPhase: phase === 'race_week' ? 'taper' : (phase === 'taper' ? 'taper' : null),",
+      "expectTest": "D2 Wettkampfwoche meldet \"race_week\"",
+      "history": "progression fuehrt race_week und race_taper getrennt. Eine als die andere auszugeben verwischt zwei verschiedene Freigabegruende."
+    }
+  ]
+}
