@@ -1,0 +1,67 @@
+{
+  "target": "js/onboarding/onboarding-ui.js",
+  "test": "supabase/tests/onboarding_goal_value_test.mjs",
+  "note": "A-07: der Zielwert ist die Zahl, auf der B-01 die Planlogik aufbaut. Faellt sie still aus oder wird sie erfunden, merkt es niemand — der Plan sieht weiter plausibel aus und ist trotzdem falsch.",
+  "probes": [
+    {
+      "id": "GV1",
+      "pattern": "neighbour_guard",
+      "title": "das Zielwertfeld faellt aus dem Ziel-Schritt (niemand wird mehr gefragt)",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "          goalValueFieldHTML(ex) +",
+      "replace": "          '' +",
+      "expectTest": "D1 das Feld erscheint im Ziel-Schritt",
+      "history": "Der teuerste Ausfall: nichts bricht, das Onboarding laeuft weiter, und B-01 bekommt nie einen Zielwert."
+    },
+    {
+      "id": "GV2",
+      "pattern": "data_lacks_var",
+      "title": "ein leeres Feld wird als 0 gespeichert statt als nicht angegeben",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "      if (g.targetValue != null) dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });",
+      "replace": "      dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: 0 });",
+      "expectTest": "C1 leeres Feld setzt targetValue auf null, nicht auf 0",
+      "history": "Datenluecke != Wert. Eine 0 als Zielzeit waere nicht nur falsch, sondern unmoeglich — und wuerde jede Pace-Rechnung vergiften."
+    },
+    {
+      "id": "GV3",
+      "pattern": "fixture_masks",
+      "title": "eine unverstaendliche Eingabe wird stillschweigend uebernommen",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "    if (typeof w === 'number' && isFinite(w) && w > 0) return true;",
+      "replace": "    return true;",
+      "expectTest": "C3 geprueft wird das ERGEBNIS der Normalisierung, nicht die Eingabe",
+      "history": "Bliebe „bald schnell\" als Zeichenkette im targetValue stehen, rechnete die Engine spaeter mit einem Text."
+    },
+    {
+      "id": "GV4",
+      "pattern": "value_not_type",
+      "title": "Ziele ohne sinnvolle Metrik bekommen doch ein Feld (erfundene Kennzahl)",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "    if (!f) return '';",
+      "replace": "    if (!f) f = GOAL_VALUE_FIELDS.count;",
+      "expectTest": "A4 … und der Erzeuger gibt fuer sie eine leere Zeichenkette zurueck",
+      "history": "„Schmerzfrei laufen\" hat keine Zahl. Eine zu verlangen erzeugt Scheingenauigkeit — genau das, was ORVIA an anderer Stelle konsequent vermeidet."
+    },
+    {
+      "id": "GV5",
+      "pattern": "neighbour_guard",
+      "title": "der Zielwert haengt nicht mehr an der Autospeicherung",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "    try { readGoalValueField(); } catch (e) {}",
+      "replace": "    /* entfernt */",
+      "expectTest": "D2 es haengt an der Autospeicherung (Später fortsetzen, Escape, Tab-Wechsel)",
+      "history": "Ohne diese Zeile geht die eingetippte Zielzeit bei „Später fortsetzen\" verloren — und der Nutzer merkt es erst Wochen spaeter am Plan."
+    },
+    {
+      "id": "GV6",
+      "pattern": "value_not_type",
+      "title": "der Schritt parst die Zeit wieder selbst statt das Modell zu fragen",
+      "file": "js/onboarding/onboarding-ui.js",
+      "find": "    dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: roh, unit: f.unit, metricType: metrik });",
+      "replace": "    var _p = String(roh).split(':').map(Number); dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: _p[0] * 60 + (_p[1] || 0), unit: f.unit, metricType: metrik });",
+      "expectTest": "B2 … und parst die Eingabe NICHT selbst",
+      "history": "Zwei Parser bedeuten zwei Wahrheitsbegriffe. Der zweite weicht irgendwann ab, und dann misst der Vergleich die Umrechnung statt des Ziels."
+    }
+  ]
+}

@@ -267,7 +267,104 @@
     var dte = doc.getElementById('obg-date');
     if (dte && dte.value != null && (dte.value || null) !== (ex.targetDate || null)) { patch.targetDate = dte.value || null; dirty = true; }
     if (dirty) S.draft.draftData.goals = M.updateGoal(curGoals(), ex.id, patch);
+    /* A-07: der Zielwert wird ueber dieselbe Sammelstelle erfasst — sonst ginge er
+       bei „Später fortsetzen", Escape oder Tab-Wechsel verloren. Ein ungueltiger
+       Wert wird hier NICHT gemeldet; das tut submitGoals. */
+    try { readGoalValueField(); } catch (e) {}
   }
+
+  /* ═══ A-07 · Zielwert im Ziel-Schritt ════════════════════════════════════
+     BEFUND (B5): Der Schritt erhob Kategorie, Titel und Zieldatum — aber KEINE
+     Zahl. Ein neuer Nutzer verliess das Onboarding mit „Halbmarathon am 06.09."
+     und ORVIA konnte nicht zwischen 1:50 und 2:15 unterscheiden. Genau diese
+     Zahl braucht die Planlogik in B-01.
+
+     WARUM HIER UND NICHT ALS EIGENER SCHRITT (Entscheidung 20.08.2026):
+     `goals_detail` war als eigener Schritt der Personalisierungsebene geplant.
+     Umgesetzt kollidierte er mit vier bestehenden Zusicherungen — getNextStep
+     ist tier-gefiltert, und „Personalization beeinflusst Essential nicht" ist
+     ein Vertrag, kein Zufall. Ein Feld im bestehenden Schritt erreicht dasselbe
+     Ergebnis (100 % der neuen Nutzer werden gefragt) ohne einen einzigen
+     Vertrag aufzuweichen. `goals_detail` bleibt fuer spaetere Zieldetails frei.
+
+     KEINE ZWEITE WAHRHEIT: Metrik, Einheit und Normalisierung kommen aus
+     profile-model (goalMetricTypeFor / updateGoal). „1:50:00" wird hier NICHT
+     geparst — das Modell macht Sekunden daraus. Ein zweiter Parser waere ein
+     zweiter Wahrheitsbegriff.
+
+     ZIELE OHNE SINNVOLLE ZAHL: goalMetricTypeFor liefert fuer Gesundheits- und
+     Allgemeinziele null. Dann erscheint KEIN Feld und es wird keine Ersatzzahl
+     erfunden. Datenluecke != Wert. */
+  var GOAL_VALUE_FIELDS = {
+    time:   { label: 'Zielzeit',                typ: 'text',   ph: '1:50:00', unit: 's',
+              hint: 'Format hh:mm:ss oder mm:ss — 1:50:00 heißt eine Stunde fünfzig.' },
+    weight: { label: 'Zielgewicht (kg)',        typ: 'number', ph: '72',      unit: 'kg',
+              hint: 'Das Körpergewicht, auf das du hinarbeitest.' },
+    power:  { label: 'Ziel-FTP (Watt)',         typ: 'number', ph: '260',     unit: 'w',
+              hint: 'Die Schwellenleistung, die du erreichen willst.' },
+    count:  { label: 'Ziel-VO₂max (ml/kg/min)', typ: 'number', ph: '55',      unit: 'ml/kg/min',
+              hint: 'Der Wert, den du erreichen willst.' }
+  };
+
+  function goalMetricFor(g) {
+    var M = PM();
+    if (!g || !M || typeof M.goalMetricTypeFor !== 'function') return null;
+    try { return M.goalMetricTypeFor(g.category); } catch (e) { return null; }
+  }
+
+  /* Sekunden -> hh:mm:ss fuer die Anzeige. Ohne das stuende beim zweiten Besuch
+     „6600" im Feld, und der Nutzer haette eine Zahl vor sich, die er nie eingab. */
+  function _secToClock(sek) {
+    sek = Math.max(0, Math.round(sek));
+    var hh = Math.floor(sek / 3600), mm = Math.floor((sek % 3600) / 60), ss = sek % 60;
+    return (hh > 0 ? hh + ':' + String(mm).padStart(2, '0') : String(mm)) + ':' + String(ss).padStart(2, '0');
+  }
+
+  function goalValueFieldHTML(g) {
+    var metrik = goalMetricFor(g);
+    var f = metrik ? GOAL_VALUE_FIELDS[metrik] : null;
+    if (!f) return '';
+    var wert = (g.targetValue == null) ? '' : String(g.targetValue);
+    if (metrik === 'time' && typeof g.targetValue === 'number' && isFinite(g.targetValue)) wert = _secToClock(g.targetValue);
+    var fehler = (S.goalsSubmitted && S.goalValueErr) ? S.goalValueErr : '';
+    return '<label for="obg-value" class="ob3-sublabel">' + esc(f.label) + '</label>' +
+      '<input class="ob2-input" id="obg-value" type="' + f.typ + '"' +
+      (f.typ === 'number' ? ' inputmode="decimal" step="0.1" min="0"' : '') +
+      ' placeholder="' + esc(f.ph) + '" value="' + esc(wert) + '">' +
+      '<p class="ob2-hint">' + esc(f.hint) + ' Ohne Angabe plant ORVIA offener — das ist kein Fehler.</p>' +
+      '<span class="ob2-err" id="err-goalvalue" role="alert">' + esc(fehler) + '</span>';
+  }
+
+  /* Liest das Feld und schreibt ueber das Modell. Rueckgabe: true = in Ordnung
+     (auch bei leerem Feld), false = unverstaendliche Eingabe, Fehler steht in
+     S.goalValueErr. Ein leeres Feld ist ausdruecklich KEINE 0. */
+  function readGoalValueField() {
+    S.goalValueErr = '';
+    var M = PM(), g = essentialGoal();
+    if (!g) return true;
+    var metrik = goalMetricFor(g), f = metrik ? GOAL_VALUE_FIELDS[metrik] : null;
+    if (!f) return true;
+    var el = D().getElementById('obg-value');
+    if (!el) return true;
+    var roh = el.value == null ? '' : String(el.value).trim();
+    var dd = S.draft.draftData;
+    if (!roh) {
+      if (g.targetValue != null) dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });
+      return true;
+    }
+    dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: roh, unit: f.unit, metricType: metrik });
+    /* Geprueft wird das ERGEBNIS der Normalisierung, nicht die Eingabe: bleibt der
+       Wert eine Zeichenkette, hat das Modell ihn nicht verstanden. */
+    var neu = null; (dd.goals || []).forEach(function (x) { if (x.id === g.id) neu = x; });
+    var w = neu ? neu.targetValue : null;
+    if (typeof w === 'number' && isFinite(w) && w > 0) return true;
+    dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });
+    S.goalValueErr = (metrik === 'time')
+      ? 'Bitte als Zeit angeben — zum Beispiel 1:50:00 oder 24:30.'
+      : 'Bitte eine Zahl größer als 0 angeben.';
+    return false;
+  }
+
   function renderGoalsStep() {
     mountShell();
     var M = PM(); var kit = K(); var card = S.el.querySelector('.ob2-card');
@@ -289,6 +386,7 @@
           '<label for="obg-date" class="ob3-sublabel">Zieldatum</label>' +
           '<input class="ob2-input" id="obg-date" type="date" value="' + esc(ex.targetDate || '') + '">' +
           '<p class="ob2-hint">Ohne Datum plant ORVIA offen; mit Datum wird gezielt darauf hingearbeitet.</p>' +
+          goalValueFieldHTML(ex) +
         '</div>' : '') + '</div>' +
       (otherCount > 0 ? '<p class="ob2-note">' + otherCount + ' weiteres Ziel' + (otherCount > 1 ? 'e' : '') + ' aus deinem Profil bleib' + (otherCount > 1 ? 'en' : 't') + ' erhalten.</p>' : '') +
       '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
@@ -316,6 +414,8 @@
     });
     var t = card.querySelector('#obg-title'); if (t && t.addEventListener) { t.addEventListener('change', function () { _collectGoals(); persist(); }); t.addEventListener('blur', function () { _collectGoals(); persist(); }); }
     var dte = card.querySelector('#obg-date'); if (dte && dte.addEventListener) { dte.addEventListener('change', function () { _collectGoals(); persist(); }); }
+    var gv = card.querySelector('#obg-value');
+    if (gv && gv.addEventListener) { gv.addEventListener('change', function () { _collectGoals(); persist(); }); gv.addEventListener('blur', function () { _collectGoals(); persist(); }); }
     card.querySelector('#ob2-back').onclick = function () { _collectGoals(); goBack(); };
     card.querySelector('#ob2-next').onclick = submitGoals;
     card.querySelector('#ob2-later').onclick = function () { _collectGoals(); later(); };
@@ -323,7 +423,16 @@
   }
   function submitGoals() {
     if (S.busy || navLocked()) return; S.busy = true;
+    /* Reihenfolge: erst Titel/Datum, dann der Zielwert. Ist er unverstaendlich,
+       wird NICHT weitergegangen — sonst verschwaende der Nutzer seine Eingabe im
+       Nichts und ORVIA plante ohne Zielwert weiter, ohne es zu sagen.
+       Leer bleibt ausdruecklich erlaubt. */
     _collectGoals();
+    if (S.goalValueErr) {
+      S.goalsSubmitted = true; renderGoalsStep();
+      var gvEl = D().getElementById('obg-value'); if (gvEl && gvEl.focus) { try { gvEl.focus(); } catch (e) {} }
+      S.busy = false; return;
+    }
     var r = L().advanceGoals(S.draft, now());
     if (!r.ok) {
       S.goalsSubmitted = true; renderGoalsStep();

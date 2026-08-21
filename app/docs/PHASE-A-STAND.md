@@ -1,6 +1,6 @@
 # Phase A — Stand
 
-**Letzte Aktualisierung:** 20.08.2026 · **Quelle:** `plan/Band-1-Phasenplan-Detail.md` §A
+**Letzte Aktualisierung:** 20.08.2026 (A-07) · **Quelle:** `plan/Band-1-Phasenplan-Detail.md` §A
 **Umfang:** 13 Arbeitspakete, 127 h AP + 23 h Puffer = 150 h; korrigiert um +3 h aus dem
 Vorsprint A-S0 (§3) → **130 h AP**
 
@@ -11,7 +11,7 @@ Vorsprint A-S0 (§3) → **130 h AP**
 
 ## 1 · Kernaussage
 
-**67 von 130 AP-Stunden erledigt — 52 %.** Sieben von dreizehn Paketen abgeschlossen, zwei
+**79 von 130 AP-Stunden erledigt — 61 %.** Acht von dreizehn Paketen abgeschlossen, zwei
 Wochen **vor** dem in Band 1 geplanten Phasenstart (September/Oktober).
 
 Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszeit: siehe §5.
@@ -28,7 +28,7 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **A-04** | Gym-Bug-Retest | 4 | ✅ | 0035 live, Übung im laufenden Workout online gespeichert, Toast über dem Overlay |
 | **A-05** | CI + Branch-Protection | 17 | ⚠️ teilweise | CI grün (275 Dateien, 174 Proben); Force-Push serverseitig unmöglich und belegt; Test-PR siehe §4 |
 | **A-06** | Ziel-SSOT Teil 1 | 16 | ✅ | `5241af3`, `af2d922`; Migration 0037; `goal_shadow_test` 50/50; 8 Mutationsproben; **live belegt** (§3) |
-| **A-07** | `goals_detail` aktivieren | 12 | ⬜ offen | Schritt existiert (`onboarding-logic.js:31`), `required:false, skippable:true` |
+| **A-07** | Zielwert im Onboarding erheben | 12 | ✅ | Feld im Ziel-Schritt; `onboarding_goal_value_test` 16/16; 6 Mutationsproben. **Abweichung vom Wortlaut:** Band 1 sah einen eigenen Schritt `goals_detail` vor. Umgesetzt kollidierte er mit vier Verträgen (`getNextStep` ist tier-gefiltert; „Personalization beeinflusst Essential nicht"). Das Feld sitzt deshalb im bestehenden Schritt „Dein Ziel" — gleiches Ergebnis für den Nutzer, kein aufgeweichter Vertrag. `goals_detail` bleibt für spätere Zieldetails frei. |
 | **A-08** | `goal-feasibility`-Leser | 8 | ⬜ offen | Modul existiert (30 KB, 152 Tests), nicht an das Zielobjekt angebunden |
 | **A-09** | Taper-Anbindung | 10 | ⬜ offen | — |
 | **A-10** | Gewerbe + Steuerberater | 8 | ⬜ **offen, terminkritisch** | unverändert seit dem Vorsprint (V-05/V-06) |
@@ -36,7 +36,7 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **A-12** | Engine-v2-Shadow-Auswertung | 15 | ⬜ offen | `decision-log.js` vorhanden, Auswertung fehlt |
 | **A-13** | Regressionslauf + Abnahme | 10 | ⬜ offen | hängt an allen |
 
-**Erledigt: 67 h · Offen: 63 h**
+**Erledigt: 79 h · Offen: 51 h**
 
 ### Ungeplant, aber notwendig
 
