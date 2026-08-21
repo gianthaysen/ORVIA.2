@@ -7852,6 +7852,13 @@ function renderGMPlan(){
       });
     }
   }catch(_fe){ }
+  /* A-09 (2026-08-20): Taper-Phase aus dem Zieldatum ABLEITEN und beobachten —
+     nicht steuern. Scharf schalten ist B-01. */
+  try{
+    if(window.ORVIA&&ORVIA.goalTaperResolver&&typeof mainGoalOf==='function'){
+      ORVIA._lastTaperPhase=ORVIA.goalTaperResolver.fromGoal(mainGoalOf(), (typeof todayStr==='function'?todayStr():null));
+    }
+  }catch(_tp){ }
   /* v8-310a: Tageszustands-Konfiguration EINMAL je Render aufloesen. */
   var _dayCfg=null;
   try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
