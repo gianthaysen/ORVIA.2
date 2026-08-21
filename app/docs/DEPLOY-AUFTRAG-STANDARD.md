@@ -106,6 +106,13 @@ Das Skript vergleicht **jede der 159 Dateien byteweise** über den Git-Blob-Hash
 | abweichende Dateien | alter Stand oben, obwohl „hochgeladen" |
 | `sw.js` ↔ `index.html`-Marker ↔ lokal | Versionsanzeige, die lügt |
 
+**Block 0 (A-05, seit 21.08.2026): Test-Marker.** Vor allen Datei-Prüfungen verlangt das
+Skript einen frischen `supabase/tests/.suite-green` — den `run-all.mjs` bei grünem Lauf mit dem
+HEAD-SHA schreibt. Fehlt er oder gehört er zu einem anderen Commit, ist die Abnahme **rot**.
+Praktisch heißt das: **vor jedem Deploy einmal `node supabase/tests/run-all.mjs` grün fahren**,
+danach nichts mehr committen. Ein warnender Hinweis (kein Fehler) erscheint, wenn der Lauf lokal
+unvollständig war (Browser-Tests ohne Chromium) oder auf einem geänderten Arbeitsbaum lief.
+
 Exit 0 = bestanden, Exit 1 = nicht abgenommen. Bei Bestehen merkt sich das Skript den Fernstand in `app/tools/.deploy-main-tip` — daraus entsteht beim nächsten Lauf die Historienprüfung.
 
 **Die Live-URL prüft es bewusst nicht.** GitHub Pages liefert gecacht aus; ein Abruf dort beruhigt falsch. Wenn doch von Hand geprüft wird, immer mit Cache-Buster: `…/sw.js?p=356`.

@@ -1,0 +1,57 @@
+{
+  "target": "../supabase/tests/_suite-marker.mjs",
+  "test": "supabase/tests/deploy_marker_test.mjs",
+  "note": "A-05 schliesst die Luecke, dass bei roter Suite technisch nichts einen Deploy verhindert: ein gruener Lauf hinterlaesst .suite-green mit dem HEAD-SHA, deploy-verify.sh verweigert ohne gueltigen Marker die Abnahme. Diese Proben sichern, dass der Marker haelt, was er soll — vor allem, dass ein roter Lauf einen alten gruenen Marker WIRKLICH entfernt.",
+  "probes": [
+    {
+      "id": "DM1",
+      "pattern": "neighbour_guard",
+      "title": "ein roter Lauf laesst den alten gruenen Marker liegen",
+      "file": "../supabase/tests/_suite-marker.mjs",
+      "find": "    if (existsSync(p)) unlinkSync(p);",
+      "replace": "    if (existsSync(p)) { /* Entfernen deaktiviert */ }",
+      "expectTest": "B1 roter Lauf entfernt den Marker",
+      "history": "Genau das ist die Kernzusicherung des Pakets. Bleibt der Marker nach einem roten Lauf liegen, autorisiert er weiter einen Deploy, obwohl die Suite rot ist — die Sperre waere wirkungslos, ohne dass es auffiele."
+    },
+    {
+      "id": "DM2",
+      "pattern": "value_not_type",
+      "title": "ein unvollstaendiger Lauf meldet sich als vollstaendig",
+      "file": "../supabase/tests/_suite-marker.mjs",
+      "find": "    complete: skipped === 0,   /* lokal fast immer false: Browser-Tests ueberspringen ohne Chromium */",
+      "replace": "    complete: true,   /* lokal fast immer false: Browser-Tests ueberspringen ohne Chromium */",
+      "expectTest": "A3 complete=false, weil 22 uebersprungen",
+      "history": "'complete' unterscheidet den vollstaendigen CI-Lauf vom lokalen, bei dem die Browser-Tests fehlen. Immer true zu behaupten verwischt genau diesen Unterschied — deploy-verify koennte den unvollstaendigen Lauf nicht mehr als solchen kennzeichnen."
+    },
+    {
+      "id": "DM3",
+      "pattern": "data_lacks_var",
+      "title": "ein fehlender SHA wird zu einem leeren String statt null",
+      "file": "../supabase/tests/_suite-marker.mjs",
+      "find": "    sha: sha == null ? null : sha,",
+      "replace": "    sha: sha == null ? '' : sha,",
+      "expectTest": "E1 fehlender SHA → null im Marker, nicht \"\"",
+      "history": "Konnte der Lauf HEAD nicht bestimmen, ist der SHA eine Datenluecke, kein Wert. '' vorzutaeuschen wuerde deploy-verify einen scheinbar verwertbaren, in Wahrheit leeren Marker unterschieben. Datenluecke != Wert."
+    },
+    {
+      "id": "DM4",
+      "pattern": "value_not_type",
+      "title": "headSha liefert ausserhalb eines Repos einen leeren String statt null",
+      "file": "../supabase/tests/_suite-marker.mjs",
+      "find": "  return r.status === 0 ? r.stdout.trim() : null;",
+      "replace": "  return r.stdout.trim();",
+      "expectTest": "D4 headSha ausserhalb eines Repos → null",
+      "history": "Ohne die Status-Pruefung liefert ein fehlgeschlagenes git rev-parse '' zurueck. Der Marker traegt dann einen leeren SHA, den deploy-verify nicht mehr von einem echten unterscheidet — die Abnahme wuerde faelschlich durchgehen."
+    },
+    {
+      "id": "DM5",
+      "pattern": "direct",
+      "title": "ein unlesbarer Marker wirft, statt null zu liefern",
+      "file": "../supabase/tests/_suite-marker.mjs",
+      "find": "  catch { return null; }",
+      "replace": "  catch { throw new Error('marker unlesbar'); }",
+      "expectTest": "C2 unlesbarer Marker → null (kein Wurf)",
+      "history": "readMarker wird aus der Abnahme heraus aufgerufen. Wuerfe er bei einer beschaedigten Datei, riesse er die Pruefung ab, statt sie als 'kein verwertbarer Beleg' zu behandeln — ein harter Abbruch an einer Stelle, die fail-open sein muss."
+    }
+  ]
+}

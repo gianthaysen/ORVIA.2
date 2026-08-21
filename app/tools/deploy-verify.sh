@@ -33,6 +33,31 @@ if [ "${1:-}" != "--kein-fetch" ]; then
   git fetch origin --quiet || { rot "git fetch fehlgeschlagen — ohne Netz keine Aussage."; exit 2; }
 fi
 
+echo "══ 0 · Test-Marker (A-05) ══"
+# Ein gruener Suite-Lauf hinterlaesst supabase/tests/.suite-green mit dem
+# HEAD-SHA (run-all.mjs). Ohne diesen Marker — oder gehoert er zu einem anderen
+# Commit — ist NICHT belegt, dass die Tests fuer den auszuliefernden Stand
+# gruen waren. Das ist die technische Sperre, die den fehlenden PR-Statuscheck
+# ersetzt: ein roter Test blockiert damit den DEPLOY, nicht einen Merge.
+MARK_SUITE="supabase/tests/.suite-green"
+HEAD_SHA=$(git rev-parse HEAD 2>/dev/null)
+if [ ! -f "$MARK_SUITE" ]; then
+  rot "kein Test-Marker — erst  node supabase/tests/run-all.mjs  gruen fahren."
+else
+  read -r MSHA MCOMPLETE MDIRTY <<MARKEOF
+$(node -e 'const fs=require("fs");try{const m=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write((m.sha||"-")+" "+(m.complete===true)+" "+(m.dirty===true))}catch(e){process.stdout.write("- false false")}' "$MARK_SUITE" 2>/dev/null)
+MARKEOF
+  if [ "$MSHA" = "-" ] || [ -z "$MSHA" ]; then
+    rot "Test-Marker ohne SHA — Lauf konnte HEAD nicht bestimmen, nicht verwertbar."
+  elif [ "$MSHA" != "$HEAD_SHA" ]; then
+    rot "Test-Marker gehoert zu ${MSHA:0:7}, HEAD ist ${HEAD_SHA:0:7} — Suite erneut gruen fahren."
+  else
+    ok "Suite gruen fuer ${HEAD_SHA:0:7} belegt"
+    [ "$MCOMPLETE" = "true" ] || hinw "lokaler Lauf unvollstaendig (Browser-Tests uebersprungen) — die vollstaendige Pruefung ist die CI auf entwicklung."
+    [ "$MDIRTY" = "true" ] && hinw "Testlauf erfolgte auf einem geaenderten Arbeitsbaum — Block 3 vergleicht die ausgelieferten Dateien byteweise."
+  fi
+fi
+
 echo "══ 1 · Historie ══"
 # Der zuletzt abgenommene Stand steht in dieser Datei. Ist er kein Vorfahre
 # mehr, wurde origin/main force-gepusht — der Fall vom 17.08.

@@ -47,3 +47,6 @@ UPLOAD-github-*/
 _ZU-LOESCHEN/
 # Sicherung einer Parallelsitzung (Score v9), aus _dev/ herausgerettet.
 _sicherung-*/
+
+# A-05: lokaler Deploy-Marker (ephemer, pro Testlauf neu — gehoert nicht ins Repo)
+supabase/tests/.suite-green

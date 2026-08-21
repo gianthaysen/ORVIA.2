@@ -25,6 +25,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { updateMarker, headSha, treeDirty } from './_suite-marker.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -125,4 +126,19 @@ console.log('\n' + (failed.length + crashed.length === 0
     : '✅ GRÜN — alle ' + passed.length + ' Dateien geprüft, keine übersprungen.')
   : '❌ ROT — ' + (failed.length + crashed.length) + ' Datei(en) mit Problemen.'));
 
-process.exit(failed.length + crashed.length === 0 ? 0 : 1);
+/* ── A-05 · Deploy-Marker ─────────────────────────────────────────
+   Ein gruener Lauf hinterlaesst .suite-green mit dem HEAD-SHA; deploy-verify.sh
+   (Block 0) laesst ohne diesen Marker keine Abnahme zu. Ein roter Lauf entfernt
+   einen alten Marker, damit er keinen Deploy mehr autorisiert. Beobachter: das
+   Schreiben aendert am Testergebnis nichts, es geschieht nach der Auszaehlung. */
+const gruen = failed.length + crashed.length === 0;
+updateMarker({
+  dir: HERE,
+  green: gruen,
+  passed: passed.length,
+  skipped: skipped.length,
+  sha: gruen ? headSha(HERE) : null,
+  dirty: gruen ? treeDirty(HERE) : null
+});
+
+process.exit(gruen ? 0 : 1);

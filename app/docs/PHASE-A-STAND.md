@@ -1,6 +1,6 @@
 # Phase A — Stand
 
-**Letzte Aktualisierung:** 20.08.2026 (A-07, A-08, A-09) · **Quelle:** `plan/Band-1-Phasenplan-Detail.md` §A
+**Letzte Aktualisierung:** 21.08.2026 (A-05 abgeschlossen) · **Quelle:** `plan/Band-1-Phasenplan-Detail.md` §A
 **Umfang:** 13 Arbeitspakete, 127 h AP + 23 h Puffer = 150 h; korrigiert um +3 h aus dem
 Vorsprint A-S0 (§3) → **130 h AP**
 
@@ -26,7 +26,7 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **A-02** | B4-Resolver-Fix | 4 | ✅ | `8567f1e`; `engine_input_b4_profile_keys` 9/9 |
 | **A-03** | Deploy + Live-Abnahme | 12 | ⚠️ teilweise | live **v8-357** statt v8-353; DoD-Verstoß und Rest siehe §4 |
 | **A-04** | Gym-Bug-Retest | 4 | ✅ | 0035 live, Übung im laufenden Workout online gespeichert, Toast über dem Overlay |
-| **A-05** | CI + Branch-Protection | 17 | ⚠️ teilweise | CI grün (275 Dateien, 174 Proben); Force-Push serverseitig unmöglich und belegt; Test-PR siehe §4 |
+| **A-05** | CI + Branch-Protection | 17 | ✅ | CI grün; Force-Push serverseitig gesperrt und belegt; **Deploy-Marker** schließt die letzte Lücke: `run-all.mjs` schreibt bei grünem Lauf `.suite-green` (HEAD-SHA), `deploy-verify.sh` Block 0 verweigert ohne gültigen Marker die Abnahme. `deploy_marker_test` 20/20; 5 Mutationsproben. **Abweichung vom Wortlaut** (Test-PR-Merge-Gate → Deploy-Gate): §4 |
 | **A-06** | Ziel-SSOT Teil 1 | 16 | ✅ | `5241af3`, `af2d922`; Migration 0037; `goal_shadow_test` 50/50; 8 Mutationsproben; **live belegt** (§3) |
 | **A-07** | Zielwert im Onboarding erheben | 12 | ✅ | Feld im Ziel-Schritt; `onboarding_goal_value_test` 16/16; 6 Mutationsproben. **Abweichung vom Wortlaut:** Band 1 sah einen eigenen Schritt `goals_detail` vor. Umgesetzt kollidierte er mit vier Verträgen (`getNextStep` ist tier-gefiltert; „Personalization beeinflusst Essential nicht"). Das Feld sitzt deshalb im bestehenden Schritt „Dein Ziel" — gleiches Ergebnis für den Nutzer, kein aufgeweichter Vertrag. `goals_detail` bleibt für spätere Zieldetails frei. |
 | **A-08** | `goal-feasibility`-Leser | 8 | ✅ | `goal-feasibility-adapter.js` (Beobachter); `goal_feasibility_adapter_test` 20/20; 5 Mutationsproben; an den Renderpfad gehängt (`ORVIA._lastFeasibility`), kein Blocker. **Kern:** Kommensurabilitätsgate — Zielzeit (race_time) und Schwellenpace werden nicht gegeneinander gerechnet; nur FTP↔FTP, VO2max↔VO2max, Pace↔Pace. Zeit→Schwelle bleibt bewusst außen vor (Modell). |
@@ -86,7 +86,7 @@ dasselbe Ziel mit denselben Werten.
 
 ---
 
-## 4 · Zwei Lücken, unbeschönigt
+## 4 · Eine offene Lücke (A-03), eine geschlossene (A-05)
 
 ### A-03 · „kein Force-Push in der Historie" — verletzt
 
@@ -99,15 +99,30 @@ Nachweis in `GATE-A-NACHWEIS-BRANCHSCHUTZ.md`, alter Stand als Tag
 
 Ebenfalls offen: Smoke-Test für **Plan** und **Sync** am Gerät (Login und Workout sind belegt).
 
-### A-05 · „Roter Test blockiert Merge (Test-PR)" — nicht erfüllbar wie formuliert
+### A-05 · „Roter Test blockiert Merge (Test-PR)" — durch ein Deploy-Gate ersetzt (21.08.2026)
 
-Force-Push-Sperre: erfüllt und belegt. Der Test-PR setzt einen PR-Workflow voraus, den ORVIA
-nicht hat; erzwungene Statuschecks würden `git push origin main:entwicklung` blockieren.
-**Konsequenz: technisch hindert derzeit nichts daran, bei roter CI zu deployen.**
+Force-Push-Sperre: erfüllt und belegt. Der wörtliche Test-PR setzt einen PR-Merge-Workflow
+voraus, den ORVIA nicht hat; eine PR-Pflicht mit erzwungenem Statuscheck würde
+`git push origin main:entwicklung` blockieren, ohne einen der drei tatsächlich eingetretenen
+Vorfälle zu verhindern. Der Merge ist bei ORVIA nicht die Stelle, an der Schaden entsteht —
+**der Deploy ist es.** Deshalb sitzt die Sperre jetzt dort:
 
-Vorschlag (~2 h): `run-all.mjs` schreibt bei grünem Lauf einen Marker mit dem HEAD-SHA,
-`deploy-verify.sh` verweigert die Abnahme bei fehlendem oder fremdem Marker. Dann blockiert ein
-roter Test den **Deploy** — an der Stelle, an der Schaden entsteht.
+- `run-all.mjs` schreibt bei grünem Lauf `supabase/tests/.suite-green` mit dem HEAD-SHA,
+  einem `complete`-Kennzeichen (lokal false, weil Browser-Tests ohne Chromium überspringen)
+  und einem `dirty`-Kennzeichen. Ein **roter** Lauf **entfernt** einen alten Marker — sonst
+  autorisierte ein früherer grüner Lauf weiter einen Deploy.
+- `deploy-verify.sh` Block 0 verweigert die Abnahme, wenn der Marker fehlt oder zu einem
+  anderen Commit gehört, und warnt bei unvollständigem oder auf geändertem Baum gefahrenem Lauf.
+
+**Damit blockiert ein roter Test technisch den Deploy — nicht mehr nur prozedural.** Kern in
+`_suite-marker.mjs`, gedeckt von `deploy_marker_test` (20/20) und 5 Mutationsproben, die die
+Kernzusicherung „roter Lauf entfernt den Marker" scharf prüfen.
+
+**Ehrliche Restlücke:** Der Marker bindet an den HEAD-Commit. Ein grüner Lauf, dann eine
+**nicht committete** Änderung, dann Deploy — der Marker-SHA bleibt gültig. Diese Lücke fängt
+Block 3 (Byte-Vergleich der ausgelieferten Dateien), nicht der Marker; `dirty` macht den Fall
+im Abnahmeprotokoll sichtbar. Der PR-Workflow bleibt sinnvoll, sobald ein zweiter Entwickler
+mitarbeitet — heute erzeugte er bei einem Entwickler nur Reibung.
 
 ---
 
@@ -132,7 +147,7 @@ das Phasenende um einen Tag, unabhängig von allem anderen.
 | # | Kriterium | Stand |
 |---|---|---|
 | 1 | Live == lokal | ✅ und verschärft (Datei-, Schema-, Historien-Parität; Neufassung in `GATE-A-KRITERIUM-1-NEUFASSUNG.md`) |
-| 2 | Tests + Proben grün in CI, Branch-Protection aktiv | ⚠️ CI ✅, Force-Push-Sperre ✅ belegt, Test-PR siehe §4 |
+| 2 | Tests + Proben grün in CI, Branch-Protection aktiv | ✅ CI grün, Force-Push-Sperre belegt; roter Test blockiert jetzt **technisch den Deploy** (Deploy-Marker, §4). PR-Merge-Gate bewusst nicht — würde `main:entwicklung` blockieren |
 | 3 | `knowledge_targets` grün, kein roter Test | ✅ 275 Dateien, 0 rot |
 | 4 | Shadow-Log ≥ 14 Tage; `goals_detail` erhebt Zielwert | ⏳ Uhr läuft seit 20.08.; `goals_detail` offen (A-07) |
 | 5 | Engine-v2-Vergleichsreport | ⬜ (A-12) |
@@ -147,7 +162,7 @@ das Phasenende um einen Tag, unabhängig von allem anderen.
 2. **A-07** (`goals_detail`) — füllt Gate-A-Kriterium 4 zur Hälfte und liefert dem Shadow-Log
    echte Zielwerte, solange die Uhr ohnehin läuft
 3. **A-03 abschließen** — Smoke-Test Plan und Sync, Protokoll ablegen (15 min)
-4. **A-05 abschließen** — Marker-Mechanismus, DoD in Band 1 nachziehen (~2 h)
+4. ~~A-05 abschließen~~ — **erledigt 21.08.2026** (Deploy-Marker, §4); DoD-Nachtrag in Band 1
 5. A-08, A-09, dann A-12
 6. **A-13** als Letztes
 
