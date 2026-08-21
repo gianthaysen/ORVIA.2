@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/goal-feasibility-adapter.js",
+  "test": "supabase/tests/goal_feasibility_adapter_test.mjs",
+  "note": "A-08: der Adapter entscheidet, WAS ueberhaupt gegen WAS gerechnet wird. Faellt die Kommensurabilitaetspruefung aus, vergleicht er Zielzeit mit Schwellenpace — beide 'kleiner ist besser', das Ergebnis eine Prozentzahl ohne Bedeutung. Genau die Scheingenauigkeit, die der Bewerter selbst vermeidet.",
+  "probes": [
+    {
+      "id": "GFA1",
+      "pattern": "value_not_type",
+      "title": "verschiedene Dimensionen werden trotzdem gegeneinander gerechnet",
+      "file": "js/engine/goal-feasibility-adapter.js",
+      "find": "    if (zielDim !== perfDim)\n      return { skip: true, reason: 'metric_not_commensurable:' + zielDim + '_vs_' + perfDim };",
+      "replace": "    /* Pruefung entfernt */",
+      "expectTest": "A1 Zielzeit vs. Schwellenpace wird NICHT gebaut",
+      "history": "Der teuerste Ausfall: 6600 Sekunden Zielzeit gegen 300 s/km Schwellenpace ergibt eine plausibel aussehende Prozentzahl, die nichts misst."
+    },
+    {
+      "id": "GFA2",
+      "pattern": "fixture_masks",
+      "title": "eine Zielzeit bekommt heimlich die Dimension einer Schwellenpace",
+      "file": "js/engine/goal-feasibility-adapter.js",
+      "find": "    time: 'race_time', racetime: 'race_time', finishtime: 'race_time',",
+      "replace": "    time: 'threshold_pace', racetime: 'race_time', finishtime: 'race_time',",
+      "expectTest": "A5 dimensionOf trennt Leistung von Zeit",
+      "history": "Waere 'time' als threshold_pace gefuehrt, glichen sich Zielzeit und Pace zur selben Dimension — und die Sperre aus GFA1 liefe ins Leere."
+    },
+    {
+      "id": "GFA3",
+      "pattern": "neighbour_guard",
+      "title": "der Adapter wirft statt sauber zu ueberspringen (Beobachter wird Beteiligter)",
+      "file": "js/engine/goal-feasibility-adapter.js",
+      "find": "    try { built = buildInput(opts); }\n    catch (e) { return { evaluated: false, reason: 'build_threw', version: VERSION }; }",
+      "replace": "    built = buildInput(opts);",
+      "expectTest": "B6 ein werfendes Zielobjekt wird gefangen (evaluated:false, build_threw)",
+      "history": "Ein Beobachter, der werfen kann, kann den Aufrufer mitreissen. Genau das darf er nie."
+    },
+    {
+      "id": "GFA4",
+      "pattern": "data_lacks_var",
+      "title": "schwache Leistungsevidenz wird trotzdem als Messwert ausgegeben",
+      "file": "js/engine/goal-feasibility-adapter.js",
+      "find": "    if (sport === 'cycling' && s.ftpWatts > 0)",
+      "replace": "    if (sport === 'cycling')",
+      "expectTest": "B3b Sport „ok\", aber ohne Messwert (ftpWatts fehlt) → skip",
+      "history": "Ohne die Wertpruefung liefert der Adapter fuer eine nicht bewertbare Sportart einen Scheinwert — und die Dimensionpruefung urteilt ueber Rauschen."
+    },
+    {
+      "id": "GFA5",
+      "pattern": "value_not_type",
+      "title": "der Adapter erfindet ein eigenes Urteil statt das des Bewerters durchzureichen",
+      "file": "js/engine/goal-feasibility-adapter.js",
+      "find": "    return { evaluated: true, version: VERSION, status: res.status, result: res, input: built.input };",
+      "replace": "    return { evaluated: true, version: VERSION, status: 'within_modeled_corridor', result: res, input: built.input };",
+      "expectTest": "C2 überzogenes Ziel → outside_modeled_corridor",
+      "history": "Der Adapter ist ein Bote, kein Richter. Ueberschreibt er den Status, ist das Urteil des Bewerters wertlos."
+    }
+  ]
+}
