@@ -1,0 +1,37 @@
+{
+  "target": "js/engine/decision-log.js",
+  "test": "supabase/tests/decision_sink_health_test.mjs",
+  "note": "Der zentrale DB-Strom shadow_observation stand bei 0, weil die Senke asynchron schreibt und logDecision das Ergebnis verwarf (immer 'queued'). Ein dauerhaft scheiterndes Schreiben (CHECK-Constraint ohne Typ, 0033 nicht live) blieb unsichtbar. Diese Proben sichern die neue Sichtbarkeit gegen Rueckfall.",
+  "probes": [
+    {
+      "id": "DSH1",
+      "pattern": "data_lacks_var",
+      "title": "das asynchrone Insert-Ergebnis wird wieder verworfen (der Originalbug)",
+      "file": "js/engine/decision-log.js",
+      "find": "        r.then(function (ok) { _recordHealth(ok !== false, ok === false ? 'sink_false' : null); },",
+      "replace": "        r.then(function (ok) { /* Ergebnis verworfen */ },",
+      "expectTest": "A2 attempted=1, failed=1, consecutiveFailures=1",
+      "history": "Genau dieses Verwerfen (r.then(noop,noop)) machte den stillen Senken-Tod unsichtbar: 'queued' fuer immer, 0 Zeilen, niemand sah es."
+    },
+    {
+      "id": "DSH2",
+      "pattern": "neighbour_guard",
+      "title": "der Fehleralarm steigt nicht mehr (consecutiveFailures bleibt 0)",
+      "file": "js/engine/decision-log.js",
+      "find": "    else { _health.failed++; _health.consecutiveFailures++; _health.lastReason = reason || 'sink_false'; }",
+      "replace": "    else { _health.failed++; _health.lastReason = reason || 'sink_false'; }",
+      "expectTest": "A4 der Alarm STEIGT (consecutiveFailures=3, succeeded=0)",
+      "history": "Ohne den steigenden Zaehler laesst sich ein DAUERHAFT scheiterndes Schreiben nicht von einem einzelnen Ausrutscher unterscheiden — die Sichtbarkeit waere zahnlos."
+    },
+    {
+      "id": "DSH3",
+      "pattern": "neighbour_guard",
+      "title": "Erfolg setzt den Alarm nicht mehr zurueck",
+      "file": "js/engine/decision-log.js",
+      "find": "    if (ok) { _health.succeeded++; _health.consecutiveFailures = 0; }",
+      "replace": "    if (ok) { _health.succeeded++; }",
+      "expectTest": "B1 succeeded steigt, consecutiveFailures faellt auf 0",
+      "history": "Faellt der Alarm nach einem erfolgreichen Schreiben nicht auf 0, wuerde ein einmaliger alter Fehler dauerhaft Alarm schlagen — Fehlalarm statt Signal."
+    }
+  ]
+}
