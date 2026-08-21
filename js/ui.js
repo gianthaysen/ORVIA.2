@@ -7839,6 +7839,19 @@ function renderGMPlan(){
      Oeffnen der Rueckmeldung erneut zu rechnen — das waere nicht nur teurer,
      sondern koennte auch abweichen (zwischenzeitlich erfasster Wert). */
   try{if(window.ORVIA)ORVIA._lastPlanPerf=_perf;}catch(_){ }
+  /* A-08 (2026-08-20): Machbarkeit BEOBACHTEN, nicht steuern. Der Adapter liest
+     das Hauptziel (mainGoalOf) und das eben aufgeloeste Leistungsbild, ruft den
+     Bewerter und legt das Urteil unter ORVIA._lastFeasibility ab. Kein Blocker,
+     kein Einfluss auf den Plan — ein zweiter, stiller Kanal fuer B-01/B-02. */
+  try{
+    if(window.ORVIA&&ORVIA.goalFeasibilityAdapter&&typeof mainGoalOf==='function'){
+      var _feasG=mainGoalOf();
+      ORVIA._lastFeasibility=ORVIA.goalFeasibilityAdapter.observe({
+        goal:_feasG, resolvedPerformance:_perf, today:(typeof todayStr==='function'?todayStr():null),
+        level:(typeof userLevel==='function'?userLevel():null)
+      });
+    }
+  }catch(_fe){ }
   /* v8-310a: Tageszustands-Konfiguration EINMAL je Render aufloesen. */
   var _dayCfg=null;
   try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
