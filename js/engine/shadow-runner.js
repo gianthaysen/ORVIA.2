@@ -72,6 +72,17 @@
      0,5 ms gegen die Frische der Gate-Belege zu tauschen ist der falsche Handel.
      Sollte die Last je real werden, gehört sie in den Resolver (eine gemeinsame
      Lastserie für alle Leser), nicht in eine Sonder-Invalidierung hier. */
+  /* Ampel-Extraktion + Vergleich — die EINE Quelle fuer Tageseintrag UND agree.
+     buildTrainingDecision (v1) liefert die Ampel als `dayState`, NICHT `state`;
+     decision-engine-v2 ebenso als `dayState`. Frueher las die agree-Zeile das
+     rohe v1.state (undefined) und war deshalb IMMER null — comparableDays blieb
+     0, obwohl v1 und v2 vorlagen (5 Laeufe, 0 vergleichbar). Pur, testbar. */
+  function _state(o) { return o ? (o.state || o.dayState || null) : null; }
+  function _compare(v1, v2) {
+    var s1 = _state(v1), s2 = v2 ? (v2.dayState || null) : null;
+    return { v1state: s1, v2state: s2, agree: (s1 && s2) ? (s1 === s2) : null };
+  }
+
   function run() {
     var P = O.perf || { now: function () { return Date.now(); }, mark: function () {} };
     var _t0 = P.now();
@@ -85,23 +96,25 @@
       var input = buildInput();
       P.mark('engineShadow.run: buildInput (incl. own 28d load loop)', _ti);
       var entry;
+      var s1 = _state(v1);
       if (input === null) {
         /* Batch 0 — FAIL CLOSED: Resolver fehlt ⇒ keine v2-Bewertung, ehrlicher
            BLOCKED-Eintrag (state null, nicht vergleichbar). Niemals GREEN raten. */
         entry = {
           date: today, ts: Date.now(),
-          v1: v1 ? { state: v1.state || v1.dayState || null, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
+          v1: v1 ? { state: s1, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
           v2: { state: null, action: null, confidence: null, blocked: 'training_input_resolver_missing', reasons: [] },
           agree: null,
           missing: ['training_input_resolver_missing']
         };
       } else {
       var v2 = O.decisionEngineV2.evaluate(input);
+      var cmp = _compare(v1, v2);
       entry = {
         date: today, ts: Date.now(),
-        v1: v1 ? { state: v1.state || v1.dayState || null, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
-        v2: { state: v2.dayState || null, action: v2.action || null, confidence: v2.confidence || null, reasons: (v2.reasons || []).slice(0, 4) },
-        agree: (v1 && v1.state && v2.dayState) ? (v1.state === v2.dayState) : null,
+        v1: v1 ? { state: cmp.v1state, action: v1.todayAction || null, score: v1.score != null ? v1.score : null } : null,
+        v2: { state: cmp.v2state, action: v2.action || null, confidence: v2.confidence || null, reasons: (v2.reasons || []).slice(0, 4) },
+        agree: cmp.agree,
         missing: (input._shadowMissing || []).concat(v2.missingData || []).slice(0, 6)
       };
       }
@@ -315,5 +328,6 @@
 
   O.engineShadow = { run: run, report: report, buildInput: buildInput, clearLog: clearLog, _key: _key,
     runWeekShadow: runWeekShadow, weekReport: weekReport, clearWeekLog: clearWeekLog, _wkey: _wkey,
-    gateReport: gateReport, lastWeek: lastWeek, buildWeekNow: buildWeekNow };
+    gateReport: gateReport, lastWeek: lastWeek, buildWeekNow: buildWeekNow,
+    _compare: _compare, _state: _state };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
