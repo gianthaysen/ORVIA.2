@@ -25,7 +25,6 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { updateMarker, headSha, treeDirty } from './_suite-marker.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -132,13 +131,19 @@ console.log('\n' + (failed.length + crashed.length === 0
    einen alten Marker, damit er keinen Deploy mehr autorisiert. Beobachter: das
    Schreiben aendert am Testergebnis nichts, es geschieht nach der Auszaehlung. */
 const gruen = failed.length + crashed.length === 0;
-updateMarker({
-  dir: HERE,
-  green: gruen,
-  passed: passed.length,
-  skipped: skipped.length,
-  sha: gruen ? headSha(HERE) : null,
-  dirty: gruen ? treeDirty(HERE) : null
-});
+/* Der Marker ist Beobachter: ein fehlendes Modul, ein Nicht-Repo-Verzeichnis
+   oder ein Schreibfehler darf aus einem gruenen Lauf NIE einen roten machen.
+   Deshalb dynamischer Import in try/catch. */
+try {
+  const M = await import('./_suite-marker.mjs');
+  M.updateMarker({
+    dir: HERE, green: gruen,
+    passed: passed.length, skipped: skipped.length,
+    sha: gruen ? M.headSha(HERE) : null,
+    dirty: gruen ? M.treeDirty(HERE) : null
+  });
+} catch (e) {
+  if (!quiet) console.error('Hinweis: Deploy-Marker nicht geschrieben (' + (e && e.message) + ')');
+}
 
 process.exit(gruen ? 0 : 1);

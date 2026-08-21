@@ -25,7 +25,7 @@ const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  �
 
 const TODAY = '2026-08-20';
 /* Datum n Tage nach TODAY. */
-function plus(n) { const d = new Date('2026-08-20T00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function plus(n) { const d = new Date(Date.UTC(2026, 7, 20)); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }  /* UTC-stabil: lokale Zeitzone darf die Datumsgrenzen nicht um einen Tag verschieben */
 
 /* ---------- A · Die Phase folgt dem Datum ---------- */
 console.log('\nA · Ableitung');

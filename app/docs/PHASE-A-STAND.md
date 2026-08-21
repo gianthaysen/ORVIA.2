@@ -118,6 +118,20 @@ Vorfälle zu verhindern. Der Merge ist bei ORVIA nicht die Stelle, an der Schade
 `_suite-marker.mjs`, gedeckt von `deploy_marker_test` (20/20) und 5 Mutationsproben, die die
 Kernzusicherung „roter Lauf entfernt den Marker" scharf prüfen.
 
+**Bei der ersten vollen Suite auf Gians Rechner (270/2/7) fand der Marker prompt zwei rote
+Dateien — genau seine Aufgabe:**
+
+1. `run_all_reporting` — der Reporting-Test kopiert nur `run-all.mjs` in ein Temp-Verzeichnis;
+   der neue statische `import './_suite-marker.mjs'` ließ den Runner dort abstürzen. Behoben:
+   der Marker-Schritt ist jetzt **fail-open** (dynamischer Import in `try/catch`) — ein fehlendes
+   Modul oder ein Schreibfehler macht aus einem grünen Lauf nie einen roten. Dieselbe
+   Beobachter-Disziplin, die der Marker gegenüber dem Deploy einhält.
+2. `goal_taper_resolver` (A-09) — der Test-Helfer `plus()` baute Daten über `new Date('…T00:00')`
+   (lokal geparst) und `toISOString()` (UTC); in jeder Zeitzone mit positivem Offset (MESZ) verschob
+   das jede Datumsgrenze um einen Tag. **Grün in der UTC-CI, rot auf dem Mac — eine latente
+   Falsch-Grün.** Der Resolver ist korrekt; `plus()` rechnet jetzt in UTC (`Date.UTC` + `setUTCDate`).
+   Unter `TZ=Europe/Berlin` und `TZ=UTC` beide 23/23.
+
 **Ehrliche Restlücke:** Der Marker bindet an den HEAD-Commit. Ein grüner Lauf, dann eine
 **nicht committete** Änderung, dann Deploy — der Marker-SHA bleibt gültig. Diese Lücke fängt
 Block 3 (Byte-Vergleich der ausgelieferten Dateien), nicht der Marker; `dirty` macht den Fall
