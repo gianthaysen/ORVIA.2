@@ -1,0 +1,37 @@
+{
+  "target": "js/engine/shadow-runner.js",
+  "test": "supabase/tests/engine_shadow_compare_test.mjs",
+  "note": "A-12-Blocker (live 2026-08-21): der Engine-v2-Shadow-Runner lief taeglich, aber agree war IMMER null, weil die Vergleichszeile das rohe v1.state (undefined) statt v1.dayState las. comparableDays blieb 0 → S1 (>=14 Tage, Gate-A #5) unerreichbar. Diese Proben sichern die pure Vergleichseinheit gegen genau diesen Rueckfall.",
+  "probes": [
+    {
+      "id": "ESR1",
+      "pattern": "value_not_type",
+      "title": "die Ampel-Extraktion liest wieder nur v1.state (der Originalbug)",
+      "file": "js/engine/shadow-runner.js",
+      "find": "  function _state(o) { return o ? (o.state || o.dayState || null) : null; }",
+      "replace": "  function _state(o) { return o ? (o.state || null) : null; }",
+      "expectTest": "B1 v1.dayState==v2.dayState → agree TRUE (vorher faelschlich null)",
+      "history": "Genau dieser Feldname-Fehler liess 5 Live-Laeufe mit 0 vergleichbaren Tagen zurueck. Ohne den dayState-Fallback ist v1 wieder unlesbar und die Shadow-Uhr zaehlt nie."
+    },
+    {
+      "id": "ESR2",
+      "pattern": "neighbour_guard",
+      "title": "agree wird berechnet, obwohl ein Zustand fehlt (Datenluecke = Wert)",
+      "file": "js/engine/shadow-runner.js",
+      "find": "    return { v1state: s1, v2state: s2, agree: (s1 && s2) ? (s1 === s2) : null };",
+      "replace": "    return { v1state: s1, v2state: s2, agree: (s1 === s2) };",
+      "expectTest": "C1 v1 fehlt → agree null",
+      "history": "Ohne die Anwesenheitspruefung wuerde ein fehlendes v1 als 'stimmt nicht ueberein' (false) gezaehlt statt als 'nicht vergleichbar' (null) — das verfaelscht die Abweichungsquote des Gates."
+    },
+    {
+      "id": "ESR3",
+      "pattern": "value_not_type",
+      "title": "die v2-Seite liest wieder v2.state statt v2.dayState",
+      "file": "js/engine/shadow-runner.js",
+      "find": "    var s1 = _state(v1), s2 = v2 ? (v2.dayState || null) : null;",
+      "replace": "    var s1 = _state(v1), s2 = v2 ? (v2.state || null) : null;",
+      "expectTest": "D1 echter v1(dayState)+v2 → vergleichbar, agree true",
+      "history": "decision-engine-v2 liefert die Ampel als dayState. Liest der Vergleich v2.state, ist auch die v2-Seite unlesbar — derselbe Fehlerkopf wie bei v1, nur auf der anderen Seite."
+    }
+  ]
+}

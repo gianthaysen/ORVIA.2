@@ -164,7 +164,7 @@ das Phasenende um einen Tag, unabhängig von allem anderen.
 | 2 | Tests + Proben grün in CI, Branch-Protection aktiv | ✅ CI grün, Force-Push-Sperre belegt; roter Test blockiert jetzt **technisch den Deploy** (Deploy-Marker, §4). PR-Merge-Gate bewusst nicht — würde `main:entwicklung` blockieren |
 | 3 | `knowledge_targets` grün, kein roter Test | ✅ 275 Dateien, 0 rot |
 | 4 | Shadow-Log ≥ 14 Tage; `goals_detail` erhebt Zielwert | ⏳ Uhr läuft seit 20.08.; `goals_detail` offen (A-07) |
-| 5 | Engine-v2-Vergleichsreport | ⬜ (A-12) |
+| 5 | Engine-v2-Vergleichsreport | ⬜ (A-12) — **Blocker gefunden 21.08.:** Shadow-Runner lief, aber `agree` war immer null (v1-Ampel als `dayState`, Vergleich las `v1.state`); `comparableDays` blieb 0, S1 unerreichbar. Fix live mit v8-360 (`engine_shadow_compare` 13/13, 3 Proben) — die 14-Tage-Uhr startet mit dem ersten Check-in **nach** dem Deploy |
 | 6 | Gewerbeschein | ⬜ (A-10) |
 | 7 | Deploy-Checkliste angewendet | ✅ viermal |
 
