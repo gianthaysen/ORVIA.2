@@ -47,6 +47,10 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **Schema-Parität** (110 → 113 Objekte) | Code und Instanz liefen auseinander, niemand prüfte es |
 | **Score-v9-Widerspruch** | 87→83 und 87→94: beide korrekt, verschiedene Größen |
 | **Login-Diagnose** | Ursache eingegrenzt (rundreisegebunden), Umsetzung bewusst vertagt |
+| **Engine-v2-Shadow `agree`-Bug** (21.08.) | `comparableDays` blieb 0 → Gate-A #5-Uhr zählte nie. Feldname-Mismatch (v1 liefert `dayState`, Vergleich las `v1.state`). Gefixt, v8-360, `engine_shadow_compare` 13/13 |
+| **Stiller Senken-Tod sichtbar gemacht** (21.08.) | Senke verwarf das async-Insert-Ergebnis → dauerhaftes Scheitern unsichtbar. `decisionLog.sinkHealth()` mit `consecutiveFailures`; `decision_sink_health` 11/11 |
+| **0033 wahrscheinlich nicht live** (21.08.) | 3 DB-Ströme (`shadow_observation`/`prediction_record`/`prediction_evaluation`) scheitern still, weil der CHECK die Typen nicht kennt. Diagnose-SQL abgelegt; braucht Live-Einspielung |
+| **Schema-Paritätscheck deckt jetzt Indizes** (21.08.) | `gen-live-check` prüfte nur Tabellen/Spalten — 0033s Index blieb unsichtbar (wie 0035 die Spalte). Jetzt 62 Indizes geprüft, `live_schema_parity` 15/15 |
 
 ---
 
