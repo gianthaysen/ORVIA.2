@@ -11,10 +11,9 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 50 Tabellen + 63 Spalten = 113 Prüfungen.
--- Bewusst NICHT geprüft (kein Zugriff über information_schema in dieser Form):
--- Indizes, Constraints, Policies, Funktionen. Für Funktionen und RLS gibt es
--- die Blöcke A und C in _live-check-bloecke.sql.
+-- Umfang: 50 Tabellen + 63 Spalten + 62 Indizes = 175 Prüfungen.
+-- Bewusst NICHT geprüft: Constraints, Policies, Funktionen. Für Funktionen und
+-- RLS gibt es die Blöcke A und C in _live-check-bloecke.sql.
 -- ============================================================
 
 with erwartet(migration, art, tabelle, spalte) as (values
@@ -130,7 +129,69 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0035','spalte','workout_sets','imported_at'),
   ('0035','spalte','workout_sets','recognition_probability'),
   ('0035','spalte','workout_sets','source'),
-  ('0035','spalte','workout_sets','wkt_step_index')
+  ('0035','spalte','workout_sets','wkt_step_index'),
+  ('0009','index','activities_client_uniq',''),
+  ('0009','index','activities_source_uniq',''),
+  ('0009','index','activities_user_started_idx',''),
+  ('0009','index','activities_workout_uniq',''),
+  ('0019','index','connected_devices_uniq',''),
+  ('0017','index','daily_checkins_type_uniq',''),
+  ('0002','index','daily_checkins_user_date_idx',''),
+  ('0019','index','daily_energy_expenditure_uniq',''),
+  ('0019','index','data_providers_user_type_uniq',''),
+  ('0022','index','dee_user_date_idx',''),
+  ('0019','index','device_capabilities_uniq',''),
+  ('0032','index','engine_decision_log_parent_idx',''),
+  ('0033','index','engine_decision_log_type_idx',''),
+  ('0032','index','engine_decision_log_user_idx',''),
+  ('0032','index','engine_decision_log_week_idx',''),
+  ('0008','index','exercise_muscles_uniq',''),
+  ('0003','index','exercises_system_idx',''),
+  ('0003','index','exercises_user_idx',''),
+  ('0002','index','fixed_schedule_user_idx',''),
+  ('0037','index','goal_shadow_log_user_time_idx',''),
+  ('0019','index','metric_anomalies_open_idx',''),
+  ('0019','index','profile_metric_settings_uniq',''),
+  ('0019','index','provider_credentials_uniq',''),
+  ('0017','index','readiness_baselines_metric_uniq',''),
+  ('0002','index','readiness_components_score_idx',''),
+  ('0002','index','readiness_components_user_idx',''),
+  ('0017','index','readiness_scores_day_uniq',''),
+  ('0002','index','readiness_scores_user_date_idx',''),
+  ('0035','index','swe_activity_idx',''),
+  ('0035','index','swe_garmin_workout_uniq',''),
+  ('0035','index','swe_occurrence_idx',''),
+  ('0002','index','training_load_client_uniq',''),
+  ('0002','index','training_load_ext_uniq',''),
+  ('0002','index','training_load_user_date_idx',''),
+  ('0028','index','ums_user_metric_date_idx',''),
+  ('0014','index','user_constraints_client_uniq',''),
+  ('0014','index','user_constraints_user_idx',''),
+  ('0031','index','user_feature_flags_flag_idx',''),
+  ('0031','index','user_feature_flags_user_idx',''),
+  ('0002','index','user_goals_client_uniq',''),
+  ('0002','index','user_goals_user_idx',''),
+  ('0019','index','user_metrics_date_idx',''),
+  ('0019','index','user_metrics_lookup_idx',''),
+  ('0019','index','user_metrics_source_record_uniq',''),
+  ('0002','index','user_sports_uniq',''),
+  ('0003','index','user_training_plans_user_idx',''),
+  ('0030','index','uwp_user_week_idx',''),
+  ('0002','index','weekly_availability_uniq',''),
+  ('0004','index','workout_exercises_client_uniq',''),
+  ('0003','index','workout_exercises_session_idx',''),
+  ('0003','index','workout_exercises_uniq',''),
+  ('0004','index','workout_exercises_user_idx',''),
+  ('0003','index','workout_sessions_client_uniq',''),
+  ('0004','index','workout_sessions_one_active',''),
+  ('0004','index','workout_sessions_status_idx',''),
+  ('0003','index','workout_sessions_user_date_idx',''),
+  ('0004','index','workout_sets_client_uniq',''),
+  ('0003','index','workout_sets_exercise_idx',''),
+  ('0035','index','workout_sets_external_uniq',''),
+  ('0035','index','workout_sets_import_status_idx',''),
+  ('0003','index','workout_sets_uniq',''),
+  ('0004','index','workout_sets_user_idx','')
 )
 select e.migration, e.art, e.tabelle, e.spalte
   from erwartet e
@@ -141,4 +202,7 @@ select e.migration, e.art, e.tabelle, e.spalte
          select 1 from information_schema.columns c
           where c.table_schema='public' and c.table_name = e.tabelle
             and c.column_name = e.spalte))
+    or (e.art = 'index' and not exists (
+         select 1 from pg_indexes i
+          where i.schemaname='public' and i.indexname = e.tabelle))
  order by e.migration, e.tabelle, e.spalte;

@@ -67,6 +67,16 @@ ok('A5 auch die zweite 0035-Spalte (Planseite)',
   befund.spalten.has('training_plan_exercises.target_weight_kg'));
 ok('A6 eine frühe Tabelle aus 0002 fehlt nicht', befund.tabellen.has('user_profiles'));
 
+/* Kanarienvogel Nr. 2: 0033 legte einen Index an, der bis v8-360 UNGEPRUEFT
+   blieb — dadurch scheiterten drei DB-Stroeme (shadow_observation,
+   prediction_record, prediction_evaluation) still. Faellt die Index-Extraktion
+   je aus, meldet A7 es beim Namen. */
+ok('A7 Indizes werden erkannt', befund.indizes && befund.indizes.size >= 20,
+  (befund.indizes ? befund.indizes.size : 0) + ' Indizes');
+ok('A8 der 0033-Index steht in der Erwartungsliste (der stille-Stroeme-Fall)',
+  befund.indizes && befund.indizes.has('engine_decision_log_type_idx'),
+  '0033 · engine_decision_log_type_idx');
+
 /* ---------- B · Kein fremdes Schema in der Liste ---------- */
 /* 0002 enthält `create table private.app_state_backup` in einem execute-String.
    Ohne Schema-Unterscheidung landete `private` als Tabellenname in der Liste —

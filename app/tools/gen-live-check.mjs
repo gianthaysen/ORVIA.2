@@ -46,6 +46,7 @@ export function ausMigrationen(verzeichnis) {
   const dateien = readdirSync(verzeichnis).filter(f => f.endsWith('.sql')).sort();
   const tabellen = new Map();   // tabelle -> migration (erste Nennung)
   const spalten = new Map();    // "tabelle.spalte" -> migration
+  const indizes = new Map();    // indexname -> migration (0033 legte einen an, ungeprueft)
 
   for (const datei of dateien) {
     const nr = (datei.match(/^(\d{4})/) || [null, datei])[1];
@@ -78,12 +79,28 @@ export function ausMigrationen(verzeichnis) {
         if (!spalten.has(key)) spalten.set(key, nr);
       }
     }
+
+    /* create [unique] index [concurrently] [if not exists] name on [schema.]table
+       WARUM NEU: Der Generator pruefte bisher nur Tabellen/Spalten; ein Index
+       (oder Constraint) einer Migration blieb ungeprueft. Genau daran ist 0033
+       durchgerutscht: der Index engine_decision_log_type_idx fehlte in der
+       Produktion, der Paritaetscheck sah es nicht, und drei DB-Stroeme
+       scheiterten still. Ein Index ist das verlaesslichste Signal — pg_indexes
+       ist per Name abfragbar. Index eines NICHT-public-Objekts wird uebersprungen
+       (er stuende sonst dauerhaft faelschlich als „fehlt"). */
+    for (const m of sql.matchAll(/create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?\s+on\s+(?:only\s+)?(?:"?([a-z_][a-z0-9_]*)"?\s*\.\s*)?"?[a-z_][a-z0-9_]*"?/gi)) {
+      const idx = m[1].toLowerCase();
+      const schema = (m[2] || NUR_SCHEMA).toLowerCase();
+      if (schema !== NUR_SCHEMA) continue;
+      if (!indizes.has(idx)) indizes.set(idx, nr);
+    }
   }
-  return { tabellen, spalten, dateien };
+  return { tabellen, spalten, indizes, dateien };
 }
 
 /* ---------- SQL bauen ---------- */
-export function baueSql({ tabellen, spalten, dateien }) {
+export function baueSql({ tabellen, spalten, indizes, dateien }) {
+  const idx = indizes || new Map();
   const zeilen = [];
   for (const [t, nr] of [...tabellen].sort((a, b) => a[0].localeCompare(b[0])))
     zeilen.push(`  ('${nr}','tabelle','${t}','')`);
@@ -91,6 +108,8 @@ export function baueSql({ tabellen, spalten, dateien }) {
     const [t, s] = k.split('.');
     zeilen.push(`  ('${nr}','spalte','${t}','${s}')`);
   }
+  for (const [name, nr] of [...idx].sort((a, b) => a[0].localeCompare(b[0])))
+    zeilen.push(`  ('${nr}','index','${name}','')`);
 
   return `-- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
@@ -105,10 +124,9 @@ export function baueSql({ tabellen, spalten, dateien }) {
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: ${tabellen.size} Tabellen + ${spalten.size} Spalten = ${tabellen.size + spalten.size} Prüfungen.
--- Bewusst NICHT geprüft (kein Zugriff über information_schema in dieser Form):
--- Indizes, Constraints, Policies, Funktionen. Für Funktionen und RLS gibt es
--- die Blöcke A und C in _live-check-bloecke.sql.
+-- Umfang: ${tabellen.size} Tabellen + ${spalten.size} Spalten + ${idx.size} Indizes = ${tabellen.size + spalten.size + idx.size} Prüfungen.
+-- Bewusst NICHT geprüft: Constraints, Policies, Funktionen. Für Funktionen und
+-- RLS gibt es die Blöcke A und C in _live-check-bloecke.sql.
 -- ============================================================
 
 with erwartet(migration, art, tabelle, spalte) as (values
@@ -123,6 +141,9 @@ select e.migration, e.art, e.tabelle, e.spalte
          select 1 from information_schema.columns c
           where c.table_schema='public' and c.table_name = e.tabelle
             and c.column_name = e.spalte))
+    or (e.art = 'index' and not exists (
+         select 1 from pg_indexes i
+          where i.schemaname='public' and i.indexname = e.tabelle))
  order by e.migration, e.tabelle, e.spalte;
 `;
 }
@@ -145,11 +166,12 @@ if (process.argv[1] && process.argv[1].endsWith('gen-live-check.mjs')) {
       process.exit(1);
     }
     console.log('✅ _live-check.sql ist auf dem Stand der Migrationen ('
-      + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten).');
+      + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten, ' + befund.indizes.size + ' Indizes).');
   } else {
     writeFileSync(OUT, sql, 'utf8');
     console.log('geschrieben: supabase/tests/_live-check.sql — '
       + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten, '
+      + befund.indizes.size + ' Indizes, '
       + befund.dateien.length + ' Migrationsdateien gelesen.');
   }
 }
