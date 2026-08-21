@@ -47,6 +47,7 @@ export function ausMigrationen(verzeichnis) {
   const tabellen = new Map();   // tabelle -> migration (erste Nennung)
   const spalten = new Map();    // "tabelle.spalte" -> migration
   const indizes = new Map();    // indexname -> migration (0033 legte einen an, ungeprueft)
+  const rls = new Map();        // tabelle -> migration (RLS aktiviert; aus = jeder liest fremde Daten)
 
   for (const datei of dateien) {
     const nr = (datei.match(/^(\d{4})/) || [null, datei])[1];
@@ -94,13 +95,27 @@ export function ausMigrationen(verzeichnis) {
       if (schema !== NUR_SCHEMA) continue;
       if (!indizes.has(idx)) indizes.set(idx, nr);
     }
+
+    /* alter table [public.]name enable row level security
+       WARUM: RLS ist die Zugriffskontrolle. Ist sie auf einer Nutzerdaten-
+       Tabelle in der Produktion NICHT aktiv (Drift), liest jeder angemeldete
+       Nutzer fremde Daten — die gefaehrlichste stille Drift ueberhaupt. Kein
+       `disable` in der Kette (append-only), die dynamische format()-Variante
+       traegt kein literales `[a-z_]+` und wird darum uebersprungen. */
+    for (const m of sql.matchAll(/alter\s+table\s+(?:only\s+)?(?:"?([a-z_][a-z0-9_]*)"?\s*\.\s*)?"?([a-z_][a-z0-9_]*)"?\s+enable\s+row\s+level\s+security/gi)) {
+      const schema = (m[1] || NUR_SCHEMA).toLowerCase();
+      const t = m[2].toLowerCase();
+      if (schema !== NUR_SCHEMA) continue;
+      if (!rls.has(t)) rls.set(t, nr);
+    }
   }
-  return { tabellen, spalten, indizes, dateien };
+  return { tabellen, spalten, indizes, rls, dateien };
 }
 
 /* ---------- SQL bauen ---------- */
-export function baueSql({ tabellen, spalten, indizes, dateien }) {
+export function baueSql({ tabellen, spalten, indizes, rls, dateien }) {
   const idx = indizes || new Map();
+  const rl = rls || new Map();
   const zeilen = [];
   for (const [t, nr] of [...tabellen].sort((a, b) => a[0].localeCompare(b[0])))
     zeilen.push(`  ('${nr}','tabelle','${t}','')`);
@@ -110,6 +125,8 @@ export function baueSql({ tabellen, spalten, indizes, dateien }) {
   }
   for (const [name, nr] of [...idx].sort((a, b) => a[0].localeCompare(b[0])))
     zeilen.push(`  ('${nr}','index','${name}','')`);
+  for (const [t, nr] of [...rl].sort((a, b) => a[0].localeCompare(b[0])))
+    zeilen.push(`  ('${nr}','rls','${t}','')`);
 
   return `-- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
@@ -124,9 +141,9 @@ export function baueSql({ tabellen, spalten, indizes, dateien }) {
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: ${tabellen.size} Tabellen + ${spalten.size} Spalten + ${idx.size} Indizes = ${tabellen.size + spalten.size + idx.size} Prüfungen.
--- Bewusst NICHT geprüft: Constraints, Policies, Funktionen. Für Funktionen und
--- RLS gibt es die Blöcke A und C in _live-check-bloecke.sql.
+-- Umfang: ${tabellen.size} Tabellen + ${spalten.size} Spalten + ${idx.size} Indizes + ${rl.size} RLS = ${tabellen.size + spalten.size + idx.size + rl.size} Prüfungen.
+-- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
+-- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
 
 with erwartet(migration, art, tabelle, spalte) as (values
@@ -144,6 +161,9 @@ select e.migration, e.art, e.tabelle, e.spalte
     or (e.art = 'index' and not exists (
          select 1 from pg_indexes i
           where i.schemaname='public' and i.indexname = e.tabelle))
+    or (e.art = 'rls' and not exists (
+         select 1 from pg_tables p
+          where p.schemaname='public' and p.tablename = e.tabelle and p.rowsecurity = true))
  order by e.migration, e.tabelle, e.spalte;
 `;
 }
@@ -166,12 +186,12 @@ if (process.argv[1] && process.argv[1].endsWith('gen-live-check.mjs')) {
       process.exit(1);
     }
     console.log('✅ _live-check.sql ist auf dem Stand der Migrationen ('
-      + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten, ' + befund.indizes.size + ' Indizes).');
+      + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten, ' + befund.indizes.size + ' Indizes, ' + befund.rls.size + ' RLS).');
   } else {
     writeFileSync(OUT, sql, 'utf8');
     console.log('geschrieben: supabase/tests/_live-check.sql — '
       + befund.tabellen.size + ' Tabellen, ' + befund.spalten.size + ' Spalten, '
-      + befund.indizes.size + ' Indizes, '
+      + befund.indizes.size + ' Indizes, ' + befund.rls.size + ' RLS-Tabellen, '
       + befund.dateien.length + ' Migrationsdateien gelesen.');
   }
 }

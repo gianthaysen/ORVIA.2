@@ -77,6 +77,13 @@ ok('A8 der 0033-Index steht in der Erwartungsliste (der stille-Stroeme-Fall)',
   befund.indizes && befund.indizes.has('engine_decision_log_type_idx'),
   '0033 · engine_decision_log_type_idx');
 
+/* RLS-Aktiv-Pruefung: aus = jeder liest fremde Daten. Der gefaehrlichste
+   Drift-Fall. A10 sichert die Extraktion, A11 nennt eine Nutzerdaten-Tabelle. */
+ok('A9 RLS-Tabellen werden erkannt', befund.rls && befund.rls.size >= 15,
+  (befund.rls ? befund.rls.size : 0) + ' RLS-Tabellen');
+ok('A10 engine_decision_log traegt die RLS-Erwartung',
+  befund.rls && befund.rls.has('engine_decision_log'));
+
 /* ---------- B · Kein fremdes Schema in der Liste ---------- */
 /* 0002 enthält `create table private.app_state_backup` in einem execute-String.
    Ohne Schema-Unterscheidung landete `private` als Tabellenname in der Liste —

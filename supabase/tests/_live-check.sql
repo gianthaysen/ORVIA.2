@@ -11,9 +11,9 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 50 Tabellen + 63 Spalten + 62 Indizes = 175 Prüfungen.
--- Bewusst NICHT geprüft: Constraints, Policies, Funktionen. Für Funktionen und
--- RLS gibt es die Blöcke A und C in _live-check-bloecke.sql.
+-- Umfang: 50 Tabellen + 63 Spalten + 62 Indizes + 19 RLS = 194 Prüfungen.
+-- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
+-- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
 
 with erwartet(migration, art, tabelle, spalte) as (values
@@ -191,7 +191,26 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0035','index','workout_sets_external_uniq',''),
   ('0035','index','workout_sets_import_status_idx',''),
   ('0003','index','workout_sets_uniq',''),
-  ('0004','index','workout_sets_user_idx','')
+  ('0004','index','workout_sets_user_idx',''),
+  ('0009','rls','activities',''),
+  ('0022','rls','daily_energy_expenditure',''),
+  ('0032','rls','engine_decision_log',''),
+  ('0003','rls','exercise_alternatives',''),
+  ('0003','rls','exercises',''),
+  ('0037','rls','goal_shadow_log',''),
+  ('0036','rls','oauth_tokens',''),
+  ('0036','rls','profiles',''),
+  ('0002','rls','readiness_components',''),
+  ('0036','rls','schema_migrations',''),
+  ('0035','rls','strength_workout_exports',''),
+  ('0014','rls','user_constraints',''),
+  ('0031','rls','user_feature_flags',''),
+  ('0028','rls','user_metric_series',''),
+  ('0016','rls','user_profiles',''),
+  ('0030','rls','user_week_plans',''),
+  ('0003','rls','workout_template_days',''),
+  ('0003','rls','workout_template_exercises',''),
+  ('0003','rls','workout_templates','')
 )
 select e.migration, e.art, e.tabelle, e.spalte
   from erwartet e
@@ -205,4 +224,7 @@ select e.migration, e.art, e.tabelle, e.spalte
     or (e.art = 'index' and not exists (
          select 1 from pg_indexes i
           where i.schemaname='public' and i.indexname = e.tabelle))
+    or (e.art = 'rls' and not exists (
+         select 1 from pg_tables p
+          where p.schemaname='public' and p.tablename = e.tabelle and p.rowsecurity = true))
  order by e.migration, e.tabelle, e.spalte;
