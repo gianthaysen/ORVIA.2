@@ -48,7 +48,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'decision-log@4';
+  var VERSION = 'decision-log@5';
 
   /* Obergrenzen. Der Designer durchsucht über combos() alle Tageskombinationen —
      ungedeckelt wären das Hunderte Einträge pro Woche und im Jahr zweistellige
@@ -286,6 +286,27 @@
   var _ring = [];
   var _enabled = true;
 
+  /* Senken-Gesundheit. logDecision meldet der Planung immer 'queued' — der
+     ECHTE Insert ist asynchron und sein Ergebnis wurde bisher VERWORFEN
+     (r.then(noop,noop)). Dadurch blieb ein dauerhaft scheiterndes Schreiben
+     (z.B. ein CHECK-Constraint, der einen decision_type nicht kennt — genau
+     0033) UNSICHTBAR: „queued" fuer immer, 0 Zeilen, niemand sieht es. Dieser
+     Zaehler macht den stillen Tod sichtbar, ohne die Planung zu beeinflussen. */
+  var _health = { attempted: 0, resolved: 0, succeeded: 0, failed: 0, consecutiveFailures: 0, noSink: 0, lastReason: null };
+  function _recordHealth(ok, reason) {
+    _health.resolved++;
+    if (ok) { _health.succeeded++; _health.consecutiveFailures = 0; }
+    else { _health.failed++; _health.consecutiveFailures++; _health.lastReason = reason || 'sink_false'; }
+  }
+  /* Momentaufnahme. consecutiveFailures ist das Alarmsignal: steigt es und
+     faellt nie auf 0, schreibt die Senke dauerhaft nichts. */
+  function sinkHealth() {
+    return { attempted: _health.attempted, resolved: _health.resolved,
+      succeeded: _health.succeeded, failed: _health.failed,
+      consecutiveFailures: _health.consecutiveFailures, noSink: _health.noSink,
+      lastReason: _health.lastReason };
+  }
+
   function setSink(fn) { _sink = (typeof fn === 'function') ? fn : null; }
   function setEnabled(on) { _enabled = (on !== false); }
 
@@ -309,12 +330,19 @@
       if (_ring.length > LOCAL_RING) _ring.splice(0, _ring.length - LOCAL_RING);
     } catch (e) {}
 
-    if (!_sink) return { id: built.record.decisionId, stored: false, reason: 'no_sink', record: built.record };
+    if (!_sink) { _health.noSink++; return { id: built.record.decisionId, stored: false, reason: 'no_sink', record: built.record }; }
+    _health.attempted++;
     try {
       var r = _sink(built.record);
-      if (r && typeof r.then === 'function') { r.then(function () {}, function () {}); }
+      if (r && typeof r.then === 'function') {
+        r.then(function (ok) { _recordHealth(ok !== false, ok === false ? 'sink_false' : null); },
+               function () { _recordHealth(false, 'rejected'); });
+      } else {
+        _recordHealth(r !== false, r === false ? 'sink_false' : null);
+      }
       return { id: built.record.decisionId, stored: true, reason: 'queued', record: built.record };
     } catch (e) {
+      _recordHealth(false, 'threw');
       return { id: built.record.decisionId, stored: false, reason: 'sink_failed', record: built.record };
     }
   }
@@ -399,7 +427,7 @@
     collectVersions: collectVersions, runtimeHash: runtimeHash,
     hashString: hashString, stable: stable, capCandidates: capCandidates,
     redact: redact, chainOf: chainOf, explain: explain,
-    setSink: setSink, setEnabled: setEnabled,
+    setSink: setSink, setEnabled: setEnabled, sinkHealth: sinkHealth,
     dump: dump, recent: recent, clear: clear
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
