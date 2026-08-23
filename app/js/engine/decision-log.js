@@ -48,7 +48,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'decision-log@4';
+  var VERSION = 'decision-log@5';
 
   /* Obergrenzen. Der Designer durchsucht über combos() alle Tageskombinationen —
      ungedeckelt wären das Hunderte Einträge pro Woche und im Jahr zweistellige

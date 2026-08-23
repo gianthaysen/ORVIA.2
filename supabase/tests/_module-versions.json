@@ -24,8 +24,8 @@
     "contentHash": "9a59962d"
   },
   "log": {
-    "version": "decision-log@4",
-    "contentHash": "ac90067c"
+    "version": "decision-log@5",
+    "contentHash": "860c233b"
   },
   "evidence": {
     "version": "evidence@2",
