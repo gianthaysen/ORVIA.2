@@ -11295,11 +11295,35 @@ function gmOpenDashboardSettings(){
      Kette week_design -> policy_move -> final_plan. Der final_plan-Eintrag ist
      die einzige Antwort auf „was wurde tatsaechlich geplant" — die erste
      Auswahl des Designers ist es ausdruecklich nicht. */
+  /* DEDUP DER ENTSCHEIDUNGSKETTE (Befund 24.08., live gemessen).
+     generateWeekPlan() laeuft aus activeWeekPlan() — dem Lesepfad ALLER sieben
+     Plan-Leser. Ohne Drossel schrieb jede Wiederholung erneut die volle Kette:
+     gemessen 180x week_design + 180x policy_move + 180x final_plan in EINER
+     Sitzung eines einzigen Nutzers, also 60 identische Entscheidungen. Das
+     protokolliert Renderings, nicht Entscheidungen — es blaeht die Tabelle,
+     verbraucht Kontingent und macht die A-12-Auswertung unlesbar (60 Kandidaten
+     fuer die Frage „welche Entscheidung ergab diesen Plan").
+     `logWeekShadow` hat diese Drossel laengst (Snapshot-Hash, _gmObsLast);
+     hier fehlte sie. UNVERAENDERTER INHALT IST KEINE NEUE ENTSCHEIDUNG —
+     deshalb Dedup ueber den Inhalt, nicht ueber die Zeit: aendert sich etwas,
+     wird sofort wieder geschrieben (keine verschluckte Aenderung). */
+  var _lastWeekDecisionKey=null;
   O.logWeekDecision=function(ctx){
     try{
       var DL=O.decisionLog; if(!DL||!DL.logDecision)return;
       var c=ctx||{}, now=new Date().toISOString();
       var weekId=c.weekId||null, planId=c.planId||null;
+
+      /* Schluessel aus dem, was die Kette tatsaechlich protokolliert. Faellt das
+         Hashwerkzeug aus, wird NICHT gedrosselt (lieber doppelt als blind). */
+      try{
+        if(DL.stable&&DL.hashString){
+          var _key=DL.hashString(DL.stable({w:weekId,p:planId,cfg:c.cfg||null,
+            d:c.derived||null,de:c.design||null,po:c.policy||null,f:c.finalSummary||null}));
+          if(_key===_lastWeekDecisionKey)return;      /* identisch ⇒ keine neue Entscheidung */
+          _lastWeekDecisionKey=_key;
+        }
+      }catch(_k){ }
 
       var dDesign=_decisionId();
       DL.logDecision({

@@ -1,0 +1,27 @@
+{
+  "target": "js/ui.js",
+  "test": "supabase/tests/week_decision_dedup_test.mjs",
+  "note": "Live gemessen 24.08.: 180x week_design/policy_move/final_plan in EINER Sitzung = 60 identische Entscheidungsketten, weil generateWeekPlan aus dem Lesepfad aller Plan-Leser laeuft. Dedup ueber den Inhalt. Diese Proben sichern beide Richtungen: gedrosselt bei gleich, sofort wieder bei Aenderung.",
+  "probes": [
+    {
+      "id": "WDD1",
+      "pattern": "neighbour_guard",
+      "title": "die Drossel faellt weg — Renderings werden wieder protokolliert",
+      "file": "js/ui.js",
+      "find": "          if(_key===_lastWeekDecisionKey)return;      /* identisch ⇒ keine neue Entscheidung */",
+      "replace": "          if(false)return;      /* identisch ⇒ keine neue Entscheidung */",
+      "expectTest": "A3 59 identische Wiederholungen schreiben NICHTS mehr",
+      "history": "Ohne die Drossel entstanden 180 Zeilen je Sitzung fuer EINEN Nutzer — Tabellenwachstum, Kontingentverbrauch und 60 Kandidaten fuer die A-12-Frage 'welche Entscheidung ergab diesen Plan'."
+    },
+    {
+      "id": "WDD2",
+      "pattern": "fixture_masks",
+      "title": "der Schluessel ignoriert die Woche — ein Wochenwechsel wird verschluckt",
+      "file": "js/ui.js",
+      "find": "          var _key=DL.hashString(DL.stable({w:weekId,p:planId,cfg:c.cfg||null,",
+      "replace": "          var _key=DL.hashString(DL.stable({w:null,p:planId,cfg:c.cfg||null,",
+      "expectTest": "B3 andere Woche → wieder protokolliert",
+      "history": "Eine Drossel, die die weekId nicht sieht, verschluckt den Wechsel in eine andere Woche — der Beleg fehlte genau dann, wenn eine NEUE Entscheidung entstanden ist. Schlimmer als die Schreibflut."
+    }
+  ]
+}

@@ -24,7 +24,7 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 |---|---|---:|---|---|
 | **A-01** | Zielvokabular-Fix | 4 | ✅ | `8567f1e`; `knowledge_targets` 24/24 |
 | **A-02** | B4-Resolver-Fix | 4 | ✅ | `8567f1e`; `engine_input_b4_profile_keys` 9/9 |
-| **A-03** | Deploy + Live-Abnahme | 12 | ⚠️ teilweise | live **v8-357** statt v8-353; DoD-Verstoß und Rest siehe §4 |
+| **A-03** | Deploy + Live-Abnahme | 12 | ✅ | **24.08. abgenommen**: alle vier Kernflows belegt (Login, Workout, **Plan**, **Sync** — Sync beidseitig geprüft). Live v8-363. Force-Push-Vorfall bleibt Abweichung (§4) |
 | **A-04** | Gym-Bug-Retest | 4 | ✅ | 0035 live, Übung im laufenden Workout online gespeichert, Toast über dem Overlay |
 | **A-05** | CI + Branch-Protection | 17 | ✅ | CI grün; Force-Push serverseitig gesperrt und belegt; **Deploy-Marker** schließt die letzte Lücke: `run-all.mjs` schreibt bei grünem Lauf `.suite-green` (HEAD-SHA), `deploy-verify.sh` Block 0 verweigert ohne gültigen Marker die Abnahme. `deploy_marker_test` 20/20; 5 Mutationsproben. **Abweichung vom Wortlaut** (Test-PR-Merge-Gate → Deploy-Gate): §4 |
 | **A-06** | Ziel-SSOT Teil 1 | 16 | ✅ | `5241af3`, `af2d922`; Migration 0037; `goal_shadow_test` 50/50; 8 Mutationsproben; **live belegt** (§3) |
@@ -51,6 +51,8 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **Stiller Senken-Tod sichtbar gemacht** (21.08.) | Senke verwarf das async-Insert-Ergebnis → dauerhaftes Scheitern unsichtbar. `decisionLog.sinkHealth()` mit `consecutiveFailures`; `decision_sink_health` 11/11 |
 | **0033 wahrscheinlich nicht live** (21.08.) | 3 DB-Ströme (`shadow_observation`/`prediction_record`/`prediction_evaluation`) scheitern still, weil der CHECK die Typen nicht kennt. Diagnose-SQL abgelegt; braucht Live-Einspielung |
 | **Schema-Paritätscheck deckt jetzt Indizes** (21.08.) | `gen-live-check` prüfte nur Tabellen/Spalten — 0033s Index blieb unsichtbar (wie 0035 die Spalte). Jetzt 62 Indizes geprüft, `live_schema_parity` 15/15 |
+| **Senke war NIE registriert** (24.08.) | `sinkHealth` zeigte `noSink: 608` — ui.js (index.html:464) lief vor decision-log.js (693), die eager-Registrierung griff still ins Leere. Alle Entscheidungs-Logs verpufften. Fix v8-362 (`_ensureDecisionSink`), live belegt: 544/548 geschrieben |
+| **Schreib-Verstärkung der Entscheidungskette** (24.08.) | Nach dem Fix sichtbar: 180× week_design/policy_move/final_plan in EINER Sitzung = 60 identische Ketten. `logWeekDecision` hatte keine Drossel (anders als `logWeekShadow`). Fix v8-363: Dedup über den Inhalt — 180 Zeilen → 3 |
 
 ---
 
