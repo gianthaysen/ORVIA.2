@@ -34,7 +34,7 @@ Der kritische Pfad läuft jetzt über eine **Wartezeit**, nicht über Arbeitszei
 | **A-10** | Gewerbe + Steuerberater | 8 | ⬜ **offen, terminkritisch** | unverändert seit dem Vorsprint (V-05/V-06) |
 | **A-11** | Deploy-Prozess härten | 10 | ✅ | `DEPLOY-AUFTRAG-STANDARD.md`, `deploy-verify.sh` (160 Dateien byteweise), `sw_asset_check.py`; viermal angewendet |
 | **A-12** | Engine-v2-Shadow-Auswertung | 15 | ⬜ offen | `decision-log.js` vorhanden, Auswertung fehlt |
-| **A-13** | Regressionslauf + Abnahme | 10 | ⬜ offen | hängt an allen |
+| **A-13** | Regressionslauf + Abnahme | 10 | 🟡 vorbereitet | Ausfüllblatt `PHASE-A-ABSCHLUSS-PROTOKOLL.md` (A-03-Rest + A-13 + Gate-Checkliste). Ausführung am Gerät durch Gian; danach abzeichnen |
 
 **Erledigt: 97 h · Offen: 33 h**
 
@@ -179,7 +179,7 @@ das Phasenende um einen Tag, unabhängig von allem anderen.
 1. **A-10 anstoßen** — Wartezeit, die niemand verkürzt
 2. **A-07** (`goals_detail`) — füllt Gate-A-Kriterium 4 zur Hälfte und liefert dem Shadow-Log
    echte Zielwerte, solange die Uhr ohnehin läuft
-3. **A-03 abschließen** — Smoke-Test Plan und Sync, Protokoll ablegen (15 min)
+3. **A-03 abschließen** — Smoke-Test Plan und Sync: Blatt `PHASE-A-ABSCHLUSS-PROTOKOLL.md` §1 (15 min)
 4. ~~A-05 abschließen~~ — **erledigt 21.08.2026** (Deploy-Marker, §4); DoD-Nachtrag in Band 1
 5. A-08, A-09, dann A-12
 6. **A-13** als Letztes
