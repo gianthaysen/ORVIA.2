@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/strength-progression.js",
+  "test": "supabase/tests/strength_progression_test.mjs",
+  "note": "B-08 satzgenaue Progression. Die gefaehrlichen Stellen sind die Sicherungen: keine Steigerung bei ausgereizter Anstrengung (RIR 0 / unbekannt), Stagnation vor Steigerung, und Lasten, die tatsaechlich ladbar sind.",
+  "probes": [
+    {
+      "id": "SP1",
+      "pattern": "neighbour_guard",
+      "title": "gesteigert wird auch ohne Reserve (RIR 0)",
+      "file": "js/engine/strength-progression.js",
+      "find": "      if (rir < 1)",
+      "replace": "      if (false)",
+      "expectTest": "B1 RIR 0 → KEINE Steigerung, halten",
+      "history": "Wer die Obergrenze nur mit RIR 0 schafft, hat nichts mehr in Reserve. Dort zu steigern ist der direkte Weg in Fehlversuche und Technikverlust — die Sicherung ist der Kern der Regel, nicht Beiwerk."
+    },
+    {
+      "id": "SP2",
+      "pattern": "data_lacks_var",
+      "title": "fehlende RIR wird als 'Reserve vorhanden' geraten",
+      "file": "js/engine/strength-progression.js",
+      "find": "      if (rir == null)",
+      "replace": "      if (false)",
+      "expectTest": "B2 fehlende RIR → nicht raten, halten",
+      "history": "Keine RIR-Angabe ist eine Datenluecke. Sie als 'genug Reserve' zu lesen begruendet eine Steigerung mit Nichtwissen — genau das, was progression@9 mit 'Historie kann eine Steigerung nicht begruenden' ausschliesst."
+    },
+    {
+      "id": "SP3",
+      "pattern": "neighbour_guard",
+      "title": "Stagnation wird von der Steigerung ueberholt",
+      "file": "js/engine/strength-progression.js",
+      "find": "    if (o.stagnant === true)",
+      "replace": "    if (false)",
+      "expectTest": "D3 Stagnation schlägt die Steigerung",
+      "history": "Stagniert ein Satz ueber mehrere Einheiten, ist weiter anrennen die falsche Antwort. Steht die Stagnationsregel nicht VOR den anderen, wird bei erreichter Obergrenze weiter gesteigert statt reduziert."
+    },
+    {
+      "id": "SP4",
+      "pattern": "value_not_type",
+      "title": "empfohlene Lasten sind nicht mehr ladbar (Aufrunden statt Abrunden)",
+      "file": "js/engine/strength-progression.js",
+      "find": "    return _r2((Math.floor(_c(kg) / i) * i) / 100);",
+      "replace": "    return _r2(kg);",
+      "expectTest": "F6 jede geänderte Last ist ein Vielfaches von 2,5",
+      "history": "Eine Empfehlung von 55,17 kg ist im Studio nicht ladbar. Dieselbe Haltung wie im Scheibenrechner (B-07): lieber die naechstkleinere ladbare Stufe als eine Zahl, die niemand auflegen kann."
+    },
+    {
+      "id": "SP5",
+      "pattern": "fixture_masks",
+      "title": "Stagnation wird schon vor dem Schwellwert behauptet",
+      "file": "js/engine/strength-progression.js",
+      "find": "    if (vals.length < k) return false;",
+      "replace": "    if (vals.length < 1) return false;",
+      "expectTest": "D5 zwei gleiche Einheiten → NOCH KEINE Aussage",
+      "history": "Zwei gleiche Einheiten sind normaler Trainingsverlauf, keine Stagnation. Zu frueh zu deloaden bremst den Aufbau — und zwar unsichtbar, weil die Empfehlung plausibel aussieht."
+    }
+  ]
+}
