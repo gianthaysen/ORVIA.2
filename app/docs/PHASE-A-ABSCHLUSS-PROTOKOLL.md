@@ -44,17 +44,33 @@ Login und Workout sind bereits belegt. Es fehlen die zwei übrigen Kernflows. ~1
 | Aktuelle Woche wird angezeigt, Tage tragen Einheiten | Wochenansicht vollständig | ☐ | |
 | Wochennavigation vor/zurück funktioniert | richtige Woche, kein Sprung | ☐ | |
 | Eine Einheit öffnen → Details sichtbar | Übungen/Vorgaben da | ☐ | |
-| **Wochenplan neu erzeugen** | neuer Plan ohne Fehler | ☐ | |
+| Wochenansicht mehrfach öffnen/wechseln | keine Fehler, Anzeige stabil | ☐ | |
 
-> **Zusatznutzen:** Der Punkt „Wochenplan neu erzeugen" beantwortet nebenbei die offene Frage
-> zum DB-Strom. Danach in der Konsole:
+> **Korrektur (21.08.):** Einen Knopf „Wochenplan neu erzeugen" gibt es **nicht**.
+> `generateWeekPlan()` läuft ausschließlich als **Rückfall**, wenn keine Woche gespeichert ist
+> (`activeWeekPlan()`, ui.js:879). Bei gespeichertem Plan wird er nie aufgerufen — das erklärt,
+> warum `week_design`/`final_plan` in der Datenbank bei 0 stehen. **Kein Defekt, sondern Bauart.**
+>
+> **Zusatznutzen — die offene DB-Frage beantworten.** Nach dem Öffnen des Plan-Tabs in der Konsole:
 > ```js
 > ORVIA.decisionLog.sinkHealth()
 > ```
 > Erwartet: `attempted > 0`, `failed: 0`, `consecutiveFailures: 0`.
 > Ergebnis notieren: ____________________________________________
 >
-> Zeigt `failed > 0`, nennt `lastReason` den Grund — das ist dann ein echter Befund, kein Rätsel.
+> **Wichtig zu wissen:** `shadow_observation` sollte bei **jedem** Plan-Lesen geschrieben werden
+> (`activeWeekPlan → gmObserveWeekPlan → logWeekShadow`, gedrosselt auf 1×/Minute) — anders als
+> `week_design`. Dass dieser Strom trotzdem bei 0 steht, ist damit **noch nicht erklärt**.
+> `sinkHealth()` entscheidet es:
+> · `attempted > 0, failed: 0` → geschrieben, die 0 lag nur an fehlenden Aufrufen vor v8-360
+> · `attempted > 0, failed > 0` → echter Schreibfehler, `lastReason` nennt ihn
+> · `attempted: 0` → der Beobachter wird gar nicht aufgerufen → Wiring-Bug, dann melden.
+>
+> **Direkter Test des Generatorpfads** (optional, erzeugt week_design/final_plan):
+> ```js
+> generateWeekPlan()   // ruft logWeekDecision; danach erneut sinkHealth() lesen
+> ```
+> Verändert nichts Gespeichertes — der Rückgabewert wird verworfen.
 
 ### 1.2 Kernflow **Sync**
 
