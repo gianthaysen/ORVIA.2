@@ -1,0 +1,47 @@
+{
+  "target": "js/engine/exercise-alternatives.js",
+  "test": "supabase/tests/exercise_alternatives_test.mjs",
+  "note": "B-06 Kern. Fuer 'Tausch in <= 2 Taps' muss die richtige Alternative OBEN stehen. Fehleranfaellig sind die Rangfolge (kuratiert vor Rechnung), der Ausruestungs-Filter und die Selbstausschluss-Regel.",
+  "probes": [
+    {
+      "id": "EA1",
+      "pattern": "neighbour_guard",
+      "title": "kuratierte Empfehlung verliert ihren Vorrang",
+      "file": "js/engine/exercise-alternatives.js",
+      "find": "      if (a.curated !== b.curated) return a.curated ? -1 : 1;",
+      "replace": "      if (false) return 0;",
+      "expectTest": "B5 kuratiert schlägt bessere Deckung",
+      "history": "Eine bewusst gepflegte Empfehlung schlaegt jede Rechnung. Faellt der Vorrang, verdraengt die rechnerisch aehnlichste Uebung die fachlich richtige — und der zweite Tap trifft das Falsche."
+    },
+    {
+      "id": "EA2",
+      "pattern": "fixture_masks",
+      "title": "fehlende Ausruestung filtert nicht mehr",
+      "file": "js/engine/exercise-alternatives.js",
+      "find": "      if (!_equipOk(c, o.equipmentAvailable)) {",
+      "replace": "      if (false) {",
+      "expectTest": "C1 Übung ohne verfügbares Gerät ist NICHT in der Liste",
+      "history": "Eine Uebung, fuer die das Geraet fehlt, ist im Studio nicht ausfuehrbar. In einer Zwei-Tap-Liste ist sie schlimmer als nutzlos — sie kostet genau die Taps, die das Paket einsparen soll."
+    },
+    {
+      "id": "EA3",
+      "pattern": "value_not_type",
+      "title": "die Uebung schlaegt sich selbst als Alternative vor",
+      "file": "js/engine/exercise-alternatives.js",
+      "find": "      if (c.id === id) return;",
+      "replace": "      if (false) return;",
+      "expectTest": "D1 die Übung selbst steht nie in ihrer Alternativenliste",
+      "history": "Sich selbst als Ersatz anzubieten ist der offensichtlichste Unsinn — und passiert genau dann, wenn der Katalog die aktive Uebung mitfuehrt, was er immer tut."
+    },
+    {
+      "id": "EA4",
+      "pattern": "data_lacks_var",
+      "title": "unbekannte Ausruestung wird als 'nichts verfuegbar' gedeutet",
+      "file": "js/engine/exercise-alternatives.js",
+      "find": "    if (!Array.isArray(available)) return true;",
+      "replace": "    if (!Array.isArray(available)) return false;",
+      "expectTest": "C4 UNBEKANNTE Ausrüstung filtert nicht (Datenlücke ≠ Verbot)",
+      "history": "Keine Angabe zur Ausruestung ist eine Datenluecke, kein Verbot. Sie als 'nichts vorhanden' zu lesen leert die Liste vollstaendig — der Nutzer haette gar keine Alternative mehr."
+    }
+  ]
+}
