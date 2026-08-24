@@ -1,0 +1,37 @@
+{
+  "target": "js/engine/plate-calculator.js",
+  "test": "supabase/tests/plate_calculator_test.mjs",
+  "note": "B-07 Scheibenrechner. Der fehleranfaellige Teil ist die Rundung: nie ueber das Ziel laden, unter der Stange als Unmoeglichkeit fuehren, groesste Scheiben zuerst. Diese Proben sichern genau das.",
+  "probes": [
+    {
+      "id": "PC1",
+      "pattern": "neighbour_guard",
+      "title": "die Unter-der-Stange-Sperre faellt weg",
+      "file": "js/engine/plate-calculator.js",
+      "find": "    if (_c(target) < _c(bar))",
+      "replace": "    if (false && _c(target) < _c(bar))",
+      "expectTest": "C2 unter der Stange → feasible:false, reason below_bar",
+      "history": "Ein Ziel unter dem Stangengewicht ist nicht ladbar. Ohne die Sperre taeuscht der Rechner einen Plan vor, statt die Unmoeglichkeit ehrlich zu melden."
+    },
+    {
+      "id": "PC2",
+      "pattern": "value_not_type",
+      "title": "achieved meldet das Ziel als erreicht, obwohl Rest ungeladen bleibt",
+      "file": "js/engine/plate-calculator.js",
+      "find": "    var achievedC = _c(bar) + 2 * loadedPerSideC;",
+      "replace": "    var achievedC = _c(bar) + 2 * perSideC;",
+      "expectTest": "B1 101kg → 100 geladen, delta -1, nicht exakt",
+      "history": "perSideC ist das Ziel-Halbgewicht, loadedPerSideC das tatsaechlich mit Scheiben geladene. Wer perSideC als erreicht ausgibt, behauptet ein exaktes Gewicht, das gar nicht auf der Stange liegt."
+    },
+    {
+      "id": "PC3",
+      "pattern": "value_not_type",
+      "title": "Scheiben werden aufsteigend statt absteigend sortiert (greedy kaputt)",
+      "file": "js/engine/plate-calculator.js",
+      "find": "      .sort(function (a, b) { return b - a; });",
+      "replace": "      .sort(function (a, b) { return a - b; });",
+      "expectTest": "A3 greedy nutzt die groessten Scheiben (25+15, nicht 20+20)",
+      "history": "Greedy von der kleinsten Scheibe her ergibt zwar dasselbe Gewicht, aber einen unbrauchbaren Stapel (32×1.25 statt 25+15). Der Rechner soll die wenigsten, groessten Scheiben nennen."
+    }
+  ]
+}
