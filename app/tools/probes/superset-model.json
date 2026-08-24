@@ -1,0 +1,47 @@
+{
+  "target": "js/engine/superset-model.js",
+  "test": "supabase/tests/superset_model_test.mjs",
+  "note": "B-05 Schritt 1. Der fehleranfaellige Kern ist die Ausfuehrungsreihenfolge bei UNGLEICHER Satzzahl und der Bestandsschutz (ohne Gruppen exakt heutiges Verhalten). Diese Proben sichern genau das.",
+  "probes": [
+    {
+      "id": "SS1",
+      "pattern": "neighbour_guard",
+      "title": "die kuerzere Uebung bekommt erfundene Saetze (ungleiche Satzzahl)",
+      "file": "js/engine/superset-model.js",
+      "find": "          if (members[i].sets >= r)               /* kuerzere Uebung faellt still aus */",
+      "replace": "          if (true)               /* kuerzere Uebung faellt still aus */",
+      "expectTest": "B5 die kuerzere Uebung bekommt KEINE erfundenen Saetze",
+      "history": "Ohne die Pruefung erhaelt eine Uebung mit 2 geplanten Saetzen in Runde 3 einen dritten — ein Satz, den niemand geplant hat. Genau der Fall, an dem Superset-Implementierungen typisch scheitern."
+    },
+    {
+      "id": "SS2",
+      "pattern": "value_not_type",
+      "title": "eine Gruppe aus EINER Uebung gilt als Superset",
+      "file": "js/engine/superset-model.js",
+      "find": "    }).filter(function (g) { return g.exercises.length >= 2; });   /* 1 Uebung = kein Superset */",
+      "replace": "    }).filter(function (g) { return g.exercises.length >= 1; });   /* 1 Uebung = kein Superset */",
+      "expectTest": "C2 groupsOf zaehlt eine 1er-Gruppe nicht",
+      "history": "Ein 'Superset' aus einer einzigen Uebung ist ein erfundener Zustand. Er wuerde im Player ein Wechsel-Badge anzeigen, wo es nichts zu wechseln gibt."
+    },
+    {
+      "id": "SS3",
+      "pattern": "data_lacks_var",
+      "title": "Gruppen vermischen sich (Mitglieder werden nicht nach Gruppe gefiltert)",
+      "file": "js/engine/superset-model.js",
+      "find": "      var members = norm.filter(function (x) { return realGroup(x) === g; });",
+      "replace": "      var members = norm.filter(function (x) { return realGroup(x) != null; });",
+      "expectTest": "D2 zwei Gruppen laufen getrennt (keine Vermischung)",
+      "history": "Zwei getrennte Supersets in einer Session wuerden zu einem verschmelzen — der Nutzer bekaeme eine Rotation ueber vier Uebungen statt zweimal zwei."
+    },
+    {
+      "id": "SS4",
+      "pattern": "neighbour_guard",
+      "title": "Bestandsschutz faellt: normale Uebungen werden als Gruppe behandelt",
+      "file": "js/engine/superset-model.js",
+      "find": "    function realGroup(e) { return (e.group != null && count[String(e.group)] >= 2) ? e.group : null; }",
+      "replace": "    function realGroup(e) { return e.group; }",
+      "expectTest": "C1 Gruppe mit EINER Uebung ist kein Superset (group null)",
+      "history": "realGroup ist die Stelle, die eine echte Gruppe (>=2 Uebungen) von einer verwaisten Gruppennummer trennt. Ohne sie veraendert sich das Verhalten bestehender Workouts — genau das darf B-05 nicht."
+    }
+  ]
+}
