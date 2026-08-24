@@ -1,0 +1,37 @@
+{
+  "target": "js/ui.js",
+  "test": "supabase/tests/decision_sink_registration_test.mjs",
+  "note": "Live-Befund 24.08.: noSink 608 — die Entscheidungs-Senke war nie registriert, weil ui.js (index.html:464) vor decision-log.js (693) laeuft und die eager-Registrierung still ins Leere griff. Kein Fehler, kein Log, 0 DB-Zeilen. Diese Proben sichern den Nachhol-Mechanismus.",
+  "probes": [
+    {
+      "id": "DSR1",
+      "pattern": "neighbour_guard",
+      "title": "die Registrierung wird wieder eager (kein Nachholen)",
+      "file": "js/ui.js",
+      "find": "  if(!_ensureDecisionSink()){",
+      "replace": "  if(false){",
+      "expectTest": "C3 sofortiger Versuch beim Laden",
+      "history": "Genau dieser fehlende Nachhol-Pfad liess 608 Eintraege je Sitzung still verpuffen. Ohne ihn ist die Senke bei der bestehenden Ladereihenfolge dauerhaft tot."
+    },
+    {
+      "id": "DSR2",
+      "pattern": "value_not_type",
+      "title": "die Senke wird als registriert markiert, ohne es zu sein",
+      "file": "js/ui.js",
+      "find": "    try{ DL.setSink(_sink); _decisionSinkGesetzt=true; return true; }catch(_){ return false; }",
+      "replace": "    _decisionSinkGesetzt=true; return true;",
+      "expectTest": "B5 die ECHTE Senke wurde uebergeben",
+      "history": "Ein 'registriert'-Flag ohne den tatsaechlichen setSink-Aufruf ist genau die Sorte Falsch-Gruen, die den Originalbefund so lange verdeckt hat."
+    },
+    {
+      "id": "DSR3",
+      "pattern": "fixture_masks",
+      "title": "fehlendes Modul wird als Erfolg gemeldet",
+      "file": "js/ui.js",
+      "find": "    if(!DL||typeof DL.setSink!=='function')return false;",
+      "replace": "    if(!DL||typeof DL.setSink!=='function')return true;",
+      "expectTest": "B3 ohne decisionLog: Registrierung schlaegt fehl, wirft aber nicht",
+      "history": "Meldet der erste Versuch faelschlich Erfolg, wird der Nachhol-Pfad nie aktiviert — der Ausfall waere wieder unsichtbar."
+    }
+  ]
+}

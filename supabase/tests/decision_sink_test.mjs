@@ -214,11 +214,16 @@ sec('S5 · DIE REGISTRIERUNG: DL.logDecision erreicht die Senke');
      ui.js, blieben Senken- und Live-Test gruen — und die App persistierte
      nichts. Hier laeuft die ECHTE Registrierungszeile aus ui.js, danach
      muss ein Insert ueber das echte DL.logDecision() beim Spion ankommen. */
-  const regLine = uiRaw.split('\n').find(l => l.indexOf('setSink(_sink)') >= 0);
-  ok('die Registrierungszeile existiert in ui.js', !!regLine, 'setSink(_sink) fehlt');
+  /* v8-362: Die Registrierung ist keine EINZELNE Zeile mehr, sondern
+     _ensureDecisionSink() mit Nachhol-Pfad — weil ui.js VOR decision-log.js
+     laedt und die alte eager-Zeile die Senke nie setzte (live: noSink 608).
+     Der Test fuehrt jetzt die ECHTE Funktion aus statt eine Zeile zu greppen. */
+  const ensureSrc = sliceBalanced(uiRaw, 'function _ensureDecisionSink()');
+  ok('die Registrierung existiert in ui.js', !!ensureSrc, '_ensureDecisionSink fehlt');
   const spy = mkSpy('ok');
   const O = { sb: spy.sb, user: { id: 'u-reg' }, decisionLog: DL };
-  new Function('O', sinkSrc + '\n' + (regLine || ''))(O);
+  new Function('O', sinkSrc + '\nvar _decisionSinkGesetzt=false;\n' + ensureSrc
+    + '\nif(!_ensureDecisionSink()) throw new Error("Registrierung fehlgeschlagen");')(O);
   const res = DL.logDecision({ decisionType: 'shadow_observation',
     decisionId: 'dec:reg:1', timestamp: '2026-08-09T07:00:00Z',
     planId: 'p-reg', derivedState: { via: 'registration' }, registry: {} });

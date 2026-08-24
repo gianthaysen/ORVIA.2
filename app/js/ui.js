@@ -11261,7 +11261,35 @@ function gmOpenDashboardSettings(){
         .then(function(res){return !(res&&res.error);},function(){return false;});
     }catch(_){ return false; }
   }
-  try{ if(O.decisionLog&&O.decisionLog.setSink)O.decisionLog.setSink(_sink); }catch(_){ }
+  /* SENKE VERLAESSLICH REGISTRIEREN (Befund 24.08., live belegt).
+     Die alte Zeile registrierte EAGER: `if(O.decisionLog) setSink(_sink)`.
+     ui.js laedt in index.html an Zeile 464, js/engine/decision-log.js erst an
+     693 — zum Ausfuehrungszeitpunkt gab es O.decisionLog also NICHT. Der Guard
+     griff still, die Senke wurde NIE gesetzt, und jeder Eintrag endete in
+     {stored:false, reason:'no_sink'}: 608 verworfene Eintraege in EINER Sitzung,
+     0 Zeilen in engine_decision_log. Genau die Ladereihenfolge-Abhaengigkeit,
+     vor der profile.js beim Ziel-Shadow bereits warnt ("waere genau die Art
+     Abhaengigkeit, die beim naechsten Umsortieren unbemerkt bricht") — dort
+     wurde die Lehre gezogen, hier nicht.
+     Jetzt: sofort versuchen, und verlaesslich nachholen, sobald alle
+     klassischen Skripte ausgefuehrt sind. Idempotent. */
+  var _decisionSinkGesetzt=false;
+  function _ensureDecisionSink(){
+    if(_decisionSinkGesetzt)return true;
+    var DL=O.decisionLog;
+    if(!DL||typeof DL.setSink!=='function')return false;
+    try{ DL.setSink(_sink); _decisionSinkGesetzt=true; return true; }catch(_){ return false; }
+  }
+  O._ensureDecisionSink=_ensureDecisionSink;      /* fuer Diagnose und Test */
+  if(!_ensureDecisionSink()){
+    try{
+      if(typeof document!=='undefined'&&document.readyState==='loading')
+        document.addEventListener('DOMContentLoaded',_ensureDecisionSink,{once:true});
+      else if(typeof setTimeout==='function') setTimeout(_ensureDecisionSink,0);
+      if(typeof window!=='undefined'&&window.addEventListener)
+        window.addEventListener('load',_ensureDecisionSink,{once:true});
+    }catch(_){ }
+  }
 
   /* Aufgerufen aus generateWeekPlan, NACH Designer und Policy. Erzeugt die
      Kette week_design -> policy_move -> final_plan. Der final_plan-Eintrag ist
