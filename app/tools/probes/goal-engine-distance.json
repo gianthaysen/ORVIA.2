@@ -1,0 +1,37 @@
+{
+  "target": "js/calc.js",
+  "test": "supabase/tests/goal_engine_distance_test.mjs",
+  "note": "B-01 Vorarbeit: goalEngine nimmt die Zieldistanz. Gefaehrlich: Rueckfall auf HM an einer der drei Stellen (Riegel, EF-Korridor, Long-Run-Bedarf) — dann stimmt die Prognose fuer HM und ist fuer 10 km/Marathon still falsch.",
+  "probes": [
+    {
+      "id": "GE1",
+      "pattern": "direct",
+      "title": "Riegel rechnet wieder auf HM statt auf die Zieldistanz",
+      "file": "js/calc.js",
+      "find": "  const tRiegel=Math.min(...usable.map(r=>riegel(r.dist,r.dur,distKm)));",
+      "replace": "  const tRiegel=Math.min(...usable.map(r=>riegelHM(r.dist,r.dur)));",
+      "expectTest": "B1 10 km: Prognose ≈ 48 min (Riegel 1,06)",
+      "history": "Genau der Zustand vor dem 03.09.2026: 10-km-Ziel 50 min gegen eine HM-Prognose von 106 min gehalten ⇒ dauerhaft 'risk'."
+    },
+    {
+      "id": "GE2",
+      "pattern": "neighbour_guard",
+      "title": "Long-Run-Bedarf bleibt HM-fest",
+      "file": "js/calc.js",
+      "find": "  const lrNeed=d>28?Math.round(14*distScale):d>14?Math.round(17*distScale):0;",
+      "replace": "  const lrNeed=d>28?14:d>14?17:0;",
+      "expectTest": "D2 Marathon: 28 km noetig",
+      "history": "Ein Marathonlaeufer mit 16-km-Long-Run bekaeme kein Veto (14 km 'reichen'), ein 10-km-Laeufer mit 12 km eins. Der Bedarf gehoert zur Distanz, nicht zur Konstante."
+    },
+    {
+      "id": "GE3",
+      "pattern": "value_not_type",
+      "title": "Unsinn-Distanz wird als Distanz gerechnet",
+      "file": "js/calc.js",
+      "find": "  const distKm=(o.distanceKm>0&&isFinite(o.distanceKm))?o.distanceKm:HM_KM;",
+      "replace": "  const distKm=(o.distanceKm!=null)?o.distanceKm:HM_KM;",
+      "expectTest": "E1 distanceKm 0/negativ/NaN/String ⇒ HM",
+      "history": "Eine 0 oder ein String aus einem halb gefuellten Zielobjekt wuerde zu NaN-Prognosen — der Zielkarte-Fehler 'NaN min' aus Phase 3 war genau diese Klasse."
+    }
+  ]
+}

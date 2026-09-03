@@ -789,6 +789,13 @@ function riegel(distKm,durMin,targetKm){
 function riegelHM(distKm,durMin){return riegel(distKm,durMin,HM_KM);}
 function goalEngine(runs42,opts){
   const o=opts||{};const target=o.targetMin||TARGET_MIN_DEFAULT;
+  /* B-01 Vorarbeit (2026-09-03): ZIELDISTANZ als Eingabe. Bis hierhin war die
+     Prognose IMMER eine Halbmarathon-Zeit (riegelHM/HM_KM), wurde aber gegen die
+     Zielzeit JEDER Laufdistanz gehalten — 10-km-Ziel 50 min ⇒ dauerhaft 'risk',
+     Marathon 4:00 ⇒ dauerhaft 'ontrack'. Ohne opts.distanceKm bleibt alles
+     byteweise wie bisher (HM); der Aufrufer-Umbau ist B-01 (hinter Gate A). */
+  const distKm=(o.distanceKm>0&&isFinite(o.distanceKm))?o.distanceKm:HM_KM;
+  const distScale=distKm/HM_KM;
   const valid=runs42.filter(r=>r.dist>0&&r.dur>0);
   const quality=valid.filter(r=>['Tempo','Long Run','Intervalle'].includes(r.sub)&&r.dist>=4);
   const tempo=quality.filter(r=>r.sub==='Tempo');
@@ -800,7 +807,7 @@ function goalEngine(runs42,opts){
       nRuns:valid.length,nQuality:usable.length};
   }
   // Schätzer A: Riegel aus bester Quality-Einheit
-  const tRiegel=Math.min(...usable.map(r=>riegelHM(r.dist,r.dur)));
+  const tRiegel=Math.min(...usable.map(r=>riegel(r.dist,r.dur,distKm)));
   // Schätzer B: EF-Korridor aus Easy-Z2 (HF 65–78% HFmax), +5% Sicherheitsaufschlag.
   // Nur wenn HFmax bekannt (gemessen oder altersbasiert) — sonst KEINE HF-basierte Schätzung.
   const hm=_hrMax();
@@ -809,13 +816,13 @@ function goalEngine(runs42,opts){
   if(hm!=null&&easy.length>=3){
     const efs=easy.slice(-7).map(r=>(r.dist*1000/r.dur)/r.hr);
     const efm=median(efs);
-    if(efm){const vRace=efm*Math.round(0.88*hm);tEF=(HM_KM*1000/vRace)*1.05;}
+    if(efm){const vRace=efm*Math.round(0.88*hm);tEF=(distKm*1000/vRace)*1.05;}
   }
   const tPred=tEF?0.7*tRiegel+0.3*Math.max(tRiegel,tEF):tRiegel;
   // Vetos (Volumen-Gates)
   const vetos=[];
   const d=o.daysToRace??99;
-  const lrNeed=d>28?14:d>14?17:0;
+  const lrNeed=d>28?Math.round(14*distScale):d>14?Math.round(17*distScale):0;   // Long-Run-Bedarf relativ zur Zieldistanz (HM: 14/17 km wie bisher)
   if(lrNeed&&(o.lrMax28||0)<lrNeed)vetos.push('Long Run: max. '+(o.lrMax28||0).toFixed(0)+' km in 28T, nötig ≥'+lrNeed+' km');
   // I2c: Volumen-Veto NUR bei bekanntem avg4WeekKm. Unbekannt ⇒ kein erfundener Mangel,
   // stattdessen not_assessable + reduzierte Confidence (Missingness bis zur Prognose).
@@ -865,7 +872,7 @@ function goalEngine(runs42,opts){
   return{state,tPred:+tPred.toFixed(1),tRiegel:+tRiegel.toFixed(1),tEF:tEF?+tEF.toFixed(1):null,
     delta:+(delta*100).toFixed(1),vetos,notAssessable:notAssessable,ctlTrend:ctlTrend,
     assessable:{volume:_volKnown},confidence:notAssessable.length?'reduziert':'hoch',
-    nRuns:valid.length,nQuality:usable.length,target};
+    nRuns:valid.length,nQuality:usable.length,target,distanceKm:distKm};
 }
 
 /* ============ RUNNING ANALYTICS ============ */

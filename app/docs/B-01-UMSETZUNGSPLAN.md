@@ -26,8 +26,11 @@ Was fehlt, sind vier Dinge:
 | 4 | Feasibility (A-08) wird nur **beobachtet** | Unrealistisches Ziel erzeugt denselben Plan wie ein realistisches | B-01 zeigt das Urteil im Plan-Kopf; **steuern** tut es erst B-02 (Zielseite) — bewusst getrennt |
 | 5 | `Calc.goalEngine` ist **Halbmarathon-hartkodiert** (`riegelHM`, `HM_KM`, Long-Run-Schwellen 14/17 km) und hat einen **zweiten** 110-Default (`TARGET_MIN_DEFAULT`) | Prognose ist immer eine HM-Zeit, wird aber gegen den Zielwert **jeder** Laufdistanz gehalten: 10-km-Ziel 50 min ⇒ dauerhaft `risk`, Marathon 4:00 ⇒ dauerhaft `ontrack` (Zahlen §2) | `goalEngine` bekommt `distanceKm` aus der Plan-Eingabe; Riegel auf die **Zieldistanz**; ohne Zielzeit `state:'no_target'` statt 110 |
 
-**Reiner Kern gebaut (dieser Commit):** `engine/goal-plan-input.js` — `resolve()`, `planKey()`,
-`compareLegacy()`. 36/36, 5 Proben. Nicht verdrahtet.
+**Reiner Kern gebaut:** `engine/goal-plan-input.js` — `resolve()`, `planKey()`, `compareLegacy()`.
+36/36, 5 Proben. Nicht verdrahtet.
+**Lücke 5 vorbereitet (v8-365):** `Calc.goalEngine` nimmt `opts.distanceKm` (Riegel, EF-Korridor,
+Long-Run-Bedarf relativ zur Zieldistanz); **ohne** die Angabe byteweise wie bisher — kein Aufrufer
+übergibt sie heute. `goal_engine_distance` 18/18, 3 Proben. Der 110-Default bleibt bis zum Flag-Schritt.
 
 ---
 
@@ -126,7 +129,7 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
 | `app/js/ui.js` `goalTargetMin()` | bei Flag: kein 110-Default; Aufrufer 1326/3188/4538 auf `OrNull` + Lückenanzeige | ~15 Zeilen |
 | `app/js/ui.js` `generateWeekPlan()` | Phase-Steuerung (taper/race_week/past) aus `resolve().phase` | ~40 Zeilen |
 | `app/js/ui.js` Plan-Kopf | Feasibility-Urteil (A-08) anzeigen, Lücken verlinken | ~25 Zeilen |
-| `app/js/calc.js` `goalEngine()` | `opts.distanceKm` → `riegel(dist,dur,distanceKm)` statt `riegelHM`; Long-Run-Schwellen relativ zur Zieldistanz; ohne `targetMin` ⇒ `state:'no_target'` (kein `TARGET_MIN_DEFAULT`) — hinter Flag | ~25 Zeilen |
+| `app/js/calc.js` `goalEngine()` | ✅ `opts.distanceKm` **gebaut** (additiv, v8-365); offen: ohne `targetMin` ⇒ `state:'no_target'` (kein `TARGET_MIN_DEFAULT`) — hinter Flag | ~10 Zeilen Rest |
 | `app/js/engine/goal-shadow.js` | `compareLegacy`-Diff mitloggen (Regressionswächter) | ~10 Zeilen |
 | `supabase/tests/goal_plan_switch_test.mjs` | **neu** — Flag aus = Bestand byteweise gleich; Flag an = die vier Lücken geschlossen | ~150 Zeilen |
 | `_module-versions.json` | regeneriert (feature-flags) | automatisch |
@@ -144,13 +147,13 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
    Paces anfassen muss oder nur das Template. *Braucht Chromium (gm6-Harness) → auf deinem Mac
    oder in CI, nicht in der Bridge-VM.*
 3. **Flag + `goalOf()`-Quelltausch** (3 h) — Form behalten, Quelle tauschen; Switch-Test.
-4. **110 entfernen, beide Schichten** (3 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`, mit `distanceKm` (Lücke 5); drei Aufrufer auf Lücke.
+4. **110 entfernen, beide Schichten** (2 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`; `buildGoal()` übergibt `distanceKm` (Lücke 5, Engine-Seite ✅); drei Aufrufer auf Lücke.
 5. **Phase → Template** (4 h) — taper/race_week/past in `generateWeekPlan`; Tests je Phase.
 6. **Plan-Kopf: Feasibility + Lücken** (2 h).
 7. **Shadow als Regressionswächter** (1 h).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 17 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Summe ≈ 16 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 
