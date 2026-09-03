@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/goal-plan-input.js",
+  "test": "supabase/tests/goal_plan_input_test.mjs",
+  "note": "B-01 Kern: Uebersetzung des kanonischen Hauptziels in die Plan-Eingabe. Gefaehrlich sind erfundene Zielzeiten (das 110-Minuten-Erbe), die Einheitenregel (s vs. min) und ein planKey, der den Zielwert verschluckt (dann waere die DoD nur behauptet).",
+  "probes": [
+    {
+      "id": "GP1",
+      "pattern": "data_lacks_var",
+      "title": "ohne Zielwert wird 110 min erfunden (das goalTargetMin-Erbe)",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "    if (v == null) return { min: null, gap: 'target_value' };",
+      "replace": "    if (v == null) return { min: 110, gap: null };",
+      "expectTest": "A5 ohne Zielwert: null, KEIN 110-Default",
+      "history": "goalTargetMin() in ui.js liefert ohne Zielzeit 110 Minuten an goalEngine — ein Nutzer ohne Zielzeit bekommt damit Wochen-km und Zonen fuer ein 1:50-Ziel, das er nie gesetzt hat. Genau dieses Loch darf der Kern nicht wieder oeffnen."
+    },
+    {
+      "id": "GP2",
+      "pattern": "value_not_type",
+      "title": "Sekunden werden als Minuten gelesen",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "    if (g.unit === 's' || g.metricType === 'time') return { min: _r2(v / 60), gap: null };",
+      "replace": "    if (g.unit === 's' || g.metricType === 'time') return { min: _r2(v), gap: null };",
+      "expectTest": "A1 s → 110 min",
+      "history": "profile-model speichert Zeitziele in Sekunden (6600). Ohne Division waere die Zielzeit 6600 Minuten — die Zonen wuerden auf 5 h/km rechnen. Der Bug vom 2026-07-16 (‚Zielzeit offen‘) lag genau an dieser Stelle."
+    },
+    {
+      "id": "GP3",
+      "pattern": "neighbour_guard",
+      "title": "planKey ignoriert die Zielzeit",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "      t.targetMin != null ? String(t.targetMin) : '-',",
+      "replace": "      '-',",
+      "expectTest": "E1 gleiche Kategorie, andere Zielzeit ⇒ anderer Schluessel",
+      "history": "Der planKey ist der Nachweis der B-01-DoD. Verschluckt er den Zielwert, bekaemen zwei Nutzer mit gleicher Kategorie denselben Schluessel — und die DoD waere gruen, ohne wahr zu sein."
+    },
+    {
+      "id": "GP4",
+      "pattern": "neighbour_guard",
+      "title": "vergangenes Zieldatum wird als build gelesen",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "          if (t.reason === 'race_passed') out.phase = 'past';",
+      "replace": "          if (t.reason === 'race_passed') out.phase = 'build';",
+      "expectTest": "C4 vergangen → past, daysTo negativ, nicht aktiv",
+      "history": "Ein abgelaufenes Ziel ist eine Aussage (Rennen vorbei), keine Aufbauphase. Als build gelesen wuerde die Planung weiter auf ein Datum in der Vergangenheit hin steigern."
+    },
+    {
+      "id": "GP5",
+      "pattern": "data_lacks_var",
+      "title": "fehlendes Datum wird nicht als Luecke benannt",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "    if (!date) out.gaps.push('target_date');",
+      "replace": "    if (false) out.gaps.push('target_date');",
+      "expectTest": "C5 kein Datum → phase null + Luecke target_date",
+      "history": "B-02 (Ziel-Detailseite) soll jede fehlende Angabe auf den erhebenden Schritt verlinken. Das geht nur, wenn die Luecke benannt ist — ein stilles null ist fuer die UI nicht von 'nicht abgefragt' unterscheidbar."
+    }
+  ]
+}
