@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/gym-adapters.js",
+  "test": "supabase/tests/gym_adapters_test.mjs",
+  "note": "Uebersetzer zwischen App-Daten und den reinen Gym-Modulen. Gefaehrlich sind die Filter (Aufwaermsatz als Arbeitssatz, offene Session als Historie) und die Richtung der Sortierung (die letzte Einheit ist die Grundlage der Progression).",
+  "probes": [
+    {
+      "id": "GA1",
+      "pattern": "neighbour_guard",
+      "title": "Aufwaermsaetze zaehlen als Progressionsgrundlage",
+      "file": "js/engine/gym-adapters.js",
+      "find": "          return !NONPROGRESSION_TYPES[t];",
+      "replace": "          return true;",
+      "expectTest": "A2 Aufwaermsatz faellt raus, Satznummern neu ab 1",
+      "history": "Ein Aufwaermsatz mit 40 kg wuerde als 'Satz 1' gelesen und die Progression von Satz 1 auf 40 kg statt 60 kg beziehen — der Vorschlag waere systematisch zu niedrig oder meldete Stagnation, wo keine ist."
+    },
+    {
+      "id": "GA2",
+      "pattern": "neighbour_guard",
+      "title": "offene Session gilt als abgeschlossene Historie",
+      "file": "js/engine/gym-adapters.js",
+      "find": "if (!s || s.status !== 'completed' || typeof s.local_date !== 'string') return false;",
+      "replace": "if (!s || typeof s.local_date !== 'string') return false;",
+      "expectTest": "A1 nur abgeschlossene Sessions, aufsteigend",
+      "history": "Die laufende Session enthielte sich selbst als 'letzte Einheit' — der Vorschlag fuer Satz 2 basierte dann auf dem gerade geloggten Satz 1 derselben Einheit."
+    },
+    {
+      "id": "GA3",
+      "pattern": "direct",
+      "title": "Historie absteigend statt aufsteigend",
+      "file": "js/engine/gym-adapters.js",
+      "find": "    list.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });",
+      "replace": "    list.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });",
+      "expectTest": "A1 nur abgeschlossene Sessions, aufsteigend",
+      "history": "strength-progression nimmt das LETZTE Element als Grundlage. Absteigend sortiert waere die aelteste Einheit die Grundlage — der Vorschlag ignorierte jeden Fortschritt seit damals."
+    },
+    {
+      "id": "GA4",
+      "pattern": "data_lacks_var",
+      "title": "fehlendes Gewicht wird 0",
+      "file": "js/engine/gym-adapters.js",
+      "find": "  function _num(x) { return (typeof x === 'number' && isFinite(x)) ? x : (x != null && x !== '' && isFinite(+x) ? +x : null); }",
+      "replace": "  function _num(x) { return (typeof x === 'number' && isFinite(x)) ? x : (x != null && x !== '' && isFinite(+x) ? +x : 0); }",
+      "expectTest": "A6 fehlendes Gewicht bleibt null (kein 0)",
+      "history": "0 kg ist ein Wert, kein Loch. Das Modul wuerde daraus eine Steigerung auf 2,5 kg 'begruenden' — Datenluecke ≠ Wert."
+    },
+    {
+      "id": "GA5",
+      "pattern": "neighbour_guard",
+      "title": "Superset-Wechsel springt nicht zurueck zu A (kein Umlauf)",
+      "file": "js/engine/gym-adapters.js",
+      "find": "      return ids[(pos + 1) % ids.length];",
+      "replace": "      return ids[Math.min(pos + 1, ids.length - 1)];",
+      "expectTest": "D4 Wechsel A→B→A innerhalb der Gruppe",
+      "history": "Nach B muss wieder A kommen (A1→B1→A2→B2). Ohne Umlauf bliebe der Player nach B1 auf B stehen — der Nutzer loggt B2, B3 hintereinander und das Superset ist keins mehr."
+    }
+  ]
+}

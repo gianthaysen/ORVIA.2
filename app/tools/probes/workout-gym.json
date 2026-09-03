@@ -1,0 +1,37 @@
+{
+  "target": "js/workout-gym.js",
+  "test": "supabase/tests/workout_gym_wiring_test.mjs",
+  "note": "Player-Anbindung des Gym-Strangs. Gefaehrlich: der Superset-Wechsel (falscher Index = Saetze landen an der falschen Uebung), erfundene Vorschlaege ohne Historie, und ein Anlegen, das superset_group mitschickt.",
+  "probes": [
+    {
+      "id": "WG1",
+      "pattern": "direct",
+      "title": "Superset-Wechsel setzt die Uebung nicht um",
+      "file": "js/workout-gym.js",
+      "find": "    try { WS().setCurrentExercise(next); } catch (e) { return false; }",
+      "replace": "    try { void next; } catch (e) { return false; }",
+      "expectTest": "C4 nach Satz an A → Wechsel zu B",
+      "history": "Der naechste Satz wuerde still an der falschen Uebung gespeichert — genau die Klasse Datenfehler, die in der Historie nicht mehr auffaellt."
+    },
+    {
+      "id": "WG2",
+      "pattern": "data_lacks_var",
+      "title": "Vorschlag ohne Historie wird erfunden",
+      "file": "js/workout-gym.js",
+      "find": "    if (!res.perSet.length) { el.innerHTML = ''; return; }",
+      "replace": "    if (!res.perSet.length) { res.perSet = [{ setNumber: 1, weight: 20, reps: 8, action: 'hold', reason: 'within_range' }]; }",
+      "expectTest": "D4 ohne Historie: Flaeche leer (keine Erfindung)",
+      "history": "Datenluecke ≠ Wert: ohne fruehere Einheit gibt es keinen belastbaren Vorschlag. Eine Platzhalter-Zahl saehe wie eine Empfehlung aus."
+    },
+    {
+      "id": "WG3",
+      "pattern": "neighbour_guard",
+      "title": "Chip-Badge ohne echte Gruppe",
+      "file": "js/workout-gym.js",
+      "find": "  G.chipBadge = function (exs, i) { const l = labelOf(i); return l ? '<sup class=\"wo-ssb\">' + esc(l) + '</sup>' : ''; };",
+      "replace": "  G.chipBadge = function (exs, i) { const we = (exs[i] || {}).workoutExercise || {}; const l = we.superset_group != null ? String.fromCharCode(64 + we.superset_group) : null; return l ? '<sup class=\"wo-ssb\">' + esc(l) + '</sup>' : ''; };",
+      "expectTest": "C7 loesen: kein echtes Superset mehr, kein Badge",
+      "history": "Nach dem Loesen eines Partners bleibt beim anderen superset_group stehen — er ist aber kein Superset mehr (1 Uebung). Das Badge muss der Modul-Wahrheit folgen (groupsOf), nicht dem Rohfeld."
+    }
+  ]
+}

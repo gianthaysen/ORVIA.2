@@ -528,6 +528,23 @@
     return res(true, { replaced: true }, null, r.source, r.sync_status);
   }
 
+  /* B-05: Superset-Gruppe setzen/loeschen (group = 1..n oder null). Nur diese
+     eine Spalte wird geschrieben; beim ANLEGEN einer Uebung wird sie nie
+     mitgeschickt — fehlt Migration 0038 live, scheitert nur das Gruppieren
+     sichtbar, nicht das Anlegen (Vorfallklasse 0035). */
+  async function setSupersetGroup(index, group) {
+    const e = O.workout.exercises[index]; if (!e) return res(false, null, { message: 'Übung nicht gefunden' }, 'empty', 'failed');
+    const g = (group == null || group === '') ? null : Math.trunc(+group);
+    if (g != null && !(g >= 1)) return res(false, null, { message: 'ungültige Gruppe' }, 'empty', 'failed');
+    const we = e.workoutExercise;
+    let r;
+    if (online() && we.id) r = await O.repos.workout.updateExercise(we.id, { superset_group: g });
+    else r = await offlineUpsert('workout_exercises', Object.assign(buildExerciseRow(O.workout.session || {}, { clientExerciseId: we.client_exercise_id, exerciseId: we.exercise_id, order: we.order_index, plannedSets: we.planned_sets, minReps: we.min_reps, maxReps: we.max_reps, targetRir: we.target_rir, targetRpe: we.target_rpe, restSeconds: we.rest_seconds, notes: we.notes, completed: we.completed }), { superset_group: g }), 'user_id,client_exercise_id', { clientId: we.client_exercise_id, parentClientId: (O.workout.session || {}).client_session_id, fkField: 'workout_session_id' });
+    if (!r.success) return r;
+    we.superset_group = g; saveLocal();
+    return res(true, { superset_group: g }, null, r.source, r.sync_status);
+  }
+
   async function reorderExercises(orderedIndices) {
     const reordered = orderedIndices.map(i => O.workout.exercises[i]).filter(Boolean);
     O.workout.exercises = reordered;
@@ -703,7 +720,7 @@
   O.workoutStore = {
     startFreeWorkout, startPlannedWorkout, applyPlannedExercises, restoreActiveWorkout, pauseWorkout, resumeWorkout, finishWorkout, cancelWorkout,
     correctFinishedDuration,
-    addExercise, replaceExercise, removeExercise, reorderExercises,
+    addExercise, replaceExercise, removeExercise, reorderExercises, setSupersetGroup,
     addSet, updateSet, deleteSet, completeSet, validateSet,
     setCurrentExercise, getCurrentExercise, getPreviousPerformance,
     startRestTimer, addRestTime, skipRest, restRemaining, progress, clearForUserSwitch,
