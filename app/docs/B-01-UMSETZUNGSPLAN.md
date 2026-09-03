@@ -150,13 +150,14 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
    Paces anfassen muss oder nur das Template. *Braucht Chromium (gm6-Harness) → auf deinem Mac
    oder in CI, nicht in der Bridge-VM.*
 3. ✅ **Flag + `goalOf()`-Quelltausch** — Migration 0039 (`goal_plan_input`, Standard aus), `feature-flags@3`, `goalPlanInput.legacyForm()`, Quelltausch in `goalOf()` nur bei Flag **und** vorhandenem Hauptziel; `goal_plan_switch` 21/21 (Flag aus = byteweise Bestand für 6 Profile; Kraft Prio 1 gewinnt; Rückfall unverändert; fail-closed), 1 Probe + GP6.
-4. **110 entfernen, beide Schichten** (2 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`; `buildGoal()` übergibt `distanceKm` (Lücke 5, Engine-Seite ✅); drei Aufrufer auf Lücke.
+4. **110 entfernen, beide Schichten** (2 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`; drei Aufrufer auf Lücke. *Braucht dein Auge:* `goal.state` hat vier UI-Leser (KPI 4932, Zielkarte 4954–4959, Text 5226, Fortschritt 1668), die einen neuen Zustand `no_target` sichtbar darstellen müssen.
+   4a. ✅ **`buildGoal()` übergibt `distanceKm`** hinter dem Flag (Lücke 5 komplett: Engine + Aufrufer); `goal_plan_switch` G1–G3, Probe GS2.
 5. **Phase → Template** (4 h) — taper/race_week/past in `generateWeekPlan`; Tests je Phase.
 6. **Plan-Kopf: Feasibility + Lücken** (2 h).
 7. **Shadow als Regressionswächter** (1 h).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 12 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Summe ≈ 11 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 

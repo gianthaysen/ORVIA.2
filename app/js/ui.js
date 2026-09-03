@@ -1324,6 +1324,9 @@ function buildGoal(){
   var _avg4=_known.length>=2?(_known.reduce(function(a,b){return a+b;},0)/_known.length):null;
   _goalCache=Calc.goalEngine(runsWindow(42),{
     daysToRace:daysTo(RACE.date),targetMin:goalTargetMin(),   // Ziel-SSOT statt Legacy-Blob
+    /* B-01 Luecke 5 (Flag goal_plan_input): Zieldistanz an goalEngine — Riegel auf
+       10 km/HM/Marathon statt immer HM. Ohne Flag null ⇒ goalEngine rechnet wie bisher. */
+    distanceKm:(function(){try{if(!_goalPlanInputOn())return null;var _g=goalOf();return (_g&&_g.distanceKm>0)?_g.distanceKm:null;}catch(_){return null;}})(),
     avg4WeekKm:_avg4,
     targetWeekKm:Calc.weekKmTarget(daysTo(RACE.date),0),
     lrMax28:_longestRunKm(28),   // I2c: distanzbasiert, Session-genau, inkl. Store-/Garmin-Läufe ohne .sub

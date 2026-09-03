@@ -12,6 +12,16 @@
       "replace": "  try{return !!(window.ORVIA&&ORVIA.goalPlanInput&&typeof ORVIA.goalPlanInput.resolve==='function');}catch(_){return false;}",
       "expectTest": "A2 Kraft Prio 1 + HM → Bestand liefert das HM (Luecke 1 sichtbar)",
       "history": "Ohne Flag-Pruefung wuerde die Umstellung mit dem Deploy fuer alle Konten scharf — genau das, was Option A (§4 des Plans) verhindern soll."
+    },
+    {
+      "id": "GS2",
+      "pattern": "neighbour_guard",
+      "title": "Zieldistanz geht auch ohne Flag an goalEngine",
+      "file": "js/ui.js",
+      "find": "    distanceKm:(function(){try{if(!_goalPlanInputOn())return null;var _g=goalOf();",
+      "replace": "    distanceKm:(function(){try{var _g=goalOf();",
+      "expectTest": "G2 … nur hinter dem Flag (_goalPlanInputOn) — ohne Flag null",
+      "history": "Ohne Flag-Schranke aenderte sich die Prognose fuer jedes 10-km-/Marathon-Konto mit dem Deploy — richtig in der Sache, aber ausserhalb des Schattenbetriebs, den Option A verlangt."
     }
   ]
 }

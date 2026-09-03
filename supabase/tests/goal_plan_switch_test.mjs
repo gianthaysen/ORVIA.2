@@ -118,5 +118,15 @@ sec('F · Verdrahtung');
   ok('F4 Migration 0039 nennt das Flag im CHECK', existsSync(mig) && /goal_plan_input/.test(readFileSync(mig, 'utf8')));
 }
 
+sec('G · Luecke 5: Zieldistanz an goalEngine (buildGoal)');
+{
+  const bg = sliceFn(ui, 'function buildGoal()');
+  const call = bg.slice(bg.indexOf('Calc.goalEngine('));
+  ok('G1 goalEngine-Aufruf uebergibt distanceKm', /distanceKm\s*:/.test(call));
+  ok('G2 … nur hinter dem Flag (_goalPlanInputOn) — ohne Flag null', /distanceKm:\(function\(\)\{try\{if\(!_goalPlanInputOn\(\)\)return null;/.test(call));
+  ok('G3 … aus goalOf().distanceKm, nie aus einer Konstante', /goalOf\(\);return \(_g&&_g\.distanceKm>0\)\?_g\.distanceKm:null/.test(call) && !/distanceKm:\s*21/.test(call));
+  /* Funktional: die Distanz-Logik selbst ist in goal_engine_distance_test abgedeckt. */
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' goal_plan_switch: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
