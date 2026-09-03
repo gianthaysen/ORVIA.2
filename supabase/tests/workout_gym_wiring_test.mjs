@@ -142,5 +142,26 @@ sec('F · Anlegen schickt kein superset_group');
   ok('F1 addExercise-Zeilen ohne superset_group', CAP.exerciseRows.length === 2 && CAP.exerciseRows.every(r => !('superset_group' in r) && !('supersetGroup' in r)));
 }
 
+sec('G · Historie zeigt die Gruppierung');
+{
+  load('js/activity-store.js');
+  const snap = O.activityStore.snapshotExercises([
+    { workoutExercise: { order_index: 0, exercise_id: 'a', superset_group: 1 }, exercise: { name: 'A' }, sets: [] },
+    { workoutExercise: { order_index: 1, exercise_id: 'b', superset_group: 1 }, exercise: { name: 'B' }, sets: [] },
+    { workoutExercise: { order_index: 2, exercise_id: 'c' }, exercise: { name: 'C' }, sets: [] },
+    { workoutExercise: { order_index: 3, exercise_id: 'd', superset_group: 2 }, exercise: { name: 'D' }, sets: [] }
+  ]);
+  ok('G1 Snapshot fuehrt supersetGroup (null = keine)', snap[0].supersetGroup === 1 && snap[2].supersetGroup === null && snap[3].supersetGroup === 2);
+  /* _workoutDetailHtml aus activity.js herausschneiden (globale Datei, kein Modul). */
+  const actRaw = fs.readFileSync(new URL(_APPREL + 'js/activity.js', import.meta.url), 'utf8');
+  const i0 = actRaw.indexOf('function _workoutDetailHtml('); let d = 0, st0 = false, i1 = -1;
+  for (let j = i0; j < actRaw.length; j++) { const ch = actRaw[j]; if (ch === '{') { d++; st0 = true; } else if (ch === '}') { d--; if (st0 && d === 0) { i1 = j + 1; break; } } }
+  const fn = new Function('escH', 'window', 'ORVIA', actRaw.slice(i0, i1) + '; return _workoutDetailHtml;')(s => String(s), global.window, O);
+  const html = fn({ source: 'orvia_workout', workoutDetail: snap });
+  ok('G2 A und B tragen „Superset A", C nichts', (html.match(/Superset A/g) || []).length === 2 && html.indexOf('>C</span></div>') >= 0);
+  ok('G3 Einzel-Gruppe (D) bekommt KEIN Label', html.indexOf('Superset B') < 0);
+  ok('G4 alte Snapshots ohne Feld rendern unveraendert', fn({ source: 'orvia_workout', workoutDetail: [{ exerciseNameSnapshot: 'X' }] }).indexOf('Superset') < 0);
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' workout_gym_wiring: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

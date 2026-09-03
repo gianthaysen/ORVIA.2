@@ -33,6 +33,8 @@
         order: we.order_index != null ? we.order_index : i,
         exerciseId: we.exercise_id || null,
         exerciseNameSnapshot: (e && e.exercise && e.exercise.name) || we.exercise_name || null,
+        /* B-05: Superset-Gruppe mitfuehren, damit die Historie die Gruppierung zeigt (null = keine). */
+        supersetGroup: we.superset_group != null ? we.superset_group : null,
         sets: sets.map(function (s, j) {
           return {
             setNumber: s.set_number != null ? s.set_number : j + 1,

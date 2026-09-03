@@ -477,7 +477,10 @@ function _workoutDetailHtml(vm) {
   var ex = vm.workoutDetail;
   if (ex && ex.length) {
     var names = ex.map(function (x) { return (x && (x.n || (x.exercise && x.exercise.name) || x.exerciseNameSnapshot || (x.workoutExercise && x.workoutExercise.exercise_name_snapshot))) || 'Übung'; });
-    return '<div class="wc-ex"><div class="wc-ex-h">Übungen (' + ex.length + ')</div>' + names.map(function (n) { return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(n) + '</span></div>'; }).join('') + '</div>';
+    /* B-05: Superset-Label nur fuer ECHTE Gruppen (>= 2 Uebungen mit gleicher Gruppe). */
+    var gcount = {}; ex.forEach(function (x) { var g = x && x.supersetGroup; if (g != null) gcount[g] = (gcount[g] || 0) + 1; });
+    var labels = ex.map(function (x) { var g = x && x.supersetGroup; if (g == null || gcount[g] < 2) return ''; var GA = window.ORVIA && ORVIA.gymAdapters; var l = (GA && GA.groupLabel) ? GA.groupLabel(g) : String(g); return l ? '<span class="wc-exrow-ss">Superset ' + escH(l) + '</span>' : ''; });
+    return '<div class="wc-ex"><div class="wc-ex-h">Übungen (' + ex.length + ')</div>' + names.map(function (n, i) { return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(n) + '</span>' + labels[i] + '</div>'; }).join('') + '</div>';
   }
   if (vm.workoutDetailState === 'loading') return '<div class="wc-ex"><div class="wc-ex-h">Übungen werden geladen …</div></div>';
   if (vm.workoutDetailState === 'error') return '<div class="wc-nomap">Übungsdetails konnten nicht geladen werden.</div>';
