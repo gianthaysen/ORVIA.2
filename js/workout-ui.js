@@ -11,6 +11,9 @@
   let _tick = null, _busy = false;
 
   function WS() { return O.workoutStore; }
+  /* Phase B (Gym-Strang): Haken fuer workout-gym.js — fehlt die Datei, rendert alles wie bisher. */
+  function GY() { return O.workoutGym || null; }
+  function gy(fn) { const g = GY(); if (!g || typeof g[fn] !== 'function') return ''; try { return g[fn].apply(g, Array.prototype.slice.call(arguments, 1)) || ''; } catch (e) { return ''; } }
   function st() { return WS() ? WS().state() : { session: null, exercises: [] }; }
   function esc(s) { return (typeof window.esc === 'function') ? window.esc(s) : String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function toastIt(m) { if (typeof toast === 'function') toast(m); }
@@ -524,15 +527,15 @@
     }
 
     // ---- Gym: Satz-/Übungsmodus ----
-    if (exs.length) html += '<div class="wo-exnav">' + exs.map((e, i) => '<button class="wo-exchip ' + (i === idx ? 'on' : '') + '" onclick="ORVIA.workoutUI.goEx(' + i + ')">' + (i + 1) + '</button>').join('') + '</div>';
+    if (exs.length) html += '<div class="wo-exnav">' + exs.map((e, i) => '<button class="wo-exchip ' + (i === idx ? 'on' : '') + '" onclick="ORVIA.workoutUI.goEx(' + i + ')">' + (i + 1) + gy('chipBadge', exs, i) + '</button>').join('') + '</div>';
     if (!cur) {
       html += '<div class="wo-empty"><p>Noch keine Übung.</p><button class="btn" onclick="ORVIA.workoutUI.pickExercise()">Übung hinzufügen</button></div>';
     } else {
       const exName = (cur.exercise && cur.exercise.name) || 'Übung';
       const we = cur.workoutExercise;
       html += '<div class="wo-cur"><div class="wo-cur-top"><div class="wo-exname">' + esc(exName) + '</div>' +
-        '<div class="wo-exact"><button class="wo-link" onclick="ORVIA.workoutUI.replaceExercise(' + idx + ')">Ersetzen</button><button class="wo-link danger" onclick="ORVIA.workoutUI.removeExercise(' + idx + ')">Entfernen</button></div></div>' +
-        '<div class="wo-last" id="woLast">Letzte Leistung wird geladen…</div>' +
+        '<div class="wo-exact">' + gy('exerciseActionsHTML', idx) + '<button class="wo-link" onclick="ORVIA.workoutUI.replaceExercise(' + idx + ')">Ersetzen</button><button class="wo-link danger" onclick="ORVIA.workoutUI.removeExercise(' + idx + ')">Entfernen</button></div></div>' +
+        '<div class="wo-last" id="woLast">Letzte Leistung wird geladen…</div><div class="wo-suggest" id="woSuggest"></div>' +
         (we.planned_sets ? '<div class="muted">Ziel: ' + we.planned_sets + ' Sätze' + (we.min_reps ? ' · ' + we.min_reps + '–' + (we.max_reps || we.min_reps) + ' Wdh' : '') + (we.target_rir != null ? ' · RIR ' + we.target_rir : '') + '</div>' : '');
       html += '<div class="wo-sets">' + (cur.sets || []).map((s, si) =>
         '<div class="wo-set ' + (s.completed ? 'done' : '') + '"><span class="wo-setn">' + (s.set_number || si + 1) + '</span>' +
@@ -625,6 +628,7 @@
       '<label>Wdh<input type="number" inputmode="numeric" id="wiR" placeholder="' + (cur.workoutExercise.min_reps || '') + '"></label>' +
       (pro ? '<label>RIR<input type="number" inputmode="numeric" id="wiRir" placeholder="2"></label>' : '') + '</div>' +
       (pro ? '<div class="wo-inrow"><label>Typ<select id="wiType">' + Object.keys(SET_TYPE_DE).map(k => '<option value="' + k + '"' + (k === 'working' ? ' selected' : '') + '>' + SET_TYPE_DE[k] + '</option>').join('') + '</select></label></div>' : '') +
+      (gy('platesButtonHTML') ? '<div class="wo-inrow wo-tools">' + gy('platesButtonHTML') + '</div>' : '') +
       '<button class="btn cta wo-savebtn" onclick="ORVIA.workoutUI.saveSet()"><span class="cta-txt"><span class="cta-main">Satz speichern</span></span></button></div>';
   }
 
@@ -634,6 +638,7 @@
     const r = await WS().getPreviousPerformance(exId);
     if (!r || !r.success || !r.data) { el.innerHTML = '<span class="muted">Keine frühere Leistung.</span>'; return; }
     el.innerHTML = '<div class="muted">Letztes Training (' + esc(r.data.date) + '):</div>' + (r.data.sets || []).map(s => esc(fmtSet(s))).join('<br>');
+    gy('renderSuggestion', cur, r.data);   /* B-08: satzgenauer Vorschlag (fail-open) */
   }
 
   // ---- Aktionen ----
@@ -648,6 +653,7 @@
     // Pausentimer aus Plan-/letzter Pausenzeit
     const we = (st().exercises[idx] || {}).workoutExercise || {}; const rest = we.rest_seconds || 90;
     WS().startRestTimer(rest);
+    gy('afterSetSaved', idx);              /* B-05: im Superset zur Partner-Uebung (fail-open) */
     renderOverlay();
   };
   O.workoutUI.editSet = function (ei, si) {
@@ -689,6 +695,7 @@
   function openSheet(html) { const el = _sheetEl(); el.innerHTML = '<div class="wo-sheet" role="dialog" aria-modal="true">' + html + '</div>'; el.classList.remove('hide'); el.onclick = function (e) { if (e.target === el) closeSheet(); }; }
   function closeSheet() { const el = document.getElementById('woSheet'); if (el) { el.classList.add('hide'); el.innerHTML = ''; } }
   O.workoutUI.closeSheet = closeSheet;
+  O.workoutUI._openSheet = openSheet; O.workoutUI._render = renderOverlay; O.workoutUI._humanErr = humanErr;
   function confirmSheet(title, body, confirmLabel, cancelLabel, danger) {
     return new Promise(resolve => {
       openSheet('<h3 class="wo-sheet-t">' + esc(title) + '</h3>' + (body ? '<p class="wo-sheet-p">' + esc(body) + '</p>' : '') +

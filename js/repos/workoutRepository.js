@@ -205,7 +205,12 @@
         const last = done[0];
         const sets = (last.workout_sets || []).slice().sort((x, y) => (x.set_number || 0) - (y.set_number || 0));
         let best = null; sets.forEach(s => { if (s.weight != null && (!best || s.weight > best.weight)) best = s; });
-        return B.ok({ date: last.session.local_date, sets: sets, bestSet: best }, { source: 'supabase' });
+        /* B-08: die letzten Einheiten roh mitgeben (Session + Saetze), damit die
+           satzgenaue Progression Stagnation ueber MEHRERE Einheiten erkennen kann.
+           Additiv — `date/sets/bestSet` bleiben unveraendert. Der Uebersetzer in
+           engine/gym-adapters filtert und sortiert; hier wird nichts interpretiert. */
+        const history = done.slice(0, 6).map(we => ({ session: we.session, workout_sets: we.workout_sets || [] }));
+        return B.ok({ date: last.session.local_date, sets: sets, bestSet: best, history: history }, { source: 'supabase' });
       } catch (e) { return B.fail('exception', String(e && e.message || e)); }
     }
   };

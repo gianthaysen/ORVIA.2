@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="ORVIA">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08090B">
-<meta name="orvia-build" content="orvia-v8-363">
+<meta name="orvia-build" content="orvia-v8-364">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ============ ORVIA BRAND · icons & meta ============ -->
 <title>ORVIA · Performance OS</title>
@@ -705,6 +705,15 @@
 <!-- Phase 8.4 (2026-08-06): Belegsammler fuer das Canary-Gate. Sammelt, was die App
      wissen kann, und benennt, was nur ein Mensch beisteuern kann. -->
 <script src="js/engine/canary-report.js"></script>
+<!-- Phase B, Gym-Strang (2026-09-03): vier reine Module + ein Uebersetzer + die
+     Player-Anbindung. Jeder Haken in workout-ui.js ist fail-open: fehlt eine
+     Datei, rendert der Player wie bisher. -->
+<script src="js/engine/superset-model.js"></script>
+<script src="js/engine/exercise-alternatives.js"></script>
+<script src="js/engine/plate-calculator.js"></script>
+<script src="js/engine/strength-progression.js"></script>
+<script src="js/engine/gym-adapters.js"></script>
+<script src="js/workout-gym.js"></script>
 <div id="workoutOverlay" class="wo-overlay hide"></div>
 <div id="workoutPicker" class="wo-overlay hide"></div>
 </body>
