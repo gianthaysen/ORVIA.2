@@ -24,6 +24,7 @@ Was fehlt, sind vier Dinge:
 | 2 | `goalTargetMin()` liefert ohne Zielzeit **110** | Nutzer ohne Zielzeit bekommt Wochen-km, Zonen und Prognose für ein 1:50-Ziel, das er nie gesetzt hat | Datenlücke ≠ Wert: `targetMin: null` + benannte Lücke; Aufrufer zeigen „Zielzeit fehlt" statt zu rechnen |
 | 3 | Taper (A-09) wird nur **beobachtet** | In Taper/Rennwoche steht im Template weiter Intervalle + Tempo + Long Run; nur `weekKmTarget` sinkt | Phase steuert das Template: Taper = Volumen −, Intensität behalten; Rennwoche = 1 kurzer Reiz + Ruhe |
 | 4 | Feasibility (A-08) wird nur **beobachtet** | Unrealistisches Ziel erzeugt denselben Plan wie ein realistisches | B-01 zeigt das Urteil im Plan-Kopf; **steuern** tut es erst B-02 (Zielseite) — bewusst getrennt |
+| 5 | `Calc.goalEngine` ist **Halbmarathon-hartkodiert** (`riegelHM`, `HM_KM`, Long-Run-Schwellen 14/17 km) und hat einen **zweiten** 110-Default (`TARGET_MIN_DEFAULT`) | Prognose ist immer eine HM-Zeit, wird aber gegen den Zielwert **jeder** Laufdistanz gehalten: 10-km-Ziel 50 min ⇒ dauerhaft `risk`, Marathon 4:00 ⇒ dauerhaft `ontrack` (Zahlen §2) | `goalEngine` bekommt `distanceKm` aus der Plan-Eingabe; Riegel auf die **Zieldistanz**; ohne Zielzeit `state:'no_target'` statt 110 |
 
 **Reiner Kern gebaut (dieser Commit):** `engine/goal-plan-input.js` — `resolve()`, `planKey()`,
 `compareLegacy()`. 36/36, 5 Proben. Nicht verdrahtet.
@@ -57,6 +58,21 @@ Was fehlt, sind vier Dinge:
 2. `buildGoal()` → `Calc.goalEngine({daysToRace: daysTo(RACE.date), targetMin: goalTargetMin(), targetWeekKm: Calc.weekKmTarget(...)})` → Wochen-km, Prognose, Vetos. **Datum wirkt** (Runna-Kalender inkl. Entlastungswochen), **Zielzeit wirkt** — aber ggf. die erfundene.
 3. `performance-resolver` → `performance-zones` bekommt `goalTarget {distanceKm, targetMin}` als **schwache** Evidenz (`self_report`) → Zonen/Paces der Prescriptions. **Zielzeit wirkt**, sofern keine stärkere Evidenz (Wettkampf, Schwellentest) sie überstimmt.
 4. `Calc.racePhases/racePhase` → nur Anzeige (Plan-Kopf, Wochenansicht).
+
+**Ist-Nachweis Teil A (rein, in Node gelaufen, 03.09.):** dieselben 18 Läufe (Tempo 8 km @ 4:45,
+Long 16 km, Easy), nur der Zielwert variiert:
+
+```
+10 km · 50 min     target 50   tPred(HM) 106.2   state risk      ← Prognose ist eine HM-Zeit
+HM · 1:50          target 110  tPred(HM) 106.2   state ontrack
+HM · 1:40          target 100  tPred(HM) 106.2   state risk      ← Zielwert wirkt (nur bei HM korrekt)
+Marathon · 4:00    target 240  tPred(HM) 106.2   state ontrack   ← immer, egal wie fit
+ohne Zielzeit      target 110  tPred(HM) 106.2   state ontrack   ← zweiter 110-Default in calc.js
+```
+
+Das belegt Lücke 2 (doppelt: ui.js **und** calc.js) und Lücke 5 ohne Browser. Offen für Teil B
+(Chromium-Harness): ob die Prescription-Paces bei 1:50 vs. 1:40 tatsächlich verschieden
+ausgeliefert werden.
 
 **Konsequenz für die DoD:** Zwei Läufer mit gleicher Kategorie und anderer Zielzeit bekommen
 heute **vermutlich schon** unterschiedliche Prescription-Paces (Weg 3), aber dasselbe Template
@@ -110,11 +126,12 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
 | `app/js/ui.js` `goalTargetMin()` | bei Flag: kein 110-Default; Aufrufer 1326/3188/4538 auf `OrNull` + Lückenanzeige | ~15 Zeilen |
 | `app/js/ui.js` `generateWeekPlan()` | Phase-Steuerung (taper/race_week/past) aus `resolve().phase` | ~40 Zeilen |
 | `app/js/ui.js` Plan-Kopf | Feasibility-Urteil (A-08) anzeigen, Lücken verlinken | ~25 Zeilen |
+| `app/js/calc.js` `goalEngine()` | `opts.distanceKm` → `riegel(dist,dur,distanceKm)` statt `riegelHM`; Long-Run-Schwellen relativ zur Zieldistanz; ohne `targetMin` ⇒ `state:'no_target'` (kein `TARGET_MIN_DEFAULT`) — hinter Flag | ~25 Zeilen |
 | `app/js/engine/goal-shadow.js` | `compareLegacy`-Diff mitloggen (Regressionswächter) | ~10 Zeilen |
 | `supabase/tests/goal_plan_switch_test.mjs` | **neu** — Flag aus = Bestand byteweise gleich; Flag an = die vier Lücken geschlossen | ~150 Zeilen |
 | `_module-versions.json` | regeneriert (feature-flags) | automatisch |
 
-**Nicht angefasst:** `Calc.goalEngine`, `performance-zones`, `week-plan-designer`, Migrationen.
+**Nicht angefasst:** `performance-zones`, `week-plan-designer`, Migrationen.
 
 ---
 
@@ -127,13 +144,13 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
    Paces anfassen muss oder nur das Template. *Braucht Chromium (gm6-Harness) → auf deinem Mac
    oder in CI, nicht in der Bridge-VM.*
 3. **Flag + `goalOf()`-Quelltausch** (3 h) — Form behalten, Quelle tauschen; Switch-Test.
-4. **110 entfernen** (2 h) — `goalTargetMin` ohne Default hinter Flag; drei Aufrufer auf Lücke.
+4. **110 entfernen, beide Schichten** (3 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`, mit `distanceKm` (Lücke 5); drei Aufrufer auf Lücke.
 5. **Phase → Template** (4 h) — taper/race_week/past in `generateWeekPlan`; Tests je Phase.
 6. **Plan-Kopf: Feasibility + Lücken** (2 h).
 7. **Shadow als Regressionswächter** (1 h).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 16 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Summe ≈ 17 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 
@@ -146,6 +163,7 @@ Summe ≈ 16 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tausc
 | Flag an, keine Zielzeit ⇒ `goalEngine` bekommt `null`, Pace-Seite zeigt Lücke | Lücke 2 (Probe: 110 zurückschmuggeln muss rot werden) |
 | Phase taper/race_week/past ⇒ Template ändert sich wie in §3.3; `build` ⇒ **identisch** zu heute | Lücke 3, Bestandsschutz |
 | **DoD:** gleiche Kategorie, 1:50 vs. 1:40 ⇒ `planKey` verschieden **und** mindestens ein Plan-Artefakt (Pace oder km) verschieden | wörtliche DoD, Zielwert-Variation |
+| `goalEngine` mit `distanceKm` 10 / 21,0975 / 42,195 bei gleichen Läufen ⇒ drei verschiedene Prognosen, `state` plausibel je Distanz; ohne Zielzeit ⇒ `no_target` | Lücke 5 (Probe: `riegelHM` zurück muss rot werden) |
 | `compareLegacy` auf dem Produktionskonto: Diff leer **oder** genau eine der vier erwarteten Lücken | Shadow als Wächter |
 | Mutationsproben auf 110-Default, Sekunden/Minuten, planKey, past-Phase, Lückenbenennung | vorhanden (GP1–GP5) |
 
