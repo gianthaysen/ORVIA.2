@@ -28,6 +28,8 @@ Was fehlt, sind vier Dinge:
 
 **Reiner Kern gebaut:** `engine/goal-plan-input.js` — `resolve()`, `planKey()`, `compareLegacy()`.
 36/36, 5 Proben. Nicht verdrahtet.
+**Schritt 3 gebaut (v8-365, Flag aus):** Quelltausch in `goalOf()` hinter dem serverseitigen Flag
+`goal_plan_input` (Migration 0039). Einschalten je Konto per SQL (Kopf von 0039), Rückweg = `enabled=false`.
 **Lücke 5 vorbereitet (v8-365):** `Calc.goalEngine` nimmt `opts.distanceKm` (Riegel, EF-Korridor,
 Long-Run-Bedarf relativ zur Zieldistanz); **ohne** die Angabe byteweise wie bisher — kein Aufrufer
 übergibt sie heute. `goal_engine_distance` 18/18, 3 Proben. Der 110-Default bleibt bis zum Flag-Schritt.
@@ -124,8 +126,9 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
 |---|---|---|
 | `app/js/engine/goal-plan-input.js` | **neu, gebaut** — reiner Kern | 130 Zeilen |
 | `supabase/tests/goal_plan_input_test.mjs`, `app/tools/probes/goal-plan-input.json` | **neu, gebaut** — 36 Prüfungen, 5 Proben | — |
-| `app/js/engine/feature-flags.js` | Flag `goal_plan_input` (Standard aus) | 5 Zeilen, VERSION-Bump (guarded) |
-| `app/js/ui.js` `goalOf()` | bei Flag: `goalPlanInput.resolve(mainGoalOf())` → Legacy-Form; **kein 110** | ~20 Zeilen |
+| `supabase/migrations/0039_goal_plan_input_flag.sql` | ✅ **gebaut** — CHECK um `goal_plan_input` erweitert (Muster 0034) | — |
+| `app/js/engine/feature-flags.js` | ✅ **gebaut** — `goal_plan_input` in KNOWN, `@3` | — |
+| `app/js/ui.js` `goalOf()` | ✅ **gebaut** — bei Flag + Hauptziel: `legacyForm(resolve(mainGoalOf()))`; sonst Bestand | — |
 | `app/js/ui.js` `goalTargetMin()` | bei Flag: kein 110-Default; Aufrufer 1326/3188/4538 auf `OrNull` + Lückenanzeige | ~15 Zeilen |
 | `app/js/ui.js` `generateWeekPlan()` | Phase-Steuerung (taper/race_week/past) aus `resolve().phase` | ~40 Zeilen |
 | `app/js/ui.js` Plan-Kopf | Feasibility-Urteil (A-08) anzeigen, Lücken verlinken | ~25 Zeilen |
@@ -146,14 +149,14 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
    ausgibt, **was** sich unterscheidet (Template? Paces? km?). Ergebnis entscheidet, ob Schritt 5
    Paces anfassen muss oder nur das Template. *Braucht Chromium (gm6-Harness) → auf deinem Mac
    oder in CI, nicht in der Bridge-VM.*
-3. **Flag + `goalOf()`-Quelltausch** (3 h) — Form behalten, Quelle tauschen; Switch-Test.
+3. ✅ **Flag + `goalOf()`-Quelltausch** — Migration 0039 (`goal_plan_input`, Standard aus), `feature-flags@3`, `goalPlanInput.legacyForm()`, Quelltausch in `goalOf()` nur bei Flag **und** vorhandenem Hauptziel; `goal_plan_switch` 21/21 (Flag aus = byteweise Bestand für 6 Profile; Kraft Prio 1 gewinnt; Rückfall unverändert; fail-closed), 1 Probe + GP6.
 4. **110 entfernen, beide Schichten** (2 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`; `buildGoal()` übergibt `distanceKm` (Lücke 5, Engine-Seite ✅); drei Aufrufer auf Lücke.
 5. **Phase → Template** (4 h) — taper/race_week/past in `generateWeekPlan`; Tests je Phase.
 6. **Plan-Kopf: Feasibility + Lücken** (2 h).
 7. **Shadow als Regressionswächter** (1 h).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 16 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Summe ≈ 12 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 

@@ -20,8 +20,8 @@
     "contentHash": "ea31e026"
   },
   "flags": {
-    "version": "feature-flags@2",
-    "contentHash": "9a59962d"
+    "version": "feature-flags@3",
+    "contentHash": "e162e156"
   },
   "log": {
     "version": "decision-log@5",

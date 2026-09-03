@@ -26,7 +26,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'feature-flags@2';
+  var VERSION = 'feature-flags@3';
   var TABLE = 'user_feature_flags';
   var TTL_MS = 5 * 60 * 1000;
 
@@ -36,7 +36,10 @@
   var KNOWN = ['engine_v2_plan', 'engine_v2_readiness', 'canary_diagnostics',
     /* v8-293: Schalter der Beobachtungs-Sammlung — faellt erst nach gruenem
        Live-Test (0034 erweitert den CHECK-Constraint identisch). */
-    'prediction_observer'];
+    'prediction_observer',
+    /* B-01 (0039): Planung liest das kanonische Hauptziel statt goalOf()-Legacy.
+       Quelle tauschen, Form behalten — siehe ui.js goalOf(). */
+    'goal_plan_input'];
 
   /* state: flag -> { enabled, at, source, reason, cohort } */
   var _state = {};

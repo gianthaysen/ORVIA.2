@@ -27,7 +27,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'goal-plan-input@1';
+  var VERSION = 'goal-plan-input@2';
 
   /* Spiegel von ui.js RACE_DIST — bewusst kopiert: das Engine-Modul darf
      nicht von ui.js abhaengen. Der Paritaetstest haelt beide deckungsgleich. */
@@ -128,8 +128,24 @@
     return { same: diff.length === 0, diff: diff };
   }
 
+  /* Legacy-FORM fuer die 46 goalOf()-Aufrufer: {type, distanceKm, raceDate,
+     targetMin, priority, _canonicalId} — dieselben Feldnamen, dieselben
+     Leerwerte ('' fuer raceDate, null fuer distanceKm/targetMin). Dazu die
+     volle Plan-Eingabe unter _planInput fuer die Stellen, die mehr wissen
+     wollen (Phase, Luecken). Gibt null, wenn KEIN Hauptziel vorliegt — dann
+     entscheidet der Aufrufer ueber seinen Rueckfall, nicht dieses Modul. */
+  function legacyForm(input) {
+    var i = input || {};
+    if (i.source !== 'main_goal' || !i.category) return null;
+    var t = i.target || {};
+    return { type: i.category, distanceKm: t.distanceKm != null ? t.distanceKm : null,
+      raceDate: i.targetDate || '', targetMin: t.targetMin != null ? t.targetMin : null,
+      priority: 'solide', _canonicalId: i.goalId, _planInput: i };
+  }
+
   var api = { VERSION: VERSION, RUN_DIST_KM: RUN_DIST_KM, FAMILY: FAMILY,
-    targetMinutes: targetMinutes, resolve: resolve, planKey: planKey, compareLegacy: compareLegacy };
+    targetMinutes: targetMinutes, resolve: resolve, planKey: planKey, compareLegacy: compareLegacy,
+    legacyForm: legacyForm };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.goalPlanInput = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

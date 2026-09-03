@@ -1,0 +1,17 @@
+{
+  "target": "js/ui.js",
+  "test": "supabase/tests/goal_plan_switch_test.mjs",
+  "note": "B-01 Schritt 3: Quelle tauschen, Form behalten — hinter Flag. Gefaehrlich: ein Flag-Leser, der ohne Flag anspringt (Bestand aendert sich still), und ein Rueckfall, der bei fehlendem Hauptziel nicht mehr greift.",
+  "probes": [
+    {
+      "id": "GS1",
+      "pattern": "neighbour_guard",
+      "title": "Flag-Leser ignoriert das Flag",
+      "file": "js/ui.js",
+      "find": "  try{return !!(window.ORVIA&&ORVIA.featureFlags&&ORVIA.featureFlags.isEnabled('goal_plan_input')&&ORVIA.goalPlanInput&&typeof ORVIA.goalPlanInput.resolve==='function');}catch(_){return false;}",
+      "replace": "  try{return !!(window.ORVIA&&ORVIA.goalPlanInput&&typeof ORVIA.goalPlanInput.resolve==='function');}catch(_){return false;}",
+      "expectTest": "A2 Kraft Prio 1 + HM → Bestand liefert das HM (Luecke 1 sichtbar)",
+      "history": "Ohne Flag-Pruefung wuerde die Umstellung mit dem Deploy fuer alle Konten scharf — genau das, was Option A (§4 des Plans) verhindern soll."
+    }
+  ]
+}

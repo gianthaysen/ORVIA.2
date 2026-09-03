@@ -1373,8 +1373,12 @@ sec('Z7 · Quelltext-Vertraege der Einhaengung');
   /* Flag-Infrastruktur: Modul und Migration fuehren dasselbe Flag; 0031
      bleibt unangetastet (Geschichtsfaelschungs-Verbot). */
   const ff = readFileSync(join(APP, 'js/engine/feature-flags.js'), 'utf8');
-  ok('feature-flags@2 kennt prediction_observer',
-    /feature-flags@2/.test(ff) && /'prediction_observer'/.test(ff));
+  /* v8-365: nicht auf @2 festnageln — module_version_drift verlangt bei jeder
+     Inhaltsaenderung einen Bump (0039 hob auf @3). Zusicherung ist: Version >= 2
+     UND das Flag ist bekannt. */
+  const ffVer = +((ff.match(/feature-flags@(\d+)/) || [])[1] || 0);
+  ok('feature-flags@>=2 kennt prediction_observer',
+    ffVer >= 2 && /'prediction_observer'/.test(ff), 'Version ' + ffVer);
   const mig34 = join(HERE, '..', 'migrations', '0034_prediction_observer_flag.sql');
   ok('Migration 0034 existiert und fuehrt das Flag',
     existsSync(mig34) && /'prediction_observer'/.test(readFileSync(mig34, 'utf8')));

@@ -52,6 +52,16 @@
       "replace": "    if (false) out.gaps.push('target_date');",
       "expectTest": "C5 kein Datum → phase null + Luecke target_date",
       "history": "B-02 (Ziel-Detailseite) soll jede fehlende Angabe auf den erhebenden Schritt verlinken. Das geht nur, wenn die Luecke benannt ist — ein stilles null ist fuer die UI nicht von 'nicht abgefragt' unterscheidbar."
+    },
+    {
+      "id": "GP6",
+      "pattern": "data_lacks_var",
+      "title": "legacyForm erfindet ohne Hauptziel ein health-Ziel",
+      "file": "js/engine/goal-plan-input.js",
+      "find": "    if (i.source !== 'main_goal' || !i.category) return null;",
+      "replace": "    if (i.source !== 'main_goal' || !i.category) return { type: 'health', distanceKm: null, raceDate: '', targetMin: null, priority: 'solide' };",
+      "expectTest": "H1 legacyForm ohne Hauptziel → null (Rueckfall gehoert dem Aufrufer)",
+      "history": "goalOf() faellt ohne Hauptziel auf Legacy-Spiegel und Profil zurueck. Liefert legacyForm stattdessen ein erfundenes health-Ziel, verliert ein Konto mit Ziel nur im Spiegel sein Ziel (Risiko 2 im B-01-Plan)."
     }
   ]
 }

@@ -110,5 +110,15 @@ sec('G · Paritaet mit ui.js RACE_DIST');
   ok('G2 jede Distanz identisch', pairs.every(([k, v]) => G.RUN_DIST_KM[k] === v) && Object.keys(G.RUN_DIST_KM).length === pairs.length, J(pairs));
 }
 
+sec('H · legacyForm (Form fuer die goalOf()-Aufrufer)');
+{
+  ok('H1 legacyForm ohne Hauptziel → null (Rueckfall gehoert dem Aufrufer)', G.legacyForm(G.resolve({ goal: null })) === null && G.legacyForm(null) === null);
+  const lf = G.legacyForm(R(hm()));
+  ok('H2 Felder wie goalOf(): type/distanceKm/raceDate/targetMin/priority/_canonicalId', lf.type === 'half_marathon' && lf.distanceKm === 21.0975 && lf.raceDate === '2026-10-11' && lf.targetMin === 110 && lf.priority === 'solide' && lf._canonicalId === 'g1');
+  ok('H3 Leerwerte wie goalOf(): raceDate "" und targetMin null', (() => { const x = G.legacyForm(R(hm({ targetDate: null, targetValue: null }))); return x.raceDate === '' && x.targetMin === null; })());
+  ok('H4 _planInput haengt an', lf._planInput && lf._planInput.version === G.VERSION);
+  ok('H5 Ziel ohne Kategorie → null', G.legacyForm(G.resolve({ goal: { targetValue: 1 } })) === null);
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' goal_plan_input: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

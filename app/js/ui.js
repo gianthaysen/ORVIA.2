@@ -4560,6 +4560,21 @@ function raceLabel(t){return RACE_LABELS_P[gcat(t)];}
    (RACE_DIST); custom-Distanzen laufen weiter über den Spiegel. */
 function goalOf(){
   var p=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
+  /* B-01 (2026-09-03, Flag goal_plan_input, Standard AUS): Quelle tauschen, Form
+     behalten. Ist das Flag an UND gibt es ein kanonisches Hauptziel, liefert
+     goalOf() dessen Legacy-Form aus engine/goal-plan-input — damit sieht die
+     Planung ein Kraft-/Tri-/Koerperziel mit Prioritaet 1 (Luecke 1 im B-01-Plan)
+     statt des nachrangigen Laufziels. Ohne Hauptziel bleibt die bisherige
+     Rueckfallkette unveraendert; ohne Flag ist dieser Block byteweise wirkungslos. */
+  try{
+    if(_goalPlanInputOn()){
+      var _gpi=ORVIA.goalPlanInput;var _mg=(typeof mainGoalOf==='function')?mainGoalOf():null;
+      if(_mg){
+        var _lf=_gpi.legacyForm(_gpi.resolve({goal:_mg,today:(typeof todayStr==='function')?todayStr():null,canon:gcat,taper:ORVIA.goalTaperResolver||null}));
+        if(_lf)return _lf;
+      }
+    }
+  }catch(e){}
   try{
     var gs=(typeof listGoals==='function')?listGoals():(Array.isArray(p.goals)?p.goals:[]);
     var cand=gs.filter(function(g){return g&&g.status==='active'&&RACE_DIST[gcat(g.category)];})
@@ -4586,6 +4601,11 @@ function goalOf(){
   var t=gcat(p.primaryGoal||'health');var dist=RACE_DIST[t]||null;
   return {type:t,distanceKm:dist,raceDate:p.raceDate||'',
     targetMin:p.hmTargetMin||(t==='half_marathon'&&typeof DB!=='undefined'&&DB?DB._hmTargetMin:null)||null,priority:'solide'};
+}
+/* B-01: Flag-Leser fuer goalOf(). Fail-closed wie alle Flags: kein Modul, kein
+   Flag-System, Fehler ⇒ aus. Bewusst eine Funktion, damit der Test sie stubben kann. */
+function _goalPlanInputOn(){
+  try{return !!(window.ORVIA&&ORVIA.featureFlags&&ORVIA.featureFlags.isEnabled('goal_plan_input')&&ORVIA.goalPlanInput&&typeof ORVIA.goalPlanInput.resolve==='function');}catch(_){return false;}
 }
 /* Ziel-SSOT (2026-07-18): EINE Lesequelle für die Zielzeit in Minuten.
    Kanonisches Ziel (goalOf → user_goals, dort pflegt der Ziel-Editor die
