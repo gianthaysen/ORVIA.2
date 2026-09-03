@@ -133,6 +133,11 @@ sec('E · B-07 Scheiben');
   G._setBar(15, 102.5);
   const sh2 = ELS.woSheet.innerHTML;
   ok('E3 Stange 15 kg → je Seite 43,75 = 1×25 + 1×15 + 1×2,5 + 1×1,25', sh2.indexOf('1 ×</b> 25 kg') >= 0 && sh2.indexOf('1 ×</b> 2,5 kg') >= 0 && sh2.indexOf('Stange 15 kg') >= 0);
+  G._setUnit('lb', 135);
+  const sh3 = ELS.woSheet.innerHTML;
+  ok('E3b lb: 135 lb bei 45-lb-Stange = 1×45 je Seite, exakt, kein Uebernehmen (Feld ist kg)', sh3.indexOf('1 ×</b> 45 lb') >= 0 && sh3.indexOf('Stange 45 lb') >= 0 && sh3.indexOf('exakt') >= 0 && sh3.indexOf('übernehmen') < 0);
+  G._setUnit('kg', 100); G._setBar(20, 100);
+  ok('E3c zurueck auf kg, Stange 20: 100 kg = je Seite 40 = 1×25 + 1×15 (gierig absteigend)', ELS.woSheet.innerHTML.indexOf('1 ×</b> 25 kg') >= 0 && ELS.woSheet.innerHTML.indexOf('1 ×</b> 15 kg') >= 0 && ELS.woSheet.innerHTML.indexOf('Stange 20 kg') >= 0);
   ELS.wiW.value = ''; ELS.wiW.placeholder = ''; CAP.toasts.length = 0; G.plates();
   ok('E4 ohne Gewicht: Hinweis statt Rechnung', CAP.toasts.some(t => /Gewicht/.test(t)));
 }

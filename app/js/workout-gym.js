@@ -162,27 +162,37 @@
     if (!O.plateCalculator) return '';
     return '<button type="button" class="wo-mini wo-plates" onclick="ORVIA.workoutGym.plates()" title="Scheiben je Seite">⚖ Scheiben</button>';
   };
-  G._bar = 20;
+  /* Stange und Einheit sind je Sheet umschaltbar (DoD B-07: „Hantelstange
+     konfigurierbar, kg/lb"). Die Zielzahl wird in der gewaehlten Einheit
+     gelesen — es wird NICHT umgerechnet: wer im lb-Studio steht, tippt lb. */
+  const BARS = { kg: [20, 15, 10], lb: [45, 35, 15] };
+  G._unit = 'kg'; G._bar = { kg: 20, lb: 45 };
+  const fmtU = (w, u) => (w == null ? '–' : (Math.round(w * 100) / 100).toString().replace('.', ',') + ' ' + u);
   G.plates = function (target) {
     const PC = O.plateCalculator; if (!PC) return;
     let t = target;
     if (t == null) { const el = document.getElementById('wiW'); const v = el ? (el.value !== '' ? el.value : el.placeholder) : ''; t = v === '' ? null : +v; }
     if (t == null || isNaN(t)) { toastIt('Erst ein Gewicht eintragen.'); return; }
-    const r = PC.compute({ target: t, bar: G._bar });
-    const bars = [20, 15, 10].map(b => '<button class="wo-mini' + (b === G._bar ? ' on' : '') + '" onclick="ORVIA.workoutGym._setBar(' + b + ',' + t + ')">' + b + ' kg</button>').join(' ');
+    const u = G._unit, bar = G._bar[u];
+    const r = PC.compute({ target: t, bar: bar, unit: u });
+    const bars = BARS[u].map(b => '<button class="wo-mini' + (b === bar ? ' on' : '') + '" onclick="ORVIA.workoutGym._setBar(' + b + ',' + t + ')">' + b + ' ' + u + '</button>').join(' ');
+    const units = ['kg', 'lb'].map(x => '<button class="wo-mini' + (x === u ? ' on' : '') + '" onclick="ORVIA.workoutGym._setUnit(\'' + x + '\',' + t + ')">' + x + '</button>').join(' ');
     let body;
     if (!r.feasible) {
-      body = r.reason === 'below_bar' ? '<p class="wo-sheet-p">' + fmtKg(t) + ' liegt unter dem Stangengewicht (' + fmtKg(r.bar) + ').</p>' : '<p class="wo-sheet-p">Keine Berechnung möglich.</p>';
+      body = r.reason === 'below_bar' ? '<p class="wo-sheet-p">' + fmtU(t, u) + ' liegt unter dem Stangengewicht (' + fmtU(r.bar, u) + ').</p>' : '<p class="wo-sheet-p">Keine Berechnung möglich.</p>';
     } else {
-      const rows = r.perSide.length ? r.perSide.map(p => '<div class="wo-plate-row"><b>' + p.count + ' ×</b> ' + fmtKg(p.plate) + '</div>').join('') : '<div class="wo-plate-row">nur Stange</div>';
-      const diff = r.exact ? '<span class="muted">exakt</span>' : '<span class="muted">ladbar: ' + fmtKg(r.achieved) + ' (' + (r.delta < 0 ? '−' : '+') + fmtKg(Math.abs(r.delta)) + ')</span>';
-      body = '<div class="wo-plate-big">' + fmtKg(t) + ' ' + diff + '</div><div class="wo-plate-sub">je Seite · Stange ' + fmtKg(r.bar) + '</div>' + rows;
+      const rows = r.perSide.length ? r.perSide.map(p => '<div class="wo-plate-row"><b>' + p.count + ' ×</b> ' + fmtU(p.plate, u) + '</div>').join('') : '<div class="wo-plate-row">nur Stange</div>';
+      const diff = r.exact ? '<span class="muted">exakt</span>' : '<span class="muted">ladbar: ' + fmtU(r.achieved, u) + ' (' + (r.delta < 0 ? '−' : '+') + fmtU(Math.abs(r.delta), u) + ')</span>';
+      body = '<div class="wo-plate-big">' + fmtU(t, u) + ' ' + diff + '</div><div class="wo-plate-sub">je Seite · Stange ' + fmtU(r.bar, u) + '</div>' + rows;
     }
-    sheet('<h3 class="wo-sheet-t">Scheiben</h3>' + body + '<div class="wo-inrow" style="margin-top:12px;justify-content:center">' + bars + '</div>' +
-      (r.feasible && !r.exact ? '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutGym._takeWeight(' + r.achieved + ')">' + fmtKg(r.achieved) + ' übernehmen</button>' : '') +
+    sheet('<h3 class="wo-sheet-t">Scheiben</h3>' + body +
+      '<div class="wo-inrow" style="margin-top:12px;justify-content:center">' + bars + '</div>' +
+      '<div class="wo-inrow" style="margin-top:6px;justify-content:center">' + units + '</div>' +
+      (r.feasible && !r.exact && u === 'kg' ? '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutGym._takeWeight(' + r.achieved + ')">' + fmtU(r.achieved, u) + ' übernehmen</button>' : '') +
       '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Zurück</button>');
   };
-  G._setBar = function (b, t) { G._bar = b; G.plates(t); };
+  G._setBar = function (b, t) { G._bar[G._unit] = b; G.plates(t); };
+  G._setUnit = function (u, t) { G._unit = (u === 'lb') ? 'lb' : 'kg'; G.plates(t); };
   G._takeWeight = function (w) { const el = document.getElementById('wiW'); if (el) el.value = w; closeSheet(); };
 
   /* ---------------- B-08 · Progressionsvorschlag je Satz ---------------- */
