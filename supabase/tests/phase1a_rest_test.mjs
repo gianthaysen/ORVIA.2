@@ -115,7 +115,7 @@ const server = http.createServer((req, res) => {
   res.end(readFileSync(f));
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium, { executablePath: CHROME }); /* v8-365: Start ist Teil der Skip-Bedingung */
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 await ctx.route('**cdnjs.cloudflare.com/**', r => r.fulfill({ contentType: 'text/javascript', body: 'window.Chart=function(){this.destroy=function(){}};window.Chart.register=function(){};window.Chart.defaults={plugins:{}};' }));
 await ctx.route('**cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: '/* gestubbt */' }));

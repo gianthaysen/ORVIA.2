@@ -33,3 +33,24 @@ export function chromeOrSkip(chromium) {
   }
   return hit;
 }
+
+/* v8-365: Auch der START gehoert zur Skip-Bedingung. Befund 03.09.2026: In
+   einer Sandbox (Codex) EXISTIERTE das Binary, konnte aber nicht starten
+   (fehlende System-Libs / kein Sandbox-Recht) — 22 Tests crashten rot am
+   `chromium.launch`, run-all entfernte den gruenen Marker, deploy-verify
+   blockte einen Stand, der auf dem Mac 282/282 gruen war. Ein Browser, der
+   nicht hochkommt, hat die App noch nicht geladen: das ist kein Produkt-
+   fehler und darf keiner werden. Ausgabe nennt die Ursache, damit ein echter
+   Playwright-Defekt trotzdem sichtbar bleibt. */
+export async function launchOrSkip(chromium, opts) {
+  const o = Object.assign({}, opts || {});
+  if (!o.executablePath) o.executablePath = chromeOrSkip(chromium);
+  try {
+    return await chromium.launch(o);
+  } catch (e) {
+    const msg = String((e && e.message) || e).split('\n').slice(0, 3).join(' | ');
+    console.log('⏭️  ÜBERSPRUNGEN — Browser-Binary vorhanden, startet aber nicht in dieser Umgebung'
+      + ' (kein Produktfehler; die vollstaendige Pruefung ist die CI auf entwicklung). Ursache: ' + msg);
+    process.exit(2);
+  }
+}

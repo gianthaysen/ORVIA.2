@@ -71,6 +71,10 @@ files.forEach((f, i) => {
 const GRUENDE = [
   { id: 'browser', treffer: /kein Browser-Binary|playwright install|ORVIA_CHROME/i,
     text: 'kein Browser-Binary — `npx playwright install chromium` holt es nach' },
+  /* v8-365: Binary da, startet aber nicht (Sandbox ohne System-Libs) — ist NICHT
+     „Browser fehlt": ein install hilft hier nicht, die CI ist die Pruefung. */
+  { id: 'browser_start', treffer: /startet aber nicht in dieser Umgebung/i,
+    text: 'Browser-Binary vorhanden, startet aber nicht in dieser Umgebung — vollständige Prüfung ist die CI auf entwicklung' },
   { id: 'supabase', treffer: /SUPABASE_URL|SUPABASE_ANON_KEY|ENV fehlt|Umgebungsvariablen fehlen/i,
     text: 'brauchen eine echte Supabase-Instanz (Zugangsdaten fehlen)' }
 ];

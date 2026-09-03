@@ -69,7 +69,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const PORT = server.address().port;
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium, { executablePath: CHROME }); /* v8-365: Start ist Teil der Skip-Bedingung */
 /* EIN Context ueber den ganzen Lauf: localStorage muss den Reload ueberleben,
    genau wie auf dem Geraet des Nutzers. */
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });

@@ -608,7 +608,7 @@ const CHROME = (await import('./_pw-chrome.mjs')).chromeOrSkip(chromium); /* v8-
 const { buildHarness } = await import(new URL(_APPREL + 'tools/build_gm6_harness.mjs', import.meta.url));
 const HARNESS = 'file://' + buildHarness();
 
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium, { executablePath: CHROME }); /* v8-365: Start ist Teil der Skip-Bedingung */
 try {
   const geom = async reduced => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });

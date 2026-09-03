@@ -206,7 +206,7 @@ const { buildHarness } = await import(new URL(_APPREL + 'tools/build_gm6_harness
 const HARNESS = buildHarness();
 if (!fs.existsSync(HARNESS)) { console.log('\n❌ Harness konnte nicht erzeugt werden: ' + HARNESS); process.exit(1); }
 
-const b = await chromium.launch({ executablePath: (await import('./_pw-chrome.mjs')).chromeOrSkip(chromium) /* v8-307b */ });
+const b = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium) /* v8-307b Binary, v8-365 Start */;
 const consoleErrs = [];
 const page = await b.newPage({ viewportSize: { width: 430, height: 900 }, deviceScaleFactor: 1 });
 page.on('console', m => { if (m.type() === 'error') consoleErrs.push(m.text()); });
