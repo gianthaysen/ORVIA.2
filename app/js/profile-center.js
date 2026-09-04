@@ -232,6 +232,36 @@
     return out.slice(0, 2);
   }
 
+  /* ---------- B-03 Profilstärke (pur bis auf die Lesequellen) ---------- */
+  function buildStrength(p, now) {
+    var S = O.profileStrength; if (!S || typeof S.compute !== 'function') return null;
+    var M = PM();
+    var comp = null; try { comp = M.computeProfileCompleteness(p); } catch (e) {}
+    var pi = null;
+    try {
+      var mg = (typeof root.mainGoalOf === 'function') ? root.mainGoalOf() : null;
+      if (O.goalPlanInput) pi = O.goalPlanInput.resolve({ goal: mg, today: (typeof root.todayStr === 'function') ? root.todayStr() : null,
+        canon: (M && M.canonGoalCategory) || null, taper: O.goalTaperResolver || null });
+    } catch (e) { pi = null; }
+    var perf = null; try { perf = (O._lastPlanPerf !== undefined) ? O._lastPlanPerf : null; } catch (e) {}
+    var days = null; try { var cfg = M.effectiveTrainingConfig(p); days = cfg && Array.isArray(cfg.availableDayIdx) ? cfg.availableDayIdx.length : null; } catch (e) {}
+    var stale = [];
+    try { ESSENTIAL_IDS.forEach(function (id) { if (M.getSectionFreshness(p, id, now) === 'stale') stale.push(id); }); } catch (e) {}
+    try { return S.compute({ completeness: comp, planInput: pi, performance: perf, availableDays: days, staleSections: stale }); } catch (e) { return null; }
+  }
+  var BAND_DE = { stark: 'stark', solide: 'solide', lueckenhaft: 'lückenhaft', schwach: 'schwach' };
+  function strengthHTML(st) {
+    if (!st) return '';
+    var top = (st.gaps || []).slice(0, 3);
+    return '<div class="pc-strength pc-strength-' + esc(st.band) + '">' +
+      '<div class="pc-strength-head"><span class="pc-strength-score">' + st.score + '</span><span class="pc-strength-lab">Profilstärke · ' + esc(BAND_DE[st.band] || st.band) + '</span></div>' +
+      (top.length ? '<div class="pc-strength-gaps">' + top.map(function (g) {
+        return '<button type="button" class="pc-gap" id="pc-gap-' + esc(g.id) + '" data-section="' + esc(g.sectionId || '') + '" data-goal="' + esc(g.goalId || '') + '" data-action="' + esc(g.action || '') + '">' +
+          '<span class="pc-gap-t">' + esc(g.label) + '</span><span class="pc-gap-h">' + esc(g.hint || '') + '</span></button>';
+      }).join('') + '</div>' : '<div class="pc-strength-ok">Alles da, was die Planung braucht.</div>') +
+    '</div>';
+  }
+
   /* ---------- Rendering ---------- */
   function ringSVG(percent, complete) {
     var r = 26, c = 2 * Math.PI * r;
@@ -289,6 +319,7 @@
         (h.essentialComplete ? '<span class="pc-headstate ok">Profil vollständig</span>' : '<span class="pc-headstate warn">' + h.missingCount + (h.missingCount === 1 ? ' Angabe fehlt' : ' Angaben fehlen') + '</span>') +
         (h.lastUpdated ? '<span class="pc-updated">zuletzt aktualisiert ' + esc(h.lastUpdated) + '</span>' : '') +
       '</div>';
+    var strengthHtml = ''; try { strengthHtml = strengthHTML(buildStrength(p, now)); } catch (e) { strengthHtml = ''; }
     var promptHtml = prompts.length ? '<div class="pc-prompts">' + prompts.map(function (x) {
       return '<button type="button" class="pc-prompt pc-prompt-' + esc(x.severity) + '" id="pc-prompt-' + esc(x.id) + '" data-section="' + esc(x.sectionId) + '">' +
         '<span class="pc-prompt-title">' + esc(x.title) + '</span><span class="pc-prompt-hint">' + esc(x.hint) + '</span></button>';
@@ -297,7 +328,7 @@
       return '<div class="pc-group"><div class="pc-group-label">' + esc(g.label) + '</div>' +
         g.sections.map(function (sid) { return cardHTML(p, sid, now); }).join('') + '</div>';
     }).join('');
-    return head + promptHtml + groups;
+    return head + strengthHtml + promptHtml + groups;
   }
   function bindHandlers(now) {
     var doc = (typeof document !== 'undefined') ? document : null; if (!doc) return;
@@ -318,6 +349,18 @@
       };
     });
     var p = P();
+    /* B-03: jede Luecke verlinkt auf den erhebenden Schritt */
+    try {
+      var st = buildStrength(p, now);
+      ((st && st.gaps) || []).slice(0, 3).forEach(function (g) {
+        var el = doc.getElementById('pc-gap-' + g.id); if (!el) return;
+        el.onclick = function (ev) {
+          try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+          if (g.action === 'goal_editor' && typeof root.openGoalEditor === 'function') { try { root.openGoalEditor(g.goalId || undefined); } catch (e) {} return; }
+          try { if (g.sectionId && typeof root.openProfileSection === 'function') root.openProfileSection(g.sectionId); } catch (e) {}
+        };
+      });
+    } catch (e) {}
     buildSmartPrompts(p, now).forEach(function (x) {
       var el = doc.getElementById('pc-prompt-' + x.id);
       if (!el) return;
@@ -368,7 +411,7 @@
     buildHeaderModel: buildHeaderModel,
     sectionSummary: sectionSummary,
     sectionStatus: sectionStatus,
-    buildSmartPrompts: buildSmartPrompts,
+    buildSmartPrompts: buildSmartPrompts, buildStrength: buildStrength, strengthHTML: strengthHTML,
     GROUPS: GROUPS,
     SECTION_LABELS: SECTION_LABELS,
     _buildBodyHTML: buildBodyHTML,
