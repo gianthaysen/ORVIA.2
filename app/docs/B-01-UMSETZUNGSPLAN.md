@@ -30,6 +30,8 @@ Was fehlt, sind vier Dinge:
 36/36, 5 Proben. Nicht verdrahtet.
 **Schritt 3 gebaut (v8-365, Flag aus):** Quelltausch in `goalOf()` hinter dem serverseitigen Flag
 `goal_plan_input` (Migration 0039). Einschalten je Konto per SQL (Kopf von 0039), Rückweg = `enabled=false`.
+**Schritte 4 und 5 gebaut (v8-365, Flag aus):** kein 110 mehr erreichbar, Zieldistanz in der Prognose,
+Taper/Rennwoche/Wettkampftag im gelesenen Plan. Was bei eingeschaltetem Flag zu sehen sein muss, steht in §11.
 **Lücke 5 vorbereitet (v8-365):** `Calc.goalEngine` nimmt `opts.distanceKm` (Riegel, EF-Korridor,
 Long-Run-Bedarf relativ zur Zieldistanz); **ohne** die Angabe byteweise wie bisher — kein Aufrufer
 übergibt sie heute. `goal_engine_distance` 18/18, 3 Proben. Der 110-Default bleibt bis zum Flag-Schritt.
@@ -150,14 +152,14 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
    Paces anfassen muss oder nur das Template. *Braucht Chromium (gm6-Harness) → auf deinem Mac
    oder in CI, nicht in der Bridge-VM.*
 3. ✅ **Flag + `goalOf()`-Quelltausch** — Migration 0039 (`goal_plan_input`, Standard aus), `feature-flags@3`, `goalPlanInput.legacyForm()`, Quelltausch in `goalOf()` nur bei Flag **und** vorhandenem Hauptziel; `goal_plan_switch` 21/21 (Flag aus = byteweise Bestand für 6 Profile; Kraft Prio 1 gewinnt; Rückfall unverändert; fail-closed), 1 Probe + GP6.
-4. **110 entfernen, beide Schichten** (2 h) — `goalTargetMin` ohne Default **und** `goalEngine` ohne `TARGET_MIN_DEFAULT`; drei Aufrufer auf Lücke. *Braucht dein Auge:* `goal.state` hat vier UI-Leser (KPI 4932, Zielkarte 4954–4959, Text 5226, Fortschritt 1668), die einen neuen Zustand `no_target` sichtbar darstellen müssen.
-   4a. ✅ **`buildGoal()` übergibt `distanceKm`** hinter dem Flag (Lücke 5 komplett: Engine + Aufrufer); `goal_plan_switch` G1–G3, Probe GS2.
-5. **Phase → Template** (4 h) — taper/race_week/past in `generateWeekPlan`; Tests je Phase.
+4. ✅ **110 entfernen, beide Schichten** — hinter Flag: `goalTargetMin()` → null; `goalEngine({strictTarget})` → `state:'no_target'` (Prognose bleibt, kein Band); Zielkarte mit eigenem `no_target`-Zweig („Zielzeit fehlt" + Link), Coach-Text, Pace-Seite (Hinweis statt NaN), Wochenplan-Paces (Cues statt erfundener HM-Paces). Sichtprüfung am Gerät offen.
+   4a. ✅ **`buildGoal()` übergibt `distanceKm`** hinter dem Flag (Lücke 5 komplett).
+5. ✅ **Phase → Plan** — *nicht* im Generator, sondern im **Lesepfad** (`activeWeekPlan()`, alle drei Zweige), weil der Generator nur ohne gespeicherten Plan läuft: `engine/goal-phase-plan.js` (rein, 25/25) + `applyGoalPhaseToPlan()` wie `alignPlanToAvailability` (nicht persistierend). Taper: harte Einheiten „kurz"/„Taper", Kraft „leicht", nichts gelöscht. Rennwoche: Long Run/Tempo weg, eine Intervalleinheit → „Anschwitzen", Kraft → Mobility, **Wettkampftag mit Zielpace**, Vortag und Folgetage frei. Nur Ausdauer-Familien (run/tri/bike).
 6. **Plan-Kopf: Feasibility + Lücken** (2 h).
 7. **Shadow als Regressionswächter** (1 h).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 11 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Summe ≈ 4 h Rest (Band 1: 24 h): Schritt 6 (Feasibility im Plan-Kopf), Schritt 7 (Shadow-Wächter), Schritt 8 (Umschalten + 7 Tage). — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 
@@ -205,3 +207,17 @@ Summe ≈ 11 h Rest (Band 1: 24 h) — die Ersparnis kommt aus §4 (Quelle tausc
 **Schritt 2 (Ist-Nachweis) als Nächstes**, auf deinem Mac mit Chromium — er ist billig und
 entscheidet, wie groß Schritt 5 wird. Alles ab Schritt 3 erst nach Gate A (#4 fällig heute,
 #5 morgen). Bis dahin bleibt `goal-plan-input.js` unverdrahtet: keine Skript-Tags, kein sw.js.
+
+---
+
+## 11 · Sichtprüfung bei eingeschaltetem Flag (dein Konto, HM-Ziel 11.10.)
+
+| Wo | Erwartung heute (Phase `build`, 38 Tage) |
+|---|---|
+| Zielkarte, Pace-Seite, Wochenplan | **identisch** zu vorher — dein Hauptziel ist das HM, Zielzeit gesetzt |
+| Zielkarte nach Löschen der Zielzeit (Test) | grauer Kasten „Halbmarathon · Zielzeit fehlt", Prognose sichtbar, Link „Zielzeit festlegen"; **kein** ON TRACK/GEFÄHRDET |
+| Pace-Seite ohne Zielzeit | Zonen aus der Prognose, Hero-Zeile „keine Zielzeit"; ohne Prognose ein Hinweis, keine NaN |
+| Kraftziel testweise auf Priorität 1 | Plan-Kopf Kraft, Template Kraft, Zielkarte „Ziel · Muskelaufbau" (neutral), Pace-Seite ohne Paces |
+| Ab 28.09. (13 Tage vor dem Rennen) | Long Run · Taper, Intervalle · kurz, Gym · leicht |
+| Ab 05.10. (Rennwoche) | Long Run/Tempo weg, „Anschwitzen", So 11.10. „Wettkampf · 5:13 /km · Zielpace" (bei 1:50), Sa frei |
+| Zieldatum testweise auf morgen | sofortige Rennwoche-Ansicht — Test ohne Warten; danach zurücksetzen |

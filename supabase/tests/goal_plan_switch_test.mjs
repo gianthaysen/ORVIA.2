@@ -128,5 +128,27 @@ sec('G · Luecke 5: Zieldistanz an goalEngine (buildGoal)');
   /* Funktional: die Distanz-Logik selbst ist in goal_engine_distance_test abgedeckt. */
 }
 
+sec('H · 4b/5 Verdrahtung in ui.js');
+{
+  const gtm = sliceFn(ui, 'function goalTargetMin()');
+  const fnT = new Function('goalTargetMinOrNull', '_goalPlanInputOn', gtm + '\nreturn goalTargetMin;');
+  ok('H1 goalTargetMin: Flag aus → 110 (Bestand)', fnT(() => null, () => false)() === 110);
+  ok('H2 goalTargetMin: Flag an → null, kein 110', fnT(() => null, () => true)() === null);
+  ok('H3 goalTargetMin: Zielzeit vorhanden → unveraendert, egal ob Flag', fnT(() => 95, () => true)() === 95 && fnT(() => 95, () => false)() === 95);
+  const bg = sliceFn(ui, 'function buildGoal()');
+  ok('H4 buildGoal uebergibt strictTarget aus _goalPlanInputOn (typeof-gesichert fuer Harness)', /strictTarget:\(typeof _goalPlanInputOn==='function'&&_goalPlanInputOn\(\)===true\)/.test(bg));
+  const card = ui.slice(ui.indexOf("if(g.state==='nodata'){var _gtm=goalTargetMinOrNull()"), ui.indexOf("function renderACWRCard()"));
+  ok('H5 Zielkarte hat einen no_target-Zweig VOR der Ampel', card.indexOf("g.state==='no_target'") >= 0 && card.indexOf("g.state==='no_target'") < card.indexOf("const bg=g.state==='ontrack'"));
+  ok('H6 Coach-Text kennt no_target', /g\.state==='no_target'\?'Prognose: '/.test(ui));
+  const rp = sliceFn(ui, 'function renderPace()');
+  ok('H7 Pace-Seite: ohne Zielzeit und Prognose Hinweis statt NaN', /t==null&&\(goal\.state==='nodata'\|\|goal\.tPred==null\)/.test(rp));
+  const ap = sliceFn(ui, 'function applyGoalPhaseToPlan(plan)');
+  ok('H8 applyGoalPhaseToPlan: Flag-Schranke zuerst, Modul fail-open, Eingabeplan als Rueckfall', /if\(!_goalPlanInputOn\(\)\)return plan;/.test(ap) && /catch\(_\)\{return plan;\}/.test(ap));
+  const awp = sliceFn(ui, 'function activeWeekPlan()');
+  ok('H9 alle drei Lesepfade (canonical/stored/generated) laufen durch applyGoalPhaseToPlan', (awp.match(/applyGoalPhaseToPlan\(/g) || []).length === 3);
+  const idx = readFileSync(join(APP, 'index.html'), 'utf8'), sw = readFileSync(join(APP, 'sw.js'), 'utf8');
+  ok('H10 goal-phase-plan verdrahtet (index + sw)', idx.indexOf('js/engine/goal-phase-plan.js') > 0 && sw.indexOf("'./js/engine/goal-phase-plan.js'") > 0);
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' goal_plan_switch: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

@@ -788,7 +788,13 @@ function riegel(distKm,durMin,targetKm){
 }
 function riegelHM(distKm,durMin){return riegel(distKm,durMin,HM_KM);}
 function goalEngine(runs42,opts){
-  const o=opts||{};const target=o.targetMin||TARGET_MIN_DEFAULT;
+  const o=opts||{};
+  /* B-01 4b: strictTarget ⇒ keine Zielzeit ist keine Zielzeit. Die Prognose wird
+     trotzdem gerechnet (sie haengt nicht am Ziel), aber es gibt kein Band und
+     keinen Zustand ontrack/border/risk — sondern 'no_target'. Ohne strictTarget
+     bleibt der 110-Default (Bestand). */
+  const noTarget=(o.strictTarget===true&&!(o.targetMin>0));
+  const target=noTarget?null:(o.targetMin||TARGET_MIN_DEFAULT);
   /* B-01 Vorarbeit (2026-09-03): ZIELDISTANZ als Eingabe. Bis hierhin war die
      Prognose IMMER eine Halbmarathon-Zeit (riegelHM/HM_KM), wurde aber gegen die
      Zielzeit JEDER Laufdistanz gehalten — 10-km-Ziel 50 min ⇒ dauerhaft 'risk',
@@ -865,12 +871,13 @@ function goalEngine(runs42,opts){
     }
   }
   // Bänder
-  const delta=(target-tPred)/target;
+  const delta=noTarget?null:(target-tPred)/target;
   let state='ontrack';
-  if(delta<-0.03||vetos.length>=2)state='risk';
+  if(noTarget)state='no_target';
+  else if(delta<-0.03||vetos.length>=2)state='risk';
   else if(delta<0.02||vetos.length===1)state='border';
   return{state,tPred:+tPred.toFixed(1),tRiegel:+tRiegel.toFixed(1),tEF:tEF?+tEF.toFixed(1):null,
-    delta:+(delta*100).toFixed(1),vetos,notAssessable:notAssessable,ctlTrend:ctlTrend,
+    delta:noTarget?null:+(delta*100).toFixed(1),vetos,notAssessable:notAssessable,ctlTrend:ctlTrend,
     assessable:{volume:_volKnown},confidence:notAssessable.length?'reduziert':'hoch',
     nRuns:valid.length,nQuality:usable.length,target,distanceKm:distKm};
 }

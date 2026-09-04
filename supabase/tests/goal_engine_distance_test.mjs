@@ -76,5 +76,14 @@ sec('E · Unsinn');
   ok('E2 kein NaN in der Prognose', [0, NaN, 'x'].every(d => isFinite(GE({ targetMin: 110, distanceKm: d }).tPred)));
 }
 
+sec('F · 4b strictTarget: keine Zielzeit ist keine Zielzeit');
+{
+  const a = GE({ targetMin: null, strictTarget: true });
+  ok('F1 state no_target, target/delta null, Prognose trotzdem da', a.state === 'no_target' && a.target === null && a.delta === null && a.tPred === 106.2);
+  ok('F2 ohne strictTarget bleibt der 110-Default (Bestand)', GE({ targetMin: null }).state === 'ontrack' && GE({ targetMin: null }).target === 110);
+  ok('F3 strictTarget mit Zielzeit → normales Band', GE({ targetMin: 100, strictTarget: true }).state === 'risk');
+  ok('F4 nodata-Gate schlaegt no_target (zu wenig Laeufe)', C.goalEngine(runs.slice(0, 3), Object.assign({}, base, { targetMin: null, strictTarget: true })).state === 'nodata');
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' goal_engine_distance: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
