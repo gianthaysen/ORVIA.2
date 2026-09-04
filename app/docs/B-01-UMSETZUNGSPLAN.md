@@ -155,11 +155,11 @@ das richtige Ziel. Das ist der eigentliche Trick: Form behalten, Quelle tauschen
 4. ✅ **110 entfernen, beide Schichten** — hinter Flag: `goalTargetMin()` → null; `goalEngine({strictTarget})` → `state:'no_target'` (Prognose bleibt, kein Band); Zielkarte mit eigenem `no_target`-Zweig („Zielzeit fehlt" + Link), Coach-Text, Pace-Seite (Hinweis statt NaN), Wochenplan-Paces (Cues statt erfundener HM-Paces). Sichtprüfung am Gerät offen.
    4a. ✅ **`buildGoal()` übergibt `distanceKm`** hinter dem Flag (Lücke 5 komplett).
 5. ✅ **Phase → Plan** — *nicht* im Generator, sondern im **Lesepfad** (`activeWeekPlan()`, alle drei Zweige), weil der Generator nur ohne gespeicherten Plan läuft: `engine/goal-phase-plan.js` (rein, 25/25) + `applyGoalPhaseToPlan()` wie `alignPlanToAvailability` (nicht persistierend). Taper: harte Einheiten „kurz"/„Taper", Kraft „leicht", nichts gelöscht. Rennwoche: Long Run/Tempo weg, eine Intervalleinheit → „Anschwitzen", Kraft → Mobility, **Wettkampftag mit Zielpace**, Vortag und Folgetage frei. Nur Ausdauer-Familien (run/tri/bike).
-6. **Plan-Kopf: Feasibility + Lücken** (2 h).
-7. **Shadow als Regressionswächter** (1 h).
+6. ✅ **Plan-Kopf: Feasibility** — `_feasibilityLineHTML()` liest `ORVIA._lastFeasibility` (A-08), zeigt bei Flag eine Zeile unter „Phase" (Korridor / außerhalb / nicht bewertbar); Wortlaut ohne „machbar". Lücken-Links: die Zielkarte verlinkt „Zielzeit festlegen" (4b); ein vollständiges Lücken-Panel gehört zu B-02.
+7. ✅ **Shadow als Regressionswächter** — ohne neuen Code: der A-06-Beobachter vergleicht `mainGoalOf()` mit `goalOf()` auf `identity/category/targetDate/targetMin`. Mit eingeschaltetem Flag liest `goalOf()` dieselbe Quelle ⇒ **jeder** Widerspruch nach dem Umschalten ist ein Befund. Prüfung: Ziel-Skript (§3 Gate-A) einmal mit Flag an wiederholen → R1 `widersprueche = 0` erwartet, insbesondere bei Kraft Prio 1 (vorher `identity`).
 8. **Gate A abnehmen** → Flag auf dem Produktionskonto an → 7 Tage beobachten → Standard an.
 
-Summe ≈ 4 h Rest (Band 1: 24 h): Schritt 6 (Feasibility im Plan-Kopf), Schritt 7 (Shadow-Wächter), Schritt 8 (Umschalten + 7 Tage). — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
+Rest: Schritt 8 (Migration 0039 ✅ live, Deploy, Flag an, 7 Tage Schattenbetrieb, Standard an) — nur noch Betrieb, kein Code. — die Ersparnis kommt aus §4 (Quelle tauschen statt 73 Stellen).
 
 ---
 

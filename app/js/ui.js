@@ -4684,7 +4684,7 @@ function renderRaceHeader(){
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtTime)+'</span><span class="rh-lab">Zielzeit</span></div>'+
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtPace)+'</span><span class="rh-lab">Zielpace</span></div>'+
       '</div>'+
-      '<div class="rh-phase">Phase: <b>'+escH(phase)+'</b></div></div>';
+      '<div class="rh-phase">Phase: <b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+'</div>';
     return;
   }
   // Nicht-Lauf-Hauptziel: allgemeine Zielinfo, KEINE Zeit/Pace/Distanz-Felder.
@@ -4697,6 +4697,21 @@ function renderRaceHeader(){
       '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
       tgt+
     '</div></div>';
+}
+/* B-01 Schritt 6 (Flag goal_plan_input): Machbarkeitsurteil (A-08) im Plan-Kopf ANZEIGEN —
+   nicht steuern. Der Adapter legt es unter ORVIA._lastFeasibility ab; hier wird nur gelesen.
+   Wortlaut folgt dem Modell: „im modellierten Korridor" ist kein „machbar". */
+function _feasibilityLineHTML(){
+  try{
+    if(typeof _goalPlanInputOn!=='function'||!_goalPlanInputOn())return '';
+    var f=window.ORVIA&&ORVIA._lastFeasibility;if(!f||f.evaluated!==true)return '';
+    var txt=f.status==='within_modeled_corridor'?'Zielzeit liegt im modellierten Korridor deiner aktuellen Leistung.'
+      :f.status==='outside_modeled_corridor'?'Zielzeit liegt außerhalb des modellierten Korridors — ambitioniert für den Zeitraum.'
+      :f.status==='insufficient_data'?'Machbarkeit noch nicht bewertbar (zu wenig Leistungsdaten).':'';
+    if(!txt)return '';
+    var cls=f.status==='outside_modeled_corridor'?' rh-feas-warn':'';
+    return '<div class="rh-feas'+cls+'">'+escH(txt)+'</div>';
+  }catch(_){return '';}
 }
 /* G0: KANONISCHER Hauptziel-Selektor über ALLE Sportarten/Kategorien (niedrigste
    priority unter aktiven Zielen). Getrennt von goalOf() (Lauf-Wettkampfprojektion)

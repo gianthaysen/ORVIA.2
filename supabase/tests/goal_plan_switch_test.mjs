@@ -150,5 +150,16 @@ sec('H · 4b/5 Verdrahtung in ui.js');
   ok('H10 goal-phase-plan verdrahtet (index + sw)', idx.indexOf('js/engine/goal-phase-plan.js') > 0 && sw.indexOf("'./js/engine/goal-phase-plan.js'") > 0);
 }
 
+sec('I · Schritt 6: Machbarkeit im Plan-Kopf (nur anzeigen)');
+{
+  const fl = sliceFn(ui, 'function _feasibilityLineHTML()');
+  const mk6 = (on, feas) => new Function('_goalPlanInputOn', 'window', 'ORVIA', 'escH', fl + '\nreturn _feasibilityLineHTML;')(() => on, { ORVIA: { _lastFeasibility: feas } }, { _lastFeasibility: feas }, s => String(s))();
+  ok('I1 Flag aus → leer', mk6(false, { evaluated: true, status: 'outside_modeled_corridor' }) === '');
+  ok('I2 Flag an, ausserhalb → Warnzeile', /rh-feas-warn/.test(mk6(true, { evaluated: true, status: 'outside_modeled_corridor' })));
+  ok('I3 Flag an, im Korridor → neutrale Zeile, kein „machbar"', (() => { const h = mk6(true, { evaluated: true, status: 'within_modeled_corridor' }); return /rh-feas/.test(h) && !/rh-feas-warn/.test(h) && !/machbar/.test(h); })());
+  ok('I4 nicht bewertet / fehlt → leer', mk6(true, { evaluated: false, reason: 'no_goal' }) === '' && mk6(true, null) === '');
+  ok('I5 Race-Header ruft die Zeile', /_feasibilityLineHTML\(\)\+'<\/div>'/.test(sliceFn(ui, 'function renderRaceHeader()')));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' goal_plan_switch: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
