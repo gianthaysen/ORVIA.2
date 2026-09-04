@@ -557,6 +557,20 @@ function generateWeekPlan(){
    der Verfügbarkeit aus: Einheiten auf nicht verfügbaren Tagen wandern auf den nächst-
    gelegenen verfügbaren FREIEN Tag; ohne freien Tag bleibt die Einheit ehrlich liegen.
    Nicht-mutierend, deterministisch, idempotent — persistiert NICHTS (Renderer speichern nie). */
+/* B-01 Schritt 5 (Flag goal_plan_input): Zielphase (A-09) auf den GELESENEN Plan
+   anwenden — Taper/Rennwoche, Wettkampftag. Wie alignPlanToAvailability: rein,
+   nicht persistierend, ohne Flag/Phase/Modul byteweise der Eingabeplan. */
+function applyGoalPhaseToPlan(plan){
+  try{
+    if(!_goalPlanInputOn())return plan;
+    var GP=window.ORVIA&&ORVIA.goalPhasePlan;if(!GP||typeof GP.applyPhase!=='function')return plan;
+    var g=goalOf();var pi=g&&g._planInput;if(!pi||!pi.phase)return plan;
+    var r=GP.applyPhase(plan,{phase:pi.phase,family:pi.family,targetDate:pi.targetDate,today:todayStr(),
+      pacePerKmSec:(pi.target&&pi.target.pacePerKmSec)||null});
+    if(r&&r.changed){try{ORVIA._lastGoalPhasePlan=r;}catch(_){ }return r.days;}
+    return plan;
+  }catch(_){return plan;}
+}
 function alignPlanToAvailability(plan,cfg){
   if(!Array.isArray(plan)||plan.length!==7)return plan;
   if(!cfg||!Array.isArray(cfg.availableDayIdx)||!cfg.availableDayIdx.length)return plan;
@@ -854,7 +868,7 @@ function activeWeekPlan(){
         var _eff5=JSON.parse(JSON.stringify(_PD5.effectiveSessions(_gmCanonPlan.plan).days));
         try{
           var _cfg5=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-          return gmObserveWeekPlan(alignPlanToAvailability(_eff5,_cfg5),'canonical');
+          return gmObserveWeekPlan(applyGoalPhaseToPlan(alignPlanToAvailability(_eff5,_cfg5)),'canonical');
         }catch(_e5){return gmObserveWeekPlan(_eff5,'canonical');}
       }
     }
@@ -873,7 +887,7 @@ function activeWeekPlan(){
        Entscheidung), ohne ihn zu persistieren — der Plan im Profil bleibt unangetastet. */
     try{
       var _cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-      return gmObserveWeekPlan(alignPlanToAvailability(p,_cfg),'stored');
+      return gmObserveWeekPlan(applyGoalPhaseToPlan(alignPlanToAvailability(p,_cfg)),'stored');
     }catch(e){return gmObserveWeekPlan(p,'stored');}
   }
   var g=(typeof generateWeekPlan==='function')?generateWeekPlan():null;
@@ -883,7 +897,7 @@ function activeWeekPlan(){
   // gespeichert, bleiben die IDs erhalten; ensurePlannedSessionIds überschreibt nie.
   if(g)ensureGeneratedPlanIds(g);
   // Kein Rückfall mehr auf Gians festen Beispielplan — leerer 7-Tage-Rahmen ist neutral.
-  return g?gmObserveWeekPlan(g,'generated'):[[],[],[],[],[],[],[]];
+  return g?gmObserveWeekPlan(applyGoalPhaseToPlan(g),'generated'):[[],[],[],[],[],[],[]];
 }
 var PLAN_PRESETS=[
   {t:'Laufen',l:'Intervalle',d:'iv'},{t:'Laufen',l:'Z2 Dauerlauf',d:'ez'},{t:'Laufen',l:'Tempo',d:'tempo'},{t:'Laufen',l:'Long Run',d:'lr'},
@@ -1324,6 +1338,10 @@ function buildGoal(){
   var _avg4=_known.length>=2?(_known.reduce(function(a,b){return a+b;},0)/_known.length):null;
   _goalCache=Calc.goalEngine(runsWindow(42),{
     daysToRace:daysTo(RACE.date),targetMin:goalTargetMin(),   // Ziel-SSOT statt Legacy-Blob
+    /* B-01 Luecke 5 (Flag goal_plan_input): Zieldistanz an goalEngine — Riegel auf
+       10 km/HM/Marathon statt immer HM. Ohne Flag null ⇒ goalEngine rechnet wie bisher. */
+    distanceKm:(function(){try{if(!_goalPlanInputOn())return null;var _g=goalOf();return (_g&&_g.distanceKm>0)?_g.distanceKm:null;}catch(_){return null;}})(),
+    strictTarget:(typeof _goalPlanInputOn==='function'&&_goalPlanInputOn()===true),   /* 4b: ohne Zielzeit state 'no_target' statt 110-Default */
     avg4WeekKm:_avg4,
     targetWeekKm:Calc.weekKmTarget(daysTo(RACE.date),0),
     lrMax28:_longestRunKm(28),   // I2c: distanzbasiert, Session-genau, inkl. Store-/Garmin-Läufe ohne .sub
@@ -3184,10 +3202,11 @@ function renderWeekPlan(){
   // Konkrete Pace-Zahlen nur bei HM (dort ist die Riegel-/HM_KM-Mathematik gültig).
   // Sonst Anstrengungs-Cues statt falscher HM-Paces.
   var pd;
-  if(gcat(goalOf().type)==='half_marathon'){
-    const ref=(goal.state!=='nodata'?goal.tPred:goalTargetMin());const rp=ref*60/Calc.HM_KM;
+  const _pref=(gcat(goalOf().type)==='half_marathon')?(goal.state!=='nodata'?goal.tPred:goalTargetMin()):null;
+  if(_pref!=null&&isFinite(_pref)&&_pref>0){
+    const ref=_pref;const rp=ref*60/Calc.HM_KM;
     pd={iv:fmtPace(rp*0.90)+'–'+fmtPace(rp*0.94)+' /km',ez:fmtPace(rp*1.18)+'–'+fmtPace(rp*1.30)+' /km',lr:fmtPace(rp*1.10)+'–'+fmtPace(rp*1.18)+' /km'};
-  }else{
+  }else{   /* kein HM-Ziel — oder (4b) HM ohne Zielzeit und ohne Prognose: Cues statt erfundener Paces */
     pd={iv:'zügig, kontrolliert',ez:'locker · Z2 (Gespräch möglich)',lr:'gleichmäßig locker'};
   }
   const lk=lrKm(wk);
@@ -4536,12 +4555,18 @@ function setHmTarget(){const t=numIn('hmTarget',60,240);if(t){
   DB._hmTargetMin=t;save();_goalCache=null;}renderPace();}
 function renderPace(){
   const t=goalTargetMin();
-  const inp=document.getElementById('hmTarget');if(inp&&document.activeElement!==inp)inp.value=t;
+  const inp=document.getElementById('hmTarget');if(inp&&document.activeElement!==inp)inp.value=(t!=null?t:'');
   const goal=buildGoal();
+  /* B-01 4b: ohne Zielzeit (Flag) UND ohne Prognose gibt es keine Paces — Hinweis statt NaN. */
+  if(t==null&&(goal.state==='nodata'||goal.tPred==null)){
+    const _pb=document.getElementById('paceBox');
+    if(_pb)_pb.innerHTML='<p class="muted" style="margin:0">Keine Zielzeit und noch keine belastbare Prognose — trage oben eine Zielzeit ein, dann berechnet ORVIA deine Pace-Zonen. '+(goal.need?'<span class="muted">('+escH(goal.need)+')</span>':'')+'</p>';
+    return;
+  }
   const ref=goal.state!=='nodata'?goal.tPred:t;
   const rpT=t*60/Calc.HM_KM, rp=ref*60/Calc.HM_KM;
   const zone=(lab,lo,hi)=>`<div class="pace"><span>${lab}</span><b>${fmtPace(lo)}${hi?'–'+fmtPace(hi):''} /km</b></div>`;
-  let html=`<div class="pace hero"><span><b>Ziel-Pace</b> · ${Calc.fmtTime(t)}</span><b>${fmtPace(rpT)} /km</b></div>`;
+  let html=(t!=null)?`<div class="pace hero"><span><b>Ziel-Pace</b> · ${Calc.fmtTime(t)}</span><b>${fmtPace(rpT)} /km</b></div>`:`<div class="pace hero"><span><b>Ziel-Pace</b> · keine Zielzeit</span><b>–</b></div>`;
   if(goal.state!=='nodata')html+=`<div class="pace"><span>Aktuelle Fitness (Prognose ${Calc.fmtTime(goal.tPred)})</span><b>${fmtPace(rp)} /km</b></div>`;
   html+=zone('Easy / Z2',rp*1.18,rp*1.30)+zone('Long Run',rp*1.10,rp*1.18)
     +zone('Tempo',rp*0.97,rp*1.02)+zone('Intervalle (1km)',rp*0.90,rp*0.94);
@@ -4560,6 +4585,21 @@ function raceLabel(t){return RACE_LABELS_P[gcat(t)];}
    (RACE_DIST); custom-Distanzen laufen weiter über den Spiegel. */
 function goalOf(){
   var p=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
+  /* B-01 (2026-09-03, Flag goal_plan_input, Standard AUS): Quelle tauschen, Form
+     behalten. Ist das Flag an UND gibt es ein kanonisches Hauptziel, liefert
+     goalOf() dessen Legacy-Form aus engine/goal-plan-input — damit sieht die
+     Planung ein Kraft-/Tri-/Koerperziel mit Prioritaet 1 (Luecke 1 im B-01-Plan)
+     statt des nachrangigen Laufziels. Ohne Hauptziel bleibt die bisherige
+     Rueckfallkette unveraendert; ohne Flag ist dieser Block byteweise wirkungslos. */
+  try{
+    if(_goalPlanInputOn()){
+      var _gpi=ORVIA.goalPlanInput;var _mg=(typeof mainGoalOf==='function')?mainGoalOf():null;
+      if(_mg){
+        var _lf=_gpi.legacyForm(_gpi.resolve({goal:_mg,today:(typeof todayStr==='function')?todayStr():null,canon:gcat,taper:ORVIA.goalTaperResolver||null}));
+        if(_lf)return _lf;
+      }
+    }
+  }catch(e){}
   try{
     var gs=(typeof listGoals==='function')?listGoals():(Array.isArray(p.goals)?p.goals:[]);
     var cand=gs.filter(function(g){return g&&g.status==='active'&&RACE_DIST[gcat(g.category)];})
@@ -4587,6 +4627,11 @@ function goalOf(){
   return {type:t,distanceKm:dist,raceDate:p.raceDate||'',
     targetMin:p.hmTargetMin||(t==='half_marathon'&&typeof DB!=='undefined'&&DB?DB._hmTargetMin:null)||null,priority:'solide'};
 }
+/* B-01: Flag-Leser fuer goalOf(). Fail-closed wie alle Flags: kein Modul, kein
+   Flag-System, Fehler ⇒ aus. Bewusst eine Funktion, damit der Test sie stubben kann. */
+function _goalPlanInputOn(){
+  try{return !!(window.ORVIA&&ORVIA.featureFlags&&ORVIA.featureFlags.isEnabled('goal_plan_input')&&ORVIA.goalPlanInput&&typeof ORVIA.goalPlanInput.resolve==='function');}catch(_){return false;}
+}
 /* Ziel-SSOT (2026-07-18): EINE Lesequelle für die Zielzeit in Minuten.
    Kanonisches Ziel (goalOf → user_goals, dort pflegt der Ziel-Editor die
    Zielzeit) gewinnt; der Legacy-Blob-Wert DB._hmTargetMin ist NUR noch
@@ -4596,7 +4641,10 @@ function goalTargetMinOrNull(){
   try{var g=goalOf();if(g&&typeof g.targetMin==='number'&&isFinite(g.targetMin)&&g.targetMin>0)return g.targetMin;}catch(e){}
   var lg=(typeof DB!=='undefined'&&DB&&DB._hmTargetMin)||null;
   return (typeof lg==='number'&&isFinite(lg)&&lg>0)?lg:null;}
-function goalTargetMin(){var t=goalTargetMinOrNull();return t!=null?t:110;}
+function goalTargetMin(){var t=goalTargetMinOrNull();if(t!=null)return t;
+  /* B-01 4b (Flag goal_plan_input): keine Zielzeit ist keine Zielzeit — null statt 110.
+     Alle Leser pruefen auf null (Zielkarte, Pace-Seite, Wochenplan-Paces, goalEngine). */
+  return (typeof _goalPlanInputOn==='function'&&_goalPlanInputOn()===true)?null:110;}
 /* Renn-/Distanzziel mit auswertbarer Distanz? (für HM-/Pace-/Prognose-Widgets) */
 function isRunDistanceGoal(g){g=g||goalOf();return ['run_5k','run_10k','half_marathon','marathon'].indexOf(gcat(g.type))>=0;}
 /* G0 (2026-07-19): Der Plan-Kopf zeigt das KANONISCHE aktive Hauptziel aus
@@ -4636,7 +4684,7 @@ function renderRaceHeader(){
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtTime)+'</span><span class="rh-lab">Zielzeit</span></div>'+
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtPace)+'</span><span class="rh-lab">Zielpace</span></div>'+
       '</div>'+
-      '<div class="rh-phase">Phase: <b>'+escH(phase)+'</b></div></div>';
+      '<div class="rh-phase">Phase: <b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+'</div>';
     return;
   }
   // Nicht-Lauf-Hauptziel: allgemeine Zielinfo, KEINE Zeit/Pace/Distanz-Felder.
@@ -4649,6 +4697,21 @@ function renderRaceHeader(){
       '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
       tgt+
     '</div></div>';
+}
+/* B-01 Schritt 6 (Flag goal_plan_input): Machbarkeitsurteil (A-08) im Plan-Kopf ANZEIGEN —
+   nicht steuern. Der Adapter legt es unter ORVIA._lastFeasibility ab; hier wird nur gelesen.
+   Wortlaut folgt dem Modell: „im modellierten Korridor" ist kein „machbar". */
+function _feasibilityLineHTML(){
+  try{
+    if(typeof _goalPlanInputOn!=='function'||!_goalPlanInputOn())return '';
+    var f=window.ORVIA&&ORVIA._lastFeasibility;if(!f||f.evaluated!==true)return '';
+    var txt=f.status==='within_modeled_corridor'?'Zielzeit liegt im modellierten Korridor deiner aktuellen Leistung.'
+      :f.status==='outside_modeled_corridor'?'Zielzeit liegt außerhalb des modellierten Korridors — ambitioniert für den Zeitraum.'
+      :f.status==='insufficient_data'?'Machbarkeit noch nicht bewertbar (zu wenig Leistungsdaten).':'';
+    if(!txt)return '';
+    var cls=f.status==='outside_modeled_corridor'?' rh-feas-warn':'';
+    return '<div class="rh-feas'+cls+'">'+escH(txt)+'</div>';
+  }catch(_){return '';}
 }
 /* G0: KANONISCHER Hauptziel-Selektor über ALLE Sportarten/Kategorien (niedrigste
    priority unter aktiven Zielen). Getrennt von goalOf() (Lauf-Wettkampfprojektion)
@@ -4935,6 +4998,11 @@ function renderGoalCard(elId){
     el.innerHTML=`<div class="rtr" style="background:linear-gradient(135deg,#2a3342,#1a2330)">
     <h2 style="color:#fff;margin-bottom:8px">${ic('target')}${escH(RACE_LABELS_P[goalOf().type]||'Ziel')} · Ziel ${tt}</h2>
     <div style="font-size:14px;line-height:1.5">Noch keine belastbare Prognose. Nötig: ${g.need}. Aktuell: ${g.nRuns} Läufe, ${g.nQuality} Quality.</div></div>`;return;}
+  if(g.state==='no_target'){var _ntId=(goalOf()._canonicalId)?("openGoalEditor('"+esc(goalOf()._canonicalId)+"')"):"openGoalEditor()";
+    el.innerHTML=`<div class="rtr" style="background:linear-gradient(135deg,#2a3342,#1a2330)">
+    <h2 style="color:#fff;margin-bottom:8px">${ic('target')}${escH(RACE_LABELS_P[goalOf().type]||'Ziel')} · Zielzeit fehlt</h2>
+    <div style="font-size:14px;line-height:1.6">Prognose aus deiner aktuellen Form: <b>${Calc.fmtTime(g.tPred)}</b> (Riegel ${Calc.fmtTime(g.tRiegel)}${g.tEF?' · EF-Check '+Calc.fmtTime(g.tEF):''}).<br>
+    Ohne Zielzeit gibt es kein „on track" — ORVIA erfindet keine. <button class="lexlink" onclick="${_ntId}">Zielzeit festlegen</button></div></div>`;return;}
   const bg=g.state==='ontrack'?'linear-gradient(135deg,#0e9f6e,#056649)':g.state==='border'?'linear-gradient(135deg,#d97706,#92500a)':'linear-gradient(135deg,#e8345c,#9f1239)';
   const lab=g.state==='ontrack'?'ON TRACK':g.state==='border'?'GRENZWERTIG':'GEFÄHRDET';
   el.innerHTML=`<div class="rtr" style="background:${bg}">
@@ -5203,7 +5271,7 @@ function weekSummaryText(){
   const runs=r.letzte7Tage.reduce((s,t)=>s+t.einheiten.filter(e=>e.typ==='Laufen').length,0);
   const lines=[
     'Woche bis '+r.erstellt+': '+(r.wochenKm.aktuell!=null?(r.wochenKm.aktuell+' km gelaufen'):'Wochen-km nicht bestimmbar')+' ('+runs+' Läufe, Soll '+r.wochenKm.soll+' km), Ø Readiness '+(ready.length?Math.round(Calc.avg(ready))+'%':'–')+'.',
-    g.state==='nodata'?'HM-Prognose: noch nicht belastbar ('+g.nQuality+' Quality-Läufe).':'HM-Prognose: '+Calc.fmtTime(g.tPred)+' ('+(g.state==='ontrack'?'on track':g.state==='border'?'grenzwertig':'gefährdet')+') bei Ziel '+Calc.fmtTime(g.target)+'.',
+    g.state==='nodata'?'HM-Prognose: noch nicht belastbar ('+g.nQuality+' Quality-Läufe).':g.state==='no_target'?'Prognose: '+Calc.fmtTime(g.tPred)+' — keine Zielzeit hinterlegt.':'HM-Prognose: '+Calc.fmtTime(g.tPred)+' ('+(g.state==='ontrack'?'on track':g.state==='border'?'grenzwertig':'gefährdet')+') bei Ziel '+Calc.fmtTime(g.target)+'.',
     r.warnungen.length?'Warnungen: '+r.warnungen.join(' | '):'Keine aktiven Warnungen.'];
   return lines.join('\n');
 }
