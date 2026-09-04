@@ -26,7 +26,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'feature-flags@3';
+  var VERSION = 'feature-flags@4';
   var TABLE = 'user_feature_flags';
   var TTL_MS = 5 * 60 * 1000;
 
@@ -39,7 +39,9 @@
     'prediction_observer',
     /* B-01 (0039): Planung liest das kanonische Hauptziel statt goalOf()-Legacy.
        Quelle tauschen, Form behalten — siehe ui.js goalOf(). */
-    'goal_plan_input'];
+    'goal_plan_input',
+    /* B-09 (0040): Krankheit/Verletzung/verpasste Kernreize im gelesenen Plan. */
+    'absence_replanner'];
 
   /* state: flag -> { enabled, at, source, reason, cohort } */
   var _state = {};
