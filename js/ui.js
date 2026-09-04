@@ -571,6 +571,44 @@ function applyGoalPhaseToPlan(plan){
     return plan;
   }catch(_){return plan;}
 }
+/* B-09 (Flag absence_replanner): Krankheit/Verletzung/verpasste Kernreize auf den
+   GELESENEN Plan anwenden — engine/absence-replanner, rein, nicht persistierend.
+   Krankheit kommt aus den Morgen-Check-ins (m.ill, 14 Tage), verpasste Kernreize
+   aus dem Plan-Ist-Resolver (nur vergangene Tage dieser Woche). Re-Entrancy: der
+   Resolver liest selbst activeWeekPlan() — waehrend der Ableitung liefert diese
+   Funktion den Eingabeplan unveraendert zurueck (kein Zirkel). */
+var _absenceBusy=false;
+function _absenceReplannerOn(){
+  try{return !!(window.ORVIA&&ORVIA.featureFlags&&ORVIA.featureFlags.isEnabled('absence_replanner')&&ORVIA.absenceReplanner&&typeof ORVIA.absenceReplanner.replan==='function');}catch(_){return false;}
+}
+function applyAbsenceToPlan(plan){
+  if(_absenceBusy)return plan;
+  try{
+    if(!_absenceReplannerOn())return plan;
+    var AR=ORVIA.absenceReplanner;
+    _absenceBusy=true;
+    var today=todayStr();var todayIdx=(new Date(today+'T12:00').getDay()+6)%7;
+    var flags=[];for(var i=0;i<14;i++){var e=(typeof DB!=='undefined'&&DB)?DB[dkey(-i)]:null;flags.push(!!(e&&e.morning&&e.morning.ill));}
+    var illness=AR.illnessFromHistory(flags);
+    var missed=[];
+    try{
+      if(todayIdx>0&&typeof planActualResolveForDates==='function'&&typeof Calc!=='undefined'&&Calc.resolvePlanActual){
+        var mon=new Date(today+'T12:00');mon.setDate(mon.getDate()-todayIdx);var dates=[];
+        for(var di=0;di<todayIdx;di++){var dd=new Date(mon);dd.setDate(mon.getDate()+di);dates.push(todayStr(dd));}
+        var res=planActualResolveForDates(dates)||{};var byOcc=res.byOcc||{};
+        for(var pd=0;pd<todayIdx;pd++){var day=plan[pd]||[];var k=dates[pd];
+          for(var j=0;j<day.length;j++){var it=day[j];if(!it||!it.id)continue;var r=byOcc['po:'+k+':'+it.id]||byOcc[it.id];
+            if(r&&r.state==='missed'&&typeof unitPriority==='function'&&unitPriority(it)==='A'){missed.push(pd);break;}}}
+      }
+    }catch(_m){missed=[];}
+    var pi=null;try{var g=goalOf();pi=g&&g._planInput;}catch(_g){}
+    var raceIdx=null;try{if(pi&&pi.targetDate&&ORVIA.goalPhasePlan)raceIdx=ORVIA.goalPhasePlan.raceDayIndex(pi.targetDate,today);}catch(_r){}
+    var r2=AR.replan(plan,{todayIndex:todayIdx,illness:illness,injury:{active:false},missed:missed,phase:pi?pi.phase:null,raceDayIndex:raceIdx});
+    _absenceBusy=false;
+    if(r2&&r2.changed){try{ORVIA._lastAbsencePlan=r2;}catch(_){ }return r2.days;}
+    return plan;
+  }catch(_){_absenceBusy=false;return plan;}
+}
 function alignPlanToAvailability(plan,cfg){
   if(!Array.isArray(plan)||plan.length!==7)return plan;
   if(!cfg||!Array.isArray(cfg.availableDayIdx)||!cfg.availableDayIdx.length)return plan;
@@ -868,7 +906,7 @@ function activeWeekPlan(){
         var _eff5=JSON.parse(JSON.stringify(_PD5.effectiveSessions(_gmCanonPlan.plan).days));
         try{
           var _cfg5=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-          return gmObserveWeekPlan(applyGoalPhaseToPlan(alignPlanToAvailability(_eff5,_cfg5)),'canonical');
+          return gmObserveWeekPlan(applyAbsenceToPlan(applyGoalPhaseToPlan(alignPlanToAvailability(_eff5,_cfg5))),'canonical');
         }catch(_e5){return gmObserveWeekPlan(_eff5,'canonical');}
       }
     }
@@ -887,7 +925,7 @@ function activeWeekPlan(){
        Entscheidung), ohne ihn zu persistieren — der Plan im Profil bleibt unangetastet. */
     try{
       var _cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;
-      return gmObserveWeekPlan(applyGoalPhaseToPlan(alignPlanToAvailability(p,_cfg)),'stored');
+      return gmObserveWeekPlan(applyAbsenceToPlan(applyGoalPhaseToPlan(alignPlanToAvailability(p,_cfg))),'stored');
     }catch(e){return gmObserveWeekPlan(p,'stored');}
   }
   var g=(typeof generateWeekPlan==='function')?generateWeekPlan():null;
@@ -897,7 +935,7 @@ function activeWeekPlan(){
   // gespeichert, bleiben die IDs erhalten; ensurePlannedSessionIds überschreibt nie.
   if(g)ensureGeneratedPlanIds(g);
   // Kein Rückfall mehr auf Gians festen Beispielplan — leerer 7-Tage-Rahmen ist neutral.
-  return g?gmObserveWeekPlan(applyGoalPhaseToPlan(g),'generated'):[[],[],[],[],[],[],[]];
+  return g?gmObserveWeekPlan(applyAbsenceToPlan(applyGoalPhaseToPlan(g)),'generated'):[[],[],[],[],[],[],[]];
 }
 var PLAN_PRESETS=[
   {t:'Laufen',l:'Intervalle',d:'iv'},{t:'Laufen',l:'Z2 Dauerlauf',d:'ez'},{t:'Laufen',l:'Tempo',d:'tempo'},{t:'Laufen',l:'Long Run',d:'lr'},
@@ -3222,7 +3260,9 @@ function renderWeekPlan(){
       const pri=(typeof unitPriority==='function')?unitPriority(it):'';
       // „angepasst“-Badge NUR für die echte Tagesinstanz — nie aus der wiederkehrenden Struktur.
       const isAdapt=!!dayInstance&&!!it.adaptiveReplacement;
-      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':'';
+      /* B-01/B-09: Lesepfad-Anpassungen (Zielphase, Krankheit/Verletzung/verpasst) sichtbar
+         machen — dieselbe Badge-Klasse, anderer Text; nichts davon ist gespeichert. */
+      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">Renntag</span> ':(it.absenceAdjusted?'<span class="pl-adapt">angepasst · Ausfall</span> ':(it.phaseAdjusted?'<span class="pl-adapt">angepasst · Phase</span> ':'')));
       // Anfänger: Titel + wichtigste vorhandene Angabe; Fortgeschritten/Profi: + Sportart + Prioritätsbadge.
       const sub=(mode==='anfaenger')?(det?esc(det):''):(esc(it.t)+(det?' · '+esc(det):''));
       return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'✓ Erledigt':'›'}</span></button>`;
