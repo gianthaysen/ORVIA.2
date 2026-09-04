@@ -3260,7 +3260,9 @@ function renderWeekPlan(){
       const pri=(typeof unitPriority==='function')?unitPriority(it):'';
       // „angepasst“-Badge NUR für die echte Tagesinstanz — nie aus der wiederkehrenden Struktur.
       const isAdapt=!!dayInstance&&!!it.adaptiveReplacement;
-      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':'';
+      /* B-01/B-09: Lesepfad-Anpassungen (Zielphase, Krankheit/Verletzung/verpasst) sichtbar
+         machen — dieselbe Badge-Klasse, anderer Text; nichts davon ist gespeichert. */
+      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">Renntag</span> ':(it.absenceAdjusted?'<span class="pl-adapt">angepasst · Ausfall</span> ':(it.phaseAdjusted?'<span class="pl-adapt">angepasst · Phase</span> ':'')));
       // Anfänger: Titel + wichtigste vorhandene Angabe; Fortgeschritten/Profi: + Sportart + Prioritätsbadge.
       const sub=(mode==='anfaenger')?(det?esc(det):''):(esc(it.t)+(det?' · '+esc(det):''));
       return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'✓ Erledigt':'›'}</span></button>`;
