@@ -53,6 +53,8 @@ sb._closeM = () => {};
 sb.openProfileSection = id => { sectionCalls.push(id); };
 vm.createContext(sb);
 const base = new URL(_APPREL + 'js/', import.meta.url);
+vm.runInContext(readFileSync(new URL('i18n.js', base), 'utf8'), sb, { filename: 'i18n.js' });   /* B-13 */
+vm.runInContext(readFileSync(new URL('../locales/de.js', base), 'utf8'), sb, { filename: 'de.js' });
 vm.runInContext(readFileSync(new URL('profile-model.js', base), 'utf8'), sb, { filename: 'profile-model.js' });
 vm.runInContext(readFileSync(new URL('profile-center.js', base), 'utf8'), sb, { filename: 'profile-center.js' });
 const PC = sb.ORVIA.profileCenter;

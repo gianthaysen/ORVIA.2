@@ -17,6 +17,8 @@
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
   function PM() { return O.profileModel; }
+  /* B-13: nutzersichtbare Texte ueber t() (locales/de.js); die Tabellen unten werden beim Laden gefuellt — Katalog laedt davor. */
+  function T(k, p) { try { if (O.i18n && typeof O.i18n.t === 'function') return O.i18n.t(k, p); } catch (e) {} return String(k); }
   function P() {
     try { if (O.profile && typeof O.profile.get === 'function') { var p = O.profile.get(); if (p) return p; } } catch (e) {}
     return (typeof root.PROFILE !== 'undefined' && root.PROFILE) ? root.PROFILE : null;
@@ -24,16 +26,16 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function deDate(d) { if (!d) return null; var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3] + '.' + m[2] + '.' + m[1]) : String(d); }
 
-  var LEVEL_DE = { beginner: 'Anfänger', intermediate: 'Fortgeschritten', advanced: 'Erfahren', competitive: 'Wettkampforientiert' };
-  var WD_DE = { mo: 'Mo', di: 'Di', mi: 'Mi', do: 'Do', fr: 'Fr', sa: 'Sa', so: 'So' };
+  var LEVEL_DE = { beginner: '' + T('pc.anfaenger') + '', intermediate: '' + T('pc.fortgeschritten') + '', advanced: '' + T('pc.erfahren') + '', competitive: '' + T('pc.wettkampforientiert') + '' };
+  var WD_DE = { mo: '' + T('pc.mo') + '', di: '' + T('pc.di') + '', mi: '' + T('pc.mi') + '', do: '' + T('pc.do') + '', fr: '' + T('pc.fr') + '', sa: '' + T('pc.sa') + '', so: '' + T('pc.so') + '' };
   // Gruppierung laut Session-/Redesign-Plan (E.3). 'account' ist eine ehrliche Statik-Karte, keine PROFILE-Section.
   var GROUPS = [
-    { id: 'training', label: 'Training', sections: ['sports', 'goals', 'availability'] },
-    { id: 'health', label: 'Gesundheit & Regeneration', sections: ['constraints', 'recovery'] },
-    { id: 'performance', label: 'Leistung & Daten', sections: ['body', 'devices'] },
+    { id: 'training', label: '' + T('pc.training') + '', sections: ['sports', 'goals', 'availability'] },
+    { id: 'health', label: '' + T('pc.gesundheit_regeneration') + '', sections: ['constraints', 'recovery'] },
+    { id: 'performance', label: '' + T('pc.leistung_daten') + '', sections: ['body', 'devices'] },
     { id: 'settings', label: 'Einstellungen', sections: ['personal', 'preferences', 'account'] }
   ];
-  var SECTION_LABELS = { personal: 'Persönliche Daten', sports: 'Sportarten & Trainingsstand', goals: 'Ziele', availability: 'Verfügbarkeit', body: 'Leistungswerte & Körper', recovery: 'Regeneration & Alltag', constraints: 'Beschwerden', preferences: 'Präferenzen', devices: 'Geräte & Datenquellen', account: 'Datenschutz & Konto' };
+  var SECTION_LABELS = { personal: '' + T('pc.persoenliche_daten') + '', sports: '' + T('pc.sportarten_trainingsstand') + '', goals: '' + T('pc.ziele') + '', availability: '' + T('pc.verfuegbarkeit') + '', body: '' + T('pc.leistungswerte_koerper') + '', recovery: '' + T('pc.regeneration_alltag') + '', constraints: 'Beschwerden', preferences: 'Präferenzen', devices: '' + T('pc.geraete_datenquellen') + '', account: '' + T('pc.datenschutz_konto') + '' };
   var ESSENTIAL_IDS = ['personal', 'sports', 'goals', 'availability', 'constraints'];
 
   function sportLabel(id) {
@@ -95,12 +97,12 @@
         var bits = [];
         if (p.name) bits.push(p.name);
         if (p.birthDate) bits.push('geb. ' + deDate(p.birthDate));
-        else if (p.ageEstimate != null) bits.push(p.ageEstimate + ' Jahre');
-        return bits.length ? bits.join(' · ') : 'Name und Geburtsdatum fehlen';
+        else if (p.ageEstimate != null) bits.push(p.ageEstimate + '' + T('pc.jahre') + '');
+        return bits.length ? bits.join(' · ') : '' + T('pc.name_und_geburtsdatum_fehlen') + '';
       }
       case 'sports': {
         prim = primarySport(p);
-        if (!prim) return 'Noch keine Sportart gewählt';
+        if (!prim) return '' + T('pc.noch_keine_sportart_gewaehlt') + '';
         var others = [];
         try { others = PM().normalizeSports(p.sports).filter(function (s) { return s.role !== 'primary'; }); } catch (e) {}
         var line = sportLabel(prim.sportId);
@@ -111,47 +113,47 @@
       }
       case 'goals': {
         goals = activeGoals(p);
-        if (!goals.length) return 'Noch kein Ziel festgelegt';
+        if (!goals.length) return '' + T('pc.noch_kein_ziel_festgelegt') + '';
         var g = goals[0];
         return g.title + (g.targetDate ? ' · bis ' + deDate(g.targetDate) : '') + (goals.length > 1 ? ' · +' + (goals.length - 1) : '');
       }
       case 'availability': {
         days = availableDays(p);
-        if (!days.length) return 'Noch keine Trainingstage gewählt';
-        return days.length + ' Tage/Woche (' + days.map(function (k) { return WD_DE[k]; }).join(', ') + ')';
+        if (!days.length) return '' + T('pc.noch_keine_trainingstage_gewaehlt') + '';
+        return days.length + '' + T('pc.tage_woche') + '' + days.map(function (k) { return WD_DE[k]; }).join(', ') + ')';
       }
       case 'constraints': {
         act = activeConstraints(p);
         if (act.length) {
           var M = PM();
           var lbl = (M.BODY_REGIONS.filter(function (r) { return r[0] === act[0].bodyRegion; })[0] || [])[1] || act[0].bodyRegion;
-          return act.length === 1 ? (lbl + ' · Intensität ' + (act[0].intensity != null ? act[0].intensity + '/10' : '—')) : act.length + ' aktive Beschwerden';
+          return act.length === 1 ? (lbl + '' + T('pc.intensitaet') + '' + (act[0].intensity != null ? act[0].intensity + '/10' : '—')) : act.length + '' + T('pc.aktive_beschwerden') + '';
         }
-        if (p.constraintsAcknowledgedAt) return 'Keine aktiven Beschwerden';
-        return 'Sicherheits-Check noch offen';
+        if (p.constraintsAcknowledgedAt) return '' + T('pc.keine_aktiven_beschwerden') + '';
+        return '' + T('pc.sicherheits_check_noch_offen') + '';
       }
       case 'recovery': {
         var h = p.recovery && p.recovery.sleep && p.recovery.sleep.averageHours;
-        return h != null ? ('Ø ' + String(h).replace('.', ',') + ' h Schlaf') : 'Noch keine Angaben';
+        return h != null ? ('Ø ' + String(h).replace('.', ',') + '' + T('pc.h_schlaf') + '') : '' + T('pc.noch_keine_angaben') + '';
       }
       case 'body': {
         var bits2 = [];
-        if (p.hfMaxMeasured != null) bits2.push('HFmax ' + p.hfMaxMeasured);
-        if (p.restingHrMeasured != null) bits2.push('Ruhepuls ' + p.restingHrMeasured);
+        if (p.hfMaxMeasured != null) bits2.push('' + T('pc.hfmax') + '' + p.hfMaxMeasured);
+        if (p.restingHrMeasured != null) bits2.push('' + T('pc.ruhepuls') + '' + p.restingHrMeasured);
         if (p.weightKg != null) bits2.push(String(p.weightKg).replace('.', ',') + ' kg');
         if (p.heightCm != null) bits2.push(p.heightCm + ' cm');
-        return bits2.length ? bits2.join(' · ') : 'Keine Messwerte hinterlegt';
+        return bits2.length ? bits2.join(' · ') : '' + T('pc.keine_messwerte_hinterlegt') + '';
       }
       case 'preferences': {
         var pr = p.preferences || {};
         var cnt = 0;
         ['intensityPreference', 'preferredEnvironment', 'socialPreference', 'coachingStyle', 'varietyPreference'].forEach(function (k) { if (pr[k]) cnt++; });
-        return cnt ? cnt + ' Präferenzen gesetzt' : 'Standard — noch nichts angepasst';
+        return cnt ? cnt + '' + T('pc.praeferenzen_gesetzt') + '' : '' + T('pc.standard_noch_nichts_angepasst') + '';
       }
       case 'devices':
-        return 'Manuelle Erfassung aktiv · Import in Vorbereitung';
+        return '' + T('pc.manuelle_erfassung_aktiv_import_in') + '';
       case 'account':
-        return 'Konto, Passwort, Export & Löschung';   // H4: Export/Löschung existieren real
+        return '' + T('pc.konto_passwort_export_loeschung') + '';   // H4: Export/Löschung existieren real
       default:
         return '';
     }
@@ -168,7 +170,7 @@
       try { comp = M.computeSectionCompleteness(p, id); } catch (e) { comp = null; }
       if (comp && !comp.complete) {
         var n = comp.missing.length;
-        return { kind: 'missing', label: n === 1 ? '1 Angabe fehlt' : n + ' Angaben fehlen' };
+        return { kind: 'missing', label: n === 1 ? '' + T('pc.1_angabe_fehlt') + '' : n + '' + T('pc.angaben_fehlen') + '' };
       }
     } else {
       // Optionale Bereiche: ohne Daten „optional", nie „fehlt".
@@ -176,7 +178,7 @@
       if (id === 'recovery') has = !!(p.recovery && p.recovery.sleep && p.recovery.sleep.averageHours != null);
       else if (id === 'body') has = p.hfMaxMeasured != null || p.restingHrMeasured != null || p.weightKg != null || p.heightCm != null;
       else if (id === 'preferences') has = !!(p.preferences && ['intensityPreference', 'preferredEnvironment', 'socialPreference', 'coachingStyle', 'varietyPreference'].some(function (k) { return p.preferences[k]; }));
-      if (!has) return { kind: 'optional', label: 'Optional' };
+      if (!has) return { kind: 'optional', label: '' + T('pc.optional') + '' };
     }
     var fresh = 'unknown';
     try { fresh = M.getSectionFreshness(p, id, now); } catch (e) {}
@@ -198,7 +200,7 @@
       comp.essential.missing.forEach(function (m) {
         if (seen[m.section] || out.length >= 2) return;
         seen[m.section] = true;
-        out.push({ id: 'essential_' + m.section, severity: 'high', sectionId: m.section, title: (SECTION_LABELS[m.section] || m.section) + ' vervollständigen', hint: 'Damit ORVIA dich richtig einordnen kann.' });
+        out.push({ id: 'essential_' + m.section, severity: 'high', sectionId: m.section, title: (SECTION_LABELS[m.section] || m.section) + '' + T('pc.vervollstaendigen') + '', hint: '' + T('pc.damit_orvia_dich_richtig_einordnen') + '' });
       });
     }
     // 2) Zeitkritisch: aktive Beschwerden nicht mehr aktuell (high).
@@ -206,28 +208,28 @@
       var fr = 'unknown';
       try { fr = M.getSectionFreshness(p, 'constraints', now); } catch (e) {}
       if (fr === 'stale' || fr === 'review_recommended') {
-        out.push({ id: 'constraints_stale', severity: 'high', sectionId: 'constraints', title: 'Beschwerden-Status prüfen', hint: 'Deine letzte Angabe ist eine Weile her — noch aktuell?' });
+        out.push({ id: 'constraints_stale', severity: 'high', sectionId: 'constraints', title: '' + T('pc.beschwerden_status_pruefen') + '', hint: '' + T('pc.deine_letzte_angabe_ist_eine') + '' });
       }
     }
     // 3) Hauptziel ohne Datum (medium).
     var g0 = activeGoals(p)[0];
     if (out.length < 2 && g0 && !g0.targetDate) {
-      out.push({ id: 'goal_date', severity: 'medium', sectionId: 'goals', title: 'Deinem Hauptziel ein Datum geben', hint: 'Mit Datum kann ORVIA gezielter darauf hinarbeiten.' });
+      out.push({ id: 'goal_date', severity: 'medium', sectionId: 'goals', title: '' + T('pc.deinem_hauptziel_ein_datum_geben') + '', hint: '' + T('pc.mit_datum_kann_orvia_gezielter') + '' });
     }
     // 4) Verfügbarkeit veraltet (medium).
     if (out.length < 2 && availableDays(p).length) {
       var frA = 'unknown';
       try { frA = M.getSectionFreshness(p, 'availability', now); } catch (e) {}
-      if (frA === 'stale') out.push({ id: 'availability_stale', severity: 'medium', sectionId: 'availability', title: 'Verfügbarkeit prüfen', hint: 'Passt deine Trainingswoche noch zu deinem Alltag?' });
+      if (frA === 'stale') out.push({ id: 'availability_stale', severity: 'medium', sectionId: 'availability', title: '' + T('pc.verfuegbarkeit_pruefen') + '', hint: '' + T('pc.passt_deine_trainingswoche_noch_zu') + '' });
     }
     // 5) Ausdauer-Hauptsport ohne GEMESSENE HFmax (low, ehrlicher Mess-Hinweis).
     var prim = primarySport(p);
     if (out.length < 2 && prim && isEnduranceSport(prim.sportId) && p.hfMaxMeasured == null) {
-      out.push({ id: 'hfmax_measured', severity: 'low', sectionId: 'body', title: 'Gemessene HFmax eintragen', hint: 'Nur eintragen, wenn gemessen — sonst rechnet ORVIA mit einer ehrlichen Schätzformel.' });
+      out.push({ id: 'hfmax_measured', severity: 'low', sectionId: 'body', title: '' + T('pc.gemessene_hfmax_eintragen') + '', hint: '' + T('pc.nur_eintragen_wenn_gemessen_sonst') + '' });
     }
     // 6) Gewicht fehlt (low).
     if (out.length < 2 && p.weightKg == null) {
-      out.push({ id: 'weight_missing', severity: 'low', sectionId: 'body', title: 'Gewicht ergänzen', hint: 'Fließt in Belastung und Trainingszonen ein — nicht in Bewertungen.' });
+      out.push({ id: 'weight_missing', severity: 'low', sectionId: 'body', title: '' + T('pc.gewicht_ergaenzen') + '', hint: '' + T('pc.fliesst_in_belastung_und_trainingszonen') + '' });
     }
     return out.slice(0, 2);
   }
@@ -249,16 +251,16 @@
     try { ESSENTIAL_IDS.forEach(function (id) { if (M.getSectionFreshness(p, id, now) === 'stale') stale.push(id); }); } catch (e) {}
     try { return S.compute({ completeness: comp, planInput: pi, performance: perf, availableDays: days, staleSections: stale }); } catch (e) { return null; }
   }
-  var BAND_DE = { stark: 'stark', solide: 'solide', lueckenhaft: 'lückenhaft', schwach: 'schwach' };
+  var BAND_DE = { stark: T('pc.band_stark'), solide: T('pc.band_solide'), lueckenhaft: T('pc.band_lueckenhaft'), schwach: T('pc.band_schwach') };
   function strengthHTML(st) {
     if (!st) return '';
     var top = (st.gaps || []).slice(0, 3);
     return '<div class="pc-strength pc-strength-' + esc(st.band) + '">' +
-      '<div class="pc-strength-head"><span class="pc-strength-score">' + st.score + '</span><span class="pc-strength-lab">Profilstärke · ' + esc(BAND_DE[st.band] || st.band) + '</span></div>' +
+      '<div class="pc-strength-head"><span class="pc-strength-score">' + st.score + '</span><span class="pc-strength-lab">' + esc(T('pc.profilstaerke_band', { band: BAND_DE[st.band] || st.band })) + '</span></div>' +
       (top.length ? '<div class="pc-strength-gaps">' + top.map(function (g) {
         return '<button type="button" class="pc-gap" id="pc-gap-' + esc(g.id) + '" data-section="' + esc(g.sectionId || '') + '" data-goal="' + esc(g.goalId || '') + '" data-action="' + esc(g.action || '') + '">' +
           '<span class="pc-gap-t">' + esc(g.label) + '</span><span class="pc-gap-h">' + esc(g.hint || '') + '</span></button>';
-      }).join('') + '</div>' : '<div class="pc-strength-ok">Alles da, was die Planung braucht.</div>') +
+      }).join('') + '</div>' : '<div class="pc-strength-ok">' + T('pc.alles_da_was_die_planung') + '</div>') +
     '</div>';
   }
 
@@ -266,7 +268,7 @@
   function ringSVG(percent, complete) {
     var r = 26, c = 2 * Math.PI * r;
     var off = c * (1 - Math.max(0, Math.min(100, percent)) / 100);
-    return '<svg class="pc-ring" viewBox="0 0 64 64" role="img" aria-label="Profil zu ' + percent + ' Prozent vollständig">' +
+    return '<svg class="pc-ring" viewBox="0 0 64 64" role="img" aria-label="Profil zu ' + percent + '' + T('pc.prozent_vollstaendig') + '' +
       '<circle class="pc-ring-bg" cx="32" cy="32" r="' + r + '"/>' +
       '<circle class="pc-ring-fill' + (complete ? ' done' : '') + '" cx="32" cy="32" r="' + r + '" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/>' +
       '<text class="pc-ring-text" x="32" y="37" text-anchor="middle">' + (complete ? '✓' : percent + '%') + '</text></svg>';
@@ -278,7 +280,7 @@
     var M = PM();
     var sec = null;
     try { sec = (M.PROFILE_SECTIONS || []).filter(function (s) { return s.id === id; })[0]; } catch (e) {}
-    return (sec && sec.planImpact) ? '<span class="pc-plan" title="Diese Angaben beeinflussen deinen Trainingsplan">beeinflusst Plan</span>' : '';
+    return (sec && sec.planImpact) ? '<span class="pc-plan" title="' + T('pc.diese_angaben_beeinflussen_deinen_trainingsplan') + '">' + T('pc.beeinflusst_plan') + '</span>' : '';
   }
   /* Fehlende Essential-Angaben KONKRET benennen (Completion-Fixpaket 2026-07-09).
      Benennung aus profileModel.ESSENTIAL_FIELD_LABELS — dieselbe Quelle wie die
@@ -296,9 +298,9 @@
     var sub = sectionSummary(p, id);
     if (st.kind === 'missing') {
       var mn = missingNames(p, id);
-      if (mn.length) sub = 'Fehlt: ' + mn.join(' · ');
+      if (mn.length) sub = '' + T('pc.fehlt') + '' + mn.join(' · ');
     }
-    return '<button type="button" class="pc-card" id="pc-card-' + esc(id) + '" aria-label="' + esc(SECTION_LABELS[id] || id) + ' öffnen">' +
+    return '<button type="button" class="pc-card" id="pc-card-' + esc(id) + '" aria-label="' + esc(SECTION_LABELS[id] || id) + '' + T('pc.oeffnen') + '' +
       '<span class="pc-card-main"><span class="pc-card-title">' + esc(SECTION_LABELS[id] || id) + planBadge(id) + '</span>' +
       '<span class="pc-card-sub">' + esc(sub) + '</span></span>' +
       '<span class="pc-card-side">' + chipHTML(st) + '<span class="pc-arrow" aria-hidden="true">›</span></span></button>';
@@ -309,14 +311,14 @@
     var head =
       '<div class="pc-header">' +
         '<div class="pc-ava">' + (h.avatar ? '<img src="' + esc(h.avatar) + '" alt="">' : esc(h.initials)) + '</div>' +
-        '<div class="pc-id"><div class="pc-name">' + esc(h.name || 'Dein Profil') + '</div>' +
-          (h.primarySportLabel ? '<div class="pc-sport"><span class="pc-sportbadge">' + esc(h.primarySportLabel) + '</span>' + (h.primaryLevelLabel ? ' <span class="pc-lvl">' + esc(h.primaryLevelLabel) + '</span>' : '') + '</div>' : '<div class="pc-sport pc-muted">Noch keine Sportart gewählt</div>') +
+        '<div class="pc-id"><div class="pc-name">' + esc(h.name || '' + T('pc.dein_profil') + '') + '</div>' +
+          (h.primarySportLabel ? '<div class="pc-sport"><span class="pc-sportbadge">' + esc(h.primarySportLabel) + '</span>' + (h.primaryLevelLabel ? ' <span class="pc-lvl">' + esc(h.primaryLevelLabel) + '</span>' : '') + '</div>' : '<div class="pc-sport pc-muted">' + T('pc.noch_keine_sportart_gewaehlt') + '</div>') +
           (h.primaryGoalTitle ? '<div class="pc-goal">' + esc(h.primaryGoalTitle) + (h.primaryGoalDate ? ' · ' + esc(h.primaryGoalDate) : '') + '</div>' : '') +
         '</div>' +
         ringSVG(h.ringPercent, h.essentialComplete) +
       '</div>' +
       '<div class="pc-headmeta">' +
-        (h.essentialComplete ? '<span class="pc-headstate ok">Profil vollständig</span>' : '<span class="pc-headstate warn">' + h.missingCount + (h.missingCount === 1 ? ' Angabe fehlt' : ' Angaben fehlen') + '</span>') +
+        (h.essentialComplete ? '<span class="pc-headstate ok">' + T('pc.profil_vollstaendig') + '</span>' : '<span class="pc-headstate warn">' + h.missingCount + (h.missingCount === 1 ? '' + T('pc.angabe_fehlt') + '' : '' + T('pc.angaben_fehlen') + '') + '</span>') +
         (h.lastUpdated ? '<span class="pc-updated">zuletzt aktualisiert ' + esc(h.lastUpdated) + '</span>' : '') +
       '</div>';
     var strengthHtml = ''; try { strengthHtml = strengthHTML(buildStrength(p, now)); } catch (e) { strengthHtml = ''; }
@@ -388,7 +390,7 @@
     var now = new Date();
     var p = P() || {};
     root.openSheet({
-      id: '_profileCenter', title: 'Dein Profil', size: 'full',
+      id: '_profileCenter', title: '' + T('pc.dein_profil') + '', size: 'full',
       body: '<div id="pc-root" class="pc-root">' + buildBodyHTML(p, now) + '</div>',
       // WICHTIG: onClose ERSETZT das Default-Close von openSheet — es muss das
       // Sheet selbst schließen. (Bugfix v8-179: vorher nur Unsubscribe → X war

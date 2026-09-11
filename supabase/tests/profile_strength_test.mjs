@@ -46,6 +46,7 @@ sec('C · Verdrahtung');
   ok('C3 Skript + sw.js', idx.includes('js/engine/profile-strength.js') && sw.includes("'./js/engine/profile-strength.js'"));
   /* strengthHTML rein: ohne DOM aufrufbar */
   globalThis.ORVIA = { profileModel: {}, profileStrength: S }; global.window = globalThis;
+  require(join(APP, 'js/i18n.js')); require(join(APP, 'locales/de.js'));   /* B-13 */
   (0, eval)(pc); const PC = globalThis.ORVIA.profileCenter;
   const html = PC.strengthHTML(C({ performance: null }));
   ok('C4 HTML: Score, Band, Luecke als Button mit data-section', /pc-strength-score">80</.test(html) && /solide/.test(html) && /id="pc-gap-performance_reference"[^>]*data-section="body"/.test(html));

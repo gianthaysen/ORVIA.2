@@ -50,7 +50,7 @@ function makeApp() {
   sb.ORVIA = {};
   vm.createContext(sb);
   const base = new URL(_APPREL + 'js/', import.meta.url);
-  ['profile-model.js', 'onboarding/onboarding-profile-logic.js', 'onboarding/onboarding-sports-logic.js', 'profile.js', 'profile-center.js'].forEach(f =>
+  ['i18n.js', '../locales/de.js', 'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'onboarding/onboarding-sports-logic.js', 'profile.js', 'profile-center.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
   sb.ensureProfile();
   return { sb, store, O: sb.ORVIA, wl };
