@@ -42,7 +42,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'absence-replanner@1';
+  var VERSION = 'absence-replanner@2';
 
   function _kind(it) {
     if (!it || typeof it !== 'object') return null;
@@ -187,7 +187,30 @@
     return { activeToday: false, sinceEnd: i, duration: m };
   }
 
-  var api = { VERSION: VERSION, replan: replan, illnessFromHistory: illnessFromHistory };
+  /* Verletzung aus den Beschwerden des Profils ableiten (constraintsList). „Verletzt"
+     im Sinne dieses Moduls = Aufprall (Laufen) heute nicht sinnvoll. Kriterien,
+     jedes fuer sich hinreichend, alle nur bei status 'active':
+       - currentlyTrainable === false (ausdrueckliche Nutzerangabe)
+       - Laufen unter affectedActivities
+       - Region der unteren Extremitaet UND Intensitaet >= 7 (von 10)
+     Alles andere (Schulter 4/10, „beobachtet") ist KEINE Verletzung — sonst
+     verloere jeder mit einer Notiz seinen Laufplan. */
+  var LOWER = { hip: 1, thigh: 1, knee: 1, lower_leg: 1, ankle: 1, foot: 1 };
+  function injuryFromConstraints(list) {
+    var arr = Array.isArray(list) ? list : [], hits = [];
+    arr.forEach(function (c) {
+      if (!c || c.status !== 'active') return;
+      var it = (c.intensity != null) ? parseInt(c.intensity, 10) : null;
+      var aff = Array.isArray(c.affectedActivities) ? c.affectedActivities : [];
+      var why = c.currentlyTrainable === false ? 'not_trainable'
+        : (aff.indexOf('running') >= 0 ? 'affects_running'
+        : (LOWER[c.bodyRegion] && it != null && it >= 7 ? 'lower_body_high' : null));
+      if (why) hits.push({ id: c.id || null, bodyRegion: c.bodyRegion || null, intensity: it, why: why });
+    });
+    return { active: hits.length > 0, hits: hits };
+  }
+
+  var api = { VERSION: VERSION, replan: replan, illnessFromHistory: illnessFromHistory, injuryFromConstraints: injuryFromConstraints };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.absenceReplanner = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

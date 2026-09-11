@@ -603,7 +603,8 @@ function applyAbsenceToPlan(plan){
     }catch(_m){missed=[];}
     var pi=null;try{var g=goalOf();pi=g&&g._planInput;}catch(_g){}
     var raceIdx=null;try{if(pi&&pi.targetDate&&ORVIA.goalPhasePlan)raceIdx=ORVIA.goalPhasePlan.raceDayIndex(pi.targetDate,today);}catch(_r){}
-    var r2=AR.replan(plan,{todayIndex:todayIdx,illness:illness,injury:{active:false},missed:missed,phase:pi?pi.phase:null,raceDayIndex:raceIdx});
+    var injury={active:false};try{if(typeof AR.injuryFromConstraints==='function'&&typeof PROFILE!=='undefined'&&PROFILE)injury=AR.injuryFromConstraints(PROFILE.constraintsList);}catch(_i){injury={active:false};}
+    var r2=AR.replan(plan,{todayIndex:todayIdx,illness:illness,injury:injury,missed:missed,phase:pi?pi.phase:null,raceDayIndex:raceIdx});
     _absenceBusy=false;
     if(r2&&r2.changed){try{ORVIA._lastAbsencePlan=r2;}catch(_){ }return r2.days;}
     return plan;

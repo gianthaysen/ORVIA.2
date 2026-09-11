@@ -83,5 +83,18 @@ sec('F · illnessFromHistory + Verdrahtung');
   ok('F5 drei Lesepfade durch applyAbsenceToPlan, Flag-Schranke, Re-Entrancy-Guard', (ui.match(/applyAbsenceToPlan\(/g) || []).length === 4 && /if\(_absenceBusy\)return plan;/.test(ui) && /if\(!_absenceReplannerOn\(\)\)return plan;/.test(ui));
   ok('F6 Skript + sw.js', idx.includes('js/engine/absence-replanner.js') && sw.includes("'./js/engine/absence-replanner.js'"));
 }
+sec('G · Verletzung aus Beschwerden (constraintsList)');
+{
+  const c = (o) => Object.assign({ id: 'c1', status: 'active', bodyRegion: 'knee', intensity: 5, affectedActivities: [], currentlyTrainable: true }, o || {});
+  ok('G1 Knie 5/10, trainierbar → keine Verletzung', A.injuryFromConstraints([c()]).active === false);
+  ok('G2 Knie 7/10 → Verletzung (lower_body_high)', A.injuryFromConstraints([c({ intensity: 7 })]).hits[0].why === 'lower_body_high');
+  ok('G3 Schulter 9/10 → keine (kein Aufprall-Bezug)', A.injuryFromConstraints([c({ bodyRegion: 'shoulder', intensity: 9 })]).active === false);
+  ok('G4 currentlyTrainable false → Verletzung, egal wo', A.injuryFromConstraints([c({ bodyRegion: 'shoulder', intensity: 2, currentlyTrainable: false })]).hits[0].why === 'not_trainable');
+  ok('G5 Laufen betroffen → Verletzung', A.injuryFromConstraints([c({ intensity: 3, affectedActivities: ['running'] })]).hits[0].why === 'affects_running');
+  ok('G6 resolved/observed zaehlen nicht; leer/Unsinn → false', A.injuryFromConstraints([c({ status: 'resolved', intensity: 9 }), c({ status: 'observed', currentlyTrainable: false })]).active === false && A.injuryFromConstraints(null).active === false);
+  const ui = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+  ok('G7 ui.js leitet injury aus PROFILE.constraintsList ab', /AR\.injuryFromConstraints\(PROFILE\.constraintsList\)/.test(ui));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' absence_replanner: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
