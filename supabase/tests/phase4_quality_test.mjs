@@ -20,6 +20,7 @@ import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
+import { srcHasText } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -105,9 +106,9 @@ ok('4.1 Kurzzeit-Cache NUR für den refresh-Pfad + Event-Invalidierung',
 }
 const prof = R('js/profile.js');
 ok('4.2 renderZones nutzt den zentralen Vertrag + getrennte Titel-Kennzeichnung',
-   /ORVIA\.sourceContract\.hfMax\(PROFILE\)/.test(prof) && /\(berechnet\)/.test(prof) && /\(Profil\)/.test(prof) && /\(gemessen\)/.test(prof));
+   /ORVIA\.sourceContract\.hfMax\(PROFILE\)/.test(prof) && srcHasText(prof, '(berechnet)') && srcHasText(prof, '(Profil)') && srcHasText(prof, '(gemessen)'));
 ok('4.2 Tanaka-Zonen tragen den Schätzwert-Hinweis + Handlungspfad',
-   /Schätzwert, keine Messung/.test(prof) && /Trage eine gemessene HFmax/.test(prof));
+   srcHasText(prof, 'Schätzwert, keine Messung') && srcHasText(prof, 'Trage eine gemessene HFmax'));
 const idx = R('index.html');
 ok('4.2 source-contract.js geladen + im SW-Precache',
    /js\/metrics\/source-contract\.js/.test(idx) && /js\/metrics\/source-contract\.js/.test(R('sw.js')));

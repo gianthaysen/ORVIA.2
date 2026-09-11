@@ -6,6 +6,7 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { catalog } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -48,7 +49,7 @@ const doc = {
 const win = {};
 let api = null, evalErr = null;
 try {
-  api = new Function('window', 'document', infra + '\n;return {_modal:_modal,openSheet:openSheet,_closeM:_closeM};')(win, doc);
+  api = new Function('window', 'document', 'T', infra + '\n;return {_modal:_modal,openSheet:openSheet,_closeM:_closeM};')(win, doc, (k) => (catalog()[k] != null ? catalog()[k] : String(k)));
 } catch (e) { evalErr = e; }
 ok('Infra-Block ausführbar', !!api, evalErr && evalErr.message);
 

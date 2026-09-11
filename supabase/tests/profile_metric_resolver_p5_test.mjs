@@ -223,7 +223,7 @@ function makeApp() {
   sb.ORVIA = {};
   vm.createContext(sb);
   ['metrics/metric-registry.js', 'metrics/metric-resolver.js', 'metrics/profile-metric-resolver.js',
-   'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
+   'i18n.js', '../locales/de.js', 'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
   sb.ensureProfile();
   return { sb, els };

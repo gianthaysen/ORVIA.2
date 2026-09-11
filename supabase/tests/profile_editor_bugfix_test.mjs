@@ -22,6 +22,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { srcHasText } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -131,7 +132,7 @@ function makeApp() {
   ok('K4 Summary zählt aus PROFILE.constraintsList (keine zweite Quelle)', /Schulter|shoulder|1|Intensität/.test(sum) && !/2 aktive/.test(sum), sum);
   // Auto-Save wird im Manager ehrlich benannt:
   const src = readFileSync(new URL(_APPREL + 'js/profile.js', import.meta.url), 'utf8');
-  ok('K5 Manager benennt Auto-Save („sofort gespeichert")', /sofort gespeichert/.test(src.split('function openConstraintsEditor')[1] || ''));
+  ok('K5 Manager benennt Auto-Save („sofort gespeichert")', srcHasText(src.split('function openConstraintsEditor')[1] || '', 'sofort gespeichert'));
 }
 
 /* ---------- 5) CSS-Verträge: Mobile-Layout + Touch-Fläche ---------- */

@@ -23,6 +23,8 @@ sb.localStorage={getItem:k=>store[k]||null,setItem:(k,v)=>{store[k]=String(v);}}
 sb.document={getElementById:id=>els[id]||null,createElement:()=>mkEl(),body:{appendChild(){}},querySelectorAll:()=>[]};
 vm.createContext(sb);
 const base=new URL(_APPREL + 'js/',import.meta.url);
+vm.runInContext(readFileSync(new URL('i18n.js',base),'utf8'),sb);
+vm.runInContext(readFileSync(new URL('../locales/de.js',base),'utf8'),sb);
 vm.runInContext(readFileSync(new URL('profile-model.js',base),'utf8'),sb);
 vm.runInContext(readFileSync(new URL('profile.js',base),'utf8'),sb);
 const M=sb.ORVIA.profileModel;

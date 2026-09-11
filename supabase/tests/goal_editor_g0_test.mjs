@@ -9,6 +9,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { srcHasText } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -48,7 +49,7 @@ const uiSrc = readFileSync(new URL('ui.js', base), 'utf8');
 {
   const gw = profileSrc.split('function gwSave()')[1].split('function _goalSaveToast')[0];
   ok('C1 Erfolg nur bei erfolgreichem lokalem Save (try/catch + _saved-Guard)', /_saved\s*=\s*true/.test(gw) && /if\(!_saved\)/.test(gw));
-  ok('C2 fehlgeschlagener Save zeigt KEINEN Erfolg', /Speichern fehlgeschlagen/.test(gw) && /return;/.test(gw));
+  ok('C2 fehlgeschlagener Save zeigt KEINEN Erfolg', srcHasText(gw, 'Speichern fehlgeschlagen') && /return;/.test(gw));
   ok('C3 kein unbedingtes „Ziel gespeichert" mehr (ehrliche Toast-Ableitung)', /_goalSaveToast\(\)/.test(gw));
   ok('C4 kanonischer Schreibpfad bleibt goalAdd/goalUpdate', /goalUpdate\(id,patch,reason\)/.test(gw) && /goalAdd\(patch,reason\)/.test(gw));
 }
@@ -70,7 +71,7 @@ function makeApp() {
   sb.escH = s => String(s == null ? '' : s); sb.esc = s => String(s == null ? '' : s); sb.toast = () => {}; sb.renderProfileScreen = () => {}; sb.renderZones = () => {}; sb.maybePlanImpact = () => {};
   sb.ORVIA = {};
   vm.createContext(sb);
-  ['profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
+  ['i18n.js', '../locales/de.js', 'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
   const g1 = uiSrc.slice(uiSrc.indexOf('function gcat'), uiSrc.indexOf('function isRaceGoal'));
   const g2 = uiSrc.slice(uiSrc.indexOf('const RACE_DIST'), uiSrc.indexOf('function isRunDistanceGoal'));

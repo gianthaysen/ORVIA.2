@@ -51,6 +51,8 @@ sandbox.removeEventListener = (t, fn) => { winListeners[t] = (winListeners[t] ||
 sandbox.dispatchEvent = (ev) => { (winListeners[ev.type] || []).forEach(fn => fn(ev)); return true; };
 vm.createContext(sandbox);
 const base = new URL(_APPREL + 'js/', import.meta.url);
+vm.runInContext(readFileSync(new URL('i18n.js', base), 'utf8'), sandbox, { filename: 'i18n.js' });
+vm.runInContext(readFileSync(new URL('../locales/de.js', base), 'utf8'), sandbox, { filename: 'de.js' });
 vm.runInContext(readFileSync(new URL('profile-model.js', base), 'utf8'), sandbox, { filename: 'profile-model.js' });
 vm.runInContext(readFileSync(new URL('profile.js', base), 'utf8'), sandbox, { filename: 'profile.js' });
 
