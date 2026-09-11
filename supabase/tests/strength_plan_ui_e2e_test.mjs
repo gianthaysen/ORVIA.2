@@ -464,10 +464,12 @@ sec('E12 · Teilweise fehlgeschlagene Übernahme wird gemeldet');
   ok('das Ergebnis nennt 1 von 3 übernommen und 2 fehlgeschlagen',
     r.data.plannedApplied.applied === 1 && r.data.plannedApplied.failed === 2 && r.data.plannedApplied.planned === 3,
     JSON.stringify(r.data.plannedApplied));
-  ok('die Oberfläche meldet den Teilfehlschlag ausdrücklich (Quelltextvertrag workout-ui.js)',
-    /pa\.failed\s*>\s*0/.test(src('workout-ui.js')) && /geplanten Übungen übernommen/.test(src('workout-ui.js')));
+  /* B-13: Texte liegen im Katalog (locales/de.js); der Quelltextvertrag prueft Key + Katalogtext. */
+  const deCat = src('../locales/de.js');
+  ok('die Oberfläche meldet den Teilfehlschlag ausdrücklich (Quelltextvertrag workout-ui.js + Katalog)',
+    /pa\.failed\s*>\s*0/.test(src('workout-ui.js')) && /T\('wo\.planned\.partial'/.test(src('workout-ui.js')) && /geplanten Übungen übernommen — \{failed\} fehlgeschlagen/.test(deCat));
   ok('… und unterscheidet „gar keine" von „teilweise"',
-    /Keine der .*geplanten Übungen/.test(src('workout-ui.js')));
+    /T\('wo\.planned\.none'/.test(src('workout-ui.js')) && /Keine der \{planned\} geplanten Übungen/.test(deCat));
 }
 
 /* ══ E13 · Feldparität im E2E ══ */

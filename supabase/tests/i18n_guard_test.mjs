@@ -59,12 +59,12 @@ sec('D · Katalog de');
   const de = O.locales.de; const keys = Object.keys(de);
   ok('D1 alle Keys namespaced (a.b)', keys.every(k => /^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9_]+)+$/.test(k)), keys.filter(k => !/^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9_]+)+$/.test(k)).join());
   ok('D2 keine leeren Werte', keys.every(k => typeof de[k] === 'string' && de[k].trim().length > 0));
-  ok('D3 >= 80 Keys (Gym-Strang + Ziel-Detailseite)', keys.length >= 80, String(keys.length));
+  ok('D3 >= 180 Keys (Gym-Strang, Ziel-Detailseite, Workout-Player)', keys.length >= 180, String(keys.length));
 }
 sec('E · t()-Regime');
 {
   const inv = await import(pathToFileURL(join(APP, 'tools', 'i18n-inventory.mjs')).href);
-  const UNDER_T = ['js/goal-detail.js', 'js/workout-gym.js'];
+  const UNDER_T = ['js/goal-detail.js', 'js/workout-gym.js', 'js/workout-ui.js'];
   UNDER_T.forEach(f => { const hits = inv.scanFile(join(APP, f)); ok('E · ' + f + ': 0 deutsche Literale', hits.length === 0, hits.slice(0, 3).map(h => h.line + ':' + h.text).join(' | ')); });
   const total = inv.inventory().reduce((n, r) => n + r.hits.length, 0);
   ok('E · Inventur laeuft (Gesamtzahl als Fortschrittsmass, Stand 11.09.: ~2600)', total > 1000, String(total));

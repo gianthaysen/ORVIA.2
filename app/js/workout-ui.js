@@ -11,6 +11,8 @@
   let _tick = null, _busy = false;
 
   function WS() { return O.workoutStore; }
+  /* B-13: nutzersichtbare Texte ueber t() (locales/de.js); ohne i18n-Modul bleibt der Key sichtbar. */
+  function T(k, p) { try { if (O.i18n && typeof O.i18n.t === 'function') return O.i18n.t(k, p); } catch (e) {} return String(k); }
   /* Phase B (Gym-Strang): Haken fuer workout-gym.js — fehlt die Datei, rendert alles wie bisher. */
   function GY() { return O.workoutGym || null; }
   function gy(fn) { const g = GY(); if (!g || typeof g[fn] !== 'function') return ''; try { return g[fn].apply(g, Array.prototype.slice.call(arguments, 1)) || ''; } catch (e) { return ''; } }
@@ -19,19 +21,19 @@
   function toastIt(m) { if (typeof toast === 'function') toast(m); }
   // Technische Fehler NIE roh anzeigen — auf verständliche deutsche Meldungen mappen (Konsole behält Detail).
   function humanErr(error) {
-    if (!error) return 'Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.';
+    if (!error) return '' + T('wo.err.generic') + '';
     try { console.error('[ORVIA workout]', error); } catch (e) {}
     const s = (String(error.code || '') + ' ' + String(error.message || '')).toLowerCase();
-    if (error.code === 'active_exists' || /23505|one_active/.test(s)) return 'Es läuft bereits ein Workout. Es wurde geöffnet.';
-    if (/42501|row-level security|permission denied|rls/.test(s)) return 'Zugriff nicht möglich. Bitte melde dich erneut an.';
+    if (error.code === 'active_exists' || /23505|one_active/.test(s)) return '' + T('wo.err.activeExists') + '';
+    if (/42501|row-level security|permission denied|rls/.test(s)) return '' + T('wo.err.auth') + '';
     /* v8-354: fehlende Migration ist KEIN „bitte erneut versuchen" — Wiederholen hilft nie.
        PostgREST meldet unbekannte Spalten als PGRST204 „Could not find the 'x' column ...
        in the schema cache". Das muss als das benannt werden, was es ist. */
-    if (/pgrst204|schema cache|could not find the .* column/.test(s)) return 'Die App schreibt ein Feld, das diese Datenbank nicht kennt — eine Migration fehlt. Wiederholen hilft nicht.';
-    if (/network|fetch|timeout|offline|verbindung/.test(s)) return 'Verbindung unterbrochen. Änderungen werden lokal gespeichert.';
-    if (/foreign key|23503|fk/.test(s)) return 'Die Einheit konnte nicht vollständig geladen werden.';
-    if (/validation/.test(s)) return error.message || 'Eingabe prüfen.';
-    return 'Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.';
+    if (/pgrst204|schema cache|could not find the .* column/.test(s)) return '' + T('wo.err.schema') + '';
+    if (/network|fetch|timeout|offline|verbindung/.test(s)) return '' + T('wo.err.offline') + '';
+    if (/foreign key|23503|fk/.test(s)) return '' + T('wo.err.fk') + '';
+    if (/validation/.test(s)) return error.message || '' + T('wo.err.validation') + '';
+    return '' + T('wo.err.generic') + '';
   }
   /* R1.5 · Nutzermodus aus dem KANONISCHEN Primärsport-Level (gleiche Quelle wie
      userLevel()). Vorher: nur Legacy PROFILE.level (Default 'fortgeschritten' ⇒ jeder
@@ -45,17 +47,17 @@
   }
   function fmtSet(s) { const w = s.weight != null ? s.weight + ' kg' : '–'; const r = s.reps != null ? ' × ' + s.reps : ''; const rir = s.rir != null ? ' @ RIR ' + s.rir : (s.rpe != null ? ' @ RPE ' + s.rpe : ''); return w + r + rir; }
   // Kanonische Dauer-Anzeige aus der Session (started/finished bevorzugt, sonst duration_min).
-  // Unbekannt → „Dauer nicht erfasst", unplausibel (z. B. über Nacht aktiv) → markiert. NIE still „0 min".
+  // Unbekannt → „' + T('wo.durationMissing') + '", unplausibel (z. B. über Nacht aktiv) → markiert. NIE still „0 min".
   function durationLabel(s) {
     const AN = O.activityNormalize;
     if (AN) { const n = AN.normalizeWorkoutSession(s); return AN.fmtDurationSeconds(n.durationSeconds); }
-    return s && s.duration_min != null ? s.duration_min + ' min' : 'Dauer nicht erfasst';
+    return s && s.duration_min != null ? s.duration_min + ' min' : '' + T('wo.durationMissing') + '';
   }
 
   // ---- Kompakte Vorschau auf „Heute" (KEINE separate Live-Workout-Karte mehr) ----
   O.workoutUI = {};
   /* ==========================================================================
-     Phase 1 · KF-001/KF-002 — Einstieg „Training starten".
+     Phase 1 · KF-001/KF-002 — Einstieg „' + T('wo.hub.start') + '".
 
      Vorher suchte diese Funktion `.tabbar button[data-tab="training"]`. Diesen
      Button gibt es in index.html NICHT (die Tabbar fuehrt heute/plan/akt/dash/
@@ -93,8 +95,8 @@
 
   /* Phase 1 · KF-003 — Wiedereinstieg in ein LAUFENDES Workout.
 
-     Vorher zeigte die Aktion „Training fortsetzen" auf denselben (toten)
-     Entry-Point wie „Training starten". Wer das Live-Overlay schloss, hatte
+     Vorher zeigte die Aktion „' + T('wo.opt.resume') + '" auf denselben (toten)
+     Entry-Point wie „' + T('wo.hub.start') + '". Wer das Live-Overlay schloss, hatte
      keinen sichtbaren Weg zurueck: alle Wiedereinstiege lagen in
      #todaySummary (styles.css, display:none) und im Tab #tab-training
      (kein Tabbar-Button).
@@ -129,7 +131,7 @@
 
   // Eine schlanke Statuszeile INNERHALB der bestehenden „Training heute"-Karte (keine eigene Karte).
   function statusRow(main, sub, kind) {
-    return '<div class="wo-status' + (kind ? ' ' + kind : '') + '" role="button" tabindex="0" aria-label="Training öffnen" onclick="ORVIA.workoutUI.openFromToday()">' +
+    return '<div class="wo-status' + (kind ? ' ' + kind : '') + '" role="button" tabindex="0" aria-label="' + T('wo.openTraining') + '" onclick="ORVIA.workoutUI.openFromToday()">' +
       '<span class="pic"><svg class="ic"><use href="#i-dumbbell"/></svg></span>' +
       '<span class="wo-prev-txt"><span class="wo-prev-main">' + main + '</span><span class="wo-prev-sub">' + sub + '</span></span>' +
       '<span class="pchev">›</span></div>';
@@ -157,7 +159,7 @@
     try {
       if (typeof planActualToday === 'function') return planActualToday();
     } catch (e) {}
-    return { key: 'unbestimmt', label: 'Nicht bestimmbar', assessable: false };
+    return { key: 'unbestimmt', label: '' + T('wo.notAssessable') + '', assessable: false };
   }
   // Heute-Seite: EINE kompakte Tageszusammenfassung + genau zwei Wege (Starten / Erfassen).
   O.workoutUI.renderEntry = function () {
@@ -166,12 +168,12 @@
     const s = st().session; const active = s && s.status === 'active';
     const logged = todaysLogged();
     const fk = planFulfillmentToday(logged);
-    let inner = '<div class="card"><h2><svg class="ic"><use href="#i-dumbbell"/></svg>Heutige Aktivität' +
+    let inner = '<div class="card"><h2><svg class="ic"><use href="#i-dumbbell"/></svg>' + T('wo.today.title') + '' +
       (fk && fk.label ? ' <span class="pf-chip pf-' + fk.key + '">' + esc(fk.label) + '</span>' : '') + '</h2>';
-    if (active) inner += statusRow('Training läuft · ' + esc(s.sport || 'Training'), 'Fortsetzen', 'live');
+    if (active) inner += statusRow(T('wo.today.runningWith') + esc(s.sport || 'Training'), '' + T('common.resume') + '', 'live');
     if (logged.length) inner += '<div class="tsum-list">' + logged.map(a => '<div class="tsum-row"><span class="tsum-name">' + esc(a.type) + '</span><span class="tsum-sub">' + esc(a.sub || '') + '</span></div>').join('') + '</div>';
-    if (!active && !logged.length) inner += '<p class="muted" style="margin:2px 0 12px">Noch keine Aktivität erfasst.</p>';
-    inner += '<div class="tsum-actions"><button class="btn" onclick="ORVIA.workoutUI.openTrainingTab()">Training starten</button>' +
+    if (!active && !logged.length) inner += '<p class="muted" style="margin:2px 0 12px">' + T('wo.today.none') + '</p>';
+    inner += '<div class="tsum-actions"><button class="btn" onclick="ORVIA.workoutUI.openTrainingTab()">' + T('wo.hub.start') + '</button>' +
       '<button class="btn sec" onclick="ORVIA.workoutUI.openCapture()">Training erfassen</button></div></div>';
     host.innerHTML = inner;
   };
@@ -179,8 +181,8 @@
   O.workoutUI.openCapture = function () { try { showTab('akt'); } catch (e) {} };
 
   /* P0 2026-08-05: Sichtbarer Wiedereinstieg auf dem Heute-Tab (#resumeBanner).
-     Vorher war der einzige Fortsetzen-Einstieg der versteckte Legacy-Host
-     #todaySummary — nach App-Neustart musste man Training → Krafttraining
+     Vorher war der einzige ' + T('common.resume') + '-Einstieg der versteckte Legacy-Host
+     #todaySummary — nach App-Neustart musste man Training → ' + T('wo.tiles.gym') + '
      antippen, um das im Hintergrund laufende Workout wiederzufinden.
      Der Banner erscheint NUR bei aktiver/pausierter Session (sonst leer,
      keine Strukturaenderung im Normalzustand). */
@@ -193,13 +195,13 @@
     const paused = !!s.paused_at;
     const retro = !!st().retroPaused;
     const sub = retro
-      ? 'Pausiert seit deiner letzten Aktion — die Wartezeit zählt nicht als Trainingszeit.'
-      : (paused ? 'Pausiert · bisher ' + mins + ' min trainiert' : 'Läuft · ' + mins + ' min');
+      ? '' + T('wo.resume.pausedNote') + ''
+      : (paused ? T('wo.resume.pausedMin', { min: mins }) : T('wo.resume.runningMin', { min: mins }));
     host.innerHTML = '<div class="card resume-banner" role="button" tabindex="0" ' +
       'onclick="ORVIA.workoutUI.resumeActiveSync()" onkeydown="if(event.key===\'Enter\')ORVIA.workoutUI.resumeActiveSync()">' +
       '<span class="rb-ic"><svg class="ic"><use href="#i-dumbbell"/></svg></span>' +
-      '<span class="rb-b"><b>' + esc(s.sport || 'Training') + ' läuft noch</b><span>' + esc(sub) + '</span></span>' +
-      '<span class="rb-cta">Fortsetzen</span></div>';
+      '<span class="rb-b"><b>' + esc(s.sport || 'Training') + '' + T('wo.resume.stillRunning') + '</b><span>' + esc(sub) + '</span></span>' +
+      '<span class="rb-cta">' + T('common.resume') + '</span></div>';
   };
   /* Boot-Hydrierung: aktives Workout beim App-Start laden und den Einstieg zeigen —
      nicht erst, wenn der Nutzer zufaellig den Training-Tab oeffnet. */
@@ -240,23 +242,23 @@
     return Math.max(0, Math.floor((Date.now() - new Date(s.started_at).getTime() - pausedMs) / 60000));
   }
   const HUB_NAV =
-    '<div class="hub-row" onclick="ORVIA.workoutUI.browseExercises()"><span class="pic"><svg class="ic"><use href="#i-list"/></svg></span><span class="hub-row-txt"><b>Übungen</b><small>Übungsbibliothek & eigene Übungen</small></span><span class="pchev">›</span></div>' +
+    '<div class="hub-row" onclick="ORVIA.workoutUI.browseExercises()"><span class="pic"><svg class="ic"><use href="#i-list"/></svg></span><span class="hub-row-txt"><b>' + T('wo.hub.lib') + '</b><small>' + T('wo.hub.libSub') + '</small></span><span class="pchev">›</span></div>' +
     '<div class="hub-row" onclick="ORVIA.workoutUI.openCapture()"><span class="pic"><svg class="ic"><use href="#i-pulse"/></svg></span><span class="hub-row-txt"><b>Training erfassen</b><small>Manuell eintragen oder importieren</small></span><span class="pchev">›</span></div>';
   function hubTail() { return '<div class="hub-nav">' + HUB_NAV + '</div><div class="card"><h2><svg class="ic"><use href="#i-clock"/></svg>Verlauf</h2><div id="workoutHistory"></div></div>'; }
 
   function _renderHubActive(host) {
     const s = st().session; const exs = st().exercises || []; const prog = WS().progress();
     const mins = hubMinutes(s);
-    const sub = mins + ' Minuten · ' + (prog.kind === 'sets' ? (prog.completed + '/' + prog.planned + ' Sätze') : (exs.length + ' Übungen'));
+    const sub = mins + T('wo.hub.minutesSep') + (prog.kind === 'sets' ? (prog.completed + '/' + prog.planned + T('wo.sets')) : (exs.length + T('wo.exercises')));
     // Verwaiste Session (>12h, kein offenes Overlay): klar als „altes Workout" kennzeichnen.
     const startedMs = s.started_at ? new Date(s.started_at).getTime() : Date.now();
     const orphan = (Date.now() - startedMs) > 12 * 3600 * 1000;
-    const tag = orphan ? 'Altes aktives Training gefunden' : 'Training läuft';
+    const tag = orphan ? '' + T('wo.hub.orphan') + '' : '' + T('wo.hub.running') + '';
     let main = '<div class="hub-hero live"><div class="hub-hero-tag">' + tag + '</div><div class="hub-hero-title">' + esc(s.sport || 'Training') + '</div>' +
-      '<div class="hub-hero-sub">' + (orphan ? 'Gestartet vor ' + mins + ' Minuten' : sub) + '</div>' +
-      '<button class="btn cta" onclick="ORVIA.workoutUI.open()"><span class="cta-txt"><span class="cta-main">Fortsetzen</span></span></button>' +
-      '<button class="hub-discard" onclick="ORVIA.workoutUI.discardActive()">' + (orphan ? 'Festhängendes Training beenden' : 'Training verwerfen') + '</button>' +
-      (orphan ? '<button class="hub-discard" onclick="ORVIA.workoutUI._optDelete()">Endgültig löschen</button>' : '') +
+      '<div class="hub-hero-sub">' + (orphan ? T('wo.hub.startedAgoMin', { min: mins }) : sub) + '</div>' +
+      '<button class="btn cta" onclick="ORVIA.workoutUI.open()"><span class="cta-txt"><span class="cta-main">' + T('common.resume') + '</span></span></button>' +
+      '<button class="hub-discard" onclick="ORVIA.workoutUI.discardActive()">' + (orphan ? '' + T('wo.hub.endStuck') + '' : '' + T('wo.hub.discard') + '') + '</button>' +
+      (orphan ? '<button class="hub-discard" onclick="ORVIA.workoutUI._optDelete()">' + T('wo.deleteForever') + '</button>' : '') +
       '</div>';
     host.innerHTML = main + hubTail(); renderHistory();
   }
@@ -273,15 +275,15 @@
     } catch (e) {}
     if (!tiles || tiles.length <= 1) {
       // Fallback ohne Auswahl: Katalog-Standard (immer noch nicht hart in Render gemischt).
-      tiles = [{ sportId: 'gym', label: 'Krafttraining' }, { sportId: 'running', label: 'Laufen' }, { sportId: 'other', label: 'Weitere Aktivität', isMore: true }];
+      tiles = [{ sportId: 'gym', label: '' + T('wo.tiles.gym') + '' }, { sportId: 'running', label: 'Laufen' }, { sportId: 'other', label: '' + T('wo.tiles.more') + '', isMore: true }];
     }
-    // 4d.1: Bei mehr als vier aktiven Sportarten nur die vier wichtigsten direkt, Rest unter „Alle Sportarten".
+    // 4d.1: Bei mehr als vier aktiven Sportarten nur die vier wichtigsten direkt, Rest unter „' + T('wo.tiles.all') + '".
     var real = tiles.filter(t => !t.isMore), more = tiles.filter(t => t.isMore);
-    if (real.length > 4) { real = real.slice(0, 4); if (!more.length) more = [{ sportId: 'other', label: 'Weitere Aktivität', isMore: true }]; more = [{ sportId: 'all', label: 'Alle Sportarten', isAll: true }].concat(more); }
+    if (real.length > 4) { real = real.slice(0, 4); if (!more.length) more = [{ sportId: 'other', label: '' + T('wo.tiles.more') + '', isMore: true }]; more = [{ sportId: 'all', label: '' + T('wo.tiles.all') + '', isAll: true }].concat(more); }
     return real.concat(more).map(t => '<button class="hub-q q3" onclick="' + (t.isAll ? 'ORVIA.workoutUI.openTrainingTab()' : 'ORVIA.workoutUI.startSport(\'' + esc(t.label).replace(/'/g, '') + '\')') + '"><svg class="ic"><use href="#i-' + hubIcon(t.sportId) + '"/></svg><span>' + esc(t.label) + '</span></button>').join('');
   }
   function _renderHubIdle(host) {
-    const main = '<div class="hub-hero"><div class="hub-hero-tag">Training starten</div><div class="hub-hero-sub">Freie Einheit oder Schnellstart wählen</div>' +
+    const main = '<div class="hub-hero"><div class="hub-hero-tag">' + T('wo.hub.start') + '</div><div class="hub-hero-sub">' + T('wo.hub.startSub') + '</div>' +
       '<div class="hub-quick">' + _quickTilesHTML() + '</div></div>';
     host.innerHTML = main + hubTail(); renderHistory();
   }
@@ -291,7 +293,7 @@
     // JEDEM Öffnen des Training-Tabs neu, wenn kein Workout aktiv ist (kein "bereits geprüft"-Cache).
     var P = O.perf || { now: function () { return Date.now(); }, mark: function () {} };
     var _t0 = P.now();
-    // Wenn Store schon aktiv: sofort. Sonst Ladezustand zeigen und hydrieren (kein falsches „Training starten").
+    // Wenn Store schon aktiv: sofort. Sonst Ladezustand zeigen und hydrieren (kein falsches „' + T('wo.hub.start') + '").
     if (st().session && st().session.status === 'active') { _renderHubActive(host); P.mark('workoutUI.renderHub (session already active, sync)', _t0); return; }
     host.innerHTML = '<div class="hub-hero"><div class="hub-hero-tag">Training</div><div class="hub-hero-sub">Workout wird geladen …</div><div class="hub-skel"></div></div>';
     ensureActiveWorkoutLoaded().then(res => {
@@ -309,7 +311,7 @@
   async function renderHistory() {
     const h = document.getElementById('workoutHistory'); if (!h || !O.repos || !O.repos.workout) return;
     const r = await O.repos.workout.listSessions();
-    if (!r.success) { h.innerHTML = '<p class="muted">Verlauf offline nicht verfügbar.</p>'; return; }
+    if (!r.success) { h.innerHTML = '<p class="muted">' + T('wo.hist.offline') + '</p>'; return; }
     const rows = (r.data || []).filter(s => s.status !== 'legacy').slice(0, 10);
     if (!rows.length) { h.innerHTML = '<p class="muted">Noch keine Workouts.</p>'; return; }
     h.innerHTML = rows.map(s => {
@@ -317,7 +319,7 @@
       // Aktive Session: antippbar → bestehendes Workout fortsetzen (kein neuer Insert).
       if (s.status === 'active') {
         return '<div class="wo-hist wo-hist-active" role="button" tabindex="0" onclick="ORVIA.workoutUI.resumeActive()"><span>' + date +
-          '</span><span class="wo-badge wo-active">aktiv</span><span class="wo-hist-go">Fortsetzen ›</span></div>';
+          '</span><span class="wo-badge wo-active">aktiv</span><span class="wo-hist-go">' + T('common.resume') + ' ›</span></div>';
       }
       // Abgeschlossen: antippbar → schreibgeschützte Detailansicht (NIE als aktiv in den Store laden).
       if (s.status === 'completed') {
@@ -334,12 +336,12 @@
   // Detailansicht. Ladereihenfolge (Inkrement 2A): 1) lokaler Snapshot → 2) Supabase-Tree
   // → 3) allgemeine Activity-Daten → 4) kontrollierter Fehler. Auflösung NUR über stabile ID.
   function detSheet(headHTML, bodyHTML, sessionId) {
-    var del = sessionId ? '<button class="wo-sheet-btn danger" onclick="ORVIA.workoutUI.deleteWorkout(\'' + esc(sessionId) + '\')">Workout löschen</button>' : '';
-    openSheet('<h3 class="wo-sheet-t">Workout-Details</h3>' + headHTML + '<div class="wo-det-body">' + bodyHTML + '</div>' + del + '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Schließen</button>');
+    var del = sessionId ? '<button class="wo-sheet-btn danger" onclick="ORVIA.workoutUI.deleteWorkout(\'' + esc(sessionId) + '\')">' + T('wo.det.delete') + '</button>' : '';
+    openSheet('<h3 class="wo-sheet-t">' + T('wo.det.title') + '</h3>' + headHTML + '<div class="wo-det-body">' + bodyHTML + '</div>' + del + '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">' + T('common.close') + '</button>');
   }
-  // Workout löschen (Session + Übungen + Sätze + Activity) — Bestätigung, offline-fest über Tombstone.
+  // ' + T('wo.det.delete') + ' (Session +' + T('wo.exercises') + ' +' + T('wo.sets') + ' + Activity) — Bestätigung, offline-fest über Tombstone.
   O.workoutUI.deleteWorkout = async function (sessionId) {
-    const okc = await O.workoutUI._confirmSheet('Workout wirklich löschen?', 'Das Workout inkl. Übungen und Sätzen wird dauerhaft entfernt.', 'Endgültig löschen', 'Abbrechen', true);
+    const okc = await O.workoutUI._confirmSheet('' + T('wo.det.deleteQ') + '', '' + T('wo.det.deleteBody') + '', '' + T('wo.deleteForever') + '', '' + T('common.cancel') + '', true);
     if (!okc) return;
     try {
       const AS = O.activityStore;
@@ -351,13 +353,13 @@
       }
       // Legacy-DB-Spiegel dieser Session entfernen.
       try { if (typeof _removeLegacyFor === 'function') _removeLegacyFor({ workoutSessionId: sessionId, source: 'orvia_workout', sourceRecordId: sessionId }); } catch (e) {}
-    } catch (e) { try { console.error('[ORVIA workout] lokales Workout-Löschen', e); } catch (_) {} }
+    } catch (e) { try { console.error('[ORVIA workout] lokales Workout-' + T('common.delete') + '', e); } catch (_) {} }
     closeSheet();
     // Statistiken/Verläufe sofort aktualisieren + Server-Löschung (RPC) anstoßen.
     try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { deleted: true } })); } catch (e) {}
     try { if (O.activitySync) O.activitySync.flushPendingActivities(); } catch (e) {}
     try { renderHistory(); } catch (e) {}
-    toastIt('Workout gelöscht');
+    toastIt('' + T('wo.det.deleted') + '');
   };
   function detHead(dateLabel, sport, durLabel, rpe) {
     return '<div class="wo-det-head">' + esc(dateLabel || '') + ' · ' + esc(sport || 'Training') +
@@ -366,8 +368,8 @@
   function detSummary(sum) {
     if (!sum) return '';
     const parts = [];
-    if (sum.exerciseCount != null) parts.push(sum.exerciseCount + ' Übungen');
-    if (sum.workingSetCount != null) parts.push(sum.workingSetCount + ' Arbeitssätze');
+    if (sum.exerciseCount != null) parts.push(sum.exerciseCount + '' + T('wo.exercises') + '');
+    if (sum.workingSetCount != null) parts.push(sum.workingSetCount + '' + T('wo.det.workingSets') + '');
     if (sum.totalVolumeKg != null) parts.push('Volumen ' + sum.totalVolumeKg + ' kg');
     if (sum.avgRir != null) parts.push('Ø RIR ' + sum.avgRir);
     return parts.length ? '<div class="wo-det-sum muted">' + esc(parts.join(' · ')) + '</div>' : '';
@@ -377,7 +379,7 @@
     return (exercises || []).map(ex => {
       const name = nameOf(ex);
       const sets = (ex.sets || []).map((st2, i) => '<div class="wo-det-set"><span>Satz ' + (st2.set_number != null ? st2.set_number : (st2.setNumber != null ? st2.setNumber : i + 1)) + '</span><span>' + esc(fmtSet(st2)) + '</span></div>').join('');
-      return '<div class="wo-det-ex"><div class="wo-det-exname">' + esc(name) + '</div>' + (sets || '<div class="muted">Keine Sätze</div>') + '</div>';
+      return '<div class="wo-det-ex"><div class="wo-det-exname">' + esc(name) + '</div>' + (sets || '<div class="muted">' + T('wo.det.noSets') + '</div>') + '</div>';
     }).join('');
   }
   O.workoutUI.openDetails = function (sessionId, canonicalId) {
@@ -392,11 +394,11 @@
   // Aktive Session (auch wenn nur serverseitig bekannt) hydrieren und Overlay öffnen.
   O.workoutUI.resumeActive = async function () {
     const res = await ensureActiveWorkoutLoaded();
-    if (res.active) O.workoutUI.open(); else { toastIt('Kein aktives Workout mehr.'); O.workoutUI.renderHub(); }
+    if (res.active) O.workoutUI.open(); else { toastIt('' + T('wo.noActive') + ''); O.workoutUI.renderHub(); }
   };
   // Ein-Klick-Verwerfen: beendet die (ggf. festhängende) aktive Session, damit neu gestartet werden kann.
   O.workoutUI.discardActive = async function () {
-    const okc = await O.workoutUI._confirmSheet('Workout beenden?', 'Es wird als „abgebrochen" beendet, damit du ein neues starten kannst.', 'Beenden', 'Zurück', true);
+    const okc = await O.workoutUI._confirmSheet('' + T('wo.stuck.endQ') + '', '' + T('wo.stuck.endBody') + '', '' + T('common.end') + '', '' + T('common.back') + '', true);
     if (!okc) return;
     await ensureActiveWorkoutLoaded();              // sicherstellen, dass der Store die Session kennt
     const r = await WS().cancelWorkout('aborted', 'stale_session_recovery');
@@ -409,7 +411,7 @@
   O.workoutUI.browseExercises = function () {
     const active = st().session && st().session.status === 'active';
     if (active) { O.workoutUI.pickExercise(); return; }
-    O.workoutUI.pickExercise(function () { O.workoutUI.closePicker(); toastIt('Starte zuerst ein Workout, um Übungen hinzuzufügen.'); });
+    O.workoutUI.pickExercise(function () { O.workoutUI.closePicker(); toastIt('' + T('wo.startFirst') + ''); });
   };
   O.workoutUI.startSport = async function (sport, opts) {
     if (_busy) return; _busy = true; O.workoutUI._liveDist = null; O.workoutUI._intervals = null; O.workoutUI._ivIdx = 0; O.workoutUI._laps = 0;
@@ -418,19 +420,19 @@
     O.workoutUI._planLabel = (opts && opts.planLabel) || null;
     // Erst hydrieren: existiert (auch serverseitig) eine aktive Session → diese öffnen statt neu anlegen.
     const ex = await ensureActiveWorkoutLoaded();
-    if (ex.active) { _busy = false; O.workoutUI._planNote = null; O.workoutUI._planLabel = null; toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); return; }
+    if (ex.active) { _busy = false; O.workoutUI._planNote = null; O.workoutUI._planLabel = null; toastIt('' + T('wo.err.activeExists') + ''); O.workoutUI.open(); return; }
     // Batch 2b/2d: Occurrence-ID + unveränderlicher Plan-Snapshot an die Session durchreichen.
     const r = await WS().startFreeWorkout({ sport: sport || 'Gym', plannedSessionId: (opts && opts.plannedSessionId) || null, planSnapshot: (opts && opts.planSnapshot) || null, sessionType: (opts && opts.plannedSessionId) ? 'planned' : null }); _busy = false;
-    if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
-    if (r.sync_status === 'pending') toastIt('Offline gestartet – wird synchronisiert ⏳');
+    if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('' + T('wo.err.activeExists') + ''); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
+    if (r.sync_status === 'pending') toastIt('' + T('wo.startedOffline') + '');
     /* v8-323 (K2, Gians Vorgabe): eine teilweise misslungene Uebernahme der
        geplanten Uebungen darf KEIN stiller Erfolg sein. applyPlannedExercises
        liefert {planned, applied, failed}; failed>0 wird sichtbar gemeldet. */
     const pa = r.data && r.data.plannedApplied;
     if (pa && pa.failed > 0) {
       toastIt(pa.applied > 0
-        ? pa.applied + ' von ' + pa.planned + ' geplanten Übungen übernommen — ' + pa.failed + ' fehlgeschlagen.'
-        : 'Keine der ' + pa.planned + ' geplanten Übungen konnte übernommen werden.');
+        ? T('wo.planned.partial', { applied: pa.applied, planned: pa.planned, failed: pa.failed })
+        : T('wo.planned.none', { planned: pa.planned }));
     }
     O.workoutUI.open();
   };
@@ -438,8 +440,8 @@
   O.workoutUI.startFree = async function () {
     if (_busy) return; _busy = true;
     const r = await WS().startFreeWorkout({ sport: 'Gym' }); _busy = false;
-    if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('Es läuft bereits ein Workout. Es wurde geöffnet.'); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
-    if (r.sync_status === 'pending') toastIt('Offline gestartet – wird synchronisiert ⏳');
+    if (!r.success) { if (r.error && r.error.code === 'active_exists') { toastIt('' + T('wo.err.activeExists') + ''); O.workoutUI.open(); } else toastIt(humanErr(r.error)); return; }
+    if (r.sync_status === 'pending') toastIt('' + T('wo.startedOffline') + '');
     O.workoutUI.open();
   };
 
@@ -448,7 +450,7 @@
 
   // ---- Restore beim Laden / nach Login ----
   // NUR Hintergrund-Hydrierung. Das Overlay öffnet NIE automatisch (auch nicht nach Reload) —
-  // ausschließlich durch bewusstes Tippen auf „Fortsetzen". App startet immer auf Home.
+  // ausschließlich durch bewusstes Tippen auf „' + T('common.resume') + '". App startet immer auf Home.
   O.workoutUI.tryRestore = async function () {
     if (!WS()) return;
     try { await WS().restoreActiveWorkout(); } catch (error) { try { console.error('[workout restore]', error); } catch (e) {} }
@@ -495,27 +497,27 @@
     let html = '<div class="wo-wrap">';
     // Header (Untertitel je Modus)
     const sub = setBased
-      ? '<span id="woElapsed">' + elapsedStr() + '</span> · ' + (prog.kind === 'sets' ? (prog.completed + '/' + prog.planned + ' Sätze') : ((prog.completed || 0) + '/' + (prog.total || 0) + ' Übungen'))
-      : '<span id="woElapsed">' + elapsedStr() + '</span> · Dauer-Modus';
+      ? '<span id="woElapsed">' + elapsedStr() + '</span> · ' + (prog.kind === 'sets' ? (prog.completed + '/' + prog.planned + '' + T('wo.sets') + '') : ((prog.completed || 0) + '/' + (prog.total || 0) + '' + T('wo.exercises') + ''))
+      : '<span id="woElapsed">' + elapsedStr() + '</span> · ' + T('wo.duration.mode') + '';
     html += '<div class="wo-head"><div><div class="wo-name">' + esc(session.sport || 'Training') + '</div><div class="wo-sub">' + sub + '</div></div>' +
-      '<div class="wo-headbtns"><button class="wo-icbtn" onclick="ORVIA.workoutUI.finish()">Beenden</button><button class="wo-icbtn sec" onclick="ORVIA.workoutUI.menu()">⋯</button></div></div>';
-    if (dec) html += '<div class="wo-ready">Tagesform <b>' + (dec.score != null ? dec.score : '–') + '</b> · ' + esc(dec.statusText || '') + ' <span class="muted">(Kontext — ändert den Morgen-Score nicht)</span></div>';
-    if (WS().isPaused()) html += '<div class="wo-paused">⏸ Training pausiert — die Dauer läuft nicht weiter. <button class="wo-link" onclick="ORVIA.workoutUI.resume()">Fortsetzen</button></div>';
+      '<div class="wo-headbtns"><button class="wo-icbtn" onclick="ORVIA.workoutUI.finish()">' + T('common.end') + '</button><button class="wo-icbtn sec" onclick="ORVIA.workoutUI.menu()">⋯</button></div></div>';
+    if (dec) html += '<div class="wo-ready">' + T('wo.ready.label') + ' <b>' + (dec.score != null ? dec.score : '–') + '</b> · ' + esc(dec.statusText || '') + ' <span class="muted">' + T('wo.ready.ctx') + '</span></div>';
+    if (WS().isPaused()) html += '<div class="wo-paused">' + T('wo.paused.note') + '<button class="wo-link" onclick="ORVIA.workoutUI.resume()">' + T('common.resume') + '</button></div>';
     // F1+: Plan-Sollwerte für die heutige Einheit (aus dem Plan übernommen).
-    if (O.workoutUI._planNote) html += '<div class="wo-plan"><span class="wo-plan-h">Plan für heute' + (O.workoutUI._planLabel ? ' · ' + esc(O.workoutUI._planLabel) : '') + '</span><span class="wo-plan-b">' + esc(O.workoutUI._planNote) + '</span></div>';
+    if (O.workoutUI._planNote) html += '<div class="wo-plan"><span class="wo-plan-h">' + T('wo.plan.today') + '' + (O.workoutUI._planLabel ? ' · ' + esc(O.workoutUI._planLabel) : '') + '</span><span class="wo-plan-b">' + esc(O.workoutUI._planNote) + '</span></div>';
 
     if (!setBased) {
-      // ---- Dauer-/Distanz-Live-Modus (Laufen/Rad/Schwimmen/Mobility) — KEINE Übungen/Sätze ----
+      // ---- Dauer-/Distanz-Live-Modus (Laufen/Rad/Schwimmen/Mobility) — KEINE' + T('wo.exercises') + '/Sätze ----
       const distSport = isDistanceSport(session.sport);
-      html += '<div class="wo-cur wo-duration"><div class="wo-dur-big" id="woElapsedBig">' + elapsedStr() + '</div><div class="muted" style="text-align:center">Aktive Dauer</div>';
+      html += '<div class="wo-cur wo-duration"><div class="wo-dur-big" id="woElapsedBig">' + elapsedStr() + '</div><div class="muted" style="text-align:center">' + T('wo.duration.active') + '</div>';
       if (session.sport === 'Schwimmen') {
         html += swimPanelHTML();
       } else if (distSport) {
         const unit = 'km';
         html += '<div class="wo-inrow" style="margin-top:14px"><label>Distanz (' + unit + ')<input type="number" inputmode="decimal" id="woLiveDist" value="' + (O.workoutUI._liveDist != null ? O.workoutUI._liveDist : '') + '" placeholder="z. B. 8" oninput="ORVIA.workoutUI._setLiveDist(this.value)"></label></div>';
-        html += '<p class="note" style="text-align:left">Geführter Modus ohne GPS — Distanz hier oder beim Beenden eintragen. Pace wird daraus berechnet.</p>';
+        html += '<p class="note" style="text-align:left">' + T('wo.guided.distance') + '</p>';
       } else {
-        html += '<p class="note" style="text-align:left;margin-top:14px">Geführter Modus — Dauer läuft. Beim Beenden Anstrengung (RPE) erfassen.</p>';
+        html += '<p class="note" style="text-align:left;margin-top:14px">' + T('wo.guided.duration') + '</p>';
       }
       html += '</div>';
       if (session.sport === 'Laufen') html += intervalPanelHTML();   // Lauf-Intervall-Detailmodus
@@ -529,14 +531,14 @@
     // ---- Gym: Satz-/Übungsmodus ----
     if (exs.length) html += '<div class="wo-exnav">' + exs.map((e, i) => '<button class="wo-exchip ' + (i === idx ? 'on' : '') + '" onclick="ORVIA.workoutUI.goEx(' + i + ')">' + (i + 1) + gy('chipBadge', exs, i) + '</button>').join('') + '</div>';
     if (!cur) {
-      html += '<div class="wo-empty"><p>Noch keine Übung.</p><button class="btn" onclick="ORVIA.workoutUI.pickExercise()">Übung hinzufügen</button></div>';
+      html += '<div class="wo-empty"><p>' + T('wo.empty') + '</p><button class="btn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.addExercise') + '</button></div>';
     } else {
       const exName = (cur.exercise && cur.exercise.name) || 'Übung';
       const we = cur.workoutExercise;
       html += '<div class="wo-cur"><div class="wo-cur-top"><div class="wo-exname">' + esc(exName) + '</div>' +
-        '<div class="wo-exact">' + gy('exerciseActionsHTML', idx) + '<button class="wo-link" onclick="ORVIA.workoutUI.replaceExercise(' + idx + ')">Ersetzen</button><button class="wo-link danger" onclick="ORVIA.workoutUI.removeExercise(' + idx + ')">Entfernen</button></div></div>' +
-        '<div class="wo-last" id="woLast">Letzte Leistung wird geladen…</div><div class="wo-suggest" id="woSuggest"></div>' +
-        (we.planned_sets ? '<div class="muted">Ziel: ' + we.planned_sets + ' Sätze' + (we.min_reps ? ' · ' + we.min_reps + '–' + (we.max_reps || we.min_reps) + ' Wdh' : '') + (we.target_rir != null ? ' · RIR ' + we.target_rir : '') + '</div>' : '');
+        '<div class="wo-exact">' + gy('exerciseActionsHTML', idx) + '<button class="wo-link" onclick="ORVIA.workoutUI.replaceExercise(' + idx + ')">' + T('wo.ex.replace') + '</button><button class="wo-link danger" onclick="ORVIA.workoutUI.removeExercise(' + idx + ')">' + T('common.remove') + '</button></div></div>' +
+        '<div class="wo-last" id="woLast">' + T('wo.last.loading') + '</div><div class="wo-suggest" id="woSuggest"></div>' +
+        (we.planned_sets ? '<div class="muted">' + T('wo.target.prefix') + '' + we.planned_sets + '' + T('wo.sets') + '' + (we.min_reps ? ' · ' + we.min_reps + '–' + (we.max_reps || we.min_reps) + '' + T('wo.reps') + '' : '') + (we.target_rir != null ? ' · RIR ' + we.target_rir : '') + '</div>' : '');
       html += '<div class="wo-sets">' + (cur.sets || []).map((s, si) =>
         '<div class="wo-set ' + (s.completed ? 'done' : '') + '"><span class="wo-setn">' + (s.set_number || si + 1) + '</span>' +
         '<span class="wo-settype">' + esc(SET_TYPE_DE[s.set_type] || 'Satz') + '</span>' +
@@ -545,12 +547,12 @@
         '<button class="wo-mini danger" onclick="ORVIA.workoutUI.delSet(' + idx + ',' + si + ')">🗑</button></div>').join('') + '</div>';
       html += setInputHTML(cur);
       const tm = S.timer || {};
-      html += '<div class="wo-timer"><span>Satzpause</span> <b id="woTimer">' + (tm.running ? WS().restRemaining() + 's' : '–') + '</b>' +
-        '<button class="wo-mini" onclick="ORVIA.workoutUI.timerAdd()">+15s</button><button class="wo-mini" onclick="ORVIA.workoutUI.timerSkip()">Überspringen</button></div>';
+      html += '<div class="wo-timer"><span>' + T('wo.timer.rest') + '</span> <b id="woTimer">' + (tm.running ? WS().restRemaining() + 's' : '–') + '</b>' +
+        '<button class="wo-mini" onclick="ORVIA.workoutUI.timerAdd()">+15s</button><button class="wo-mini" onclick="ORVIA.workoutUI.timerSkip()">' + T('wo.timer.skip') + '</button></div>';
     }
-    html += '<div class="wo-foot"><button class="wo-fbtn" onclick="ORVIA.workoutUI.pickExercise()">+ Übung</button>' +
-      '<button class="wo-fbtn" onclick="ORVIA.workoutUI.goEx(' + (idx + 1) + ')">Nächste ›</button>' +
-      '<button class="wo-fbtn primary" onclick="ORVIA.workoutUI.finish()">Abschließen</button></div>';
+    html += '<div class="wo-foot"><button class="wo-fbtn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.foot.addExercise') + '</button>' +
+      '<button class="wo-fbtn" onclick="ORVIA.workoutUI.goEx(' + (idx + 1) + ')">' + T('wo.foot.next') + '</button>' +
+      '<button class="wo-fbtn primary" onclick="ORVIA.workoutUI.finish()">' + T('wo.foot.finish') + '</button></div>';
     html += '</div>';
     ov.innerHTML = html;
     if (cur) loadLast(cur);
@@ -574,7 +576,7 @@
       '<div class="muted" style="text-align:center;margin-bottom:10px">Pace ' + paceTxt + '</div>' +
       '<div class="wo-swim-btns"><button class="wo-fbtn" onclick="ORVIA.workoutUI.swimLap(-1)">– Bahn</button>' +
       '<button class="wo-fbtn primary" onclick="ORVIA.workoutUI.swimLap(1)">+ Bahn</button></div>' +
-      '<p class="note" style="text-align:left">Beckenlänge wählen, je Bahn antippen. Distanz/Pace berechnen sich automatisch.</p></div>';
+      '<p class="note" style="text-align:left">' + T('wo.swim.note') + '</p></div>';
   }
   O.workoutUI.setPool = function (v) { O.workoutUI._poolLen = v; renderOverlay(); };
   O.workoutUI.swimLap = function (d) { O.workoutUI._laps = Math.max(0, (O.workoutUI._laps || 0) + d); renderOverlay(); };
@@ -591,7 +593,7 @@
     const last = cur >= iv.length - 1;
     let h = '<div class="wo-iv"><div class="wo-iv-cur wo-iv-' + step.kind + '"><div class="wo-iv-lab">' + esc(step.label) + '</div>' +
       '<div class="wo-iv-time" id="woTimer">' + remTxt + '</div>' +
-      '<button class="btn cta" onclick="ORVIA.workoutUI.nextInterval()"><span class="cta-txt"><span class="cta-main">' + (last ? 'Intervalle abschließen' : 'Schritt abschließen ›') + '</span></span></button></div>';
+      '<button class="btn cta" onclick="ORVIA.workoutUI.nextInterval()"><span class="cta-txt"><span class="cta-main">' + (last ? '' + T('wo.iv.finish') + '' : '' + T('wo.iv.next') + '') + '</span></span></button></div>';
     h += '<div class="wo-iv-list">' + iv.map((s, i) => '<div class="wo-iv-row ' + (i === cur ? 'on' : (i < cur ? 'done' : '')) + '"><span>' + esc(s.label) + '</span><span class="muted">' + Math.round(s.seconds) + 's</span></div>').join('') + '</div></div>';
     return h;
   }
@@ -602,8 +604,8 @@
       '<div class="wo-inrow"><label>Wiederh.<input type="number" inputmode="numeric" id="ivReps" value="6"></label>' +
       '<label>Belastung (s)<input type="number" inputmode="numeric" id="ivWork" value="180"></label>' +
       '<label>Erholung (s)<input type="number" inputmode="numeric" id="ivRec" value="120"></label></div>' +
-      '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutUI.applyIntervals()">Übernehmen & starten</button>' +
-      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Zurück</button>');
+      '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutUI.applyIntervals()">' + T('wo.iv.apply') + '</button>' +
+      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">' + T('common.back') + '</button>');
   };
   function _ivNum(id) { const e = document.getElementById(id); return e ? +e.value : 0; }
   O.workoutUI.applyIntervals = function () {
@@ -629,15 +631,15 @@
       (pro ? '<label>RIR<input type="number" inputmode="numeric" id="wiRir" placeholder="2"></label>' : '') + '</div>' +
       (pro ? '<div class="wo-inrow"><label>Typ<select id="wiType">' + Object.keys(SET_TYPE_DE).map(k => '<option value="' + k + '"' + (k === 'working' ? ' selected' : '') + '>' + SET_TYPE_DE[k] + '</option>').join('') + '</select></label></div>' : '') +
       (gy('platesButtonHTML') ? '<div class="wo-inrow wo-tools">' + gy('platesButtonHTML') + '</div>' : '') +
-      '<button class="btn cta wo-savebtn" onclick="ORVIA.workoutUI.saveSet()"><span class="cta-txt"><span class="cta-main">Satz speichern</span></span></button></div>';
+      '<button class="btn cta wo-savebtn" onclick="ORVIA.workoutUI.saveSet()"><span class="cta-txt"><span class="cta-main">' + T('wo.set.save') + '</span></span></button></div>';
   }
 
   async function loadLast(cur) {
     const el = document.getElementById('woLast'); if (!el) return;
     const exId = cur.workoutExercise.exercise_id; if (!exId) { el.textContent = ''; return; }
     const r = await WS().getPreviousPerformance(exId);
-    if (!r || !r.success || !r.data) { el.innerHTML = '<span class="muted">Keine frühere Leistung.</span>'; return; }
-    el.innerHTML = '<div class="muted">Letztes Training (' + esc(r.data.date) + '):</div>' + (r.data.sets || []).map(s => esc(fmtSet(s))).join('<br>');
+    if (!r || !r.success || !r.data) { el.innerHTML = '<span class="muted">' + T('wo.last.none') + '</span>'; return; }
+    el.innerHTML = '<div class="muted">' + T('wo.last.prefix') + '' + esc(r.data.date) + '):</div>' + (r.data.sets || []).map(s => esc(fmtSet(s))).join('<br>');
     gy('renderSuggestion', cur, r.data);   /* B-08: satzgenauer Vorschlag (fail-open) */
   }
 
@@ -658,11 +660,11 @@
   };
   O.workoutUI.editSet = function (ei, si) {
     const s = (st().exercises[ei] || {}).sets[si]; if (!s) return;
-    openSheet('<h3 class="wo-sheet-t">Satz bearbeiten</h3>' +
+    openSheet('<h3 class="wo-sheet-t">' + T('wo.set.edit') + '</h3>' +
       '<div class="wo-inrow"><label>kg<input type="number" inputmode="decimal" id="woEditW" value="' + (s.weight != null ? s.weight : '') + '"></label>' +
       '<label>Wdh<input type="number" inputmode="numeric" id="woEditR" value="' + (s.reps != null ? s.reps : '') + '"></label></div>' +
-      '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutUI._saveEdit(' + ei + ',' + si + ')">Speichern</button>' +
-      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Zurück</button>');
+      '<button class="wo-sheet-btn primary" onclick="ORVIA.workoutUI._saveEdit(' + ei + ',' + si + ')">' + T('common.save') + '</button>' +
+      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">' + T('common.back') + '</button>');
   };
   O.workoutUI._saveEdit = async function (ei, si) {
     const w = document.getElementById('woEditW'), rr = document.getElementById('woEditR');
@@ -673,10 +675,10 @@
   };
   O.workoutUI.delSet = async function (ei, si) {
     const s = (st().exercises[ei] || {}).sets[si]; if (!s) return;
-    if (s.completed) { const okc = await O.workoutUI._confirmSheet('Satz löschen?', 'Der abgeschlossene Satz wird entfernt.', 'Löschen', 'Zurück', true); if (!okc) return; }
+    if (s.completed) { const okc = await O.workoutUI._confirmSheet('' + T('wo.set.deleteQ') + '', '' + T('wo.set.deleteBody') + '', '' + T('common.delete') + '', '' + T('common.back') + '', true); if (!okc) return; }
     const r = await WS().deleteSet(ei, si);
     if (!r.success) { toastIt(humanErr(r.error)); return; }
-    if (r.sync_status === 'pending') toastIt('Löschen wartet auf Sync ⏳');
+    if (r.sync_status === 'pending') toastIt('' + T('wo.set.deletePending') + '');
     renderOverlay();
   };
   O.workoutUI.goEx = function (i) { const exs = st().exercises; if (i >= exs.length) { O.workoutUI.pickExercise(); return; } WS().setCurrentExercise(Math.max(0, i)); renderOverlay(); };
@@ -685,7 +687,7 @@
 
   O.workoutUI.removeExercise = async function (idx) {
     const e = st().exercises[idx]; if (!e) return;
-    if ((e.sets || []).length) { const okc = await O.workoutUI._confirmSheet('Übung entfernen?', 'Die Übung samt ihrer Sätze wird entfernt.', 'Entfernen', 'Zurück', true); if (!okc) return; }
+    if ((e.sets || []).length) { const okc = await O.workoutUI._confirmSheet('' + T('wo.ex.removeQ') + '', '' + T('wo.ex.removeBody') + '', '' + T('common.remove') + '', '' + T('common.back') + '', true); if (!okc) return; }
     const r = await WS().removeExercise(idx); if (!r.success) toastIt(humanErr(r.error)); else renderOverlay();
   };
   O.workoutUI.replaceExercise = function (idx) { O.workoutUI.pickExercise(function (exId) { WS().replaceExercise(idx, exId, true).then(() => renderOverlay()); }); };
@@ -700,7 +702,7 @@
     return new Promise(resolve => {
       openSheet('<h3 class="wo-sheet-t">' + esc(title) + '</h3>' + (body ? '<p class="wo-sheet-p">' + esc(body) + '</p>' : '') +
         '<button class="wo-sheet-btn ' + (danger ? 'danger' : 'primary') + '" id="woSheetOk">' + esc(confirmLabel) + '</button>' +
-        '<button class="wo-sheet-btn ghost" id="woSheetCancel">' + esc(cancelLabel || 'Zurück') + '</button>');
+        '<button class="wo-sheet-btn ghost" id="woSheetCancel">' + esc(cancelLabel || '' + T('common.back') + '') + '</button>');
       const ok = document.getElementById('woSheetOk'), cx = document.getElementById('woSheetCancel');
       if (ok) ok.onclick = () => { closeSheet(); resolve(true); };
       if (cx) cx.onclick = () => { closeSheet(); resolve(false); };
@@ -708,11 +710,11 @@
   }
   O.workoutUI._confirmSheet = confirmSheet;
 
-  // RPE-Abschluss-Sheet (optional, kein nativer Prompt). Server bestätigt vor dem Schließen.
+  // RPE-Abschluss-Sheet (optional, kein nativer Prompt). Server bestätigt vor dem ' + T('common.close') + '.
   let _finishing = false;
   O.workoutUI.finish = function () {
     O.workoutUI._rpe = null;
-    // Sport vor dem Beenden merken (Store leert die Session danach); Distanzfeld für Distanzsportarten.
+    // Sport vor dem ' + T('common.end') + ' merken (Store leert die Session danach); Distanzfeld für Distanzsportarten.
     const sp = (st().session && st().session.sport) || null;
     O.workoutUI._finishSport = sp;
     const distSport = isDistanceSport(sp);
@@ -725,14 +727,14 @@
       '<div class="wo-rpe-grid">' + grid + '</div><div class="wo-rpe-hint">1 = sehr leicht · 10 = maximal</div>' +
       '<button class="wo-sheet-btn primary" id="woFinishBtn" onclick="ORVIA.workoutUI._doFinish(false)">Training beenden</button>' +
       '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI._doFinish(true)">Ohne Bewertung beenden</button>' +
-      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Zurück</button>');
+      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">' + T('common.back') + '</button>');
   };
   O.workoutUI._rpePick = function (n) { O.workoutUI._rpe = n; try { document.querySelectorAll('#woSheet .wo-rpe').forEach(b => b.classList.toggle('on', +b.dataset.n === n)); } catch (e) {} };
   O.workoutUI._doFinish = async function (noRpe) {
     if (_finishing) return; _finishing = true;
     const rpe = noRpe ? null : (O.workoutUI._rpe != null ? O.workoutUI._rpe : null);
     const btn = document.getElementById('woFinishBtn'); const all = document.querySelectorAll('#woSheet .wo-sheet-btn');
-    all.forEach(b => b.disabled = true); if (btn) btn.textContent = 'Speichern…';
+    all.forEach(b => b.disabled = true); if (btn) btn.textContent = '' + T('common.save') + '…';
     const r = await WS().finishWorkout({ sessionRpe: rpe });
     _finishing = false;
     if (!r.success) { all.forEach(b => b.disabled = false); if (btn) btn.textContent = 'Training beenden'; try { console.error('[finish]', r.error); } catch (e) {} toastIt('Training konnte nicht beendet werden. Fehlercode: ' + ((r.error && r.error.code) || 'unbekannt')); return; }
@@ -742,7 +744,7 @@
     O.workoutUI._liveDist = null; O.workoutUI._finishSport = null;
     closeSheet();
     const ls = r.data && r.data.loadStatus;
-    toastIt('Training beendet ✓' + (ls === 'load_error' ? ' (Last nicht gespeichert)' : ''));
+    toastIt('' + T('wo.finished') + '' + (ls === 'load_error' ? '' + T('wo.finishedNoLoad') + '' : ''));
     O.workoutUI.close();
   };
   // Single Source of Truth: abgeschlossenes Live-Training in DB[heute].sessions spiegeln,
@@ -778,25 +780,25 @@
   O.workoutUI.menu = function () {
     const paused = WS().isPaused();
     openSheet('<h3 class="wo-sheet-t">Trainings-Optionen</h3>' +
-      '<button class="wo-sheet-btn" onclick="ORVIA.workoutUI._optPause()">' + (paused ? 'Training fortsetzen' : 'Training pausieren') + '</button>' +
-      '<button class="wo-sheet-btn" onclick="ORVIA.workoutUI._optAbort()">Training abbrechen (im Verlauf behalten)</button>' +
-      '<button class="wo-sheet-btn danger" onclick="ORVIA.workoutUI._optDelete()">Training verwerfen (löschen)</button>' +
-      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">Schließen</button>');
+      '<button class="wo-sheet-btn" onclick="ORVIA.workoutUI._optPause()">' + (paused ? '' + T('wo.opt.resume') + '' : '' + T('wo.opt.pause') + '') + '</button>' +
+      '<button class="wo-sheet-btn" onclick="ORVIA.workoutUI._optAbort()">' + T('wo.abort.confirm') + ' (im Verlauf behalten)</button>' +
+      '<button class="wo-sheet-btn danger" onclick="ORVIA.workoutUI._optDelete()">' + T('wo.opt.discardDelete') + '</button>' +
+      '<button class="wo-sheet-btn ghost" onclick="ORVIA.workoutUI.closeSheet()">' + T('common.close') + '</button>');
   };
   O.workoutUI._optPause = function () { const paused = WS().isPaused(); if (paused) { WS().resumeWorkout(); toastIt('Fortgesetzt'); } else { WS().pauseWorkout(); toastIt('Pausiert – Dauer steht still'); } closeSheet(); renderOverlay(); };
   O.workoutUI._optAbort = async function () {
-    const okc = await confirmSheet('Training abbrechen?', 'Die Einheit bleibt im Verlauf als „abgebrochen" erhalten.', 'Training abbrechen', 'Weiter trainieren', true);
+    const okc = await confirmSheet('' + T('wo.abort.q') + '', '' + T('wo.abort.body') + '', '' + T('wo.abort.confirm') + '', '' + T('wo.abort.cancel') + '', true);
     if (!okc) return;
     const r = await WS().cancelWorkout('aborted', 'abgebrochen');
     if (!r.success) { try { console.error('[abort]', r.error); } catch (e) {} toastIt('Workout konnte nicht beendet werden. Fehlercode: ' + ((r.error && r.error.code) || 'unbekannt')); return; }
     toastIt('Workout abgebrochen'); O.workoutUI.close();
   };
   O.workoutUI._optDelete = async function () {
-    const okc = await confirmSheet('Training wirklich verwerfen?', 'Die bisher erfassten Trainingsdaten dieser Einheit werden dauerhaft gelöscht.', 'Training verwerfen', 'Weiter trainieren', true);
+    const okc = await confirmSheet('' + T('wo.discard.q') + '', '' + T('wo.discard.body') + '', '' + T('wo.hub.discard') + '', '' + T('wo.abort.cancel') + '', true);
     if (!okc) return;
     const r = await WS().cancelWorkout('delete');
     if (!r.success) { try { console.error('[delete]', r.error); } catch (e) {} toastIt('Workout konnte nicht beendet werden. Fehlercode: ' + ((r.error && r.error.code) || 'unbekannt')); return; }
-    toastIt('Workout gelöscht'); O.workoutUI.close();
+    toastIt('' + T('wo.det.deleted') + ''); O.workoutUI.close();
   };
 
   // ---- Übungsauswahl (Redesign: Safe-Area, Sticky-Header, Filter, deutsche Labels) ----
@@ -813,9 +815,9 @@
       groups.map(g => '<button class="wo-fchip" data-g="' + g.key + '" onclick="ORVIA.workoutUI._setFilter(this,\'' + g.key + '\')">' + esc(g.label) + '</button>').join('');
     ov.innerHTML =
       '<div class="wo-pick">' +
-      '<div class="wo-pick-head"><button class="wo-pick-back" aria-label="Zurück" onclick="ORVIA.workoutUI.closePicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>' +
-      '<div class="wo-pick-title">Übung auswählen</div></div>' +
-      '<div class="wo-pick-search"><input id="woSearch" inputmode="search" autocomplete="off" placeholder="Übung suchen…" aria-label="Übung suchen" oninput="ORVIA.workoutUI._filter()"></div>' +
+      '<div class="wo-pick-head"><button class="wo-pick-back" aria-label="' + T('common.back') + '" onclick="ORVIA.workoutUI.closePicker()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>' +
+      '<div class="wo-pick-title">' + T('wo.pick.title') + '</div></div>' +
+      '<div class="wo-pick-search"><input id="woSearch" inputmode="search" autocomplete="off" placeholder="' + T('wo.pick.searchPh') + '" aria-label="' + T('wo.pick.search') + '" oninput="ORVIA.workoutUI._filter()"></div>' +
       '<div class="wo-fchips">' + chips + '</div>' +
       '<div id="woPickList" class="wo-pick-list" role="list"></div></div>';
     O.workoutUI._cb = cb || null; O.workoutUI._group = '';
@@ -850,12 +852,12 @@
     });
     const el = document.getElementById('woPickList'); if (!el) return;
     const CAP = 200; const shown = list.slice(0, CAP);
-    const head = '<div class="wo-pick-count">' + list.length + ' Übung' + (list.length === 1 ? '' : 'en') + '</div>';
+    const head = '<div class="wo-pick-count">' + T('wo.pick.count', { count: list.length }) + '</div>';
     el.innerHTML = shown.length ? head + shown.map(e => {
       const recentTag = recent.indexOf(e.id) >= 0 ? ' · zuletzt' : '';
       const meta = [moveLabel(e)].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '') + recentTag;
       return '<button class="wo-pickitem" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span><span class="pchev">›</span></button>';
-    }).join('') + (list.length > CAP ? '<p class="muted" style="padding:12px 2px">Suche eingrenzen, um weitere zu sehen.</p>' : '') : '<p class="muted" style="padding:16px">Keine Übung gefunden.</p>';
+    }).join('') + (list.length > CAP ? '<p class="muted" style="padding:12px 2px">' + T('wo.pick.narrow') + '</p>' : '') : '<p class="muted" style="padding:16px">' + T('wo.pick.none') + '</p>';
   };
   O.workoutUI.choose = async function (exId) {
     const ex = (O.workoutUI._all || []).find(e => e.id === exId) || null;

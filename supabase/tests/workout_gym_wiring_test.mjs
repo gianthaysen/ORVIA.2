@@ -91,6 +91,7 @@ sec('B · Haken sichtbar');
   ok('B2 Alternative-Aktion', ov.innerHTML.indexOf('workoutGym.alternatives(') >= 0);
   ok('B3 Scheiben-Button', ov.innerHTML.indexOf('workoutGym.plates()') >= 0);
   ok('B4 Ersetzen/Entfernen unveraendert da', ov.innerHTML.indexOf('replaceExercise(') >= 0 && ov.innerHTML.indexOf('removeExercise(') >= 0);
+  ok('B5 B-13: Player-Texte kommen aus dem Katalog — kein Key sichtbar', ov.innerHTML.indexOf('Satz speichern') >= 0 && ov.innerHTML.indexOf('Abschließen') >= 0 && ov.innerHTML.indexOf('Ersetzen') >= 0 && !/\bwo\.[a-z]+\./.test(ov.innerHTML.replace(/onclick="[^"]*"/g, '')), (ov.innerHTML.match(/\bwo\.[a-z.]+/g) || []).slice(0, 3).join());
 }
 
 sec('C · B-05 Superset im Player');

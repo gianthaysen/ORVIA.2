@@ -14,7 +14,7 @@
 | Schutznetz | `i18n_guard_test`: Laufzeit, Pseudo-Locale, Parität, Katalog-Regeln, **t()-Regime** (Dateien unter t() müssen 0 Literale haben), Verdrahtung | — |
 | Upload-Satz | `locales/` in `deploy-verify.sh` und Deploy-Standard aufgenommen | — |
 
-**Unter t() (0 Literale):** `js/goal-detail.js`, `js/workout-gym.js` — 82 Keys.
+**Unter t() (0 Literale, vom Test erzwungen):** `js/goal-detail.js`, `js/workout-gym.js`, **`js/workout-ui.js`** (Schritt 3 ✅, 11.09.) — 187 Keys.
 
 ## Inventur 11.09. (Heuristik, ohne engine/)
 
@@ -41,7 +41,7 @@ Band 6 e.2 Schritt 6: bei > 1.500 Strings **Cut auf Kernflows zuerst**. Kernflow
 ## Reihenfolge Rest B-13 (≈ 22 h)
 
 1. ✅ **`kind`-Feld für Plan-Items** (`gpR/gpB/gpG/gpS/gpM` setzen es; `unitKind`/`isHardUnit` in ui.js sowie goal-phase-plan/absence-replanner lesen es zuerst; Label-Raten bleibt Rückfall für gespeicherte Pläne). **Bewusst nicht** in `week-plan-designer`/`week-plan-policy`: beide gehören zur eingefrorenen Kohorte des Engine-Shadows (`shadow_adaptive` schlägt bei einem VERSION-Bump „Kohortenänderung — Belegsammlung beginnt neu" an, das würde Gate A #5 zurücksetzen). Ihre Label-Regex funktioniert, solange die Labels DE bleiben — d. h. bis B-14. Dann: Kohorte mit `ORVIA_REPIN_COHORT` bewusst neu setzen, beide Module auf `kind` umstellen. Offen bleibt der Renderer (`t('plan.kind.' + kind)`) — kommt mit der Plan-Tab-Extraktion (Schritt 5).
-2. Onboarding-UI (128) (4 h) · 3. Workout-UI (96) (3 h) · 4. Profil + Profilzentrale (258) (5 h) · 5. Plan-Tab in ui.js (≈ 300) (6 h).
+2. Onboarding-UI (128) (4 h) · 3. ✅ Workout-UI (96 → 0, datengetriebene Extraktion `_to_delete/x4.py`-Muster: Text → Key, längste zuerst, nur in Literalen; zusammengesetzte Meldungen als Platzhalter-Keys) · 4. Profil + Profilzentrale (258) (5 h) · 5. Plan-Tab in ui.js (≈ 300) (6 h).
 6. Pseudo-Locale-Durchlauf der fünf Kernflows am Gerät (dein Auge) → DoD.
 
 Alles ab Schritt 2 ist mechanische Extraktion mit Test je Screen; Schritt 1 ist die einzige Architekturänderung.

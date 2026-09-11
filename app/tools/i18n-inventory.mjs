@@ -22,6 +22,7 @@ export function scanFile(p) {
       const s = m[1] ?? m[2] ?? m[3]; if (!s || s.length < 4 || !/\s/.test(s)) continue;
       if (/^[\s\-|·•]+$/.test(s) || /^[<{\[]/.test(s.trim()) && !/[äöüÄÖÜß]/.test(s)) continue;
       if (!UMLAUT.test(s) && !DE_WORDS.test(s)) continue;
+      if (/^[.#][\w-]+[ .#\[]/.test(s) || /\[data-/.test(s)) continue;   /* CSS-Selektoren */
       out.push({ line: i + 1, text: s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) });
     }
   });
