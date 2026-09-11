@@ -4717,7 +4717,7 @@ function renderRaceHeader(){
     var tgtTime=tm?Calc.fmtTime(tm):'offen';
     var tgtPace=(tm&&distKm)?Calc.fmtPace(tm*60/distKm)+'/km':'—';
     el.innerHTML='<div class="racehead">'+
-      '<div class="rh-top"><span class="rh-name">'+escH(title)+'</span>'+editBtn+'</div>'+
+      '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
       '<div class="rh-date">'+escH(dateTxt)+'</div>'+
       '<div class="rh-grid">'+
         '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
@@ -4731,7 +4731,7 @@ function renderRaceHeader(){
   var catTxt=(typeof goalCatLabel==='function')?goalCatLabel(mg.category):mg.category;
   var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(''+mg.targetValue)+(mg.unit?' '+escH(mg.unit):'')+'</span><span class="rh-lab">Zielwert</span></div>'):'';
   el.innerHTML='<div class="racehead">'+
-    '<div class="rh-top"><span class="rh-name">'+escH(title)+'</span>'+editBtn+'</div>'+
+    '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
     '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+'</div>'+
     '<div class="rh-grid">'+
       '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
