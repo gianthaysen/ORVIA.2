@@ -1,6 +1,6 @@
 -- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
--- Quelle: supabase/migrations/ (39 Dateien)
+-- Quelle: supabase/migrations/ (40 Dateien)
 -- Neu erzeugen: node app/tools/gen-live-check.mjs
 -- ============================================================
 -- Diese Abfrage beantwortet die eine Frage, die `public.schema_migrations`
@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 50 Tabellen + 64 Spalten + 62 Indizes + 19 RLS = 195 Prüfungen.
+-- Umfang: 51 Tabellen + 64 Spalten + 63 Indizes + 20 RLS = 198 Prüfungen.
 -- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
 -- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
@@ -36,6 +36,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0003','tabelle','movement_patterns',''),
   ('0003','tabelle','muscle_groups',''),
   ('0036','tabelle','oauth_tokens',''),
+  ('0041','tabelle','onboarding_step_log',''),
   ('0002','tabelle','orvia_migrations',''),
   ('0019','tabelle','profile_metric_settings',''),
   ('0036','tabelle','profiles',''),
@@ -152,6 +153,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0002','index','fixed_schedule_user_idx',''),
   ('0037','index','goal_shadow_log_user_time_idx',''),
   ('0019','index','metric_anomalies_open_idx',''),
+  ('0041','index','onboarding_step_log_user_time_idx',''),
   ('0019','index','profile_metric_settings_uniq',''),
   ('0019','index','provider_credentials_uniq',''),
   ('0017','index','readiness_baselines_metric_uniq',''),
@@ -200,6 +202,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0003','rls','exercises',''),
   ('0037','rls','goal_shadow_log',''),
   ('0036','rls','oauth_tokens',''),
+  ('0041','rls','onboarding_step_log',''),
   ('0036','rls','profiles',''),
   ('0002','rls','readiness_components',''),
   ('0036','rls','schema_migrations',''),

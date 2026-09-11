@@ -33,6 +33,33 @@
   }
 
   function now() { try { if (O.clock && typeof O.clock.now === 'function') return O.clock.now(); } catch (e) {} return Date.now(); }   // M4: injizierbare Zeitquelle
+  /* B-04 Teil 3: Schritt-Logging (engine/onboarding-log, Migration 0041). BEOBACHTER —
+     jeder Aufruf ist in try/catch, ohne Modul/Sitzung wird nichts geschrieben, nur gezaehlt.
+     Die Senke wird beim ERSTEN Ereignis gesetzt (Ladereihenfolge: onboarding-ui laedt vor
+     js/engine/*). Verweildauer je Schritt aus S.stepEnteredAt (lokale Uhr, nur Messwert). */
+  var _obLogSinkGesetzt = false;
+  function _obLogEnsureSink() {
+    var LG = O.onboardingLog; if (_obLogSinkGesetzt || !LG || typeof LG.setSink !== 'function') return;
+    _obLogSinkGesetzt = true;
+    LG.setSink(function (rec) {
+      var sb = O.sb, id = uid(); if (!sb || !id) return null;
+      var row = LG.toRow(rec, id); if (!row) return null;
+      return sb.from('onboarding_step_log').insert(row).then(function (r) { return r; }, function (e) { return { error: e }; });
+    });
+  }
+  function _obLogId() { try { if (root.crypto && root.crypto.randomUUID) return 'ob_' + root.crypto.randomUUID(); } catch (e) {} return 'ob_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); }
+  function _obLog(eventType, stepId, extra) {
+    try {
+      var LG = O.onboardingLog; if (!LG || typeof LG.logStep !== 'function') return;
+      _obLogEnsureSink();
+      var ver = null; try { var m = D() && D().querySelector('meta[name="orvia-build"]'); ver = m ? m.content : null; } catch (e) {}
+      var ms = null; try { if (S.stepEnteredAt != null) ms = Math.max(0, now() - S.stepEnteredAt); } catch (e) {}
+      LG.logStep(Object.assign({ eventType: eventType, stepId: stepId || (S.draft && S.draft.currentStep) || 'unknown',
+        draftStatus: S.draft && S.draft.status, source: S.source || null, resumed: S.resumed === true, msOnStep: ms,
+        appVersion: ver, now: new Date(now()).toISOString(), eventId: _obLogId() }, extra || {}));
+    } catch (e) {}
+  }
+  function _obEnter(stepId) { try { S.stepEnteredAt = now(); } catch (e) {} _obLog('enter', stepId); }
   function uid() { try { return (O.user && O.user.id) || null; } catch (e) { return null; } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function stepMeta(id) { var a = STEPS(); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return a[0] || { id: id, title: id, desc: '' }; }
@@ -52,6 +79,8 @@
       return true;
     }
     S.draft = existing || L().startDraft(L().newDraft(), now());
+    S.source = opts.source || null; S.resumed = !!existing && !opts.edit;
+    S.obLoggedStep = null; _obLog('open', S.draft.currentStep);
     // BEARBEITEN hat IMMER Vorrang vor dem Done-Screen — UNABHÄNGIG davon, ob bereits ein
     // Onboarding-Draft existiert. Auf dem Gerät kann das Profil aus der Cloud/PROFILE stammen,
     // ohne dass je ein v2-Draft gespeichert wurde. edit:true darf NIE renderReviewDone() zeigen.
@@ -143,6 +172,20 @@
     mountShell();
     // currentStep absichern: unbekannt → erster gültiger Schritt.
     if (L().STEP_IDS.indexOf(S.draft.currentStep) < 0) S.draft.currentStep = L().STEP_IDS[0];
+    /* B-04 Teil 3: Schrittwechsel ZENTRAL erkennen (sieben submit-Pfade rufen advance*),
+       statt jede Stelle zu instrumentieren. Vorwaerts = complete (oder skip, wenn markiert),
+       rueckwaerts = back; danach enter fuer den neuen Schritt. */
+    try {
+      var _cur = S.draft.currentStep;
+      if (S.obLoggedStep !== _cur) {
+        if (S.obLoggedStep != null) {
+          var _fi = L().stepIndex(S.obLoggedStep), _ti = L().stepIndex(_cur);
+          if (S.obSkipped === S.obLoggedStep) _obLog('skip', S.obLoggedStep);
+          else _obLog(_ti > _fi ? 'complete' : 'back', S.obLoggedStep, { fromStep: S.obLoggedStep });
+        }
+        S.obSkipped = null; S.obLoggedStep = _cur; _obEnter(_cur);
+      }
+    } catch (e) {}
     // M5a: neuer Welcome-Screen (A0) — zählt nicht zum Fortschritt, keine Eingaben.
     if (S.draft.currentStep === 'welcome') { renderWelcome(showCorrupt); return; }
     // Profil-Schritt: bei fehlender/unvollständiger Profil-Logik FAIL-CLOSED (keine generische Übersprung-Möglichkeit).
@@ -706,7 +749,7 @@
       // Skip erzwingt keine Daten; bereits Eingetipptes wird NICHT verworfen (bewusst erfasst).
       readBodyForm();
       var r = L().skipStep(S.draft, 'body', now());
-      if (r.ok) { S.bodySubmitted = false; render(); }
+      if (r.ok) { S.obSkipped = 'body'; S.bodySubmitted = false; render(); }
     };
     card.querySelector('#ob2-later').onclick = function () { readBodyForm(); later(); };
     focusHeading(); persist();
@@ -965,7 +1008,7 @@
     };
     completeOnboardingFlow(ctx).then(function (res) {
       S.busy = false;
-      if (res.ok) { renderFinishDone(res.syncStatus); return; }
+      if (res.ok) { _obLog('finish', 'review'); renderFinishDone(res.syncStatus); return; }
       if (res.code === 'in_flight' || res.code === 'already_completed') return;
       if (btn) { btn.disabled = false; btn.textContent = 'Erneut versuchen'; }
       showFinishError(card, res.error || FINISH_ERR_MSG);
