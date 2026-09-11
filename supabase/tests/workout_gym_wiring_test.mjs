@@ -80,6 +80,7 @@ sec('A · Fail-open ohne workout-gym.js');
   ok('A3 Vorschlagsflaeche vorhanden, aber leer', ov.innerHTML.indexOf('id="woSuggest"') >= 0 && (ELS.woSuggest || { innerHTML: '' }).innerHTML === '');
 }
 
+load('js/i18n.js'); load('locales/de.js');   /* B-13: Texte kommen aus dem Katalog */
 load('js/workout-gym.js');
 const G = O.workoutGym;
 

@@ -45,8 +45,9 @@ Aus `app/` in die Wurzel:
 | `app/manifest.webmanifest` | `manifest.webmanifest` |
 | `app/js/` | `js/` (138 `.js`-Dateien) |
 | `app/assets/` | `assets/` (15 Dateien) |
+| `app/locales/` | `locales/` (B-13, ab v8-368: Sprachkataloge — `index.html` lädt sie per Skript-Tag) |
 
-**159 Dateien insgesamt.** `index.html` lädt 139 lokale Skripte einzeln per `<script src=…>`; eine einzige fehlende Datei erzeugt eine weiße Seite oder einen still kaputten Bereich.
+**Ab v8-368 kommt `locales/` dazu (Anzahl siehe `deploy-verify.sh`).** `index.html` lädt 139 lokale Skripte einzeln per `<script src=…>`; eine einzige fehlende Datei erzeugt eine weiße Seite oder einen still kaputten Bereich.
 
 **Nicht hochladen:** `app/docs/`, `app/supabase/`, `app/tools/`, `app/baseline/`, `app/package*.json`, `app/real_app_smoke.mjs`, `app/README.md`, `app/env.example.js`, `.DS_Store`, sowie alles außerhalb von `app/`.
 

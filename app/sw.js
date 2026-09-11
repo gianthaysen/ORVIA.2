@@ -4321,7 +4321,7 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
      strength_plan_contract_test.mjs (S15) haelt die Luecke ab jetzt zu. */
   './js/engine/plan-quality.js','./js/engine/strength-plan.js','./js/engine/garmin-exercise-map.js','./js/engine/garmin-workout-export.js',
   /* Phase B, Gym-Strang (v8-364): Superset/Alternativen/Scheiben/Progression + Player-Anbindung. */
-  './js/engine/superset-model.js','./js/engine/exercise-alternatives.js','./js/engine/plate-calculator.js','./js/engine/strength-progression.js','./js/engine/gym-adapters.js','./js/workout-gym.js',
+  './js/engine/superset-model.js','./js/engine/exercise-alternatives.js','./js/engine/plate-calculator.js','./js/engine/strength-progression.js','./js/engine/gym-adapters.js','./js/workout-gym.js','./js/i18n.js','./locales/de.js',
   './js/metrics/metric-registry.js','./js/metrics/metric-resolver.js','./js/metrics/profile-metric-resolver.js','./js/metrics/metric-envelope.js','./js/metrics/source-contract.js','./js/repos/metricsRepository.js',
   './js/checkin-fields.js','./js/checkin-field-resolver.js',
   './js/metrics/energy-expenditure-resolver.js','./js/repos/energyRepository.js'];

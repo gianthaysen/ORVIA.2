@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
 const APP = ([_flat, join(_flat, 'app'), join(_flat, '..', 'app')].find(p => existsSync(join(p, 'js', 'goal-detail.js'))) || _flat);
+require(join(APP, 'js/i18n.js')); require(join(APP, 'locales/de.js'));   /* B-13: Texte kommen aus dem Katalog */
 const G = require(join(APP, 'js/goal-detail.js'));
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };

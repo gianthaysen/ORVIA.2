@@ -77,7 +77,7 @@ else hinw "kein gemerkter Stand — erste Abnahme, Historienprüfung ab dem näc
 
 echo "══ 2 · Layout der Wurzel ══"
 WURZEL=$(git ls-tree --name-only origin/main)
-for p in index.html sw.js styles.css env.js manifest.webmanifest js assets; do
+for p in index.html sw.js styles.css env.js manifest.webmanifest js assets locales; do   # B-13: locales/ gehoert zum Upload-Satz
   echo "$WURZEL" | grep -qx "$p" && ok "$p liegt in der Wurzel" || rot "$p FEHLT in der Wurzel"
 done
 echo "$WURZEL" | grep -qx "app" && rot "Wurzel enthält app/ — falsches Layout, Pages findet nichts!" \
@@ -92,7 +92,7 @@ while IFS= read -r f; do
   fern=$(git rev-parse -q --verify "origin/main:$rel" 2>/dev/null)
   if [ -z "$fern" ]; then fehlt+=("$rel")
   elif [ "$lokal" != "$fern" ]; then abw+=("$rel"); fi
-done < <(cd app && find index.html styles.css sw.js env.js manifest.webmanifest js assets -type f \
+done < <(cd app && find index.html styles.css sw.js env.js manifest.webmanifest js assets locales -type f \
           ! -name '.DS_Store' ! -name '.fuse_hidden*' 2>/dev/null | sed 's|^|app/|')
 echo "   $anz Dateien im Upload-Satz geprüft"
 if [ ${#fehlt[@]} -eq 0 ]; then ok "keine Datei fehlt oben"; else
