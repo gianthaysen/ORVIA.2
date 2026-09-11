@@ -24,7 +24,7 @@ Garantien (getestet): Eingabe nie mutiert, immer 7 Tage, nie null, nie Wurf, nie
 
 ## Bewusst offen
 
-- **Verletzungs-Meldung in der UI**: Das Modul kann es; die App hat heute keinen expliziten „verletzt"-Zustand außer Schmerzangaben im Check-in. Anbindung ohne klares Datenfeld wäre Raten — B-02/Check-in-Erweiterung.
+- ~~Verletzungs-Meldung in der UI~~ **erledigt 11.09.** (`absence-replanner@2`): Verletzung wird aus den Profil-Beschwerden abgeleitet (`constraintsList`, nur `status: active`): `currentlyTrainable === false`, **oder** Laufen unter „betroffene Sportarten", **oder** untere Extremität mit Intensität ≥ 7/10. Schulter 9/10 oder „beobachtet" sind keine Verletzung — sonst verlöre jeder mit einer Notiz seinen Laufplan. Keine neue UI: der bestehende Beschwerden-Editor ist die Meldung.
 - **Strecken auf die Folgewoche** („Woche strecken"): Der Plan ist eine wiederkehrende Wochenstruktur ohne Kalenderdatum; ein Übertrag in die nächste Woche braucht das kanonische Plan-Modell mit Overrides (Phase 5F). Heute: kürzen oder innerhalb der Woche nachholen. Ehrlich benannt statt still simuliert.
 - **Sichtbarkeit**: Änderungen sind über `absenceAdjusted: true` markiert; ein Badge im Wochenplan („angepasst: krank") ist 10 Zeilen in der Wochenansicht — nach Sichtprüfung.
 
