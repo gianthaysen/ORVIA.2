@@ -31,7 +31,7 @@ sb.document = docEl;
 sb.escH = s => String(s == null ? '' : s); sb.toast = () => {}; sb.renderProfileScreen = () => {}; sb.renderZones = () => {};
 vm.createContext(sb);
 const base = new URL(_APPREL + 'js/', import.meta.url);
-for (const f of ['profile-model.js', 'onboarding/onboarding-profile-logic.js', 'onboarding/onboarding-sports-logic.js', 'onboarding/onboarding-logic.js', 'onboarding/onboarding-steps.js', 'onboarding/onboarding-store.js', 'profile-ui-kit.js', 'onboarding/onboarding-ui.js', 'profile.js'])
+for (const f of ['i18n.js', '../locales/de.js', 'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'onboarding/onboarding-sports-logic.js', 'onboarding/onboarding-logic.js', 'onboarding/onboarding-steps.js', 'onboarding/onboarding-store.js', 'profile-ui-kit.js', 'onboarding/onboarding-ui.js', 'profile.js'])
   vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f });
 const OB = sb.ORVIA.onboardingV2, M = sb.ORVIA.profileModel;
 function card() { return reg.get('.ob2-card'); }

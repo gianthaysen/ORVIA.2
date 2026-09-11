@@ -60,7 +60,7 @@ sec('D · B-04: letzte Laufzeit im Koerperdaten-Schritt → personalBests');
   /* buildCompletionPatch herausschneiden (reine Funktion) */
   const i0 = uiSrc.indexOf('  function buildCompletionPatch('); let d = 0, st0 = false, i1 = -1;
   for (let j = i0; j < uiSrc.length; j++) { const ch = uiSrc[j]; if (ch === '{') { d++; st0 = true; } else if (ch === '}') { d--; if (st0 && d === 0) { i1 = j + 1; break; } } }
-  const bcp = new Function(uiSrc.slice(i0, i1) + '\nreturn buildCompletionPatch;')();
+  const bcp = new Function('T', uiSrc.slice(i0, i1) + '\nreturn buildCompletionPatch;')(k => k);   /* B-13: T injiziert */
   const base = { profile: { displayName: 'G' }, sports: { sports: [{ sportId: 'running', role: 'primary' }] }, goals: [], availability: {} };
   const p1 = bcp(Object.assign({}, base, { performance: { distance: 'Halbmarathon', timeText: '1:58:00', context: 'race', measuredAt: '2026-08-30' } }), PMod, '2026-09-11T10:00:00Z', { performance: { personalBests: [{ id: 'old', sportId: 'running', distance: '10 km', timeSeconds: 2700 }] } });
   ok('D1 gueltige Zeit + Distanz → neuer Eintrag, alter bleibt', p1.performance && p1.performance.personalBests.length === 2 && p1.performance.personalBests[1].timeSeconds === 7080 && p1.performance.personalBests[1].distance === 'Halbmarathon' && p1.performance.personalBests[0].id === 'old');

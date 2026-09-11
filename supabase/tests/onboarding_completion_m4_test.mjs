@@ -27,8 +27,10 @@ const M4 = globalThis.ORVIA.onboardingV2 && globalThis.ORVIA.onboardingV2._m4;
 ok('Export: _m4.buildCompletionPatch + _m4.completeOnboardingFlow', !!M4 && typeof M4.buildCompletionPatch === 'function' && typeof M4.completeOnboardingFlow === 'function');
 ok('RACE-Beweis: alter unguarded Abschluss (completed→persist→closeShell synchron) ist ENTFERNT',
   !/status = 'completed'; S\.draft\.completedAt = now\(\); persist\(\);\s*\n\s*closeShell\(\);/.test(SRC));
-ok('Erfolgs-Screen vorhanden, kein Auto-Close („Dein Profil steht.")', SRC.includes('Dein Profil steht.'));
-ok('Fehlerpfad mit Retry vorhanden („Erneut versuchen")', SRC.includes('Erneut versuchen'));
+/* B-13: Texte liegen im Katalog; der Quelltext traegt Keys. */
+const DE = fs.readFileSync(new URL(_APPREL + 'locales/de.js', import.meta.url), 'utf8');
+ok('Erfolgs-Screen vorhanden, kein Auto-Close („Dein Profil steht.")', SRC.includes("T('ob.dein_profil_steht')") && DE.includes('Dein Profil steht.'));
+ok('Fehlerpfad mit Retry vorhanden („Erneut versuchen")', SRC.includes("T('ob.erneut_versuchen')") && DE.includes('Erneut versuchen'));
 if (!M4) { console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen. (RED)'); process.exit(1); }
 
 /* ---------- Fixtures ---------- */

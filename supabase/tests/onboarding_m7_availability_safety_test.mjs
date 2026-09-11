@@ -36,6 +36,7 @@ await import(new URL(_APPREL + 'js/onboarding/onboarding-logic.js', import.meta.
 await import(new URL(_APPREL + 'js/onboarding/onboarding-steps.js', import.meta.url));
 await import(new URL(_APPREL + 'js/onboarding/onboarding-store.js', import.meta.url));
 await import(new URL(_APPREL + 'js/profile-ui-kit.js', import.meta.url));
+await import(new URL(_APPREL + 'js/i18n.js', import.meta.url)); await import(new URL(_APPREL + 'locales/de.js', import.meta.url));   /* B-13: Katalog */
 await import(new URL(_APPREL + 'js/onboarding/onboarding-ui.js', import.meta.url));
 
 const SL = globalThis.ORVIA.onboardingSportsLogic;
