@@ -1,0 +1,19 @@
+{
+  "target": "js/goal-detail.js",
+  "test": "supabase/tests/goal_detail_test.mjs",
+  "note": "B-02: Ziel-Detailseite. Gefaehrlich: erfundener Fortschritt ohne Prognose, falsche Richtung bei Abnehm-Zielen, zweiter Schreibpfad.",
+  "probes": [
+    { "id": "GD1", "pattern": "data_lacks_var", "title": "Fortschritt ohne Prognose wird erfunden",
+      "file": "js/goal-detail.js",
+      "find": "    } else if (t.targetMin != null) {\n      m.progress.kind = 'time'; m.progress.targetText = fmtTime(t.targetMin);",
+      "replace": "    } else if (t.targetMin != null) {\n      m.progress.kind = 'time'; m.progress.targetText = fmtTime(t.targetMin); m.progress.percent = 50;",
+      "expectTest": "A7 nodata → kein Prozent, Hinweis mit Bedarf",
+      "history": "Ohne belastbare Prognose gibt es keinen Prozentwert — ein Balken auf 50 % saehe wie Wissen aus." },
+    { "id": "GD2", "pattern": "value_not_type", "title": "Abnehm-Ziel wird als hoeher-ist-besser gerechnet",
+      "file": "js/goal-detail.js",
+      "find": "      var lower = /loss|fat|bodyfat|shredded/.test(String(g.category || ''));",
+      "replace": "      var lower = false;",
+      "expectTest": "A9 Wertziel (niedriger besser): 84 → 78 = 93 %",
+      "history": "84 kg bei Ziel 78 kg waeren dann 108 % — erreicht, obwohl 6 kg fehlen." }
+  ]
+}

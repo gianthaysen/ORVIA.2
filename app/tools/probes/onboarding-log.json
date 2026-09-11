@@ -1,0 +1,19 @@
+{
+  "target": "js/engine/onboarding-log.js",
+  "test": "supabase/tests/onboarding_log_test.mjs",
+  "note": "B-04 Teil 3: Beobachter. Gefaehrlich: Senkenergebnis verwerfen (stiller Tod wie bei decision-log vor v8-360), unbekannte Typen durchlassen (CHECK-Constraint wuerde jede Zeile ablehnen).",
+  "probes": [
+    { "id": "OL1", "pattern": "neighbour_guard", "title": "Senkenfehler wird verworfen",
+      "file": "js/engine/onboarding-log.js",
+      "find": "else if (res && res.error) { _stats.failed++; _stats.lastReason = String(res.error.message || res.error); }",
+      "replace": "else if (false) { }",
+      "expectTest": "B2 error-Antwort → failed + lastReason",
+      "history": "decision-log vor v8-360: das async-Ergebnis wurde verworfen, ein dauerhaft scheiterndes Schreiben blieb unsichtbar. Hier darf das nicht wieder passieren." },
+    { "id": "OL2", "pattern": "neighbour_guard", "title": "unbekannter Ereignistyp wird geschrieben",
+      "file": "js/engine/onboarding-log.js",
+      "find": "    if (TYPES.indexOf(ev.eventType) < 0) f.push('event_type_unbekannt:' + String(ev.eventType));",
+      "replace": "    if (false) f.push('event_type_unbekannt:' + String(ev.eventType));",
+      "expectTest": "A2 unbekannter Typ / fehlende Felder → invalid, nie geschrieben",
+      "history": "Der CHECK-Constraint in 0041 wuerde die Zeile ablehnen — und ein Tippfehler im Code saehe aus wie ein Datenbankfehler." }
+  ]
+}

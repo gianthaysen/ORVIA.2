@@ -60,6 +60,10 @@ sec('E · verpasster Kernreiz');
   const r = A.replan(w, { todayIndex: 2, missed: [1], phase: 'build' });
   ok('E1 Intervalle (Di verpasst) → Do nachgeholt (frei, kein harter Nachbar)', r.days[3].length === 1 && r.days[3][0].l === 'Intervalle · nachgeholt' && r.strategy === 'reinsert', L(r.days));
   ok('E2 keine zwei harten Tage hintereinander erzeugt', (() => { const h = hardDays(r.days); return h.every((d, i) => i === 0 || d - h[i - 1] > 1); })());
+  ok('E2b einziger freier Tag hat harten Nachbarn → NICHT nachholen (drop)', (() => {
+    const w2 = [[G('Oberkörper')], [R('Intervalle', 'iv')], [R('Tempo', 'tempo')], [], [G('Beine')], [R('Long Run', 'lr')], []];
+    const x = A.replan(w2, { todayIndex: 2, missed: [1], phase: 'build' });
+    return x.strategy === 'drop' && x.days[3].length === 0 && x.days[6].length === 0 && x.changes.some(c => c.what === 'dropped_no_slot'); })());
   ok('E3 kein freier Tag → gestrichen, strategy drop', A.replan(week(), { todayIndex: 2, missed: [1], phase: 'build' }).strategy === 'drop');
   ok('E4 taper → nichts nachholen', (() => { const x = A.replan(w, { todayIndex: 2, missed: [1], phase: 'taper' }); return x.strategy === 'drop' && x.notes.includes('taper_no_catchup') && x.days[3].length === 0; })());
   ok('E5 nie am Vortag des Rennens oder danach', (() => { const w2 = week(); w2[3] = []; w2[5] = []; const x = A.replan(w2, { todayIndex: 2, missed: [1], phase: 'build', raceDayIndex: 4 }); return x.days[3].length === 0 && x.days[5].length === 0 && x.strategy === 'drop'; })());

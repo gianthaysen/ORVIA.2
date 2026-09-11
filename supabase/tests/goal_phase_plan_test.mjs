@@ -32,8 +32,8 @@ sec('A · Bestandsschutz');
 sec('B · Taper');
 {
   const r = P.applyPhase(week(), { phase: 'taper', family: 'run' });
-  ok('B1 Struktur bleibt: 7 Tage, gleiche Einheitenzahl', r.days.every((d, i) => d.length === week()[i].length));
-  ok('B2 Long Run → „Long Run · Taper" (Schluesselwort bleibt)', r.days[6][0].l === 'Long Run · Taper' && r.days[6][0].d === 'lr');
+  ok('B1 Struktur bleibt: 7 Tage, gleiche Einheitenzahl, keine Loecher', r.days.every((d, i) => d.length === week()[i].length && d.every(Boolean)));
+  ok('B2 Long Run → „Long Run · Taper" (Schluesselwort bleibt)', (r.days[6][0] || {}).l === 'Long Run · Taper' && (r.days[6][0] || {}).d === 'lr');
   ok('B3 Intervalle → kurz, Pace-Schluessel bleibt iv', r.days[1][0].l === 'Intervalle · kurz' && r.days[1][0].d === 'iv');
   ok('B4 Z2 unveraendert', r.days[3][0] === week()[3][0] || J(r.days[3][0]) === J(week()[3][0]));
   ok('B5 Gym → leicht, bleibt Gym', r.days[0][0].l === 'Oberkörper · leicht' && r.days[0][0].t === 'Gym');

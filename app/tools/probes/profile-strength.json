@@ -1,0 +1,25 @@
+{
+  "target": "js/engine/profile-strength.js",
+  "test": "supabase/tests/profile_strength_test.mjs",
+  "note": "B-03: Profilstaerke. Gefaehrlich: nicht anwendbare Teile als 0 zaehlen (Kraftziel bestraft fuer fehlende Leistungsreferenz), Luecken ohne Ziel, Frische-Strafe ungedeckelt.",
+  "probes": [
+    { "id": "PS1", "pattern": "neighbour_guard", "title": "Leistungsreferenz zaehlt auch fuer Kraftziele",
+      "file": "js/engine/profile-strength.js",
+      "find": "    parts.performance = { applicable: endurance, value: perfOk ? 1 : 0 };",
+      "replace": "    parts.performance = { applicable: true, value: perfOk ? 1 : 0 };",
+      "expectTest": "A5 Kraftziel: Leistungsreferenz nicht anwendbar → 100 trotz performance null",
+      "history": "Ein nicht anwendbarer Teil ist keine schlechte Bewertung, sondern gar keine — dieselbe Regel wie plan-quality. Sonst kann ein Kraftsportler nie 100 erreichen." },
+    { "id": "PS2", "pattern": "value_not_type", "title": "Frische-Strafe ungedeckelt",
+      "file": "js/engine/profile-strength.js",
+      "find": "    var penalty = Math.min(15, 5 * stale.length);",
+      "replace": "    var penalty = 5 * stale.length;",
+      "expectTest": "A6 Frische: 2 veraltete Bereiche → −10; gedeckelt bei 3+",
+      "history": "Fuenf veraltete Bereiche wuerden ein vollstaendiges Profil auf 75 druecken — Frische ist ein Hinweis, kein zweiter Score." },
+    { "id": "PS3", "pattern": "data_lacks_var", "title": "Ziel-Luecke ohne Link",
+      "file": "js/engine/profile-strength.js",
+      "find": "      if (!hasVal) gaps.push({ id: 'goal_target', weight: W.goal * 0.3, label: 'Zielwert eintragen', action: 'goal_editor', goalId: pi.goalId,",
+      "replace": "      if (!hasVal) gaps.push({ id: 'goal_target', weight: W.goal * 0.3, label: 'Zielwert eintragen', goalId: pi.goalId,",
+      "expectTest": "B3 Ziel-Luecken → goal_editor mit goalId",
+      "history": "DoD B-03: jede fehlende Angabe verlinkt auf den erhebenden Schritt. Eine Luecke ohne action/sectionId ist ein Text, kein Weg." }
+  ]
+}

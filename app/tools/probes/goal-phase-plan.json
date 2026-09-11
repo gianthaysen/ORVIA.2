@@ -1,0 +1,31 @@
+{
+  "target": "js/engine/goal-phase-plan.js",
+  "test": "supabase/tests/goal_phase_plan_test.mjs",
+  "note": "B-01 Schritt 5: Zielphase auf den gelesenen Plan. Gefaehrlich: Bestandsschutz (build darf nichts aendern), Rennwoche ohne Renntag, Taper der loescht statt kuerzt.",
+  "probes": [
+    { "id": "GPP1", "pattern": "neighbour_guard", "title": "build wird wie taper behandelt",
+      "file": "js/engine/goal-phase-plan.js",
+      "find": "    if (c.phase !== 'taper' && c.phase !== 'race_week') return out;",
+      "replace": "    if (c.phase !== 'taper' && c.phase !== 'race_week' && c.phase !== 'build') return out;\n    if (c.phase === 'build') c = Object.assign({}, c, { phase: 'taper' });",
+      "expectTest": "A1 build → unveraendert, changed false, gleiche Referenz",
+      "history": "Bestandsschutz ist die wichtigste Regel: 38 Tage vor dem Rennen darf die Woche nicht wie eine Taperwoche aussehen." },
+    { "id": "GPP2", "pattern": "neighbour_guard", "title": "Renntag wird nicht in den Plan gesetzt",
+      "file": "js/engine/goal-phase-plan.js",
+      "find": "      if (rd != null) {",
+      "replace": "      if (false) {",
+      "expectTest": "C1 Renntag So: Wettkampf mit Zielpace",
+      "history": "Ohne Wettkampftag stuende in der Rennwoche eine leere oder normale Einheit am Renntag — der Plan wuesste nicht, wofuer er tapert." },
+    { "id": "GPP3", "pattern": "value_not_type", "title": "Taper loescht den Long Run statt ihn zu kuerzen",
+      "file": "js/engine/goal-phase-plan.js",
+      "find": "          if (k === 'long')      { note(d, 'shortened', it); return Object.assign(_suffix(it, ' · Taper'), { phaseAdjusted: true }); }",
+      "replace": "          if (k === 'long')      { note(d, 'shortened', it); return null; }",
+      "expectTest": "B1 Struktur bleibt: 7 Tage, gleiche Einheitenzahl",
+      "history": "Ein Taper ist Frische, kein Ausfall: Struktur bleibt, Umfang sinkt. Wird geloescht, verliert der Laeufer zwei Wochen vor dem Rennen den Rhythmus." },
+    { "id": "GPP4", "pattern": "data_lacks_var", "title": "Kraftziel bekommt eine Rennwoche",
+      "file": "js/engine/goal-phase-plan.js",
+      "find": "    var sport = ENDURANCE[c.family];\n    if (!sport) return out;",
+      "replace": "    var sport = ENDURANCE[c.family] || 'Laufen';",
+      "expectTest": "A3 Kraftziel in Rennwoche → unveraendert (kein Rennen)",
+      "history": "Ein Muskelaufbau-Ziel mit Zieldatum hat kein Rennen. Ihm einen Wettkampftag und ein Anschwitzen zu geben waere erfundene Struktur." }
+  ]
+}

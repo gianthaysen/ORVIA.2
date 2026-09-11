@@ -1,0 +1,57 @@
+{
+  "target": "js/engine/absence-replanner.js",
+  "test": "supabase/tests/absence_replanner_test.mjs",
+  "note": "B-09: Ausfall-/Krankheitslogik. Gefaehrlich: Nachholen in Taper/Rennwoche, zwei harte Tage hintereinander durch Nachholen, harte Reize waehrend Krankheit, Nachholen am Vortag des Rennens.",
+  "probes": [
+    {
+      "id": "AR1",
+      "pattern": "neighbour_guard",
+      "title": "in Taper/Rennwoche wird nachgeholt",
+      "file": "js/engine/absence-replanner.js",
+      "find": "      else if (phase === 'taper' || phase === 'race_week') {",
+      "replace": "      else if (false) {",
+      "expectTest": "E4 taper → nichts nachholen",
+      "history": "Ein nachgeholter Kernreiz im Taper macht den Taper zunichte — genau die Woche, in der Frische das Ziel ist."
+    },
+    {
+      "id": "AR2",
+      "pattern": "neighbour_guard",
+      "title": "Nachholen ignoriert harte Nachbartage",
+      "file": "js/engine/absence-replanner.js",
+      "find": "            if (hardDay(t - 1) || hardDay(t + 1)) continue;",
+      "replace": "            if (false) continue;",
+      "expectTest": "E2b einziger freier Tag hat harten Nachbarn → NICHT nachholen (drop)",
+      "history": "Der Sicherheitsvertrag der Woche (week-plan-policy): nie zwei harte Tage hintereinander. Ein Nachholer, der das bricht, ist schlimmer als der Ausfall."
+    },
+    {
+      "id": "AR3",
+      "pattern": "neighbour_guard",
+      "title": "Nachholen am Vortag des Rennens",
+      "file": "js/engine/absence-replanner.js",
+      "find": "            if (raceIdx != null && t >= raceIdx - 1) break;",
+      "replace": "            if (raceIdx != null && t > raceIdx) break;",
+      "expectTest": "E5 nie am Vortag des Rennens oder danach",
+      "history": "Intervalle am Samstag vor dem Sonntagsrennen — der klassische Fehler, den ein Plan verhindern muss."
+    },
+    {
+      "id": "AR4",
+      "pattern": "neighbour_guard",
+      "title": "krank heute: Intervalle bleiben stehen",
+      "file": "js/engine/absence-replanner.js",
+      "find": "          if (k === 'interval' || k === 'tempo' || k === 'bike_hard') return _soften(it, note, d);",
+      "replace": "          if (false) return _soften(it, note, d);",
+      "expectTest": "B6 Intervalle nach heute → Z2 (nicht geloescht)",
+      "history": "Wer heute krank ist, soll uebermorgen keine Intervalle sehen (Myokarditis-Mechanismus, progression@9 Krankheitspfad)."
+    },
+    {
+      "id": "AR5",
+      "pattern": "data_lacks_var",
+      "title": "Rueckkehrfenster ungedeckelt",
+      "file": "js/engine/absence-replanner.js",
+      "find": "      var win = Math.min(Math.max(dur, 1), 7);",
+      "replace": "      var win = Math.max(dur, 1);",
+      "expectTest": "C2 Fenster gedeckelt auf 7 (Dauer 20)",
+      "history": "Nach drei Wochen Krankheit haette der Nutzer drei Wochen ohne harten Reiz — die Wochenlast regelt progression@9, das Fenster hier ist der Wochen-Schutz (max. 7 Tage wie Calc.illnessReturnWindow)."
+    }
+  ]
+}
