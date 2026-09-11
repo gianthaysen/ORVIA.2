@@ -27,7 +27,17 @@ Sie sind **keine Platzhalter, die Nutzer sehen** (v2-Placeholder wurden in M6 ab
 
 **Konsequenz:** „Kein inaktiver Schritt mehr" wird durch **einen neuen Schritt (performance) plus zwei Chips (preferences) plus Entfernen von sechs reservierten IDs** erfüllt — nicht durch acht Formulare. Aufwand ≈ 6 h statt 24 h. Die Drafts-Migration (v4 → v5) ist nötig, weil STEP_CONFIG die Wahrheitsquelle für Navigation/Progress ist; Muster M6 (Alias-Tabelle, keine Datenverwerfung).
 
-## 3 · Warum ich das nicht ohne dich baue
+## 2b · Umgesetzt am 11.09. (v8-368): Leistungsreferenz **im bestehenden Körperdaten-Schritt**
+
+Statt eines neuen Schritts (Draft-Version, Navigation, acht Testdateien) trägt der optionale
+Körperdaten-Schritt bei Lauf-/Triathlon-Hauptsport einen Block „Letzte Laufzeit (optional)":
+Distanz-Chips (5 km · 10 km · Halbmarathon · Marathon), Zeit, Wettkampf/Training, Datum.
+Beim Abschluss wird daraus **ein** `performance.personalBests`-Eintrag (bestehende bleiben,
+nichts wird erfunden: ohne Zeit oder Distanz kein Eintrag; unlesbare Zeit blockt „Weiter" mit
+Hinweis). Damit ist die Lücke geschlossen, die Profilstärke bei jedem Ausdauerziel meldet — ohne
+Änderung an STEP_CONFIG. Die sechs reservierten IDs bleiben, bis du über §2 entscheidest.
+
+## 3 · Warum ich den Rest nicht ohne dich baue
 
 - Der performance-Schritt ist ein **Formular mit Produktentscheidungen** (welche Distanzen als Auswahl, Test vs. Wettkampf, Pflicht-Datum?), und es ist die erste Seite, die ein neuer Nutzer sieht, wo er etwas *nicht wissen* kann — Wortlaut und Skip-Verhalten brauchen dein Auge.
 - Das Streichen von sechs IDs ist eine **Architekturentscheidung gegen die Ebene-B/C-Planung** aus M8/M11. Reversibel, aber nicht still.

@@ -712,6 +712,49 @@
     var pl = PL();
     var hEl = doc.getElementById('pf-heightCm'); if (hEl && hEl.value != null) { var hv = pl._num(hEl.value); p.heightCm = (hEl.value === '' ? null : (hv != null ? Math.round(hv) : hEl.value)); }
     var wEl = doc.getElementById('pf-weightKg'); if (wEl && wEl.value != null) { var wv = pl._num(wEl.value); p.weightKg = (wEl.value === '' ? null : (wv != null ? wv : wEl.value)); }
+    /* B-04: optionale letzte Laufzeit (nur bei Lauf-/Triathlon-Hauptsport gerendert). Rohwerte
+       werden im Draft gehalten; geparst wird erst beim Abschluss (buildCompletionPatch). */
+    var tEl = doc.getElementById('pf-pbTime');
+    if (tEl) {
+      var perf = S.draft.draftData.performance = S.draft.draftData.performance || {};
+      perf.timeText = tEl.value || '';
+      var dEl = doc.getElementById('pf-pbDate'); perf.measuredAt = (dEl && dEl.value) ? dEl.value : (perf.measuredAt || null);
+    }
+  }
+  var PB_DISTANCES = [['5 km', 5], ['10 km', 10], ['Halbmarathon', 21.0975], ['Marathon', 42.195]];
+  function _pbRelevant() {
+    try { var pe = primaryEntry(S.draft.draftData.sports); var id = pe && String(pe.sportId || '').toLowerCase(); return id === 'running' || id === 'triathlon'; } catch (e) { return false; }
+  }
+  function _pbBlockHTML(perf) {
+    perf = perf || {};
+    return '<div class="ob2-field ob3-pb"><span class="ob3-grouplabel" id="lbl-pb">Letzte Laufzeit (optional)</span>' +
+      '<p class="ob2-desc" style="margin-top:2px">Ein Wettkampf oder ein Test aus den letzten Monaten — daraus entstehen deine Trainingszonen. Ohne Angabe rechnet ORVIA mit deinen Läufen, sobald welche da sind.</p>' +
+      '<div class="ob2-chips" id="ob3-pb-dist" role="group" aria-labelledby="lbl-pb">' + PB_DISTANCES.map(function (d) {
+        return '<button type="button" class="ob2-chip' + (perf.distance === d[0] ? ' on' : '') + '" data-pbd="' + esc(d[0]) + '" aria-pressed="' + (perf.distance === d[0] ? 'true' : 'false') + '">' + esc(d[0]) + '</button>'; }).join('') + '</div>' +
+      field('Zeit (z. B. 24:30 oder 1:58:00)', 'pf-pbTime', '<input id="pf-pbTime" type="text" inputmode="numeric" placeholder="24:30" value="' + esc(perf.timeText || '') + '" aria-describedby="err-pbTime">', 'pbTime', {}) +
+      '<div class="ob2-chips" id="ob3-pb-ctx" role="group" aria-label="Kontext">' + [['race', 'Wettkampf'], ['training', 'Training']].map(function (c) {
+        return '<button type="button" class="ob2-chip' + ((perf.context || 'race') === c[0] ? ' on' : '') + '" data-pbc="' + c[0] + '" aria-pressed="' + ((perf.context || 'race') === c[0] ? 'true' : 'false') + '">' + c[1] + '</button>'; }).join('') + '</div>' +
+      field('Datum', 'pf-pbDate', '<input id="pf-pbDate" type="date" value="' + esc(perf.measuredAt || '') + '">', 'pbDate', {}) +
+    '</div>';
+  }
+  function _bindPbBlock(card) {
+    var perf = S.draft.draftData.performance = S.draft.draftData.performance || {};
+    if (!perf.context) perf.context = 'race';
+    var bind = function (sel, attr, key) {
+      var host = card.querySelector(sel); if (!host || !host.querySelectorAll) return;
+      host.querySelectorAll('button').forEach(function (b) {
+        b.onclick = function () { perf[key] = b.getAttribute(attr); host.querySelectorAll('button').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on ? 'true' : 'false'); }); persist(); };
+      });
+    };
+    bind('#ob3-pb-dist', 'data-pbd', 'distance'); bind('#ob3-pb-ctx', 'data-pbc', 'context');
+  }
+  /* Bestzeit-Eingabe pruefen: leer = ok (optional); Zeit ohne Distanz oder unlesbare Zeit = Fehler. */
+  function _pbValidate(perf) {
+    if (!perf || !(perf.timeText || '').trim()) return { ok: true, secs: null };
+    var M = PM(); var secs = (M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
+    if (!(secs > 0)) return { ok: false, error: 'Bitte eine gültige Zeit eingeben (z. B. 24:30 oder 1:58:00).' };
+    if (!perf.distance) return { ok: false, error: 'Bitte die Distanz wählen.' };
+    return { ok: true, secs: secs };
   }
   function renderBodyStep() {
     mountShell();
@@ -725,6 +768,7 @@
       '<span id="ob3-body-help"></span>' +
       '<form class="ob2-form ob3-form" autocomplete="on" novalidate>' +
         field('Größe (cm)', 'pf-heightCm', '<input id="pf-heightCm" type="number" inputmode="numeric" min="100" max="250" value="' + esc(p.heightCm != null ? p.heightCm : '') + '" aria-describedby="err-heightCm"' + ai(errors, 'heightCm') + '>', 'heightCm', errors) +
+        (_pbRelevant() ? _pbBlockHTML(S.draft.draftData.performance) : '') +
         field('Gewicht (kg)', 'pf-weightKg', '<input id="pf-weightKg" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="' + esc(p.weightKg != null ? p.weightKg : '') + '" aria-describedby="err-weightKg"' + ai(errors, 'weightKg') + '>', 'weightKg', errors) +
       '</form>' +
       '<div class="ob2-navwrap"><div class="ob2-nav">' +
@@ -743,6 +787,7 @@
       el.addEventListener('change', function () { readBodyForm(); persist(); });
       el.addEventListener('blur', function () { readBodyForm(); persist(); });
     });
+    if (_pbRelevant()) { _bindPbBlock(card); var pbT = D().getElementById('pf-pbTime'); if (pbT && pbT.addEventListener) { pbT.addEventListener('change', function () { readBodyForm(); persist(); }); } if (S.pbError) { var pe = D().getElementById('err-pbTime'); if (pe) pe.textContent = S.pbError; } }
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-next').onclick = submitBody;
     card.querySelector('#ob3-body-skip').onclick = function () {
@@ -757,6 +802,9 @@
   function submitBody() {
     if (S.busy || navLocked()) return; S.busy = true;
     readBodyForm();
+    var pbv = _pbValidate(S.draft.draftData.performance);
+    if (!pbv.ok) { S.pbError = pbv.error; renderBodyStep(); var pt = D().getElementById('pf-pbTime'); if (pt && pt.focus) { try { pt.focus(); } catch (e) {} } S.busy = false; return; }
+    S.pbError = null;
     var v = PL().validateProfile(S.draft.draftData.profile);
     if (!v.valid && (v.errors.heightCm || v.errors.weightKg)) {
       S.bodySubmitted = true; renderBodyStep();
@@ -876,8 +924,21 @@
        „Client fehlt" → 'local' (kein Cloud-Kontext, z. B. lokaler First-Run)
        · alles andere / Throw → failed (Draft bleibt in_progress, resümierbar).
      ============================================================ */
-  function buildCompletionPatch(dd, M, nowIso) {
+  function buildCompletionPatch(dd, M, nowIso, existing) {
     dd = dd || {}; var pf = dd.profile || {}; var patch = {};
+    /* B-04: letzte Laufzeit → performance.personalBests (bestehende Eintraege bleiben; ein
+       neuer Eintrag nur bei gueltiger Zeit + Distanz — nichts wird erfunden). */
+    try {
+      var perf = dd.performance || null;
+      var secs = (perf && perf.timeText && M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
+      if (perf && secs > 0 && perf.distance) {
+        var ex = (existing && existing.performance && typeof existing.performance === 'object') ? existing.performance : {};
+        var pbs = Array.isArray(ex.personalBests) ? ex.personalBests.slice() : [];
+        pbs.push(M.normalizePersonalBest({ sportId: 'running', distance: perf.distance, discipline: perf.distance, timeSeconds: secs,
+          context: perf.context === 'training' ? 'training' : 'race', measuredAt: perf.measuredAt || null, notes: 'Aus der Einrichtung.' }));
+        patch.performance = Object.assign({}, ex, { personalBests: pbs });
+      }
+    } catch (e) {}
     if (pf.displayName != null) patch.name = pf.displayName; else if (pf.firstName) patch.name = pf.firstName;
     if (pf.heightCm != null) patch.heightCm = pf.heightCm; if (pf.weightKg != null) patch.weightKg = pf.weightKg; if (pf.birthDate) patch.birthDate = pf.birthDate; if (pf.sex) patch.sex = pf.sex;
     // M8-Fix: „Nur Alter angeben"-Nutzer (A1) verloren ihr Alter beim Abschluss — ageEstimate mitmappen.
@@ -922,7 +983,7 @@
     _completing = true;
     return Promise.resolve().then(function () {
       var P = ctx.profileApi;
-      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability']); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
+      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability'].concat(ctx.patch && ctx.patch.performance ? ['performance'] : [])); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
       if (!ctx.profileStore || typeof ctx.profileStore.persist !== 'function') return { success: false, error: { message: 'Keine aktive Sitzung.' } };
       return ctx.profileStore.persist();
     }).then(function (r) {
@@ -999,7 +1060,7 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Wird gespeichert …'; }
     var ctx = {
       draft: S.draft,
-      patch: buildCompletionPatch(S.draft.draftData || {}, PM(), new Date(now()).toISOString()),
+      patch: buildCompletionPatch(S.draft.draftData || {}, PM(), new Date(now()).toISOString(), root.PROFILE || null),
       profileApi: root.ORVIA && root.ORVIA.profile,
       profileStore: root.ORVIA && root.ORVIA.profileStore,
       persistDraft: persist,

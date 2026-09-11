@@ -51,5 +51,25 @@ sec('C · Zeile + Verdrahtung');
   ok('C5 UI: Senke lazy, ohne Sitzung null', /if \(!sb \|\| !id\) return null;/.test(ui) && /_obLogEnsureSink\(\)/.test(ui));
   ok('C6 Skript + sw.js + Funnel-SQL', idx.includes('js/engine/onboarding-log.js') && sw.includes("'./js/engine/onboarding-log.js'") && existsSync(join(HERE, '_onboarding-funnel.sql')));
 }
+sec('D · B-04: letzte Laufzeit im Koerperdaten-Schritt → personalBests');
+{
+  globalThis.window = globalThis; globalThis.document = undefined;
+  const uiSrc = readFileSync(join(APP, 'js/onboarding/onboarding-ui.js'), 'utf8');
+  const M = require(join(APP, 'js/profile-model.js'));
+  const PMod = globalThis.ORVIA && globalThis.ORVIA.profileModel ? globalThis.ORVIA.profileModel : M;
+  /* buildCompletionPatch herausschneiden (reine Funktion) */
+  const i0 = uiSrc.indexOf('  function buildCompletionPatch('); let d = 0, st0 = false, i1 = -1;
+  for (let j = i0; j < uiSrc.length; j++) { const ch = uiSrc[j]; if (ch === '{') { d++; st0 = true; } else if (ch === '}') { d--; if (st0 && d === 0) { i1 = j + 1; break; } } }
+  const bcp = new Function(uiSrc.slice(i0, i1) + '\nreturn buildCompletionPatch;')();
+  const base = { profile: { displayName: 'G' }, sports: { sports: [{ sportId: 'running', role: 'primary' }] }, goals: [], availability: {} };
+  const p1 = bcp(Object.assign({}, base, { performance: { distance: 'Halbmarathon', timeText: '1:58:00', context: 'race', measuredAt: '2026-08-30' } }), PMod, '2026-09-11T10:00:00Z', { performance: { personalBests: [{ id: 'old', sportId: 'running', distance: '10 km', timeSeconds: 2700 }] } });
+  ok('D1 gueltige Zeit + Distanz → neuer Eintrag, alter bleibt', p1.performance && p1.performance.personalBests.length === 2 && p1.performance.personalBests[1].timeSeconds === 7080 && p1.performance.personalBests[1].distance === 'Halbmarathon' && p1.performance.personalBests[0].id === 'old');
+  ok('D2 Kontext/Datum/Sport uebernommen', p1.performance.personalBests[1].context === 'race' && p1.performance.personalBests[1].measuredAt === '2026-08-30' && p1.performance.personalBests[1].sportId === 'running');
+  ok('D3 leere Zeit → kein performance-Patch (nichts erfunden)', !('performance' in bcp(Object.assign({}, base, { performance: { distance: '5 km', timeText: '' } }), PMod, 'x', null)));
+  ok('D4 unlesbare Zeit / ohne Distanz → kein Patch', !('performance' in bcp(Object.assign({}, base, { performance: { distance: '5 km', timeText: 'abc' } }), PMod, 'x', null)) && !('performance' in bcp(Object.assign({}, base, { performance: { timeText: '24:30' } }), PMod, 'x', null)));
+  ok('D5 ohne bestehendes Profil → Liste mit einem Eintrag', bcp(Object.assign({}, base, { performance: { distance: '5 km', timeText: '24:30' } }), PMod, 'x', null).performance.personalBests.length === 1);
+  ok('D6 UI: Block nur bei Lauf/Triathlon, Validierung vor Weiter, Sektion performance beim Speichern', /_pbRelevant\(\) \? _pbBlockHTML/.test(uiSrc) && /var pbv = _pbValidate\(S\.draft\.draftData\.performance\);/.test(uiSrc) && /concat\(ctx\.patch && ctx\.patch\.performance \? \['performance'\] : \[\]\)/.test(uiSrc));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' onboarding_log: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
