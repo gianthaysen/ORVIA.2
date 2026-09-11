@@ -42,10 +42,12 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'absence-replanner@2';
+  var VERSION = 'absence-replanner@3';
 
+  var KINDS = { interval: 1, long: 1, tempo: 1, easy: 1, gym: 1, gym_leg: 1, mob: 1, swim: 1, bike: 1, bike_long: 1, bike_hard: 1, bike_recovery: 1 };
   function _kind(it) {
     if (!it || typeof it !== 'object') return null;
+    if (it.kind && KINDS[it.kind]) return it.kind;   /* B-13: Code gewinnt, Label-Raten nur Rueckfall */
     var l = String(it.l || '').toLowerCase(), d = it.d;
     if (it.t === 'Gym') return /bein|ganzk|squat|leg/.test(l) ? 'gym_leg' : 'gym';
     if (it.t === 'Mobilität') return 'mob';
@@ -60,8 +62,8 @@
   var HARD = { interval: 1, tempo: 1, long: 1, bike_long: 1, bike_hard: 1 };
   var KEY = HARD;
   function _isHard(it) { return !!HARD[_kind(it)]; }
-  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', absenceAdjusted: true }; }
-  function _easyRun(label) { return { t: 'Laufen', l: label || 'Z2 Dauerlauf', d: 'ez', absenceAdjusted: true }; }
+  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', kind: 'mob', absenceAdjusted: true }; }
+  function _easyRun(label) { return { t: 'Laufen', l: label || 'Z2 Dauerlauf', d: 'ez', kind: 'easy', absenceAdjusted: true }; }
   function _copy(it, patch) { return Object.assign({}, it, patch || {}, { absenceAdjusted: true }); }
   function _int(x) { return (typeof x === 'number' && isFinite(x)) ? Math.trunc(x) : null; }
 
@@ -70,7 +72,7 @@
     var k = _kind(it);
     if (k === 'interval' || k === 'tempo') { note(day, 'softened', it); return _easyRun('Z2 Dauerlauf'); }
     if (k === 'long')      { note(day, 'softened', it); return _easyRun('Z2 Dauerlauf kurz'); }
-    if (k === 'bike_long' || k === 'bike_hard') { note(day, 'softened', it); return _copy(it, { l: 'Easy Z2', d: '45 min' }); }
+    if (k === 'bike_long' || k === 'bike_hard') { note(day, 'softened', it); return _copy(it, { l: 'Easy Z2', d: '45 min', kind: 'bike' }); }
     if (k === 'gym' || k === 'gym_leg') { note(day, 'lightened', it); return _copy(it, { l: String(it.l) + ' · leicht' }); }
     return it;
   }
@@ -134,7 +136,7 @@
         w[f] = w[f].map(function (it) {
           var k = _kind(it);
           if (it.t === 'Laufen') { note(f, 'replaced_no_impact', it); return _mob(); }
-          if (k === 'gym_leg') { note(f, 'replaced_no_leg', it); return _copy(it, { l: 'Oberkörper' }); }
+          if (k === 'gym_leg') { note(f, 'replaced_no_leg', it); return _copy(it, { l: 'Oberkörper', kind: 'gym' }); }
           return it;
         });
       }

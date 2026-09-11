@@ -77,5 +77,21 @@ sec('F · Verdrahtung');
   ok('F2 sw.js cached beides', sw.includes("'./js/i18n.js'") && sw.includes("'./locales/de.js'"));
   ok('F3 deploy-verify prueft locales/', /assets locales -type f/.test(dv) && /js assets locales; do/.test(dv));
 }
+sec('G · Schritt 1: kind-Feld auf Plan-Items (Klassifikation liest Code, nicht Label)');
+{
+  const ui = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+  const slice = (name) => { const i = ui.indexOf('function ' + name + '('); let d = 0, st = false; for (let j = i; j < ui.length; j++) { const ch = ui[j]; if (ch === '{') { d++; st = true; } else if (ch === '}') { d--; if (st && d === 0) return ui.slice(i, j + 1); } } return ''; };
+  const src = ['_runKindOf', 'gpR', 'gpB', 'gpG', 'gpS', 'gpM', 'unitKind', 'isHardUnit'].map(slice).join('\n');
+  const F = new Function(src + '\nreturn { gpR, gpB, gpG, gpM, unitKind, isHardUnit };')();
+  ok('G1 gpR/gpB/gpG/gpM tragen kind', F.gpR('Intervalle', 'iv').kind === 'interval' && F.gpR('Long Run', 'lr').kind === 'long' && F.gpR('Tempo', 'tempo').kind === 'tempo' && F.gpR('Z2 Dauerlauf', 'ez').kind === 'easy' && F.gpB('Long Ride', '2 h').kind === 'bike_long' && F.gpG('Beine').kind === 'gym_leg' && F.gpG('Oberkörper').kind === 'gym' && F.gpM().kind === 'mob');
+  ok('G2 unitKind liest kind — auch bei uebersetztem Label', F.unitKind({ t: 'Laufen', l: 'Long run (EN)', d: 'x', kind: 'long' }) === 'long' && F.unitKind({ t: 'Laufen', l: 'Intervals', kind: 'interval' }) === 'interval' && F.unitKind({ t: 'Laufen', l: 'Race day', kind: 'race' }) === 'race');
+  ok('G3 ohne kind: Label-Rueckfall wie bisher (gespeicherte Plaene)', F.unitKind({ t: 'Laufen', l: 'Long Run', d: 'lr' }) === 'long' && F.unitKind({ t: 'Laufen', l: 'Z2 Dauerlauf', d: 'ez' }) === 'easy');
+  ok('G4 isHardUnit ueber kind (Rad: bike_long hart, bike nicht; Label-Rueckfall ohne kind)', F.isHardUnit({ t: 'Rad', l: 'x', kind: 'bike_long' }) && !F.isHardUnit({ t: 'Rad', l: 'Long Ride', kind: 'bike' }) && F.isHardUnit({ t: 'Rad', l: 'Long Ride' }) && F.isHardUnit({ t: 'Laufen', l: 'Wettkampf', kind: 'race' }));
+  const dz = readFileSync(join(APP, 'js/engine/goal-phase-plan.js'), 'utf8'), ar = readFileSync(join(APP, 'js/engine/absence-replanner.js'), 'utf8');
+  ok('G5 Engine-Module lesen kind zuerst', /if \(it\.kind && KINDS\[it\.kind\]\) return it\.kind;/.test(dz) && /if \(it\.kind && KINDS\[it\.kind\]\) return it\.kind;/.test(ar));
+  const wd = readFileSync(join(APP, 'js/engine/week-plan-designer.js'), 'utf8');
+  ok('G6 week-plan-designer/-policy bewusst UNVERAENDERT (Kohorte des Engine-Shadows eingefroren; Label-Schluesselwoerter bleiben bis B-14 erhalten)', /week-plan-designer@1/.test(wd));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' i18n_guard: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

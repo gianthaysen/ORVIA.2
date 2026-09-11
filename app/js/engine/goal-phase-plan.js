@@ -30,12 +30,14 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'goal-phase-plan@1';
+  var VERSION = 'goal-phase-plan@2';
 
   var ENDURANCE = { run: 'Laufen', tri: 'Laufen', bike: 'Rad' };
 
+  var KINDS = { interval: 1, long: 1, tempo: 1, easy: 1, gym: 1, gym_leg: 1, mob: 1, swim: 1, bike: 1, bike_long: 1, bike_hard: 1, bike_recovery: 1 };
   function _kind(it) {
     if (!it || typeof it !== 'object') return null;
+    if (it.kind && KINDS[it.kind]) return it.kind;   /* B-13: Code gewinnt, Label-Raten nur Rueckfall */
     var l = String(it.l || '').toLowerCase(), d = it.d;
     if (it.t === 'Gym') return 'gym';
     if (it.t === 'Mobilität') return 'mob';
@@ -49,7 +51,7 @@
   }
   function _copy(it) { return Object.assign({}, it); }
   function _suffix(it, s) { var c = _copy(it); c.l = String(it.l || '') + s; return c; }
-  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', phaseAdjusted: true }; }
+  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', kind: 'mob', phaseAdjusted: true }; }
   function _fmtPace(sec) { return Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0'); }
 
   /* Wochentag (0 = Mo) des Zieldatums, wenn es in der Woche von `today` liegt. */
@@ -99,7 +101,7 @@
           if (k === 'interval') {
             if (keptInterval) { note(e, 'removed', it); return null; }
             keptInterval = true; note(e, 'replaced', it);
-            return Object.assign(_copy(it), { l: 'Anschwitzen', d: 'iv', phaseAdjusted: true });
+            return Object.assign(_copy(it), { l: 'Anschwitzen', d: 'iv', kind: 'interval', phaseAdjusted: true });
           }
           if (k === 'gym') { note(e, 'replaced', it); return _mob(); }
           return it;
@@ -108,7 +110,7 @@
       var rd = raceDayIndex(c.targetDate, c.today);
       if (rd != null) {
         var pace = (typeof c.pacePerKmSec === 'number' && c.pacePerKmSec > 0) ? (_fmtPace(c.pacePerKmSec) + ' /km · Zielpace') : 'Zielpace';
-        w[rd] = [{ t: sport, l: 'Wettkampf', d: pace, race: true, phaseAdjusted: true }];
+        w[rd] = [{ t: sport, l: 'Wettkampf', d: pace, kind: 'race', race: true, phaseAdjusted: true }];
         note(rd, 'race', w[rd][0]);
         if (rd > 0 && w[rd - 1].length) { note(rd - 1, 'cleared_before_race', null); w[rd - 1] = []; }
         for (var a = rd + 1; a < 7; a++) { if (w[a].length) { note(a, 'cleared_after_race', null); w[a] = []; } }

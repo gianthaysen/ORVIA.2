@@ -40,7 +40,7 @@ Band 6 e.2 Schritt 6: bei > 1.500 Strings **Cut auf Kernflows zuerst**. Kernflow
 
 ## Reihenfolge Rest B-13 (≈ 22 h)
 
-1. `kind`-Feld für Plan-Items + Renderer über `t()` (4 h) — **vor** allem anderen.
+1. ✅ **`kind`-Feld für Plan-Items** (`gpR/gpB/gpG/gpS/gpM` setzen es; `unitKind`/`isHardUnit` in ui.js sowie goal-phase-plan/absence-replanner lesen es zuerst; Label-Raten bleibt Rückfall für gespeicherte Pläne). **Bewusst nicht** in `week-plan-designer`/`week-plan-policy`: beide gehören zur eingefrorenen Kohorte des Engine-Shadows (`shadow_adaptive` schlägt bei einem VERSION-Bump „Kohortenänderung — Belegsammlung beginnt neu" an, das würde Gate A #5 zurücksetzen). Ihre Label-Regex funktioniert, solange die Labels DE bleiben — d. h. bis B-14. Dann: Kohorte mit `ORVIA_REPIN_COHORT` bewusst neu setzen, beide Module auf `kind` umstellen. Offen bleibt der Renderer (`t('plan.kind.' + kind)`) — kommt mit der Plan-Tab-Extraktion (Schritt 5).
 2. Onboarding-UI (128) (4 h) · 3. Workout-UI (96) (3 h) · 4. Profil + Profilzentrale (258) (5 h) · 5. Plan-Tab in ui.js (≈ 300) (6 h).
 6. Pseudo-Locale-Durchlauf der fünf Kernflows am Gerät (dein Auge) → DoD.
 
