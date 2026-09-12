@@ -20,6 +20,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
@@ -52,6 +53,7 @@ function sliceBalanced(src, marker) {
 /* ---- ECHTER Renderer, keine Attrappe ---- */
 globalThis.ORVIA = globalThis.ORVIA || {};
 globalThis.window = globalThis;
+globalThis.ORVIA.i18n = tStub();   // B-13
 await import(pathToFileURL(join(APP, 'js/adaptive-card.js')).href);
 const AC = globalThis.ORVIA.adaptiveCard;
 ok('echter adaptive-card-Renderer geladen', !!(AC && typeof AC.render === 'function' && typeof AC.buildView === 'function'));

@@ -24,6 +24,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { tStub } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +50,8 @@ const PR = require(join(APP, 'js/engine/progression.js'));
 const GF = require(join(APP, 'js/engine/goal-feasibility.js'));
 const S = require(join(APP, 'js/engine/shadow-adaptive.js'));
 const T = require(join(APP, 'js/engine/plan-translator.js'));
+/* B-13: der Renderer liest Texte ueber window.ORVIA.i18n — hier ueber den Katalog-Stub. */
+globalThis.window = globalThis; globalThis.ORVIA = globalThis.ORVIA || {}; globalThis.ORVIA.i18n = tStub();
 const AC = require(join(APP, 'js/adaptive-card.js'));
 
 /* Echte Kette: 28 Tage Läufe, Ziel, Leistungswert, Wochenplan MIT Dauern. */

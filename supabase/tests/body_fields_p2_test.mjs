@@ -14,6 +14,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { srcHasText } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -128,7 +129,7 @@ function makeApp() {
   sb.PROFILE = { weightKg: 70, heightCm: 180, age: 25, nutrition: {} };
   ok('N5 vollständige Daten ⇒ Berechnung läuft', sb.nutToday() !== null);
   const nsrc = readFileSync(new URL('nutrition.js', base), 'utf8');
-  ok('N6 Leerzustand-Hinweis vorhanden', /Hinterlege Körperdaten/.test(nsrc));
+  ok('N6 Leerzustand-Hinweis vorhanden', srcHasText(nsrc, 'Hinterlege Körperdaten'));
 }
 
 /* ---------- 4) Personenbezogene Hardcodes entfernt ---------- */

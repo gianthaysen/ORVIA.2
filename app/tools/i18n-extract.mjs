@@ -25,7 +25,7 @@ lines.forEach((line, i) => {
       if (/^[a-z0-9_ -]*$/.test(s) && !/[äöüß]/.test(s)) continue;     // technische Werte
       if (/^(\[|#|\.|orvia:|https?:|data-|aria-)/.test(s)) continue;
       if (/^<[^>]*>$/.test(s)) continue;                              // reines Markup
-      if (/[\w:-]+="/.test(s) && !/^[^"]*„/.test(s)) continue;             // Attribut-Fragmente (onclick="…", aria-label, SVG-Attribute) — Befund profile.js/activity.js
+      if (!/</.test(s) && /[\w:-]+="/.test(s)) continue;                           // Attribut-Fragmente (onclick="…", aria-label, SVG-Attribute) — Befund profile.js/activity.js
       if (/^[\s·•–—|:()/.,+×~&]+$/.test(s)) continue;
       if (!/[A-ZÄÖÜ]/.test(s) && !/[äöüß]/.test(s)) continue;         // keine Grossbuchstaben/Umlaute → eher technisch
       if (/^\s*(px|em|%)/.test(s)) continue;

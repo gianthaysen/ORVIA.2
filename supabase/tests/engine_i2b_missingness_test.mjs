@@ -18,6 +18,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -198,7 +199,7 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
 {
   const fcBlock = slice(extrasSrc, 'function forecastCauses(){', 'function renderForecast(){');
   function mkForecast(wk, wp) {
-    const sb = {}; sb.window = sb; sb.globalThis = sb;
+    const sb = {}; sb.window = sb; sb.globalThis = sb; sb._extT = tStub().t;   // B-13: extras.js-Ausschnitt
     sb.DB = {};
     sb.isDay = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
     sb.Calc = { avg: arr => arr.reduce((s, x) => s + x, 0) / arr.length };

@@ -1,3 +1,5 @@
+/* B-13: nutzersichtbare Texte ueber t() (locales/de.js); eigener Wrapper-Name je Datei (profile.js fuehrt das globale T). */
+var _nutT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 /* ============================================================
    ORVIA — Energie & Ernährung  (Phase 5)
    Trainingsabhängige Kalorien + Makros, Empfehlungen, Wochen-Hit.
@@ -128,11 +130,11 @@ function _nutPersistEnergy(E) {
   } catch (e) {}
 }
 function nutRecommendation(dayType) {
-  if (dayType === 'long') return 'Long-Run-Tag: Kohlenhydrate hoch — vorher Carb-reiches Frühstück, danach zügig auffüllen.';
-  if (dayType === 'quality') return 'Intensive Einheit: Carbs erhöhen, kein großes Defizit — Qualität braucht Energie.';
-  if (dayType === 'strength') return 'Krafttag: Protein gleichmäßig über 3–4 Portionen verteilen.';
-  if (dayType === 'rest') return 'Ruhetag: Kalorien leicht niedriger, Protein voll halten.';
-  return 'Lockerer Tag: ausgewogen essen, Protein konstant halten.';
+  if (dayType === 'long') return '' + _nutT('nut.long_run_tag_kohlenhydrate_hoch') + '';
+  if (dayType === 'quality') return '' + _nutT('nut.intensive_einheit_carbs_erhoehen_kein') + '';
+  if (dayType === 'strength') return '' + _nutT('nut.krafttag_protein_gleichmaessig_ueber_3') + '';
+  if (dayType === 'rest') return '' + _nutT('nut.ruhetag_kalorien_leicht_niedriger_protein') + '';
+  return '' + _nutT('nut.lockerer_tag_ausgewogen_essen_protein') + '';
 }
 /* ---- Fueling pro Einheit (sport-/intensitätsspezifisch) ---- */
 function fuelingToday() {
@@ -140,14 +142,14 @@ function fuelingToday() {
   var t = u.t, k = (typeof unitKind === 'function') ? unitKind(u) : '', l = (u.l || '').toLowerCase();
   var title = '', lines = [];
   if (t === 'Laufen') {
-    if (k === 'long') { title = 'Long Run — Fueling'; lines = ['Vorher: kohlenhydratreiches Frühstück 2–3 h davor.', 'Ab ~90 min: 30–60 g Kohlenhydrate pro Stunde (Gel/Riegel/Iso).', 'Flüssigkeit + etwas Salz, besonders bei Hitze.', 'Defizit heute klein halten — Qualität braucht Energie.']; }
-    else if (k === 'interval' || k === 'tempo') { title = 'Intervall/Tempo — Fueling'; lines = ['Vorher: leicht verdauliche Carbs (Banane/Toast) 1–2 h davor.', '<60–75 min: meist kein Fuel nötig, ausreichend trinken.', 'Kein großes Kaloriendefizit an diesem harten Tag.']; }
-    else { title = 'Easy Run — Fueling'; lines = ['<60 min: meist kein zusätzliches Fuel nötig.', 'Wasser reicht; danach normale Mahlzeit.']; }
+    if (k === 'long') { title = '' + _nutT('nut.long_run_fueling') + ''; lines = ['' + _nutT('nut.vorher_kohlenhydratreiches_fruehstueck_2_3') + '', '' + _nutT('nut.ab_90_min_30_60') + '', '' + _nutT('nut.fluessigkeit_etwas_salz_besonders_bei') + '', '' + _nutT('nut.defizit_heute_klein_halten_qualitaet') + '']; }
+    else if (k === 'interval' || k === 'tempo') { title = '' + _nutT('nut.intervall_tempo_fueling') + ''; lines = ['' + _nutT('nut.vorher_leicht_verdauliche_carbs_banane') + '', _nutT('nut.unter_60_75_min_kein_fuel'), '' + _nutT('nut.kein_grosses_kaloriendefizit_an_diesem') + '']; }
+    else { title = '' + _nutT('nut.easy_run_fueling') + ''; lines = [_nutT('nut.unter_60_min_kein_fuel'), '' + _nutT('nut.wasser_reicht_danach_normale_mahlzeit') + '']; }
   } else if (t === 'Rad') {
-    if (/long/.test(l)) { title = 'Long Ride — Fueling'; lines = ['Ab ~90 min: 40–80 g Kohlenhydrate pro Stunde.', 'Flüssigkeit + Elektrolyte/Salz einplanen.', 'Recovery-Mahlzeit (Carbs + Protein) zügig danach.']; }
-    else if (/interval/.test(l) || k === 'interval') { title = 'Rad-Intervalle — Fueling'; lines = ['Vorher Carbs auffüllen; bei kürzeren Einheiten optional ein Gel.', 'Defizit heute begrenzen.']; }
-    else { title = 'Easy Ride — Fueling'; lines = ['<90 min: optional Carbs, sonst Wasser.', 'Lockere Fahrt — kein Defizit-Problem.']; }
-  } else if (t === 'Gym') { title = 'Krafttag — Fueling'; lines = ['Protein gleichmäßig über 3–4 Portionen.', 'Carbs um die Einheit für Leistung & Erholung.']; }
+    if (/long/.test(l)) { title = '' + _nutT('nut.long_ride_fueling') + ''; lines = ['' + _nutT('nut.ab_90_min_40_80') + '', '' + _nutT('nut.fluessigkeit_elektrolyte_salz_einplanen') + '', '' + _nutT('nut.recovery_mahlzeit_carbs_protein_zuegig') + '']; }
+    else if (/interval/.test(l) || k === 'interval') { title = '' + _nutT('nut.rad_intervalle_fueling') + ''; lines = ['' + _nutT('nut.vorher_carbs_auffuellen_bei_kuerzeren') + '', '' + _nutT('nut.defizit_heute_begrenzen') + '']; }
+    else { title = '' + _nutT('nut.easy_ride_fueling') + ''; lines = ['<90 min: optional Carbs, sonst Wasser.', '' + _nutT('nut.lockere_fahrt_kein_defizit_problem') + '']; }
+  } else if (t === 'Gym') { title = '' + _nutT('nut.krafttag_fueling') + ''; lines = ['' + _nutT('nut.protein_gleichmaessig_ueber_3_4') + '', '' + _nutT('nut.carbs_um_die_einheit_fuer') + '']; }
   else return null;
   return { title: title, lines: lines };
 }
@@ -180,19 +182,19 @@ function renderNutritionToday() {
   if (!t) {
     /* Phase 3 (E-23): kontextueller Einstieg DIREKT aus der Karte — der Verweis
        „im Profil" war eine Sackgasse ohne Link. */
-    el.innerHTML = '<div class="card"><h2><svg class="ic"><use href="#i-nutrition"/></svg>Energie &amp; Ernährung</h2>' +
-      '<p class="muted" style="margin:0 0 10px">Hinterlege Körperdaten und Ziel, dann berechnet ORVIA deine Tageskalorien und Makros — angepasst an den Trainingstag.</p>' +
-      '<button class="btn sec" onclick="openNutritionEditor()">Jetzt einrichten</button></div>';
+    el.innerHTML = '<div class="card"><h2><svg class="ic"><use href="#i-nutrition"/></svg>' + _nutT('nut.energie_amp_ernaehrung') + '</h2>' +
+      '<p class="muted" style="margin:0 0 10px">' + _nutT('nut.hinterlege_koerperdaten_und_ziel_dann') + '</p>' +
+      '<button class="btn sec" onclick="openNutritionEditor()">' + _nutT('nut.jetzt_einrichten') + '</button></div>';
     return;
   }
-  var dt = { rest: 'Ruhetag', easy: 'Lockerer Tag', quality: 'Intensiver Tag', long: 'Long-Run-Tag', strength: 'Krafttag' }[t.dayType] || '';
-  var eaWarn = (t.ea < 32 && t.burn >= 250 && t.goal === 'fatloss') ? '<div class="nut-warn">Energieverfügbarkeit niedrig (~' + t.ea + ' kcal/kg) für die heutige Trainingsbelastung. Defizit reduzieren — vor allem Kohlenhydrate anheben.</div>' : '';
+  var dt = { rest: 'Ruhetag', easy: '' + _nutT('nut.lockerer_tag') + '', quality: '' + _nutT('nut.intensiver_tag') + '', long: 'Long-Run-Tag', strength: 'Krafttag' }[t.dayType] || '';
+  var eaWarn = (t.ea < 32 && t.burn >= 250 && t.goal === 'fatloss') ? '<div class="nut-warn">' + _nutT('nut.energieverfuegbarkeit_niedrig', { ea: t.ea }) + '</div>' : '';
   var wk = nutWeekly();
-  el.innerHTML = '<div class="card nutcard"><h2><svg class="ic"><use href="#i-nutrition"/></svg>Energie &amp; Ernährung<span class="nut-day">' + escH(dt) + '</span>' +
-    '<button class="iconbtn" style="margin-left:auto" aria-label="Ernährung konfigurieren" onclick="openNutritionEditor()"><svg class="ic sm"><use href="#i-gear"/></svg></button></h2>' +
-    '<div class="nut-kcal"><span class="nut-knum">' + t.kcal + '</span><span class="nut-klab">kcal Tagesziel' + (t.burn ? ' · inkl. ~' + t.burn + ' kcal Training' : '') + '</span></div>' +
+  el.innerHTML = '<div class="card nutcard"><h2><svg class="ic"><use href="#i-nutrition"/></svg>' + _nutT('nut.energie_amp_ernaehrung') + '<span class="nut-day">' + escH(dt) + '</span>' +
+    '<button class="iconbtn" style="margin-left:auto" aria-label="' + _nutT('nut.ernaehrung_konfigurieren') + '" onclick="openNutritionEditor()"><svg class="ic sm"><use href="#i-gear"/></svg></button></h2>' +
+    '<div class="nut-kcal"><span class="nut-knum">' + t.kcal + '</span><span class="nut-klab">kcal Tagesziel' + (t.burn ? ' · inkl. ~' + t.burn + '' + _nutT('nut.kcal_training') + '' : '') + '</span></div>' +
     '<div class="nut-macros">' +
-      macroCell('Protein', t.protein, t.protein * 4, 'p') +
+      macroCell('' + _nutT('nut.protein') + '', t.protein, t.protein * 4, 'p') +
       macroCell('Carbs', t.carbs, t.carbs * 4, 'c') +
       macroCell('Fett', t.fat, t.fat * 9, 'f') +
     '</div>' + eaWarn +
@@ -203,11 +205,11 @@ function renderNutritionToday() {
        vorhandenem Gewichtstrend wirkte die Zeile ueberladen. Zwei klar getrennte
        Haelften statt einer Zeile. */
     (function () {
-      var left = '<div class="nut-week-half"><span>Protein-Ziel diese Woche</span><b>' + wk.proteinDays + '/7 Tage</b></div>';
-      var right = wk.weightTrend ? ('<div class="nut-week-half"><span>Gewicht · 7 Tage</span><b>' + escH(wk.weightTrend) + '</b></div>') : '';
+      var left = '<div class="nut-week-half"><span>' + _nutT('nut.protein_ziel_diese_woche') + '</span><b>' + wk.proteinDays + '/7 Tage</b></div>';
+      var right = wk.weightTrend ? ('<div class="nut-week-half"><span>' + _nutT('nut.gewicht_7_tage') + '</span><b>' + escH(wk.weightTrend) + '</b></div>') : '';
       return '<div class="nut-week' + (right ? ' nut-week-split' : '') + '">' + left + right + '</div>';
     })() +
-    '<div class="nut-note">Schätzwerte — werden über Gewichtstrend, Training und Energielevel angepasst.</div></div>';
+    '<div class="nut-note">' + _nutT('nut.schaetzwerte_werden_ueber_gewichtstrend_training') + '</div></div>';
 }
 
 /* ---- Config im Profil ---- */
@@ -215,30 +217,30 @@ function renderNutritionConfig() {
   var el = document.getElementById('nutritionConfig'); if (!el) return;
   var np = nutProfile();
   var goalL = { fatloss: 'Fettverlust', maintain: 'Erhalt', muscle: 'Muskelaufbau', performance: 'Performance' }[np.goal] || np.goal;
-  var actL = { sedentary: 'Wenig aktiv', light: 'Leicht aktiv', moderate: 'Moderat', high: 'Hoch aktiv' }[np.activity] || np.activity;
+  var actL = { sedentary: '' + _nutT('nut.wenig_aktiv') + '', light: '' + _nutT('nut.leicht_aktiv') + '', moderate: 'Moderat', high: '' + _nutT('nut.hoch_aktiv') + '' }[np.activity] || np.activity;
   var t = nutToday();
-  el.innerHTML = '<div class="acc-row"><span>Ziel</span><b>' + escH(goalL) + '</b></div>' +
-    '<div class="acc-row"><span>Aktivitätslevel</span><b>' + escH(actL) + '</b></div>' +
-    '<div class="acc-row"><span>Protein</span><b>' + np.proteinPerKg + ' g/kg</b></div>' +
-    (t ? '<div class="acc-row"><span>Grundumsatz</span><b>' + t.bmr + ' kcal</b></div><div class="acc-row"><span>Tagesziel heute</span><b>' + t.kcal + ' kcal</b></div>' : '') +
-    '<button class="btn sec" style="margin-top:12px" onclick="openNutritionEditor()">Ernährung einstellen</button>';
+  el.innerHTML = '<div class="acc-row"><span>' + _nutT('nut.ziel') + '</span><b>' + escH(goalL) + '</b></div>' +
+    '<div class="acc-row"><span>' + _nutT('nut.aktivitaetslevel') + '</span><b>' + escH(actL) + '</b></div>' +
+    '<div class="acc-row"><span>' + _nutT('nut.protein') + '</span><b>' + np.proteinPerKg + ' g/kg</b></div>' +
+    (t ? '<div class="acc-row"><span>' + _nutT('nut.grundumsatz') + '</span><b>' + t.bmr + ' kcal</b></div><div class="acc-row"><span>' + _nutT('nut.tagesziel_heute') + '</span><b>' + t.kcal + ' kcal</b></div>' : '') +
+    '<button class="btn sec" style="margin-top:12px" onclick="openNutritionEditor()">' + _nutT('nut.ernaehrung_einstellen') + '</button>';
 }
 function openNutritionEditor() {
   closeNutritionEditor();
   var np = nutProfile();
   var goals = [['fatloss', 'Fettverlust'], ['maintain', 'Erhalt'], ['muscle', 'Muskelaufbau'], ['performance', 'Performance']];
   var acts = [['sedentary', 'Wenig'], ['light', 'Leicht'], ['moderate', 'Moderat'], ['high', 'Hoch']];
-  var sexes = [['m', 'Mann'], ['f', 'Frau'], ['d', 'Divers / k. A.']];
+  var sexes = [['m', 'Mann'], ['f', 'Frau'], ['d', '' + _nutT('nut.divers_k_a') + '']];
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
-  wrap.innerHTML = '<div class="orvia-modal goal-modal" style="max-height:88vh;overflow-y:auto"><h3>Energie &amp; Ernährung</h3>' +
-    '<div class="gm-field"><label>Ziel</label><div class="gm-chips" id="nuGoal">' + goals.map(function (g) { return '<button type="button" class="gm-chip' + (np.goal === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuGoal\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
-    '<div class="gm-field"><label>Aktivitätslevel (ohne Training)</label><div class="gm-chips" id="nuAct">' + acts.map(function (g) { return '<button type="button" class="gm-chip' + (np.activity === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuAct\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
-    '<div class="gm-field"><label>Geschlecht (für Grundumsatz)</label><div class="gm-chips" id="nuSex">' + sexes.map(function (g) { return '<button type="button" class="gm-chip' + (np.sex === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuSex\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
-    '<div class="row2"><div class="gm-field"><label>Protein (g/kg)</label><input type="number" inputmode="decimal" id="nuProt" value="' + np.proteinPerKg + '"></div>' +
-    '<div class="gm-field"><label>Defizit/Überschuss (kcal)</label><input type="number" inputmode="numeric" id="nuDef" value="' + (np.goal === 'muscle' ? np.surplusKcal : np.deficitKcal) + '"></div></div>' +
-    '<div class="gm-field"><label>Zielgewicht (kg, optional)</label><input type="number" inputmode="decimal" id="nuTw" value="' + (np.targetWeightKg || '') + '"></div>' +
-    '<button class="btn" onclick="saveNutrition()">Speichern</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeNutritionEditor()">Abbrechen</button></div>';
+  wrap.innerHTML = '<div class="orvia-modal goal-modal" style="max-height:88vh;overflow-y:auto"><h3>' + _nutT('nut.energie_amp_ernaehrung') + '</h3>' +
+    '<div class="gm-field"><label>' + _nutT('nut.ziel') + '</label><div class="gm-chips" id="nuGoal">' + goals.map(function (g) { return '<button type="button" class="gm-chip' + (np.goal === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuGoal\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
+    '<div class="gm-field"><label>' + _nutT('nut.aktivitaetslevel_ohne_training') + '</label><div class="gm-chips" id="nuAct">' + acts.map(function (g) { return '<button type="button" class="gm-chip' + (np.activity === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuAct\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
+    '<div class="gm-field"><label>' + _nutT('nut.geschlecht_fuer_grundumsatz') + '</label><div class="gm-chips" id="nuSex">' + sexes.map(function (g) { return '<button type="button" class="gm-chip' + (np.sex === g[0] ? ' on' : '') + '" data-v="' + g[0] + '" onclick="gmPick(this,\'nuSex\')">' + g[1] + '</button>'; }).join('') + '</div></div>' +
+    '<div class="row2"><div class="gm-field"><label>' + _nutT('nut.protein_g_kg') + '</label><input type="number" inputmode="decimal" id="nuProt" value="' + np.proteinPerKg + '"></div>' +
+    '<div class="gm-field"><label>' + _nutT('nut.defizit_ueberschuss_kcal') + '</label><input type="number" inputmode="numeric" id="nuDef" value="' + (np.goal === 'muscle' ? np.surplusKcal : np.deficitKcal) + '"></div></div>' +
+    '<div class="gm-field"><label>' + _nutT('nut.zielgewicht_kg_optional') + '</label><input type="number" inputmode="decimal" id="nuTw" value="' + (np.targetWeightKg || '') + '"></div>' +
+    '<button class="btn" onclick="saveNutrition()">' + _nutT('nut.speichern') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeNutritionEditor()">' + _nutT('nut.abbrechen') + '</button></div>';
   document.body.appendChild(wrap); window._nutModal = wrap;
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeNutritionEditor(); });
 }
@@ -263,5 +265,5 @@ function saveNutrition() {
   closeNutritionEditor();
   if (typeof renderDay === 'function') renderDay();
   renderNutritionConfig();
-  if (typeof toast === 'function') toast('Ernährung gespeichert ✓');
+  if (typeof toast === 'function') toast('' + _nutT('nut.ernaehrung_gespeichert') + '');
 }
