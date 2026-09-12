@@ -14,6 +14,7 @@
    ============================================================ */
 import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
+import { tStub } from './_i18n-src.mjs';
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
@@ -163,7 +164,9 @@ sec('G · Historie zeigt die Gruppierung');
   const actRaw = fs.readFileSync(new URL(_APPREL + 'js/activity.js', import.meta.url), 'utf8');
   const i0 = actRaw.indexOf('function _workoutDetailHtml('); let d = 0, st0 = false, i1 = -1;
   for (let j = i0; j < actRaw.length; j++) { const ch = actRaw[j]; if (ch === '{') { d++; st0 = true; } else if (ch === '}') { d--; if (st0 && d === 0) { i1 = j + 1; break; } } }
-  const fn = new Function('escH', 'window', 'ORVIA', actRaw.slice(i0, i1) + '; return _workoutDetailHtml;')(s => String(s), global.window, O);
+  /* B-13: der Ausschnitt braucht den Textzugang _actT der Datei — hier ueber den Katalog-Stub. */
+  const _tS = tStub();
+  const fn = new Function('escH', 'window', 'ORVIA', '_actT', actRaw.slice(i0, i1) + '; return _workoutDetailHtml;')(s => String(s), global.window, O, _tS.t);
   const html = fn({ source: 'orvia_workout', workoutDetail: snap });
   ok('G2 A und B tragen „Superset A", C nichts', (html.match(/Superset A/g) || []).length === 2 && html.indexOf('>C</span></div>') >= 0);
   ok('G3 Einzel-Gruppe (D) bekommt KEIN Label', html.indexOf('Superset B') < 0);

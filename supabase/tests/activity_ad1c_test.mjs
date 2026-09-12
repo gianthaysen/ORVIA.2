@@ -15,6 +15,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -101,7 +102,8 @@ function makeActSandbox(opts) {
     user: { id: 'u1' }, activityStore: store, activityNormalize: AN,
     activityConfig: { sportLabel: (id) => String(id), enumLabel: (k, v) => v, sportIcon: () => 'pulse', legacySessionToActivity: (date, type) => ({ clientRecordId: 'legacy:' + date + ':' + type, sportId: type, source: 'legacy_local', _legacy: { date, type }, summary: {}, startedAt: date + 'T00:00:00.000Z' }) },
     workoutUI: { openDetails: () => {} }, activitySync: { flushPendingActivities: () => {} },
-    repos: { workout: opts.loadWorkoutTree ? { loadWorkoutTree: opts.loadWorkoutTree } : undefined }
+    repos: { workout: opts.loadWorkoutTree ? { loadWorkoutTree: opts.loadWorkoutTree } : undefined },
+    i18n: tStub()   // B-13
   };
   vm.createContext(sb);
   vm.runInContext(readFileSync(new URL('activity.js', base), 'utf8'), sb, { filename: 'activity.js' });

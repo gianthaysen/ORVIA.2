@@ -4,6 +4,7 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -17,6 +18,7 @@ G.isDay=(k)=>/^\d{4}-\d{2}-\d{2}$/.test(k);
 G.fmtPace=C.fmtPace;
 G.goalOf=()=>null;            // → rateActivity nimmt den „erfasst"-Pfad für valide Läufe
 G.DB={};
+G.window=G; G.ORVIA=G.ORVIA||{}; G.ORVIA.i18n=tStub();   // B-13: activity.js liest Texte ueber ORVIA.i18n.t
 // story.js + activity.js laden (nur Funktionsdeklarationen, kein Top-Level-DOM)
 (0,eval)(fs.readFileSync(new URL(_APPREL + 'js/story.js',import.meta.url),'utf8'));
 (0,eval)(fs.readFileSync(new URL(_APPREL + 'js/activity.js',import.meta.url),'utf8'));

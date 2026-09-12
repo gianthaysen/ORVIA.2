@@ -16,7 +16,7 @@ export function catalog() {
 }
 /* Alle Keys, die im Quelltext ueber T('…') / t('…') referenziert werden. */
 export function keysIn(src) {
-  const out = new Set(); let m; const re = /\b[tT]\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'/g;
+  const out = new Set(); let m; const re = /\b(?:[tT]|_\w+T)\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'/g;
   while ((m = re.exec(src))) out.add(m[1]);
   return out;
 }
@@ -33,6 +33,17 @@ export function inlined(src) {
   const de = catalog();
   const esc = v => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   return src
-    .replace(/' \+ [tT]\('([a-z][a-zA-Z0-9]*\.[^']+)'(?:, ?\{[^}]*\})?\) \+ '/g, (m, k) => (k in de ? esc(de[k]) : m))
-    .replace(/\b[tT]\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'\s*\)/g, (m, k) => (k in de ? "'" + esc(de[k]) + "'" : m));
+    .replace(/' \+ (?:[tT]|_\w+T)\('([a-z][a-zA-Z0-9]*\.[^']+)'(?:, ?\{[^}]*\})?\) \+ '/g, (m, k) => (k in de ? esc(de[k]) : m))
+    .replace(/\b(?:[tT]|_\w+T)\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'\s*\)/g, (m, k) => (k in de ? "'" + esc(de[k]) + "'" : m));
+}
+/* Minimaler t()-Stub fuer Harnesse, die kein window-Objekt fuer i18n.js bereitstellen:
+   Katalogtext aus locales/de.js, {name}-Platzhalter, Plural ueber .one/.other. */
+export function tStub() {
+  const de = catalog();
+  return { t(k, p) {
+    let v = de[k];
+    if (v == null && p && typeof p.count === 'number') v = de[k + (p.count === 1 ? '.one' : '.other')];
+    if (v == null) return String(k);
+    return String(v).replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? String(p[n]) : m));
+  } };
 }

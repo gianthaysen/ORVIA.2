@@ -13,7 +13,8 @@ const re = /'((?:[^'\\\n]|\\.)*)'/g;
 const cand = new Map();
 const SINGLE_OK = new Set(['Mo','Di','Mi','Do','Fr','Sa','So','Ausdauer','5-km-Lauf','10-km-Lauf','Halbmarathon','Marathon','Triathlon','Wiedereinstieg','Zielzeit','Nein','Ja','Links','Rechts','Beidseitig','Wettkampf','Training','Datum','Sportarten','Trainingsstand','Verfügbarkeit','Sicherheits-Check','Körperdaten','Zusammenfassung','Männlich','Weiblich','Divers','Anfänger','Fortgeschritten','Erfahren','Wettkampforientiert','Geburtsdatum','Weiter','Zurück','Speichern','Abbrechen','Überspringen','Fertig','Optional','Willkommen','Jahre','Alter','Name','Gewicht','Größe','Hauptsport','Gelegentlich','Regelmäßig']);
 lines.forEach((line, i) => {
-  if (/^\s*(\/\/|\*|\/\*)/.test(line) || /console\./.test(line)) return;
+  /* Kommentare, Logs, Perf-Marken (_P.mark('…')), HTTP-Header: keine Nutzertexte (Befund auth.js 12.09.: 13 Perf-Labels + 'Bearer ' erfasst). */
+  if (/^\s*(\/\/|\*|\/\*)/.test(line) || /console\./.test(line) || /\.mark\(/.test(line) || /headers\s*:/.test(line)) return;
   let m; re.lastIndex = 0;
   while ((m = re.exec(line))) {
     const s = m[1]; if (!s || s.length < 2) continue;
@@ -24,6 +25,7 @@ lines.forEach((line, i) => {
       if (/^[a-z0-9_ -]*$/.test(s) && !/[äöüß]/.test(s)) continue;     // technische Werte
       if (/^(\[|#|\.|orvia:|https?:|data-|aria-)/.test(s)) continue;
       if (/^<[^>]*>$/.test(s)) continue;                              // reines Markup
+      if (/[\w:-]+="/.test(s) && !/^[^"]*„/.test(s)) continue;             // Attribut-Fragmente (onclick="…", aria-label, SVG-Attribute) — Befund profile.js/activity.js
       if (/^[\s·•–—|:()/.,+×~&]+$/.test(s)) continue;
       if (!/[A-ZÄÖÜ]/.test(s) && !/[äöüß]/.test(s)) continue;         // keine Grossbuchstaben/Umlaute → eher technisch
       if (/^\s*(px|em|%)/.test(s)) continue;

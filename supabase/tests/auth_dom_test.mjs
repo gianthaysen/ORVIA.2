@@ -11,6 +11,7 @@ const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../.
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const AUTHLOGIC = (await import(new URL(_APPREL + 'js/auth-logic.js', import.meta.url))).default;
+import { tStub } from './_i18n-src.mjs';
 const AUTH_SRC = fs.readFileSync(new URL(_APPREL + 'js/auth.js', import.meta.url), 'utf8');
 const wait = () => new Promise(r => setTimeout(r, 10));
 
@@ -61,6 +62,7 @@ function harness(opts) {
   };
   const win = {};
   win.ORVIA = opts.withLogic === false ? {} : { authLogic: AUTHLOGIC };
+  win.ORVIA.i18n = tStub();   // B-13: auth.js liest Texte ueber ORVIA.i18n.t
   win.ORVIA_CFG = { configured: true, SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'a'.repeat(40) };
   win.supabase = { createClient() { spies.createClient = true; return sb; } };
   win.orviaSetSyncState = () => {};

@@ -15,6 +15,7 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -83,6 +84,7 @@ global.window.ORVIA_CFG = { SUPABASE_URL: 'https://testproj.supabase.co', SUPABA
 
 /* ---------- Marker: Profil-API-Adapter wie profile.js ---------- */
 global.window.ORVIA = { profile: { get() { return { name: 'Trainingsprofil' }; }, save() {}, activeSports() { return []; } } };
+global.window.ORVIA.i18n = tStub();   // B-13
 const ADAPTER = global.window.ORVIA.profile;
 
 /* ---------- Skripte laden (echte Logik) ---------- */

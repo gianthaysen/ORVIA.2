@@ -64,7 +64,7 @@ sec('D · Katalog de');
 sec('E · t()-Regime');
 {
   const inv = await import(pathToFileURL(join(APP, 'tools', 'i18n-inventory.mjs')).href);
-  const UNDER_T = ['js/goal-detail.js', 'js/workout-gym.js', 'js/workout-ui.js', 'js/onboarding/onboarding-ui.js', 'js/profile-center.js', 'js/profile.js'];
+  const UNDER_T = ['js/goal-detail.js', 'js/workout-gym.js', 'js/workout-ui.js', 'js/onboarding/onboarding-ui.js', 'js/profile-center.js', 'js/profile.js', 'js/auth.js', 'js/activity.js'];
   UNDER_T.forEach(f => { const hits = inv.scanFile(join(APP, f)); ok('E · ' + f + ': 0 deutsche Literale', hits.length === 0, hits.slice(0, 3).map(h => h.line + ':' + h.text).join(' | ')); });
   const total = inv.inventory().reduce((n, r) => n + r.hits.length, 0);
   ok('E · Inventur laeuft (Gesamtzahl als Fortschrittsmass, Stand 11.09.: ~2600)', total > 1000, String(total));

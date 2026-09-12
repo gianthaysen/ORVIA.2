@@ -19,8 +19,8 @@ const esc = v => v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const missing = new Set();
 function inline(src) {
 let s = src;
-s = s.replace(/' \+ [tT]\('([a-z][a-zA-Z0-9]*\.[^']+)'(?:, ?\{[^}]*\})?\) \+ '/g, (m, k) => { if (!(k in de)) { if (!((k + '.other') in de)) missing.add(k); return m; } return esc(de[k]); });
-s = s.replace(/\b[tT]\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'\s*\)/g, (m, k) => { if (!(k in de)) { if (!((k + '.other') in de)) missing.add(k); return m; } return "'" + esc(de[k]) + "'"; });
+s = s.replace(/' \+ (?:[tT]|_\w+T)\('([a-z][a-zA-Z0-9]*\.[^']+)'(?:, ?\{[^}]*\})?\) \+ '/g, (m, k) => { if (!(k in de)) { if (!((k + '.other') in de)) missing.add(k); return m; } return esc(de[k]); });
+s = s.replace(/\b(?:[tT]|_\w+T)\(\s*'([a-z][a-zA-Z0-9]*\.[^']+)'\s*\)/g, (m, k) => { if (!(k in de)) { if (!((k + '.other') in de)) missing.add(k); return m; } return "'" + esc(de[k]) + "'"; });
 s = s.replace(/^function T\(k,p\)\{[^\n]*\n/m, '').replace(/^\/\* B-13: nutzersichtbare Texte[\s\S]*?\*\/\n/m, '');
 s = s.replace(/^\s*function T\(k, ?p\) ?\{[^\n]*\n/m, '').replace(/^\s*\/\* B-13: nutzersichtbare Texte[^\n]*\n/mg, '');
 return s;
