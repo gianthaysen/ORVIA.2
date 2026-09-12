@@ -42,10 +42,12 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'absence-replanner@1';
+  var VERSION = 'absence-replanner@3';
 
+  var KINDS = { interval: 1, long: 1, tempo: 1, easy: 1, gym: 1, gym_leg: 1, mob: 1, swim: 1, bike: 1, bike_long: 1, bike_hard: 1, bike_recovery: 1 };
   function _kind(it) {
     if (!it || typeof it !== 'object') return null;
+    if (it.kind && KINDS[it.kind]) return it.kind;   /* B-13: Code gewinnt, Label-Raten nur Rueckfall */
     var l = String(it.l || '').toLowerCase(), d = it.d;
     if (it.t === 'Gym') return /bein|ganzk|squat|leg/.test(l) ? 'gym_leg' : 'gym';
     if (it.t === 'Mobilität') return 'mob';
@@ -60,8 +62,8 @@
   var HARD = { interval: 1, tempo: 1, long: 1, bike_long: 1, bike_hard: 1 };
   var KEY = HARD;
   function _isHard(it) { return !!HARD[_kind(it)]; }
-  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', absenceAdjusted: true }; }
-  function _easyRun(label) { return { t: 'Laufen', l: label || 'Z2 Dauerlauf', d: 'ez', absenceAdjusted: true }; }
+  function _mob() { return { t: 'Mobilität', l: 'Mobility', d: '15 min', kind: 'mob', absenceAdjusted: true }; }
+  function _easyRun(label) { return { t: 'Laufen', l: label || 'Z2 Dauerlauf', d: 'ez', kind: 'easy', absenceAdjusted: true }; }
   function _copy(it, patch) { return Object.assign({}, it, patch || {}, { absenceAdjusted: true }); }
   function _int(x) { return (typeof x === 'number' && isFinite(x)) ? Math.trunc(x) : null; }
 
@@ -70,7 +72,7 @@
     var k = _kind(it);
     if (k === 'interval' || k === 'tempo') { note(day, 'softened', it); return _easyRun('Z2 Dauerlauf'); }
     if (k === 'long')      { note(day, 'softened', it); return _easyRun('Z2 Dauerlauf kurz'); }
-    if (k === 'bike_long' || k === 'bike_hard') { note(day, 'softened', it); return _copy(it, { l: 'Easy Z2', d: '45 min' }); }
+    if (k === 'bike_long' || k === 'bike_hard') { note(day, 'softened', it); return _copy(it, { l: 'Easy Z2', d: '45 min', kind: 'bike' }); }
     if (k === 'gym' || k === 'gym_leg') { note(day, 'lightened', it); return _copy(it, { l: String(it.l) + ' · leicht' }); }
     return it;
   }
@@ -134,7 +136,7 @@
         w[f] = w[f].map(function (it) {
           var k = _kind(it);
           if (it.t === 'Laufen') { note(f, 'replaced_no_impact', it); return _mob(); }
-          if (k === 'gym_leg') { note(f, 'replaced_no_leg', it); return _copy(it, { l: 'Oberkörper' }); }
+          if (k === 'gym_leg') { note(f, 'replaced_no_leg', it); return _copy(it, { l: 'Oberkörper', kind: 'gym' }); }
           return it;
         });
       }
@@ -187,7 +189,30 @@
     return { activeToday: false, sinceEnd: i, duration: m };
   }
 
-  var api = { VERSION: VERSION, replan: replan, illnessFromHistory: illnessFromHistory };
+  /* Verletzung aus den Beschwerden des Profils ableiten (constraintsList). „Verletzt"
+     im Sinne dieses Moduls = Aufprall (Laufen) heute nicht sinnvoll. Kriterien,
+     jedes fuer sich hinreichend, alle nur bei status 'active':
+       - currentlyTrainable === false (ausdrueckliche Nutzerangabe)
+       - Laufen unter affectedActivities
+       - Region der unteren Extremitaet UND Intensitaet >= 7 (von 10)
+     Alles andere (Schulter 4/10, „beobachtet") ist KEINE Verletzung — sonst
+     verloere jeder mit einer Notiz seinen Laufplan. */
+  var LOWER = { hip: 1, thigh: 1, knee: 1, lower_leg: 1, ankle: 1, foot: 1 };
+  function injuryFromConstraints(list) {
+    var arr = Array.isArray(list) ? list : [], hits = [];
+    arr.forEach(function (c) {
+      if (!c || c.status !== 'active') return;
+      var it = (c.intensity != null) ? parseInt(c.intensity, 10) : null;
+      var aff = Array.isArray(c.affectedActivities) ? c.affectedActivities : [];
+      var why = c.currentlyTrainable === false ? 'not_trainable'
+        : (aff.indexOf('running') >= 0 ? 'affects_running'
+        : (LOWER[c.bodyRegion] && it != null && it >= 7 ? 'lower_body_high' : null));
+      if (why) hits.push({ id: c.id || null, bodyRegion: c.bodyRegion || null, intensity: it, why: why });
+    });
+    return { active: hits.length > 0, hits: hits };
+  }
+
+  var api = { VERSION: VERSION, replan: replan, illnessFromHistory: illnessFromHistory, injuryFromConstraints: injuryFromConstraints };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.absenceReplanner = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

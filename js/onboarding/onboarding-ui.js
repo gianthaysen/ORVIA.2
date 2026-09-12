@@ -32,7 +32,36 @@
     return list.filter(function (b) { return b && !b.disabled && (b.tabIndex == null || b.tabIndex !== -1); });
   }
 
+  /* B-13: nutzersichtbare Texte ueber t() (locales/de.js); ohne i18n-Modul bleibt der Key sichtbar. */
+  function T(k, p) { try { if (O.i18n && typeof O.i18n.t === 'function') return O.i18n.t(k, p); } catch (e) {} return String(k); }
   function now() { try { if (O.clock && typeof O.clock.now === 'function') return O.clock.now(); } catch (e) {} return Date.now(); }   // M4: injizierbare Zeitquelle
+  /* B-04 Teil 3: Schritt-Logging (engine/onboarding-log, Migration 0041). BEOBACHTER —
+     jeder Aufruf ist in try/catch, ohne Modul/Sitzung wird nichts geschrieben, nur gezaehlt.
+     Die Senke wird beim ERSTEN Ereignis gesetzt (Ladereihenfolge: onboarding-ui laedt vor
+     js/engine/*). Verweildauer je Schritt aus S.stepEnteredAt (lokale Uhr, nur Messwert). */
+  var _obLogSinkGesetzt = false;
+  function _obLogEnsureSink() {
+    var LG = O.onboardingLog; if (_obLogSinkGesetzt || !LG || typeof LG.setSink !== 'function') return;
+    _obLogSinkGesetzt = true;
+    LG.setSink(function (rec) {
+      var sb = O.sb, id = uid(); if (!sb || !id) return null;
+      var row = LG.toRow(rec, id); if (!row) return null;
+      return sb.from('onboarding_step_log').insert(row).then(function (r) { return r; }, function (e) { return { error: e }; });
+    });
+  }
+  function _obLogId() { try { if (root.crypto && root.crypto.randomUUID) return 'ob_' + root.crypto.randomUUID(); } catch (e) {} return 'ob_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); }
+  function _obLog(eventType, stepId, extra) {
+    try {
+      var LG = O.onboardingLog; if (!LG || typeof LG.logStep !== 'function') return;
+      _obLogEnsureSink();
+      var ver = null; try { var m = D() && D().querySelector('meta[name="orvia-build"]'); ver = m ? m.content : null; } catch (e) {}
+      var ms = null; try { if (S.stepEnteredAt != null) ms = Math.max(0, now() - S.stepEnteredAt); } catch (e) {}
+      LG.logStep(Object.assign({ eventType: eventType, stepId: stepId || (S.draft && S.draft.currentStep) || 'unknown',
+        draftStatus: S.draft && S.draft.status, source: S.source || null, resumed: S.resumed === true, msOnStep: ms,
+        appVersion: ver, now: new Date(now()).toISOString(), eventId: _obLogId() }, extra || {}));
+    } catch (e) {}
+  }
+  function _obEnter(stepId) { try { S.stepEnteredAt = now(); } catch (e) {} _obLog('enter', stepId); }
   function uid() { try { return (O.user && O.user.id) || null; } catch (e) { return null; } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function stepMeta(id) { var a = STEPS(); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return a[0] || { id: id, title: id, desc: '' }; }
@@ -52,6 +81,8 @@
       return true;
     }
     S.draft = existing || L().startDraft(L().newDraft(), now());
+    S.source = opts.source || null; S.resumed = !!existing && !opts.edit;
+    S.obLoggedStep = null; _obLog('open', S.draft.currentStep);
     // BEARBEITEN hat IMMER Vorrang vor dem Done-Screen — UNABHÄNGIG davon, ob bereits ein
     // Onboarding-Draft existiert. Auf dem Gerät kann das Profil aus der Cloud/PROFILE stammen,
     // ohne dass je ein v2-Draft gespeichert wurde. edit:true darf NIE renderReviewDone() zeigen.
@@ -78,13 +109,13 @@
     mountShell();
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
-      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">Fortschritt gefunden</h2>' +
-      '<p class="ob2-desc">Auf diesem Gerät liegt bereits ein gespeicherter Onboarding-Fortschritt. Was möchtest du tun?</p>' +
+      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + T('ob.fortschritt_gefunden') + '</h2>' +
+      '<p class="ob2-desc">' + T('ob.auf_diesem_geraet_liegt_bereits') + '</p>' +
       '<div class="ob2-nav">' +
-        '<button type="button" class="btn" id="ob2-resume">Fortsetzen</button>' +
-        '<button type="button" class="btn sec" id="ob2-new">Neu beginnen</button>' +
+        '<button type="button" class="btn" id="ob2-resume">' + T('ob.fortsetzen') + '</button>' +
+        '<button type="button" class="btn sec" id="ob2-new">' + T('ob.neu_beginnen') + '</button>' +
       '</div>' +
-      '<button type="button" class="ob2-later" id="ob2-cancel">Abbrechen</button>';
+      '<button type="button" class="ob2-later" id="ob2-cancel">' + T('ob.abbrechen') + '</button>';
     card.querySelector('#ob2-resume').onclick = function () {
       S.draft = existing;
       if (L().readyForReview(existing)) { renderReviewDone(); return; } // Statusansicht erhalten
@@ -143,6 +174,20 @@
     mountShell();
     // currentStep absichern: unbekannt → erster gültiger Schritt.
     if (L().STEP_IDS.indexOf(S.draft.currentStep) < 0) S.draft.currentStep = L().STEP_IDS[0];
+    /* B-04 Teil 3: Schrittwechsel ZENTRAL erkennen (sieben submit-Pfade rufen advance*),
+       statt jede Stelle zu instrumentieren. Vorwaerts = complete (oder skip, wenn markiert),
+       rueckwaerts = back; danach enter fuer den neuen Schritt. */
+    try {
+      var _cur = S.draft.currentStep;
+      if (S.obLoggedStep !== _cur) {
+        if (S.obLoggedStep != null) {
+          var _fi = L().stepIndex(S.obLoggedStep), _ti = L().stepIndex(_cur);
+          if (S.obSkipped === S.obLoggedStep) _obLog('skip', S.obLoggedStep);
+          else _obLog(_ti > _fi ? 'complete' : 'back', S.obLoggedStep, { fromStep: S.obLoggedStep });
+        }
+        S.obSkipped = null; S.obLoggedStep = _cur; _obEnter(_cur);
+      }
+    } catch (e) {}
     // M5a: neuer Welcome-Screen (A0) — zählt nicht zum Fortschritt, keine Eingaben.
     if (S.draft.currentStep === 'welcome') { renderWelcome(showCorrupt); return; }
     // Profil-Schritt: bei fehlender/unvollständiger Profil-Logik FAIL-CLOSED (keine generische Übersprung-Möglichkeit).
@@ -160,7 +205,7 @@
     var id = S.draft.currentStep, meta = stepMeta(id), p = L().progress(S.draft);
     var isFirst = L().isFirst(id), isLast = L().isLast(id);
     var corrupt = (S.corruptNote || showCorrupt)
-      ? '<p class="ob2-note" role="status">Der gespeicherte Fortschritt konnte nicht vollständig geladen werden. Wir starten an einer sicheren Stelle.</p>' : '';
+      ? '<p class="ob2-note" role="status">' + T('ob.der_gespeicherte_fortschritt_konnte_nicht') + '</p>' : '';
     S.corruptNote = false;
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
@@ -169,14 +214,14 @@
       corrupt +
       '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + esc(meta.title) + '</h2>' +
       '<p class="ob2-desc">' + esc(meta.desc) + '</p>' +
-      (isLast ? '<p class="ob2-note">Dein Basisprofil und deine Sportauswahl sind gespeichert. Ziele und Trainingsalltag folgen in den nächsten Schritten.</p>' + sportsSummaryHTML() : '') +
+      (isLast ? '<p class="ob2-note">' + T('ob.dein_basisprofil_und_deine_sportauswahl_') + '</p>' + sportsSummaryHTML() : '') +
       ((isLast && S.reviewError) ? '<p class="ob2-err" role="alert" id="ob2-review-err">' + esc(S.reviewError) + '</p>' : '') +
       '<div class="ob2-nav">' +
-        (isFirst ? '' : '<button type="button" class="btn sec" id="ob2-back">Zurück</button>') +
-        (isLast ? '<button type="button" class="btn" id="ob2-review-ready">Einrichtung vormerken</button>'
-                : '<button type="button" class="btn" id="ob2-next">Weiter</button>') +
+        (isFirst ? '' : '<button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button>') +
+        (isLast ? '<button type="button" class="btn" id="ob2-review-ready">' + T('ob.einrichtung_vormerken') + '</button>'
+                : '<button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button>') +
       '</div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
     var back = card.querySelector('#ob2-back'); if (back) back.onclick = goBack;
     var next = card.querySelector('#ob2-next'); if (next) next.onclick = goNext;
     var rr = card.querySelector('#ob2-review-ready'); if (rr) rr.onclick = goReviewReady;
@@ -187,7 +232,7 @@
 
   /* ===== Inkrement 4i.1: echte Schritte Ziele / Trainingsalltag / Zusammenfassung (zentrale Modelle) ===== */
   function PM() { return O.profileModel; }
-  var OB_WD = [['mo', 'Mo'], ['di', 'Di'], ['mi', 'Mi'], ['do', 'Do'], ['fr', 'Fr'], ['sa', 'Sa'], ['so', 'So']];
+  var OB_WD = [['mo', '' + T('ob.mo') + ''], ['di', '' + T('ob.di') + ''], ['mi', '' + T('ob.mi') + ''], ['do', '' + T('ob.do') + ''], ['fr', '' + T('ob.fr') + ''], ['sa', '' + T('ob.sa') + ''], ['so', '' + T('ob.so') + '']];
   function curGoals() { S.draft.draftData = S.draft.draftData || {}; if (!Array.isArray(S.draft.draftData.goals)) { var seed = (O.profile && O.profile.goals) || (root.PROFILE && root.PROFILE.goals) || []; S.draft.draftData.goals = PM() ? PM().normalizeGoals(seed) : seed.slice(); } return S.draft.draftData.goals; }
 
   /* ============================================================
@@ -200,29 +245,29 @@
      - Kein primaryGoal-Write: Legacy-Projektion läuft erst im Completion-Pfad.
      ============================================================ */
   var ESSENTIAL_GOAL_GROUPS = [
-    { label: 'Ausdauer', items: [
-      ['run_5k', '5-km-Lauf', 'Die ersten 5 km schaffen oder schneller werden.'],
-      ['run_10k', '10-km-Lauf', '10 km durchlaufen oder eine neue Bestzeit.'],
-      ['half_marathon', 'Halbmarathon', 'Die 21,1 km finishen oder gezielt schneller werden.'],
-      ['marathon', 'Marathon', 'Die 42,2 km strukturiert vorbereiten.'],
-      ['triathlon', 'Triathlon', 'Schwimmen, Rad und Laufen kombinieren.'],
-      ['base_endurance', 'Grundausdauer aufbauen', 'Fitter werden und länger durchhalten.']
+    { label: '' + T('ob.ausdauer') + '', items: [
+      ['run_5k', '' + T('ob.5_km_lauf') + '', '' + T('ob.die_ersten_5_km_schaffen') + ''],
+      ['run_10k', '' + T('ob.10_km_lauf') + '', '' + T('ob.10_km_durchlaufen_oder_eine') + ''],
+      ['half_marathon', '' + T('ob.halbmarathon') + '', '' + T('ob.die_21_1_km_finishen') + ''],
+      ['marathon', '' + T('ob.marathon') + '', '' + T('ob.die_42_2_km_strukturiert') + ''],
+      ['triathlon', '' + T('ob.triathlon') + '', '' + T('ob.schwimmen_rad_und_laufen_kombinieren') + ''],
+      ['base_endurance', '' + T('ob.grundausdauer_aufbauen') + '', '' + T('ob.fitter_werden_und_laenger_durchhalten') + '']
     ] },
-    { label: 'Kraft & Körper', items: [
-      ['muscle_gain', 'Muskeln aufbauen', 'Nachhaltig Muskulatur und Kraft entwickeln.'],
-      ['get_stronger', 'Stärker werden', 'Mehr Kraft in den Grundübungen.'],
-      ['fat_loss', 'Körperfett reduzieren', 'Definierter werden und Leistung halten.']
+    { label: '' + T('ob.kraft_koerper') + '', items: [
+      ['muscle_gain', '' + T('ob.muskeln_aufbauen') + '', '' + T('ob.nachhaltig_muskulatur_und_kraft_entwickeln') + ''],
+      ['get_stronger', '' + T('ob.staerker_werden') + '', '' + T('ob.mehr_kraft_in_den_grunduebungen') + ''],
+      ['fat_loss', '' + T('ob.koerperfett_reduzieren') + '', '' + T('ob.definierter_werden_und_leistung_halten') + '']
     ] },
-    { label: 'Gesundheit & Alltag', items: [
-      ['train_regularly', 'Regelmäßig trainieren', 'Eine stabile Trainingsroutine aufbauen.'],
-      ['pain_free', 'Schmerzfrei trainieren', 'Beschwerden reduzieren, belastbar werden.'],
-      ['return_after_break', 'Wiedereinstieg', 'Nach einer Pause sicher zurückkommen.'],
-      ['improve_recovery', 'Bessere Regeneration', 'Schlaf und Erholung gezielt verbessern.']
+    { label: '' + T('ob.gesundheit_alltag') + '', items: [
+      ['train_regularly', '' + T('ob.regelmaessig_trainieren') + '', '' + T('ob.eine_stabile_trainingsroutine_aufbauen') + ''],
+      ['pain_free', '' + T('ob.schmerzfrei_trainieren') + '', '' + T('ob.beschwerden_reduzieren_belastbar_werden') + ''],
+      ['return_after_break', '' + T('ob.wiedereinstieg') + '', '' + T('ob.nach_einer_pause_sicher_zurueckkommen') + ''],
+      ['improve_recovery', '' + T('ob.bessere_regeneration') + '', '' + T('ob.schlaf_und_erholung_gezielt_verbessern') + '']
     ] },
-    { label: 'Sport & Wettkampf', items: [
-      ['game_endurance', 'Spielfitness verbessern', 'Über das ganze Spiel leistungsfähig bleiben.'],
-      ['injury_prevention', 'Verletzungen vorbeugen', 'Robust bleiben für Training und Spiel.'],
-      ['custom', 'Eigenes Ziel', 'Beschreibe dein Ziel mit eigenem Titel.']
+    { label: '' + T('ob.sport_wettkampf') + '', items: [
+      ['game_endurance', '' + T('ob.spielfitness_verbessern') + '', '' + T('ob.ueber_das_ganze_spiel_leistungsfaehig') + ''],
+      ['injury_prevention', '' + T('ob.verletzungen_vorbeugen') + '', '' + T('ob.robust_bleiben_fuer_training_und') + ''],
+      ['custom', '' + T('ob.eigenes_ziel') + '', '' + T('ob.beschreibe_dein_ziel_mit_eigenem') + '']
     ] }
   ];
   function _goalCatalogFlat() { var M = PM(); var out = []; if (M && M.GOAL_CATEGORIES) Object.keys(M.GOAL_CATEGORIES).forEach(function (k) { out = out.concat(M.GOAL_CATEGORIES[k]); }); return out; }
@@ -296,14 +341,14 @@
      Allgemeinziele null. Dann erscheint KEIN Feld und es wird keine Ersatzzahl
      erfunden. Datenluecke != Wert. */
   var GOAL_VALUE_FIELDS = {
-    time:   { label: 'Zielzeit',                typ: 'text',   ph: '1:50:00', unit: 's',
-              hint: 'Format hh:mm:ss oder mm:ss — 1:50:00 heißt eine Stunde fünfzig.' },
-    weight: { label: 'Zielgewicht (kg)',        typ: 'number', ph: '72',      unit: 'kg',
-              hint: 'Das Körpergewicht, auf das du hinarbeitest.' },
-    power:  { label: 'Ziel-FTP (Watt)',         typ: 'number', ph: '260',     unit: 'w',
-              hint: 'Die Schwellenleistung, die du erreichen willst.' },
-    count:  { label: 'Ziel-VO₂max (ml/kg/min)', typ: 'number', ph: '55',      unit: 'ml/kg/min',
-              hint: 'Der Wert, den du erreichen willst.' }
+    time:   { label: '' + T('ob.zielzeit') + '',                typ: 'text',   ph: '1:50:00', unit: 's',
+              hint: '' + T('ob.format_hh_mm_ss_oder') + '' },
+    weight: { label: '' + T('ob.zielgewicht_kg') + '',        typ: 'number', ph: '72',      unit: 'kg',
+              hint: '' + T('ob.das_koerpergewicht_auf_das_du') + '' },
+    power:  { label: '' + T('ob.ziel_ftp_watt') + '',         typ: 'number', ph: '260',     unit: 'w',
+              hint: '' + T('ob.die_schwellenleistung_die_du_erreichen') + '' },
+    count:  { label: '' + T('ob.ziel_vo_max_ml_kg') + '', typ: 'number', ph: '55',      unit: 'ml/kg/min',
+              hint: '' + T('ob.der_wert_den_du_erreichen') + '' }
   };
 
   function goalMetricFor(g) {
@@ -331,7 +376,7 @@
       '<input class="ob2-input" id="obg-value" type="' + f.typ + '"' +
       (f.typ === 'number' ? ' inputmode="decimal" step="0.1" min="0"' : '') +
       ' placeholder="' + esc(f.ph) + '" value="' + esc(wert) + '">' +
-      '<p class="ob2-hint">' + esc(f.hint) + ' Ohne Angabe plant ORVIA offener — das ist kein Fehler.</p>' +
+      '<p class="ob2-hint">' + esc(f.hint) + ' ' + T('ob.ohne_angabe_offener') + '</p>' +
       '<span class="ob2-err" id="err-goalvalue" role="alert">' + esc(fehler) + '</span>';
   }
 
@@ -360,8 +405,8 @@
     if (typeof w === 'number' && isFinite(w) && w > 0) return true;
     dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });
     S.goalValueErr = (metrik === 'time')
-      ? 'Bitte als Zeit angeben — zum Beispiel 1:50:00 oder 24:30.'
-      : 'Bitte eine Zahl größer als 0 angeben.';
+      ? '' + T('ob.bitte_als_zeit_angeben_zum') + ''
+      : '' + T('ob.bitte_eine_zahl_groesser_als') + '';
     return false;
   }
 
@@ -376,22 +421,22 @@
     var goalErr = (S.goalsSubmitted && errs._goal) ? errs._goal : '';
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">Ein Ziel reicht für den Start. Weitere kannst du jederzeit im Profil ergänzen.</p>' +
+      '<p class="ob2-desc">' + T('ob.ein_ziel_reicht_fuer_den') + '</p>' +
       '<span class="ob2-err" id="err-goal" role="alert">' + esc(goalErr) + '</span>' +
       '<div id="ob3-goalgroups"></div>' +
       '<div id="ob3-goaldetails">' + (ex ?
-        '<div class="ob2-field ob3-goaldetails"><span class="ob3-grouplabel" id="lbl-goaldetails">Details (optional)</span>' +
-          '<label for="obg-title" class="ob3-sublabel">Titel</label>' +
-          '<input class="ob2-input" id="obg-title" type="text" maxlength="80" value="' + esc(ex.title || '') + '"' + (ex.category === 'custom' ? ' placeholder="Wie heißt dein Ziel?"' : '') + '>' +
-          '<label for="obg-date" class="ob3-sublabel">Zieldatum</label>' +
+        '<div class="ob2-field ob3-goaldetails"><span class="ob3-grouplabel" id="lbl-goaldetails">' + T('ob.details_optional') + '</span>' +
+          '<label for="obg-title" class="ob3-sublabel">' + T('ob.titel') + '</label>' +
+          '<input class="ob2-input" id="obg-title" type="text" maxlength="80" value="' + esc(ex.title || '') + '"' + (ex.category === 'custom' ? '' + T('ob.placeholder_wie_heisst_dein_ziel') + '' : '') + '>' +
+          '<label for="obg-date" class="ob3-sublabel">' + T('ob.zieldatum_') + '</label>' +
           '<input class="ob2-input" id="obg-date" type="date" value="' + esc(ex.targetDate || '') + '">' +
-          '<p class="ob2-hint">Ohne Datum plant ORVIA offen; mit Datum wird gezielt darauf hingearbeitet.</p>' +
+          '<p class="ob2-hint">' + T('ob.ohne_datum_plant_orvia_offen') + '</p>' +
           goalValueFieldHTML(ex) +
         '</div>' : '') + '</div>' +
-      (otherCount > 0 ? '<p class="ob2-note">' + otherCount + ' weiteres Ziel' + (otherCount > 1 ? 'e' : '') + ' aus deinem Profil bleib' + (otherCount > 1 ? 'en' : 't') + ' erhalten.</p>' : '') +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Dein Ziel', 'Was willst du erreichen?');
+      (otherCount > 0 ? '<p class="ob2-note">' + otherCount + '' + T('ob.weiteres_ziel') + '' + (otherCount > 1 ? 'e' : '') + '' + T('ob.aus_deinem_profil_bleib') + '' + (otherCount > 1 ? 'en' : 't') + ' erhalten.</p>' : '') +
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.dein_ziel') + '', '' + T('ob.was_willst_du_erreichen') + '');
     // Gruppierte ChoiceCards; nur kanonische Katalog-IDs (defensiv gefiltert + geloggt).
     var wrap = card.querySelector('#ob3-goalgroups');
     ESSENTIAL_GOAL_GROUPS.forEach(function (grp) {
@@ -447,10 +492,10 @@
     try { console.error('[ORVIA onboarding] profileModel/Kit fehlt oder ist unvollständig — Ziel-Schritt gesperrt.'); } catch (e) {}
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML = progressHTML() +
-      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">Zielauswahl nicht verfügbar</h2>' +
-      '<p class="ob2-desc">Die Zielauswahl kann gerade nicht geladen werden. Bitte starte die App neu.</p>' +
-      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + T('ob.zielauswahl_nicht_verfuegbar') + '</h2>' +
+      '<p class="ob2-desc">' + T('ob.die_zielauswahl_kann_gerade_nicht') + '</p>' +
+      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-later').onclick = later;
     focusHeading();
@@ -511,29 +556,29 @@
     var errors = {};
     if (S.availabilitySubmitted) {
       errors = PM().validateEssentialAvailability(av).errors;
-      if (!prim || prim.typicalDuration == null) errors._duration = 'Wähle deine typische Trainingsdauer aus.';
+      if (!prim || prim.typicalDuration == null) errors._duration = '' + T('ob.waehle_deine_typische_trainingsdauer_aus') + '';
     }
     var card = S.el.querySelector('.ob2-card');
     var dayBtns = OB_WD.map(function (w) {
       var on = !!(av.days[w[0]] && av.days[w[0]].available && !av.days[w[0]].restDay);
-      return '<button type="button" class="ob3-daydot' + (on ? ' on' : '') + '" id="av-day-' + w[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(w[1]) + (on ? ' ausgewählt' : '') + '">' + esc(w[1]) + '</button>';
+      return '<button type="button" class="ob3-daydot' + (on ? ' on' : '') + '" id="av-day-' + w[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(w[1]) + (on ? '' + T('ob.ausgewaehlt') + '' : '') + '">' + esc(w[1]) + '</button>';
     }).join('');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">ORVIA plant nur, was in dein Leben passt. Feinheiten stellst du später im Profil ein.</p>' +
-      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-days">An welchen Tagen kannst du meistens trainieren?</span>' +
+      '<p class="ob2-desc">' + T('ob.orvia_plant_nur_was_in') + '</p>' +
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-days">' + T('ob.an_welchen_tagen_kannst_du') + '</span>' +
         '<span class="ob2-err" id="err-days" role="alert">' + esc(errors._days || '') + '</span>' +
         '<div class="ob3-daydots" role="group" aria-labelledby="lbl-days"' + (errors._days ? ' aria-describedby="err-days" aria-invalid="true"' : '') + '>' + dayBtns + '</div></div>' +
-      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-duration">Wie lange dauert eine Einheit typischerweise?</span>' +
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-duration">' + T('ob.wie_lange_dauert_eine_einheit') + '</span>' +
         '<span class="ob2-err" id="err-duration" role="alert">' + esc(errors._duration || '') + '</span>' +
         '<div id="ob3-durband"></div></div>' +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Deine Verfügbarkeit', 'Grobe Angaben genügen.');
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.deine_verfuegbarkeit') + '', '' + T('ob.grobe_angaben_genuegen') + '');
     var doc = D();
     OB_WD.forEach(function (w) { var b = doc.getElementById('av-day-' + w[0]); if (b) b.onclick = function () { _toggleAvDay(w[0]); }; });
     var band = kit.createSegmentedControl({
-      name: 'duration-band', label: 'Typische Dauer', allowEmpty: true,
+      name: 'duration-band', label: '' + T('ob.typische_dauer') + '', allowEmpty: true,
       options: sl.DURATION_BANDS.map(function (b) { return { value: b.id, label: b.label, id: 'avdur-' + b.id }; }),
       value: prim ? sl.bandForDuration(prim.typicalDuration) : null,
       onChange: function (bandId) {
@@ -584,26 +629,26 @@
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">Damit ORVIA dein Training sicher anpasst.</p>' +
-      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-safety">Hast du aktuell Schmerzen oder Beschwerden?</span>' +
+      '<p class="ob2-desc">' + T('ob.damit_orvia_dein_training_sicher') + '</p>' +
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-safety">' + T('ob.hast_du_aktuell_schmerzen_oder') + '</span>' +
         '<span class="ob2-err" id="err-safety" role="alert">' + esc(errors._answer || '') + '</span>' +
         '<div id="ob3-safety-answer" class="ob3-choicegrid" role="group" aria-labelledby="lbl-safety"></div></div>' +
       '<div id="ob3-safety-detail">' + (showYes ?
-        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-region">Welche Körperregion ist betroffen?</span>' +
+        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-region">' + T('ob.welche_koerperregion_ist_betroffen') + '</span>' +
           '<span class="ob2-err" id="err-region" role="alert">' + esc(errors._region || '') + '</span>' +
           '<div id="ob3-regions" class="ob3-choicegrid" role="group" aria-labelledby="lbl-region"></div></div>' +
-        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-intensity">Wie stark sind die Beschwerden aktuell?</span>' +
+        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-intensity">' + T('ob.wie_stark_sind_die_beschwerden') + '</span>' +
           '<span class="ob2-err" id="err-intensity" role="alert">' + esc(errors._intensity || '') + '</span>' +
           '<div id="ob3-intensity"></div></div>' +
-        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-side">Seite <span class="ob3-optional">(optional)</span></span>' +
+        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-side">' + T('ob.seite') + '<span class="ob3-optional">(optional)</span></span>' +
           '<div id="ob3-side"></div></div>' : '') + '</div>' +
-      '<p class="ob3-trust">ORVIA passt dein Training an Beschwerden an — ersetzt aber keine ärztliche Abklärung. Bei starken oder unklaren Beschwerden lass dich medizinisch untersuchen.</p>' +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Kurzer Sicherheits-Check', 'Eine Frage — für sichere Empfehlungen.');
+      '<p class="ob3-trust">' + T('ob.orvia_passt_dein_training_an') + '</p>' +
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.kurzer_sicherheits_check') + '', '' + T('ob.eine_frage_fuer_sichere_empfehlungen') + '');
     var ansWrap = card.querySelector('#ob3-safety-answer');
-    var noCard = kit.createChoiceCard({ id: 'safety-no', label: 'Nein', description: 'Keine aktuellen Beschwerden.', mode: 'single', value: 'no', selected: !!(s && s.hasComplaints === false), onChange: function () { _setSafetyAnswer(false); } });
-    var yesCard = kit.createChoiceCard({ id: 'safety-yes', label: 'Ja', description: 'Ich habe aktuell Schmerzen oder Einschränkungen.', mode: 'single', value: 'yes', selected: showYes, onChange: function () { _setSafetyAnswer(true); } });
+    var noCard = kit.createChoiceCard({ id: 'safety-no', label: '' + T('ob.nein') + '', description: '' + T('ob.keine_aktuellen_beschwerden') + '', mode: 'single', value: 'no', selected: !!(s && s.hasComplaints === false), onChange: function () { _setSafetyAnswer(false); } });
+    var yesCard = kit.createChoiceCard({ id: 'safety-yes', label: '' + T('ob.ja') + '', description: '' + T('ob.ich_habe_aktuell_schmerzen_oder') + '', mode: 'single', value: 'yes', selected: showYes, onChange: function () { _setSafetyAnswer(true); } });
     ansWrap.appendChild(noCard.el); ansWrap.appendChild(yesCard.el);
     if (showYes) {
       var regWrap = card.querySelector('#ob3-regions');
@@ -623,7 +668,7 @@
         return c;
       });
       var stepper = kit.createStepper({
-        label: 'Intensität (1–10)', min: 1, max: 10, step: 1, nullable: true,
+        label: '' + T('ob.intensitaet_1_10') + '', min: 1, max: 10, step: 1, nullable: true,
         value: (s.constraint && s.constraint.intensity != null) ? s.constraint.intensity : null,
         onChange: function (v) {
           s.constraint = s.constraint || {};
@@ -634,8 +679,8 @@
       });
       card.querySelector('#ob3-intensity').appendChild(stepper.el);
       var side = kit.createSegmentedControl({
-        name: 'safety-side', label: 'Betroffene Seite', allowEmpty: true,
-        options: [{ value: 'left', label: 'Links', id: 'side-left' }, { value: 'right', label: 'Rechts', id: 'side-right' }, { value: 'both', label: 'Beidseitig', id: 'side-both' }],
+        name: 'safety-side', label: '' + T('ob.betroffene_seite') + '', allowEmpty: true,
+        options: [{ value: 'left', label: '' + T('ob.links') + '', id: 'side-left' }, { value: 'right', label: '' + T('ob.rechts') + '', id: 'side-right' }, { value: 'both', label: '' + T('ob.beidseitig') + '', id: 'side-both' }],
         value: (s.constraint && s.constraint.side) || null,
         onChange: function (v) { s.constraint = s.constraint || {}; s.constraint.side = v; persist(); }
       });
@@ -669,6 +714,49 @@
     var pl = PL();
     var hEl = doc.getElementById('pf-heightCm'); if (hEl && hEl.value != null) { var hv = pl._num(hEl.value); p.heightCm = (hEl.value === '' ? null : (hv != null ? Math.round(hv) : hEl.value)); }
     var wEl = doc.getElementById('pf-weightKg'); if (wEl && wEl.value != null) { var wv = pl._num(wEl.value); p.weightKg = (wEl.value === '' ? null : (wv != null ? wv : wEl.value)); }
+    /* B-04: optionale letzte Laufzeit (nur bei Lauf-/Triathlon-Hauptsport gerendert). Rohwerte
+       werden im Draft gehalten; geparst wird erst beim Abschluss (buildCompletionPatch). */
+    var tEl = doc.getElementById('pf-pbTime');
+    if (tEl) {
+      var perf = S.draft.draftData.performance = S.draft.draftData.performance || {};
+      perf.timeText = tEl.value || '';
+      var dEl = doc.getElementById('pf-pbDate'); perf.measuredAt = (dEl && dEl.value) ? dEl.value : (perf.measuredAt || null);
+    }
+  }
+  var PB_DISTANCES = [['5 km', 5], ['10 km', 10], ['' + T('ob.halbmarathon') + '', 21.0975], ['' + T('ob.marathon') + '', 42.195]];
+  function _pbRelevant() {
+    try { var pe = primaryEntry(S.draft.draftData.sports); var id = pe && String(pe.sportId || '').toLowerCase(); return id === 'running' || id === 'triathlon'; } catch (e) { return false; }
+  }
+  function _pbBlockHTML(perf) {
+    perf = perf || {};
+    return '<div class="ob2-field ob3-pb"><span class="ob3-grouplabel" id="lbl-pb">' + T('ob.letzte_laufzeit_optional') + '</span>' +
+      '<p class="ob2-desc" style="margin-top:2px">' + T('ob.ein_wettkampf_oder_ein_test') + '</p>' +
+      '<div class="ob2-chips" id="ob3-pb-dist" role="group" aria-labelledby="lbl-pb">' + PB_DISTANCES.map(function (d) {
+        return '<button type="button" class="ob2-chip' + (perf.distance === d[0] ? ' on' : '') + '" data-pbd="' + esc(d[0]) + '" aria-pressed="' + (perf.distance === d[0] ? 'true' : 'false') + '">' + esc(d[0]) + '</button>'; }).join('') + '</div>' +
+      field('' + T('ob.zeit_z_b_24_30') + '', 'pf-pbTime', '<input id="pf-pbTime" type="text" inputmode="numeric" placeholder="' + T('ob.24_30') + '" value="' + esc(perf.timeText || '') + '' + T('ob.aria_describedby_err_pbtime') + '', 'pbTime', {}) +
+      '<div class="ob2-chips" id="ob3-pb-ctx" role="group" aria-label="Kontext">' + [['race', '' + T('ob.wettkampf') + ''], ['training', '' + T('ob.training') + '']].map(function (c) {
+        return '<button type="button" class="ob2-chip' + ((perf.context || 'race') === c[0] ? ' on' : '') + '" data-pbc="' + c[0] + '" aria-pressed="' + ((perf.context || 'race') === c[0] ? 'true' : 'false') + '">' + c[1] + '</button>'; }).join('') + '</div>' +
+      field('' + T('ob.datum') + '', 'pf-pbDate', '<input id="pf-pbDate" type="date" value="' + esc(perf.measuredAt || '') + '">', 'pbDate', {}) +
+    '</div>';
+  }
+  function _bindPbBlock(card) {
+    var perf = S.draft.draftData.performance = S.draft.draftData.performance || {};
+    if (!perf.context) perf.context = 'race';
+    var bind = function (sel, attr, key) {
+      var host = card.querySelector(sel); if (!host || !host.querySelectorAll) return;
+      host.querySelectorAll('button').forEach(function (b) {
+        b.onclick = function () { perf[key] = b.getAttribute(attr); host.querySelectorAll('button').forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on ? 'true' : 'false'); }); persist(); };
+      });
+    };
+    bind('#ob3-pb-dist', 'data-pbd', 'distance'); bind('#ob3-pb-ctx', 'data-pbc', 'context');
+  }
+  /* Bestzeit-Eingabe pruefen: leer = ok (optional); Zeit ohne Distanz oder unlesbare Zeit = Fehler. */
+  function _pbValidate(perf) {
+    if (!perf || !(perf.timeText || '').trim()) return { ok: true, secs: null };
+    var M = PM(); var secs = (M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
+    if (!(secs > 0)) return { ok: false, error: '' + T('ob.bitte_eine_gueltige_zeit_eingeben') + '' };
+    if (!perf.distance) return { ok: false, error: '' + T('ob.bitte_die_distanz_waehlen') + '' };
+    return { ok: true, secs: secs };
   }
   function renderBodyStep() {
     mountShell();
@@ -678,21 +766,22 @@
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">Optional: Gewicht und Größe fließen in Belastung und Trainingszonen ein — nicht in Bewertungen.</p>' +
+      '<p class="ob2-desc">' + T('ob.optional_gewicht_und_groesse_fliessen') + '</p>' +
       '<span id="ob3-body-help"></span>' +
       '<form class="ob2-form ob3-form" autocomplete="on" novalidate>' +
-        field('Größe (cm)', 'pf-heightCm', '<input id="pf-heightCm" type="number" inputmode="numeric" min="100" max="250" value="' + esc(p.heightCm != null ? p.heightCm : '') + '" aria-describedby="err-heightCm"' + ai(errors, 'heightCm') + '>', 'heightCm', errors) +
-        field('Gewicht (kg)', 'pf-weightKg', '<input id="pf-weightKg" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="' + esc(p.weightKg != null ? p.weightKg : '') + '" aria-describedby="err-weightKg"' + ai(errors, 'weightKg') + '>', 'weightKg', errors) +
+        field('' + T('ob.groesse_cm') + '', 'pf-heightCm', '<input id="pf-heightCm" type="number" inputmode="numeric" min="100" max="250" value="' + esc(p.heightCm != null ? p.heightCm : '') + '' + T('ob.aria_describedby_err_heightcm') + '' + ai(errors, 'heightCm') + '>', 'heightCm', errors) +
+        (_pbRelevant() ? _pbBlockHTML(S.draft.draftData.performance) : '') +
+        field('' + T('ob.gewicht_kg') + '', 'pf-weightKg', '<input id="pf-weightKg" type="number" inputmode="decimal" step="0.1" min="30" max="300" value="' + esc(p.weightKg != null ? p.weightKg : '') + '' + T('ob.aria_describedby_err_weightkg') + '' + ai(errors, 'weightKg') + '>', 'weightKg', errors) +
       '</form>' +
       '<div class="ob2-navwrap"><div class="ob2-nav">' +
-        '<button type="button" class="btn sec" id="ob2-back">Zurück</button>' +
-        '<button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="btn sec ob3-skipbtn" id="ob3-body-skip">Später ergänzen</button>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Körperdaten (optional)', 'Kannst du jederzeit nachtragen.');
+        '<button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button>' +
+        '<button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="btn sec ob3-skipbtn" id="ob3-body-skip">' + T('ob.spaeter_ergaenzen') + '</button>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.koerperdaten_optional') + '', '' + T('ob.kannst_du_jederzeit_nachtragen') + '');
     var help = K().createInlineHelp({
-      label: 'Warum fragen wir das?', title: 'Körperdaten (optional)',
-      content: 'Gewicht und Größe verbessern die Einordnung von Belastung und Trainingszonen. Ohne Angabe rechnet ORVIA mit neutralen Verfahren — es werden keine Werte erfunden.'
+      label: '' + T('ob.warum_fragen_wir_das') + '', title: '' + T('ob.koerperdaten_optional') + '',
+      content: '' + T('ob.gewicht_und_groesse_verbessern_die') + ''
     });
     card.querySelector('#ob3-body-help').appendChild(help.el);
     ['pf-heightCm', 'pf-weightKg'].forEach(function (id) {
@@ -700,13 +789,14 @@
       el.addEventListener('change', function () { readBodyForm(); persist(); });
       el.addEventListener('blur', function () { readBodyForm(); persist(); });
     });
+    if (_pbRelevant()) { _bindPbBlock(card); var pbT = D().getElementById('pf-pbTime'); if (pbT && pbT.addEventListener) { pbT.addEventListener('change', function () { readBodyForm(); persist(); }); } if (S.pbError) { var pe = D().getElementById('err-pbTime'); if (pe) pe.textContent = S.pbError; } }
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-next').onclick = submitBody;
     card.querySelector('#ob3-body-skip').onclick = function () {
       // Skip erzwingt keine Daten; bereits Eingetipptes wird NICHT verworfen (bewusst erfasst).
       readBodyForm();
       var r = L().skipStep(S.draft, 'body', now());
-      if (r.ok) { S.bodySubmitted = false; render(); }
+      if (r.ok) { S.obSkipped = 'body'; S.bodySubmitted = false; render(); }
     };
     card.querySelector('#ob2-later').onclick = function () { readBodyForm(); later(); };
     focusHeading(); persist();
@@ -714,6 +804,9 @@
   function submitBody() {
     if (S.busy || navLocked()) return; S.busy = true;
     readBodyForm();
+    var pbv = _pbValidate(S.draft.draftData.performance);
+    if (!pbv.ok) { S.pbError = pbv.error; renderBodyStep(); var pt = D().getElementById('pf-pbTime'); if (pt && pt.focus) { try { pt.focus(); } catch (e) {} } S.busy = false; return; }
+    S.pbError = null;
     var v = PL().validateProfile(S.draft.draftData.profile);
     if (!v.valid && (v.errors.heightCm || v.errors.weightKg)) {
       S.bodySubmitted = true; renderBodyStep();
@@ -738,7 +831,7 @@
   function _rvCard(id, step, title, lines) {
     return '<div class="ob3-reviewcard" id="' + id + '">' +
       '<div class="ob3-reviewcard-head"><span class="ob3-reviewcard-title">' + esc(title) + '</span>' +
-      '<button type="button" class="ob3-reviewedit" id="rv-edit-' + step + '" aria-label="' + esc(title) + ' bearbeiten">Bearbeiten</button></div>' +
+      '<button type="button" class="ob3-reviewedit" id="rv-edit-' + step + '" aria-label="' + esc(title) + ' bearbeiten">' + T('ob.bearbeiten') + '</button></div>' +
       lines.filter(Boolean).map(function (l) { return '<div class="ob3-reviewline">' + l + '</div>'; }).join('') +
       '</div>';
   }
@@ -766,48 +859,48 @@
     var compHtml = '';
     if (completeness && completeness.essential) {
       compHtml = completeness.essential.complete
-        ? '<div class="ob3-compbanner ok" role="status"><span class="ob3-compcheck" aria-hidden="true">✓</span> Profil vollständig — ORVIA kann loslegen.</div>'
-        : '<div class="ob3-compbanner warn" role="status">Noch unvollständig: ' + esc(completeness.essential.missing.map(function (m) { return m.section; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ')) + '</div>';
+        ? '<div class="ob3-compbanner ok" role="status"><span class="ob3-compcheck" aria-hidden="true">✓</span>' + T('ob.profil_vollstaendig_orvia_kann_loslegen') + '</div>'
+        : '<div class="ob3-compbanner warn" role="status">' + T('ob.noch_unvollstaendig') + ' ' + esc(completeness.essential.missing.map(function (m) { return m.section; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ')) + '</div>';
     }
     var safetyLine;
-    if (sf && sf.hasComplaints === false) safetyLine = esc('Keine Beschwerden angegeben.');
+    if (sf && sf.hasComplaints === false) safetyLine = esc('' + T('ob.keine_beschwerden_angegeben') + '');
     else if (sf && sf.hasComplaints === true && sf.constraint) {
       var reg = (M.BODY_REGIONS.filter(function (r) { return r[0] === sf.constraint.bodyRegion; })[0] || [])[1] || sf.constraint.bodyRegion;
-      safetyLine = esc(reg + ' · Intensität ' + sf.constraint.intensity + '/10' + (sf.constraint.side === 'left' ? ' · links' : sf.constraint.side === 'right' ? ' · rechts' : sf.constraint.side === 'both' ? ' · beidseitig' : ''));
+      safetyLine = esc(reg + '' + T('ob.intensitaet') + '' + sf.constraint.intensity + '/10' + (sf.constraint.side === 'left' ? ' · links' : sf.constraint.side === 'right' ? ' · rechts' : sf.constraint.side === 'both' ? ' · beidseitig' : ''));
     } else safetyLine = esc('—');
 
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">Sieht gut aus. Prüfe kurz — dann legt ORVIA los.</p>' +
+      '<p class="ob2-desc">' + T('ob.sieht_gut_aus_pruefe_kurz') + '</p>' +
       compHtml +
-      _rvCard('rv-personal', 'profile', 'Über dich', [
+      _rvCard('rv-personal', 'profile', '' + T('ob.ueber_dich') + '', [
         esc(pf.displayName || '—'),
-        esc(pf.birthDate ? 'Geboren am ' + _rvDate(pf.birthDate) : (pf.ageEstimate != null && pf.ageEstimate !== '' ? pf.ageEstimate + ' Jahre' : ''))
+        esc(pf.birthDate ? '' + T('ob.geboren_am') + '' + _rvDate(pf.birthDate) : (pf.ageEstimate != null && pf.ageEstimate !== '' ? pf.ageEstimate + '' + T('ob.jahre') + '' : ''))
       ]) +
-      _rvCard('rv-sports', 'sports', 'Sportarten', [
-        '<strong>' + esc(primLabel) + '</strong> <span class="ob3-badge">Hauptsport</span>',
+      _rvCard('rv-sports', 'sports', '' + T('ob.sportarten') + '', [
+        '<strong>' + esc(primLabel) + '</strong> <span class="ob3-badge">' + T('ob.hauptsport') + '</span>',
         otherSports.length ? esc(otherSports.join(', ')) : ''
       ]) +
-      _rvCard('rv-training', 'training_level', 'Trainingsstand', [
+      _rvCard('rv-training', 'training_level', '' + T('ob.trainingsstand') + '', [
         esc(prim && prim.level ? _rvLevelLabel(prim.level) : '—'),
-        esc(prim && prim.sessionsPerWeek != null ? 'ca. ' + prim.sessionsPerWeek + '× pro Woche' : '')
+        esc(prim && prim.sessionsPerWeek != null ? 'ca. ' + prim.sessionsPerWeek + '' + T('ob.pro_woche') + '' : '')
       ]) +
-      _rvCard('rv-goal', 'goals', 'Dein Ziel', [
+      _rvCard('rv-goal', 'goals', '' + T('ob.dein_ziel') + '', [
         esc(primary ? primary.title : '—'),
-        esc(primary && primary.targetDate ? 'Zieldatum ' + _rvDate(primary.targetDate) : ''),
-        goals.length > 1 ? esc('+ ' + (goals.length - 1) + ' weiteres Ziel' + (goals.length > 2 ? 'e' : '')) : ''
+        esc(primary && primary.targetDate ? '' + T('ob.zieldatum') + '' + _rvDate(primary.targetDate) : ''),
+        goals.length > 1 ? esc('+ ' + (goals.length - 1) + '' + T('ob.weiteres_ziel') + '' + (goals.length > 2 ? 'e' : '')) : ''
       ]) +
-      _rvCard('rv-availability', 'availability', 'Verfügbarkeit', [
-        esc(days.length + ' Tage pro Woche (' + days.map(function (w) { return w[1]; }).join(', ') + ')'),
-        esc(prim && prim.typicalDuration != null ? 'Typische Einheit ~' + prim.typicalDuration + ' min' : '')
+      _rvCard('rv-availability', 'availability', '' + T('ob.verfuegbarkeit') + '', [
+        esc(days.length + '' + T('ob.tage_pro_woche') + '' + days.map(function (w) { return w[1]; }).join(', ') + ')'),
+        esc(prim && prim.typicalDuration != null ? '' + T('ob.typische_einheit') + '' + prim.typicalDuration + ' min' : '')
       ]) +
-      _rvCard('rv-safety', 'safety', 'Sicherheits-Check', [safetyLine]) +
-      _rvCard('rv-body', 'body', 'Körperdaten', [
-        bodySkipped ? esc('Übersprungen — jederzeit nachtragbar.') :
-          esc([pf.heightCm != null ? pf.heightCm + ' cm' : '', pf.weightKg != null ? pf.weightKg + ' kg' : ''].filter(Boolean).join(' · ') || 'Übersprungen — jederzeit nachtragbar.')
+      _rvCard('rv-safety', 'safety', '' + T('ob.sicherheits_check') + '', [safetyLine]) +
+      _rvCard('rv-body', 'body', '' + T('ob.koerperdaten') + '', [
+        bodySkipped ? esc('' + T('ob.uebersprungen_jederzeit_nachtragbar') + '') :
+          esc([pf.heightCm != null ? pf.heightCm + ' cm' : '', pf.weightKg != null ? pf.weightKg + ' kg' : ''].filter(Boolean).join(' · ') || '' + T('ob.uebersprungen_jederzeit_nachtragbar') + '')
       ]) +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-finish">Profil erstellen</button></div></div>';
-    mountProgressHeader(card, 'Zusammenfassung', 'Alles lässt sich später ändern.');
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-finish">' + T('ob.profil_erstellen') + '</button></div></div>';
+    mountProgressHeader(card, '' + T('ob.zusammenfassung') + '', '' + T('ob.alles_laesst_sich_spaeter_aendern') + '');
     // Rücksprünge: gezielt in den jeweiligen Schritt (auch body via Skip-Rücknahme durch Besuch).
     ['profile', 'sports', 'training_level', 'goals', 'availability', 'safety', 'body'].forEach(function (step) {
       var b = card.querySelector('#rv-edit-' + step);
@@ -833,8 +926,21 @@
        „Client fehlt" → 'local' (kein Cloud-Kontext, z. B. lokaler First-Run)
        · alles andere / Throw → failed (Draft bleibt in_progress, resümierbar).
      ============================================================ */
-  function buildCompletionPatch(dd, M, nowIso) {
+  function buildCompletionPatch(dd, M, nowIso, existing) {
     dd = dd || {}; var pf = dd.profile || {}; var patch = {};
+    /* B-04: letzte Laufzeit → performance.personalBests (bestehende Eintraege bleiben; ein
+       neuer Eintrag nur bei gueltiger Zeit + Distanz — nichts wird erfunden). */
+    try {
+      var perf = dd.performance || null;
+      var secs = (perf && perf.timeText && M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
+      if (perf && secs > 0 && perf.distance) {
+        var ex = (existing && existing.performance && typeof existing.performance === 'object') ? existing.performance : {};
+        var pbs = Array.isArray(ex.personalBests) ? ex.personalBests.slice() : [];
+        pbs.push(M.normalizePersonalBest({ sportId: 'running', distance: perf.distance, discipline: perf.distance, timeSeconds: secs,
+          context: perf.context === 'training' ? 'training' : 'race', measuredAt: perf.measuredAt || null, notes: '' + T('ob.aus_der_einrichtung') + '' }));
+        patch.performance = Object.assign({}, ex, { personalBests: pbs });
+      }
+    } catch (e) {}
     if (pf.displayName != null) patch.name = pf.displayName; else if (pf.firstName) patch.name = pf.firstName;
     if (pf.heightCm != null) patch.heightCm = pf.heightCm; if (pf.weightKg != null) patch.weightKg = pf.weightKg; if (pf.birthDate) patch.birthDate = pf.birthDate; if (pf.sex) patch.sex = pf.sex;
     // M8-Fix: „Nur Alter angeben"-Nutzer (A1) verloren ihr Alter beim Abschluss — ageEstimate mitmappen.
@@ -858,7 +964,7 @@
           side: sf.constraint.side || '',
           intensity: sf.constraint.intensity,
           status: 'active',
-          notes: 'Aus dem Einrichtungs-Sicherheitscheck.'
+          notes: '' + T('ob.aus_dem_einrichtungs_sicherheitscheck') + ''
         }, nowIso)]);
       }
     }
@@ -870,17 +976,17 @@
     if (/Sitzung|Repository fehlt|Client fehlt/i.test(msg)) return 'local';
     return 'failed';
   }
-  var FINISH_ERR_MSG = 'Das hat nicht geklappt. Deine Eingaben sind gesichert – versuch es gleich noch einmal.';
+  var FINISH_ERR_MSG = '' + T('ob.das_hat_nicht_geklappt_deine') + '';
   var _completing = false;   // lokaler In-flight-Guard (kein globales, unkontrolliertes Flag)
   function completeOnboardingFlow(ctx) {
     if (_completing) return Promise.resolve({ ok: false, code: 'in_flight' });
-    if (!ctx || !ctx.draft) return Promise.resolve({ ok: false, code: 'no_draft', error: 'Kein Entwurf vorhanden.' });
+    if (!ctx || !ctx.draft) return Promise.resolve({ ok: false, code: 'no_draft', error: '' + T('ob.kein_entwurf_vorhanden') + '' });
     if (ctx.draft.status === 'completed') return Promise.resolve({ ok: false, code: 'already_completed' });
     _completing = true;
     return Promise.resolve().then(function () {
       var P = ctx.profileApi;
-      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability']); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
-      if (!ctx.profileStore || typeof ctx.profileStore.persist !== 'function') return { success: false, error: { message: 'Keine aktive Sitzung.' } };
+      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability'].concat(ctx.patch && ctx.patch.performance ? ['performance'] : [])); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
+      if (!ctx.profileStore || typeof ctx.profileStore.persist !== 'function') return { success: false, error: { message: '' + T('ob.keine_aktive_sitzung') + '' } };
       return ctx.profileStore.persist();
     }).then(function (r) {
       var cls = _classifyPersist(r);
@@ -937,12 +1043,12 @@
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div class="ob3-hero"><div class="ob3-successmark" aria-hidden="true">✓</div>' +
-      '<h2 id="ob2-title" class="ob3-claim" tabindex="-1">Dein Profil steht.</h2></div>' +
-      '<p class="ob3-lead">Nach deinem ersten Check-in bekommst du deine erste Empfehlung.</p>' +
-      (syncStatus === 'pending' ? '<p class="ob2-note" role="status">Du bist gerade offline – deine Angaben werden automatisch synchronisiert, sobald du wieder online bist.</p>' : '') +
-      '<div class="ob2-nav"><button type="button" class="btn" id="ob2-first-checkin">Ersten Check-in machen</button></div>' +
-      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-toapp">Zur App</button></div>' +
-      '<p class="ob3-trust">Dein Profil kannst du jederzeit über dein Profilbild verfeinern.</p>';
+      '<h2 id="ob2-title" class="ob3-claim" tabindex="-1">' + T('ob.dein_profil_steht') + '</h2></div>' +
+      '<p class="ob3-lead">' + T('ob.nach_deinem_ersten_check_in') + '</p>' +
+      (syncStatus === 'pending' ? '<p class="ob2-note" role="status">' + T('ob.du_bist_gerade_offline_deine') + '</p>' : '') +
+      '<div class="ob2-nav"><button type="button" class="btn" id="ob2-first-checkin">' + T('ob.ersten_check_in_machen') + '</button></div>' +
+      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-toapp">' + T('ob.zur_app') + '</button></div>' +
+      '<p class="ob3-trust">' + T('ob.dein_profil_kannst_du_jederzeit') + '</p>';
     card.querySelector('#ob2-first-checkin').onclick = _gotoFirstCheckin;
     card.querySelector('#ob2-toapp').onclick = function () { closeShell(); };
     focusHeading();
@@ -953,10 +1059,10 @@
     _collectGoals();   // M7: Verfügbarkeit/Sicherheitscheck schreiben direkt in den Draft (kein Collect nötig)
     var card = (S.el && S.el.querySelector) ? S.el.querySelector('.ob2-card') : null;
     var btn = (card && card.querySelector) ? card.querySelector('#ob2-finish') : null;
-    if (btn) { btn.disabled = true; btn.textContent = 'Wird gespeichert …'; }
+    if (btn) { btn.disabled = true; btn.textContent = '' + T('ob.wird_gespeichert') + ''; }
     var ctx = {
       draft: S.draft,
-      patch: buildCompletionPatch(S.draft.draftData || {}, PM(), new Date(now()).toISOString()),
+      patch: buildCompletionPatch(S.draft.draftData || {}, PM(), new Date(now()).toISOString(), root.PROFILE || null),
       profileApi: root.ORVIA && root.ORVIA.profile,
       profileStore: root.ORVIA && root.ORVIA.profileStore,
       persistDraft: persist,
@@ -965,9 +1071,9 @@
     };
     completeOnboardingFlow(ctx).then(function (res) {
       S.busy = false;
-      if (res.ok) { renderFinishDone(res.syncStatus); return; }
+      if (res.ok) { _obLog('finish', 'review'); renderFinishDone(res.syncStatus); return; }
       if (res.code === 'in_flight' || res.code === 'already_completed') return;
-      if (btn) { btn.disabled = false; btn.textContent = 'Erneut versuchen'; }
+      if (btn) { btn.disabled = false; btn.textContent = '' + T('ob.erneut_versuchen') + ''; }
       showFinishError(card, res.error || FINISH_ERR_MSG);
     });
   }
@@ -981,7 +1087,7 @@
     var r = L().markReadyForReview(S.draft, now());
     if (!r || !r.ok) {
       try { console.warn('[ORVIA onboarding] Review nicht vormerkbar:', r && r.error); } catch (e) {}
-      S.reviewError = 'Die Einrichtung konnte noch nicht vorgemerkt werden. Bitte prüfe die vorherigen Schritte.';
+      S.reviewError = '' + T('ob.die_einrichtung_konnte_noch_nicht') + '';
       render();   // zeigt den Hinweis sichtbar im Review-Schritt
       S.busy = false; return;
     }
@@ -993,10 +1099,10 @@
     mountShell();
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
-      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">Einrichtung gespeichert</h2>' +
-      '<p class="ob2-desc">Dein Basisprofil und deine Sportauswahl sind gespeichert. Du kannst dein Profil, deine Ziele und deinen Trainingsalltag jederzeit bearbeiten.</p>' +
+      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + T('ob.einrichtung_gespeichert') + '</h2>' +
+      '<p class="ob2-desc">' + T('ob.dein_basisprofil_und_deine_sportauswahl') + '</p>' +
       sportsSummaryHTML() +
-      '<div class="ob2-nav"><button type="button" class="btn" id="ob2-edit">Profil bearbeiten</button><button type="button" class="btn sec" id="ob2-close">Schließen</button></div>';
+      '<div class="ob2-nav"><button type="button" class="btn" id="ob2-edit">' + T('ob.profil_bearbeiten') + '</button><button type="button" class="btn sec" id="ob2-close">' + T('ob.schliessen') + '</button></div>';
     // Done-Screen ist KEINE Sackgasse: „Profil bearbeiten" steigt direkt in den editierbaren Profil-Schritt ein.
     card.querySelector('#ob2-edit').onclick = function () { S.draft.currentStep = 'profile'; render(); };
     card.querySelector('#ob2-close').onclick = function () { closeShell(); };
@@ -1018,7 +1124,7 @@
     }
     // M7 (A7): ungespeicherte Körperdaten bei Escape/Background sichern.
     if (S.draft && S.draft.currentStep === 'body' && plFull()) {
-      try { readBodyForm(); } catch (e) { try { console.error('[ORVIA onboarding] Körperdaten konnten nicht erfasst werden.', e); } catch (_) {} }
+      try { readBodyForm(); } catch (e) { try { console.error('[ORVIA onboarding] ' + T('ob.koerperdaten') + ' konnten nicht erfasst werden.', e); } catch (_) {} }
     }
   }
   function captureAndPersist() { try { captureCurrentStep(); } catch (e) {} persist(); }   // für visibility/beforeunload
@@ -1041,8 +1147,8 @@
   }
 
   /* ---------- Basisprofil-Schritt (erstes fachliches Modul) ---------- */
-  var SEX_LABELS = [['male', 'Männlich'], ['female', 'Weiblich'], ['diverse', 'Divers'], ['prefer_not_to_say', 'Keine Angabe']];
-  var LEVEL_LABELS = [['beginner', 'Anfänger'], ['intermediate', 'Fortgeschritten'], ['advanced', 'Erfahren'], ['competitive', 'Wettkampforientiert']];
+  var SEX_LABELS = [['male', '' + T('ob.maennlich') + ''], ['female', '' + T('ob.weiblich') + ''], ['diverse', '' + T('ob.divers') + ''], ['prefer_not_to_say', '' + T('ob.keine_angabe') + '']];
+  var LEVEL_LABELS = [['beginner', '' + T('ob.anfaenger') + ''], ['intermediate', '' + T('ob.fortgeschritten') + ''], ['advanced', '' + T('ob.erfahren') + ''], ['competitive', '' + T('ob.wettkampforientiert') + '']];
   // M5a (A1): Über dich = Name + Geburtsdatum|Alter + Geschlecht(optional).
   // Größe/Gewicht → Schritt A7 (M5c), Trainingsstand → A3 (M5b).
   var FIELD_ORDER = ['displayName', 'birthDate', 'ageEstimate', 'sex'];
@@ -1106,25 +1212,25 @@
   function renderWelcome(showCorrupt) {
     mountShell();
     var corrupt = (S.corruptNote || showCorrupt)
-      ? '<p class="ob2-note" role="status">Der gespeicherte Fortschritt konnte nicht vollständig geladen werden. Wir starten an einer sicheren Stelle.</p>' : '';
+      ? '<p class="ob2-note" role="status">' + T('ob.der_gespeicherte_fortschritt_konnte_nicht') + '</p>' : '';
     S.corruptNote = false;
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML = corrupt +
       '<div class="ob3-hero">' +
         '<svg class="ob3-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#orvia-mark"/></svg>' +
         '<div class="ob3-brand">ORVIA</div>' +
-        '<h2 id="ob2-title" class="ob3-claim" tabindex="-1">Know your state.</h2>' +
+        '<h2 id="ob2-title" class="ob3-claim" tabindex="-1">' + T('ob.know_your_state') + '</h2>' +
       '</div>' +
-      '<p class="ob3-lead">ORVIA erstellt dein persönliches Leistungsprofil. Training, Tagesform und Ziele – präzise auf dich abgestimmt.</p>' +
+      '<p class="ob3-lead">' + T('ob.orvia_erstellt_dein_persoenliches_leistungsprofil') + '</p>' +
       '<ul class="ob3-benefits">' +
-        '<li>Training passend zu deinem Alltag</li>' +
-        '<li>Tagesform verständlich einordnen</li>' +
-        '<li>Ziele strukturiert verfolgen</li>' +
+        '<li>' + T('ob.training_passend_zu_deinem_alltag') + '</li>' +
+        '<li>' + T('ob.tagesform_verstaendlich_einordnen') + '</li>' +
+        '<li>' + T('ob.ziele_strukturiert_verfolgen') + '</li>' +
       '</ul>' +
-      '<p class="ob3-trust">Deine Angaben bleiben in deinem Konto und lassen sich jederzeit ändern. Details findest du in der App unter „Datenschutz &amp; Sicherheit".</p>' +
-      '<p class="ob3-duration">Die Grundeinrichtung dauert etwa 4 Minuten.</p>' +
-      '<div class="ob2-nav"><button type="button" class="btn" id="ob3-start">Profil einrichten</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<p class="ob3-trust">' + T('ob.deine_angaben_bleiben_in_deinem') + '</p>' +
+      '<p class="ob3-duration">' + T('ob.die_grundeinrichtung_dauert_etwa_4') + '</p>' +
+      '<div class="ob2-nav"><button type="button" class="btn" id="ob3-start">' + T('ob.profil_einrichten') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
     card.querySelector('#ob3-start').onclick = goNext;
     card.querySelector('#ob2-later').onclick = later;
     focusHeading();
@@ -1141,40 +1247,40 @@
     var p = ensureProfileDraft(); var errors = curProfileErrors();
     var mode = birthMode(p);
     var birthInput = (mode === 'age')
-      ? field('Dein Alter', 'pf-age', '<input id="pf-age" type="number" inputmode="numeric" min="13" max="100" step="1" value="' + esc(p.ageEstimate != null ? p.ageEstimate : '') + '" autocomplete="off" aria-describedby="err-ageEstimate"' + ai(errors, 'ageEstimate') + '>', 'ageEstimate', errors)
-      : field('Geburtsdatum', 'pf-birthDate', '<input id="pf-birthDate" type="date" autocomplete="bday" value="' + esc(p.birthDate || '') + '" aria-describedby="err-birthDate"' + ai(errors, 'birthDate') + '>', 'birthDate', errors);
+      ? field('' + T('ob.dein_alter') + '', 'pf-age', '<input id="pf-age" type="number" inputmode="numeric" min="13" max="100" step="1" value="' + esc(p.ageEstimate != null ? p.ageEstimate : '') + '' + T('ob.autocomplete_off_aria_describedby_err') + '' + ai(errors, 'ageEstimate') + '>', 'ageEstimate', errors)
+      : field('' + T('ob.geburtsdatum') + '', 'pf-birthDate', '<input id="pf-birthDate" type="date" autocomplete="bday" value="' + esc(p.birthDate || '') + '' + T('ob.aria_describedby_err_birthdate') + '' + ai(errors, 'birthDate') + '>', 'birthDate', errors);
 
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
       '<form class="ob2-form ob3-form" autocomplete="on" novalidate>' +
-        field('Wie dürfen wir dich nennen?', 'pf-displayName', '<input id="pf-displayName" type="text" maxlength="50" autocomplete="name" value="' + esc(p.displayName || '') + '" aria-describedby="err-displayName"' + ai(errors, 'displayName') + '>', 'displayName', errors) +
+        field('' + T('ob.wie_duerfen_wir_dich_nennen') + '', 'pf-displayName', '<input id="pf-displayName" type="text" maxlength="50" autocomplete="name" value="' + esc(p.displayName || '') + '' + T('ob.aria_describedby_err_displayname') + '' + ai(errors, 'displayName') + '>', 'displayName', errors) +
         '<div id="ob3-birthmode" class="ob3-birthmode"></div>' +
         birthInput +
-        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-sex">Geschlecht <span class="ob3-optional">(optional)</span></span>' +
+        '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-sex">' + T('ob.geschlecht') + '<span class="ob3-optional">(optional)</span></span>' +
           '<span id="ob3-sex-help"></span>' +
           '<div id="pf-sex-cards" class="ob3-sexcards" role="group" aria-labelledby="lbl-sex"></div>' +
           '<span class="ob2-err" id="err-sex" role="alert">' + esc(errText(errors, 'sex')) + '</span>' +
         '</div>' +
       '</form>' +
       '<div class="ob2-nav">' +
-        '<button type="button" class="btn sec" id="ob2-back">Zurück</button>' +
-        '<button type="button" class="btn" id="ob2-next">Weiter</button>' +
+        '<button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button>' +
+        '<button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button>' +
       '</div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
 
     var doc = D(); var kit = K();
     // ProgressHeader (Kit): Zahlen ausschließlich aus getProgress() — keine harte Zahl im UI.
     var gp = L().getProgress(S.draft);
-    var ph = kit.createProgressHeader({ title: 'Über dich', current: gp.current, total: gp.total, allowBack: true, onBack: goBack, supportingText: 'Alles lässt sich später ändern.' });
+    var ph = kit.createProgressHeader({ title: '' + T('ob.ueber_dich') + '', current: gp.current, total: gp.total, allowBack: true, onBack: goBack, supportingText: '' + T('ob.alles_laesst_sich_spaeter_aendern') + '' });
     var phT = ph.el.querySelector('.pf-progress-title');
     if (phT) { phT.setAttribute('id', 'ob2-title'); phT.setAttribute('tabindex', '-1'); }
     card.querySelector('#ob3-progress').appendChild(ph.el);
 
     // Geburtsdatum ⇄ Alter (SegmentedControl): Wechsel leert bewusst die jeweils andere Angabe.
     var seg = kit.createSegmentedControl({
-      name: 'birthmode', label: 'Geburtsdatum oder Alter angeben',
-      options: [{ value: 'date', label: 'Geburtsdatum', id: 'pf-birthmode-date' }, { value: 'age', label: 'Nur Alter angeben', id: 'pf-birthmode-age' }],
+      name: 'birthmode', label: '' + T('ob.geburtsdatum_oder_alter_angeben') + '',
+      options: [{ value: 'date', label: '' + T('ob.geburtsdatum') + '', id: 'pf-birthmode-date' }, { value: 'age', label: '' + T('ob.nur_alter_angeben') + '', id: 'pf-birthmode-age' }],
       value: mode,
       onChange: function (v) {
         readProfileForm();
@@ -1201,8 +1307,8 @@
       return c;
     });
     var help = kit.createInlineHelp({
-      label: 'Warum fragen wir das?', title: 'Geschlecht (optional)',
-      content: 'Optional. Kann später bei einzelnen körperbezogenen Referenzwerten berücksichtigt werden.'
+      label: '' + T('ob.warum_fragen_wir_das') + '', title: '' + T('ob.geschlecht_optional') + '',
+      content: '' + T('ob.optional_kann_spaeter_bei_einzelnen') + ''
     });
     card.querySelector('#ob3-sex-help').appendChild(help.el);
 
@@ -1224,10 +1330,10 @@
     try { console.error('[ORVIA onboarding] onboardingProfileLogic fehlt oder ist unvollständig — Profil-Schritt gesperrt.'); } catch (e) {}
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML = progressHTML() +
-      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">Basisprofil nicht verfügbar</h2>' +
-      '<p class="ob2-desc">Das Basisprofil kann gerade nicht geladen werden. Bitte starte die App neu.</p>' +
-      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + T('ob.basisprofil_nicht_verfuegbar') + '</h2>' +
+      '<p class="ob2-desc">' + T('ob.das_basisprofil_kann_gerade_nicht') + '</p>' +
+      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-later').onclick = later;
     focusHeading();
@@ -1298,18 +1404,18 @@
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      '<p class="ob2-desc">Wähle alles aus, was du regelmäßig oder gelegentlich machst. Details stellst du später im Profil ein.</p>' +
-      '<div class="ob2-field"><span class="ob3-grouplabel" id="sports-a-label">Welche Sportarten machst du?</span>' +
+      '<p class="ob2-desc">' + T('ob.waehle_alles_aus_was_du') + '</p>' +
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="sports-a-label">' + T('ob.welche_sportarten_machst_du') + '</span>' +
         '<span class="ob2-err" id="err-sports" role="alert">' + esc(selErr) + '</span>' +
         '<div id="ob3-sportgrid" class="ob3-choicegrid" role="group" aria-labelledby="sports-a-label"' + (selErr ? ' aria-describedby="err-sports" aria-invalid="true"' : '') + '></div></div>' +
       '<div id="ob3-primarysec">' + (chosen.length ?
-        '<div class="ob2-field"><span class="ob3-grouplabel" id="sports-b-label">Was ist dein Hauptsport?</span>' +
-        '<p class="ob2-hint">Dein Hauptsport erhält bei Zielen und Planung die höchste Priorität.</p>' +
+        '<div class="ob2-field"><span class="ob3-grouplabel" id="sports-b-label">' + T('ob.was_ist_dein_hauptsport') + '</span>' +
+        '<p class="ob2-hint">' + T('ob.dein_hauptsport_erhaelt_bei_zielen') + '</p>' +
         '<span class="ob2-err" id="err-primary" role="alert">' + esc(priErr) + '</span>' +
         '<div id="ob3-primarylist" class="ob3-choicegrid" role="group" aria-labelledby="sports-b-label"' + (priErr ? ' aria-describedby="err-primary" aria-invalid="true"' : '') + '></div></div>' : '') + '</div>' +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Deine Sportarten', 'Mehrfachauswahl möglich.');
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.deine_sportarten') + '', '' + T('ob.mehrfachauswahl_moeglich') + '');
     // Abschnitt A: kompletter Katalog als ChoiceCards (aria-pressed + Häkchen kommen aus dem Kit).
     var grid = card.querySelector('#ob3-sportgrid');
     sl.SPORT_CATALOG.forEach(function (sp) {
@@ -1353,10 +1459,10 @@
 
   /* ---------- M5b (A3): Trainingsstand der Hauptsportart ---------- */
   var LEVEL_CARDS = [
-    ['beginner', 'Anfänger', 'Ich starte gerade oder steige nach längerer Pause wieder ein.'],
-    ['intermediate', 'Fortgeschritten', 'Ich trainiere seit einigen Monaten regelmäßig.'],
-    ['advanced', 'Erfahren', 'Ich trainiere seit Jahren strukturiert.'],
-    ['competitive', 'Wettkampforientiert', 'Ich trainiere gezielt auf Wettkämpfe und Leistung.']
+    ['beginner', '' + T('ob.anfaenger') + '', '' + T('ob.ich_starte_gerade_oder_steige') + ''],
+    ['intermediate', '' + T('ob.fortgeschritten') + '', '' + T('ob.ich_trainiere_seit_einigen_monaten') + ''],
+    ['advanced', '' + T('ob.erfahren') + '', '' + T('ob.ich_trainiere_seit_jahren_strukturiert') + ''],
+    ['competitive', '' + T('ob.wettkampforientiert') + '', '' + T('ob.ich_trainiere_gezielt_auf_wettkaempfe') + '']
   ];
   function updateTrainingErrors() {
     var doc = D(); if (!doc) return;
@@ -1376,20 +1482,20 @@
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML =
       '<div id="ob3-progress"></div>' +
-      (errors._primary ? '<p class="ob2-note" role="status">' + esc(errors._primary) + ' Geh dazu einen Schritt zurück.</p>' : '') +
+      (errors._primary ? '<p class="ob2-note" role="status">' + esc(errors._primary) + ' ' + T('ob.geh_einen_schritt_zurueck') + '</p>' : '') +
       '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-level">Wie trainierst du aktuell' + (primCat ? ' – ' + esc(primCat.label) : '') + '?</span>' +
         '<span id="ob3-level-help"></span>' +
         '<span class="ob2-err" id="err-level" role="alert">' + esc(lvlErr) + '</span>' +
         '<div id="ob3-levelcards" class="ob3-stack" role="group" aria-labelledby="lbl-level"></div></div>' +
-      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-sessions">Wie oft trainierst du pro Woche?</span>' +
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-sessions">' + T('ob.wie_oft_trainierst_du_pro') + '</span>' +
         '<span class="ob2-err" id="err-sessions" role="alert">' + esc(sesErr) + '</span>' +
         '<div id="ob3-sessionband"></div></div>' +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button><button type="button" class="btn" id="ob2-next">Weiter</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button></div>';
-    mountProgressHeader(card, 'Dein Trainingsstand', 'Bezieht sich auf deinen Hauptsport.');
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
+    mountProgressHeader(card, '' + T('ob.dein_trainingsstand') + '', '' + T('ob.bezieht_sich_auf_deinen_hauptsport') + '');
     var help = kit.createInlineHelp({
-      label: 'Warum fragen wir das?', title: 'Trainingsstand',
-      content: 'Damit ordnet ORVIA Umfang, Intensität und Progression realistisch ein. Deine Angabe bezieht sich auf deinen Hauptsport und lässt sich jederzeit ändern.'
+      label: '' + T('ob.warum_fragen_wir_das') + '', title: '' + T('ob.trainingsstand') + '',
+      content: '' + T('ob.damit_ordnet_orvia_umfang_intensitaet') + ''
     });
     card.querySelector('#ob3-level-help').appendChild(help.el);
     // Frage 1: Niveau als ChoiceCards mit Subtext (Einzelauswahl über die Gruppe).
@@ -1411,7 +1517,7 @@
     });
     // Frage 2: Frequenzband als SegmentedControl — bewusst OHNE Vorauswahl (allowEmpty, kein Default).
     var band = kit.createSegmentedControl({
-      name: 'sessions-band', label: 'Einheiten pro Woche', allowEmpty: true,
+      name: 'sessions-band', label: '' + T('ob.einheiten_pro_woche') + '', allowEmpty: true,
       options: sl.SESSION_BANDS.map(function (b) { return { value: b.id, label: b.label, id: 'band-' + b.id }; }),
       value: prim ? sl.bandForSessions(prim.sessionsPerWeek) : null,
       onChange: function (bandId) {
@@ -1445,10 +1551,10 @@
     try { console.error('[ORVIA onboarding] onboardingSportsLogic fehlt oder ist unvollständig — Sport-Schritt gesperrt.'); } catch (e) {}
     var card = S.el.querySelector('.ob2-card');
     card.innerHTML = progressHTML() +
-      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">Sportauswahl nicht verfügbar</h2>' +
-      '<p class="ob2-desc">Die Sportauswahl kann gerade nicht geladen werden. Bitte starte die App neu.</p>' +
-      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">Zurück</button></div>' +
-      '<button type="button" class="ob2-later" id="ob2-later">Später fortsetzen</button>';
+      '<h2 id="ob2-title" class="ob2-title" tabindex="-1">' + T('ob.sportauswahl_nicht_verfuegbar') + '</h2>' +
+      '<p class="ob2-desc">' + T('ob.die_sportauswahl_kann_gerade_nicht') + '</p>' +
+      '<div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button></div>' +
+      '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button>';
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-later').onclick = later;
     focusHeading();
@@ -1462,10 +1568,10 @@
     var primary = sl.getPrimarySport(sel), planned = sl.getPlannedSports(sel), occ = sl.getOccasionalSports(sel);
     var hidden = sel.sports.filter(function (e) { return !e.visible; }).map(function (e) { return e.sportId; });
     var rows = [];
-    if (primary) rows.push('Hauptsportart: ' + lbls([primary]));
-    if (planned.length) rows.push('Aktiv geplant: ' + lbls(planned));
-    if (occ.length) rows.push('Gelegentlich: ' + lbls(occ));
-    if (hidden.length) rows.push('Ausgeblendet: ' + lbls(hidden));
+    if (primary) rows.push('' + T('ob.hauptsportart') + '' + lbls([primary]));
+    if (planned.length) rows.push('' + T('ob.aktiv_geplant') + '' + lbls(planned));
+    if (occ.length) rows.push('' + T('ob.gelegentlich') + '' + lbls(occ));
+    if (hidden.length) rows.push('' + T('ob.ausgeblendet') + '' + lbls(hidden));
     if (!rows.length) return '';
     return '<div class="ob2-summary">' + rows.map(function (r) { return '<div>' + esc(r) + '</div>'; }).join('') + '</div>';
   }

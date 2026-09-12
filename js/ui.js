@@ -234,11 +234,17 @@ const WEEKPLAN=[
   [{t:'Schwimmen',l:'Ausdauer',d:'~900 m'},{t:'Rad',l:'Z2 Dauerfahrt',d:'60 min · 123–144 bpm'}],
   [{t:'Laufen',l:'Long Run',d:'lr'}]];
 /* ---- Dynamischer Plan-Generator: Plan aus Profil + Ziel + Sportarten ---- */
-function gpR(l,d){return {t:'Laufen',l:l,d:d};}
-function gpB(l,d){return {t:'Rad',l:l,d:d};}
-function gpG(l){return {t:'Gym',l:l,d:'45 min'};}
-function gpS(l,d){return {t:'Schwimmen',l:l,d:d||'~1000 m'};}
-function gpM(){return {t:'Mobilität',l:'Mobility',d:'15 min'};}
+/* B-13 Schritt 1 (2026-09-11): Plan-Items tragen ein `kind`-Feld (Code). Bisher
+   klassifizierten unitKind()/isHardUnit()/die Engine-Module ueber die WOERTER im
+   Label („Long Run", „Intervalle") — eine Uebersetzung der Labels haette die
+   Klassifikation gebrochen. Ab jetzt: kind ist die Wahrheit, das Label-Raten
+   bleibt nur als Rueckfall fuer gespeicherte Plaene ohne kind. */
+function _runKindOf(l,d){var s=String(l||'').toLowerCase();if(d==='iv'||s.indexOf('interval')>=0)return 'interval';if(d==='lr'||s.indexOf('long')>=0)return 'long';if(s.indexOf('tempo')>=0||s.indexOf('schwelle')>=0)return 'tempo';return 'easy';}
+function gpR(l,d){return {t:'Laufen',l:l,d:d,kind:_runKindOf(l,d)};}
+function gpB(l,d){var s=String(l||'').toLowerCase();return {t:'Rad',l:l,d:d,kind:/long/.test(s)?'bike_long':(/interval/.test(s)?'bike_hard':(/recovery/.test(s)?'bike_recovery':'bike'))};}
+function gpG(l){var s=String(l||'').toLowerCase();return {t:'Gym',l:l,d:'45 min',kind:/bein|ganzk|squat|leg|unterk|kniebeuge/.test(s)?'gym_leg':'gym'};}
+function gpS(l,d){return {t:'Schwimmen',l:l,d:d||'~1000 m',kind:'swim'};}
+function gpM(){return {t:'Mobilität',l:'Mobility',d:'15 min',kind:'mob'};}
 function planDaysTarget(){
   if(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.trainingDays)return PROFILE.trainingDays;
   var lvl=(typeof userLevel==='function')?userLevel():'fortgeschritten';
@@ -603,7 +609,8 @@ function applyAbsenceToPlan(plan){
     }catch(_m){missed=[];}
     var pi=null;try{var g=goalOf();pi=g&&g._planInput;}catch(_g){}
     var raceIdx=null;try{if(pi&&pi.targetDate&&ORVIA.goalPhasePlan)raceIdx=ORVIA.goalPhasePlan.raceDayIndex(pi.targetDate,today);}catch(_r){}
-    var r2=AR.replan(plan,{todayIndex:todayIdx,illness:illness,injury:{active:false},missed:missed,phase:pi?pi.phase:null,raceDayIndex:raceIdx});
+    var injury={active:false};try{if(typeof AR.injuryFromConstraints==='function'&&typeof PROFILE!=='undefined'&&PROFILE)injury=AR.injuryFromConstraints(PROFILE.constraintsList);}catch(_i){injury={active:false};}
+    var r2=AR.replan(plan,{todayIndex:todayIdx,illness:illness,injury:injury,missed:missed,phase:pi?pi.phase:null,raceDayIndex:raceIdx});
     _absenceBusy=false;
     if(r2&&r2.changed){try{ORVIA._lastAbsencePlan=r2;}catch(_){ }return r2.days;}
     return plan;
@@ -3303,7 +3310,7 @@ function unitPriority(item){
   if(item.t==='Gym'){if(/core|mobil/.test(l))return 'C';return 'B';}
   return 'C';
 }
-function isHardUnit(it){var k=unitKind(it);return (it.t==='Laufen'&&(k==='interval'||k==='tempo'||k==='long'))||(it.t==='Rad'&&/interval|long/i.test(it.l||''));}
+function isHardUnit(it){var k=unitKind(it);return (it.t==='Laufen'&&(k==='interval'||k==='tempo'||k==='long'||k==='race'))||(it.t==='Rad'&&(it.kind==='bike_long'||it.kind==='bike_hard'||(!it.kind&&/interval|long/i.test(it.l||''))));}
 function planVariants(){
   var w=activeWeekPlan();var all=[],A=[],AB=[];
   w.forEach(function(day,di){day.forEach(function(it){var pri=unitPriority(it);all.push(it);if(pri==='A')A.push({it:it,di:di});if(pri==='A'||pri==='B')AB.push(it);});});
@@ -4154,6 +4161,10 @@ function savePause(){
 function delPause(i){if(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.pauses){PROFILE.pauses.splice(i,1);if(typeof saveProfile==='function')saveProfile();if(typeof renderPlanPauses==='function')renderPlanPauses();renderWeekPlan();if(typeof renderPauseBanner==='function')renderPauseBanner();}}
 /* ---- Einheiten-Detail (anklickbar im Wochenplan) ---- */
 function unitKind(item){
+  /* B-13: kind-Feld gewinnt (Lauf-Codes 1:1; Rad/Gym-Feincodes auf die Grobklassen dieser Funktion gefaltet). */
+  var k=item&&item.kind;
+  if(k==='interval'||k==='long'||k==='tempo'||k==='easy'||k==='race')return k;
+  if(k==='gym'||k==='gym_leg')return 'gym';if(k==='swim')return 'swim';if(k==='mob')return 'mob';if(k&&k.indexOf('bike')===0)return 'bike';
   var l=(item.l||'').toLowerCase(),d=item.d;
   if(item.t==='Gym')return 'gym';if(item.t==='Schwimmen')return 'swim';if(item.t==='Rad')return 'bike';if(item.t==='Mobilität')return 'mob';
   if(d==='iv'||l.indexOf('interval')>=0)return 'interval';
@@ -4717,7 +4728,7 @@ function renderRaceHeader(){
     var tgtTime=tm?Calc.fmtTime(tm):'offen';
     var tgtPace=(tm&&distKm)?Calc.fmtPace(tm*60/distKm)+'/km':'—';
     el.innerHTML='<div class="racehead">'+
-      '<div class="rh-top"><span class="rh-name">'+escH(title)+'</span>'+editBtn+'</div>'+
+      '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
       '<div class="rh-date">'+escH(dateTxt)+'</div>'+
       '<div class="rh-grid">'+
         '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
@@ -4731,7 +4742,7 @@ function renderRaceHeader(){
   var catTxt=(typeof goalCatLabel==='function')?goalCatLabel(mg.category):mg.category;
   var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(''+mg.targetValue)+(mg.unit?' '+escH(mg.unit):'')+'</span><span class="rh-lab">Zielwert</span></div>'):'';
   el.innerHTML='<div class="racehead">'+
-    '<div class="rh-top"><span class="rh-name">'+escH(title)+'</span>'+editBtn+'</div>'+
+    '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
     '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+'</div>'+
     '<div class="rh-grid">'+
       '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+

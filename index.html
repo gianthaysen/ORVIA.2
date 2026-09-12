@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="ORVIA">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08090B">
-<meta name="orvia-build" content="orvia-v8-366">
+<meta name="orvia-build" content="orvia-v8-368">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ============ ORVIA BRAND · icons & meta ============ -->
 <title>ORVIA · Performance OS</title>
@@ -34,6 +34,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="env.js"></script>
+<!-- B-13 (2026-09-11): i18n-Laufzeit + Referenzkatalog DE — vor allen UI-Modulen, damit t() ueberall verfuegbar ist. -->
+<script src="js/i18n.js"></script>
+<script src="locales/de.js"></script>
 <script src="js/clock.js"></script>
 <script src="js/config.js"></script>
 <link rel="stylesheet" href="styles.css">
@@ -514,6 +517,8 @@
 <script src="js/onboarding/onboarding-sports-logic.js"></script>
 <script src="js/profile-model.js"></script>
 <script src="js/profile-center.js"></script>
+<!-- B-02 (2026-09-11): Ziel-Detailseite — Ziel, Fortschritt, Phase, Machbarkeit, Luecken; bearbeiten nur via openGoalEditor. -->
+<script src="js/goal-detail.js"></script>
 <script src="js/onboarding/onboarding-logic.js"></script>
 <script src="js/onboarding/onboarding-steps.js"></script>
 <script src="js/onboarding/onboarding-store.js"></script>
@@ -643,6 +648,10 @@
 <script src="js/engine/goal-phase-plan.js"></script>
 <!-- B-09 (2026-09-04): Ausfall-/Krankheitslogik im gelesenen Plan — Flag absence_replanner (0040). -->
 <script src="js/engine/absence-replanner.js"></script>
+<!-- B-03 (2026-09-04): Profilstaerke — Vollstaendigkeit + Ziel + Leistungsreferenz + Verfuegbarkeit, jede Luecke verlinkt. -->
+<script src="js/engine/profile-strength.js"></script>
+<!-- B-04 Teil 3 (2026-09-11): Onboarding-Schrittlogging (Beobachter, Migration 0041). -->
+<script src="js/engine/onboarding-log.js"></script>
 
 <!-- Schattenbetrieb: rechnet C1 -> C2 -> Stufe 5 bei jedem Planlauf mit und
      schreibt ins Decision Log. Veraendert den Plan NICHT (planMutation none).
