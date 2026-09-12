@@ -26,6 +26,8 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';

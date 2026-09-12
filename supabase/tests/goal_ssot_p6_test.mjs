@@ -19,6 +19,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -57,6 +58,7 @@ function slice(src, startMarker, endMarker) {
     sb.listGoals = () => goals || [];
     sb.gcat = t => t;
     sb.RACE_DIST = { run_5k: 5, run_10k: 10, half_marathon: 21.0975, marathon: 42.195 };
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(block, sb, { filename: 'ui.js#goal' });
     return sb;
@@ -83,6 +85,7 @@ function slice(src, startMarker, endMarker) {
   const calls = [];
   sb.goalUpdate = (...a) => calls.push(a);
   sb.save = () => {}; sb.renderPace = () => {};
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   vm.runInContext('let _goalCache=null;' + block, sb, { filename: 'ui.js#setHmTarget' });
   sb.setHmTarget();
@@ -103,6 +106,7 @@ function slice(src, startMarker, endMarker) {
     const listCalls = [];
     sb.ORVIA = { activityConfig: __CFG3c, trainingDomain: __TD3c, profileStore: { effectiveTimezone: () => 'Europe/Vienna' }, activityStore: { listActivities: f => { listCalls.push(f); return acts || []; }, isTombstoned: () => false } };
     sb.__listCalls = listCalls;
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(block, sb, { filename: 'ui.js#runs' });
     return sb;
@@ -132,6 +136,7 @@ function makeStoreSb() {
   sb.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   sb.navigator = { onLine: true };
   sb.ORVIA = { user: { id: 'u1' } };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['activity-normalize.js', 'activity-store.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));

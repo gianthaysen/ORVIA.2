@@ -4,6 +4,8 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -12,7 +14,7 @@ const ok=(n,c,i)=>{console.log((c?'✅':'❌')+' '+n+(i?'  — '+i:''));c?pass++
 const G=(await import(new URL(_APPREL + 'js/gym-volume.js',import.meta.url))).default;
 
 // --- reine UI-Funktionen aus ui.js extrahieren (Block zwischen Pilot-Marker und `var _mvReq=0;`) ---
-const ui=fs.readFileSync(new URL(_APPREL + 'js/ui.js',import.meta.url),'utf8');
+const ui=inlined(fs.readFileSync(new URL(_APPREL + 'js/ui.js',import.meta.url),'utf8'));
 const start=ui.indexOf('function mvExperience(');
 const end=ui.indexOf('var _mvReq=0;',start);
 if(start<0||end<0){console.error('Pilot-Block nicht gefunden');process.exit(1);}

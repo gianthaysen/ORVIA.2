@@ -12,6 +12,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -28,6 +29,7 @@ function baseSandbox() {
   sb.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
   sb.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ classList: { add() {}, remove() {} }, style: {}, setAttribute() {}, addEventListener() {}, appendChild() {}, remove() {} }), body: { appendChild() {} }, documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } } };
   sb.ORVIA = {};
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   return sb;
 }
@@ -312,6 +314,7 @@ function baseSandbox() {
     sb.window = sb; sb.self = sb; sb.globalThis = sb;
     sb.Date = Date; sb.Math = Math; sb.JSON = JSON; sb.Array = Array; sb.Object = Object;
     sb.String = String; sb.Number = Number; sb.Boolean = Boolean;
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     sb.orviaScore = () => (typeof osFixture === 'function' ? osFixture() : osFixture);
     sb.todayStr = () => '2026-07-27';

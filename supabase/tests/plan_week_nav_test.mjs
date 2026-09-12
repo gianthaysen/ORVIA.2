@@ -17,6 +17,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte (new Function) loesen _uiT ueber das globale Objekt auf
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
 /* ROBUSTE APP-AUFLOESUNG: Das Repo existiert in zwei Layouts — kanonisch
@@ -31,7 +33,7 @@ const APP = process.argv[2] ? normalize(process.argv[2])
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
-const ui = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+const ui = inlined(readFileSync(join(APP, 'js/ui.js'), 'utf8'));
 /* renderGMPlan sauber ausschneiden: bis zur naechsten Deklaration auf
    oberster Ebene (Zeilenanfang `function `), nicht bis zu einem geratenen Namen. */
 const _start = ui.indexOf('function renderGMPlan()');

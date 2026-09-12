@@ -20,7 +20,7 @@ import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
-import { srcHasText } from './_i18n-src.mjs';
+import { srcHasText, tStub, inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -59,6 +59,7 @@ ok('4.1 Kurzzeit-Cache NUR für den refresh-Pfad + Event-Invalidierung',
   const mk = (readyStore) => new Promise((res) => {
     const sb = { window: null, console, setTimeout: (fn) => fn(), module: undefined, localStorage: undefined };
     sb.window = sb; sb.globalThis = sb;
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(gv, sb, { filename: 'gym-volume.js' });
     sb.ORVIA.activityStore = readyStore ? { listActivities: () => [gymAct()] } : null;
@@ -118,7 +119,7 @@ const css = R('styles.css');
 ok('4.3 .kpi span: Umbruch/Trennung statt Überlauf (P2-2a)',
    /\.kpi span\{[^}]*overflow-wrap:anywhere;hyphens:auto/.test(css));
 ok('4.3 lang="de" am <html> (hyphens:auto wirksam)', /<html lang="de"/.test(idx));
-const ui = R('js/ui.js');
+const ui = inlined(R('js/ui.js'));
 ok('4.3 4-KPI-Reihen in der Analyse als 2×2 (Übersicht + Ausdauer)',
    (ui.match(/kpi-row" style="grid-template-columns:repeat\(2,1fr\)"/g) || []).length === 2);
 ok('4.3 #gmAna .mile: 18px-Seitenabstand NUR dort (Entscheidung 4) + Ellipsis-Schutz',
@@ -146,6 +147,7 @@ ok('4.4 Legende unter dem Hypnogramm-Slot aus derselben Quelle',
 {
   /* Render-Sandbox: Labels + Wrapper vorhanden, plain-Modus liefert reines SVG */
   const sb = { window: null, console, module: undefined }; sb.window = sb; sb.globalThis = sb;
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb); vm.runInContext(sr, sb, { filename: 'series-reader.js' });
   const H = sb.ORVIA.seriesReader.renderHypnogram([[0, 1800, 'deep'], [1800, 3600, 'light'], [5400, 1200, 'rem'], [6600, 300, 'awake']]);
   ok('4.4 SANDBOX · Ausgabe trägt alle 4 Spurenlabels', /Tief/.test(H) && /Leicht/.test(H) && /REM/.test(H) && /Wach/.test(H));

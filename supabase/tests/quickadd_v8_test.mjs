@@ -12,6 +12,7 @@ import { createRequire } from 'module';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { inlined } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -21,7 +22,7 @@ const require = createRequire(import.meta.url);
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const R = p => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
-const ui = R(_APPREL + 'js/ui.js');
+const ui = inlined(R(_APPREL + 'js/ui.js'));
 
 /* Minimalumgebung: quick-actions.js bindet an globalThis und ruft bindPlusButton auf. */
 globalThis.window = globalThis;

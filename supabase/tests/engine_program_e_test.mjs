@@ -13,6 +13,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -37,6 +38,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
   sb.escH = s => String(s == null ? '' : s); sb.toast = () => {}; sb.renderProfileScreen = () => {}; sb.renderZones = () => {}; sb.maybePlanImpact = () => {};
   let planRendered = 0; sb.renderPlan = () => { planRendered++; };
   sb.ORVIA = {};
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
@@ -52,7 +54,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
   sb.PROFILE.weekPlan = [[{ t: 'Gym', l: 'Alt' }], [], [], [], [], [], []];
   sb._planDecide('later');
   ok('E1e later ⇒ Plan bleibt, pending gesetzt (Banner-Grundlage)', sb.PROFILE.weekPlan !== null && sb.PROFILE.planImpact.pending === true);
-  const ui = readFileSync(new URL('ui.js', base), 'utf8');
+  const ui = inlined(readFileSync(new URL('ui.js', base), 'utf8'));
   ok('E1f Plan-Tab-Banner bei pending (orviaRebuildPlan)', /planRebuildBanner/.test(ui) && /orviaRebuildPlan/.test(ui) && /Plan neu aufbauen<\/button>/.test(ui));
   ok('E1g resetPlan löst pending + ehrlicher Toast', /resetPlan/.test(ui) && /aus deiner aktuellen Konfiguration/.test(ui));
 }
@@ -75,6 +77,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
   sb.activeWeekPlan = () => [[{ t: 'Laufen', l: 'Intervalle', d: 'iv' }], [], [], [], [], [], []];
   sb.daysTo = () => 60; sb.RACE = { date: '2026-09-10' };
   sb.Calc = { sessionLoad: e => (e && e.sessions && e.sessions.Laufen ? 300 : 0) };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   /* Batch 0: REALER Script-Order wie index.html (contracts → readiness →
      decision → training-input-resolver → shadow-runner). Vorher fehlte der
@@ -99,7 +102,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
   const rep = S.report();
   ok('S8 Gate-Report: Tage/Rate/gateReady(<14 Tage ⇒ false)', rep.comparableDays === 1 && rep.gateReady === false && rep.diffs.length === 1);
   // Steuerungs-Verbot: ui.js ruft run() nur try/fail-soft, keine v2-Zustände im Render
-  const ui = readFileSync(new URL('ui.js', base), 'utf8');
+  const ui = inlined(readFileSync(new URL('ui.js', base), 'utf8'));
   ok('S9 Shadow steuert nichts (nur run()-Hook in renderDecision)', /engineShadow\)window\.ORVIA\.engineShadow\.run\(\)/.test(ui.replace(/\s/g, '')) && !/engineShadow\.(report|buildInput)/.test(ui));
   const html = readFileSync(new URL('../index.html', base), 'utf8');
   ok('S10 Engine-Dateien + Runner eingebunden (Shadow-Kommentar)', /engine\/shadow-runner\.js/.test(html) && /SHADOW-MODE/.test(html));
@@ -119,6 +122,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
   sb.ORVIA = { user: { id: 'user-B' } };
   sb.todayStr = () => '2026-07-18';
   sb.currentDecision = () => ({ state: 'GREEN', todayAction: 'KEEP', score: 84 });
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   // Bewusst OHNE training-input-resolver.js — Ladefehler-Szenario.
   ['engine/engine-contracts.js', 'engine/readiness-engine-v2.js', 'engine/decision-engine-v2.js', 'engine/shadow-runner.js'].forEach(f =>
@@ -136,6 +140,7 @@ const base = new URL(_APPREL + 'js/', import.meta.url);
 /* ---------- E3: loadModel (pur) ---------- */
 {
   const sb = { window: {}, console }; sb.window = sb;
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   vm.runInContext(readFileSync(new URL('calc.js', base), 'utf8'), sb, { filename: 'calc.js' });
   const LM = sb.Calc.loadModel;

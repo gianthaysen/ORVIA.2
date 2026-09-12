@@ -14,6 +14,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { tStub } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte (new Function) loesen _uiT ueber das globale Objekt auf
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
@@ -67,7 +69,9 @@ sec('E · t()-Regime');
   const UNDER_T = ['js/goal-detail.js', 'js/workout-gym.js', 'js/workout-ui.js', 'js/onboarding/onboarding-ui.js', 'js/profile-center.js', 'js/profile.js', 'js/auth.js', 'js/activity.js', 'js/nutrition.js', 'js/insights.js', 'js/race.js', 'js/extras.js', 'js/adaptive-card.js', 'js/issues.js'];
   UNDER_T.forEach(f => { const hits = inv.scanFile(join(APP, f)); ok('E · ' + f + ': 0 deutsche Literale', hits.length === 0, hits.slice(0, 3).map(h => h.line + ':' + h.text).join(' | ')); });
   const total = inv.inventory().reduce((n, r) => n + r.hits.length, 0);
-  ok('E · Inventur laeuft (Gesamtzahl als Fortschrittsmass, Stand 11.09.: ~2600)', total > 1000, String(total));
+  /* Ratsche: der Restbestand darf nur sinken (11.09.: ~2600 → 12.09.: 911). Steigt er, hat jemand
+     neue deutsche Literale in eine Datei ausserhalb des t()-Regimes geschrieben. */
+  ok('E · Inventur-Ratsche: Restbestand <= 950 (Stand 12.09.: 911)', total <= 950, String(total));
 }
 sec('F · Verdrahtung');
 {

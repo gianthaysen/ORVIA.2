@@ -21,12 +21,13 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _hx = join(HERE, '..', '..');
 import { existsSync as _exApp2 } from 'node:fs';
+import { inlined } from './_i18n-src.mjs';
 const APP = process.argv[2] ? normalize(process.argv[2]) : ([_hx, join(_hx, 'app'), join(_hx, '..', 'app')].find(p => _exApp2(join(p, 'index.html'))) || _hx);
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const R = f => readFileSync(join(APP, f), 'utf8');
 
-const ui = R('js/ui.js');
+const ui = inlined(R('js/ui.js'));
 const html = R('index.html');
 const css = R('styles.css');
 const code = ui.replace(/\/\*[\s\S]*?\*\//g, '');   /* Kommentare nennen die Begriffe selbst */

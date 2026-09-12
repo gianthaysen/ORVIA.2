@@ -54,6 +54,7 @@ function mk(TODAY, opts) {
     profileStore: { effectiveTimezone: () => opts.tz || 'Europe/Vienna' },
     activityStore: opts.noStore ? undefined : { listActivities: () => opts.storeRuns || [], isTombstoned: () => false }
   };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   vm.runInContext(runsBlock, sb, { filename: 'ui.js#runs' });
   return sb;
@@ -110,6 +111,7 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
     sb.Calc = { weekKmTarget: (d, i) => Math.max(0, 40 - i * 2), effectiveKmTarget: (cal, last3) => Math.min(cal, Math.round(1.10 * Math.max(...last3, 0))) };
     sb.fmtDe = n => (n == null || isNaN(n)) ? '–' : String(n);
     sb.weekRunKm = off => vals[off];
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(rampBlock, sb, { filename: 'ui.js#ramp' });
     sb.renderRamp();
@@ -141,6 +143,7 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
     sb.Calc = { weekKmTarget: () => 40 };
     sb.weekRunKm = () => wk;
     sb.ORVIA_MODULES = {};
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(intelBlock, sb, { filename: 'intelligence.js#baseline' });
     return sb.baselineRows();
@@ -180,6 +183,7 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
     sb.readinessFor = () => ({ score: 80 });
     sb.allLoads = () => ({ loads: [], labels: [] });
     sb.isNaN = isNaN;
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(reviewBlock, sb, { filename: 'ui.js#review' });
     return sb;
@@ -204,6 +208,7 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
     sb.isDay = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
     sb.Calc = { avg: arr => arr.reduce((s, x) => s + x, 0) / arr.length };
     sb.weekRunKm = off => off === 0 ? wk : wp;
+    sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
     vm.createContext(sb);
     vm.runInContext(fcBlock, sb, { filename: 'extras.js#forecast' });
     return sb.forecastCauses();

@@ -9,6 +9,8 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -39,6 +41,7 @@ function makeCtx({ acts = [], DB = {}, plan = null, today = '2026-07-15' }) {
     activityStore: { listActivities: () => acts },
     profileStore: { effectiveTimezone: () => 'Europe/Vienna' }
   };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   vm.runInContext(adapterSrc + '\nthis.__today=planActualToday;this.__dates=planActualResolveForDates;', sb, { filename: 'ui.js#adapter' });
   return sb;

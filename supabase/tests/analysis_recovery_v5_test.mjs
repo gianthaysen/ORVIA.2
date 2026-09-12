@@ -6,13 +6,15 @@ import fs from 'fs';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
 let pass=0,fail=0;
 const ok=(n,c,i)=>{console.log((c?'✅':'❌')+' '+n+(i?'  — '+i:''));c?pass++:fail++;};
 const R=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
-const html=R(_APPREL + 'index.html'), ui=R(_APPREL + 'js/ui.js'), css=R(_APPREL + 'styles.css'), sw=R(_APPREL + 'sw.js');
+const html=R(_APPREL + 'index.html'), ui=inlined(R(_APPREL + 'js/ui.js')), css=R(_APPREL + 'styles.css'), sw=R(_APPREL + 'sw.js');
 
 /* --- Markup --- */
 const segE=(html.match(/<div id="seg-erholung"[\s\S]*?<div id="recovNote">/)||[''])[0];

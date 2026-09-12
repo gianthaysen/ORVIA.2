@@ -14,6 +14,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { tStub, inlined } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte (new Function) loesen _uiT ueber das globale Objekt auf
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
@@ -29,7 +31,7 @@ function sliceFn(src, marker) {
   for (let j = i; j < src.length; j++) { const ch = src[j]; if (ch === '{') { d++; st = true; } else if (ch === '}') { d--; if (st && d === 0) return src.slice(i, j + 1); } }
   throw new Error('unbalanciert: ' + marker);
 }
-const ui = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+const ui = inlined(readFileSync(join(APP, 'js/ui.js'), 'utf8'));
 const src = ['const RACE_DIST=' + ui.match(/const RACE_DIST=\{[^}]*\}/)[0].slice('const RACE_DIST='.length) + ';',
   sliceFn(ui, 'function goalOf()'), sliceFn(ui, 'function mainGoalOf()'), sliceFn(ui, 'function _goalPlanInputOn()')].join('\n');
 

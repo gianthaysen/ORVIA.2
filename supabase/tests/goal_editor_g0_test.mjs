@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
-import { srcHasText } from './_i18n-src.mjs';
+import { srcHasText, tStub, inlined } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -17,7 +17,7 @@ let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const base = new URL(_APPREL + 'js/', import.meta.url);
 const profileSrc = readFileSync(new URL('profile.js', base), 'utf8');
-const uiSrc = readFileSync(new URL('ui.js', base), 'utf8');
+const uiSrc = inlined(readFileSync(new URL('ui.js', base), 'utf8'));
 
 /* ---------- A: Kollision beseitigt / genau EIN produktiver Editor ---------- */
 {
@@ -70,6 +70,7 @@ function makeApp() {
   sb.document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [], createElement: () => ({ classList: { add() {}, remove() {} }, style: {}, setAttribute() {}, addEventListener() {}, appendChild() {}, remove() {}, querySelector: () => null, querySelectorAll: () => [] }), body: { appendChild() {} }, documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } } };
   sb.escH = s => String(s == null ? '' : s); sb.esc = s => String(s == null ? '' : s); sb.toast = () => {}; sb.renderProfileScreen = () => {}; sb.renderZones = () => {}; sb.maybePlanImpact = () => {};
   sb.ORVIA = {};
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['i18n.js', '../locales/de.js', 'profile-model.js', 'onboarding/onboarding-profile-logic.js', 'profile.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));

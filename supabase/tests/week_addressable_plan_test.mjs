@@ -23,6 +23,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte (new Function) loesen _uiT ueber das globale Objekt auf
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
@@ -34,7 +36,7 @@ let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
 
-const uiRaw = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+const uiRaw = inlined(readFileSync(join(APP, 'js/ui.js'), 'utf8'));
 
 function sliceBalanced(src, marker) {
   const i = src.indexOf(marker);

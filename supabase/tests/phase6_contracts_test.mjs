@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -97,7 +98,7 @@ const sc = R('js/metrics/source-contract.js');
 ok('E-02-Ränge vollständig (measured_validated > device_sync > profile_manual > derived_estimate)',
    ['measured_validated', 'device_sync', 'profile_manual', 'derived_estimate'].every(s => sc.indexOf(s) >= 0));
 ok('TRIMP fail-closed ohne gemessenen Ruhepuls/HFmax (kein Fallback) — ui.js-Anker',
-   R('js/ui.js').indexOf('ohne gemessenen Ruhepuls bzw. HFmax kein TRIMP (kein Fallback)') >= 0);
+   inlined(R('js/ui.js')).indexOf('ohne gemessenen Ruhepuls bzw. HFmax kein TRIMP (kein Fallback)') >= 0);
 ok('E-11: fehlende RPE ⇒ unknown (nie raten) — trainingLoadRepository',
    /unknown/.test(R('js/repos/trainingLoadRepository.js')));
 

@@ -8,6 +8,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { tStub } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 
 const HERE=dirname(fileURLToPath(import.meta.url));
 const APPREL=existsSync(new URL('../../js/',import.meta.url))?'../../':'../../app/';
@@ -79,6 +81,7 @@ ok('freies Krafttraining am selben Tag erfuellt die Planeinheit NICHT',rr.result
 const ui=readFileSync(new URL('ui.js',JS),'utf8');
 const selSrc=sliceBalanced(ui,'function gmPlannedStartSelection(');
 const sb={window:null,ORVIA:{trainingDomain:{normSportStrict:v=>({gym:'gym',krafttraining:'gym',laufen:'running',radfahren:'cycling'}[String(v||'').toLowerCase()]||null)}},Date};sb.window=sb;
+sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
 vm.createContext(sb);vm.runInContext(selSrc+'\nthis.pick=gmPlannedStartSelection;',sb);
 const plan=Array.from({length:7},()=>[]);plan[2]=[{id:'ps:run',t:'Laufen'},{id:'ps:gym',t:'Gym'}];
 let pick=sb.pick('Krafttraining',plan,2);
@@ -94,6 +97,7 @@ const pdSrc=sliceBalanced(ui,'function planDoneMarkerFor(')+'\n'+sliceBalanced(u
 function pdCtx(saveResult=true){
   const DB={};DB[T]={mood:8,sessions:{Gym:{source:'plan_done',plannedSessionId:OCC,note:'marker'},Laufen:{source:'manual',dur:30,rpe:5},_ts:11}};
   const c={DB,save:()=>saveResult,renderDay:()=>{},renderWeekPlan:()=>{},renderGMPlan:()=>{},window:{dispatchEvent:()=>{}},CustomEvent:function(){},toast:()=>{},JSON,Object,Date};
+  c._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(c);vm.runInContext(pdSrc+'\nthis.find=planDoneMarkerFor;this.undo=undoPlanDone;',c);return c;
 }
 let c=pdCtx(true);const otherBefore=JSON.stringify(c.DB[T].sessions.Laufen);

@@ -19,6 +19,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
+globalThis._uiT = tStub().t;   // B-13: ui.js-Ausschnitte (new Function) loesen _uiT ueber das globale Objekt auf
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');

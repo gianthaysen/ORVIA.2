@@ -20,6 +20,7 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
@@ -65,6 +66,7 @@ function makeUi(opts) {
   sb.numIn = () => null;
   sb.LIM = { rhr: [30, 120], bb: [0, 100], weight: [30, 250], hrvMs: [10, 200] };
   sb.ORVIA = {};
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['metrics/metric-registry.js', 'checkin-fields.js', 'checkin-field-resolver.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
@@ -189,6 +191,7 @@ function makeUi(opts) {
   sb.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
   sb.navigator = { onLine: true }; sb.DB = {}; sb.todayStr = () => TODAY;
   sb.ORVIA = { repos: {}, repoBase: { requireAuth: () => null, online: () => true, currentUserId: () => 'u1', sb: () => null, stampUser: r => r, ok: d => ({ success: true, data: d, error: null }), fail: (c, m) => ({ success: false, data: null, error: { code: c, message: m } }), upsert: async () => ({ success: true }), upsertMany: async () => ({ success: true }), selectAll: async () => ({ success: true, data: [] }) } };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['repos/checkinRepository.js', 'checkin-store.js'].forEach(f =>
     vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));

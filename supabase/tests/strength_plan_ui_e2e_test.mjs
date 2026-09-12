@@ -32,6 +32,7 @@
    node supabase/tests/strength_plan_ui_e2e_test.mjs */
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
+import { tStub } from './_i18n-src.mjs';
 
 const _APPREL = existsSync(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
 const base = new URL(_APPREL + 'js/', import.meta.url);
@@ -141,6 +142,7 @@ function makeSb(opts) {
       update: patch => ({ eq: () => ({ eq: () => ({ select: async () => ({ data: [patch], error: null }) }) }) })
     })
   };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   ['training-domain.js', 'engine/strength-plan.js', 'plan-domain.js', 'repos/repoBase.js',
     'repos/workoutRepository.js', 'repos/trainingPlanRepository.js', 'repos/exerciseRepository.js',

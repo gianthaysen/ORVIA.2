@@ -19,13 +19,14 @@ import vm from 'node:vm';
 import { existsSync as _exApp } from 'node:fs';
 import { dirname as _dH } from 'node:path';
 import { fileURLToPath as _fH } from 'node:url';
+import { tStub, inlined } from './_i18n-src.mjs';
 const HERE = _dH(_fH(import.meta.url));
 /* Layoutrobuste App-Basis: kanonisch liegt js/ unter HERE/../.., umstrukturiert unter HERE/../../app. */
 const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
 
-const ui = readFileSync(new URL(_APPREL + 'js/ui.js', import.meta.url), 'utf8');
+const ui = inlined(readFileSync(new URL(_APPREL + 'js/ui.js', import.meta.url), 'utf8'));
 const act = readFileSync(new URL(_APPREL + 'js/activity.js', import.meta.url), 'utf8');
 const prof = readFileSync(new URL(_APPREL + 'js/profile.js', import.meta.url), 'utf8');
 const xtra = readFileSync(new URL(_APPREL + 'js/checkin-extra.js', import.meta.url), 'utf8');
@@ -78,6 +79,7 @@ const idx = readFileSync(new URL(_APPREL + 'index.html', import.meta.url), 'utf8
   sb.localStorage = { getItem: k => store[k] || null, setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   sb.document = { getElementById: id => els[id] || null, createElement: () => mkEl(), body: { appendChild(c) { if (c && c._id) els[c._id] = c; c.innerHTML = c._html; }, classList: { add() {}, remove() {} } }, querySelector: () => null, querySelectorAll: () => [], documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } }, activeElement: null };
   sb.escH = s => String(s == null ? '' : s); sb.addEventListener = () => {}; sb.CustomEvent = function () {}; sb.dispatchEvent = () => true;
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   vm.runInContext(prof, sb, { filename: 'profile.js' });
   if (typeof sb.orviaConfirm === 'function') {

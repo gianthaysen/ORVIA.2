@@ -21,6 +21,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 import { join, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tStub } from './_i18n-src.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const _flat = join(HERE, '..', '..');
@@ -67,6 +68,7 @@ function makeSb(opts) {
     const body = opts.body !== undefined ? opts.body : { ok: true, workoutId: '987654', status: 'pushed' };
     return { status: st, text: async () => JSON.stringify(body) };
   };
+  sb._uiT = tStub().t;   // B-13: ui.js-Ausschnitte lesen Texte ueber _uiT
   vm.createContext(sb);
   for (const f of ['js/training-domain.js', 'js/engine/strength-plan.js',
     'js/engine/garmin-exercise-map.js', 'js/engine/garmin-workout-export.js']) {
