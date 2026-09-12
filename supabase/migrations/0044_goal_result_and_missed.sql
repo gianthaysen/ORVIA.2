@@ -1,0 +1,32 @@
+-- ============================================================
+-- 0044 · user_goals: Wettkampfergebnis + Status 'missed' — S1/E2 (12.09.2026)
+-- ------------------------------------------------------------
+-- WOFUER. Befund Produktionskonto: Halbmarathon am Zieldatum gelaufen, das Ziel
+-- blieb „aktiv" — es gab keinen Abgleich Ziel ↔ Aktivitaet und keinen Status fuer
+-- „gelaufen, Zielzeit verfehlt". Der Client (engine/race-result.js) erkennt die
+-- Wettkampf-Aktivitaet und speichert nach Bestaetigung ein Ergebnis am Ziel.
+--
+--   result  jsonb  {activityId, date, distanceKm, timeSec, targetSec, deltaSec,
+--                   verdict: achieved|missed|finished, confirmedAt}
+--                  oder {dismissed:[activityIds]} („nicht mein Rennen")
+--   status  'missed' zusaetzlich zu active/paused/completed/achieved/abandoned/archived
+--
+-- REIHENFOLGE. Vor dem Client-Deploy v8-369 ausfuehren: der Client sendet `result`
+-- nur, wenn belegt, und `missed` nur nach Bestaetigung — ohne 0044 schluege genau
+-- dieser eine Upsert fehl (unbekannte Spalte / CHECK), alle anderen Ziele bleiben
+-- unberuehrt.
+-- ============================================================
+
+begin;
+
+alter table public.user_goals add column if not exists result jsonb;
+
+alter table public.user_goals drop constraint if exists ug_enums;
+alter table public.user_goals add constraint ug_enums check (
+  (priority in ('primary','secondary','optional','maintain','longterm'))
+  and (status in ('active','paused','completed','achieved','missed','abandoned','archived')));
+
+comment on column public.user_goals.result is
+  'S1/E2: bestaetigtes Wettkampfergebnis aus einer Aktivitaet (engine/race-result.js) oder {dismissed:[…]}. Null = kein Ergebnis.';
+
+commit;

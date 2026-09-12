@@ -928,6 +928,8 @@ html.orvia-gated .wrap, html.orvia-gated .tabbar, html.orvia-gated .splash{displ
 .gm-conflict.gm-prio{border-color:rgba(96,165,250,.45);background:rgba(96,165,250,.08)}
 .gmc-meta.gmc-warn{color:#fbbf24;margin-top:4px}
 .gmcard-notmain{border-style:dashed}
+.gmc-rr{margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gmc-rr-achieved{color:#43D693}.gmc-rr-missed{color:#EDB44E}.gmc-rr-match{color:#5AA0F0}
 .gm-cacts{display:flex;flex-direction:column;gap:6px}
 /* Inkrement 3: Wizard, Detail, Profilbereiche */
 .gw-prog{display:flex;gap:6px;margin:6px 0 4px}
@@ -1839,6 +1841,15 @@ html,body{overflow-x:hidden;max-width:100%}
 .wc-exrow-ss{font-size:11px;font-weight:700;color:#93c5fd;margin-left:8px;background:rgba(59,130,246,.12);border-radius:6px;padding:2px 6px}
 .rh-feas{font-size:12.5px;color:#94a3b8;margin-top:6px;line-height:1.4}
 .rh-feas-warn{color:#fbbf24}
+/* S1/E2: Wettkampfergebnis im Plan-Kopf */
+.rh-race{margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);font-size:13px;line-height:1.4}
+.rh-race-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:4px}
+.rh-race-t{color:var(--text)}
+.rh-race-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.rh-race-acts .btn{padding:8px 12px;font-size:13px;margin:0}
+.rh-race-achieved{border-color:rgba(67,214,147,.45);background:rgba(67,214,147,.10)}
+.rh-race-missed{border-color:rgba(237,180,78,.45);background:rgba(237,180,78,.10)}
+.rh-race-match{border-color:rgba(90,160,240,.45);background:rgba(90,160,240,.10)}
 .pl-adapt.pl-race{background:rgba(52,211,153,.18);color:#34d399}
 .pc-strength{margin:10px 0 4px;padding:12px 14px;border-radius:14px;background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.14)}
 .pc-strength-head{display:flex;align-items:baseline;gap:10px}

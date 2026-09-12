@@ -970,6 +970,10 @@ function fmtDate(s){
   return new Date(s+'T12:00').toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long'});
 }
 function daysTo(date){return Math.round((new Date(date+'T00:00')-new Date(todayStr()+'T00:00'))/864e5);}
+/* S1/E5 (12.09.2026): Zielwert ueber den zentralen Formatierer (profile-model.formatGoalValue) — nie mehr „6600 s". */
+function _goalValueFmt(g,v){try{var M=window.ORVIA&&ORVIA.profileModel;if(M&&typeof M.formatGoalValue==='function')return M.formatGoalValue(g,v);}catch(_){ }return (v==null?'':String(v))+(g&&g.unit?' '+g.unit:'');}
+/* Countdown-Text mit past-Zustand: vor dem Datum „noch n Tage/Wochen", danach „vor n Tagen" — nie „noch 0 Wochen". */
+function _countdownText(dateIso){try{var d=daysTo(dateIso);if(d>0)return d>=14?_uiT('ui.noch_n_wochen',{n:Math.ceil(d/7)}):_uiT('ui.noch_n_tage',{n:d});if(d===0)return _uiT('ui.countdown_heute');return _uiT('ui.vor_n_tagen',{n:-d});}catch(_){return '';}}
 function avg(a){return Calc.avg(a);}
 function fmtPace(s){return Calc.fmtPace(s);}
 
@@ -4707,6 +4711,28 @@ function isRunDistanceGoal(g){g=g||goalOf();return ['run_5k','run_10k','half_mar
    Zielinformationen bzw. klare nicht-anwendbare Zustände — keine HM-Felder.
    „Ziel bearbeiten" öffnet exakt dieses kanonische Ziel im Wizard (per ID);
    ohne Ziel lautet die Aktion „Ziel hinzufügen". */
+/* S1/E2 (12.09.2026): Wettkampfergebnis im Plan-Kopf. Drei Zustaende, alle aus echten Daten:
+   (1) bestaetigtes Ergebnis am Ziel, (2) erkannte Aktivitaet am Renntag → Bestaetigen / Nicht mein Rennen,
+   (3) Datum vorbei, nichts erkannt → Ergebnis eintragen. Sonst leer. */
+function _raceMatchFor(g){try{var O=window.ORVIA;if(!O||!O.raceResult||!O.activityStore||!O.activityStore.listActivities)return null;return O.raceResult.match(g,O.activityStore.listActivities()||[],{isTombstoned:O.activityStore.isTombstoned||null});}catch(_){return null;}}
+function _fmtSecHMS(sec){if(sec==null)return '—';var neg=sec<0;sec=Math.abs(Math.round(sec));var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),x=sec%60;return (neg?'−':'')+(h?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0'));}
+function _raceResultBlockHTML(g){
+  try{
+    if(!g)return '';
+    var r=g.result&&g.result.verdict?g.result:null;
+    if(r){var v=r.verdict==='achieved'?_uiT('ui.rr_erreicht'):r.verdict==='missed'?_uiT('ui.rr_verfehlt'):_uiT('ui.rr_gefinisht');
+      var dl=r.deltaSec!=null?(' · '+(r.deltaSec<=0?'−':'+')+_fmtSecHMS(Math.abs(r.deltaSec))):'';
+      return '<div class="rh-race rh-race-'+escH(r.verdict)+'"><b>'+escH(v)+'</b> · '+escH(_fmtSecHMS(r.timeSec))+dl+' · '+escH(fmtDe(r.distanceKm))+' km</div>';}
+    var m=_raceMatchFor(g);
+    if(m){var vt=m.verdict==='achieved'?_uiT('ui.rr_ziel_erreicht_um'):m.verdict==='missed'?_uiT('ui.rr_ziel_verfehlt_um'):'';
+      var delta=m.deltaSec!=null?(' '+_fmtSecHMS(Math.abs(m.deltaSec))):'';
+      return '<div class="rh-race rh-race-match"><div class="rh-race-h">'+_uiT('ui.rr_wettkampf_erkannt')+'</div><div class="rh-race-t">'+escH(fmtDe(m.distanceKm))+' km · '+escH(_fmtSecHMS(m.timeSec))+(vt?' · '+escH(vt)+escH(delta):'')+'</div>'+
+        '<div class="rh-race-acts"><button class="btn" onclick="goalConfirmResult(\''+esc(g.id)+'\',\''+esc(m.activityId)+'\')">'+_uiT('ui.rr_bestaetigen')+'</button><button class="btn sec" onclick="goalDismissRace(\''+esc(g.id)+'\',\''+esc(m.activityId)+'\')">'+_uiT('ui.rr_nicht_mein_rennen')+'</button></div></div>';}
+    var O=window.ORVIA,pend=(O&&O.raceResult)?O.raceResult.pending(g,todayStr()):null;
+    if(pend)return '<div class="rh-race rh-race-pending"><div class="rh-race-t">'+escH(_uiT('ui.rr_rennen_war_vor_n_tagen',{n:pend.daysSince}))+'</div><div class="rh-race-acts"><button class="btn sec" onclick="goalSetStatus(\''+esc(g.id)+'\',\'achieved\')">'+_uiT('ui.rr_erreicht')+'</button><button class="btn sec" onclick="goalSetStatus(\''+esc(g.id)+'\',\'missed\')">'+_uiT('ui.rr_verfehlt')+'</button><button class="btn sec" onclick="openGoalEditor(\''+esc(g.id)+'\')">'+_uiT('ui.rr_neu_terminieren')+'</button></div></div>';
+    return '';
+  }catch(_){return '';}
+}
 function renderRaceHeader(){
   var el=document.getElementById('raceHeader');if(!el)return;
   var mg=(typeof mainGoalOf==='function')?mainGoalOf():null;
@@ -4731,21 +4757,21 @@ function renderRaceHeader(){
     var tgtPace=(tm&&distKm)?Calc.fmtPace(tm*60/distKm)+'/km':'—';
     el.innerHTML='<div class="racehead">'+
       '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
-      '<div class="rh-date">'+escH(dateTxt)+'</div>'+
+      '<div class="rh-date">'+escH(dateTxt)+(mg.targetDate&&d!=null&&d<0?' · '+escH(_countdownText(mg.targetDate)):'')+'</div>'+
       '<div class="rh-grid">'+
         '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">' + _uiT('ui.tage__') + '</span></div>'+
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtTime)+'</span><span class="rh-lab">' + _uiT('ui.zielzeit') + '</span></div>'+
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtPace)+'</span><span class="rh-lab">Zielpace</span></div>'+
       '</div>'+
-      '<div class="rh-phase">' + _uiT('ui.phase_') + '<b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+'</div>';
+      '<div class="rh-phase">' + _uiT('ui.phase_') + '<b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+_raceResultBlockHTML(mg)+'</div>';
     return;
   }
   // Nicht-Lauf-Hauptziel: allgemeine Zielinfo, KEINE Zeit/Pace/Distanz-Felder.
   var catTxt=(typeof goalCatLabel==='function')?goalCatLabel(mg.category):mg.category;
-  var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(''+mg.targetValue)+(mg.unit?' '+escH(mg.unit):'')+'</span><span class="rh-lab">' + _uiT('ui.zielwert') + '</span></div>'):'';
+  var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(_goalValueFmt(mg,mg.targetValue))+'</span><span class="rh-lab">' + _uiT('ui.zielwert') + '</span></div>'):'';
   el.innerHTML='<div class="racehead">'+
     '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
-    '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+'</div>'+
+    '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+(mg.targetDate&&d!=null&&d<0?' · '+escH(_countdownText(mg.targetDate)):'')+'</div>'+
     '<div class="rh-grid">'+
       '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">' + _uiT('ui.tage__') + '</span></div>'+
       tgt+
@@ -4925,19 +4951,20 @@ function bestTimes(){
   try{var _rb=window.ORVIA&&ORVIA.runBests,_st=window.ORVIA&&ORVIA.activityStore;
     if(_rb&&_rb.measuredRunBests&&_st&&_st.listActivities)
       meas=_rb.measuredRunBests(_st.listActivities(),{isTombstoned:_st.isTombstoned||null});}catch(_){ }
-  var rb={k1:null,k5:null,k10:null},src={k1:null,k5:null,k10:null};
+  var BT_KEYS=['k1','k5','k10','k21','k42'];
+  var rb={k1:null,k5:null,k10:null,k21:null,k42:null},src={k1:null,k5:null,k10:null,k21:null,k42:null};
   runs.forEach(function(r){if(!r.best)return;
-    ['k1','k5','k10'].forEach(function(kk){var v=r.best[kk];
+    BT_KEYS.forEach(function(kk){var v=r.best[kk];
       if(v&&(rb[kk]==null||v<rb[kk])){rb[kk]=v;src[kk]='manual_best';}});});
-  ['k1','k5','k10'].forEach(function(kk){var m=meas&&meas[kk];
+  BT_KEYS.forEach(function(kk){var m=meas&&meas[kk];
     if(m&&m.sec!=null&&(rb[kk]==null||m.sec<rb[kk])){rb[kk]=m.sec;src[kk]=m.method;}});
-  if(!runs.length&&rb.k1==null&&rb.k5==null&&rb.k10==null)return null;
+  if(!runs.length&&BT_KEYS.every(function(kk){return rb[kk]==null;}))return null;
   var elig=runs.filter(function(r){return r.dist>=2&&r.dur;});var est=null;
-  if(elig.length){var best=elig.reduce(function(a,b){return (b.dur/b.dist)<(a.dur/a.dist)?b:a;});var proj=function(d){return Math.round(best.dur*Math.pow(d/best.dist,1.06)*60);};est={pace:(best.dur/best.dist)*60,dist:best.dist,t1:proj(1),t5:proj(5),t10:proj(10)};}
+  if(elig.length){var best=elig.reduce(function(a,b){return (b.dur/b.dist)<(a.dur/a.dist)?b:a;});var proj=function(d){return Math.round(best.dur*Math.pow(d/best.dist,1.06)*60);};est={pace:(best.dur/best.dist)*60,dist:best.dist,t1:proj(1),t5:proj(5),t10:proj(10),t21:proj(21.0975),t42:proj(42.195)};}
   var pick=function(kk,ek){if(rb[kk]!=null)return rb[kk];if(est){src[kk]='estimate';return est[ek];}return null;};
-  var t1=pick('k1','t1'),t5=pick('k5','t5'),t10=pick('k10','t10');
-  if(t1==null&&t5==null&&t10==null)return null;
-  return {t1:t1,t5:t5,t10:t10,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null},
+  var t1=pick('k1','t1'),t5=pick('k5','t5'),t10=pick('k10','t10'),t21=pick('k21','t21'),t42=pick('k42','t42');
+  if(t1==null&&t5==null&&t10==null&&t21==null&&t42==null)return null;
+  return {t1:t1,t5:t5,t10:t10,t21:t21,t42:t42,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null,k21:rb.k21!=null,k42:rb.k42!=null},
     src:src,meas:meas||null,
     estPace:est?est.pace:null,estDist:est?est.dist:null,n:runs.length};
 }
@@ -9677,7 +9704,8 @@ function gmAnaEndurance(ctx){
     var hmSec=null;try{if(bt&&bt.t10!=null&&Calc.riegelHM){var _m=Calc.riegelHM(10,bt.t10/60);if(_m!=null)hmSec=Math.round(_m*60);}}catch(_){ }
     var fs=function(sec){if(sec==null)return null;var h2=Math.floor(sec/3600),m2=Math.floor((sec%3600)/60),ss=Math.round(sec%60);
       return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(ss).padStart(2,'0')):(m2+':'+String(ss).padStart(2,'0'));};
-    var rows=[['5 km',bt?bt.t5:null,bt&&bt.real.k5],['10 km',bt?bt.t10:null,bt&&bt.real.k10],['Halbmarathon',hmSec,false]];
+    /* S1/E1: ein GEMESSENER Halbmarathon (k21) schlaegt die Riegel-Prognose aus 10 km. */
+    var rows=[['5 km',bt?bt.t5:null,bt&&bt.real.k5],['10 km',bt?bt.t10:null,bt&&bt.real.k10],(bt&&bt.real&&bt.real.k21)?['Halbmarathon',bt.t21,true]:['Halbmarathon',hmSec,false]];
     var body=rows.map(function(r2){var v=r2[1];
       return '<div class="calc-field" style="margin-bottom:8px"><label>'+r2[0]+'</label><div style="text-align:right"><b style="font-size:16px">'+(v!=null?gmEsc(fs(v)):'—')+'</b><div style="font-size:10px;color:var(--muted)">'+(v!=null?(r2[2]?'' + _uiT('ui.echte_bestzeit') + '':'' + _uiT('ui.prognose_riegel') + ''):'—')+'</div></div></div>';}).join('');
     var noteP=bt?('' + _uiT('ui.prognose_aus_deinem_schnellsten_lauf') + ''+bt.n+'' + _uiT('ui.laeufe_riegel_exponent_1_06') + ''):(GM_NA+'' + _uiT('ui.noch_keine_auswertbaren_laeufe_fuer') + '');
@@ -10275,7 +10303,7 @@ function gmProfGoalCard(){
   if(g.targetMin){var hh=Math.floor(g.targetMin/60),mm=Math.round(g.targetMin%60);t+=' unter '+hh+':'+String(mm).padStart(2,'0');}
   var sub='—';
   try{if(g.raceDate){var d=new Date(g.raceDate+'T12:00');sub=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
-    if(typeof daysTo==='function'){var w=Math.max(0,Math.ceil(daysTo(g.raceDate)/7));sub+=' · noch '+w+'' + _uiT('ui.wochen') + '';}}}catch(_){ }
+    var _cd=_countdownText(g.raceDate);if(_cd)sub+=' · '+_cd;}}catch(_){ }
   /* Kein Zielprozent im UI — die Fortschrittsspur bleibt als ehrlich leerer Slot. */
   return '<div class="goal-card"><div class="goal-top"><div><h4>'+gmEsc(t)+'</h4><p>'+gmEsc(sub)+'</p></div><span class="goal-badge">' + _uiT('ui.hauptziel') + '</span></div><div class="goal-line"><i style="width:0%"></i></div></div>';
 }
@@ -10962,12 +10990,17 @@ var _gmBtSlots=[],_gmMileSlots=[];
 var GM_MS_STATUS={planned:'geplant',in_progress:'' + _uiT('ui.in_arbeit') + '',achieved:'erreicht',skipped:'übersprungen'};
 function gmProfBestTimes(){
   var b=null;try{b=(typeof bestTimes==='function')?bestTimes():null;}catch(_){ }
+  /* S1/E1 (12.09.2026): Rad- und Schwimm-Bestzeiten aus denselben gemessenen Fenstern (run-bests.measuredAllBests). */
+  var _ms={};try{var _rb2=window.ORVIA&&ORVIA.runBests,_st2=window.ORVIA&&ORVIA.activityStore;if(_rb2&&_rb2.measuredAllBests&&_st2&&_st2.listActivities)_ms=_rb2.measuredAllBests(_st2.listActivities(),{isTombstoned:_st2.isTombstoned||null})||{};}catch(_){ }
+  var _fsec=function(sec){if(sec==null)return null;var h2=Math.floor(sec/3600),m2=Math.floor((sec%3600)/60),ss=Math.round(sec%60);return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(ss).padStart(2,'0')):(m2+':'+String(ss).padStart(2,'0'));};
   var fp=function(sec){try{return (typeof fmtPace==='function')?fmtPace(sec):(Calc&&Calc.fmtPace?Calc.fmtPace(sec):'—');}catch(_){return '—';}};
   var rows=[
     {d:'1',u:'km',k:'k1',t:b&&b.t1!=null?fp(b.t1):null,real:b&&b.real&&b.real.k1},
     {d:'5',u:'km',k:'k5',t:b&&b.t5!=null?fp(b.t5):null,real:b&&b.real&&b.real.k5},
     {d:'10',u:'km',k:'k10',t:b&&b.t10!=null?fp(b.t10):null,real:b&&b.real&&b.real.k10},
-    {d:'21,1',u:'km',t:null},{d:'400',u:'' + _uiT('ui.m_schwimm') + '',t:null},{d:'20',u:'' + _uiT('ui.km_rad') + '',t:null}
+    {d:'21,1',u:'km',k:'k21',t:b&&b.t21!=null?fp(b.t21):null,real:b&&b.real&&b.real.k21},
+    {d:'400',u:'' + _uiT('ui.m_schwimm') + '',k:'m400',ms:'swimming',t:_ms.swimming&&_ms.swimming.m400?_fsec(_ms.swimming.m400.sec):null,real:!!(_ms.swimming&&_ms.swimming.m400)},
+    {d:'20',u:'' + _uiT('ui.km_rad') + '',k:'k20',ms:'cycling',t:_ms.cycling&&_ms.cycling.k20?_fsec(_ms.cycling.k20.sec):null,real:!!(_ms.cycling&&_ms.cycling.k20)}
   ];
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var h=gmPPageHead('Bestzeiten','' + _uiT('ui.persoenliche_rekorde_je_distanz') + '')+'<div style="padding:0 18px">';
@@ -10975,8 +11008,8 @@ function gmProfBestTimes(){
   rows.forEach(function(r,i){
     /* KF-021: Quelle und Messdistanz kommen aus bestTimes().src/.meas — die Zeile
        behauptet nicht mehr pauschal „Import", wo eine Runde gemessen wurde. */
-    var m=(r.k&&b&&b.meas)?b.meas[r.k]:null;
-    var sub=r.t==null?GM_NA:(r.k?gmBtSrcLabel(b,r.k):(r.real?'' + _uiT('ui.eingetragene_bestleistung') + '':'' + _uiT('ui.geschaetzt_riegel_modell_keine_messung') + ''));
+    var m=r.ms?((_ms[r.ms]&&_ms[r.ms][r.k])||null):((r.k&&b&&b.meas)?b.meas[r.k]:null);
+    var sub=r.t==null?GM_NA:(r.ms?((GM_BT_SRC[m&&m.method]||GM_NA)+(m&&m.km!=null?' ('+(typeof fmtDe==='function'?fmtDe(m.km):m.km)+' km)':'')):r.k?gmBtSrcLabel(b,r.k):(r.real?'' + _uiT('ui.eingetragene_bestleistung') + '':'' + _uiT('ui.geschaetzt_riegel_modell_keine_messung') + ''));
     var subFull=sub+(lvl==='p'&&r.t!=null&&m&&m.laps?' · '+m.laps+(m.laps===1?'' + _uiT('ui.runde_') + '':'' + _uiT('ui.runden') + ''):'');
     var timeTxt=(r.t!=null?r.t:'—');
     _gmBtSlots.push({dist:r.d+' '+r.u,time:timeTxt,sub:subFull,

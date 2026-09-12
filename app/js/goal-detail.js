@@ -28,6 +28,8 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function fmtTime(min) { if (!(min > 0)) return null; var h = Math.floor(min / 60), m = Math.round(min % 60); if (m === 60) { h++; m = 0; } return h + ':' + String(m).padStart(2, '0') + ' h'; }
   function fmtPace(sec) { if (!(sec > 0)) return null; return Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0') + ' /km'; }
+  /* S1/E5: Zielwert ueber profile-model.formatGoalValue (h:mm:ss statt Sekunden); Rueckfall Wert + Einheit. */
+  function fmtGoalValue(g, v) { try { var M = root.ORVIA && root.ORVIA.profileModel; if (M && typeof M.formatGoalValue === 'function') return M.formatGoalValue(g, v); } catch (e) {} return (v == null ? '' : String(v)) + (g && g.unit ? ' ' + g.unit : ''); }
   function deDate(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')); return m ? (m[3] + '.' + m[2] + '.' + m[1]) : null; }
   var PHASES = ['build', 'taper', 'race_week', 'past'];
   var FEAS_KEY = { within_modeled_corridor: 'goal.feas.within', outside_modeled_corridor: 'goal.feas.outside', insufficient_data: 'goal.feas.insufficient' };
@@ -46,7 +48,7 @@
       feasibilityText: null, feasibilityWarn: false, gaps: [], milestones: Array.isArray(g.milestones) ? g.milestones : [] };
 
     if (t.targetMin != null) m.targetText = fmtTime(t.targetMin) + (t.pacePerKmSec ? ' · ' + fmtPace(t.pacePerKmSec) : '');
-    else if (typeof g.targetValue === 'number') m.targetText = g.targetValue + (g.unit ? ' ' + g.unit : '');
+    else if (typeof g.targetValue === 'number') m.targetText = fmtGoalValue(g, g.targetValue);
 
     var e = o.engine || null;
     if (t.targetMin != null && e && e.tPred > 0 && e.state !== 'nodata') {
@@ -58,7 +60,7 @@
       m.progress.kind = 'time'; m.progress.targetText = fmtTime(t.targetMin);
       m.progress.note = e && e.need ? T('goal.progress.noForecastNeed', { need: e.need }) : T('goal.progress.noForecast');
     } else if (typeof g.targetValue === 'number' && typeof g.currentValue === 'number') {
-      m.progress.kind = 'value'; m.progress.currentText = g.currentValue + (g.unit ? ' ' + g.unit : ''); m.progress.targetText = g.targetValue + (g.unit ? ' ' + g.unit : '');
+      m.progress.kind = 'value'; m.progress.currentText = fmtGoalValue(g, g.currentValue); m.progress.targetText = fmtGoalValue(g, g.targetValue);
       var lower = /loss|fat|bodyfat|shredded/.test(String(g.category || ''));
       var pct = lower ? (g.currentValue <= g.targetValue ? 100 : Math.round((g.targetValue / g.currentValue) * 100)) : (g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null);
       m.progress.percent = pct == null ? null : Math.max(0, Math.min(100, pct));
