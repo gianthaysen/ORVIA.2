@@ -1,0 +1,104 @@
+/* ORVIA · Zielliste (renderGoalsList) — Befunde vom 12.09.2026 (Screenshot Produktionskonto):
+   (1) zwei Ziele mit Priorität 1 hießen beide „Hauptziel", obwohl mainGoalOf() nur eines nimmt;
+   (2) Konfliktkarten nannten die betroffenen Ziele nicht;
+   (3) Zielzeit stand als „6600 s" statt „1:50:00 h";
+   (4) abgelaufenes Zieldatum blieb kommentarlos aktiv.
+   Sandbox wie profile_ui_test: echte profile.js + profile-model.js, DOM-Stubs. */
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import { existsSync as _exApp } from 'node:fs';
+const _APPREL = _exApp(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
+let pass = 0, fail = 0;
+const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
+
+function makeApp() {
+  const store = {}; const els = {};
+  function mkEl() { const el = { _html: '', classList: { add() {}, remove() {}, contains() { return false; } }, querySelectorAll() { return []; }, addEventListener() {}, remove() {}, appendChild() {}, setAttribute() {}, style: {} };
+    Object.defineProperty(el, 'innerHTML', { get() { return this._html; }, set(v) { this._html = v; } }); return el; }
+  const sb = {}; sb.window = sb; sb.self = sb; sb.globalThis = sb;
+  sb.console = { log() {}, warn() {}, error() {} };
+  sb.Date = Date; sb.Math = Math; sb.JSON = JSON; sb.Array = Array; sb.Object = Object; sb.String = String; sb.Number = Number;
+  sb.parseInt = parseInt; sb.parseFloat = parseFloat; sb.isNaN = isNaN; sb.isFinite = isFinite; sb.Set = Set; sb.Intl = Intl; sb.Promise = Promise;
+  sb.setTimeout = f => f && f(); sb.clearTimeout = () => {};
+  sb.navigator = { onLine: true, language: 'de' };
+  sb.CustomEvent = function (t, i) { this.type = t; this.detail = i && i.detail; };
+  sb.addEventListener = () => {}; sb.removeEventListener = () => {}; sb.dispatchEvent = () => true;
+  sb.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+  sb.document = { getElementById: id => els[id] || null, querySelector: () => null, querySelectorAll: () => [], createElement: () => mkEl(), body: { appendChild() {}, classList: { add() {}, remove() {} } }, documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } } };
+  sb.escH = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  sb.toast = m => { sb._toasts = (sb._toasts || []).concat([m]); }; sb.renderProfileScreen = () => {}; sb.renderZones = () => {}; sb.maybePlanImpact = () => {};
+  sb.shortDate = d => d; sb.goalCatLabel = c => c;
+  sb.ORVIA = {};
+  vm.createContext(sb);
+  const base = new URL(_APPREL + 'js/', import.meta.url);
+  ['i18n.js', '../locales/de.js', 'profile-model.js', 'profile.js'].forEach(f => vm.runInContext(readFileSync(new URL(f, base), 'utf8'), sb, { filename: f }));
+  sb.ensureProfile();
+  // Legacy-Migration seedet „Allgemeine Gesundheit“ mit Priorität 1 — hier archivieren, damit nur die Testziele aktiv sind.
+  sb.listGoals().slice().forEach(g => sb.goalSetStatus(g.id, 'archived'));
+  els.goalsMgrBody = mkEl();
+  return { sb, els };
+}
+// mainGoalOf liegt in ui.js — hier die kanonische Definition (G0) nachgebildet: niedrigste Priorität, stabile Reihenfolge.
+function installMainGoalOf(sb) { sb.mainGoalOf = () => (sb.listGoals() || []).filter(g => g.status === 'active').sort((a, b) => (a.priority || 9) - (b.priority || 9))[0] || null; }
+
+/* ---------- 1) Zielzeit lesbar ---------- */
+{
+  const { sb, els } = makeApp(); installMainGoalOf(sb);
+  sb.goalAdd({ category: 'half_marathon', title: 'HM unter 1:50', metricType: 'time', unit: 's', targetValue: 6600, currentValue: 7080, priority: 1, status: 'active', targetDate: '2099-01-01' });
+  sb.renderGoalsList(); const h = els.goalsMgrBody.innerHTML;
+  ok('1a Zielzeit als h:mm:ss (1:50:00 h), nicht „6600 s"', /1:50:00 h/.test(h) && !/6600 s/.test(h), h.match(/Ziel:[^<]*/) && h.match(/Ziel:[^<]*/)[0]);
+  ok('1b aktuelle Zeit ebenfalls formatiert (1:58:00 h)', /1:58:00 h/.test(h));
+  const { sb: s2, els: e2 } = makeApp(); installMainGoalOf(s2);
+  s2.goalAdd({ category: 'shredded', title: 'KFA', metricType: 'percent', unit: '%', targetValue: 10, priority: 1, status: 'active' });
+  s2.renderGoalsList();
+  ok('1c Nicht-Zeit-Metrik unverändert: „10 %"', /Ziel: 10 %/.test(e2.goalsMgrBody.innerHTML));
+}
+
+/* ---------- 2) Zwei Ziele mit Priorität 1 ---------- */
+{
+  const { sb, els } = makeApp(); installMainGoalOf(sb);
+  sb.goalAdd({ category: 'half_marathon', title: 'HM', priority: 1, status: 'active', targetDate: '2099-01-01' });
+  sb.goalAdd({ category: 'hypertrophy', title: 'Stärker', priority: 1, status: 'active' });
+  sb.renderGoalsList(); const h = els.goalsMgrBody.innerHTML;
+  const act = h.slice(h.indexOf('Aktive Ziele'), h.indexOf('Archiviert') > 0 ? h.indexOf('Archiviert') : undefined);
+  ok('2a genau EIN aktives Ziel heißt „Hauptziel"', (act.match(/">Hauptziel · /g) || []).length === 1, String((act.match(/">Hauptziel · /g) || []).length));
+  ok('2b das andere heißt „Priorität 1 · nicht das Hauptziel"', /Priorität 1 · nicht das Hauptziel/.test(h));
+  ok('2c Hinweisblock nennt Anzahl und das gültige Hauptziel', /2 aktive Ziele haben Priorität 1/.test(h) && /„HM“/.test(h));
+  ok('2d Button „Zum Hauptziel machen" nur beim Nicht-Hauptziel', (h.match(/goalMakeMain\(/g) || []).length === 1);
+  const staerker = sb.listGoals().filter(g => g.title === 'Stärker')[0];
+  sb.goalMakeMain(staerker.id);
+  const gs = sb.listGoals();
+  ok('2e goalMakeMain: gewähltes Ziel Prio 1, bisheriges Hauptziel Prio 2', gs.filter(g => g.title === 'Stärker')[0].priority === 1 && gs.filter(g => g.title === 'HM')[0].priority === 2);
+  ok('2f danach kein Hinweisblock mehr, Stärker ist Hauptziel', !/aktive Ziele haben Priorität 1/.test(els.goalsMgrBody.innerHTML) && /Stärker<\/div><div class="gmc-meta">Hauptziel/.test(els.goalsMgrBody.innerHTML));
+  ok('2g Toast bestätigt', (sb._toasts || []).some(t => /Hauptziel festgelegt/.test(t)));
+  const { sb: s3, els: e3 } = makeApp(); installMainGoalOf(s3);
+  s3.goalAdd({ category: 'half_marathon', title: 'HM', priority: 1, status: 'active', targetDate: '2099-01-01' });
+  s3.goalAdd({ category: 'gym', title: 'Kraft', priority: 2, status: 'active' });
+  s3.renderGoalsList();
+  ok('2h ein Hauptziel + ein Sekundärziel: kein Hinweis, kein Button', !/aktive Ziele haben Priorität 1/.test(e3.goalsMgrBody.innerHTML) && !/goalMakeMain\(/.test(e3.goalsMgrBody.innerHTML));
+}
+
+/* ---------- 3) Konfliktkarte nennt Ziele ---------- */
+{
+  const { sb, els } = makeApp(); installMainGoalOf(sb);
+  sb.goalAdd({ category: 'half_marathon', title: 'HM unter 1:50', priority: 1, status: 'active', targetDate: '2099-01-01' });
+  sb.goalAdd({ category: 'hypertrophy', title: 'Stärker', priority: 2, status: 'active' });
+  sb.renderGoalsList(); const h = els.goalsMgrBody.innerHTML;
+  ok('3a Konfliktkarte vorhanden (endurance_pr_vs_mass)', /Zielkonflikt erkannt/.test(h) && /endurance_pr_vs_mass/.test(h));
+  ok('3b Karte nennt beide Ziele („Betroffen: HM unter 1:50 ↔ Stärker")', /Betroffen: HM unter 1:50 ↔ Stärker/.test(h));
+}
+
+/* ---------- 4) Zieldatum überschritten ---------- */
+{
+  const { sb, els } = makeApp(); installMainGoalOf(sb);
+  sb.goalAdd({ category: 'half_marathon', title: 'Alt', priority: 1, status: 'active', targetDate: '2020-01-01' });
+  sb.goalAdd({ category: 'marathon', title: 'Neu', priority: 2, status: 'active', targetDate: '2099-01-01' });
+  sb.renderGoalsList(); const h = els.goalsMgrBody.innerHTML;
+  ok('4a abgelaufenes Ziel trägt Hinweis „Zieldatum überschritten"', (h.match(/Zieldatum überschritten/g) || []).length === 1);
+  ok('4b Hinweis sitzt bei „Alt", nicht bei „Neu"', h.indexOf('Zieldatum überschritten') > h.indexOf('>Alt<') && h.indexOf('Zieldatum überschritten') < h.indexOf('>Neu<'));
+  sb.goalSetStatus(sb.listGoals().filter(g => g.title === 'Alt')[0].id, 'achieved'); sb.renderGoalsList();
+  ok('4c als erreicht markiert ⇒ kein Hinweis mehr (nur aktive Ziele)', !/Zieldatum überschritten/.test(els.goalsMgrBody.innerHTML));
+}
+
+console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
+process.exit(fail ? 1 : 0);
