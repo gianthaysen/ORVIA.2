@@ -94,11 +94,11 @@ js/workout-ui.js                   UI     6 Haken `gy('…')`, alle fail-open
 
 ---
 
-## 6 · Phase-B-Gesamtbild (Stand 12.09.2026, HEAD `bc91e97`, Build v8-368)
+## 6 · Phase-B-Gesamtbild (Stand 12.09.2026 abends, HEAD nach `9b26bd4`, Build v8-369)
 
 | Paket | Stand | Wo |
 |---|---|---|
-| **B-01** Ziel→Plan-Kette | ✅ Code fertig, hinter Flag `goal_plan_input` (0039); **an seit 04.09.** auf dem Produktionskonto → 7-Tage-Wächter fällig (R1, `widersprueche = 0`) → Standard an | `B-01-UMSETZUNGSPLAN.md` |
+| **B-01** Ziel→Plan-Kette | ✅ **abgeschlossen**: Wächter 12.09. 9 Ereignisse/0 Widersprüche, 0042 Standard an (4/4 Konten), 0043 `session`-Ereignis | `B-01-UMSETZUNGSPLAN.md` §12 |
 | **B-02** Ziel-Detailseite | ✅ gebaut (`goal-detail.js`), Einstieg Zieltitel im Plan-Kopf; Sichtprüfung offen | `93f5637` |
 | **B-03** Profilstärke | ✅ gebaut (`profile-strength.js`, Profilzentrale); Sichtprüfung offen | `cd60ac2` |
 | **B-04** Onboarding v3 | 🔄 Schritt-Logging (0041, `onboarding-log.js`, Funnel-SQL) + PB-Erfassung gebaut; Entscheidung §2 (Leistungs-Schritt, 6 IDs streichen) offen | `B-04-PLAN.md` |
@@ -106,18 +106,19 @@ js/workout-ui.js                   UI     6 Haken `gy('…')`, alle fail-open
 | **B-09** Ausfall-/Krankheitslogik | ✅ live (v8-366), schlafend: Migration 0040 + Flag `absence_replanner` nicht gesetzt | `B-09-STAND.md` |
 | **B-10** Engine v2 Canary | ⏳ braucht A-12-Report (`ORVIA.engineShadow.gateReport()`) | — |
 | B-11 / B-12 | ⬜ nach B-10 | — |
-| **B-13** i18n | 🔄 Laufzeit + Katalog DE (988 Keys) + Pseudo-Locale; unter t(): goal-detail, workout-gym, workout-ui, onboarding-ui, profile-center, **profile.js**; Rückprobe `tools/i18n-recon.mjs`. Offen: auth, activity, nutrition, issues, insights, adaptive-card, race, extras, ui.js (1058) | `B-13-I18N-STAND.md` |
+| **B-13** i18n | 🔄 Katalog DE **3190 Keys**; 14 Dateien im t()-Regime inkl. **ui.js** (1694), profile.js, auth, activity, nutrition, insights, race, extras, adaptive-card, issues. Rest 911 Literale (ui.js 184, calc 137, supplements 124, profile-model 88). Offen: Pseudo-Locale am Gerät | `B-13-I18N-STAND.md` |
 | B-14 EN | ⬜ nach B-13 | — |
 | B-15 Tests | 🔄 laufend — 269 geprüft, jede neue Logik mit Test, Kernmodule mit Proben | — |
 
-**Nicht deployed:** v8-368 (alles seit `bc0a640` = v8-366: B-03, B-02, B-04-Logging, B-13 inkl. `locales/`). **Nicht durch CI:** alles seit `1c7c97f` (`entwicklung` hängt).
+**Live:** v8-368 (`743a019`, abgenommen 12.09.). **Nicht deployed:** v8-369 = Zielliste-Fixes, 0042/0043-Code, B-13 Schritte 5–8 (ui.js!). **Vor dem Deploy:** Browser-Tests lokal (22 Skips in der Bridge-VM) oder Sichtprüfung der fünf Kernflows. **Nicht durch CI:** alles seit `1c7c97f`.
 
 ### Was nur du kannst — gesammelt (Reihenfolge = Empfehlung)
 1. `git push origin main:entwicklung` (CI für alles seit `1c7c97f`).
-2. Deploy v8-368 (drei Blöcke, **neu: `locales/` im Upload-Satz**, `v8-368 (Stand bc91e97)`), danach `bash app/tools/deploy-verify.sh`.
-3. Migration 0041 (`onboarding_step_log`) — ohne sie läuft das Onboarding-Logging fail-open ins Leere.
-4. B-01-Wächter: R1 seit 04.09. → `widersprueche = 0`? Dann Flag-Standard (alle Konten) = Insert für das zweite Produktionskonto.
-5. Gym-Sync-Roundtrip (Superset koppeln → abschließen → Reload → „Superset A" in der Historie).
-6. Optional: 0040 + Flag `absence_replanner`.
-7. A-12: `ORVIA.engineShadow.gateReport()` in der Konsole → Ergebnis für B-10.
-8. Entscheidung B-04 §2 (Leistungs-Schritt mit Chips, 6 IDs streichen).
+2. `node supabase/tests/run-all.mjs` auf dem Mac (Browser-Tests) — Bedingung für den Deploy von v8-369.
+3. Deploy v8-369 (drei Blöcke), danach `bash app/tools/deploy-verify.sh`; am Gerät: Heute, Plan, Check-in, Ziele verwalten, Profil öffnen.
+4. Migrationen 0041 und 0043, falls noch nicht ausgeführt (0042 ✅ 12.09.).
+5. HM-Ziel (06.09.) klären: erreicht / neu terminieren / archivieren — sonst plant ORVIA auf ein vergangenes Rennen.
+6. Gym-Sync-Roundtrip (Superset koppeln → abschließen → Reload → „Superset A" in der Historie).
+7. Optional: 0040 + Flag `absence_replanner`.
+8. A-12: `ORVIA.engineShadow.gateReport()` in der Konsole → Ergebnis für B-10.
+9. Entscheidung B-04 §2 (Leistungs-Schritt mit Chips, 6 IDs streichen).

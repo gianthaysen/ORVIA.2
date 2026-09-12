@@ -45,3 +45,28 @@ Band 6 e.2 Schritt 6: bei > 1.500 Strings **Cut auf Kernflows zuerst**. Kernflow
 6. Pseudo-Locale-Durchlauf der fünf Kernflows am Gerät (dein Auge) → DoD.
 
 Alles ab Schritt 2 ist mechanische Extraktion mit Test je Screen; Schritt 1 ist die einzige Architekturänderung.
+
+## Stand 12.09.2026 (HEAD nach `9b26bd4`, Build v8-369)
+
+| Schritt | Datei(en) | Keys | Stand |
+|---|---|---|---|
+| 4a/4b | profile-center.js, **profile.js** | 70 + 516 | ✅ |
+| 5 | auth.js (Login, Konto-Karte) | 92 | ✅ |
+| 6 | activity.js | 113 | ✅ |
+| 7 | nutrition, insights, race, extras, adaptive-card, issues | 299 | ✅ |
+| 8 | **ui.js** (Heute, Plan, Check-in, Story, Profi-Ansicht) | 1694 | ✅ Extraktion; 184 Restliterale (Template-Literale, escaped Quotes) |
+
+Katalog `locales/de.js`: **3190 Keys**. Inventur-Rest (Heuristik): **911** (11.09.: ~2600) — davon ui.js 184, calc.js 137, supplements.js 124 (Inhaltslexikon → Content-Katalog, nicht string-basiert), profile-model.js 88, orvia-pro.js 66. `i18n_guard` führt 14 Dateien im t()-Regime (0 Literale) und eine Ratsche (Rest ≤ 950).
+
+**Werkzeuge:** `tools/i18n-extract.mjs` (jetzt mit Klassifikationsschutz: Objektschlüssel/Vergleich/case/Index nie extrahieren; Perf-Marken, Header, Attributfragmente übersprungen), `tools/i18n-recon.mjs` (Rückprobe: Keys → DE-Text, `diff` gegen Git-Stand, beide Seiten inliniert), `supabase/tests/_i18n-src.mjs` (`srcHasText`, `inlined`, `tStub` für Harnesse).
+
+**Fünf Fehlerklassen, die die Rückprobe gefunden hat** (alle behoben, Regel im Extraktor):
+1. Markup-/Attributfragmente als „Text" (`onclick="…"`, SVG-Attribute).
+2. Groß-/Kleinschreibungs-Kollisionen im Slug (`Nicht verbunden` ↔ `nicht verbunden`).
+3. Technische Strings mit Großbuchstaben (`_P.mark('onAuthed: …')`, `'Bearer '`).
+4. Bezeichner-Literale (`{'Wettkampf':'race_week'}[act.n]`) — Syntaxfehler bzw. stille Fehlklassifikation.
+5. `·`-Escapes im Literal → doppelter Backslash im Katalog.
+
+**Bekannte Schuld (für B-14 EN):** Fragment-Keys (Satzteile mit führendem/abschließendem Leerzeichen, z. B. `'Zubettgeh-' + t('ui.zeit')`, `t('ui.aktuell') + n + t('ui.tage')`) sind DE-textgleich, aber nicht übersetzbar. Bei Insights, Wettkampf, Adaptive-Karte, Aktivität, Beschwerden bereits zu ganzen Sätzen mit `{platzhalter}` zusammengezogen; in profile.js/ui.js noch ~450 Fragmente. Pseudo-Locale `xx` macht sie sichtbar (`⟦…⟧⟦…⟧` statt eines Rahmens).
+
+**Offen:** ui.js-Rest 184 (manuell), calc.js-Coach-Texte, profile-model-Tabellen (`goal.cat.*`, `body.region.*`), supplements-Content-Katalog, Renderer `t('plan.kind.'+kind)`, Pseudo-Locale-Durchlauf am Gerät.
