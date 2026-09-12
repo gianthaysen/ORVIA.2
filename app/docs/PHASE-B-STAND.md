@@ -94,27 +94,30 @@ js/workout-ui.js                   UI     6 Haken `gy('…')`, alle fail-open
 
 ---
 
-## 6 · Phase-B-Gesamtbild (Stand 11.09.2026, HEAD `93f5637`, Build v8-367)
+## 6 · Phase-B-Gesamtbild (Stand 12.09.2026, HEAD `bc91e97`, Build v8-368)
 
 | Paket | Stand | Wo |
 |---|---|---|
 | **B-01** Ziel→Plan-Kette | ✅ Code fertig, hinter Flag `goal_plan_input` (0039); **an seit 04.09.** auf dem Produktionskonto → 7-Tage-Wächter fällig (R1, `widersprueche = 0`) → Standard an | `B-01-UMSETZUNGSPLAN.md` |
-| **B-02** Ziel-Detailseite | ✅ gebaut (`goal-detail.js`), Einstieg Zieltitel im Plan-Kopf; Sichtprüfung offen | dieser Commit |
+| **B-02** Ziel-Detailseite | ✅ gebaut (`goal-detail.js`), Einstieg Zieltitel im Plan-Kopf; Sichtprüfung offen | `93f5637` |
 | **B-03** Profilstärke | ✅ gebaut (`profile-strength.js`, Profilzentrale); Sichtprüfung offen | `cd60ac2` |
-| **B-04** Onboarding v3 | ⬜ nicht begonnen — UI-lastig, braucht Abbruchquoten-Logging-Design | — |
+| **B-04** Onboarding v3 | 🔄 Schritt-Logging (0041, `onboarding-log.js`, Funnel-SQL) + PB-Erfassung gebaut; Entscheidung §2 (Leistungs-Schritt, 6 IDs streichen) offen | `B-04-PLAN.md` |
 | **B-05 / 06 / 07 / 08** Gym | ✅ live seit v8-364; **Sync-Roundtrip am Gerät offen** (Gate B, Kriterium 4) | §3 |
 | **B-09** Ausfall-/Krankheitslogik | ✅ live (v8-366), schlafend: Migration 0040 + Flag `absence_replanner` nicht gesetzt | `B-09-STAND.md` |
 | **B-10** Engine v2 Canary | ⏳ braucht A-12-Report (`ORVIA.engineShadow.gateReport()`) | — |
 | B-11 / B-12 | ⬜ nach B-10 | — |
-| B-13 / B-14 i18n | ⬜ bewusst zuletzt | — |
-| B-15 Tests | 🔄 laufend — 267 Dateien, jede neue Logik mit Test, Kernmodule mit Proben | — |
+| **B-13** i18n | 🔄 Laufzeit + Katalog DE (988 Keys) + Pseudo-Locale; unter t(): goal-detail, workout-gym, workout-ui, onboarding-ui, profile-center, **profile.js**; Rückprobe `tools/i18n-recon.mjs`. Offen: auth, activity, nutrition, issues, insights, adaptive-card, race, extras, ui.js (1058) | `B-13-I18N-STAND.md` |
+| B-14 EN | ⬜ nach B-13 | — |
+| B-15 Tests | 🔄 laufend — 269 geprüft, jede neue Logik mit Test, Kernmodule mit Proben | — |
 
-**Nicht deployed:** v8-367 (`cd60ac2` B-03, `93f5637` B-02). **Nicht durch CI:** alles seit `1c7c97f` (`entwicklung` hängt).
+**Nicht deployed:** v8-368 (alles seit `bc0a640` = v8-366: B-03, B-02, B-04-Logging, B-13 inkl. `locales/`). **Nicht durch CI:** alles seit `1c7c97f` (`entwicklung` hängt).
 
-### Was nur du kannst — gesammelt
-1. `git push origin main:entwicklung` (CI für B-09/B-03/B-02).
-2. Deploy v8-367 (drei Blöcke, `v8-367 (Stand 93f5637)`).
-3. B-01-Wächter: R1 seit 04.09. → `widersprueche = 0`? Dann Flag-Standard (alle Konten) = Insert für das zweite Produktionskonto.
-4. Gym-Sync-Roundtrip (Superset koppeln → abschließen → Reload → „Superset A" in der Historie).
-5. Optional: 0040 + Flag `absence_replanner`.
-6. A-12: `ORVIA.engineShadow.gateReport()` in der Konsole → Ergebnis für B-10.
+### Was nur du kannst — gesammelt (Reihenfolge = Empfehlung)
+1. `git push origin main:entwicklung` (CI für alles seit `1c7c97f`).
+2. Deploy v8-368 (drei Blöcke, **neu: `locales/` im Upload-Satz**, `v8-368 (Stand bc91e97)`), danach `bash app/tools/deploy-verify.sh`.
+3. Migration 0041 (`onboarding_step_log`) — ohne sie läuft das Onboarding-Logging fail-open ins Leere.
+4. B-01-Wächter: R1 seit 04.09. → `widersprueche = 0`? Dann Flag-Standard (alle Konten) = Insert für das zweite Produktionskonto.
+5. Gym-Sync-Roundtrip (Superset koppeln → abschließen → Reload → „Superset A" in der Historie).
+6. Optional: 0040 + Flag `absence_replanner`.
+7. A-12: `ORVIA.engineShadow.gateReport()` in der Konsole → Ergebnis für B-10.
+8. Entscheidung B-04 §2 (Leistungs-Schritt mit Chips, 6 IDs streichen).
