@@ -254,6 +254,20 @@ function _goalShadowNote(ereignis){
     gcat:(typeof gcat==='function')?gcat:null
   });
 }
+/* A-06 Nachtrag (12.09.2026): Laufzeit-Beleg. Einmal je Geraet und Kalendertag nach
+   orvia:auth-ready (Profil und Ziele sind dann hydriert) ein 'session'-Ereignis — abseits
+   des kritischen Login-Pfads (setTimeout). Ohne Migration 0043 lehnt der CHECK die Zeile
+   ab: das ist ein gezaehlter Schreibfehler, kein Verhalten. */
+function _goalShadowSession(){
+  try{
+    var k='orvia_gs_session_day',today=new Date().toISOString().slice(0,10);
+    if(localStorage.getItem(k)===today)return false;
+    localStorage.setItem(k,today);
+    _goalShadowNote('session');
+    return true;
+  }catch(e){return false;}
+}
+try{window.addEventListener('orvia:auth-ready',function(){setTimeout(_goalShadowSession,1500);});}catch(e){}
 function _goalShadowId(){
   try{ if(window.crypto&&crypto.randomUUID)return 'gs_'+crypto.randomUUID(); }catch(e){}
   return 'gs_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);

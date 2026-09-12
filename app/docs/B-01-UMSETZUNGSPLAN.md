@@ -221,3 +221,16 @@ entscheidet, wie groß Schritt 5 wird. Alles ab Schritt 3 erst nach Gate A (#4 f
 | Ab 28.09. (13 Tage vor dem Rennen) | Long Run · Taper, Intervalle · kurz, Gym · leicht |
 | Ab 05.10. (Rennwoche) | Long Run/Tempo weg, „Anschwitzen", So 11.10. „Wettkampf · 5:13 /km · Zielpace" (bei 1:50), Sa frei |
 | Zieldatum testweise auf morgen | sofortige Rennwoche-Ansicht — Test ohne Warten; danach zurücksetzen |
+
+## 12 · Abnahme des Wächters (12.09.2026) — Befund und Korrektur
+
+**Befund.** `_goal-plan-guard.sql` (Ereignisse seit Flag-Aktivierung 04.09.) lieferte zunächst **0 Ereignisse**. Ursache: der A-06-Beobachter schrieb nur bei Zielmutationen (`add/update/remove/status`); acht Tage Nutzung ohne Zielbearbeitung hinterließen keine Zeile. DoD-Punkt 6 („7 Tage an ohne Widerspruch") war damit **nicht prüfbar** — ein Konstruktionsfehler dieses Plans, kein Befund gegen B-01.
+
+**Nachweis stattdessen.** Gezieltes Auslösen aller vier Typen auf dem Produktionskonto (Hauptziel neu speichern, Kraft-Ziel Prio 1 anlegen → Prio 2 → pausieren/fortsetzen → löschen): **9 Ereignisse, 0 Widersprüche, v8-368** — insbesondere der frühere `identity`-Fall (Kraft Prio 1) ist mit Flag widerspruchsfrei, weil `goalOf()` dieselbe Quelle liest. Der Vergleich ist deterministisch; Laufzeit fügt keine Evidenz hinzu, Kategorien-Abdeckung schon.
+
+**Konsequenzen (umgesetzt, HEAD nach 706d370):**
+- Migration **0042**: `goal_plan_input` für alle bestehenden Konten eingetragen + Trigger auf `auth.users`, der neuen Konten dieselbe Zeile gibt. Bewusst per Zeile, nicht per Code-Standard — `feature-flags.js` bleibt fail-closed.
+- Migration **0043** + `goal-shadow@2`: Ereignistyp `session`, einmal je Gerät und Kalendertag nach `orvia:auth-ready` (`profile.js _goalShadowSession`). Damit belegt das Log künftig Laufzeit, nicht nur Bearbeitung.
+- Nebenbefunde aus dem Screenshot der Zielliste (zwei „Hauptziele", „6600 s", Konfliktkarte ohne Zielnamen, abgelaufenes Datum) → Commit 706d370.
+
+**Offen (nur Gian):** 0042 und 0043 ausführen; Nachweis-Query am Ende von 0042 (`an = konten`).
