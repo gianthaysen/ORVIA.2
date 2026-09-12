@@ -51,3 +51,16 @@ Gemeinsamer Kern von F1/F3/F5/F6: **Aktivitäten fließen nicht in Leistungsbele
 4. Kein Zielwert mehr in Sekunden; kein „noch 0 Wochen" nach dem Datum.
 5. Ziel-Sheet zeigt nur wirksame Felder; Verletzungshistorie ist ein Link.
 6. Profil-Screen = v14-Struktur (Über/Ziele/Leistung), Modal „Ziele verwalten" entfernt; Suite grün; Deploy; Sichtprüfung.
+
+## 6 · Stand 12.09. abends — E5/E1/E4/E2/E6/E7 umgesetzt (`808efbb` ff.)
+
+| Schritt | Ergebnis |
+|---|---|
+| E5 | `formatGoalValue` zentral; Plan-Kopf/Ziel-Detail/Editor/Liste zeigen h:mm:ss; Countdown „vor n Tagen" nach dem Datum |
+| E1 | Bestzeiten je Sport (Laufen bis Marathon, Rad 20–180 km, Schwimmen 400–3800 m); Profil-Bestzeiten füllen 21,1 km / 400 m / 20 km; gemessener HM schlägt Riegel |
+| E4 | `pb-sync`: Aktivitäten → `personalBests` (source `activity`) → Resolver wertet den Wettkampf als race-Beleg → Profilstärke-Lücke „Leistungsreferenz" schließt sich, sobald ein Wettkampf/Test der letzten Wochen existiert |
+| E2/E3 | `race-result`: Wettkampf erkannt → Übernehmen / Nicht mein Rennen; nach dem Datum ohne Treffer: Erreicht / Verfehlt / Neu terminieren; Status `missed`; **Migration 0044 vor Deploy** |
+| E6 | Verletzungshistorie am Ziel → Link auf Beschwerden & Einschränkungen (dort liest B-09) |
+| E7 | **Feld-Audit:** 77 Felder in `GOAL_CATEGORY_FIELDS` (shredded 15, triathlon 13, football 11, running 9, strength 9, cycling 10, swimming 10) — **kein** Engine-/Planer-Modul liest `categoryData` (Probe `goal_fields_audit`). Der Wizard sagt das jetzt im Schritt „Konkretisieren"; das v14-Ziel-Sheet (S1-UI) enthält diese Felder nicht. Was den Plan steuert: Zielart, Zielwert, Datum, Priorität + Profil (Verfügbarkeit, Leistungswerte, Beschwerden). |
+
+**Offen in S1:** S1-UI (Profil-Screen v14 mit Tabs Über/Ziele/Leistung, Ziel-Sheets, Modal entfernen). Nach Deploy prüfen (DoD 1–4) am Produktionskonto: Flensburg-HM als „Wettkampf erkannt" im Plan-Kopf, Bestzeiten 21,1 km / 400 m / 20 km, Profilstärke ohne „Leistungsreferenz"-Lücke.

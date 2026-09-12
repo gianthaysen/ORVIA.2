@@ -448,7 +448,9 @@
       { key: 'longestRun', label: 'Längster Lauf', type: 'number', unit: 'km' },
       { key: 'runDays', label: 'Lauftage', type: 'number' },
       { key: 'surface', label: 'Untergrund', type: 'select', options: ['Straße', 'Trail', 'gemischt', 'Bahn'] },
-      { key: 'injuryHistory', label: 'Verletzungshistorie', type: 'text' }
+      /* S1/E6 (12.09.2026): Verletzungen gehoeren zu den Beschwerden/Einschraenkungen (constraintsList) — dort liest sie
+         B-09 (absence-replanner). Als Zielfeld wurde der Text nirgends gelesen. type 'link' rendert einen Verweis. */
+      { key: 'injuryHistory', label: 'Verletzungen / Beschwerden', type: 'link', target: 'constraints' }
     ],
     strength: [
       { key: 'focus', label: 'Schwerpunkt', type: 'select', options: ['Muskelaufbau', 'Kraft', 'Erhalt', 'Recomposition'] },

@@ -823,7 +823,8 @@ function gwRender(){var box=document.getElementById('gwBody');if(!box)return;var
   if(nav)nav.innerHTML=
     (W.step>0?'<button class="btn sec" onclick="gwBack()">' + T('pf.zurueck') + '</button>':'<button class="btn sec" onclick="gwCancel()">' + T('pf.abbrechen') + '</button>')+
     (W.step<GW_STEPS.length-1?'<button class="btn" onclick="gwNext()">' + T('pf.weiter') + '</button>':'<button class="btn" onclick="gwSave()">'+(W.id?'' + T('pf.speichern') + '':'' + T('pf.ziel_anlegen') + '')+'</button>');}
-function _gwField(f,cd){var id='gwf_'+f.key;var v=cd[f.key];var lab='<label>'+escH(f.label)+(f.unit?' ('+escH(f.unit)+')':'')+'</label>';
+function _gwField(f,cd){var id='gwf_'+f.key;var v=cd[f.key];
+  if(f.type==='link')return '<div class="gm-field"><label>'+escH(f.label)+'</label><button type="button" class="gmc-b" onclick="openProfileSection(\''+escH(f.target||'constraints')+'\')">'+T('pf.in_beschwerden_pflegen')+'</button><div class="gmc-meta">'+T('pf.beschwerden_liest_der_plan')+'</div></div>';var lab='<label>'+escH(f.label)+(f.unit?' ('+escH(f.unit)+')':'')+'</label>';
   if(f.type==='bool')return '<div class="gm-field gm-inline"><input type="checkbox" id="'+id+'"'+(v?' checked':'')+'>'+lab+'</div>';
   if(f.type==='select'){var pairs=f.optionPairs?f.optionPairs:(f.options||[]).map(function(o){return [o,o];});return '<div class="gm-field">'+lab+segHTML(id,pairs,v)+'</div>';}
   if(f.type==='longtext')return '<div class="gm-field">'+lab+'<textarea id="'+id+'" rows="2">'+escH(v!=null?v:'')+'</textarea></div>';
@@ -837,6 +838,8 @@ function _gwStepHTML(key){var M=pmModel();var d=window._gw.draft;
       '<div class="gm-field"><label>' + T('pf.beschreibung_optional') + '</label><input id="gw_desc" value="'+escH(d.description)+'"></div>'+
       '<div class="gm-field"><label>' + T('pf.warum_ist_dir_das_wichtig') + '</label><input id="gw_motiv" value="'+escH(d.motivation||'')+'"></div>';}
   if(key==='details'){var fields=M.categoryFieldsFor(d.category);var html='';
+    /* S1/E7 (12.09.2026): Feld-Audit — kein Konsument in Engine/Planer liest categoryData (77 Felder). Ehrlicher Hinweis statt stiller Eingabe. */
+    if(fields.length)html+='<p class="note gw-audit" style="text-align:left">' + T('pf.details_ohne_planwirkung') + '</p>';
     if(d.category==='shredded')html+='<p class="note" style="text-align:left">' + T('pf.sehr_definiert_werden_koerperfett_reduzieren') + '</p>';
     if(d.category==='ironman'||d.category==='triathlon')html+='<p class="note" style="text-align:left">' + T('pf.langfristiges_ziel_ohne_festes_datum') + '</p>';
     if(d.category==='football'){var fo=M.sportFollowupSchema('football').focusOptions;var sel=d.categoryData.focus||[];
@@ -890,7 +893,7 @@ function _gwCollect(){var d=window._gw.draft;var st=GW_STEPS[window._gw.step].ke
   function val(id){var e=document.getElementById(id);return e?e.value:undefined;}
   if(st==='type'){var c=_segVal('gw_cat');if(c!=null&&c!=='')d.category=c;var t=val('gw_title');if(t!=null)d.title=t.trim();var ds=val('gw_desc');if(ds!=null)d.description=ds;
     var cc=val('gw_customcat');if(cc!=null)d.customCategory=cc.trim()||null;var mv=val('gw_motiv');if(mv!=null)d.motivation=mv;}
-  else if(st==='details'){var M=pmModel();M.categoryFieldsFor(d.category).forEach(function(f){if(f.type==='select'){var sv=_segVal('gwf_'+f.key);if(sv!=null)d.categoryData[f.key]=sv;return;}var e=document.getElementById('gwf_'+f.key);if(!e)return;if(f.type==='bool')d.categoryData[f.key]=e.checked;else if(f.type==='number'){d.categoryData[f.key]=e.value===''?null:(isNaN(parseFloat(e.value.replace(',','.')))?e.value:parseFloat(e.value.replace(',','.')));}else d.categoryData[f.key]=e.value;});
+  else if(st==='details'){var M=pmModel();M.categoryFieldsFor(d.category).forEach(function(f){if(f.type==='link')return;if(f.type==='select'){var sv=_segVal('gwf_'+f.key);if(sv!=null)d.categoryData[f.key]=sv;return;}var e=document.getElementById('gwf_'+f.key);if(!e)return;if(f.type==='bool')d.categoryData[f.key]=e.checked;else if(f.type==='number'){d.categoryData[f.key]=e.value===''?null:(isNaN(parseFloat(e.value.replace(',','.')))?e.value:parseFloat(e.value.replace(',','.')));}else d.categoryData[f.key]=e.value;});
     var fc=document.getElementById('gw_focus');if(fc)d.categoryData.focus=Array.prototype.slice.call(fc.querySelectorAll('.on')).map(function(b){return b.dataset.v;});}
   else if(st==='sports'){var sc=document.getElementById('gw_sports');if(sc)d.sports=Array.prototype.slice.call(sc.querySelectorAll('.on')).map(function(b){return b.dataset.v;});}
   else if(st==='metrics'){var hz=_segVal('gw_hz');if(hz!=null&&hz!=='')d.timeHorizon=hz;var dt=val('gw_date');d.targetDate=dt||null;
