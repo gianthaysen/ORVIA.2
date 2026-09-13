@@ -99,8 +99,10 @@ function baseData(over) {
   ok('F3 keine Demo-Zahlen aus dem Prototyp im Modul (184, 412, 1:51:20, 58 %)', !/\b184\b|\b412\b|1:51:20|58 %/.test(src));
   /* Strukturvertrag (gm-ref/structure-contract.json · requiredSlots.mehr): die vier Profil-Slots muessen im Standard-Reiter sichtbar bleiben */
   const contract = JSON.parse(readFileSync(new URL('docs/gm-ref/structure-contract.json', APP), 'utf8'));
-  const ov = makeSb().ORVIA.screens.profileV14.overviewHTML(baseData());
-  const missingSlots = (contract.requiredSlots.mehr || []).filter(sl => ov.indexOf('data-gm-slot="' + sl + '"') < 0);
+  const _pv = makeSb().ORVIA.screens.profileV14;
+  /* Leeres Profil (so sieht es der Browser-Kollektor): Slots muessen auch ohne Saison/Ziele/Aktivitaeten sichtbar sein */
+  const ovs = [_pv.overviewHTML(baseData()), _pv.overviewHTML(baseData({ season: null, goals: [], sports: [], weekStats: null, load: null }))];
+  const missingSlots = (contract.requiredSlots.mehr || []).filter(sl => ovs.some(ov => ov.indexOf('data-gm-slot="' + sl + '"') < 0));
   ok('F4 Strukturvertrag: alle Profil-Slots im Reiter Uebersicht (' + (contract.requiredSlots.mehr || []).join(', ') + ')', missingSlots.length === 0, missingSlots.length ? 'fehlt: ' + missingSlots.join(' · ') : '');
 }
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');

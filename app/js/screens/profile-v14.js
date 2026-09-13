@@ -148,14 +148,14 @@
     if (d.season && d.season.phases && d.season.phases.length) {
       var ph = d.season.phases, cur = ph.filter(function (p) { return p.on; })[0];
       var title = cur ? (esc(cur.n) + (d.season.daysTo != null && d.season.daysTo >= 0 ? ' · ' + esc(T('pv.noch_n_tage', { n: d.season.daysTo })) : '')) : esc(T('pv.saison_ohne_phase'));
-      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + title + '</div><div class="more" onclick="showTab(\'plan\')">' + esc(T('pv.plan')) + ' ' + ic('chev', 'xs') + '</div></div>' +
+      h += '<div class="card tight" data-gm-slot="profile-performance"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + title + '</div><div class="more" onclick="showTab(\'plan\')">' + esc(T('pv.plan')) + ' ' + ic('chev', 'xs') + '</div></div>' +
         '<div class="pv-phases">' + ph.map(function (p) { return '<div class="pv-phase' + (p.on ? ' on' : '') + '"><b>' + esc(p.n) + '</b><span>' + esc(p.to ? deDate(p.to) : '') + '</span></div>'; }).join('') + '</div>' +
-        '<div class="statgrid3" data-gm-slot="profile-performance"><div><div class="n">' + esc(d.weekStats && d.weekStats.km != null ? fmtDe(d.weekStats.km) : '—') + '</div><div class="l">' + esc(T('pv.km_diese_woche')) + '</div></div>' +
+        '<div class="statgrid3"><div><div class="n">' + esc(d.weekStats && d.weekStats.km != null ? fmtDe(d.weekStats.km) : '—') + '</div><div class="l">' + esc(T('pv.km_diese_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.weekStats && d.weekStats.sessionsAvg != null ? fmtDe(d.weekStats.sessionsAvg) : '—') + '</div><div class="l">' + esc(T('pv.einheiten_pro_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.load && d.load.acwr != null ? fmtDe(d.load.acwr, 2) : '—') + '</div><div class="l">' + esc(T('pv.belastung_acwr')) + '</div></div></div>' +
         '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('pv.saison_quelle', { n: d.activitiesCount != null ? d.activitiesCount : '—' })) + '</div></div>';
     } else {
-      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + esc(T('pv.saison_leer_titel')) + '</div></div><p class="muted" style="margin:0">' + esc(T('pv.saison_leer_text')) + '</p></div>';
+      h += '<div class="card tight" data-gm-slot="profile-performance"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + esc(T('pv.saison_leer_titel')) + '</div></div><p class="muted" style="margin:0">' + esc(T('pv.saison_leer_text')) + '</p></div>';
     }
     /* Zielreise */
     var active = d.goals.filter(function (g) { return g && g.status === 'active'; }).sort(function (a, b) { return (a.priority || 9) - (b.priority || 9); });
