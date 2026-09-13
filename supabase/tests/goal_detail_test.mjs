@@ -51,6 +51,8 @@ sec('A · Modell (S1.5: Prototyp-v14-Tiefe)');
   const far = M({ planInput: { family: 'run', daysTo: 357, phase: 'build', distanceKm: 42.195, target: { targetMin: 210, pacePerKmSec: 299 } }, goal: Object.assign({}, HM, { category: 'marathon', targetValue: 12600, targetDate: '2027-09-05' }), engine: { state: 'nodata', need: 'x' }, longestRun28: 21.2, avg4WeekKm: 7, targetWeekKm: 22 });
   ok('A19 Marathon in 51 Wochen: Long-Run-Bedarf (28 km) neutral statt Veto, keine Stellschraube dafuer; Umfang bleibt Minus', far.reasons.some(r => r.id === 'long' && r.kind === 'neutral' && /Spitzenphase/.test(r.html)) && far.levers.every(l => l.id !== 'long') && far.levers.some(l => l.id === 'volume'));
   ok('A20 Historie ohne Modell-Eintraege: „Ziel angelegt" schlicht, ohne erfundene Prioritaet', /<b>Ziel angelegt<\/b>$/.test(M({ goal: Object.assign({}, HM, { createdAt: '2026-09-12T10:00:00Z' }) }).history[0].html));
+  const gated = M({ engine: { state: 'nodata', need: 'x', nRuns: 4, nQuality: 1, gates: { runs: { have: 4, need: 6 }, quality: { have: 1, need: 2 }, tracking: { have: 13, need: 3 } } } });
+  ok('A22 nodata nennt die greifenden Gates mit Zahlen (Laeufe 4/6, Quality 1/2), erfuelltes Tracking nicht', /4 von 6 Läufen/.test(gated.feas.text) && /1 von 2 Schlüsseleinheiten/.test(gated.feas.text) && !/Wochen/.test(gated.feas.text));
   ok('A21 targetMin im Modell (Ziellinie im Verlauf auch ohne aktuelle Prognose)', far.targetMin === 210);
 }
 

@@ -810,7 +810,9 @@ function goalEngine(runs42,opts){
   // Mindestdaten-Gate
   if(valid.length<6||usable.length<2||(o.trackingWeeks||0)<3){
     return{state:'nodata',need:'≥6 Läufe in 42 Tagen, davon ≥2 Quality (Tempo/Long ≥4 km), ≥3 Wochen Tracking',
-      nRuns:valid.length,nQuality:usable.length};
+      nRuns:valid.length,nQuality:usable.length,
+      /* S1.5: welches Gate greift — Anzeige kann „5 von 6 Läufen" sagen statt den Sammeltext */
+      gates:{runs:{have:valid.length,need:6},quality:{have:usable.length,need:2},tracking:{have:(o.trackingWeeks||0),need:3}}};
   }
   // Schätzer A: Riegel aus bester Quality-Einheit
   const tRiegel=Math.min(...usable.map(r=>riegel(r.dist,r.dur,distKm)));

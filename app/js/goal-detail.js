@@ -170,7 +170,11 @@
         var cls = e.state === 'ontrack' ? 'ok' : (e.state === 'border' ? 'tight' : (e.state === 'risk' ? 'risk' : 'ok'));
         var dSec = Math.round((e.tPred - t.targetMin) * 60);
         m.feas = { cls: cls, title: T('gd.feas_' + cls), text: T(dSec > 0 ? 'gd.feas_over' : 'gd.feas_under', { pred: fmtTime(e.tPred), delta: fmtSec(dSec) }), predMin: e.tPred, deltaSec: dSec };
-      } else m.feas = { cls: 'none', title: T('gd.feas_none'), text: e && e.need ? T('goal.progress.noForecastNeed', { need: e.need }) : T('goal.progress.noForecast'), predMin: null, deltaSec: null };
+      } else {
+        var gt = e && e.gates ? e.gates : null, miss = [];
+        if (gt) { if (gt.runs.have < gt.runs.need) miss.push(T('gd.gate_runs', { have: gt.runs.have, need: gt.runs.need })); if (gt.quality.have < gt.quality.need) miss.push(T('gd.gate_quality', { have: gt.quality.have, need: gt.quality.need })); if (gt.tracking.have < gt.tracking.need) miss.push(T('gd.gate_tracking', { have: gt.tracking.have, need: gt.tracking.need })); }
+        m.feas = { cls: 'none', title: T('gd.feas_none'), text: miss.length ? T('gd.feas_gates', { list: miss.join(' · ') }) : (e && e.need ? T('goal.progress.noForecastNeed', { need: e.need }) : T('goal.progress.noForecast')), predMin: null, deltaSec: null, gates: gt };
+      }
       m.reasons = feasReasons(o, m);
     } else if (m.progress.kind === 'value') {
       m.feas = { cls: m.progress.percent >= 100 ? 'ok' : 'none', title: m.progress.percent >= 100 ? T('gd.feas_value_done') : T('gd.feas_value'), text: m.progress.currentText + ' → ' + m.progress.targetText, predMin: null, deltaSec: null };
