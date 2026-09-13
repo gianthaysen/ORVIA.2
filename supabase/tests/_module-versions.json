@@ -16,8 +16,8 @@
     "contentHash": "dc0898f4"
   },
   "zones": {
-    "version": "performance-zones@2",
-    "contentHash": "ea31e026"
+    "version": "performance-zones@3",
+    "contentHash": "cf58514b"
   },
   "flags": {
     "version": "feature-flags@4",
