@@ -137,6 +137,8 @@ if(blk){
     els['gmProf']=mk('gmProf');
     renderGMProfile();
     const H=els['gmProf'].innerHTML;
+    /* S1-UI (13.09.2026): Diese Sandbox laedt js/screens/profile-v14.js NICHT — geprueft wird hier der
+       v5-Rueckfall von renderGMProfile (gleiche Daten). Den v14-Screen prueft profile_v14_test. */
     /* Profil-Reihenfolge */
     const seq=['profile-cover','ig-profile','ig-top','ig-avatar','ig-actions','ig-name','ig-handle','ig-bio','ig-stats','sectlabel','sport-chips','sectlabel','goal-stack','sectlabel','setting-group','sectlabel','setting-group','tabspacer'];
     let pos=-1,ordOk=true,which='';

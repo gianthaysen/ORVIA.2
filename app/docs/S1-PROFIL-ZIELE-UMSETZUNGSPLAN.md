@@ -64,3 +64,16 @@ Gemeinsamer Kern von F1/F3/F5/F6: **Aktivitäten fließen nicht in Leistungsbele
 | E7 | **Feld-Audit:** 77 Felder in `GOAL_CATEGORY_FIELDS` (shredded 15, triathlon 13, football 11, running 9, strength 9, cycling 10, swimming 10) — **kein** Engine-/Planer-Modul liest `categoryData` (Probe `goal_fields_audit`). Der Wizard sagt das jetzt im Schritt „Konkretisieren"; das v14-Ziel-Sheet (S1-UI) enthält diese Felder nicht. Was den Plan steuert: Zielart, Zielwert, Datum, Priorität + Profil (Verfügbarkeit, Leistungswerte, Beschwerden). |
 
 **Offen in S1:** S1-UI (Profil-Screen v14 mit Tabs Über/Ziele/Leistung, Ziel-Sheets, Modal entfernen). Nach Deploy prüfen (DoD 1–4) am Produktionskonto: Flensburg-HM als „Wettkampf erkannt" im Plan-Kopf, Bestzeiten 21,1 km / 400 m / 20 km, Profilstärke ohne „Leistungsreferenz"-Lücke.
+
+## 7 · S1-UI gebaut (13.09., Build v8-371)
+
+`js/screens/profile-v14.js` (`ORVIA.screens.profileV14`): Kopf aus ui.js (`gmProfHeaderHTML`), darunter Profilstärke-Karte (v14 `ps-card` mit Ring und bis zu drei Lücken, Tipp öffnet Sektion/Editor), Reiter **Übersicht / Ziele / Leistung** (Reiter im localStorage gemerkt), Community erst mit S7.
+
+- **Übersicht:** Sportarten mit Rolle · Saison (Phasen aus dem Zieldatum, aktive Phase, km diese Woche, Einheiten/Woche Ø 4 Wo, ACWR, Quelle) · Zielreise (bis 3 aktive Ziele; Prognose nur für das Hauptziel) · Profil & Kontrolle.
+- **Ziele:** Kennzahlen Aktiv/Erreicht/Konflikte · aktive Ziele mit Pill (Im Korridor / Knapp / Konflikt), Wettkampf erkannt/Ergebnis, Zielanteil als Leerzustand · Pausiert · Zielkonflikte mit den vier Entscheidungen · Erreicht & verfehlt mit Datum/Zeit/Δ · „Alle Ziele verwalten" (Modal bleibt als Verwaltungsansicht).
+- **Leistung:** VO₂max (Quelle) / Fitness CTL / ACWR · Bestzeiten Laufen 5/10/HM/M (gemessen/geschätzt + Datum) · Rad & Schwimmen (nur wenn Messung) · Kraftwerte (Kniebeuge/Kreuzheben/Bankdrücken 1RM, Klimmzüge max.; fehlende benannt) · Zonen & Schwellen (HFmax mit Herkunft, Ruhepuls, Schwellenpace aus Referenz) · Medaillen/Meilensteine/Pace-Rechner.
+- **Ziel-Sheet** (Neues Ziel / Ziel bearbeiten): Kategorie-Chips → Ziel-Chips → Titel → Zielzeit bzw. Zielwert → Datum → Priorität mit Erklärung; „Auswirkung dieser Änderung" über `planKey`-Vergleich; „Mehr Optionen" öffnet den Wizard. Speichert über `goalAdd`/`goalUpdate`.
+- Rückfall: ohne geladenes Modul rendert `renderGMProfile` den v5-Aufbau (gm5-Vertrag bleibt für den Rückfall).
+- Tests: `profile_v14_test` (30), i18n_guard führt das Modul (0 Literale, 130 Keys `pv.*`).
+
+**Sichtprüfung offen (Gian):** Profil-Tab öffnen → drei Reiter, Profilstärke-Karte, Zielreise; Ziele-Tab → HM unter „Erreicht & verfehlt" mit Zeit; Leistung-Tab → Bestzeiten, Kraftwerte, Zonen; „Neues Ziel" → Sheet.
