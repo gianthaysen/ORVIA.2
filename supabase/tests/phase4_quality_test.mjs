@@ -53,7 +53,9 @@ ok('4.1 Kurzzeit-Cache NUR für den refresh-Pfad + Event-Invalidierung',
 /* Verhaltens-Sandbox: waitForGymDataDependencies mit nie bereitem Store → timedOut,
    mit bereitem Store → NICHT timedOut (auch wenn Auth fehlt). */
 {
-  const gymAct = () => ({ sportId: 'gym', status: 'completed', startedAt: new Date().toISOString(),
+  // startedAt 1 min in der Vergangenheit: gymPipeline nimmt toMs=Date.now() VOR listActivities();
+  // ein erst danach erzeugtes 'jetzt' liegt unter Last 1 ms hinter toMs ⇒ outsidePeriod (Suite-Flake).
+  const gymAct = () => ({ sportId: 'gym', status: 'completed', startedAt: new Date(Date.now() - 60000).toISOString(),
     workoutSessionId: 'ws-t1', exercises: [{ exerciseNameSnapshot: 'Bankdrücken',
       sets: [{ set_type: 'working', completed: true, reps: 8 }, { set_type: 'working', completed: true, reps: 8 }] }] });
   const mk = (readyStore) => new Promise((res) => {
