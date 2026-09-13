@@ -10326,8 +10326,9 @@ function gmProfSyncLabel(){
   return '—';
 }
 /* ---------- Profilhauptseite ---------- */
-function renderGMProfile(){
-  var host=document.getElementById('gmProf');if(!host)return;
+/* S1-UI (13.09.2026): Profilkopf als eigene Funktion — der v14-Screen (js/screens/profile-v14.js) haengt
+   Profilstaerke, Reiter und Inhalte darunter. Unveraendert: Avatar, Name, Handle, Bio, Statistikslots. */
+function gmProfHeaderHTML(){
   var name=gmProfName();
   var avatar='';
   /* Phase 1 · P0-6: las bisher NUR PROFILE.avatar. Ist das Bild in den Storage
@@ -10355,6 +10356,13 @@ function renderGMProfile(){
     (function(){/* GM7: Einheiten = Gesamtzahl der kanonisch zusammengefuehrten Aktivitaeten (Server+lokal+Legacy, dedupliziert) */
       var units=null;try{if(typeof listActivitiesUnified==='function'){var la=listActivitiesUnified();units=Array.isArray(la)?la.length:null;}}catch(_){ }
       return '<div class="ig-stats"><div class="ig-stat"><b>'+(units!=null?fmtDe(units):'—')+'</b><span>' + _uiT('ui.einheiten_') + '</span></div><div class="ig-stat"><b>'+(sports.length?sports.length:'—')+'</b><span>' + _uiT('ui.sportarten') + '</span></div><div class="ig-stat"><b>'+(ctl!=null?ctl:'—')+'</b><span>' + _uiT('ui.fitness_srpe') + '</span></div><div class="ig-stat"><b>—</b><span>' + _uiT('ui.zielaufbau') + '</span></div></div></div>';})();
+  return h;
+}
+function renderGMProfile(){
+  var host=document.getElementById('gmProf');if(!host)return;
+  /* S1-UI: v14-Screen, wenn geladen; sonst der bisherige v5-Aufbau (Rueckfall, gleiche Daten). */
+  try{var PV=window.ORVIA&&ORVIA.screens&&ORVIA.screens.profileV14;if(PV&&typeof PV.render==='function'&&PV.render(host))return;}catch(_){ }
+  var h=gmProfHeaderHTML();var sports=gmProfSports();
   h+='<div class="sectlabel" data-gm-slot="profile-sports">Deine ' + _uiT('ui.sportarten') + ' <span class="edit" role="button" tabindex="0" onclick="gmOpenProfPage(\'goals\')">Bearbeiten</span></div>';
   h+='<div class="sport-chips">'+(sports.length?sports.map(function(s){return '<span class="sport-chip on">'+s+'</span>';}).join(''):'<span class="sport-chip">—</span>')+'</div>';
   h+='<div class="sectlabel" data-gm-slot="profile-goal-journey">Zielreise <span class="edit" role="button" tabindex="0" onclick="gmOpenProfPage(\'goals\')">Alle Ziele</span></div><div class="goal-stack">'+gmProfGoalCard()+'</div>';

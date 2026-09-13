@@ -679,7 +679,7 @@
     if (typeof v === 'string' && !isNaN(+v)) v = +v;
     if (g.metricType === 'time' || (g.unit === 's' && typeof v === 'number')) return formatDuration(v) + ' h';
     if (g.metricType === 'pace') return formatPace(v) + ' /km';
-    return String(v) + (g.unit ? ' ' + g.unit : '');
+    return (typeof v === 'number' ? String(Math.round(v * 100) / 100).replace('.', ',') : String(v)) + (g.unit ? ' ' + g.unit : '');
   }
   function estimate1RM(weightKg, reps) { var w = _posOrNull(weightKg), r = parseInt(reps, 10); if (w == null || !(r >= 1) || r > 30) return null; return Math.round(w * (1 + r / 30) * 10) / 10; }  // Epley, gerundet (Schätzung)
   function normalizePerfMetric(m) { m = m || {}; return { value: m.value != null ? m.value : null, unit: m.unit || null, sportId: m.sportId || null, source: _src(m.source), measuredAt: m.measuredAt || null }; }
