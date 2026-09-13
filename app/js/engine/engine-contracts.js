@@ -13,7 +13,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var RULE_VERSION = 'v2.0.0-parallel';
+  var RULE_VERSION = 'v2.0.1-parallel';
 
   /* ---------- C3 · Reason-Katalog (Code → Titel/Erklärung, deutsch) ---------- */
   var REASONS = {

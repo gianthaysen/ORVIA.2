@@ -60,7 +60,10 @@
       safeguards.push('Heute kein Training. Bei anhaltenden oder unklaren Symptomen ärztlich abklären.');
     }
     if (maxPain >= 8) {
-      escalate('RED'); limitAction('REPLACE_WITH_RECOVERY');
+      /* Gate A-12 (13.09.2026, Shadow-Divergenz 2026-09-13): Schmerz >= 8 ist ein Stoppsignal —
+         die Erklaerung sagt „kein belastendes Training", also keine Erholungseinheit planen.
+         v1 sagt REST; v2 darf nie nachsichtiger sein als v1 (Safety-Invariante S2). */
+      escalate('RED'); limitAction('REST');
       reasons.push(CT.reason('severe_pain', { intensity: maxPain }));
       safeguards.push('Starke Schmerzen sind ein Stoppsignal — keine Belastung der betroffenen Region.');
     }
@@ -134,8 +137,12 @@
         unknownUnits: load.unknownUnits != null ? load.unknownUnits : null,
         ambiguousUnits: load.ambiguousUnits != null ? load.ambiguousUnits : null
       }));
+      /* Gate A-12 (Shadow-Divergenz 2026-08-21): duenne Datenlage ist fuer sich ein Grund zur Vorsicht —
+         v1 stand auf YELLOW, v2 auf GREEN. Zustand mindestens YELLOW; die Aktion wird nur bei harter
+         Einheit begrenzt (eine lockere Einheit bleibt KEEP). */
+      escalate('YELLOW');
       if (sessionIsHard(planned)) {
-        escalate('YELLOW'); limitAction('REDUCE_INTENSITY');
+        limitAction('REDUCE_INTENSITY');
         safeguards.push('Die Belastungshistorie ist aktuell nicht zuverlässig beurteilbar — heute keine volle Intensität auf unsicherer Basis.');
       }
     } else if (load.dataDays != null && load.dataDays >= 7 && load.acute7 != null && load.chronic28PerWeek != null && load.chronic28PerWeek > 0) {
@@ -149,6 +156,7 @@
       }
     } else if (load.acute7 != null || load.chronic28PerWeek != null) {
       missing.push('load_history');
+      escalate('YELLOW');   /* Gate A-12: ohne belastbare Lasthistorie kein GREEN */
       reasons.push(CT.reason('low_data_confidence', { marker: 'load', days: load.dataDays || 0 }));
     }
     if (load.hardStreak != null && load.hardStreak >= 2 && sessionIsHard(planned)) {

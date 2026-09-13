@@ -52,6 +52,12 @@ const GOOD_R = RE.evaluate({ sleepMinutes: 460, sleepGoalHours: 7.5, sleepQualit
   ok('D1 Warnsymptom → RED + REST trotz Top-Readiness (Safety schlägt Wearable)', d1.dayState === 'RED' && d1.action === 'REST' && d1.reasons.some(r => r.code === 'red_flag_symptom') && CT.isDecisionResult(d1));
   const d2 = DE.evaluate({ readiness: GOOD_R, constraints: [{ bodyRegion: 'knee', intensity: 8, status: 'active' }], plannedSession: HARD_RUN });
   ok('D2 Schmerz 8 → RED, keine harte Einheit', d2.dayState === 'RED' && d2.action !== 'KEEP' && d2.reasons.some(r => r.code === 'severe_pain'));
+  /* Gate A-12 (13.09.2026): zwei Shadow-Divergenzen v2-nachsichtiger-als-v1 geschlossen */
+  ok('D2b Schmerz >= 8 → REST (nicht Erholungseinheit): v2 nie nachsichtiger als v1', d2.action === 'REST' && DE.evaluate({ readiness: GOOD_R, constraints: [{ bodyRegion: 'knee', intensity: 9, status: 'active' }], plannedSession: { sport: 'mobility', intensity: 'easy', label: 'Mobility', minutes: 20 } }).action === 'REST');
+  const dq = DE.evaluate({ readiness: GOOD_R, plannedSession: { sport: 'running', intensity: 'easy', label: 'Dauerlauf', minutes: 40 }, recentLoad: { ratioConfidence: 'low', quality: { acuteConfidence: 'low', priorConfidence: 'low', chronicConfidence: 'low', historySpanDays: 27 }, dataDays: 5 } });
+  ok('D2c duenne Lastdatenlage → mindestens YELLOW, lockere Einheit bleibt KEEP', dq.dayState === 'YELLOW' && dq.action === 'KEEP' && dq.reasons.some(r => r.code === 'low_data_confidence' || r.code === 'insufficient_chronic_history'));
+  const dh = DE.evaluate({ readiness: GOOD_R, plannedSession: { sport: 'running', intensity: 'easy', label: 'Dauerlauf', minutes: 40 }, recentLoad: { acute7: 300, chronic28PerWeek: null, dataDays: 3 } });
+  ok('D2d fehlende Lasthistorie → YELLOW statt GREEN', dh.dayState === 'YELLOW');
   const d3 = DE.evaluate({ readiness: GOOD_R, constraints: [{ bodyRegion: 'knee', intensity: 4, status: 'active' }], plannedSession: HARD_RUN });
   ok('D3 Knie 4 + Intervalllauf → Einschränkung/Swap', d3.dayState !== 'GREEN' && ['SWAP_MODALITY', 'REDUCE_INTENSITY', 'REDUCE_VOLUME'].includes(d3.action));
   const d4 = DE.evaluate({ readiness: GOOD_R, constraints: [{ bodyRegion: 'knee', intensity: 4, status: 'active' }], plannedSession: UPPER_GYM });
