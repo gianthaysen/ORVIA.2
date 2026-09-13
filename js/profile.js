@@ -345,8 +345,12 @@ function _goalShadowEnsureSink(){
     needsOnboarding:function(){if(!PROFILE&&typeof ensureProfile==='function')ensureProfile();return !pmModel().isOnboardingComplete(PROFILE||{});},
     markOnboardingComplete:function(){if(!PROFILE)return;PROFILE.onboarding=pmModel().normalizeOnboarding(Object.assign({},PROFILE.onboarding,{status:'completed',completedAt:new Date().toISOString()}),PROFILE);_profileSave(['onboarding']);}
   };})();
-function goalAdd(input,reason){commitGoals(pmModel().addGoal(listGoals(),input),'add');}
-function goalUpdate(id,patch,reason){commitGoals(pmModel().updateGoal(listGoals(),id,patch),'update');}
+/* S1.5: Historien-Kontext — Prognose (Goal-Engine, Minuten) zum Zeitpunkt der Aenderung, nur fuer das Hauptziel. */
+function _goalHistMeta(id,reason){var meta={};if(reason)meta.source=String(reason);
+  try{var mg=typeof mainGoalOf==='function'?mainGoalOf():null;if(mg&&(id==null||mg.id===id)&&typeof buildGoal==='function'){var e=buildGoal();if(e&&e.tPred>0&&e.state!=='nodata')meta.forecastMin=e.tPred;}}catch(_){ }
+  return meta;}
+function goalAdd(input,reason){commitGoals(pmModel().addGoal(listGoals(),input,undefined,_goalHistMeta(null,reason)),'add');}
+function goalUpdate(id,patch,reason){commitGoals(pmModel().updateGoal(listGoals(),id,patch,undefined,_goalHistMeta(id,reason)),'update');}
 function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id),'remove');}
 /* S1/E2 (12.09.2026): Wettkampfergebnis bestaetigen — setzt result + Status (achieved/missed) in EINEM Update;
    danach ist das Ziel nicht mehr aktiv, mainGoalOf() rueckt das naechste nach. */
@@ -386,7 +390,7 @@ function goalDismissRace(goalId,activityId){
     try{if(document.getElementById('goalsMgrBody'))renderGoalsList();}catch(e){}
   }catch(e){}
 }
-function goalSetStatus(id,st){commitGoals(pmModel().setGoalStatus(listGoals(),id,st),'status');}
+function goalSetStatus(id,st){commitGoals(pmModel().updateGoal(listGoals(),id,{status:st},undefined,_goalHistMeta(id,'status')),'status');}
 /* ---- Profil-Zusammenfassung (Rollen, keine IDs/Kategorien) ---- */
 var GOAL_ROLE_DE={main:'Hauptziel',secondary:'' + T('pf.sekundaeres_ziel') + '',maintain:'Erhaltungsziel',longterm:'Langfristig'};
 function goalsSummaryHTML(){var M=pmModel();if(!M)return '';var act=listGoals().filter(function(g){return g.status==='active';}).slice().sort(function(a,b){return a.priority-b.priority;});

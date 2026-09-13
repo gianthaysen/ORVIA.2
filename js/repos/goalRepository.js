@@ -48,6 +48,8 @@
     /* S1/E2 (Migration 0044): result NUR senden, wenn belegt — auf einer Instanz ohne 0044 bleibt der
        Upsert fuer Ziele ohne Ergebnis intakt; ein bestaetigtes Ergebnis braucht die Migration. */
     if (goal.result && typeof goal.result === 'object') row.result = goal.result;
+    /* S1.5 (Migration 0045): history NUR senden, wenn belegt — gleiche Schutzregel wie result. */
+    if (Array.isArray(goal.history) && goal.history.length) row.history = goal.history;
     return row;
   }
 
