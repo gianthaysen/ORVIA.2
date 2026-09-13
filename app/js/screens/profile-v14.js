@@ -87,7 +87,7 @@
   }
 
   /* ---------- Bausteine ---------- */
-  function sectlabel(title, action) { return '<div class="sectlabel">' + esc(title) + (action ? ' <span class="edit" role="button" tabindex="0" onclick="' + action.onclick + '">' + action.label + '</span>' : '') + '</div>'; }
+  function sectlabel(title, action, slot) { return '<div class="sectlabel"' + (slot ? ' data-gm-slot="' + slot + '"' : '') + '>' + esc(title) + (action ? ' <span class="edit" role="button" tabindex="0" onclick="' + action.onclick + '">' + action.label + '</span>' : '') + '</div>'; }
   function roleOf(g) { try { var M = O.profileModel; if (M && M.roleOfGoal) return M.roleOfGoal(g); } catch (e) {} return g.priority === 1 ? 'main' : g.priority === 2 ? 'secondary' : 'longterm'; }
   function catLabel(c) { try { if (typeof root.goalCatLabel === 'function') return root.goalCatLabel(c); } catch (e) {} return c || ''; }
   function goalSub(g, d) {
@@ -141,7 +141,7 @@
   function overviewHTML(d) {
     var h = '';
     var ROLE_SPORT = { main: T('pv.sport_haupt'), secondary: T('pv.sport_neben'), planned: T('pv.sport_geplant') };
-    h += sectlabel(T('pv.sportarten'), { label: esc(T('common.edit')), onclick: "gmOpenProfPage('goals')" });
+    h += sectlabel(T('pv.sportarten'), { label: esc(T('common.edit')), onclick: "gmOpenProfPage('goals')" }, 'profile-sports');
     h += '<div class="sport-chips">' + (d.sports.length ? d.sports.map(function (s) { return '<span class="sport-chip' + (s.role === 'planned' ? '' : ' on') + '">' + esc(s.label) + (ROLE_SPORT[s.role] ? ' · ' + esc(ROLE_SPORT[s.role]) : '') + '</span>'; }).join('') : '<span class="sport-chip">' + esc(T('pv.keine_sportarten')) + '</span>') + '</div>';
     /* Saison */
     h += sectlabel(T('pv.saison'));
@@ -150,7 +150,7 @@
       var title = cur ? (esc(cur.n) + (d.season.daysTo != null && d.season.daysTo >= 0 ? ' · ' + esc(T('pv.noch_n_tage', { n: d.season.daysTo })) : '')) : esc(T('pv.saison_ohne_phase'));
       h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + title + '</div><div class="more" onclick="showTab(\'plan\')">' + esc(T('pv.plan')) + ' ' + ic('chev', 'xs') + '</div></div>' +
         '<div class="pv-phases">' + ph.map(function (p) { return '<div class="pv-phase' + (p.on ? ' on' : '') + '"><b>' + esc(p.n) + '</b><span>' + esc(p.to ? deDate(p.to) : '') + '</span></div>'; }).join('') + '</div>' +
-        '<div class="statgrid3"><div><div class="n">' + esc(d.weekStats && d.weekStats.km != null ? fmtDe(d.weekStats.km) : '—') + '</div><div class="l">' + esc(T('pv.km_diese_woche')) + '</div></div>' +
+        '<div class="statgrid3" data-gm-slot="profile-performance"><div><div class="n">' + esc(d.weekStats && d.weekStats.km != null ? fmtDe(d.weekStats.km) : '—') + '</div><div class="l">' + esc(T('pv.km_diese_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.weekStats && d.weekStats.sessionsAvg != null ? fmtDe(d.weekStats.sessionsAvg) : '—') + '</div><div class="l">' + esc(T('pv.einheiten_pro_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.load && d.load.acwr != null ? fmtDe(d.load.acwr, 2) : '—') + '</div><div class="l">' + esc(T('pv.belastung_acwr')) + '</div></div></div>' +
         '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('pv.saison_quelle', { n: d.activitiesCount != null ? d.activitiesCount : '—' })) + '</div></div>';
@@ -159,11 +159,11 @@
     }
     /* Zielreise */
     var active = d.goals.filter(function (g) { return g && g.status === 'active'; }).sort(function (a, b) { return (a.priority || 9) - (b.priority || 9); });
-    h += sectlabel(T('pv.zielreise'), { label: esc(T('pv.alle_ziele')), onclick: "ORVIA.screens.profileV14.setTab('ziele')" });
+    h += sectlabel(T('pv.zielreise'), { label: esc(T('pv.alle_ziele')), onclick: "ORVIA.screens.profileV14.setTab('ziele')" }, 'profile-goal-journey');
     h += '<div class="goal-stack">' + (active.length ? active.slice(0, 3).map(function (g) { return goalCard(g, d, {}); }).join('') : '<div class="goal-card tap" onclick="ORVIA.screens.profileV14.openGoalSheet()"><div class="goal-top"><div><h4>' + esc(T('pv.kein_ziel')) + '</h4><p>' + esc(T('pv.kein_ziel_text')) + '</p></div></div></div>') + '</div>';
     /* Profil & Kontrolle (v14: vier Zeilen; Sichtbarkeit kommt mit S6) */
     var sync = ''; try { if (typeof root.gmProfSyncLabel === 'function') sync = root.gmProfSyncLabel() || ''; } catch (e) {}
-    h += sectlabel(T('pv.profil_kontrolle'));
+    h += sectlabel(T('pv.profil_kontrolle'), null, 'profile-control');
     h += '<div class="setting-group">' + [['target', T('pv.ziele_sportarten'), T('pv.ziele_sportarten_sub'), "gmOpenProfPage('goals')"], ['link', T('pv.geraete_daten'), sync || T('pv.geraete_daten_sub'), "gmOpenProfPage('connections')"], ['gear', T('pv.einstellungen'), T('pv.einstellungen_sub'), "gmOpenProfPage('settings')"]].map(function (r) {
       return '<div class="prow" onclick="' + r[3] + '"><div class="p-ic">' + ic(r[0], 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(r[1]) + '</div><div class="p-d">' + esc(r[2]) + '</div></div>' + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
     return h;

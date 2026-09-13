@@ -97,6 +97,11 @@ function baseData(over) {
   ok('F2 Modul in index.html (nach goal-detail.js) und im SW-Vorrat', idx.indexOf('js/screens/profile-v14.js') > idx.indexOf('js/goal-detail.js') && sw.indexOf("'./js/screens/profile-v14.js'") > 0);
   const src = readFileSync(new URL('js/screens/profile-v14.js', APP), 'utf8');
   ok('F3 keine Demo-Zahlen aus dem Prototyp im Modul (184, 412, 1:51:20, 58 %)', !/\b184\b|\b412\b|1:51:20|58 %/.test(src));
+  /* Strukturvertrag (gm-ref/structure-contract.json · requiredSlots.mehr): die vier Profil-Slots muessen im Standard-Reiter sichtbar bleiben */
+  const contract = JSON.parse(readFileSync(new URL('docs/gm-ref/structure-contract.json', APP), 'utf8'));
+  const ov = makeSb().ORVIA.screens.profileV14.overviewHTML(baseData());
+  const missingSlots = (contract.requiredSlots.mehr || []).filter(sl => ov.indexOf('data-gm-slot="' + sl + '"') < 0);
+  ok('F4 Strukturvertrag: alle Profil-Slots im Reiter Uebersicht (' + (contract.requiredSlots.mehr || []).join(', ') + ')', missingSlots.length === 0, missingSlots.length ? 'fehlt: ' + missingSlots.join(' · ') : '');
 }
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);
