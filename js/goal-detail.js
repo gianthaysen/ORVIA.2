@@ -60,7 +60,10 @@
     /* Laengster Lauf gegen Bedarf (Regel wie Calc.goalEngine: >28 Tage 14 km·Skala, >14 Tage 17 km·Skala) */
     if (distKm && m.daysTo != null && m.daysTo > 14) {
       var need = Math.round((m.daysTo > 28 ? 14 : 17) * (distKm / HM_KM)), have = num(o.longestRun28);
-      if (have != null) out.push({ id: 'long', kind: have >= need ? 'plus' : 'minus', html: T(have >= need ? 'gd.r_long_ok' : 'gd.r_long_short', { have: fmtDe(have, 1), need: need }), lever: have >= need ? null : T('gd.l_long', { need: need, have: fmtDe(have, 1) }) });
+      /* Ausserhalb der Saison (> 16 Wochen) ist der Long-Run-Bedarf der Wettkampfvorbereitung noch keine Bedingung —
+         die Goal-Engine-Regel stammt aus der HM-Saison. Anzeige neutral, kein Veto, keine Stellschraube. */
+      if (have != null && m.daysTo > 112) out.push({ id: 'long', kind: 'neutral', html: T('gd.r_long_later', { have: fmtDe(have, 1), need: need }) });
+      else if (have != null) out.push({ id: 'long', kind: have >= need ? 'plus' : 'minus', html: T(have >= need ? 'gd.r_long_ok' : 'gd.r_long_short', { have: fmtDe(have, 1), need: need }), lever: have >= need ? null : T('gd.l_long', { need: need, have: fmtDe(have, 1) }) });
     }
     /* Schluesseleinheiten je Woche (42 Tage) gegen Plan */
     if (e && num(e.nQuality) != null && e.state !== 'nodata') {
@@ -120,7 +123,7 @@
     var title = (g.title || '').trim(); if (!title || /^-?\d+([.,]\d+)?\s*(%|kg|km|min|h|s)?$/i.test(title)) title = lab(g.category) || title || T('common.goal');
     var m = { version: VERSION, id: g.id || null, title: title, category: g.category || null, categoryLabel: lab(g.category) || null, family: pi ? pi.family : null,
       isMain: !!o.isMain, priority: g.priority || null, status: g.status || 'active',
-      targetText: null, targetSub: null, dateText: deDate(g.targetDate), targetDate: g.targetDate || null, daysTo: pi ? pi.daysTo : (g.targetDate && o.today ? daysBetween(o.today, g.targetDate) : null),
+      targetText: null, targetSub: null, targetMin: t.targetMin != null ? t.targetMin : null, dateText: deDate(g.targetDate), targetDate: g.targetDate || null, daysTo: pi ? pi.daysTo : (g.targetDate && o.today ? daysBetween(o.today, g.targetDate) : null),
       weeksTo: null, phase: pi ? pi.phase : null, phaseLabel: pi && pi.phase ? (PHASES.indexOf(pi.phase) >= 0 ? T('goal.phase.' + pi.phase) : pi.phase) : null,
       distanceKm: (pi && pi.distanceKm > 0) ? pi.distanceKm : null, distKey: null,
       progress: { kind: null, currentText: null, targetText: null, percent: null, note: null, state: null },
@@ -204,7 +207,7 @@
 
     /* Historie (Modell-Eintraege) + angelegt */
     var hist = Array.isArray(g.history) ? g.history.slice() : [];
-    if (!hist.some(function (h) { return h.type === 'created'; }) && g.createdAt) hist.unshift({ at: g.createdAt, type: 'created', to: {} });
+    if (!hist.some(function (h) { return h.type === 'created'; }) && g.createdAt) hist.unshift({ at: g.createdAt, type: 'created', to: null, synthetic: true });
     m.history = hist.slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }).map(function (h) { return { date: deShort(String(h.at).slice(0, 10)) || '', html: histText(h, g), type: h.type }; });
 
     /* Wechselwirkungen */
@@ -221,7 +224,7 @@
     var fv = function (v) { return v == null ? '—' : fmtGoalValue(g, v); };
     var fc = h.forecastMin != null ? ' ' + T('gd.h_forecast', { t: fmtTime(h.forecastMin) }) : '';
     switch (h.type) {
-      case 'created': return T('gd.h_created', { v: h.to && h.to.targetValue != null ? T('gd.h_with', { v: fv(h.to.targetValue) }) : '', prio: h.to && h.to.priority ? h.to.priority : '—' }) + (h.note ? ' · ' + esc(h.note) : '') + fc;
+      case 'created': if (!h.to) return T('gd.h_created_plain'); return T('gd.h_created', { v: h.to.targetValue != null ? T('gd.h_with', { v: fv(h.to.targetValue) }) : '', prio: h.to.priority ? h.to.priority : '—' }) + (h.note ? ' · ' + esc(h.note) : '') + fc;
       case 'target': return T(h.to != null && h.from != null && +h.to < +h.from ? 'gd.h_target_tighter' : 'gd.h_target', { from: fv(h.from), to: fv(h.to) }) + fc;
       case 'date': return T('gd.h_date', { from: deDate(h.from) || '—', to: deDate(h.to) || '—' }) + fc;
       case 'priority': return T('gd.h_priority', { from: h.from || '—', to: h.to || '—' });
@@ -253,7 +256,7 @@
 
   function seriesSVG(m) {
     var pts = m.series.filter(function (p) { return p.tPred != null; }); if (pts.length < 2) return '';
-    var tMin = null; try { tMin = m.feas && m.feas.predMin != null && m.feas.deltaSec != null ? m.feas.predMin - m.feas.deltaSec / 60 : null; } catch (e) {}
+    var tMin = num(m.targetMin);
     var vals = pts.map(function (p) { return p.tPred; }).concat(tMin != null ? [tMin] : []);
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals); if (hi - lo < 2) { lo -= 1; hi += 1; } var pad = (hi - lo) * 0.15; lo -= pad; hi += pad;
     var W = 320, H = 110, n = m.series.length, x = function (i) { return 8 + (W - 16) * (i / Math.max(1, n - 1)); }, y = function (v) { return 8 + (H - 16) * ((v - lo) / (hi - lo)); };
@@ -339,7 +342,13 @@
     try {
       var wp = typeof root.activeWeekPlan === 'function' ? root.activeWeekPlan() : null; if (!wp) return null;
       var days = Array.isArray(wp) ? wp : (wp.days || []), names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], out = [];
-      days.forEach(function (d, i) { (Array.isArray(d) ? d : (d && d.items) || []).forEach(function (u) { if (!u || !u.t) return; var sport = { Laufen: 'bolt', Rad: 'gauge', Schwimmen: 'link', Gym: 'shield' }[u.t] || 'bolt'; out.push({ day: names[i] || '', title: (names[i] ? names[i] + ' · ' : '') + (u.l || u.t), detail: [u.t, u.d].filter(Boolean).join(' · '), icon: sport, hardRun: u.t === 'Laufen' && /interval|tempo|schwelle|long/i.test(String(u.l || '') + ' ' + String(u.kind || '')) }); }); });
+      /* Pace-/Leistungsvorgabe wie auf der Plan-Karte (performanceZones.targetForUnit), Kuerzel iv/ez/lr/tempo nie als Text */
+      var perfBy = null; try { perfBy = O._lastPlanPerf && O._lastPlanPerf.sports ? O._lastPlanPerf.sports : null; if (!perfBy && O.performanceResolver && O.performanceResolver.resolveAll) { var pr = O.performanceResolver.resolveAll(root.PROFILE || null, { today: root.todayStr ? root.todayStr() : null }); perfBy = pr && pr.sports ? pr.sports : null; } } catch (e) { perfBy = null; }
+      days.forEach(function (d, i) { (Array.isArray(d) ? d : (d && d.items) || []).forEach(function (u) { if (!u || !u.t) return; var sport = { Laufen: 'bolt', Rad: 'gauge', Schwimmen: 'link', Gym: 'shield' }[u.t] || 'bolt';
+        var dOk = u.d && !/^(lr|iv|ez|tempo|recovery|long|easy)$/i.test(String(u.d).trim()), parts = [u.t]; if (dOk) parts.push(u.d);
+        try { if (perfBy && O.performanceZones && O.performanceZones.targetForUnit) { var tg = O.performanceZones.targetForUnit(u, perfBy); if (tg && tg.ok && tg.text) parts.push(tg.text); } } catch (e) {}
+        var key = String(u.d || '').toLowerCase() + ' ' + String(u.l || '').toLowerCase() + ' ' + String(u.kind || '').toLowerCase();
+        out.push({ day: names[i] || '', title: (names[i] ? names[i] + ' · ' : '') + (u.l || u.t), detail: parts.join(' · '), icon: sport, hardRun: u.t === 'Laufen' && /\biv\b|\blr\b|\btempo\b|interval|schwelle|long/i.test(key) }); }); });
       return out;
     } catch (e) { return null; }
   }

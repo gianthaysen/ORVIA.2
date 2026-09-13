@@ -246,6 +246,9 @@
         canon: (M && M.canonGoalCategory) || null, taper: O.goalTaperResolver || null });
     } catch (e) { pi = null; }
     var perf = null; try { perf = (O._lastPlanPerf !== undefined) ? O._lastPlanPerf : null; } catch (e) {}
+    /* S1.5: _lastPlanPerf entsteht erst beim Rendern des Plan-Tabs — davor stand die Profilstaerke faelschlich
+       auf „Leistungsreferenz fehlt" (80 % statt 100 %). Ohne Plan-Render selbst aufloesen. */
+    if (perf == null) { try { if (O.performanceResolver && O.performanceResolver.resolveAll) perf = O.performanceResolver.resolveAll(p, { today: (typeof root.todayStr === 'function') ? root.todayStr() : null }); } catch (e) { perf = null; } }
     var days = null; try { var cfg = M.effectiveTrainingConfig(p); days = cfg && Array.isArray(cfg.availableDayIdx) ? cfg.availableDayIdx.length : null; } catch (e) {}
     var stale = [];
     try { ESSENTIAL_IDS.forEach(function (id) { if (M.getSectionFreshness(p, id, now) === 'stale') stale.push(id); }); } catch (e) {}
