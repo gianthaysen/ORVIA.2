@@ -80,7 +80,9 @@ window.__gm6.resetCalls();
   html = html.replace(/(src|href)="assets\//g, '$1="' + rel + 'assets/');
 
   /* ---- 4) lokale Skripte inline (identische Reihenfolge wie produktiv) ---- */
-  html = html.replace(/<script src="(js\/[^"]+)"><\/script>/g, (m, p) => {
+  /* B-13 (13.09.2026): locales/de.js gehoert dazu — ohne Katalog rendert die Seite Keys statt Texte
+     (gm6: „ui.zuletzt_", 430-px-Ueberlauf durch ungebrochene Key-Strings). */
+  html = html.replace(/<script src="((?:js|locales)\/[^"]+)"><\/script>/g, (m, p) => {
     const src = readFileSync(join(APP, p), 'utf8').replace(/<\/script/gi, '<\\/script');
     return '<script>/* inline: ' + p + ' */\n' + src + '\n</script>';
   });

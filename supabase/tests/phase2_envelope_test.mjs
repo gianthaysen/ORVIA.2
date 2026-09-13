@@ -17,6 +17,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = (function () {
@@ -83,7 +84,7 @@ ok('E · HF-Zonen-Modell vorbereitet und LEER (z1–z5, source, zoneModelId = nu
    ['z1Sec', 'z2Sec', 'z3Sec', 'z4Sec', 'z5Sec'].every(k => hz[k] === null) && hz.source === null && hz.zoneModelId === null);
 
 /* ============ 2) QUELLE — Verdrahtung und verbotene Begriffe ============ */
-const ui = R('js/ui.js'), html = R('index.html'), sw = R('sw.js');
+const ui = inlined(R('js/ui.js')), html = R('index.html'), sw = R('sw.js');
 ok('Produzenten laufen ueber den Envelope (create je Kennzahl)',
    /function gmLoadEnvelopes\(/.test(ui) && (ui.match(/E\.create\(\{metricId:/g) || []).length >= 5);
 ok('gmLoadExtras ist nur noch eine Sicht auf die Envelopes',

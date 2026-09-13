@@ -12,6 +12,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = (function () {
@@ -172,7 +173,7 @@ ok('NEGATIVKONTROLLE · alter Algorithmus meldete fuer 6 lockere Garmin-Laeufe 0
 delete globalThis.PROFILE;
 
 /* ============ 2) Quelltext-Verdrahtung ============ */
-const ui = R('js/ui.js'), html = R('index.html'), sw = R('sw.js'), css = R('styles.css');
+const ui = inlined(R('js/ui.js')), html = R('index.html'), sw = R('sw.js'), css = R('styles.css');
 const gv = R('js/gym-volume.js'), pro = R('js/orvia-pro.js');
 
 ok('Planvarianten · Schein-Zustand entfernt (kein festes „B on + Empfohlen")',

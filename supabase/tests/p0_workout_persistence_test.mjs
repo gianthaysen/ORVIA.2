@@ -27,6 +27,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = (function () {
@@ -85,7 +86,7 @@ ok('Korrektur passt die Trainingslast an (Dauer × RPE, gleicher Upsert-Schluess
 ok('Resume-Banner: Host + Renderer + Boot-Hydrierung',
    /id="resumeBanner"/.test(html) && /renderResumeBanner/.test(wui) && /window\.addEventListener\('load'/.test(wui));
 ok('Dauer-Korrektur-Sheet im Aktivitaetsdetail verdrahtet',
-   /gmOpenDurationCorrectSheet/.test(R('js/ui.js')) && /Dauer korrigieren/.test(R('js/ui.js')));
+   /gmOpenDurationCorrectSheet/.test(R('js/ui.js')) && /Dauer korrigieren/.test(inlined(R('js/ui.js'))));
 const swv = (sw.match(/orvia-v8-(\d+)/) || [])[1];
 ok('SW-Version erhoeht (>= 225), genau einmal', swv != null && Number(swv) >= 225 && (sw.match(/orvia-v8-\d+/g) || []).length === 1, 'orvia-v8-' + swv);
 

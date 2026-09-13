@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = (function () {
@@ -107,7 +108,7 @@ const T = '2026-08-05T10:00:00Z';
 }
 
 /* ============ Quelltext-Vertraege (ui.js) ============ */
-const ui = R('js/ui.js');
+const ui = inlined(R('js/ui.js'));
 ok('5D/5E · Flag canonPlan: Default AUS (NICHT im GM_P3_FLAGS-Default-Satz)',
    /gmFeatureFlag\('canonPlan'\)/.test(ui) && !/canonPlan:1/.test(ui));
 ok('5D · Erstmigration verlustfrei via fromLegacyWeekPlan + KF-011-Stempel',

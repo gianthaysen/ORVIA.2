@@ -17,6 +17,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { inlined } from './_i18n-src.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = (function () {
@@ -57,7 +58,7 @@ const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  �
 const R = f => readFileSync(join(APP, f), 'utf8');
 
 /* ============ Quelltext ============ */
-const ui = R('js/ui.js'), css = R('styles.css'), html = R('index.html'), sw = R('sw.js'), nut = R('js/nutrition.js');
+const ui = inlined(R('js/ui.js')), css = R('styles.css'), html = R('index.html'), sw = R('sw.js'), nut = inlined(R('js/nutrition.js'));
 ok('Flags + Rollback vorhanden', /function gmFeatureFlag\(/.test(ui) && /orvia_flag_/.test(ui));
 ok('Reaktivierung ueber .p3-live (Grundzustand bleibt versteckt = Rollback-Pfad)',
    /#nutritionBox\.p3-live,#eveCard\.p3-live\{display:block\}/.test(css.replace(/\s+/g, '')) || /p3-live\{display:block/.test(css));
@@ -76,7 +77,7 @@ const swv = (sw.match(/orvia-v8-(\d+)/) || [])[1];
 ok('SW-Version erhoeht (>= 227, Block 2), genau einmal', swv != null && Number(swv) >= 227 && (sw.match(/orvia-v8-\d+/g) || []).length === 1, 'orvia-v8-' + swv);
 
 /* ============ Quelltext · Block 2 (E-26 / Aktivierungsmatrix) ============ */
-const pro = R('js/orvia-pro.js'), prof = R('js/profile.js');
+const pro = R('js/orvia-pro.js'), prof = inlined(R('js/profile.js'));
 ok('B2 · alle Block-2-Flags im Default-Satz (sonst per Default AUS)',
    /weekReview:1/.test(ui) && /recoveryIntel:1/.test(ui) && /equipment:1/.test(ui) && /cycle:1/.test(ui) && /baselines:1/.test(ui));
 ok('B2 · Wochenreview: EINE Quelle — weeklyReviewHTML() extrahiert, renderWeekly nur Wrapper',
