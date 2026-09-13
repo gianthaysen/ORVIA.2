@@ -17,7 +17,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA; O.screens = O.screens || {};
-  var VERSION = 'profile-v14@1';
+  var VERSION = 'profile-v14@2';
   var TAB_KEY = 'orvia_prof_tab';
 
   function T(k, p) { try { if (O.i18n && typeof O.i18n.t === 'function') return O.i18n.t(k, p); } catch (e) {} return String(k); }
@@ -59,7 +59,12 @@
     try { if (typeof root.buildGoal === 'function') d.engine = root.buildGoal(); } catch (e) {}
     try { d.feasibility = O._lastFeasibility || null; } catch (e) {}
     try { if (O.profileCenter && O.profileCenter.buildStrength) d.strength = O.profileCenter.buildStrength(P, new Date()); } catch (e) {}
-    try { var C = root.Calc; if (d.planInput && d.planInput.targetDate && C && C.racePhases) d.season = { phases: C.racePhases(d.planInput.targetDate, d.today), daysTo: d.planInput.daysTo, phase: d.planInput.phase }; } catch (e) {}
+    try { if (d.planInput && d.planInput.targetDate) {
+      var SP = O.seasonPhases, sp = null;
+      if (SP && SP.seasonPhases) sp = SP.seasonPhases(d.planInput.targetDate, d.today, { startDate: mg && mg.createdAt ? String(mg.createdAt).slice(0, 10) : null });
+      if (sp) d.season = { model: 'season', phases: sp.phases, current: sp.current, totalWeeks: sp.totalWeeks, weeksToRace: sp.weeksToRace, daysTo: sp.daysToRace, targetDate: sp.targetDate, phase: d.planInput.phase };
+      else { var C = root.Calc; if (C && C.racePhases) d.season = { model: 'race', phases: C.racePhases(d.planInput.targetDate, d.today), daysTo: d.planInput.daysTo, phase: d.planInput.phase }; }
+    } } catch (e) {}
     try { var acts = (typeof root.listActivitiesUnified === 'function') ? (root.listActivitiesUnified() || []) : ((O.activityStore && O.activityStore.listActivities) ? O.activityStore.listActivities() : []);
       d.activitiesCount = Array.isArray(acts) ? acts.length : null;
       var wk = { km: null, sessionsAvg: null };
@@ -174,14 +179,20 @@
     /* Saison */
     h += sectlabel(T('pv.saison'));
     if (d.season && d.season.phases && d.season.phases.length) {
-      var ph = d.season.phases, cur = ph.filter(function (p) { return p.on; })[0];
-      var title = cur ? (esc(cur.n) + (d.season.daysTo != null && d.season.daysTo > 0 ? ' · ' + esc(T('pv.wettkampf_in_n_tagen', { n: d.season.daysTo })) : (d.season.daysTo === 0 ? ' · ' + esc(T('pv.wettkampf_heute')) : ''))) : esc(T('pv.saison_ohne_phase'));
+      var ph = d.season.phases, cur = ph.filter(function (p) { return p.on; })[0], isSeason = d.season.model === 'season';
+      var title;
+      if (cur && isSeason) title = esc(T('pv.phase_woche_von', { phase: T({ base: 'pv.phase_base', build: 'pv.phase_build', peak: 'pv.phase_peak', taper: 'pv.phase_taper' }[cur.key] || 'pv.phase_build'), week: cur.week || 1, of: cur.weeks }));
+      else title = cur ? (esc(cur.n) + (d.season.daysTo != null && d.season.daysTo > 0 ? ' · ' + esc(T('pv.wettkampf_in_n_tagen', { n: d.season.daysTo })) : (d.season.daysTo === 0 ? ' · ' + esc(T('pv.wettkampf_heute')) : ''))) : esc(T('pv.saison_ohne_phase'));
       h += '<div class="card tight" data-gm-slot="profile-performance"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + title + '</div><div class="more" onclick="showTab(\'plan\')">' + esc(T('pv.plan')) + ' ' + ic('chev', 'xs') + '</div></div>' +
-        '<div class="pv-phases">' + ph.map(function (p) { var isRace = p.from && p.to && p.from === p.to; return '<div class="pv-phase' + (p.on ? ' on' : '') + '"><b>' + esc(p.n) + '</b><span>' + esc(p.to ? (isRace ? deDate(p.to) : T('pv.bis_datum', { d: deDate(p.to) })) : '') + '</span></div>'; }).join('') + '</div>' +
+        '<div class="pv-phases">' + ph.map(function (p) {
+          var sub;
+          if (isSeason) sub = p.on ? T('pv.woche_x_von_y', { x: p.week || 1, y: p.weeks }) : (p.done ? T('pv.n_wo_fertig', { n: p.weeks }) : T('pv.n_wo', { n: p.weeks }));
+          else { var isRace = p.from && p.to && p.from === p.to; sub = p.to ? (isRace ? deDate(p.to) : T('pv.bis_datum', { d: deDate(p.to) })) : ''; }
+          return '<div class="pv-phase' + (p.on ? ' on' : '') + (p.done ? ' done' : '') + '"><b>' + esc(p.n) + '</b><span>' + esc(sub) + '</span></div>'; }).join('') + '</div>' +
         '<div class="statgrid3"><div><div class="n">' + esc(d.weekStats && d.weekStats.km != null ? fmtDe(d.weekStats.km) : '—') + '</div><div class="l">' + esc(T('pv.km_diese_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.weekStats && d.weekStats.sessionsAvg != null ? fmtDe(d.weekStats.sessionsAvg) : '—') + '</div><div class="l">' + esc(T('pv.einheiten_pro_woche')) + '</div></div>' +
         '<div><div class="n">' + esc(d.load && d.load.acwr != null ? fmtDe(d.load.acwr, 2) : '—') + '</div><div class="l">' + esc(T('pv.belastung_acwr')) + '</div></div></div>' +
-        '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('pv.saison_quelle', { n: d.activitiesCount != null ? d.activitiesCount : '—' })) + '</div></div>';
+        '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('pv.saison_quelle', { n: d.activitiesCount != null ? d.activitiesCount : '—' })) + (isSeason && d.season.targetDate ? ' · ' + esc(T('pv.saison_wettkampf_am', { d: deDate(d.season.targetDate), n: d.season.daysTo })) : '') + '</div></div>';
     } else {
       h += '<div class="card tight" data-gm-slot="profile-performance"><div class="ctitle"><div class="l">' + ic('target', 'sm') + ' ' + esc(T('pv.saison_leer_titel')) + '</div></div><p class="muted" style="margin:0">' + esc(T('pv.saison_leer_text')) + '</p></div>';
     }
@@ -192,8 +203,10 @@
     /* Profil & Kontrolle (v14: vier Zeilen; Sichtbarkeit kommt mit S6) */
     var sync = ''; try { if (typeof root.gmProfSyncLabel === 'function') sync = root.gmProfSyncLabel() || ''; } catch (e) {}
     h += sectlabel(T('pv.profil_kontrolle'), null, 'profile-control');
-    h += '<div class="setting-group">' + [['target', T('pv.ziele_sportarten'), T('pv.ziele_sportarten_sub'), "gmOpenProfPage('goals')"], ['link', T('pv.geraete_daten'), sync || T('pv.geraete_daten_sub'), "gmOpenProfPage('connections')"], ['gear', T('pv.einstellungen'), T('pv.einstellungen_sub'), "gmOpenProfPage('settings')"]].map(function (r) {
-      return '<div class="prow" onclick="' + r[3] + '"><div class="p-ic">' + ic(r[0], 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(r[1]) + '</div><div class="p-d">' + esc(r[2]) + '</div></div>' + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
+    var nActive = d.goals.filter(function (g) { return g && g.status === 'active'; }).length;
+    var syncParts = sync ? sync.split(' · ') : [], syncProv = syncParts.length > 1 ? syncParts[0] : '', syncRest = syncParts.length > 1 ? syncParts.slice(1).join(' · ') : sync;
+    h += '<div class="setting-group">' + [['target', T('pv.ziele_sportarten'), T('pv.ziele_sportarten_sub'), "gmOpenProfPage('goals')", nActive ? T('pv.n_aktiv', { n: nActive }) : ''], ['link', T('pv.geraete_daten'), syncRest || T('pv.geraete_daten_sub'), "gmOpenProfPage('connections')", syncProv], ['gear', T('pv.einstellungen'), T('pv.einstellungen_sub'), "gmOpenProfPage('settings')", '']].map(function (r) {
+      return '<div class="prow" onclick="' + r[3] + '"><div class="p-ic">' + ic(r[0], 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(r[1]) + '</div><div class="p-d">' + esc(r[2]) + '</div></div>' + (r[4] ? '<div class="p-v">' + esc(r[4]) + '</div>' : '') + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
     return h;
   }
 
@@ -265,7 +278,8 @@
     h += sectlabel(T('pv.bestzeiten_laufen'), { label: esc(T('pv.alle')), onclick: "gmOpenProfPage('bestTimes')" });
     h += '<div class="card tight"><div class="pv-bt">' + keys.map(function (k) {
       var sec = b ? b[k[1]] : null, real = !!(b && b.real && b.real[k[2]]), m = b && b.meas ? b.meas[k[2]] : null;
-      var sub = sec == null ? T('pv.keine_messung') : (real ? (T('pv.gemessen') + (m && m.date ? ' · ' + deDate(m.date) : '')) : T('pv.geschaetzt_riegel'));
+      var from = b && b.estFrom ? b.estFrom[k[2]] : null, fromLbl = { k1: '1 km', k5: '5 km', k10: '10 km', k21: 'HM', k42: 'M' }[from];
+      var sub = sec == null ? T('pv.keine_messung') : (real ? (T('pv.gemessen') + (m && m.date ? ' · ' + deDate(m.date) : '')) : (fromLbl ? T('pv.geschaetzt_aus', { d: fromLbl }) : T('pv.geschaetzt_riegel')));
       return '<div class="pv-btrow"><div class="pv-btd"><b>' + esc(k[0]) + '</b></div><div class="pv-btb"><div class="pv-btt' + (sec == null ? ' muted' : '') + '">' + esc(sec != null ? fmtSec(sec) : '—') + '</div><div class="pv-bts">' + esc(sub) + '</div></div></div>';
     }).join('') + '</div></div>';
     /* Rad / Schwimmen */
@@ -294,6 +308,8 @@
   }
 
   /* ---------- Profilstärke-Karte (v14 ps-card) ---------- */
+  /* Bei 100 % ohne Luecken verschwindet die Karte: Eine Vollzugsmeldung ist kein Produktinhalt (Gian, 13.09.). */
+  function strengthNeedsCard(st) { if (!st) return false; var pct = Math.round(st.score || 0); return pct < 100 || (st.gaps || []).length > 0; }
   function strengthCardHTML(st) {
     if (!st) return '';
     var pct = Math.max(0, Math.min(100, Math.round(st.score || 0))), c = 2 * Math.PI * 23, off = c * (1 - pct / 100);
@@ -315,7 +331,7 @@
       host = host || root.document.getElementById('gmProf'); if (!host) return false;
       var d = collect(), tab = activeTab();
       var head = ''; try { if (typeof root.gmProfHeaderHTML === 'function') head = root.gmProfHeaderHTML(d); } catch (e) { head = ''; }
-      host.innerHTML = head + strengthCardHTML(d.strength) + navHTML(tab) + '<div class="pv-tab" data-tab="' + tab + '">' + tabHTML(tab, d) + '</div><div class="tabspacer"></div>';
+      host.innerHTML = head + (strengthNeedsCard(d.strength) ? strengthCardHTML(d.strength) : '') + navHTML(tab) + '<div class="pv-tab" data-tab="' + tab + '">' + tabHTML(tab, d) + '</div><div class="tabspacer"></div>';
       return true;
     } catch (e) { try { console.warn('[ORVIA profile-v14] render', e && e.message); } catch (_) {} return false; }
   }
@@ -414,7 +430,7 @@
   function sheetMore() { var m = sheetCollect(); try { root._closeM('_pvGoal'); } catch (e) {} try { root.openGoalEditor(m && m.id ? m.id : undefined); } catch (e) {} }
 
   var api = { VERSION: VERSION, collect: collect, overviewHTML: overviewHTML, goalsHTML: goalsHTML, performanceHTML: performanceHTML,
-    strengthCardHTML: strengthCardHTML, navHTML: navHTML, render: render, setTab: setTab, activeTab: activeTab, goalCard: goalCard, bestLifts: bestLifts,
+    strengthCardHTML: strengthCardHTML, strengthNeedsCard: strengthNeedsCard, navHTML: navHTML, render: render, setTab: setTab, activeTab: activeTab, goalCard: goalCard, bestLifts: bestLifts,
     openGoalSheet: openGoalSheet, sheetPick: sheetPick, sheetSave: sheetSave, sheetMore: sheetMore, sheetModel: sheetModel, sheetHTML: sheetHTML, sheetValidate: sheetValidate, sheetImpact: sheetImpact };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.screens.profileV14 = api;
