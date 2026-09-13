@@ -132,7 +132,7 @@
 
     /* Zielwert */
     if (t.targetMin != null) { m.targetText = fmtTime(t.targetMin); m.targetSub = (m.distanceKm ? T('gd.on_km', { km: fmtDe(m.distanceKm, 1) }) : '') + (t.pacePerKmSec ? (m.distanceKm ? '<br>' : '') + '= ' + fmtPace(t.pacePerKmSec) : ''); }
-    else if (num(g.targetValue) != null || (typeof g.targetValue === 'string' && g.targetValue !== '')) { m.targetText = fmtGoalValue(g, +g.targetValue); }
+    else if (num(g.targetValue) != null || (typeof g.targetValue === 'string' && g.targetValue !== '')) { m.targetText = fmtGoalValue(g, g.targetValue); }
 
     /* Fortschritt (Bestand, fuer Balken + Wertziele) */
     var e = o.engine || null;

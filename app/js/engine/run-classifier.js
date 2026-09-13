@@ -41,7 +41,25 @@
     return { sub: '', reason: 'unclassified' };
   }
 
-  var api = { VERSION: VERSION, DEFAULTS: DEFAULTS, classifyRun: classifyRun };
+  /* App-Adapter: Kontext (Schwellenpace, 10-km-Bestpace, HFmax) aus injizierten Abhaengigkeiten,
+     5 s gecacht — _storeRunsByDay ist ein heisser Pfad, resolveAll ist es nicht. Reine Eingabe,
+     kein Zugriff auf Globals: deps = { profile, today, performanceResolver, runBests, activityStore, hrMax, now }. */
+  var _ctxCache = { at: 0, key: null, ctx: null };
+  function appContext(deps) {
+    deps = deps || {};
+    var now = num(deps.now) != null ? deps.now : Date.now(), key = String(deps.today || '') + '|' + String(deps.hrMax == null ? '' : deps.hrMax);
+    if (_ctxCache.ctx && _ctxCache.key === key && now - _ctxCache.at < 5000) return _ctxCache.ctx;
+    var ctx = { hrMax: num(deps.hrMax) };
+    try { var pr = deps.performanceResolver && deps.performanceResolver.resolveAll ? deps.performanceResolver.resolveAll(deps.profile || null, { today: deps.today || null }) : null;
+      var run = pr && pr.sports && pr.sports.running; if (run && run.ok && run.thresholdPaceSecPerKm > 0) ctx.thresholdPaceSec = run.thresholdPaceSecPerKm; } catch (e) {}
+    if (ctx.thresholdPaceSec == null) { try { var rb = deps.runBests, st = deps.activityStore;
+      var mb = (rb && rb.measuredRunBests && st && st.listActivities) ? rb.measuredRunBests(st.listActivities(), { isTombstoned: st.isTombstoned || null }) : null;
+      if (mb && mb.k10 && mb.k10.sec > 0) ctx.best10kPaceSec = mb.k10.sec / 10; } catch (e) {} }
+    _ctxCache = { at: now, key: key, ctx: ctx };
+    return ctx;
+  }
+
+  var api = { VERSION: VERSION, DEFAULTS: DEFAULTS, classifyRun: classifyRun, appContext: appContext };
   O.runClassifier = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

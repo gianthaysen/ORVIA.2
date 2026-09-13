@@ -1216,11 +1216,9 @@ function _storeRunsByDay(){
      Prognose deshalb immer nodata. Klassifiziert wird die groesste Einzelsession des Tages;
      subDerived=true, damit Anzeigen die Ableitung benennen koennen. */
   var _cls=null,_ctx=null;
-  try{_cls=window.ORVIA&&ORVIA.runClassifier;if(_cls){_ctx={hrMax:(typeof Calc!=='undefined'&&Calc._hrMax)?Calc._hrMax():null};
-    try{var _pr=ORVIA.performanceResolver&&ORVIA.performanceResolver.resolveAll?ORVIA.performanceResolver.resolveAll(typeof PROFILE!=='undefined'?PROFILE:null,{today:todayStr()}):null;
-      var _run=_pr&&_pr.sports&&_pr.sports.running;if(_run&&_run.ok&&_run.thresholdPaceSecPerKm>0)_ctx.thresholdPaceSec=_run.thresholdPaceSecPerKm;}catch(_){ }
-    if(_ctx.thresholdPaceSec==null){try{var _rb=ORVIA.runBests,_st=ORVIA.activityStore;var _m=(_rb&&_rb.measuredRunBests&&_st&&_st.listActivities)?_rb.measuredRunBests(_st.listActivities(),{isTombstoned:_st.isTombstoned||null}):null;
-      if(_m&&_m.k10&&_m.k10.sec>0)_ctx.best10kPaceSec=_m.k10.sec/10;}catch(_){ }}}}catch(_){_cls=null;}
+  try{_cls=window.ORVIA&&ORVIA.runClassifier;if(_cls&&_cls.appContext){_ctx=_cls.appContext({profile:(typeof PROFILE!=='undefined'?PROFILE:null),today:todayStr(),
+    performanceResolver:ORVIA.performanceResolver||null,runBests:ORVIA.runBests||null,activityStore:ORVIA.activityStore||null,
+    hrMax:(typeof Calc!=='undefined'&&Calc._hrMax)?Calc._hrMax():null});}}catch(_){_cls=null;}
   Object.keys(map).forEach(function(k){var e=map[k];
     e.dist=Math.round(e.dist*100)/100;e.dur=Math.round(e.dur);e.longestKm=Math.round(e.longestKm*100)/100;
     e.hr=e._hrw>0?Math.round(e._hrsum/e._hrw):null;e.elev=Math.round(e.elev);

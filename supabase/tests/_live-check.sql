@@ -1,6 +1,6 @@
 -- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
--- Quelle: supabase/migrations/ (43 Dateien)
+-- Quelle: supabase/migrations/ (44 Dateien)
 -- Neu erzeugen: node app/tools/gen-live-check.mjs
 -- ============================================================
 -- Diese Abfrage beantwortet die eine Frage, die `public.schema_migrations`
@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 51 Tabellen + 65 Spalten + 63 Indizes + 20 RLS = 199 Prüfungen.
+-- Umfang: 51 Tabellen + 66 Spalten + 63 Indizes + 20 RLS = 200 Prüfungen.
 -- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
 -- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
@@ -80,6 +80,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0027','spalte','user_goals','custom_category'),
   ('0012','spalte','user_goals','description'),
   ('0003','spalte','user_goals','gym_goal_type'),
+  ('0045','spalte','user_goals','history'),
   ('0012','spalte','user_goals','metric_type'),
   ('0027','spalte','user_goals','milestones'),
   ('0027','spalte','user_goals','motivation'),
