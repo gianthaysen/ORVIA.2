@@ -9,7 +9,7 @@
   var O = root.ORVIA;
   var SCHEMA_VERSION = 2;
 
-  var GOAL_STATUSES = ['active', 'paused', 'achieved', 'abandoned', 'archived'];
+  var GOAL_STATUSES = ['active', 'paused', 'achieved', 'missed', 'abandoned', 'archived'];   /* 'missed' (S1/E2, Migration 0044): Wettkampf gelaufen, Zielzeit verfehlt */
   var MILESTONE_STATUSES = ['planned', 'in_progress', 'achieved', 'skipped'];
   // Priorität: 1 = höchste. Begrenzte Anzahl gleichrangiger „höchster" (für eindeutige Planung).
   var MAX_TOP_PRIORITY_GOALS = 2;
@@ -105,6 +105,8 @@
       constraints: Array.isArray(raw.constraints) ? raw.constraints.slice() : [],
       categoryData: (raw.categoryData && typeof raw.categoryData === 'object') ? raw.categoryData : {},
       milestones: normalizeMilestones(raw.milestones),
+      /* S1/E2: bestaetigtes Wettkampfergebnis (race-result.toResult) oder {dismissed:[activityIds]}; null = keins. */
+      result: (raw.result && typeof raw.result === 'object' && !Array.isArray(raw.result)) ? raw.result : null,
       createdAt: raw.createdAt || now,
       updatedAt: raw.updatedAt || now
     };
@@ -446,7 +448,9 @@
       { key: 'longestRun', label: 'Längster Lauf', type: 'number', unit: 'km' },
       { key: 'runDays', label: 'Lauftage', type: 'number' },
       { key: 'surface', label: 'Untergrund', type: 'select', options: ['Straße', 'Trail', 'gemischt', 'Bahn'] },
-      { key: 'injuryHistory', label: 'Verletzungshistorie', type: 'text' }
+      /* S1/E6 (12.09.2026): Verletzungen gehoeren zu den Beschwerden/Einschraenkungen (constraintsList) — dort liest sie
+         B-09 (absence-replanner). Als Zielfeld wurde der Text nirgends gelesen. type 'link' rendert einen Verweis. */
+      { key: 'injuryHistory', label: 'Verletzungen / Beschwerden', type: 'link', target: 'constraints' }
     ],
     strength: [
       { key: 'focus', label: 'Schwerpunkt', type: 'select', options: ['Muskelaufbau', 'Kraft', 'Erhalt', 'Recomposition'] },
@@ -656,7 +660,7 @@
 
 
   // ---- Performance (strukturiert; alte Freitexte unter _legacyText erhalten) ----
-  var PERF_SOURCES = ['manual', 'garmin', 'strava', 'apple_health', 'import', 'calculated'];
+  var PERF_SOURCES = ['manual', 'garmin', 'strava', 'apple_health', 'import', 'calculated', 'activity'];   /* 'activity' (S1/E4): gemessen aus Aktivitaeten, pb-sync.js */
   var SET_TYPES = ['working', 'top_set', 'test', 'estimated_1rm'];
   function _src(s) { return PERF_SOURCES.indexOf(s) >= 0 ? s : 'manual'; }
   function _num(v) { return (v == null || v === '' || isNaN(parseFloat(v))) ? null : parseFloat(v); }
@@ -666,6 +670,17 @@
   function formatDuration(sec) { if (sec == null || sec <= 0) return ''; sec = Math.round(sec); var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; var pad = function (x) { return String(x).padStart(2, '0'); }; return h > 0 ? (h + ':' + pad(m) + ':' + pad(s)) : (m + ':' + pad(s)); }
   function parsePace(str) { return parseDuration(str); }
   function formatPace(sec) { return formatDuration(sec); }
+  /* Zielwert lesbar (S1/E5, 12.09.2026): metricType 'time' ⇒ Sekunden als h:mm:ss h, 'pace' ⇒ min/km,
+     sonst Wert + Einheit. EINE Stelle fuer Plan-Kopf, Ziel-Detail, Editor und Liste — vorher stand
+     „6600 s" an vier Stellen. Gibt '' fuer null/undefined; nie eine Schaetzung. */
+  function formatGoalValue(goal, value) {
+    var g = goal || {}; var v = (value === undefined) ? g.targetValue : value;
+    if (v == null || v === '') return '';
+    if (typeof v === 'string' && !isNaN(+v)) v = +v;
+    if (g.metricType === 'time' || (g.unit === 's' && typeof v === 'number')) return formatDuration(v) + ' h';
+    if (g.metricType === 'pace') return formatPace(v) + ' /km';
+    return String(v) + (g.unit ? ' ' + g.unit : '');
+  }
   function estimate1RM(weightKg, reps) { var w = _posOrNull(weightKg), r = parseInt(reps, 10); if (w == null || !(r >= 1) || r > 30) return null; return Math.round(w * (1 + r / 30) * 10) / 10; }  // Epley, gerundet (Schätzung)
   function normalizePerfMetric(m) { m = m || {}; return { value: m.value != null ? m.value : null, unit: m.unit || null, sportId: m.sportId || null, source: _src(m.source), measuredAt: m.measuredAt || null }; }
   function normalizeWeightEntry(e) { e = e || {}; return { id: e.id || uid('w'), valueKg: _posOrNull(e.valueKg), measuredAt: e.measuredAt || null, source: _src(e.source) }; }
@@ -1573,7 +1588,7 @@
     PROFILE_SECTIONS: PROFILE_SECTIONS, CONSTRAINT_STATUSES: CONSTRAINT_STATUSES, BODY_REGIONS: BODY_REGIONS, BODY_SIDES: BODY_SIDES, normalizeConstraint: normalizeConstraint, normalizeRecovery: normalizeRecovery, normalizePreferences: normalizePreferences, normalizeAvailability: normalizeAvailability, availabilitySummary: availabilitySummary, WEEKDAYS: WEEKDAYS,
     normalizeSport: normalizeSport, normalizeSports: normalizeSports, normalizeDoubleSession: normalizeDoubleSession, normalizeSlot: normalizeSlot, normalizeFixedCommitment: normalizeFixedCommitment, FIXED_TYPES: FIXED_TYPES, INTENSITY_VALUES: INTENSITY_VALUES,
     normalizePerformance: normalizePerformance, normalizePersonalBest: normalizePersonalBest, normalizeStrengthRecord: normalizeStrengthRecord, normalizeWeightEntry: normalizeWeightEntry, normalizePerfMetric: normalizePerfMetric,
-    currentWeightKg: currentWeightKg, estimate1RM: estimate1RM, parseDuration: parseDuration, formatDuration: formatDuration, parsePace: parsePace, formatPace: formatPace, PERF_SOURCES: PERF_SOURCES, SET_TYPES: SET_TYPES,
+    currentWeightKg: currentWeightKg, estimate1RM: estimate1RM, parseDuration: parseDuration, formatDuration: formatDuration, parsePace: parsePace, formatPace: formatPace, formatGoalValue: formatGoalValue, PERF_SOURCES: PERF_SOURCES, SET_TYPES: SET_TYPES,
     normalizeDevices: normalizeDevices, INTEGRATION_IDS: INTEGRATION_IDS, INTEGRATION_STATUSES: INTEGRATION_STATUSES, INTEGRATION_DEFAULTS: INTEGRATION_DEFAULTS, normalizeIntegration: normalizeIntegration, normalizeEquipment: normalizeEquipment, normalizeTrainingLocation: normalizeTrainingLocation, normalizeManualSource: normalizeManualSource,
     EQUIPMENT_CATALOG: EQUIPMENT_CATALOG, equipmentCatalogFor: equipmentCatalogFor, migrateGearToEquipment: migrateGearToEquipment,
     SPORT_PROFILE_SCHEMAS: SPORT_PROFILE_SCHEMAS, sportProfileSchema: sportProfileSchema, rolesForPosition: rolesForPosition,

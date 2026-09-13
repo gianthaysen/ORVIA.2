@@ -32,8 +32,12 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'goal-shadow@1';
-  var TYPES = ['add', 'update', 'remove', 'status'];
+  var VERSION = 'goal-shadow@2';   /* @2: 'session' — Laufzeit-Beleg ohne Zielmutation (12.09.2026) */
+  /* 'session' (@2, Migration 0043): einmal je Geraet und Kalendertag nach dem Login.
+     Befund 12.09.2026: acht Tage Flag-Betrieb ohne Zielmutation ergaben NULL Zeilen —
+     ein reines Mutations-Log belegt keine Laufzeit. 'session' vergleicht dieselben
+     Felder, nur ausgeloest durch Nutzung statt durch Bearbeitung. */
+  var TYPES = ['add', 'update', 'remove', 'status', 'session'];
 
   /* Die Felder, auf denen ein Widerspruch überhaupt feststellbar ist.
      Bewusst klein gehalten: mehr Felder erzeugen mehr Rauschen, nicht mehr

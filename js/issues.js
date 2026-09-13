@@ -1,3 +1,5 @@
+/* B-13: nutzersichtbare Texte ueber t() (locales/de.js); eigener Wrapper-Name je Datei (profile.js fuehrt das globale T). */
+var _issT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 /* ============================================================
    ORVIA — Issue Modules + Routine Engine  (Phase 3)
    Generisches Beschwerde-System (alle Körperregionen), additive
@@ -7,74 +9,74 @@
    in morning.knee (für die Readiness-Engine).
    Keine medizinische Diagnose. Keine Heilversprechen.
    ============================================================ */
-var ORVIA_DISCLAIMER='ORVIA ersetzt keine medizinische Diagnose oder Therapie. Bei starken, zunehmenden, anhaltenden oder unklaren Beschwerden eine medizinische Fachperson konsultieren.';
+var ORVIA_DISCLAIMER='' + _issT('iss.orvia_ersetzt_keine_medizinische_diagnose') + '';
 
 var ORVIA_MODULES={
   knee:{label:'Knie',icon:'pulse',
-    routine:['8–12 min Knie-Stabilität','Glute-Med-Aktivierung','Step-down-Kontrolle','Waden-/Fußroutine'],
-    alternatives:['Bike Z2 statt Lauf bei Schmerz > 2/10','Schwimmen','Oberkörper-Kraft'],
-    stop:'Schmerz steigt im Warm-up → Lauf nicht empfohlen. Schmerz > 4/10 unter Belastung → abbrechen.',
-    warn:['starke/zunehmende Schmerzen','Schwellung','Instabilität / Wegknicken','Schmerz in Ruhe']},
+    routine:['' + _issT('iss.8_12_min_knie_stabilitaet') + '','Glute-Med-Aktivierung','Step-down-Kontrolle','Waden-/Fußroutine'],
+    alternatives:['' + _issT('iss.bike_z2_statt_lauf_bei') + '','Schwimmen','Oberkörper-Kraft'],
+    stop:'' + _issT('iss.schmerz_steigt_im_warm_up') + '',
+    warn:['' + _issT('iss.starke_zunehmende_schmerzen') + '','Schwellung','' + _issT('iss.instabilitaet_wegknicken') + '','' + _issT('iss.schmerz_in_ruhe') + '']},
   back:{label:'Rücken',icon:'pulse',
-    routine:['8 min Rücken-Mobility','Core-Aktivierung (Dead Bug, Bird Dog)','Hüftmobilität'],
-    alternatives:['Kein schweres Heben bei Verschlechterung','Spaziergang / lockeres Rad','Schwimmen (kein Delfin)'],
-    stop:'Schmerz steigt beim Hinge/Deadlift → Last reduzieren oder abbrechen.',
-    warn:['Ausstrahlung ins Bein','Taubheit / Kribbeln','Schmerz in Ruhe','Schmerz nach Sturz']},
+    routine:['' + _issT('iss.8_min_ruecken_mobility') + '','' + _issT('iss.core_aktivierung_dead_bug_bird') + '','Hüftmobilität'],
+    alternatives:['' + _issT('iss.kein_schweres_heben_bei_verschlechterung') + '','' + _issT('iss.spaziergang_lockeres_rad') + '','' + _issT('iss.schwimmen_kein_delfin') + ''],
+    stop:'' + _issT('iss.schmerz_steigt_beim_hinge_deadlift') + '',
+    warn:['' + _issT('iss.ausstrahlung_ins_bein') + '','' + _issT('iss.taubheit_kribbeln') + '','' + _issT('iss.schmerz_in_ruhe') + '','' + _issT('iss.schmerz_nach_sturz') + '']},
   shoulder:{label:'Schulter',icon:'pulse',
-    routine:['Band External Rotations','Scapula-Control','leichte Mobility'],
-    alternatives:['Kein schweres Überkopfdrücken bei Schmerz','Unterkörper-Fokus','Zugübungen wenn schmerzfrei'],
-    stop:'Schmerz beim Drücken oder über Kopf → Last raus, Bewegung anpassen.',
-    warn:['Kraftverlust','nächtlicher Schmerz','Instabilität nach Sturz']},
+    routine:['' + _issT('iss.band_external_rotations') + '','Scapula-Control','' + _issT('iss.leichte_mobility') + ''],
+    alternatives:['' + _issT('iss.kein_schweres_ueberkopfdruecken_bei_schmerz') + '','Unterkörper-Fokus','' + _issT('iss.zuguebungen_wenn_schmerzfrei') + ''],
+    stop:'' + _issT('iss.schmerz_beim_druecken_oder_ueber') + '',
+    warn:['Kraftverlust','' + _issT('iss.naechtlicher_schmerz') + '','' + _issT('iss.instabilitaet_nach_sturz') + '']},
   hip:{label:'Hüfte',icon:'pulse',
-    routine:['Hüftmobilität (90/90)','Glute-Aktivierung','Adduktoren-/Abduktoren-Arbeit'],
-    alternatives:['Bike statt Lauf bei Schmerz','Schwimmen','Mobility-Fokus'],
-    stop:'Stechender Schmerz in der Leiste/Hüfte → Belastung stoppen.',
-    warn:['Blockadegefühl','Ausstrahlung','Schmerz in Ruhe']},
+    routine:['' + _issT('iss.hueftmobilitaet_90_90') + '','Glute-Aktivierung','Adduktoren-/Abduktoren-Arbeit'],
+    alternatives:['' + _issT('iss.bike_statt_lauf_bei_schmerz') + '','Schwimmen','Mobility-Fokus'],
+    stop:'' + _issT('iss.stechender_schmerz_in_der_leiste') + '',
+    warn:['Blockadegefühl','Ausstrahlung','' + _issT('iss.schmerz_in_ruhe') + '']},
   ankle:{label:'Sprunggelenk',icon:'pulse',
     routine:['Dorsiflexion-Mobility','Single-Leg-Balance','Wadenkräftigung'],
-    alternatives:['Bike/Schwimmen statt Lauf','Stabilitätsarbeit'],
-    stop:'Schwellung oder Instabilität → nicht laufen.',
-    warn:['Schwellung','Instabilität','Schmerz nach Umknicken']},
+    alternatives:['' + _issT('iss.bike_schwimmen_statt_lauf') + '','Stabilitätsarbeit'],
+    stop:'' + _issT('iss.schwellung_oder_instabilitaet_nicht_laufen') + '',
+    warn:['Schwellung','Instabilität','' + _issT('iss.schmerz_nach_umknicken') + '']},
   shin:{label:'Schienbein',icon:'pulse',
-    routine:['Wadendehnung & -kräftigung','Fußmuskulatur','Lauftechnik-Cues'],
-    alternatives:['Volumen reduzieren','Bike/Schwimmen','weiche Untergründe'],
-    stop:'Punktueller Knochenschmerz → Laufpause, abklären lassen.',
-    warn:['punktueller Knochenschmerz','Schmerz in Ruhe','nächtlicher Schmerz']},
+    routine:['' + _issT('iss.wadendehnung_kraeftigung') + '','Fußmuskulatur','Lauftechnik-Cues'],
+    alternatives:['' + _issT('iss.volumen_reduzieren') + '','Bike/Schwimmen','' + _issT('iss.weiche_untergruende') + ''],
+    stop:'' + _issT('iss.punktueller_knochenschmerz_laufpause_abklaeren_lassen') + '',
+    warn:['' + _issT('iss.punktueller_knochenschmerz') + '','' + _issT('iss.schmerz_in_ruhe') + '','' + _issT('iss.naechtlicher_schmerz') + '']},
   foot:{label:'Fuß',icon:'pulse',
-    routine:['Fußmobilität & Igelball','Fußkräftigung (Towel Curls)','Wadenarbeit'],
-    alternatives:['Bike/Schwimmen','Volumen reduzieren'],
-    stop:'Morgendlicher Anlaufschmerz steigt → Laufvolumen runter.',
-    warn:['Schwellung','Taubheit','Schmerz in Ruhe']},
+    routine:['' + _issT('iss.fussmobilitaet_igelball') + '','' + _issT('iss.fusskraeftigung_towel_curls') + '','Wadenarbeit'],
+    alternatives:['Bike/Schwimmen','' + _issT('iss.volumen_reduzieren') + ''],
+    stop:'' + _issT('iss.morgendlicher_anlaufschmerz_steigt_laufvolumen_runter') + '',
+    warn:['Schwellung','Taubheit','' + _issT('iss.schmerz_in_ruhe') + '']},
   neck:{label:'Nacken',icon:'pulse',
     routine:['Nacken-Mobility','Brustwirbelsäulen-Extension','Schulterblatt-Kontrolle'],
-    alternatives:['Kein schweres Überkopf/Trap-Loading','lockeres Cardio'],
-    stop:'Schmerz mit Bewegungseinschränkung → Belastung anpassen.',
-    warn:['Ausstrahlung in Arm','Taubheit/Kribbeln','Schwindel']},
+    alternatives:['' + _issT('iss.kein_schweres_ueberkopf_trap_loading') + '','' + _issT('iss.lockeres_cardio') + ''],
+    stop:'' + _issT('iss.schmerz_mit_bewegungseinschraenkung_belastung_anpassen') + '',
+    warn:['' + _issT('iss.ausstrahlung_in_arm') + '','Taubheit/Kribbeln','Schwindel']},
   elbow:{label:'Ellenbogen',icon:'pulse',
-    routine:['Unterarm-Exzentrik','Mobility','Griffkraft dosiert'],
-    alternatives:['Zug-/Druck-Last reduzieren','Unterkörper-Fokus'],
-    stop:'Schmerz bei Griff/Last → Last reduzieren.',
+    routine:['Unterarm-Exzentrik','Mobility','' + _issT('iss.griffkraft_dosiert') + ''],
+    alternatives:['' + _issT('iss.zug_druck_last_reduzieren') + '','Unterkörper-Fokus'],
+    stop:'' + _issT('iss.schmerz_bei_griff_last_last') + '',
     warn:['Kraftverlust','Schwellung','Taubheit']},
   wrist:{label:'Handgelenk',icon:'pulse',
-    routine:['Handgelenk-Mobility','Unterarm-Kräftigung','neutrale Belastung'],
-    alternatives:['Stützübungen meiden','Strap/Neutralgriff'],
-    stop:'Schmerz bei Stütz/Last → anpassen.',
-    warn:['Schwellung','Instabilität nach Sturz','Taubheit']},
+    routine:['Handgelenk-Mobility','Unterarm-Kräftigung','' + _issT('iss.neutrale_belastung') + ''],
+    alternatives:['' + _issT('iss.stuetzuebungen_meiden') + '','Strap/Neutralgriff'],
+    stop:'' + _issT('iss.schmerz_bei_stuetz_last_anpassen') + '',
+    warn:['Schwellung','' + _issT('iss.instabilitaet_nach_sturz') + '','Taubheit']},
   fatigue:{label:'Müdigkeit',icon:'battery',
-    routine:['Schlaf priorisieren','Z1–Z2 statt Intensität','kurzer Spaziergang / Licht'],
-    alternatives:['10-Minuten-Startregel','Volumen halten, Intensität raus'],
-    stop:'Anhaltende Müdigkeit trotz Schlaf → Belastung reduzieren.',
-    warn:['Krankheitsgefühl','ungewöhnlich hoher Ruhepuls','anhaltende Erschöpfung']},
+    routine:['' + _issT('iss.schlaf_priorisieren') + '','' + _issT('iss.z1_z2_statt_intensitaet') + '','' + _issT('iss.kurzer_spaziergang_licht') + ''],
+    alternatives:['10-Minuten-Startregel','' + _issT('iss.volumen_halten_intensitaet_raus') + ''],
+    stop:'' + _issT('iss.anhaltende_muedigkeit_trotz_schlaf_belastung') + '',
+    warn:['Krankheitsgefühl','' + _issT('iss.ungewoehnlich_hoher_ruhepuls') + '','' + _issT('iss.anhaltende_erschoepfung') + '']},
   stress:{label:'Stress',icon:'heart',
-    routine:['5-min Atemroutine','niedrige Intensität','Spaziergang','Schlaf priorisieren'],
-    alternatives:['Easy statt Qualität','Mobility/Yoga'],
-    stop:'Sehr hoher Stress + schlechte Werte → keine harte Einheit.',
-    warn:['anhaltende Überforderung','Schlaf stark gestört','körperliche Symptome']},
+    routine:['' + _issT('iss.5_min_atemroutine') + '','' + _issT('iss.niedrige_intensitaet') + '','Spaziergang','' + _issT('iss.schlaf_priorisieren') + ''],
+    alternatives:['' + _issT('iss.easy_statt_qualitaet') + '','Mobility/Yoga'],
+    stop:'' + _issT('iss.sehr_hoher_stress_schlechte_werte') + '',
+    warn:['' + _issT('iss.anhaltende_ueberforderung') + '','' + _issT('iss.schlaf_stark_gestoert') + '','' + _issT('iss.koerperliche_symptome') + '']},
   sleep:{label:'Schlafprobleme',icon:'moon',
-    routine:['Abendroutine','Koffein-Cutoff','Licht/Screens reduzieren','Schlafziel anzeigen'],
-    alternatives:['Kein spätes Training','Intensität bei < 6 h vermeiden'],
-    stop:'Mehrere Nächte < 6 h → keine Intensität, Erholung priorisieren.',
-    warn:['anhaltende Schlaflosigkeit','Tagesschläfrigkeit mit Risiko']}
+    routine:['Abendroutine','Koffein-Cutoff','' + _issT('iss.licht_screens_reduzieren') + '','' + _issT('iss.schlafziel_anzeigen') + ''],
+    alternatives:['' + _issT('iss.kein_spaetes_training') + '',_issT('iss.intensitaet_unter_6h_vermeiden')],
+    stop:_issT('iss.mehrere_naechte_unter_6h'),
+    warn:['' + _issT('iss.anhaltende_schlaflosigkeit') + '','' + _issT('iss.tagesschlaefrigkeit_mit_risiko') + '']}
 };
 
 /* ---- Score-Quelle: Knie aus morning.knee, sonst entry.issues[key] ---- */
@@ -109,13 +111,13 @@ function moduleStatus(key){
          lastSignal:latestVal,lastSignalDate:latestDate,fromPast:fromPastSignal,streak:zero,series:s};
 }
 var STATUS_META={
-  kein:{l:'Kein Thema',c:'grey',adv:''},
-  ruhig:{l:'Ruhig',c:'green',adv:'Beschwerdefrei — Routine optional.'},
-  beobachten:{l:'Beobachten',c:'gold',adv:'Leichtes Signal — im Auge behalten, Routine sinnvoll.'},
-  aktiv:{l:'Aktiv',c:'gold',adv:'Belastung anpassen — Alternative oder reduzierte Einheit.'},
-  warn:{l:'Warnsignal',c:'red',adv:'Training stoppen und abklären lassen.'},
-  stabil:{l:'Stabil',c:'green',adv:'Seit 7+ Tagen beschwerdefrei — weiter beobachten.'},
-  praevention:{l:'Prävention',c:'green',adv:'14+ Tage stabil — Modul in Prävention, Routine optional.'}
+  kein:{l:'' + _issT('iss.kein_thema') + '',c:'grey',adv:''},
+  ruhig:{l:'Ruhig',c:'green',adv:'' + _issT('iss.beschwerdefrei_routine_optional') + ''},
+  beobachten:{l:'Beobachten',c:'gold',adv:'' + _issT('iss.leichtes_signal_im_auge_behalten') + ''},
+  aktiv:{l:'Aktiv',c:'gold',adv:'' + _issT('iss.belastung_anpassen_alternative_oder_reduzierte') + ''},
+  warn:{l:'Warnsignal',c:'red',adv:'' + _issT('iss.training_stoppen_und_abklaeren_lassen') + ''},
+  stabil:{l:'Stabil',c:'green',adv:'' + _issT('iss.seit_7_tagen_beschwerdefrei_weiter') + ''},
+  praevention:{l:'Prävention',c:'green',adv:'' + _issT('iss.14_tage_stabil_modul_in') + ''}
 };
 function statusColorVar(c){return c==='green'?'var(--success)':c==='gold'?'var(--accent)':c==='red'?'var(--danger)':'var(--text-faint)';}
 
@@ -136,9 +138,9 @@ function checkinIssueKeys(){return activeModuleKeys().filter(function(k){return 
 function checkinIssuesHTML(m){
   var keys=checkinIssueKeys();if(!keys.length)return '';
   return keys.map(function(k){
-    if(k==='knee')return slider('m_knee','Knie-Schmerz JETZT',0,10,(m&&m.knee!=null?m.knee:0),'kein','max');
+    if(k==='knee')return slider('m_knee','' + _issT('iss.knie_schmerz_jetzt') + '',0,10,(m&&m.knee!=null?m.knee:0),'kein','max');
     var v=(DB[cur]&&DB[cur].issues&&DB[cur].issues[k]!=null)?DB[cur].issues[k]:0;
-    return slider('m_iss_'+k,((ORVIA_MODULES[k]||{}).label||k)+' JETZT',0,10,v,'kein','max');
+    return slider('m_iss_'+k,_issT('iss.label_jetzt', { label: (ORVIA_MODULES[k]||{}).label||k }),0,10,v,'kein','max');
   }).join('');
 }
 function gatherCheckinIssues(){
@@ -206,7 +208,7 @@ function removeModule(key){
   }
   closeSupp();renderModules();
   if(typeof renderDay==='function')renderDay();   // Check-in neu aufbauen (Beschwerde ggf. raus)
-  if(typeof toast==='function')toast('Modul pausiert — aus den Check-ins entfernt');
+  if(typeof toast==='function')toast('' + _issT('iss.modul_pausiert_aus_den_check') + '');
 }
 
 /* ---- Proaktive Nachfrage (Nutzerwunsch 2026-07-16): ≥7 Tage kein Signal ≥3/10 →
@@ -235,7 +237,7 @@ function _issuePromptMark(key){
 }
 function issuePromptKeep(key){
   _issuePromptMark(key);renderModules();
-  if(typeof toast==='function')toast('Alles klar — ORVIA behält das Thema im Blick.');
+  if(typeof toast==='function')toast('' + _issT('iss.alles_klar_orvia_behaelt_das') + '');
 }
 function issuePromptPause(key){
   _issuePromptMark(key);
@@ -249,10 +251,10 @@ function renderModules(){
   if(!keys.length){el.innerHTML='';return;}
   var asks=keys.filter(issuePromptDue).map(function(k){
     var d=daysSinceIssueSignal(k),label=(ORVIA_MODULES[k]||{}).label||k;
-    return '<div class="modadv" style="margin:10px 0 4px">Seit '+(d>=21?'über 3 Wochen':d+' Tagen')+' keine nennenswerten Beschwerden bei <b>'+escH(label)+'</b>. Modul pausieren?'+
+    return '<div class="modadv" style="margin:10px 0 4px">' + _issT('iss.pause_frage', { seit: (d>=21 ? _issT('iss.ueber_3_wochen') : _issT('iss.n_tagen', { n: d })), label: '<b>'+escH(label)+'</b>' }) +
       '<div class="row2" style="margin-top:10px">'+
       '<button class="btn sec" onclick="issuePromptPause(\''+k+'\')">Pausieren</button>'+
-      '<button class="btn sec" onclick="issuePromptKeep(\''+k+'\')">Weiter unterstützen</button></div></div>';
+      '<button class="btn sec" onclick="issuePromptKeep(\''+k+'\')">' + _issT('iss.weiter_unterstuetzen') + '</button></div></div>';
   }).join('');
   var rows=keys.map(function(k){
     var st=moduleStatus(k),meta=STATUS_META[st.status]||STATUS_META.kein;
@@ -264,9 +266,9 @@ function renderModules(){
       '<span class="modscore">'+sc+'</span>'+
       '<span class="modchev">›</span></button>';
   }).join('');
-  el.innerHTML='<div class="card"><h2><svg class="ic"><use href="#i-pulse"/></svg>Aktive Module</h2>'+
+  el.innerHTML='<div class="card"><h2><svg class="ic"><use href="#i-pulse"/></svg>' + _issT('iss.aktive_module') + '</h2>'+
     asks+rows+
-    '<button class="btn sec modadd" onclick="openModulePicker()" style="margin-top:14px">'+ic('plus')+' Beschwerde erfassen</button></div>';
+    '<button class="btn sec modadd" onclick="openModulePicker()" style="margin-top:14px">'+ic('plus')+' ' + _issT('iss.beschwerde_erfassen') + '</button></div>';
 }
 
 /* ============ Modal: Beschwerde wählen ============ */
@@ -274,8 +276,8 @@ function openModulePicker(){
   var opts=Object.keys(ORVIA_MODULES).map(function(k){
     return '<button class="ob-chip" onclick="openModule(\''+k+'\')">'+escH(ORVIA_MODULES[k].label)+'</button>';}).join('');
   document.getElementById('suppSheet').innerHTML=
-    '<div class="sheethead"><h2>Beschwerde erfassen</h2><button class="xbtn" onclick="closeSupp()">✕</button></div>'+
-    '<p class="muted" style="margin:2px 0 14px">Wähle einen Bereich. ORVIA aktiviert das passende Modul mit Routine & Regeln.</p>'+
+    '<div class="sheethead"><h2>' + _issT('iss.beschwerde_erfassen') + '</h2><button class="xbtn" onclick="closeSupp()">✕</button></div>'+
+    '<p class="muted" style="margin:2px 0 14px">' + _issT('iss.waehle_einen_bereich_orvia_aktiviert') + '</p>'+
     '<div class="ob-chips">'+opts+'</div>'+
     '<p class="ob-disc" style="margin-top:18px">'+ORVIA_DISCLAIMER+'</p>';
   document.getElementById('suppModal').classList.add('show');
@@ -295,14 +297,14 @@ function openModule(key){
     '<div class="modstat"><span class="moddot" style="background:'+statusColorVar(meta.c)+'"></span><b>'+escH(meta.l)+'</b>'+
       (st.score!=null?'<span class="muted"> · aktuell '+st.score+'/10</span>':'')+'</div>'+
     (meta.adv?'<p class="modadv">'+escH(meta.adv)+'</p>':'')+
-    '<div class="modlbl">Heute eintragen (0–10)</div><div class="qrow">'+quick+'</div>'+
-    (spark?'<div class="modlbl">Verlauf (14 Tage)</div><div class="sparkrow">'+spark+'</div>':'')+
-    '<div class="modlbl">Routine</div><ul class="modlist">'+def.routine.map(function(r){return '<li>'+escH(r)+'</li>';}).join('')+'</ul>'+
-    '<div class="modlbl">Alternativen</div><ul class="modlist">'+def.alternatives.map(function(r){return '<li>'+escH(r)+'</li>';}).join('')+'</ul>'+
-    '<div class="modlbl">Abbruchregel</div><p class="modtext">'+escH(def.stop)+'</p>'+
-    '<div class="modlbl">Warnsignale → ärztlich abklären</div><p class="modtext">'+def.warn.map(escH).join(' · ')+'</p>'+
+    '<div class="modlbl">' + _issT('iss.heute_eintragen_0_10') + '</div><div class="qrow">'+quick+'</div>'+
+    (spark?'<div class="modlbl">' + _issT('iss.verlauf_14_tage') + '</div><div class="sparkrow">'+spark+'</div>':'')+
+    '<div class="modlbl">' + _issT('iss.routine') + '</div><ul class="modlist">'+def.routine.map(function(r){return '<li>'+escH(r)+'</li>';}).join('')+'</ul>'+
+    '<div class="modlbl">' + _issT('iss.alternativen') + '</div><ul class="modlist">'+def.alternatives.map(function(r){return '<li>'+escH(r)+'</li>';}).join('')+'</ul>'+
+    '<div class="modlbl">' + _issT('iss.abbruchregel') + '</div><p class="modtext">'+escH(def.stop)+'</p>'+
+    '<div class="modlbl">' + _issT('iss.warnsignale_aerztlich_abklaeren') + '</div><p class="modtext">'+def.warn.map(escH).join(' · ')+'</p>'+
     '<div class="modwarn">'+ORVIA_DISCLAIMER+'</div>'+
     '<div class="row2" style="margin-top:14px"><button class="btn sec" onclick="removeModule(\''+key+'\')">Modul pausieren</button>'+
-      '<button class="btn sec" onclick="closeSupp()">Schließen</button></div>';
+      '<button class="btn sec" onclick="closeSupp()">' + _issT('iss.schliessen') + '</button></div>';
   document.getElementById('suppModal').classList.add('show');
 }

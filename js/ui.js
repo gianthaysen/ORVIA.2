@@ -1,8 +1,10 @@
+/* B-13: nutzersichtbare Texte ueber t() (locales/de.js); eigener Wrapper-Name je Datei (profile.js fuehrt das globale T). */
+var _uiT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 /* Robustheit: GM-Grafikhelfer (gm-icons.js) können in Test-Sandboxes fehlen — neutrale
    Fallbacks, damit ui.js ohne Ladereihenfolge-Annahme evaluierbar bleibt. */
 (function(g){['ring','icon','arrow','battGrad','sparkline'].forEach(function(k){if(typeof g[k]!=='function')g[k]=function(){return '';};});if(!g.SC)g.SC={};if(!g.TINT)g.TINT={};})(typeof window!=='undefined'?window:(typeof globalThis!=='undefined'?globalThis:this));
 /* GM1-Daten vor der Top-Level-Init (Modul-Registry, Levels; Funktionen hoisten selbst). */
-var GM_NA='Noch nicht verfügbar';
+var GM_NA='' + _uiT('ui.noch_nicht_verfuegbar') + '';
 var ALLMOD={readinessPro:{t:"Readiness & Konfidenz",d:"Baseline, SD, Trends",lvl:3},recovery:{t:"Schlaf & Erholung",d:"Score, HRV, Ruhepuls",lvl:2},loadPro:{t:"Belastungssteuerung",d:"CTL/ATL, ACWR, Sportart",lvl:3},loadSimple:{t:"Trainingsbelastung",d:"Status + Zone",lvl:2},vitals:{t:"HRV & Ruhepuls",d:"Trend + Baseline",lvl:2},vitalsFull:{t:"Vitalwerte",d:"HRV, RHR, HRR, VO₂, Atmung",lvl:3},stress:{t:"Stress",d:"Tagesverlauf",lvl:3},activity:{t:"Aktivität heute",d:"Schritte, aktive kcal",lvl:1},activitySimple:{t:"Schritte",d:"Tagesziel",lvl:1},next:{t:"Bevorstehendes Training",d:"Nächste Einheit",lvl:1},nextSimple:{t:"Nächstes Training",d:"Was & wann",lvl:1},contrib:{t:"Belastungs-Beitrag",d:"ATL pro Einheit",lvl:3},goal:{t:"Ziel-Fortschritt",d:"Hauptziel",lvl:2},goalSimple:{t:"Dein Ziel",d:"Fortschritt",lvl:1},sleepSimple:{t:"Schlaf",d:"einfach",lvl:1},pain:{t:"Beschwerden",d:"Schmerz-Status",lvl:1},
 /* 2026-08-05 (Nutzerentscheidung): Ernaehrung, Abend-Check-in und Routinen lagen als
    Legacy-Karten ausserhalb des Modulsystems (eigenes Markup, nicht anordenbar,
@@ -14,123 +16,123 @@ var LEVELMOD={a:["nextSimple","goalSimple","sleepSimple","activitySimple","pain"
 var GM_REND={recovery:function(d){return gmModRecovery(d);},sleepSimple:function(d){return gmModSleepSimple(d);},activitySimple:function(d){return gmModActivitySimple(d);},loadSimple:function(d){return gmModLoadSimple(d);},loadPro:function(d){return gmModLoadPro(d);},readinessPro:function(d){return gmModReadinessPro(d);},vitals:function(d){return gmModVitals(d);},vitalsFull:function(d){return gmModVitalsFull(d);},stress:function(d){return gmModStress(d);},activity:function(d){return gmModActivity(d);},next:function(d){return gmModNext(d);},nextSimple:function(d){return gmModNextSimple(d);},goal:function(d){return gmModGoal(d);},goalSimple:function(d){return gmModGoalSimple(d);},pain:function(d){return gmModPain(d);},contrib:function(d){return gmModContrib(d);},
 nutrition:function(d){return gmModNutrition(d);},evening:function(d){return gmModEvening(d);},supplements:function(d){return gmModSupplements(d);}};
 var GM_KGRID={recovery:1,activity:1};
-var GM_METRIC_DEFS={sleep_duration_min:{label:'Schlaf',icon:'moon',color:'sleep',unit:' min'},hrv_ms:{label:'Herzfrequenzvariabilität',icon:'pulse',color:'ready',unit:' ms'},resting_hr:{label:'Ruhepuls',icon:'heart',color:'ready',unit:' bpm'},stress_avg:{label:'Stress',icon:'wind',color:'ready',unit:''},body_battery:{label:'Body Battery',icon:'battery',color:'activity',unit:''},steps:{label:'Schritte',icon:'activity',color:'activity',unit:''},active_kcal:{label:'Aktive Energie',icon:'bolt',color:'activity',unit:' kcal'},load:{label:'Trainingsbelastung',icon:'gauge',color:'ready',unit:''},
+var GM_METRIC_DEFS={sleep_duration_min:{label:'' + _uiT('ui.schlaf') + '',icon:'moon',color:'sleep',unit:' min'},hrv_ms:{label:'Herzfrequenzvariabilität',icon:'pulse',color:'ready',unit:' ms'},resting_hr:{label:'Ruhepuls',icon:'heart',color:'ready',unit:' bpm'},stress_avg:{label:'Stress',icon:'wind',color:'ready',unit:''},body_battery:{label:'Body Battery',icon:'battery',color:'activity',unit:''},steps:{label:'Schritte',icon:'activity',color:'activity',unit:''},active_kcal:{label:'' + _uiT('ui.aktive_energie') + '',icon:'bolt',color:'activity',unit:' kcal'},load:{label:'' + _uiT('ui.trainingsbelastung') + '',icon:'gauge',color:'ready',unit:''},
 /* GM7.4-2: Group-1 — bereits vom Worker produzierte/gespeicherte Werte, generisches Detail-Sheet (Quelle/Stand/Stale). Keine medizinische Bewertung, keine UI-Neuberechnung. */
-training_readiness:{label:'Training Readiness',icon:'bolt',color:'ready',unit:''},acute_load:{label:'Acute Load',icon:'gauge',color:'activity',unit:''},load_ratio:{label:'Load Ratio (ACWR)',icon:'gauge',color:'ready',unit:''},recovery_time_h:{label:'Recovery Time',icon:'heart',color:'ready',unit:' h'},
-endurance_score:{label:'Endurance Score',icon:'activity',color:'activity',unit:''},running_tolerance:{label:'Running Tolerance',icon:'activity',color:'ready',unit:' km/Wo'},fitness_age:{label:'Fitnessalter',icon:'pulse',color:'ready',unit:' J.'},respiration_avg:{label:'Atemfrequenz',icon:'wind',color:'ready',unit:'/min'},vo2max_running:{label:'VO₂max Laufen',icon:'pulse',color:'ready',unit:''},vo2max_cycling:{label:'VO₂max Radfahren',icon:'pulse',color:'activity',unit:''},
-stress_max:{label:'Stress-Maximum',icon:'wind',color:'ready',unit:''},sleep_deep_min:{label:'Tiefschlaf',icon:'moon',color:'sleep',unit:' min'},sleep_light_min:{label:'Leichtschlaf',icon:'moon',color:'sleep',unit:' min'},sleep_rem_min:{label:'REM-Schlaf',icon:'moon',color:'sleep',unit:' min'},sleep_awake_min:{label:'Wachphasen',icon:'moon',color:'sleep',unit:' min'}};
+training_readiness:{label:'' + _uiT('ui.training_readiness') + '',icon:'bolt',color:'ready',unit:''},acute_load:{label:'' + _uiT('ui.acute_load') + '',icon:'gauge',color:'activity',unit:''},load_ratio:{label:'' + _uiT('ui.load_ratio_acwr') + '',icon:'gauge',color:'ready',unit:''},recovery_time_h:{label:'' + _uiT('ui.recovery_time') + '',icon:'heart',color:'ready',unit:' h'},
+endurance_score:{label:'' + _uiT('ui.endurance_score') + '',icon:'activity',color:'activity',unit:''},running_tolerance:{label:'' + _uiT('ui.running_tolerance') + '',icon:'activity',color:'ready',unit:'' + _uiT('ui.km_wo') + ''},fitness_age:{label:'Fitnessalter',icon:'pulse',color:'ready',unit:'' + _uiT('ui.j') + ''},respiration_avg:{label:'Atemfrequenz',icon:'wind',color:'ready',unit:'/min'},vo2max_running:{label:'' + _uiT('ui.vo_max_laufen') + '',icon:'pulse',color:'ready',unit:''},vo2max_cycling:{label:'' + _uiT('ui.vo_max_radfahren') + '',icon:'pulse',color:'activity',unit:''},
+stress_max:{label:'Stress-Maximum',icon:'wind',color:'ready',unit:''},sleep_deep_min:{label:'Tiefschlaf',icon:'moon',color:'sleep',unit:' min'},sleep_light_min:{label:'Leichtschlaf',icon:'moon',color:'sleep',unit:' min'},sleep_rem_min:{label:'REM-' + _uiT('ui.schlaf') + '',icon:'moon',color:'sleep',unit:' min'},sleep_awake_min:{label:'Wachphasen',icon:'moon',color:'sleep',unit:' min'}};
 /* GM7.6 (Teilbereich 1): metrikspezifische Einordnung fuer die Detail-Sheets — statische
    Erklaertexte in drei Tiefen (a/f/p), moegliche Einfluesse und Trainingsbedeutung, analog
    zur METRICS-Registry des Golden Masters (interp.a/f/p, factors, meaning). Reine Bildung/
    Einordnung, KEINE Datenwerte; hb = higherBetter fuer Chart/vs-Oe-Faerbung. */
 var GM_METRIC_INFO={
   sleep_duration_min:{hb:true,
-    a:'So lange hast du letzte Nacht geschlafen. Regelmäßig genug Schlaf ist die wichtigste Grundlage für Erholung und Fortschritt.',
-    f:'Gemessene Schlafdauer der letzten Nacht. Aussagekräftig ist weniger die einzelne Nacht als dein Muster über die Woche — konstante Zeiten wirken stärker als einzelne lange Nächte.',
-    p:'Schlafdauer aus der Geräteerkennung (Bewegung + HF). Systematische Unterschätzung bei ruhigem Wachliegen ist möglich; bewerte Trend und Wochenmittel, nicht Einzelnächte.',
-    factors:['Zubettgeh-Zeit','Koffein am Nachmittag','Alkohol','Späte, schwere Mahlzeiten','Bildschirmzeit am Abend','Raumtemperatur','Späte harte Einheiten'],
-    meaning:'Zu wenig Schlaf senkt Regeneration, Glykogenspeicherung und Reaktionsfähigkeit — harte Einheiten nach kurzen Nächten haben ein schlechteres Reiz-Nutzen-Verhältnis.'},
+    a:'' + _uiT('ui.so_lange_hast_du_letzte') + '',
+    f:'' + _uiT('ui.gemessene_schlafdauer_der_letzten_nacht') + '',
+    p:'' + _uiT('ui.schlafdauer_aus_der_geraeteerkennung_bewegung') + '',
+    factors:['Zubettgeh-' + _uiT('ui.zeit') + '','' + _uiT('ui.koffein_am_nachmittag') + '','Alkohol','' + _uiT('ui.spaete_schwere_mahlzeiten') + '','' + _uiT('ui.bildschirmzeit_am_abend') + '','Raumtemperatur','' + _uiT('ui.spaete_harte_einheiten') + ''],
+    meaning:'' + _uiT('ui.zu_wenig_schlaf_senkt_regeneration') + ''},
   hrv_ms:{hb:true,
-    a:'Die Herzfrequenzvariabilität zeigt, wie erholt dein Nervensystem ist. Höher als sonst ist meist ein gutes Zeichen.',
-    f:'Nächtliche HRV. Einzelwerte schwanken stark — entscheidend ist der Vergleich mit deiner eigenen Baseline, nicht mit anderen Personen oder Absolutwerten.',
-    p:'Nächtliches rMSSD-basiertes Signal. Interpretation nur relativ zur individuellen Log-Baseline (7/28 T.); akut erhöhte Werte nach sehr harter Belastung können parasympathische Sättigung statt Erholung anzeigen.',
-    factors:['Trainingsbelastung der Vortage','Alkohol','Infekt/Krankheit','Schlafqualität','Stress','Hitze und Dehydration'],
-    meaning:'Deutlich unter Baseline über mehrere Tage spricht für reduzierte Belastbarkeit — Intensität eher senken. Im oder über dem Normalbereich sind Qualitätsreize gut möglich.'},
+    a:'' + _uiT('ui.die_herzfrequenzvariabilitaet_zeigt_wie_erholt') + '',
+    f:'' + _uiT('ui.naechtliche_hrv_einzelwerte_schwanken_stark') + '',
+    p:'' + _uiT('ui.naechtliches_rmssd_basiertes_signal_interpretation') + '',
+    factors:['' + _uiT('ui.trainingsbelastung_der_vortage') + '','Alkohol','Infekt/Krankheit','Schlafqualität','Stress','' + _uiT('ui.hitze_und_dehydration') + ''],
+    meaning:'' + _uiT('ui.deutlich_unter_baseline_ueber_mehrere') + ''},
   resting_hr:{hb:false,
-    a:'Dein Puls in völliger Ruhe. Niedriger als sonst ist meist ein gutes Zeichen für Erholung.',
-    f:'Nächtlicher Ruhepuls. Ein Anstieg von mehreren Schlägen über deine Baseline ist ein frühes, robustes Warnsignal für unvollständige Erholung oder beginnende Krankheit.',
-    p:'Minimum-/Nachtwert des Geräts. Als Ampel gemeinsam mit HRV lesen: RHR erhöht + HRV gesenkt = klarer Erholungsrückstand; isolierte Einzelabweichungen sind wenig aussagekräftig.',
-    factors:['Erholungszustand','Infekt/Fieber','Alkohol','Hitze','Dehydration','Aufregung/Stress','Ausdauertrainingszustand (langfristig)'],
-    meaning:'Ein über Tage erhöhter Ruhepuls ist ein Grund, Intensität herauszunehmen — unabhängig davon, wie gut sich der Tag subjektiv anfühlt.'},
+    a:'' + _uiT('ui.dein_puls_in_voelliger_ruhe') + '',
+    f:'' + _uiT('ui.naechtlicher_ruhepuls_ein_anstieg_von') + '',
+    p:'' + _uiT('ui.minimum_nachtwert_des_geraets_als') + '',
+    factors:['Erholungszustand','Infekt/Fieber','Alkohol','Hitze','Dehydration','Aufregung/Stress','' + _uiT('ui.ausdauertrainingszustand_langfristig') + ''],
+    meaning:'' + _uiT('ui.ein_ueber_tage_erhoehter_ruhepuls') + ''},
   stress_avg:{hb:false,
-    a:'Dein durchschnittlicher Stresswert heute (0–100). Niedriger ist entspannter.',
-    f:'Tages-Stresswert des Geräts, abgeleitet aus der Herzfrequenzvariabilität über den Tag. Dauerhaft hohe Werte fressen dieselben Erholungsressourcen wie Training.',
-    p:'HRV-basiertes autonomes Belastungsmaß (0–100). Training selbst erscheint als „Stress" — bewerte die Ruhephasen zwischen Belastungen; fehlende Ruheanteile sind das eigentliche Signal.',
-    factors:['Arbeits-/Alltagsbelastung','Koffein','Schlafdefizit','Training (physiologisch erwartbar)','Infekt','Emotionale Anspannung'],
-    meaning:'Hoher Alltagsstress + hartes Training addieren sich. An Tagen mit durchgehend hohem Stresslevel ist eine lockere Einheit oft der bessere Reiz.'},
+    a:'' + _uiT('ui.dein_durchschnittlicher_stresswert_heute_0') + '',
+    f:'' + _uiT('ui.tages_stresswert_des_geraets_abgeleitet') + '',
+    p:'' + _uiT('ui.hrv_basiertes_autonomes_belastungsmass_0') + '',
+    factors:['Arbeits-/Alltagsbelastung','Koffein','Schlafdefizit','' + _uiT('ui.training_physiologisch_erwartbar') + '','Infekt','' + _uiT('ui.emotionale_anspannung') + ''],
+    meaning:'' + _uiT('ui.hoher_alltagsstress_hartes_training_addieren') + ''},
   body_battery:{hb:true,
-    a:'Deine Energiereserve (0–100). Nachts lädt sie auf, tagsüber wird sie verbraucht.',
-    f:'Energie-Schätzung des Geräts aus HRV, Stress, Schlaf und Aktivität. Der Startwert am Morgen zeigt, wie viel die Nacht wirklich aufgeladen hat.',
-    p:'Modellwert (0–100) aus HRV/Stress/Aktivität. Nützlich als Tagesbudget-Heuristik: niedriger Morgenwert nach normaler Nacht deutet auf verdeckte Belastung (Stress, Infekt, Alkohol).',
-    factors:['Schlafqualität','Stresslevel','Trainingsbelastung','Alkohol','Krankheit'],
-    meaning:'Ein niedriger Wert verbietet kein Training, spricht aber für Umfang statt Intensität — und für konsequentes Auffüllen über Schlaf.'},
+    a:'' + _uiT('ui.deine_energiereserve_0_100_nachts') + '',
+    f:'' + _uiT('ui.energie_schaetzung_des_geraets_aus') + '',
+    p:'' + _uiT('ui.modellwert_0_100_aus_hrv') + '',
+    factors:['Schlafqualität','Stresslevel','' + _uiT('ui.trainingsbelastung') + '','Alkohol','Krankheit'],
+    meaning:'' + _uiT('ui.ein_niedriger_wert_verbietet_kein') + ''},
   steps:{hb:true,
-    a:'Deine Schritte heute. Alltagsbewegung zählt zusätzlich zum Training.',
-    f:'Tagesschritte als Maß der Alltagsaktivität (NEAT). Für Ausdauerathleten relevant als versteckter Belastungsanteil neben dem eigentlichen Training.',
-    p:'Schrittzählung des Geräts. An harten Trainingstagen viel zusätzliches Gehvolumen = zusätzliche Belastung; an Ruhetagen unterstützt lockeres Gehen die Regeneration.',
-    factors:['Alltag/Beruf','Trainingseinheiten','Bewusste Spaziergänge'],
-    meaning:'Sehr hohe Alltagsaktivität an harten Tagen verlängert die Erholungszeit; moderate Bewegung an Ruhetagen fördert sie.'},
+    a:'' + _uiT('ui.deine_schritte_heute_alltagsbewegung_zaehlt') + '',
+    f:'' + _uiT('ui.tagesschritte_als_mass_der_alltagsaktivitaet') + '',
+    p:'' + _uiT('ui.schrittzaehlung_des_geraets_an_harten') + '',
+    factors:['Alltag/Beruf','Trainingseinheiten','' + _uiT('ui.bewusste_spaziergaenge') + ''],
+    meaning:'' + _uiT('ui.sehr_hohe_alltagsaktivitaet_an_harten') + ''},
   active_kcal:{hb:true,
-    a:'Kalorien, die du heute durch Bewegung zusätzlich verbraucht hast.',
-    f:'Aktive Energie über dem Grundumsatz (Gerät). Wichtig für die Energieverfügbarkeit: hoher Verbrauch braucht entsprechend höhere Zufuhr.',
-    p:'Geräteschätzung des aktivitätsbedingten Verbrauchs (HF-/Beschleunigungsmodell, Fehlerbereich beachten). Für die Ernährungssteuerung als Trend, nicht als exakte Zahl verwenden.',
-    factors:['Trainingsumfang und -intensität','Alltagsaktivität','Körpergewicht'],
-    meaning:'Anhaltend hoher Verbrauch ohne angepasste Energiezufuhr gefährdet Regeneration, Anpassung und Hormonhaushalt (LEA-Risiko).'},
+    a:'' + _uiT('ui.kalorien_die_du_heute_durch') + '',
+    f:'' + _uiT('ui.aktive_energie_ueber_dem_grundumsatz') + '',
+    p:'' + _uiT('ui.geraeteschaetzung_des_aktivitaetsbedingten_verbrauchs_hf') + '',
+    factors:['' + _uiT('ui.trainingsumfang_und_intensitaet') + '','Alltagsaktivität','Körpergewicht'],
+    meaning:'' + _uiT('ui.anhaltend_hoher_verbrauch_ohne_angepasste') + ''},
   recovery_time_h:{hb:false,
-    f:'Vom Gerät geschätzte verbleibende Erholungszeit bis zur nächsten harten Einheit.',
-    p:'Garmin-Modellwert aus Belastung + Erholungssignalen. Als Richtwert lesen — ORVIA rechnet ihn nicht nach und übersteuert ihn nicht.',
-    factors:['Letzte Trainingsbelastung','Schlaf','Stress'],
-    meaning:'Innerhalb der Erholungszeit sind lockere Einheiten sinnvoll; harte Reize erst danach oder bewusst als Overreaching-Entscheidung.'},
+    f:'' + _uiT('ui.vom_geraet_geschaetzte_verbleibende_erholungszeit') + '',
+    p:'' + _uiT('ui.garmin_modellwert_aus_belastung_erholungssignalen') + '',
+    factors:['' + _uiT('ui.letzte_trainingsbelastung') + '','' + _uiT('ui.schlaf') + '','Stress'],
+    meaning:'' + _uiT('ui.innerhalb_der_erholungszeit_sind_lockere') + ''},
   training_readiness:{hb:true,
-    f:'Garmin-Bereitschaftswert aus Schlaf, Erholungszeit, HRV-Status und Belastungshistorie.',
-    p:'Provider-Composite (0–100). Parallel zum ORVIA-Score als Zweitmeinung nutzbar; Abweichungen entstehen durch unterschiedliche Gewichtung, nicht durch Fehler.',
-    factors:['Schlaf','HRV-Status','Erholungszeit','Belastungshistorie'],
-    meaning:'Hohe Readiness stützt Qualitätsreize; niedrige Werte sprechen für Umfang/Technik statt Intensität.'},
+    f:'' + _uiT('ui.garmin_bereitschaftswert_aus_schlaf_erholungszeit') + '',
+    p:'' + _uiT('ui.provider_composite_0_100_parallel') + '',
+    factors:['' + _uiT('ui.schlaf') + '','HRV-Status','Erholungszeit','Belastungshistorie'],
+    meaning:'' + _uiT('ui.hohe_readiness_stuetzt_qualitaetsreize_niedrige') + ''},
   acute_load:{hb:null,
-    f:'Akute Trainingsbelastung der letzten Tage (Garmin-EPOC-basiert).',
-    p:'EPOC-gewichtete 7-Tage-Last des Providers — nicht identisch mit ORVIAs sRPE-basiertem ATL. Beide Systeme parallel lesen, nicht mischen.',
-    factors:['Trainingsumfang','Intensität'],
-    meaning:'Sprunghafte Anstiege der akuten Last sind der klassische Auslöser für Überlastungsbeschwerden — Progression glätten.'},
+    f:'' + _uiT('ui.akute_trainingsbelastung_der_letzten_tage') + '',
+    p:'' + _uiT('ui.epoc_gewichtete_7_tage_last') + '',
+    factors:['Trainingsumfang','' + _uiT('ui.intensitaet') + ''],
+    meaning:'' + _uiT('ui.sprunghafte_anstiege_der_akuten_last') + ''},
   load_ratio:{hb:null,
-    f:'Verhältnis akuter zu chronischer Belastung (Garmin). Werte um 0,8–1,3 gelten als produktiver Bereich.',
-    p:'Provider-ACWR. Methodisch umstritten als Einzelkriterium — als grobe Leitplanke verwenden, Entscheidung bleibt beim Gesamtbild (Score, Symptome, Schlaf).',
-    factors:['Belastungsaufbau der letzten Wochen','Pausen/Ausfälle'],
-    meaning:'Deutlich über 1,3–1,5 nach Pausen oder Sprüngen = erhöhtes Verletzungsrisiko; sehr niedrige Werte = Detraining-Tendenz.'},
+    f:'' + _uiT('ui.verhaeltnis_akuter_zu_chronischer_belastung') + '',
+    p:'' + _uiT('ui.provider_acwr_methodisch_umstritten_als') + '',
+    factors:['' + _uiT('ui.belastungsaufbau_der_letzten_wochen') + '','Pausen/Ausfälle'],
+    meaning:'' + _uiT('ui.deutlich_ueber_1_3_1') + ''},
   respiration_avg:{hb:null,
-    f:'Durchschnittliche Atemfrequenz (meist nächtlich). Stabil niedrige Werte sprechen für gute Erholung.',
-    p:'Atemzüge/min aus der Geräteerkennung. Ein Anstieg über die eigene Baseline kann früh auf Infekt oder Belastungsrückstand hinweisen.',
+    f:'' + _uiT('ui.durchschnittliche_atemfrequenz_meist_naechtlich_stabil') + '',
+    p:'' + _uiT('ui.atemzuege_min_aus_der_geraeteerkennung') + '',
     factors:['Infekt','Schlafqualität','Stress'],
-    meaning:'Auffällige Anstiege zusammen mit erhöhtem Ruhepuls ernst nehmen — eher Erholungstag einplanen.'},
+    meaning:'' + _uiT('ui.auffaellige_anstiege_zusammen_mit_erhoehtem') + ''},
   vo2max_running:{hb:true,
-    f:'Geschätzte maximale Sauerstoffaufnahme (Laufen) — der wichtigste Einzelmarker deiner aeroben Kapazität.',
-    p:'Geräteschätzung aus Pace-HF-Relation (GPS-abhängig). Träge Kennzahl: reale Änderungen zeigen sich über Wochen, nicht Tage; Tagessprünge sind Messrauschen.',
-    factors:['Aerobes Training über Monate','Gewichtsänderung','Hitze (verzerrt Schätzung)'],
-    meaning:'Langfristig steigende VO₂max bestätigt wirksames Ausdauertraining — kurzfristige Schwankungen nicht übersteuern.'},
+    f:'' + _uiT('ui.geschaetzte_maximale_sauerstoffaufnahme_laufen_der') + '',
+    p:'' + _uiT('ui.geraeteschaetzung_aus_pace_hf_relation') + '',
+    factors:['' + _uiT('ui.aerobes_training_ueber_monate') + '','Gewichtsänderung','' + _uiT('ui.hitze_verzerrt_schaetzung') + ''],
+    meaning:'' + _uiT('ui.langfristig_steigende_vo_max_bestaetigt') + ''},
   vo2max_cycling:{hb:true,
-    f:'Geschätzte maximale Sauerstoffaufnahme (Radfahren).',
-    p:'Leistungs-/HF-basierte Schätzung; ohne Powermeter deutlich unsicherer. Trend über Wochen bewerten.',
-    factors:['Aerobes Training','Powermeter-Verfügbarkeit'],
-    meaning:'Trend zählt; Einzelwerte nicht überinterpretieren.'},
+    f:'' + _uiT('ui.geschaetzte_maximale_sauerstoffaufnahme_radfahren') + '',
+    p:'' + _uiT('ui.leistungs_hf_basierte_schaetzung_ohne') + '',
+    factors:['' + _uiT('ui.aerobes_training') + '','Powermeter-Verfügbarkeit'],
+    meaning:'' + _uiT('ui.trend_zaehlt_einzelwerte_nicht_ueberinterpretieren') + ''},
   stress_max:{hb:false,
-    f:'Höchster gemessener Stresswert des Tages.',
-    p:'Spitzenwert der Intraday-Stresskurve — einzelne Spitzen sind normal, relevant ist die Dauer hoher Phasen.',
-    factors:['Akute Anspannung','Training','Koffein'],
-    meaning:'Einzelne Spitzen sind unkritisch; lange Hochphasen ohne Ruheanteile kosten Erholung.'},
+    f:'' + _uiT('ui.hoechster_gemessener_stresswert_des_tages') + '',
+    p:'' + _uiT('ui.spitzenwert_der_intraday_stresskurve_einzelne') + '',
+    factors:['' + _uiT('ui.akute_anspannung') + '','' + _uiT('ui.training') + '','Koffein'],
+    meaning:'' + _uiT('ui.einzelne_spitzen_sind_unkritisch_lange') + ''},
   /* Phase 4 (2026-08-05, P2-3): Schlafphasen — vorher griff der Generiktext. */
   sleep_deep_min:{hb:true,
-    a:'Im Tiefschlaf erholt sich dein Körper am stärksten. Mehr davon ist meist gut.',
-    f:'Tiefschlaf-Dauer der letzten Nacht. Hier laufen körperliche Reparatur, Wachstumshormon-Ausschüttung und Glykogen-Auffüllung — für Sportler die wichtigste Phase. Typisch sind grob 15–25 % der Nacht, vor allem in der ersten Nachthälfte.',
-    p:'Geräteschätzung aus Bewegung/HF/HRV — gegen Polysomnographie die fehleranfälligste Phasenklassifikation (Verwechslung mit ruhigem Leichtschlaf). Trend über Wochen bewerten, nicht Einzelnächte; späte harte Einheiten und Alkohol drücken den Tiefschlafanteil messbar.',
-    factors:['Alkohol (stark negativ)','Späte intensive Einheiten','Zubettgeh-Zeit (erste Nachthälfte)','Raumtemperatur','Schlafregelmäßigkeit'],
-    meaning:'Anhaltend wenig Tiefschlaf verschlechtert Regeneration und Anpassung an harte Reize — ein Grund, Belastung und Abendroutine zu prüfen.'},
+    a:'' + _uiT('ui.im_tiefschlaf_erholt_sich_dein') + '',
+    f:'' + _uiT('ui.tiefschlaf_dauer_der_letzten_nacht') + '',
+    p:'' + _uiT('ui.geraeteschaetzung_aus_bewegung_hf_hrv') + '',
+    factors:['' + _uiT('ui.alkohol_stark_negativ') + '','' + _uiT('ui.spaete_intensive_einheiten') + '','' + _uiT('ui.zubettgeh_zeit_erste_nachthaelfte') + '','Raumtemperatur','Schlafregelmäßigkeit'],
+    meaning:'' + _uiT('ui.anhaltend_wenig_tiefschlaf_verschlechtert_regeneration') + ''},
   sleep_light_min:{hb:null,
-    a:'Leichtschlaf ist der normale Übergangsschlaf — er macht den größten Teil der Nacht aus.',
-    f:'Leichtschlaf-Dauer der letzten Nacht. Mit typisch ~50 % der Nacht die größte Phase; weder „gut" noch „schlecht" — auffällig ist eher ein sehr hoher Anteil auf Kosten von Tief- und REM-Schlaf.',
-    p:'Sammelkategorie der Geräteklassifikation (N1+N2). Ein hoher Leichtschlafanteil bei kurzem Tief-/REM-Schlaf kann auf fragmentierten Schlaf hindeuten (Stress, Alkohol, Lärm) — als Quotient lesen, nicht absolut.',
-    factors:['Schlafdauer gesamt','Koffein','Stress','Umgebung (Lärm, Licht)'],
-    meaning:'Für sich genommen wenig steuerungsrelevant — relevant wird er im Verhältnis zu Tief- und REM-Anteil.'},
+    a:'' + _uiT('ui.leichtschlaf_ist_der_normale_uebergangsschlaf') + '',
+    f:'' + _uiT('ui.leichtschlaf_dauer_der_letzten_nacht') + '',
+    p:'' + _uiT('ui.sammelkategorie_der_geraeteklassifikation_n1_n2') + '',
+    factors:['' + _uiT('ui.schlafdauer_gesamt') + '','Koffein','Stress','' + _uiT('ui.umgebung_laerm_licht') + ''],
+    meaning:'' + _uiT('ui.fuer_sich_genommen_wenig_steuerungsrelevant') + ''},
   sleep_rem_min:{hb:true,
-    a:'Im REM-Schlaf verarbeitet dein Gehirn den Tag — wichtig für Lernen und Reaktion.',
-    f:'REM-Dauer der letzten Nacht. Zentral für motorisches Lernen, Gedächtnis und emotionale Regulation; typisch 20–25 % der Nacht, überwiegend in der zweiten Nachthälfte — frühes Aufstehen kappt zuerst REM.',
-    p:'REM häuft sich in den Morgenstunden: verkürzte Nächte reduzieren REM überproportional. Alkohol unterdrückt REM in der ersten Nachthälfte (Rebound später). Für Techniksport und Intervalltage ist REM-Defizit relevanter als es sich anfühlt.',
-    factors:['Gesamtschlafdauer (zweite Nachthälfte!)','Alkohol','Sehr früher Wecker','Unregelmäßige Schlafzeiten'],
-    meaning:'Wer chronisch früh raus muss, verliert vor allem REM — konstante Zubettgeh-Zeit ist der wirksamste Hebel.'},
+    a:'' + _uiT('ui.im_rem_schlaf_verarbeitet_dein') + '',
+    f:'' + _uiT('ui.rem_dauer_der_letzten_nacht') + '',
+    p:'' + _uiT('ui.rem_haeuft_sich_in_den') + '',
+    factors:['' + _uiT('ui.gesamtschlafdauer_zweite_nachthaelfte') + '','Alkohol','' + _uiT('ui.sehr_frueher_wecker') + '','' + _uiT('ui.unregelmaessige_schlafzeiten') + ''],
+    meaning:'' + _uiT('ui.wer_chronisch_frueh_raus_muss') + ''},
   sleep_awake_min:{hb:false,
-    a:'Wachzeit in der Nacht. Kurzes Aufwachen ist völlig normal.',
-    f:'Erkannte Wachminuten innerhalb des Schlaffensters. Mehrere kurze Wachphasen pro Nacht sind physiologisch normal und werden oft nicht erinnert; relevant sind lange oder häufige Unterbrechungen.',
-    p:'Geräte unterschätzen ruhiges Wachliegen systematisch (Bewegungsarmut ≈ Schlaf). Ein Anstieg gegenüber der eigenen Baseline ist trotzdem ein brauchbares Fragmentierungssignal — zusammen mit RHR/HRV lesen.',
-    factors:['Alkohol (zweite Nachthälfte)','Stress/Grübeln','Harndrang (späte Flüssigkeit)','Lärm/Licht','Hitze'],
-    meaning:'Steigende nächtliche Wachzeit über mehrere Tage spricht für fragmentierte Erholung — Readiness-Entscheidungen konservativer treffen.'}
+    a:'' + _uiT('ui.wachzeit_in_der_nacht_kurzes') + '',
+    f:'' + _uiT('ui.erkannte_wachminuten_innerhalb_des_schlaffensters') + '',
+    p:'' + _uiT('ui.geraete_unterschaetzen_ruhiges_wachliegen_systematisch') + '',
+    factors:['' + _uiT('ui.alkohol_zweite_nachthaelfte') + '','Stress/Grübeln','' + _uiT('ui.harndrang_spaete_fluessigkeit') + '','Lärm/Licht','Hitze'],
+    meaning:'' + _uiT('ui.steigende_naechtliche_wachzeit_ueber_mehrere') + ''}
 };
 var _gmLastFocus=null;
 /* ============================================================
@@ -183,14 +185,14 @@ function gmApplyPhase3Visibility(){
    (gleiche Regel wie die Modulverwaltung, P0-7). Ohne Konfiguration gilt der
    bisherige Bestand (Mobility + Knie-Set bei Kniethema) — kein Bruch fuer
    Bestandsnutzer, deren Haken an den alten Schluesseln haengen. */
-var GM_ROUTINE_PRESETS=[['mob','Mobility'],['stretch','Dehnen'],['ss','Spanish Squats (Knie)'],['ice','Eisbeutel/Kühlen'],['core','Core-Routine'],['walk','Spaziergang'],['med','Meditation/Atmung'],['foam','Faszienrolle']];
+var GM_ROUTINE_PRESETS=[['mob','Mobility'],['stretch','Dehnen'],['ss','' + _uiT('ui.spanish_squats_knie') + ''],['ice','Eisbeutel/Kühlen'],['core','Core-Routine'],['walk','Spaziergang'],['med','Meditation/Atmung'],['foam','Faszienrolle']];
 function activeRoutines(){
   try{
     var c=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE.routinesCustom:null;
     if(Array.isArray(c))return c.map(function(x){return [x.k,x.label];});
   }catch(_){ }
   var issues=((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.issues)||[]);
-  if(issues.indexOf('knee')>=0)return [['mob','Mobility'],['ss','Spanish Squats (Knie)'],['ice','Eisbeutel Knie']];
+  if(issues.indexOf('knee')>=0)return [['mob','Mobility'],['ss','' + _uiT('ui.spanish_squats_knie') + ''],['ice','' + _uiT('ui.eisbeutel_knie') + '']];
   return [['mob','Mobility']];
 }
 function gmOpenRoutinesEditor(){
@@ -198,14 +200,14 @@ function gmOpenRoutinesEditor(){
   var cur2=activeRoutines();
   var curKeys={};cur2.forEach(function(r){curKeys[r[0]]=true;});
   var rows=cur2.map(function(r,i){
-    return '<div class="ps-row"><span>'+gmEsc(r[1])+'</span><button class="xbtn" aria-label="Entfernen" onclick="gmRoutineRemove('+i+')">✕</button></div>';}).join('');
+    return '<div class="ps-row"><span>'+gmEsc(r[1])+'</span><button class="xbtn" aria-label="' + _uiT('ui.entfernen') + '" onclick="gmRoutineRemove('+i+')">✕</button></div>';}).join('');
   var presets=GM_ROUTINE_PRESETS.filter(function(p){return !curKeys[p[0]];})
     .map(function(p){return '<button type="button" class="chip" onclick="gmRoutineAdd(\''+p[0]+'\',\''+gmEsc(p[1])+'\')">+ '+gmEsc(p[1])+'</button>';}).join('');
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('repeat')+'</div><div><h3>Routinen anpassen</h3><div class="sh-sub" style="margin:2px 0 0">Deine täglichen Gewohnheiten — individuell, nicht vorgegeben</div></div></div>'+
-    '<div class="sh-block"><div class="bh">Aktiv</div>'+(rows||'<p class="muted" style="margin:0">Keine Routinen aktiv — auch das ist eine gültige Wahl.</p>')+'</div>'+
-    '<div class="sh-block"><div class="bh">Vorschläge</div><div class="chips" style="display:flex;flex-wrap:wrap;gap:8px">'+(presets||'<span class="muted">Alle Vorschläge aktiv.</span>')+'</div>'+
-    '<div class="calc-field" style="margin-top:10px"><label>Eigene Routine</label><input type="text" id="gmRoutineNewIn" maxlength="40" placeholder="z. B. 10 min Lesen"><button class="btn sec" style="margin-top:8px" onclick="gmRoutineAddCustom()">Hinzufügen</button></div></div>'+
-    '<div class="source">'+icon('info','xs')+' Erfasste Haken vergangener Tage bleiben erhalten, auch wenn eine Routine später entfernt wird.</div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('repeat')+'</div><div><h3>' + _uiT('ui.routinen_anpassen') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.deine_taeglichen_gewohnheiten_individuell_nicht') + '</div></div></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.aktiv') + '</div>'+(rows||'<p class="muted" style="margin:0">' + _uiT('ui.keine_routinen_aktiv_auch_das') + '</p>')+'</div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.vorschlaege') + '</div><div class="chips" style="display:flex;flex-wrap:wrap;gap:8px">'+(presets||'<span class="muted">' + _uiT('ui.alle_vorschlaege_aktiv') + '</span>')+'</div>'+
+    '<div class="calc-field" style="margin-top:10px"><label>' + _uiT('ui.eigene_routine') + '</label><input type="text" id="gmRoutineNewIn" maxlength="40" placeholder="' + _uiT('ui.z_b_10_min_lesen') + '"><button class="btn sec" style="margin-top:8px" onclick="gmRoutineAddCustom()">' + _uiT('ui.hinzufuegen') + '</button></div></div>'+
+    '<div class="source">'+icon('info','xs')+' Erfasste Haken vergangener ' + _uiT('ui.tage__') + ' bleiben erhalten, auch wenn eine Routine später entfernt wird.</div>';
   gmOpenSheet('detailSheet');
 }
 function _gmRoutinesPersist(list){
@@ -223,15 +225,15 @@ function gmRoutineAddCustom(){
   var k='cu_'+name.toLowerCase().replace(/[^a-z0-9äöüß]+/g,'_').slice(0,24);
   gmRoutineAdd(k,name);
 }
-const SLOTS=['Morgens','Pre-Workout','Post-Workout','Mit Mahlzeit','Abends'];
-const DAYNAMES=['Mo','Di','Mi','Do','Fr','Sa','So'];
+const SLOTS=['Morgens','Pre-Workout','Post-Workout','' + _uiT('ui.mit_mahlzeit') + '','Abends'];
+const DAYNAMES=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
 const WEEKPLAN=[
-  [{t:'Gym',l:'Ganzkörper',d:'45 min'}],
-  [{t:'Schwimmen',l:'Technik',d:'6:00 Uhr · ~900 m'},{t:'Gym',l:'Oberkörper',d:'45 min'}],
-  [{t:'Laufen',l:'Intervalle',d:'iv'},{t:'Gym',l:'Ganzkörper',d:'45 min'}],
-  [{t:'Gym',l:'Oberkörper',d:'45 min'}],
-  [{t:'Laufen',l:'Z2 Dauerlauf',d:'ez'}],
-  [{t:'Schwimmen',l:'Ausdauer',d:'~900 m'},{t:'Rad',l:'Z2 Dauerfahrt',d:'60 min · 123–144 bpm'}],
+  [{t:'Gym',l:'Ganzkörper',d:'' + _uiT('ui.45') + ' min'}],
+  [{t:'Schwimmen',l:'Technik',d:'' + _uiT('ui.6_00_uhr_900_m') + ''},{t:'Gym',l:'Oberkörper',d:'' + _uiT('ui.45') + ' min'}],
+  [{t:'Laufen',l:'Intervalle',d:'iv'},{t:'Gym',l:'Ganzkörper',d:'' + _uiT('ui.45') + ' min'}],
+  [{t:'Gym',l:'Oberkörper',d:'' + _uiT('ui.45') + ' min'}],
+  [{t:'Laufen',l:'' + _uiT('ui.z2_dauerlauf') + '',d:'ez'}],
+  [{t:'Schwimmen',l:'' + _uiT('ui.ausdauer') + '',d:'~900 m'},{t:'Rad',l:'' + _uiT('ui.z2_dauerfahrt') + '',d:'60 min · 123–144 bpm'}],
   [{t:'Laufen',l:'Long Run',d:'lr'}]];
 /* ---- Dynamischer Plan-Generator: Plan aus Profil + Ziel + Sportarten ---- */
 /* B-13 Schritt 1 (2026-09-11): Plan-Items tragen ein `kind`-Feld (Code). Bisher
@@ -242,7 +244,7 @@ const WEEKPLAN=[
 function _runKindOf(l,d){var s=String(l||'').toLowerCase();if(d==='iv'||s.indexOf('interval')>=0)return 'interval';if(d==='lr'||s.indexOf('long')>=0)return 'long';if(s.indexOf('tempo')>=0||s.indexOf('schwelle')>=0)return 'tempo';return 'easy';}
 function gpR(l,d){return {t:'Laufen',l:l,d:d,kind:_runKindOf(l,d)};}
 function gpB(l,d){var s=String(l||'').toLowerCase();return {t:'Rad',l:l,d:d,kind:/long/.test(s)?'bike_long':(/interval/.test(s)?'bike_hard':(/recovery/.test(s)?'bike_recovery':'bike'))};}
-function gpG(l){var s=String(l||'').toLowerCase();return {t:'Gym',l:l,d:'45 min',kind:/bein|ganzk|squat|leg|unterk|kniebeuge/.test(s)?'gym_leg':'gym'};}
+function gpG(l){var s=String(l||'').toLowerCase();return {t:'Gym',l:l,d:'' + _uiT('ui.45') + ' min',kind:/bein|ganzk|squat|leg|unterk|kniebeuge/.test(s)?'gym_leg':'gym'};}
 function gpS(l,d){return {t:'Schwimmen',l:l,d:d||'~1000 m',kind:'swim'};}
 function gpM(){return {t:'Mobilität',l:'Mobility',d:'15 min',kind:'mob'};}
 function planDaysTarget(){
@@ -289,15 +291,15 @@ function generateWeekPlan(){
     // Anfänger: Basisaufbau, KEINE harten Intervalle, kürzere Long-Einheiten (Spec §5/§6).
     var triBeg=(lvl==='anfaenger'||lvl==='wiedereinstieg');
     w[0]=[gpS('Technik','~900 m')];
-    w[1]=[triBeg?gpR('Z2 Dauerlauf','ez'):gpR('Intervalle','iv')];
-    w[2]=[gpB('Easy Z2',triBeg?'45 min':'75 min')];
-    w[3]=[gpS('Ausdauer',triBeg?'~900 m':'~1200 m')].concat(gym?[gpG('Oberkörper')]:[]);
+    w[1]=[triBeg?gpR('' + _uiT('ui.z2_dauerlauf') + '','ez'):gpR('Intervalle','iv')];
+    w[2]=[gpB('Easy Z2',triBeg?'' + _uiT('ui.45') + ' min':'75 min')];
+    w[3]=[gpS('' + _uiT('ui.ausdauer') + '',triBeg?'~900 m':'~1200 m')].concat(gym?[gpG('Oberkörper')]:[]);
     w[4]=gym?[gpG('Ganzkörper')]:[gpM()];
-    w[5]=triBeg?[gpB('Easy Z2','60 min')]:[gpB('Long Ride','2–3 h'),gpR('Koppellauf','ez')];
+    w[5]=triBeg?[gpB('Easy Z2','60 min')]:[gpB('' + _uiT('ui.long_ride') + '','2–3 h'),gpR('Koppellauf','ez')];
     w[6]=[gpR('Long Run','lr')];
   }else if(runGoal||(run&&!swim)){
-    if(lvl==='anfaenger'){w[1]=[gpR('Z2 Dauerlauf','ez')];w[3]=[gpR('Z2 Dauerlauf','ez')];w[6]=[gpR('Long Run','lr')];}
-    else{w[1]=[gpR('Intervalle','iv')];w[3]=[gpR(lvl==='profi'?'Tempo':'Z2 Dauerlauf',lvl==='profi'?'tempo':'ez')];w[6]=[gpR('Long Run','lr')];}
+    if(lvl==='anfaenger'){w[1]=[gpR('' + _uiT('ui.z2_dauerlauf') + '','ez')];w[3]=[gpR('' + _uiT('ui.z2_dauerlauf') + '','ez')];w[6]=[gpR('Long Run','lr')];}
+    else{w[1]=[gpR('Intervalle','iv')];w[3]=[gpR(lvl==='profi'?'Tempo':'' + _uiT('ui.z2_dauerlauf') + '',lvl==='profi'?'tempo':'ez')];w[6]=[gpR('Long Run','lr')];}
     if(bike)w[5]=(w[5]||[]).concat([gpB('Easy Z2','60 min')]);
     if(swim)w[4]=(w[4]||[]).concat([gpS('Technik','~900 m')]);
     if(gym){var _cfgGd=null;try{if(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)_cfgGd=ORVIA.profileModel.effectiveTrainingConfig(PROFILE).gymDays;}catch(e){}
@@ -305,22 +307,22 @@ function generateWeekPlan(){
       var _gd=Math.max(0,Math.min(6,_cfgGd!=null?_cfgGd:((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.gymDays!=null)?PROFILE.gymDays:3)));
       var _gs=[0,2,5,4];var _gp=0;for(var _gi=0;_gi<_gs.length&&_gp<_gd;_gi++){w[_gs[_gi]]=(w[_gs[_gi]]||[]).concat([gpG(_gp%2?'Ganzkörper':'Oberkörper')]);_gp++;}}
   }else if(gt==='cycling_event'||(bike&&!run&&!swim&&!(gym&&!bike))){
-    w[1]=[lvl==='anfaenger'?gpB('Easy Z2','60 min'):gpB('Intervalle','5×5 min')];w[2]=[gym?gpG('Oberkörper'):gpM()];w[3]=[gpB('Easy Z2','75 min')];w[4]=lvl==='anfaenger'?[]:[gym?gpG('Beine'):gpM()];w[5]=[gpB('Long Ride','2–3 h')];w[6]=[gpB('Recovery','45 min')];
+    w[1]=[lvl==='anfaenger'?gpB('Easy Z2','60 min'):gpB('Intervalle','5×5 min')];w[2]=[gym?gpG('Oberkörper'):gpM()];w[3]=[gpB('Easy Z2','75 min')];w[4]=lvl==='anfaenger'?[]:[gym?gpG('Beine'):gpM()];w[5]=[gpB('' + _uiT('ui.long_ride') + '','2–3 h')];w[6]=[gpB('Recovery','' + _uiT('ui.45') + ' min')];
   }else if(strengthGoal||(gym&&!run&&!bike&&!swim)){
     var days=planDaysTarget();var split=gymSplit(days);
     var placement={2:[0,3],3:[0,2,4],4:[0,1,3,4],5:[0,1,2,4,5],6:[0,1,2,3,4,5]}[split.length]||[0,2,4];
     placement.forEach(function(day,idx){if(split[idx])w[day]=[gpG(split[idx])];});
     if(!w[6].length)w[6]=[gpM()];
   }else if(run&&gym&&!bike){
-    w[0]=[gpG('Oberkörper')];w[1]=[gpR('Intervalle','iv')];w[2]=[gpG('Ganzkörper')];w[3]=[gpR('Z2 Dauerlauf','ez')];w[4]=[gpG('Oberkörper')];w[6]=[gpR('Long Run','lr')];
+    w[0]=[gpG('Oberkörper')];w[1]=[gpR('Intervalle','iv')];w[2]=[gpG('Ganzkörper')];w[3]=[gpR('' + _uiT('ui.z2_dauerlauf') + '','ez')];w[4]=[gpG('Oberkörper')];w[6]=[gpR('Long Run','lr')];
   }else if(bike&&gym&&!run){
-    w[0]=[gpG('Oberkörper')];w[1]=[gpB('Intervalle','5×5 min')];w[3]=[gpG('Beine')];w[4]=[gpB('Easy Z2','60 min')];w[6]=[gpB('Long Ride','2–3 h')];
+    w[0]=[gpG('Oberkörper')];w[1]=[gpB('Intervalle','5×5 min')];w[3]=[gpG('Beine')];w[4]=[gpB('Easy Z2','60 min')];w[6]=[gpB('' + _uiT('ui.long_ride') + '','2–3 h')];
   }else if(run&&bike&&!gym){
-    w[1]=[gpR('Intervalle','iv')];w[2]=[gpB('Easy Z2','75 min')];w[4]=[gpR('Z2 Dauerlauf','ez')];w[5]=[gpB('Long Ride','2–3 h')];w[6]=[gpR('Long Run','lr')];
+    w[1]=[gpR('Intervalle','iv')];w[2]=[gpB('Easy Z2','75 min')];w[4]=[gpR('' + _uiT('ui.z2_dauerlauf') + '','ez')];w[5]=[gpB('' + _uiT('ui.long_ride') + '','2–3 h')];w[6]=[gpR('Long Run','lr')];
   }else{
     var d2=planDaysTarget();
-    w[0]=[gym?gpG('Ganzkörper'):gpM()];w[2]=[run?gpR('Z2 Dauerlauf','ez'):(bike?gpB('Easy Z2','45 min'):gpM())];w[4]=[gym?gpG('Ganzkörper'):gpM()];
-    if(d2>=4)w[5]=[run?gpR('Z2 Dauerlauf','ez'):(bike?gpB('Easy Z2','60 min'):gpG('Oberkörper'))];
+    w[0]=[gym?gpG('Ganzkörper'):gpM()];w[2]=[run?gpR('' + _uiT('ui.z2_dauerlauf') + '','ez'):(bike?gpB('Easy Z2','' + _uiT('ui.45') + ' min'):gpM())];w[4]=[gym?gpG('Ganzkörper'):gpM()];
+    if(d2>=4)w[5]=[run?gpR('' + _uiT('ui.z2_dauerlauf') + '','ez'):(bike?gpB('Easy Z2','60 min'):gpG('Oberkörper'))];
     w[6]=[gpM()];
   }
   // ---- P4: Profil/Availability ist die EINZIGE Trainingskonfiguration ----
@@ -368,7 +370,7 @@ function generateWeekPlan(){
     var _fi=0;
     while(_activeN<maxDays&&_fi<_fillPool.length){
       var _day=_fillPool[_fi++];
-      w[_day]=[run?gpR('Z2 Dauerlauf','ez'):(bike?gpB('Easy Z2','60 min'):(swim?gpS('Technik','~900 m'):(gym?gpG('Ganzkörper'):gpM())))];
+      w[_day]=[run?gpR('' + _uiT('ui.z2_dauerlauf') + '','ez'):(bike?gpB('Easy Z2','60 min'):(swim?gpS('Technik','~900 m'):(gym?gpG('Ganzkörper'):gpM())))];
       _activeN++;
     }
   }
@@ -409,7 +411,7 @@ function generateWeekPlan(){
        des Templates — dieselbe Quelle, die auch die Plananzeige liest). */
     var LABEL={running:'Laufen',cycling:'Rad',swimming:'Schwimmen',gym:'Gym'};
     var MAKE={
-      running:function(){return gpR('Z2 Dauerlauf','ez');},
+      running:function(){return gpR('' + _uiT('ui.z2_dauerlauf') + '','ez');},
       cycling:function(){return gpB('Easy Z2','60 min');},
       swimming:function(){return gpS('Technik','~900 m');},
       gym:function(){return gpG('Ganzkörper');}
@@ -649,7 +651,7 @@ function ensureGeneratedPlanIds(plan){
 /* Batch 2d: Template ≠ konkrete Planinstanz. item.id ('ps:'/'psg:') ist die
    STABILE templateSessionId (Wiederholungs-Slot im Wochenplan). Die konkrete
    geplante Einheit eines Kalendertags ist die plannedOccurrenceId
-   'po:<lokales Datum>:<templateSessionId>': gleiche Woche ⇒ über Reloads
+   'po:<lokales ' + _uiT('ui.datum_') + '>:<templateSessionId>': gleiche Woche ⇒ über Reloads
    identisch; Folgewoche ⇒ anderes Datum ⇒ andere ID; durch Availability
    verschobene Einheiten nutzen das TATSÄCHLICH geplante Datum (die Ansicht
    aus activeWeekPlan ist bereits ausgerichtet, di = realer Wochentag). */
@@ -680,8 +682,8 @@ function gmPlanWeekHeader(off){
   var o=(typeof off==='number'&&isFinite(off))?off:0;
   var m0=new Date();var w0=(m0.getDay()+6)%7;m0.setDate(m0.getDate()-w0+o*7);
   var s0=new Date(m0),e0=new Date(m0);e0.setDate(m0.getDate()+6);
-  return {label:o===0?'Diese Woche':(o===-1?'Letzte Woche':(o===1?'Nächste Woche':
-      (o<0?Math.abs(o)+' Wochen zurück':o+' Wochen voraus'))),
+  return {label:o===0?'' + _uiT('ui.diese_woche') + '':(o===-1?'' + _uiT('ui.letzte_woche') + '':(o===1?'' + _uiT('ui.naechste_woche') + '':
+      (o<0?Math.abs(o)+'' + _uiT('ui.wochen_zurueck') + '':o+'' + _uiT('ui.wochen_voraus') + ''))),
     range:s0.getDate()+'.'+(s0.getMonth()+1)+'. – '+e0.getDate()+'.'+(e0.getMonth()+1)+'.'};
 }
 /* v8-310a (Gians Entscheidung): DREI Tageszustaende statt „leer = Ruhetag".
@@ -945,10 +947,10 @@ function activeWeekPlan(){
   return g?gmObserveWeekPlan(applyAbsenceToPlan(applyGoalPhaseToPlan(g)),'generated'):[[],[],[],[],[],[],[]];
 }
 var PLAN_PRESETS=[
-  {t:'Laufen',l:'Intervalle',d:'iv'},{t:'Laufen',l:'Z2 Dauerlauf',d:'ez'},{t:'Laufen',l:'Tempo',d:'tempo'},{t:'Laufen',l:'Long Run',d:'lr'},
-  {t:'Rad',l:'Easy Z2',d:'60 min'},{t:'Rad',l:'Long Ride',d:'90 min'},{t:'Rad',l:'Commute',d:'Pendeln'},
-  {t:'Schwimmen',l:'Technik',d:'~900 m'},{t:'Schwimmen',l:'Ausdauer',d:'~1000 m'},
-  {t:'Gym',l:'Ganzkörper',d:'45 min'},{t:'Gym',l:'Oberkörper',d:'45 min'},{t:'Gym',l:'Push',d:'45 min'},{t:'Gym',l:'Pull',d:'45 min'},{t:'Gym',l:'Core',d:'30 min'},{t:'Gym',l:'Beine',d:'45 min'},
+  {t:'Laufen',l:'Intervalle',d:'iv'},{t:'Laufen',l:'' + _uiT('ui.z2_dauerlauf') + '',d:'ez'},{t:'Laufen',l:'Tempo',d:'tempo'},{t:'Laufen',l:'Long Run',d:'lr'},
+  {t:'Rad',l:'Easy Z2',d:'60 min'},{t:'Rad',l:'' + _uiT('ui.long_ride') + '',d:'90 min'},{t:'Rad',l:'Commute',d:'Pendeln'},
+  {t:'Schwimmen',l:'Technik',d:'~900 m'},{t:'Schwimmen',l:'' + _uiT('ui.ausdauer') + '',d:'~1000 m'},
+  {t:'Gym',l:'Ganzkörper',d:'' + _uiT('ui.45') + ' min'},{t:'Gym',l:'Oberkörper',d:'' + _uiT('ui.45') + ' min'},{t:'Gym',l:'Push',d:'' + _uiT('ui.45') + ' min'},{t:'Gym',l:'Pull',d:'' + _uiT('ui.45') + ' min'},{t:'Gym',l:'Core',d:'30 min'},{t:'Gym',l:'Beine',d:'' + _uiT('ui.45') + ' min'},
   {t:'Mobilität',l:'Mobility',d:'15 min'}];
 /* GM7: hartkodierter Phasen-Zweitnamespace PHASES entfernt — einzige kanonische Quelle ist Calc.racePhases. */
 const WEEK_TARGETS=[['Laufen',3,'run'],['Schwimmen',2,'swim'],['Gym',4,'dumbbell'],['Rad',2,'bike']];
@@ -968,6 +970,10 @@ function fmtDate(s){
   return new Date(s+'T12:00').toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long'});
 }
 function daysTo(date){return Math.round((new Date(date+'T00:00')-new Date(todayStr()+'T00:00'))/864e5);}
+/* S1/E5 (12.09.2026): Zielwert ueber den zentralen Formatierer (profile-model.formatGoalValue) — nie mehr „6600 s". */
+function _goalValueFmt(g,v){try{var M=window.ORVIA&&ORVIA.profileModel;if(M&&typeof M.formatGoalValue==='function')return M.formatGoalValue(g,v);}catch(_){ }return (v==null?'':String(v))+(g&&g.unit?' '+g.unit:'');}
+/* Countdown-Text mit past-Zustand: vor dem Datum „noch n Tage/Wochen", danach „vor n Tagen" — nie „noch 0 Wochen". */
+function _countdownText(dateIso){try{var d=daysTo(dateIso);if(d>0)return d>=14?_uiT('ui.noch_n_wochen',{n:Math.ceil(d/7)}):_uiT('ui.noch_n_tage',{n:d});if(d===0)return _uiT('ui.countdown_heute');return _uiT('ui.vor_n_tagen',{n:-d});}catch(_){return '';}}
 function avg(a){return Calc.avg(a);}
 function fmtPace(s){return Calc.fmtPace(s);}
 
@@ -1345,7 +1351,7 @@ function planActualResolveForDates(dates){
 }
 /* Heute-Chip: EIN Tagesstatus aus dem Resolver, gemappt auf die bestehende pf-Vokabular. */
 function planActualToday(){
-  var UNBEST={key:'unbestimmt',label:'Nicht bestimmbar',assessable:false};
+  var UNBEST={key:'unbestimmt',label:'' + _uiT('ui.nicht_bestimmbar') + '',assessable:false};
   var today=(typeof todayStr==='function')?todayStr():null;
   if(!today)return UNBEST;
   var res=planActualResolveForDates([today]);
@@ -1354,14 +1360,14 @@ function planActualToday(){
   var day=res.byDay&&res.byDay[today];
   var hasUnmatched=(res.unmatched||[]).some(function(u){ return u.localDate===today; });
   if(!day){
-    if(hasUnmatched)return{key:'ungeplant',label:'Ungeplante Einheit',assessable:true};
+    if(hasUnmatched)return{key:'ungeplant',label:'' + _uiT('ui.ungeplante_einheit') + '',assessable:true};
     return{key:'keins',label:'',assessable:true};
   }
   if(day.status==='ambiguous')return UNBEST;   // mehrdeutig ⇒ ehrlich nicht bestimmbar
-  if(day.status==='unknown'&&hasUnmatched)return{key:'ungeplant',label:'Ungeplante Einheit',assessable:true};
-  var map={completed:{key:'erfuellt',label:'Plan erfüllt',assessable:true},
-           partial:{key:'teilweise',label:'Teilweise erfüllt',assessable:(day.assessable!==false)},
-           missed:{key:'ausgefallen',label:'Einheit ausgefallen',assessable:true},
+  if(day.status==='unknown'&&hasUnmatched)return{key:'ungeplant',label:'' + _uiT('ui.ungeplante_einheit') + '',assessable:true};
+  var map={completed:{key:'erfuellt',label:'' + _uiT('ui.plan_erfuellt') + '',assessable:true},
+           partial:{key:'teilweise',label:'' + _uiT('ui.teilweise_erfuellt') + '',assessable:(day.assessable!==false)},
+           missed:{key:'ausgefallen',label:'' + _uiT('ui.einheit_ausgefallen') + '',assessable:true},
            unknown:{key:'offen',label:'Geplant',assessable:false}};
   return map[day.status]||UNBEST;
 }
@@ -1426,7 +1432,7 @@ function orviaScore(){
   var c={GREEN:'g',YELLOW:'y',ORANGE:'o',RED:'r'}[d.dayState]||'y';
   /* v9: drittes Feld = tatsaechlich verwendetes Gewicht in Prozent. Ohne das
      stand unter „So entsteht dein Score" eine Liste, die nichts erklaerte. */
-  var subs=[['Erholung',d.subscores.recovery.value,d.subscores.recovery.weight],
+  var subs=[['' + _uiT('ui.erholung_') + '',d.subscores.recovery.value,d.subscores.recovery.weight],
     [d.subscores.control.label,d.subscores.control.value,d.subscores.control.weight],
     ['Umsetzung',d.subscores.execution.value,d.subscores.execution.weight]];
   return{score:d.score,status:{l:d.statusText,c:c},subs:subs,
@@ -1459,7 +1465,7 @@ function setUiDetailMode(m){if(m!=='anfaenger'&&m!=='fortgeschritten'&&m!=='prof
   /* GM7.5j: zusaetzlich in das cloud-synchronisierte Profil spiegeln (bestehender
      saveProfile-Vertrag, orvia_profile_v1 ist Teil des kanonischen Blob-Syncs). */
   try{if(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.uiDetailMode!==m){PROFILE.uiDetailMode=m;if(typeof saveProfile==='function')saveProfile();}}catch(e){}
-  if(typeof applyLevelClass==='function')applyLevelClass();if(typeof renderLevelBox==='function')renderLevelBox();if(typeof renderCommand==='function')renderCommand();if(typeof toast==='function')toast('Ansicht: '+({anfaenger:'Anfaenger',fortgeschritten:'Fortgeschritten',profi:'Profi'}[m]||m));}
+  if(typeof applyLevelClass==='function')applyLevelClass();if(typeof renderLevelBox==='function')renderLevelBox();if(typeof renderCommand==='function')renderCommand();if(typeof toast==='function')toast('' + _uiT('ui.ansicht') + ''+({anfaenger:'Anfaenger',fortgeschritten:'' + _uiT('ui.fortgeschritten_') + '',profi:'Profi'}[m]||m));}
 function applyLevelClass(){try{var r=document.documentElement;r.classList.remove('lvl-anfaenger','lvl-fortgeschritten','lvl-profi');r.classList.add('lvl-'+uiDetailMode());}catch(e){}}
 /* GM7.6: Erscheinungsbild (Dunkel/Hell/Automatisch) — nutzt den bereits vorhandenen,
    bisher unverdrahteten CSS-Layer [data-theme="light"] (styles.css, GM-Kaskade-Bereich).
@@ -1495,11 +1501,11 @@ try{orviaApplyTheme();}catch(e){}
 })();
 function setUserLevel(l){/* R: Anzeigemodus entkoppelt von der Faehigkeitsstufe (PROFILE.level bleibt unangetastet) -> aendert nur Darstellungsdichte, nie die Trainingslogik. */setUiDetailMode(l);}
 function renderLevelBox(){var el=document.getElementById('levelBox');if(!el)return;var c=uiDetailMode();
-  var opts=[['anfaenger','Anfänger','Klar & reduziert'],['fortgeschritten','Fortgeschritten','Klarheit + Analyse'],['profi','Profi','Maximale Detailtiefe']];
+  var opts=[['anfaenger','' + _uiT('ui.anfaenger') + '','' + _uiT('ui.klar_reduziert') + ''],['fortgeschritten','' + _uiT('ui.fortgeschritten_') + '','' + _uiT('ui.klarheit_analyse') + ''],['profi','Profi','' + _uiT('ui.maximale_detailtiefe') + '']];
   el.innerHTML='<div class="lvl-opts">'+opts.map(function(o){return '<button class="lvl-opt'+(c===o[0]?' on':'')+'" onclick="setUserLevel(\''+o[0]+'\')"><b>'+o[1]+'</b><span>'+o[2]+'</span></button>';}).join('')+'</div>'+
-    '<p class="note" style="text-align:left;margin-top:10px">Ändert nur Informationsdichte &amp; Fachtiefe — nie die Qualität der Empfehlung.</p>';}
+    '<p class="note" style="text-align:left;margin-top:10px">' + _uiT('ui.aendert_nur_informationsdichte_amp_fachtiefe') + '</p>';}
 function simpleIntensity(a,score){
-  if(a.c==='r')return {w:'Ruhetag',c:'r'};
+  if(a.c==='r')return {w:'' + _uiT('ui.ruhetag_') + '',c:'r'};
   if(a.c==='y')return {w:'locker',c:'y'};
   if(score>=85)return {w:'normal',c:'g'};
   return {w:'locker–mittel',c:'g'};}
@@ -1546,7 +1552,7 @@ function dataConfidence(){
   var hrv=days.some(function(k){return DB[k].morning&&DB[k].morning.hrvMs;});
   var sc=0;if(n>=28)sc+=2;else if(n>=10)sc+=1;if(ci>=14)sc+=2;else if(ci>=5)sc+=1;if(acts>=8)sc+=1;if(hrv)sc+=1;
   var lvl=sc>=5?{l:'hoch',c:'g'}:sc>=3?{l:'mittel',c:'y'}:{l:'niedrig',c:'r'};
-  var msg=lvl.l==='hoch'?'Genug Daten für verlässliche Empfehlungen.':lvl.l==='mittel'?'Solide Basis — mehr Check-ins schärfen die Empfehlung.':'ORVIA braucht mehr Check-ins & Aktivitäten für sichere Empfehlungen.';
+  var msg=lvl.l==='hoch'?'' + _uiT('ui.genug_daten_fuer_verlaessliche_empfehlungen') + '':lvl.l==='mittel'?'' + _uiT('ui.solide_basis_mehr_check_ins') + '':'' + _uiT('ui.orvia_braucht_mehr_check_ins') + '';
   return {level:lvl,n:n,ci:ci,acts:acts,msg:msg};
 }
 function renderConfidence(){
@@ -1556,14 +1562,14 @@ function renderConfidence(){
   var bs='';
   try{ if(window.ORVIA&&window.ORVIA.readinessStore){
     var st=window.ORVIA.readinessStore.getBaselineStatus();
-    var lbl=st==='active'?['Persönliche Baseline aktiv','g']:st==='building'?['Persönliche Baseline wird aufgebaut','y']:['Persönliche Baseline: noch zu wenig Daten','r'];
+    var lbl=st==='active'?['' + _uiT('ui.persoenliche_baseline_aktiv_') + '','g']:st==='building'?['' + _uiT('ui.persoenliche_baseline_wird_aufgebaut') + '','y']:['' + _uiT('ui.persoenliche_baseline_noch_zu_wenig') + '','r'];
     bs='<div class="cfd cfd-'+lbl[1]+'" style="margin-top:6px"><span class="cfd-dot"></span><span class="cfd-t">'+esc(lbl[0])+'</span></div>';
   } }catch(e){}
   el.innerHTML='<div class="cfd cfd-'+c.level.c+'"><span class="cfd-dot"></span><span class="cfd-t"><b>Empfehlungssicherheit: '+c.level.l+'</b> · '+esc(c.msg)+'</span></div>'+bs;
 }
 /* ============ FESTE TERMINE (Phase 2) — Datenmodell + UI ============
    Gespeichert in PROFILE.fixedEvents: {id,title,type,sport,date,priority,isMovable:false} */
-var FIXED_EVENT_TYPES=[['club_training','Vereinstraining'],['match','Spiel'],['race','Wettkampf'],['work','Arbeit'],['school','Schule'],['travel','Reise'],['course','Kurs'],['other','Sonstiges']];
+var FIXED_EVENT_TYPES=[['club_training','Vereinstraining'],['match','Spiel'],['race','Wettkampf'],['work','Arbeit'],['school','Schule'],['travel','Reise'],['course','Kurs'],['other','' + _uiT('ui.sonstiges') + '']];
 function fixedEventLabel(t){var f=FIXED_EVENT_TYPES.find(function(x){return x[0]===t;});return f?f[1]:t;}
 function fixedEventsList(){return (typeof PROFILE!=='undefined'&&PROFILE&&Array.isArray(PROFILE.fixedEvents))?PROFILE.fixedEvents:[];}
 /* Termine der AKTUELLEN Woche → {day:0–6, type, title, sport, priority} für die Engine. */
@@ -1577,13 +1583,13 @@ function addFixedEvent(ev){if(typeof PROFILE==='undefined'||!PROFILE)return;PROF
 function removeFixedEvent(id){if(typeof PROFILE==='undefined'||!PROFILE||!PROFILE.fixedEvents)return;PROFILE.fixedEvents=PROFILE.fixedEvents.filter(function(e){return e.id!==id;});if(typeof saveProfile==='function')saveProfile();renderTrainingSetup();if(typeof renderAdaptCard==='function')renderAdaptCard();}
 function openFixedEventEditor(){
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
-  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>Fester Termin</h3>'+
-    '<div class="gm-field"><label>Titel</label><input type="text" id="feTitle" placeholder="z. B. Spiel / Vereinstraining"></div>'+
-    '<div class="gm-field"><label>Typ</label><div class="gm-chips" id="feType">'+FIXED_EVENT_TYPES.map(function(t,i){return '<button type="button" class="gm-chip'+(i===0?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'feType\')">'+esc(t[1])+'</button>';}).join('')+'</div></div>'+
-    '<div class="gm-field"><label>Datum</label><input type="date" id="feDate" value="'+escH(todayStr())+'"></div>'+
-    '<div class="gm-field"><label>Priorität</label><div class="gm-chips" id="fePrio"><button type="button" class="gm-chip on" data-v="normal" onclick="gmPick(this,\'fePrio\')">Normal</button><button type="button" class="gm-chip" data-v="high" onclick="gmPick(this,\'fePrio\')">Wichtig</button></div></div>'+
-    '<button class="btn" onclick="saveFixedEventFromForm()">Termin speichern</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="closeFixedEventEditor()">Abbrechen</button></div>';
+  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>' + _uiT('ui.fester_termin') + '</h3>'+
+    '<div class="gm-field"><label>' + _uiT('ui.titel') + '</label><input type="text" id="feTitle" placeholder="' + _uiT('ui.z_b_spiel_vereinstraining') + '"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.typ') + '</label><div class="gm-chips" id="feType">'+FIXED_EVENT_TYPES.map(function(t,i){return '<button type="button" class="gm-chip'+(i===0?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'feType\')">'+esc(t[1])+'</button>';}).join('')+'</div></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.datum_') + '</label><input type="date" id="feDate" value="'+escH(todayStr())+'"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.prioritaet') + '</label><div class="gm-chips" id="fePrio"><button type="button" class="gm-chip on" data-v="normal" onclick="gmPick(this,\'fePrio\')">Normal</button><button type="button" class="gm-chip" data-v="high" onclick="gmPick(this,\'fePrio\')">Wichtig</button></div></div>'+
+    '<button class="btn" onclick="saveFixedEventFromForm()">' + _uiT('ui.termin_speichern') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="closeFixedEventEditor()">' + _uiT('ui.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);window._feModal=wrap;
   wrap.addEventListener('click',function(e){if(e.target===wrap)closeFixedEventEditor();});
 }
@@ -1591,18 +1597,18 @@ function closeFixedEventEditor(){if(window._feModal){try{window._feModal.remove(
 function saveFixedEventFromForm(){
   var typeEl=document.querySelector('#feType .on'),prioEl=document.querySelector('#fePrio .on');
   var date=(document.getElementById('feDate')||{}).value||'';
-  if(!isDay(date)){if(typeof toast==='function')toast('Bitte gültiges Datum');return;}
+  if(!isDay(date)){if(typeof toast==='function')toast('' + _uiT('ui.bitte_gueltiges_datum') + '');return;}
   var type=typeEl?typeEl.dataset.v:'other';
   addFixedEvent({title:(document.getElementById('feTitle')||{}).value||fixedEventLabel(type),type:type,date:date,priority:prioEl?prioEl.dataset.v:'normal'});
-  closeFixedEventEditor();renderTrainingSetup();if(typeof renderAdaptCard==='function')renderAdaptCard();if(typeof toast==='function')toast('Termin gespeichert ✓');
+  closeFixedEventEditor();renderTrainingSetup();if(typeof renderAdaptCard==='function')renderAdaptCard();if(typeof toast==='function')toast('' + _uiT('ui.termin_gespeichert') + '');
 }
 function renderFixedEventsBox(){
   var evs=fixedEventsList().slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
-  var rows=evs.length?evs.map(function(ev){return '<div class="fe-row"><span class="fe-main"><b>'+esc(ev.title||fixedEventLabel(ev.type))+'</b><span class="fe-sub">'+esc(fixedEventLabel(ev.type))+' · '+esc(ev.date)+(ev.priority==='high'?' · wichtig':'')+'</span></span><button class="fe-del" onclick="removeFixedEvent(\''+ev.id+'\')" aria-label="Entfernen">✕</button></div>';}).join(''):'<div class="ob-empty">Noch keine festen Termine.</div>';
-  return '<div class="ts-row" style="flex-direction:column;align-items:stretch"><div class="ts-lab" style="margin-bottom:6px">Feste Termine (fix, nicht verschiebbar)</div>'+
+  var rows=evs.length?evs.map(function(ev){return '<div class="fe-row"><span class="fe-main"><b>'+esc(ev.title||fixedEventLabel(ev.type))+'</b><span class="fe-sub">'+esc(fixedEventLabel(ev.type))+' · '+esc(ev.date)+(ev.priority==='high'?' · wichtig':'')+'</span></span><button class="fe-del" onclick="removeFixedEvent(\''+ev.id+'\')" aria-label="' + _uiT('ui.entfernen') + '">✕</button></div>';}).join(''):'<div class="ob-empty">' + _uiT('ui.noch_keine_festen_termine') + '</div>';
+  return '<div class="ts-row" style="flex-direction:column;align-items:stretch"><div class="ts-lab" style="margin-bottom:6px">' + _uiT('ui.feste_termine_fix_nicht_verschiebbar') + '</div>'+
     '<div class="fe-list">'+rows+'</div>'+
-    '<button class="btn sec" style="margin-top:8px" onclick="openFixedEventEditor()">+ Termin hinzufügen</button>'+
-    '<p class="note" style="text-align:left;margin-top:6px">Feste Termine (Spiel, Vereinstraining, Wettkampf …) werden nie verschoben. ORVIA plant Zusatztraining darum herum und schützt vor harten Einheiten direkt davor.</p></div>';
+    '<button class="btn sec" style="margin-top:8px" onclick="openFixedEventEditor()">' + _uiT('ui.termin_hinzufuegen') + '</button>'+
+    '<p class="note" style="text-align:left;margin-top:6px">' + _uiT('ui.feste_termine_spiel_vereinstraining_wettkampf') + '</p></div>';
 }
 /* ---- P4: Trainings-Setup ist READ-ONLY-Zusammenfassung — das Profil (Verfügbarkeit,
    Präferenzen, Sportarten) ist die einzige Eingabestelle. Datierte feste Termine
@@ -1612,30 +1618,30 @@ function renderTrainingSetup(){
   var p=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
   var cfg={};try{if(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)cfg=ORVIA.profileModel.effectiveTrainingConfig(p);}catch(e){}
   var days=cfg.targetDays!=null?cfg.targetDays:(p.trainingDays||((typeof planDaysTarget==='function')?planDaysTarget():4));
-  var srcDE={availability:'aus deiner Verfügbarkeit',legacy:'Alt-Einstellung — Verfügbarkeit im Profil setzen',none:'Standard nach Trainingsniveau'};
-  var modeDE={manual:'Nur Hinweis',assisted:'Vorschlag',automatic:'Automatisch'};
+  var srcDE={availability:'' + _uiT('ui.aus_deiner_verfuegbarkeit') + '',legacy:'' + _uiT('ui.alt_einstellung_verfuegbarkeit_im_profil') + '',none:'' + _uiT('ui.standard_nach_trainingsniveau') + ''};
+  var modeDE={manual:'' + _uiT('ui.nur_hinweis') + '',assisted:'Vorschlag',automatic:'Automatisch'};
   var riskDE={conservative:'Konservativ',balanced:'Ausgewogen',ambitious:'Ambitioniert'};
-  var dayNames=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  var availStr=(cfg.availableDayIdx&&cfg.availableDayIdx.length)?cfg.availableDayIdx.map(function(i){return dayNames[i];}).join(', '):'Noch nicht festgelegt';
+  var dayNames=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
+  var availStr=(cfg.availableDayIdx&&cfg.availableDayIdx.length)?cfg.availableDayIdx.map(function(i){return dayNames[i];}).join(', '):'' + _uiT('ui.noch_nicht_festgelegt') + '';
   function ro(label,val){return '<div class="ts-row"><div class="ts-lab">'+label+'</div><div class="ts-opts">'+val+'</div></div>';}
   el.innerHTML=
-    '<p class="note" style="text-align:left;margin:0 0 10px">Dein Profil ist die einzige Quelle der Trainingskonfiguration — hier ist die Zusammenfassung.</p>'+
-    ro('Trainingstage / Woche','<b>'+days+'</b> <span class="fe-sub">('+esc(srcDE[cfg.daysSource]||srcDE.none)+')</span>')+
-    ro('Verfügbare Tage',esc(availStr))+
-    (cfg.gymDays!=null?ro('Gym-Einheiten',cfg.gymDays+' / Woche'):'')+
+    '<p class="note" style="text-align:left;margin:0 0 10px">' + _uiT('ui.dein_profil_ist_die_einzige') + '</p>'+
+    ro('' + _uiT('ui.trainingstage_woche') + '','<b>'+days+'</b> <span class="fe-sub">('+esc(srcDE[cfg.daysSource]||srcDE.none)+')</span>')+
+    ro('' + _uiT('ui.verfuegbare_tage') + '',esc(availStr))+
+    (cfg.gymDays!=null?ro('Gym-' + _uiT('ui.einheiten_') + '',cfg.gymDays+'' + _uiT('ui.woche') + ''):'')+
     ro('Anpassungs-Modus',esc(modeDE[cfg.adaptationMode]||'Vorschlag'))+
     ro('Risikobereitschaft',esc(riskDE[cfg.riskTolerance]||'Ausgewogen'))+
-    '<div class="gmc-acts" style="margin:10px 0"><button class="gmc-b" onclick="openAvailabilityEditor()">Verfügbarkeit bearbeiten</button>'+
-    '<button class="gmc-b" onclick="openPreferencesEditor()">Modus &amp; Risiko (Präferenzen)</button></div>'+
+    '<div class="gmc-acts" style="margin:10px 0"><button class="gmc-b" onclick="openAvailabilityEditor()">' + _uiT('ui.verfuegbarkeit_bearbeiten') + '</button>'+
+    '<button class="gmc-b" onclick="openPreferencesEditor()">' + _uiT('ui.modus_amp_risiko_praeferenzen') + '</button></div>'+
     renderFixedEventsBox();
 }
 /* P4: DEPRECATED — die vier Setter haben keine UI-Aufrufer mehr (Setup-Card ist
    read-only). Sie bleiben eine Übergangszeit für Alt-Pfade erhalten; Entfernung in
    einem späteren Aufräum-Paket, wenn keine Leser mehr existieren. */
-function setTrainingDays(n){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.trainingDays=n;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderWeekPlan==='function')renderWeekPlan();if(typeof toast==='function')toast('Trainingstage: '+n+' / Woche');}
-function setAdaptMode(m){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.adaptationMode=m;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderAdaptCard==='function')renderAdaptCard();if(typeof toast==='function')toast('Modus: '+({manual:'Nur Hinweis',assisted:'Vorschlag',automatic:'Automatisch'}[m]||m));}
-function setRiskTol(r){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.riskTolerance=r;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof toast==='function')toast('Risiko: '+({conservative:'Konservativ',balanced:'Ausgewogen',ambitious:'Ambitioniert'}[r]||r));}
-function setGymDays(n){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.gymDays=n;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderWeekPlan==='function')renderWeekPlan();if(typeof toast==='function')toast('Gym-Tage: '+n+' / Woche');}
+function setTrainingDays(n){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.trainingDays=n;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderWeekPlan==='function')renderWeekPlan();if(typeof toast==='function')toast('' + _uiT('ui.trainingstage_') + ''+n+'' + _uiT('ui.woche') + '');}
+function setAdaptMode(m){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.adaptationMode=m;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderAdaptCard==='function')renderAdaptCard();if(typeof toast==='function')toast('' + _uiT('ui.modus') + ''+({manual:'' + _uiT('ui.nur_hinweis') + '',assisted:'Vorschlag',automatic:'Automatisch'}[m]||m));}
+function setRiskTol(r){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.riskTolerance=r;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof toast==='function')toast('' + _uiT('ui.risiko') + ''+({conservative:'Konservativ',balanced:'Ausgewogen',ambitious:'Ambitioniert'}[r]||r));}
+function setGymDays(n){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.gymDays=n;if(typeof saveProfile==='function')saveProfile();}renderTrainingSetup();if(typeof renderWeekPlan==='function')renderWeekPlan();if(typeof toast==='function')toast('' + _uiT('ui.gym_tage') + ''+n+'' + _uiT('ui.woche') + '');}
 /* Hinweis: frühere Helfer todayDayState()/weekAdaptNote() wurden entfernt —
    sie waren eigene Berechnungspfade. Einzige Quelle ist jetzt currentDecision()
    → Calc.buildTrainingDecision(). */
@@ -1668,7 +1674,7 @@ function applyWeekAdjustments(confirmed){
     try{ var et=entry(todayStr()); et._adaptItem={dayIndex:ti,item:adaptItem}; }catch(_){}
   }
   PROFILE.planAdjustments=PROFILE.planAdjustments||[];
-  var DN=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
   d.weekAdjustments.forEach(function(c){
     PROFILE.planAdjustments.push({id:'pa'+Math.random().toString(36).slice(2,8),batchId:batchId,timestamp:Date.now(),
       reason:c.reason,actionType:c.action,affectedDate:DN[c.day]||'',oldSession:null,newSession:null,
@@ -1681,7 +1687,7 @@ function applyWeekAdjustments(confirmed){
      ueberschreibt das oben gesetzte Legacy-Feld mit dem effektiven Plan. */
   try{if(gmCanonPlanOn()&&typeof gmCanonPlanEngineRebase==='function')gmCanonPlanEngineRebase(PROFILE.weekPlan,batchId);}catch(_){ }
   if(typeof renderPlan==='function')renderPlan();if(typeof renderAdaptCard==='function')renderAdaptCard();
-  if(typeof toast==='function')toast(confirmed?'Wochenplan angepasst ✓':'Wochenplan automatisch angepasst');
+  if(typeof toast==='function')toast(confirmed?'' + _uiT('ui.wochenplan_angepasst') + '':'' + _uiT('ui.wochenplan_automatisch_angepasst') + '');
 }
 function revertWeekAdjustments(){
   if(typeof PROFILE==='undefined'||!PROFILE||!PROFILE._planUndo)return;
@@ -1692,7 +1698,7 @@ function revertWeekAdjustments(){
   try{var e=entry(todayStr());if(e._weekAdjBatch)delete e._weekAdjBatch;if(e._adaptItem)delete e._adaptItem;}catch(_){}
   if(typeof saveProfile==='function')saveProfile();if(typeof save==='function')save();
   if(typeof renderPlan==='function')renderPlan();if(typeof renderAdaptCard==='function')renderAdaptCard();
-  if(typeof toast==='function')toast('Anpassung rückgängig gemacht');
+  if(typeof toast==='function')toast('' + _uiT('ui.anpassung_rueckgaengig_gemacht') + '');
 }
 function weekAdjustmentsApplied(){
   try{var b=entry(todayStr())._weekAdjBatch;return b&&PROFILE&&PROFILE._planUndo&&PROFILE._planUndo.batchId===b;}catch(_){return false;}
@@ -1784,43 +1790,43 @@ function renderAdaptCard(){
     '<span class="adp-state adp-state-'+state.toLowerCase()+'">'+STATE_LABELS[state]+' · '+DECISION_WORD[state]+'</span></div>';
   var safety=(d.safety&&d.safety.triggered)?'<div class="adp-caution">'+esc(d.safety.advice)+'</div>':'';
   var rec='<div class="adp-block"><span class="adp-lab">Heute</span><div class="adp-val"><b>'+esc(d.recommendedSession.label)+'</b>'+(d.recommendedSession.detail?'<span>'+esc(d.recommendedSession.detail)+'</span>':'')+'</div></div>';
-  var avoid=d.avoidedSession?'<div class="adp-block"><span class="adp-lab">Vermeiden</span><div class="adp-val">'+esc(d.avoidedSession.label)+'</div></div>':'';
+  var avoid=d.avoidedSession?'<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val">'+esc(d.avoidedSession.label)+'</div></div>':'';
   /* H5 (2026-07-11): Der „Warum?"-Block lebt EINMAL — in der Command-Karte darüber.
      Diese Karte zeigt nur noch das Plan-Delta (Heute/Vermeiden/Verschiebungen);
      identische Trigger-Listen doppelt auf einem Screen waren Audit-Befund 3a. */
   var why='';
-  var DN=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
   var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
   var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
   // Automatikmodus: Wochenplan einmal automatisch anwenden (mit Undo-Snapshot)
   if(mode==='automatic'&&moves.length&&!applied){applyWeekAdjustments(false);return;}
   var week='';
   if(applied){
-    week='<div class="adp-week"><b>Wochenplan angepasst</b> — Änderungen gespeichert (siehe Plan). <button class="linklike" onclick="revertWeekAdjustments()">Rückgängig</button></div>';
+    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_angepasst_') + '</b>' + _uiT('ui.aenderungen_gespeichert_siehe_plan') + '<button class="linklike" onclick="revertWeekAdjustments()">' + _uiT('ui.rueckgaengig') + '</button></div>';
   }else if(moves.length){
-    week='<div class="adp-week"><b>Wochenplan-Vorschlag:</b> '+moves.map(function(c){return c.action==='MOVE_SESSION'?('Harte Einheit → '+DN[c.day]+' (≥48 h Abstand, kein Konflikt mit Terminen).'):esc(c.reason);}).join(' ')+
-      '<div class="adp-btns" style="margin-top:8px"><button class="btn sec" onclick="applyWeekAdjustments(true)">Wochenplan anpassen</button></div></div>';
+    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_vorschlag') + '</b> '+moves.map(function(c){return c.action==='MOVE_SESSION'?('' + _uiT('ui.harte_einheit') + ''+DN[c.day]+'' + _uiT('ui.48_h_abstand_kein_konflikt') + ''):esc(c.reason);}).join(' ')+
+      '<div class="adp-btns" style="margin-top:8px"><button class="btn sec" onclick="applyWeekAdjustments(true)">' + _uiT('ui.wochenplan_anpassen') + '</button></div></div>';
   }
   var actions='';
   if(hasChange){
-    if(ch==='accepted')actions='<div class="adp-accepted">✓ '+(mode==='automatic'?'Automatisch angepasst':'Übernommen')+'. <button class="linklike" onclick="adaptReopen()">'+(mode==='automatic'?'Rückgängig':'ändern')+'</button></div>';
-    else if(ch==='original')actions='<div class="adp-folded">Nur als Hinweis angezeigt. <button class="linklike" onclick="adaptReopen()">doch anpassen</button></div>';
+    if(ch==='accepted')actions='<div class="adp-accepted">✓ '+(mode==='automatic'?'' + _uiT('ui.automatisch_angepasst') + '':'Übernommen')+'. <button class="linklike" onclick="adaptReopen()">'+(mode==='automatic'?'' + _uiT('ui.rueckgaengig') + '':'ändern')+'</button></div>';
+    else if(ch==='original')actions='<div class="adp-folded">' + _uiT('ui.nur_als_hinweis_angezeigt') + '<button class="linklike" onclick="adaptReopen()">doch anpassen</button></div>';
     else actions='<div class="adp-btns"><button class="btn" onclick="adaptChoose(\'accepted\')">Änderung übernehmen</button>'+
       '<button class="btn sec" onclick="adaptChoose(\'original\')">Nur als Hinweis</button></div>';
   }
-  var feel='<button class="linklike adp-feel" onclick="adaptFeelDifferent()">Ich fühle mich anders → Check-in anpassen</button>';
+  var feel='<button class="linklike adp-feel" onclick="adaptFeelDifferent()">' + _uiT('ui.ich_fuehle_mich_anders_check') + '</button>';
   el.innerHTML='<div class="adapt-card adp-'+state.toLowerCase()+'">'+head+safety+rec+avoid+why+week+actions+feel+'</div>';
 }
-function adaptChoose(choice){var d=currentDecision();if(!d)return;var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice};if(typeof save==='function')save();renderAdaptCard();if(typeof toast==='function')toast(choice==='original'?'Als Hinweis angezeigt':'Anpassung übernommen ✓');}
+function adaptChoose(choice){var d=currentDecision();if(!d)return;var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice};if(typeof save==='function')save();renderAdaptCard();if(typeof toast==='function')toast(choice==='original'?'' + _uiT('ui.als_hinweis_angezeigt') + '':'' + _uiT('ui.anpassung_uebernommen') + '');}
 function adaptReopen(){var e=entry(todayStr());if(e.adaptChoice){delete e.adaptChoice;if(typeof save==='function')save();}renderAdaptCard();}
-function adaptFeelDifferent(){var mf=document.getElementById('morningForm');if(mf)mf.scrollIntoView({behavior:'smooth',block:'start'});if(typeof toast==='function')toast('Passe deinen Check-in an — die Entscheidung aktualisiert sich.');}
+function adaptFeelDifferent(){var mf=document.getElementById('morningForm');if(mf)mf.scrollIntoView({behavior:'smooth',block:'start'});if(typeof toast==='function')toast('' + _uiT('ui.passe_deinen_check_in_an') + '');}
 /* ============ MORGEN ============ */
 function checkinContextHint(){
   var hints=[];
-  try{var y=todayStr(new Date(Date.now()-864e5));var ye=DB[y];if(ye&&ye.morning&&ye.morning.knee>=3)hints.push('Gestern Knie '+ye.morning.knee+'/10 — heute gezielt prüfen.');}catch(e){}
+  try{var y=todayStr(new Date(Date.now()-864e5));var ye=DB[y];if(ye&&ye.morning&&ye.morning.knee>=3)hints.push('' + _uiT('ui.gestern_knie') + ''+ye.morning.knee+'' + _uiT('ui.10_heute_gezielt_pruefen') + '');}catch(e){}
   var u=(typeof todayPrimaryUnit==='function')?todayPrimaryUnit():null;
-  if(u&&typeof isHardUnit==='function'&&isHardUnit(u))hints.push('Heute harte Einheit geplant — achte auf Müdigkeit & Muskelkater.');
-  if(typeof pauseFor==='function'&&pauseFor(todayStr()))hints.push('Pause aktiv — Kurz-Check reicht.');
+  if(u&&typeof isHardUnit==='function'&&isHardUnit(u))hints.push('' + _uiT('ui.heute_harte_einheit_geplant_achte') + '');
+  if(typeof pauseFor==='function'&&pauseFor(todayStr()))hints.push('' + _uiT('ui.pause_aktiv_kurz_check_reicht') + '');
   return hints.length?'<div class="ci-hint">'+hints.map(esc).join(' ')+'</div>':'';
 }
 function setCheckinMode(mode){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.checkinMode=mode;if(typeof saveProfile==='function')saveProfile();}renderMorning();}
@@ -1858,13 +1864,13 @@ function _ciFieldHTML(f,m,mode){
     case 'number':{var nv=(m[f.key]!=null?m[f.key]:pre);
       return '<div class="field"><label>'+esc(f.label)+'</label><input type="number" inputmode="'+(f.inputmode||'numeric')+'" id="'+f.el+'" value="'+(nv!=null?nv:'')+'" placeholder="'+esc(f.placeholder||'')+'"></div>';}
     case 'chipsText':{var sel=m[f.key]?[m[f.key]]:(pre!=null?[String(pre)]:[]);return chips(f.label,f.el,f.opts,sel);}
-    case 'chipsBool':return chips(f.label,f.el,f.opts,[m[f.key]?'Ja':'Nein']);
+    case 'chipsBool':return chips(f.label,f.el,f.opts,[m[f.key]?'Ja':'' + _uiT('ui.nein') + '']);
     /* Batch 0: Mehrfach-Chips (Red Flags) — gespeicherte kanonische Codes
        (m[key]={fever:true,…}) über registry.optCodes zurück auf Labels mappen. */
     case 'chipsMulti':{var selM=[];var rfObj=m[f.key]||{};
       f.opts.forEach(function(lab){var code=(f.optCodes&&f.optCodes[lab])||lab;if(rfObj[code]===true)selM.push(lab);});
       return chips(f.label,f.el,f.opts,selM,true);}
-    case 'issues':return (typeof checkinIssuesHTML==='function')?checkinIssuesHTML(m):slider('m_knee',(mode==='quick'?'Beschwerden JETZT':'Knie-Schmerz JETZT'),0,10,(m.knee!=null?m.knee:0),'kein','max');
+    case 'issues':return (typeof checkinIssuesHTML==='function')?checkinIssuesHTML(m):slider('m_knee',(mode==='quick'?'' + _uiT('ui.beschwerden_jetzt') + '':'' + _uiT('ui.knie_schmerz_jetzt') + ''),0,10,(m.knee!=null?m.knee:0),'kein','max');
     case 'note':return '<div class="field" style="margin-bottom:0"><label>'+esc(f.label)+'</label><input type="text" id="'+f.el+'" value="'+esc(m[f.key])+'" placeholder="'+esc(f.placeholder||'')+'"></div>';
   }
   return '';}
@@ -1877,7 +1883,7 @@ function _ciFormHTML(fields,m,mode){
     if(mode==='full'&&f.row2&&i+1<list.length&&list[i+1].row2===f.row2){
       parts.push('<div class="row2">'+_ciFieldHTML(f,m,mode)+_ciFieldHTML(list[i+1],m,mode)+'</div>');i+=2;continue;}
     parts.push(_ciFieldHTML(f,m,mode));i++;}
-  if(mode==='quick')parts.push('<p class="note" style="margin-top:8px">Schnell-Check — für Pace, HF, HRV &amp; Details auf „Ausführlich" wechseln.</p>');
+  if(mode==='quick')parts.push('<p class="note" style="margin-top:8px">' + _uiT('ui.schnell_check_fuer_pace_hf') + '</p>');
   return parts.join('');}
 /* Garmin-Werte für heute laden (einmal je Tag/Session; Ausfall ⇒ alle Fragen manuell). */
 function _ciAutoLoad(){try{
@@ -1909,7 +1915,7 @@ function renderMorning(){
   /* GM6: fehlendes Feldregister ist ein nicht behebbarer Darstellungsfehler —
      GM-Fehlerkomponente statt Legacy-.note. Kein Retry-Button, weil es keine
      bestehende sichere Aktion gibt, die das Modul nachladen wuerde (§4). */
-  var body=REG?_ciFormHTML(REG,m,mode):gmStateError({icon:'alert',title:'Check-in-Modul nicht geladen.',desc:'Lade die App neu, sobald du wieder online bist.'});
+  var body=REG?_ciFormHTML(REG,m,mode):gmStateError({icon:'alert',title:'' + _uiT('ui.check_in_modul_nicht_geladen') + '',desc:'' + _uiT('ui.lade_die_app_neu_sobald') + ''});
   document.getElementById('morningForm').innerHTML=toggle+hint+body;
   initRanges();if(document.getElementById('m_sleep'))sleepUpd();
 }
@@ -1981,10 +1987,10 @@ function autoMorning(){if(!document.getElementById('m_ill')&&!document.getElemen
 /* ---- Zentraler Editier-Guard für den aktuell gewählten Tag ---- */
 function canEditCur(silent){
   if(cur===todayStr()||window._correctionMode)return true;
-  if(!silent&&typeof toast==='function')toast('Tag abgeschlossen — „Korrektur erfassen" nutzen');
+  if(!silent&&typeof toast==='function')toast('' + _uiT('ui.tag_abgeschlossen_korrektur_erfassen_nutzen') + '');
   return false;
 }
-function startCorrection(){window._correctionMode=true;renderDay();if(typeof toast==='function')toast('Korrektur-Modus aktiv');}
+function startCorrection(){window._correctionMode=true;renderDay();if(typeof toast==='function')toast('' + _uiT('ui.korrektur_modus_aktiv') + '');}
 function endCorrection(){window._correctionMode=false;renderDay();}
 function logCorrection(section){var e=entry(cur);e._corrections=e._corrections||[];e._corrections.push({ts:Date.now(),section:section||'tag',date:cur});}
 function renderDecision(){var _rdP=(window.ORVIA&&window.ORVIA.perf)||{now:function(){return Date.now();},mark:function(){}};var _rd0=_rdP.now();
@@ -2012,18 +2018,18 @@ function saveMorning(){if(!canEditCur())return;entry(cur).morning=gatherMorning(
        Konsole (vorher war die Ursache nicht diagnostizierbar; realer Fall: fehlender
        Unique-Index für den daily_checkins-Upsert, Migration 0017). */
     try{console.error('[ORVIA checkin] persistMorning fehlgeschlagen:',JSON.stringify(r.error));}catch(_){}
-    toast('Check-in lokal gespeichert (Cloud-Sync fehlgeschlagen: '+((r.error&&r.error.code)||'unbekannt')+')');
+    toast('' + _uiT('ui.check_in_lokal_gespeichert_cloud') + ''+((r.error&&r.error.code)||'unbekannt')+')');
   }
-  else if(r.sync_status==='pending')toast('Offline gespeichert – wird synchronisiert ⏳');});}}catch(e){}
+  else if(r.sync_status==='pending')toast('' + _uiT('ui.offline_gespeichert_wird_synchronisiert') + '');});}}catch(e){}
   // Phase 3: physiologische Readiness (dec._r) + Komponenten + Baselines persistieren (best-effort).
   try{if(window.ORVIA&&window.ORVIA.readinessStore){var _d=getDecision();if(_d&&_d._r)window.ORVIA.readinessStore.persistForDay(cur,_d._r,_d._m,_d._ctx);}}catch(e){}
-  if(typeof collapseCheckinCard==='function')collapseCheckinCard();if(typeof renderCheckinCompact==='function')renderCheckinCompact();toast(window._correctionMode&&cur!==todayStr()?'Korrektur gespeichert ✓':'Gespeichert ✓');window.scrollTo({top:0,behavior:'smooth'});}
+  if(typeof collapseCheckinCard==='function')collapseCheckinCard();if(typeof renderCheckinCompact==='function')renderCheckinCompact();toast(window._correctionMode&&cur!==todayStr()?'' + _uiT('ui.korrektur_gespeichert') + '':'' + _uiT('ui.gespeichert') + '');window.scrollTo({top:0,behavior:'smooth'});}
 
 /* ============ READINESS + AMPEL ============ */
 function renderReadiness(){const e=entry(cur);const out=document.getElementById('readyOut');
   if(!e.morning){out.innerHTML='';return;}
   const r=Calc.readiness(e.morning,recoveryCtx(cur));const C=2*Math.PI*52;const off=C*(1-r.score/100);
-  const txt=r.band==='g'?'Bereit':r.band==='y'?'Moderat':'Erholung nötig';
+  const txt=r.band==='g'?'Bereit':r.band==='y'?'Moderat':'' + _uiT('ui.erholung_noetig') + '';
   out.innerHTML=`<div class="card readycard">
     <svg class="ring" viewBox="0 0 120 120">
       <circle class="ringbg" cx="60" cy="60" r="52"></circle>
@@ -2066,7 +2072,7 @@ function toggleType(t){
     activeTypes.delete(t);
     if(hasContent(data)){_trash={date:cur,type:t,data};
       renderTypeGrid();renderPostBlocks();savePost(true);
-      toastAction(t+' entfernt','Rückgängig',undoTrash);return;}
+      toastAction(t+' entfernt','' + _uiT('ui.rueckgaengig') + '',undoTrash);return;}
   } else activeTypes.add(t);
   renderTypeGrid();renderPostBlocks();savePost(true);
   if(t==='Gym')gymInterferenceCheck();
@@ -2089,7 +2095,7 @@ function renderPostBlocks(){var _pb=document.getElementById('postBlocks');if(!_p
   if(activeTypes.has('Mobilität'))html+=blockMob(ses['Mobilität']||{});
   document.getElementById('postBlocks').innerHTML=html;initRanges();updRun();updRad();updSwim();}
 function blockRun(d){return `<div class="sescard"><div class="seshead">${ic('run')}Laufen</div>
-  ${chips('Typ','l_sub',['Walk-Run','Easy Z2','Tempo','Intervalle','Long Run','Wettkampf'],d.sub?[d.sub]:[])}
+  ${chips('' + _uiT('ui.typ') + '','l_sub',['Walk-Run','Easy Z2','Tempo','Intervalle','Long Run','Wettkampf'],d.sub?[d.sub]:[])}
   <div class="row2"><div class="field"><label>Distanz (km)</label><input type="number" inputmode="decimal" id="l_dist" value="${d.dist??''}" placeholder="5" oninput="updRun()"></div>
   <div class="field"><label>Dauer (mm:ss)</label><input type="text" inputmode="numeric" id="l_dur" value="${d.dur!=null?fmtDurInput(d.dur):''}" placeholder="36:07" oninput="updRun()"></div></div>
   <div class="calc" id="l_calc"></div>
@@ -2101,54 +2107,54 @@ function blockRun(d){return `<div class="sescard"><div class="seshead">${ic('run
   ${gearChips('shoe','l_gear',d.gearId)}
   ${slider('l_rpe','RPE',1,10,d.rpe??5,'leicht','max')}
   ${slider('l_perf','Leistung',1,10,d.perf??6)}
-  ${chips('Einheit war','l_felt',['zu leicht','passend','zu hart'],d.felt?[d.felt]:[])}
-  ${slider('l_knee','Knie POST',0,10,d.knee??0,'kein','max')}
+  ${chips('' + _uiT('ui.einheit_war') + '','l_felt',['zu leicht','passend','zu hart'],d.felt?[d.felt]:[])}
+  ${slider('l_knee','' + _uiT('ui.knie_post') + '',0,10,d.knee??0,'kein','max')}
   <div class="field" style="margin-bottom:0"><label>Notiz</label><input type="text" id="l_note" value="${esc(d.note)}" placeholder="Strecke / Gefühl..."></div></div>`;}
 var EXERCISES=[
- {n:'Spanish Squat',g:'Reha / Knie',m:'Quad exzentrisch'},
- {n:'VMO Step-down',g:'Reha / Knie',m:'Vastus medialis'},
- {n:'Terminal Knee Extension',g:'Reha / Knie',m:'VMO / Knie'},
- {n:'Step-up',g:'Reha / Knie',m:'Quad / Glute'},
- {n:'Wall Sit',g:'Reha / Knie',m:'Quad isometrisch'},
- {n:'Wadenheben',g:'Reha / Knie',m:'Waden / Achilles'},
- {n:'Glute Bridge',g:'Glutes / Posterior',m:'Gesäß'},
- {n:'Single-Leg Bridge',g:'Glutes / Posterior',m:'Gesäß einbeinig'},
- {n:'Hip Thrust',g:'Glutes / Posterior',m:'Gesäß'},
- {n:'Clamshells',g:'Glutes / Posterior',m:'Gluteus medius'},
- {n:'Monster Walks',g:'Glutes / Posterior',m:'Abduktoren'},
- {n:'Romanian Deadlift',g:'Glutes / Posterior',m:'Hamstrings / Gesäß'},
- {n:'Kreuzheben',g:'Glutes / Posterior',m:'gesamte Kette'},
- {n:'Good Morning',g:'Glutes / Posterior',m:'Hamstrings / Rücken'},
- {n:'Nordic Curl',g:'Glutes / Posterior',m:'Hamstrings exzentrisch'},
- {n:'Kabel-Kickback',g:'Glutes / Posterior',m:'Gesäß isoliert'},
- {n:'Bankdrücken',g:'Push (Oberkörper)',m:'Brust / Trizeps'},
- {n:'Schrägbankdrücken',g:'Push (Oberkörper)',m:'obere Brust'},
- {n:'Kurzhantel-Bankdrücken',g:'Push (Oberkörper)',m:'Brust'},
- {n:'Schulterdrücken',g:'Push (Oberkörper)',m:'Schultern'},
- {n:'Arnold Press',g:'Push (Oberkörper)',m:'Schultern'},
- {n:'Seitheben',g:'Push (Oberkörper)',m:'seitliche Schulter'},
- {n:'Dips',g:'Push (Oberkörper)',m:'Brust / Trizeps'},
- {n:'Liegestütze',g:'Push (Oberkörper)',m:'Brust / Core'},
- {n:'Trizeps-Pushdown',g:'Push (Oberkörper)',m:'Trizeps'},
- {n:'Klimmzug',g:'Pull (Oberkörper)',m:'Lat / Bizeps'},
- {n:'Klimmzug breit',g:'Pull (Oberkörper)',m:'Lat breit'},
- {n:'Latzug',g:'Pull (Oberkörper)',m:'Lat'},
- {n:'Rudern (Langhantel)',g:'Pull (Oberkörper)',m:'oberer Rücken'},
- {n:'Kabelrudern eng',g:'Pull (Oberkörper)',m:'mittlerer Rücken'},
- {n:'Face Pull',g:'Pull (Oberkörper)',m:'hintere Schulter'},
- {n:'Reverse Fly',g:'Pull (Oberkörper)',m:'hintere Schulter'},
- {n:'Bizeps-Curl',g:'Pull (Oberkörper)',m:'Bizeps'},
- {n:'Hammer-Curl',g:'Pull (Oberkörper)',m:'Bizeps / Unterarm'},
+ {n:'Spanish Squat',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.quad_exzentrisch') + ''},
+ {n:'VMO Step-down',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.vastus_medialis') + ''},
+ {n:'Terminal Knee Extension',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.vmo_knie') + ''},
+ {n:'Step-up',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.quad_glute') + ''},
+ {n:'Wall Sit',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.quad_isometrisch') + ''},
+ {n:'Wadenheben',g:'' + _uiT('ui.reha_knie') + '',m:'' + _uiT('ui.waden_achilles') + ''},
+ {n:'Glute Bridge',g:'' + _uiT('ui.glutes_posterior') + '',m:'Gesäß'},
+ {n:'Single-Leg Bridge',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.gesaess_einbeinig') + ''},
+ {n:'Hip Thrust',g:'' + _uiT('ui.glutes_posterior') + '',m:'Gesäß'},
+ {n:'Clamshells',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.gluteus_medius') + ''},
+ {n:'Monster Walks',g:'' + _uiT('ui.glutes_posterior') + '',m:'Abduktoren'},
+ {n:'Romanian Deadlift',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.hamstrings_gesaess') + ''},
+ {n:'Kreuzheben',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.gesamte_kette') + ''},
+ {n:'Good Morning',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.hamstrings_ruecken') + ''},
+ {n:'Nordic Curl',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.hamstrings_exzentrisch') + ''},
+ {n:'Kabel-Kickback',g:'' + _uiT('ui.glutes_posterior') + '',m:'' + _uiT('ui.gesaess_isoliert') + ''},
+ {n:'Bankdrücken',g:'' + _uiT('ui.push_oberkoerper') + '',m:'' + _uiT('ui.brust_trizeps') + ''},
+ {n:'Schrägbankdrücken',g:'' + _uiT('ui.push_oberkoerper') + '',m:'' + _uiT('ui.obere_brust') + ''},
+ {n:'Kurzhantel-Bankdrücken',g:'' + _uiT('ui.push_oberkoerper') + '',m:'Brust'},
+ {n:'Schulterdrücken',g:'' + _uiT('ui.push_oberkoerper') + '',m:'Schultern'},
+ {n:'Arnold Press',g:'' + _uiT('ui.push_oberkoerper') + '',m:'Schultern'},
+ {n:'Seitheben',g:'' + _uiT('ui.push_oberkoerper') + '',m:'' + _uiT('ui.seitliche_schulter') + ''},
+ {n:'Dips',g:'' + _uiT('ui.push_oberkoerper') + '',m:'' + _uiT('ui.brust_trizeps') + ''},
+ {n:'Liegestütze',g:'' + _uiT('ui.push_oberkoerper') + '',m:'' + _uiT('ui.brust_core') + ''},
+ {n:'Trizeps-Pushdown',g:'' + _uiT('ui.push_oberkoerper') + '',m:'Trizeps'},
+ {n:'Klimmzug',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.lat_bizeps') + ''},
+ {n:'Klimmzug breit',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.lat_breit') + ''},
+ {n:'Latzug',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'Lat'},
+ {n:'Rudern (Langhantel)',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.oberer_ruecken') + ''},
+ {n:'Kabelrudern eng',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.mittlerer_ruecken') + ''},
+ {n:'Face Pull',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.hintere_schulter') + ''},
+ {n:'Reverse Fly',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.hintere_schulter') + ''},
+ {n:'Bizeps-Curl',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'Bizeps'},
+ {n:'Hammer-Curl',g:'' + _uiT('ui.pull_oberkoerper') + '',m:'' + _uiT('ui.bizeps_unterarm') + ''},
  {n:'Plank',g:'Core',m:'Rumpf'},
- {n:'Side Plank',g:'Core',m:'seitlicher Rumpf'},
+ {n:'Side Plank',g:'Core',m:'' + _uiT('ui.seitlicher_rumpf') + ''},
  {n:'Pallof Press',g:'Core',m:'Anti-Rotation'},
- {n:'Bird Dog',g:'Core',m:'Rumpf / Stabilität'},
- {n:'Dead Bug',g:'Core',m:'tiefe Bauchmuskeln'},
- {n:'Bicycle Crunch',g:'Core',m:'schräge Bauchmuskeln'},
+ {n:'Bird Dog',g:'Core',m:'' + _uiT('ui.rumpf_stabilitaet') + ''},
+ {n:'Dead Bug',g:'Core',m:'' + _uiT('ui.tiefe_bauchmuskeln') + ''},
+ {n:'Bicycle Crunch',g:'Core',m:'' + _uiT('ui.schraege_bauchmuskeln') + ''},
  {n:'Russian Twist',g:'Core',m:'Rotation'},
- {n:'Hängendes Beinheben',g:'Core',m:'untere Bauchmuskeln'},
- {n:'Ab Wheel',g:'Core',m:'gesamter Rumpf'},
- {n:'Mountain Climbers',g:'Core',m:'Rumpf / Kondition'}
+ {n:'Hängendes Beinheben',g:'Core',m:'' + _uiT('ui.untere_bauchmuskeln') + ''},
+ {n:'Ab Wheel',g:'Core',m:'' + _uiT('ui.gesamter_rumpf') + ''},
+ {n:'Mountain Climbers',g:'Core',m:'' + _uiT('ui.rumpf_kondition') + ''}
 ];
 function allExercises(){var c=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.customExercises)||[];return EXERCISES.concat(c.map(function(n){return {n:n,g:'Eigene',m:''};}));}
 function migrateEx(names){if(!names||!names.length)return [];return names.map(function(n){return {n:n,sets:null,reps:null,kg:null};});}
@@ -2158,16 +2164,16 @@ function gymProgressHint(name){
   for(var i=0;i<days.length;i++){var s=DB[days[i]].sessions;var g=s&&s.Gym;
     if(g&&g.exLog){var p=g.exLog.filter(function(x){return x.n===name&&(x.kg!=null||x.reps!=null);})[0];
       if(p)return '<div class="gymrow-prog">Zuletzt: '+(p.sets!=null?p.sets:'?')+'×'+(p.reps!=null?p.reps:'?')+(p.kg!=null?' @ '+p.kg+' kg':'')+'</div>';}}
-  return '<div class="gymrow-prog gymrow-new">Erste Erfassung — ab jetzt mit Verlauf</div>';
+  return '<div class="gymrow-prog gymrow-new">' + _uiT('ui.erste_erfassung_ab_jetzt_mit') + '</div>';
 }
 function gymRowsHTML(list){
-  if(!list||!list.length)return gmStateEmpty({icon:'dumbbell',title:'Noch keine Übung gewählt',desc:'Tippe „+ Übungen wählen“, um Sätze und Wiederholungen zu erfassen.'});
+  if(!list||!list.length)return gmStateEmpty({icon:'dumbbell',title:'' + _uiT('ui.noch_keine_uebung_gewaehlt') + '',desc:'' + _uiT('ui.tippe_uebungen_waehlen_um_saetze') + ''});
   return list.map(function(x){
     return '<div class="gymrow" data-n="'+esc(x.n)+'"><div class="gymrow-top"><span class="gymrow-n">'+esc(x.n)+'</span>'+
-      '<button type="button" class="gymrow-x" onclick="removeGymRow(this)" aria-label="Entfernen">✕</button></div>'+
-      '<div class="gymrow-in"><label>Sätze<input type="number" inputmode="numeric" class="gx-sets" value="'+(x.sets!=null?x.sets:'')+'" placeholder="3" oninput="autoPost()"></label>'+
-      '<label>Wdh<input type="number" inputmode="numeric" class="gx-reps" value="'+(x.reps!=null?x.reps:'')+'" placeholder="8" oninput="autoPost()"></label>'+
-      '<label>kg<input type="number" inputmode="decimal" class="gx-kg" value="'+(x.kg!=null?x.kg:'')+'" placeholder="45" oninput="autoPost()"></label></div>'+
+      '<button type="button" class="gymrow-x" onclick="removeGymRow(this)" aria-label="' + _uiT('ui.entfernen') + '">✕</button></div>'+
+      '<div class="gymrow-in"><label>' + _uiT('ui.saetze__') + '<input type="number" inputmode="numeric" class="gx-sets" value="'+(x.sets!=null?x.sets:'')+'" placeholder="3" oninput="autoPost()"></label>'+
+      '<label>' + _uiT('ui.wdh_') + '<input type="number" inputmode="numeric" class="gx-reps" value="'+(x.reps!=null?x.reps:'')+'" placeholder="8" oninput="autoPost()"></label>'+
+      '<label>kg<input type="number" inputmode="decimal" class="gx-kg" value="'+(x.kg!=null?x.kg:'')+'" placeholder="' + _uiT('ui.45') + '" oninput="autoPost()"></label></div>'+
       gymProgressHint(x.n)+'</div>';
   }).join('');
 }
@@ -2191,11 +2197,11 @@ function gymPickerBody(curNames){
 function openGymPicker(){
   var curNames=readGymRows().map(function(x){return x.n;});
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
-  wrap.innerHTML='<div class="orvia-modal goal-modal gym-pick"><h3>Übungen wählen</h3>'+
-    '<div class="gx-add"><input type="text" id="gx_new" placeholder="Eigene Übung…"><button type="button" class="btn sec" onclick="addCustomExercise()">+</button></div>'+
+  wrap.innerHTML='<div class="orvia-modal goal-modal gym-pick"><h3>' + _uiT('ui.uebungen_waehlen') + '</h3>'+
+    '<div class="gx-add"><input type="text" id="gx_new" placeholder="' + _uiT('ui.eigene_uebung') + '"><button type="button" class="btn sec" onclick="addCustomExercise()">+</button></div>'+
     '<div class="gx-scroll" id="gx_scroll">'+gymPickerBody(curNames)+'</div>'+
-    '<button class="btn" onclick="applyGymPicker()">Übernehmen</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="closeGymPicker()">Abbrechen</button></div>';
+    '<button class="btn" onclick="applyGymPicker()">' + _uiT('ui.uebernehmen') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="closeGymPicker()">' + _uiT('ui.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);window._gymPick=wrap;wrap.addEventListener('click',function(ev){if(ev.target===wrap)closeGymPicker();});
 }
 function _gymPickerSel(){var sel=[];if(window._gymPick){var ns=window._gymPick.querySelectorAll('.gx.on');for(var i=0;i<ns.length;i++)sel.push(ns[i].getAttribute('data-n'));}return sel;}
@@ -2351,7 +2357,7 @@ function _mvCtx(d,group){
   return {days:d.days,priority:priority,baselineWeekly:bl,historyConfidence:hc,targetLow:t.low,targetHigh:t.high,hasComplaint:_mvHasComplaintToday()};
 }
 function _mvStatusFor(d,group){
-  var e=d.per[group];if(!e)return {weekly:0,status:{color:'muted',label:'Keine Daten',key:'no_data'},ctx:null};
+  var e=d.per[group];if(!e)return {weekly:0,status:{color:'muted',label:'' + _uiT('ui.keine_daten') + '',key:'no_data'},ctx:null};
   var ctx=_mvCtx(d,group);var weekly=Calc.muscleWeeklyEquivalent(e.effective,d.days);
   return {weekly:weekly,status:Calc.muscleVolumeStatus(weekly,ctx),ctx:ctx};
 }
@@ -2362,7 +2368,7 @@ function renderBodyMap(statusByGroup,neutral){
       var de=SLUG_DE[slug],polys=data[slug];
       if(de){
         var label=SLUG_LABEL[slug]||de;
-        var st=statusByGroup[de]||{color:'muted',label:'Keine Daten'};
+        var st=statusByGroup[de]||{color:'muted',label:'' + _uiT('ui.keine_daten') + ''};
         // Ohne Daten: distinkte Grundfarbe (Muskel erkennbar). Mit Daten: Status-Farbe.
         var fill=st.color==='muted'?(GROUP_TINT[label]||GROUP_TINT[de]||'#2c3744'):bmFill(st.color);
         out+='<g class="bm-region" tabindex="0" role="button" aria-label="'+escH(label+': '+st.label)+'" data-g="'+escH(de)+'" onclick="showMuscleDetail(\''+escH(de)+'\')" onkeydown="muscleKeyActivate(event,\''+escH(de)+'\')"><title>'+escH(label+': '+st.label)+'</title>'+
@@ -2374,12 +2380,12 @@ function renderBodyMap(statusByGroup,neutral){
     return '<g transform="translate('+tx+',4)">'+out+'</g>';
   }
   var legend=neutral
-    ?'<div class="bm-leg"><span>Noch nicht ausreichend bewertet — Muskelbereiche neutral dargestellt.</span></div>'
-    :'<div class="bm-leg"><span><i style="background:'+bmFill('low')+'"></i>unter Ziel</span><span><i style="background:'+bmFill('good')+'"></i>im Ziel</span><span><i style="background:'+bmFill('high')+'"></i>über Ziel</span><span><i style="background:'+bmFill('warn')+'"></i>Warnung</span><span><i style="background:'+bmFill('info')+'"></i>wenig Historie</span><span><i style="background:#5f6a42"></i>gedämpft = noch keine Daten</span></div>';
-  return '<div class="bodymap"><svg viewBox="0 0 232 216" width="100%" role="img" aria-label="Körperkarte Muskelvolumen">'+
+    ?'<div class="bm-leg"><span>' + _uiT('ui.noch_nicht_ausreichend_bewertet_muskelbereiche') + '</span></div>'
+    :'<div class="bm-leg"><span><i style="background:'+bmFill('low')+'"></i>' + _uiT('ui.unter_ziel') + '</span><span><i style="background:'+bmFill('good')+'"></i>' + _uiT('ui.im_ziel') + '</span><span><i style="background:'+bmFill('high')+'"></i>' + _uiT('ui.ueber_ziel') + '</span><span><i style="background:'+bmFill('warn')+'"></i>' + _uiT('ui.warnung') + '</span><span><i style="background:'+bmFill('info')+'"></i>' + _uiT('ui.wenig_historie') + '</span><span><i style="background:#5f6a42"></i>' + _uiT('ui.gedaempft_noch_keine_daten') + '</span></div>';
+  return '<div class="bodymap"><svg viewBox="0 0 232 216" width="100%" role="img" aria-label="' + _uiT('ui.koerperkarte_muskelvolumen') + '">'+
     fig(BODY_ANT,8)+fig(BODY_POST,128)+
-    '<text x="58" y="214" text-anchor="middle" font-size="8" fill="var(--mut,#94a3b8)">Vorderseite</text>'+
-    '<text x="178" y="214" text-anchor="middle" font-size="8" fill="var(--mut,#94a3b8)">Rückseite</text>'+
+    '<text x="58" y="214" text-anchor="middle" font-size="8" fill="var(--mut,#94a3b8)">' + _uiT('ui.vorderseite') + '</text>'+
+    '<text x="178" y="214" text-anchor="middle" font-size="8" fill="var(--mut,#94a3b8)">' + _uiT('ui.rueckseite') + '</text>'+
     '</svg>'+legend+'</div>';
 }
 function muscleKeyActivate(ev,group){if(ev&&(ev.key==='Enter'||ev.key===' '||ev.key==='Spacebar')){ev.preventDefault();showMuscleDetail(group);}}
@@ -2388,11 +2394,11 @@ function muscleKeyActivate(ev,group){if(ev&&(ev.key==='Enter'||ev.key===' '||ev.
 function fmtDe(n){ if(n==null||isNaN(n))return '–'; var r=Math.round(n*10)/10; return (r===Math.round(r))?String(Math.round(r)):String(r).replace('.',','); }
 var CONF_LABEL_DE={low:'niedrig',medium:'mittel',high:'hoch'};
 var CONF_REASON_DE={
-  legacy_synthetic_data:'Ältere Trainingsdaten enthalten nur zusammengefasste Satzinformationen.',
-  too_few_workouts:'Noch zu wenige verwertbare Workouts.',
-  too_short_period:'Beobachtungszeitraum noch zu kurz.',
-  unclassified_exercises:'Einige Übungen konnten noch nicht eindeutig zugeordnet werden.',
-  partial_data:'Trainingsdaten sind nur teilweise verfügbar.'
+  legacy_synthetic_data:'' + _uiT('ui.aeltere_trainingsdaten_enthalten_nur_zusammengefasste') + '',
+  too_few_workouts:'' + _uiT('ui.noch_zu_wenige_verwertbare_workouts') + '',
+  too_short_period:'' + _uiT('ui.beobachtungszeitraum_noch_zu_kurz') + '',
+  unclassified_exercises:'' + _uiT('ui.einige_uebungen_konnten_noch_nicht') + '',
+  partial_data:'' + _uiT('ui.trainingsdaten_sind_nur_teilweise_verfuegbar') + ''
 };
 /* ====== ORVIA Muskelkarte-Pilot — konsumiert AUSSCHLIESSLICH die gym-volume Engine.
    Keine zweite Volumenberechnung im UI. Fachzahlen kommen unverändert aus getProductiveVolumeModel()
@@ -2413,11 +2419,11 @@ function mvExperience(profile){
 // 5-stufiges UI-Statusmodell — strikt aus Engine-Keys (below|in|above|insufficient_data) + Datenpräsenz.
 // KEIN erfundener „Warnung"-Status (die Engine liefert per Muskel keinen). Farbe NIE alleinige Info → Symbol+Text.
 var MV_STATUS_META={
-  in:{label:'Im Ziel',sym:'✓',color:'#34d399'},
-  below:{label:'Unter Ziel',sym:'▽',color:'#eab308'},
-  above:{label:'Über Ziel',sym:'▲',color:'#3b82f6'},
-  low_history:{label:'Wenig Historie',sym:'~',color:'#a78bfa'},
-  no_data:{label:'Keine Daten',sym:'–',color:'#64748b'}
+  in:{label:'' + _uiT('ui.im_ziel_') + '',sym:'✓',color:'#34d399'},
+  below:{label:'' + _uiT('ui.unter_ziel_') + '',sym:'▽',color:'#eab308'},
+  above:{label:'' + _uiT('ui.ueber_ziel_') + '',sym:'▲',color:'#3b82f6'},
+  low_history:{label:'' + _uiT('ui.wenig_historie_') + '',sym:'~',color:'#a78bfa'},
+  no_data:{label:'' + _uiT('ui.keine_daten') + '',sym:'–',color:'#64748b'}
 };
 function mvStatusModel(m){
   var key=m&&m.status&&m.status.key;
@@ -2479,13 +2485,13 @@ function gmKorridorAbgrenzungHTML(){
       if(c&&c.ziel==='plan.saetze_je_muskelgruppe'&&c.art==='zahl'&&c.wert){v=c;break;}
     }
     if(!v)return '';
-    var klasse=(v.herkunft&&v.herkunft.evidenceClass)?('Klasse '+v.herkunft.evidenceClass):null;
+    var klasse=(v.herkunft&&v.herkunft.evidenceClass)?('' + _uiT('ui.klasse') + ''+v.herkunft.evidenceClass):null;
     return '<div class="md-corr-cmp">'+
-      '<b>Dazu aus einer Quelle:</b> '+escH(v.wert.min+'–'+v.wert.max)+' '+
-      escH(v.einheit||'Sätze je Muskelgruppe und Trainingseinheit')+
+      '<b>' + _uiT('ui.dazu_aus_einer_quelle') + '</b> '+escH(v.wert.min+'–'+v.wert.max)+' '+
+      escH(v.einheit||'' + _uiT('ui.saetze_je_muskelgruppe_und_trainingseinheit') + '')+
       (klasse?' <span class="muted">['+escH(klasse+' · '+(v.regelId||''))+']</span>':'')+
       '<br><span class="muted">Andere Bezugsgröße als der Richtwert oben — '+
-      'je <b>Einheit</b> statt je Woche. Umgerechnet wird nicht: die Quelle '+
+      'je <b>' + _uiT('ui.einheit') + '</b> statt je Woche. Umgerechnet wird nicht: die Quelle '+
       'nennt keine Wochenfrequenz.</span></div>';
   }catch(_){return '';}
 }
@@ -2510,12 +2516,12 @@ function mvDetailNumbers(m,ex){
 // Konservative nächste Handlung = Darstellung des Engine-Status (KEINE Volumenberechnung, nicht-medizinisch).
 function mvNextStep(statusKey){
   return {
-    below:'1–2 gezielte Sätze pro Woche mehr — saubere Ausführung vor Last.',
-    in:'Kurs halten — Volumen liegt im wirksamen Bereich.',
-    above:'Volumen halten oder leicht reduzieren; auf Erholung achten.',
-    low_history:'Weiter erfassen — nach ~2 Wochen wird der Zielkorridor belastbar.',
-    no_data:'Für diese Gruppe liegen im Zeitraum noch keine gewerteten Sätze vor.'
-  }[statusKey]||'Weiter beobachten.';
+    below:'' + _uiT('ui.1_2_gezielte_saetze_pro') + '',
+    in:'' + _uiT('ui.kurs_halten_volumen_liegt_im') + '',
+    above:'' + _uiT('ui.volumen_halten_oder_leicht_reduzieren') + '',
+    low_history:'' + _uiT('ui.weiter_erfassen_nach_2_wochen') + '',
+    no_data:'' + _uiT('ui.fuer_diese_gruppe_liegen_im_') + ''
+  }[statusKey]||'' + _uiT('ui.weiter_beobachten') + '';
 }
 // Status-Chip (Farbe + Symbol + Text; Farbe nie allein).
 function mvChip(st){return '<span class="mvx-chip" style="--mvc:'+st.color+'"><span class="mvx-dot"></span>'+st.sym+' '+escH(st.label)+'</span>';}
@@ -2535,27 +2541,27 @@ function renderMuscleMap(model){
     var r0=pos[0]||[0,0,0,0]; var gx=r0[0]+r0[2]/2, gy=r0[1]+r0[3]/2+3;
     return '<g class="mvx-region" data-m="'+id+'" role="button" tabindex="0" aria-label="'+escH(label+': '+st.label)+'" onclick="showMuscleDetail(\''+id+'\')" onkeydown="muscleKeyActivate(event,\''+id+'\')"><title>'+escH(label+': '+st.label)+'</title>'+rects+'<text x="'+gx+'" y="'+gy+'" class="mvx-sym">'+st.sym+'</text></g>';
   }).join('');
-  var toggle='<div class="mvx-toggle" role="tablist"><button role="tab" aria-selected="'+(side==='front')+'" class="'+(side==='front'?'on':'')+'" onclick="setMvSide(\'front\')">Vorderseite</button>'+
-    '<button role="tab" aria-selected="'+(side==='back')+'" class="'+(side==='back'?'on':'')+'" onclick="setMvSide(\'back\')">Rückseite</button></div>';
+  var toggle='<div class="mvx-toggle" role="tablist"><button role="tab" aria-selected="'+(side==='front')+'" class="'+(side==='front'?'on':'')+'" onclick="setMvSide(\'front\')">' + _uiT('ui.vorderseite') + '</button>'+
+    '<button role="tab" aria-selected="'+(side==='back')+'" class="'+(side==='back'?'on':'')+'" onclick="setMvSide(\'back\')">' + _uiT('ui.rueckseite') + '</button></div>';
   var legend='<div class="mvx-legend">'+['in','below','above','low_history','no_data'].map(function(k){var s=MV_STATUS_META[k];return '<span class="mvx-leg"><i style="background:'+s.color+'"></i>'+s.sym+' '+s.label+'</span>';}).join('')+'</div>';
-  var note='<p class="note mvx-note" style="text-align:left">Farbe <b>und</b> Symbol zeigen den Status. „– Keine Daten" bedeutet <b>nicht</b> zu wenig Training, sondern keine gewerteten Sätze im Zeitraum. Evidenzinformierte Schätzung, keine biologische Messung.</p>';
-  return '<div class="mvx-map">'+toggle+'<div class="mvx-figure"><svg viewBox="0 0 200 348" class="mvx-svg" role="img" aria-label="Muskelkarte '+(side==='front'?'Vorderseite':'Rückseite')+'">'+sil+regions+'</svg></div>'+legend+note+'</div>';
+  var note='<p class="note mvx-note" style="text-align:left">' + _uiT('ui.farbe') + '<b>und</b>' + _uiT('ui.symbol_zeigen_den_status_keine') + '<b>nicht</b>' + _uiT('ui.zu_wenig_training_sondern_keine') + '</p>';
+  return '<div class="mvx-map">'+toggle+'<div class="mvx-figure"><svg viewBox="0 0 200 348" class="mvx-svg" role="img" aria-label="Muskelkarte '+(side==='front'?'' + _uiT('ui.vorderseite') + '':'' + _uiT('ui.rueckseite') + '')+'">'+sil+regions+'</svg></div>'+legend+note+'</div>';
 }
 function showMuscleDetail(idOrGroup){
   var model=(typeof window!=='undefined')?window._mvModel:null; var days=(typeof window!=='undefined'&&window._mvDays)||28;
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var m=model&&model.muscles&&model.muscles.filter(function(x){return x.muscleId===idOrGroup;})[0];
-  if(!m){ if(typeof oModal==='function')oModal(mvLabelDe(idOrGroup)||'Muskel','<p class="muted" style="margin:0">Für diese Gruppe liegen im gewählten Zeitraum noch keine gewerteten Satzdaten vor. Sobald Gym-Sätze erfasst sind, erscheint hier die vollständige Aufschlüsselung.</p>'); return; }
+  if(!m){ if(typeof oModal==='function')oModal(mvLabelDe(idOrGroup)||'Muskel','<p class="muted" style="margin:0">' + _uiT('ui.fuer_diese_gruppe_liegen_im') + '</p>'); return; }
   var exp=mvExperience(); var weeks=Math.round(days/7*10)/10; var ex=null;
   try{ if(window.ORVIA&&ORVIA.gymVolume){ var snaps=ORVIA.gymVolume.snapshotsFromStore({days:days}); ex=ORVIA.gymVolume.explainMuscleVolume(m.muscleId,snaps,{days:days,weeks:weeks,experience:exp}); } }catch(e){}
   var num=mvDetailNumbers(m,ex); var st=mvStatusModel(m);
   var contribs=(ex&&ex.contributions)||[];
   var direct=contribs.filter(function(c){return c.relationship==='direct';});
   var indirect=contribs.filter(function(c){return c.relationship==='indirect';});
-  function line(c){return '<div class="md-row"><span>'+escH(c.exerciseName)+'</span><b>'+c.completedWorkingSets+' '+(c.relationship==='direct'?'direkte':'indirekte')+' Sätze × '+fmtDe(c.coefficient)+' = '+fmtDe(c.contribution)+'</b></div>';}
+  function line(c){return '<div class="md-row"><span>'+escH(c.exerciseName)+'</span><b>'+c.completedWorkingSets+' '+(c.relationship==='direct'?'direkte':'indirekte')+'' + _uiT('ui.saetze') + ''+fmtDe(c.coefficient)+' = '+fmtDe(c.contribution)+'</b></div>';}
   var corridor=(num.targetDisplay==='insufficient_data'||num.targetMin==null)
-    ?'Noch nicht genug Daten für einen individuellen Zielkorridor.'
-    :'Richtwert: '+fmtDe(num.targetMin)+'–'+fmtDe(num.targetMax)+' effektive Satzäquivalente/Woche';
+    ?'' + _uiT('ui.noch_nicht_genug_daten_fuer') + ''
+    :'' + _uiT('ui.richtwert_') + ''+fmtDe(num.targetMin)+'–'+fmtDe(num.targetMax)+'' + _uiT('ui.effektive_satzaequivalente_woche') + '';
   /* v8-352 — DIE HERKUNFT GEHOERT AN DIE ZAHL, nicht in den Profi-Modus.
      Der Korridor stammt aus keiner Quelle. Das Label kommt aus der Engine
      (gym-volume.targetCorridor), damit die Oberflaeche es nicht selbst
@@ -2566,42 +2572,42 @@ function showMuscleDetail(idOrGroup){
   // Anfänger: Kernaussage + einfache nächste Handlung (Fachzahlen bleiben identisch, nur weniger davon).
   if(mode==='anfaenger'){
     body=head+
-      '<p class="md-core">'+escH(mvLabelDe(m.muscleId))+': <b>'+escH(st.label)+'</b>. '+fmtDe(num.effectiveSetEquivalents)+' effektive Satzäquivalente in den letzten '+days+' Tagen.</p>'+
+      '<p class="md-core">'+escH(mvLabelDe(m.muscleId))+': <b>'+escH(st.label)+'</b>. '+fmtDe(num.effectiveSetEquivalents)+'' + _uiT('ui.effektive_satzaequivalente_in_den_letzten') + ''+days+'' + _uiT('ui.tagen_') + '.</p>'+
       '<div class="md-corr">'+escH(corridor)+
         (korridorHerkunft?'<span class="md-corr-src">'+escH(korridorHerkunft)+'</span>':'')+'</div>'+
-      '<p class="md-next"><b>Nächster Schritt:</b> '+escH(mvNextStep(st.key))+'</p>';
+      '<p class="md-next"><b>' + _uiT('ui.naechster_schritt') + '</b> '+escH(mvNextStep(st.key))+'</p>';
   } else {
     // Fortgeschritten: direkte/indirekte Sätze, Korridor, Entwicklung.
     body=head+
       '<div class="md-stat">'+
-        '<div class="md-row"><span>Direkte Arbeitssätze</span><b>'+fmtDe(num.directSets)+'</b></div>'+
-        '<div class="md-row"><span>Indirekte Satzäquivalente</span><b>'+fmtDe(num.indirectSetEquivalents)+'</b></div>'+
-        '<div class="md-row"><span><b>Effektive Satzäquivalente</b></span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.direkte_arbeitssaetze') + '</span><b>'+fmtDe(num.directSets)+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.indirekte_satzaequivalente') + '</span><b>'+fmtDe(num.indirectSetEquivalents)+'</b></div>'+
+        '<div class="md-row"><span><b>' + _uiT('ui.effektive_satzaequivalente') + '</b></span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
       '</div>'+
       '<div class="md-corr">'+escH(corridor)+
         (korridorHerkunft?'<span class="md-corr-src">'+escH(korridorHerkunft)+'</span>':'')+
         gmKorridorAbgrenzungHTML()+'</div>'+
-      (direct.length?'<div class="modlbl">Direkte Beiträge</div>'+direct.map(line).join(''):'')+
-      (indirect.length?'<div class="modlbl">Indirekte Beiträge</div>'+indirect.map(line).join(''):'')+
-      (!contribs.length?'<p class="muted" style="margin:6px 0 0">Keine Beiträge im Zeitraum.</p>':'')+
-      '<p class="md-next"><b>Nächster Schritt:</b> '+escH(mvNextStep(st.key))+'</p>';
+      (direct.length?'<div class="modlbl">' + _uiT('ui.direkte_beitraege') + '</div>'+direct.map(line).join(''):'')+
+      (indirect.length?'<div class="modlbl">' + _uiT('ui.indirekte_beitraege') + '</div>'+indirect.map(line).join(''):'')+
+      (!contribs.length?'<p class="muted" style="margin:6px 0 0">' + _uiT('ui.keine_beitraege_im_zeitraum') + '</p>':'')+
+      '<p class="md-next"><b>' + _uiT('ui.naechster_schritt') + '</b> '+escH(mvNextStep(st.key))+'</p>';
     // Profi: vollständige Rechnung + Ausschlüsse + Confidence + Quelle + Datenqualität.
     if(mode==='profi'){
       var CONF={low:'niedrig',medium:'mittel',high:'hoch'};
       body+='<div class="md-pro">'+
-        '<div class="md-row"><span>Reale Arbeitssätze</span><b>'+fmtDe(num.realWorkingSets)+'</b></div>'+
-        '<div class="md-row"><span>Beitrag = Σ (reale Sätze × Koeffizient)</span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
-        '<div class="md-row"><span>Zeitraum</span><b>'+days+' Tage ('+fmtDe(weeks)+' Wo.)</b></div>'+
-        '<div class="md-row"><span>Konfidenz</span><b>'+(CONF[num.confidence]||num.confidence||'–')+(num.confidenceReason?' ('+escH(num.confidenceReason)+')':'')+'</b></div>'+
-        '<div class="md-row"><span>Korridor-Basis</span><b>'+escH(num.targetBasis==='produktwert'?'Produktwert (keine Quelle)':(num.targetBasis||'–'))+'</b></div>'+
-        '<div class="md-row"><span>Korridor-Kennung</span><b>'+escH(num.targetSource||'–')+'</b></div>'+
-        '<div class="md-row"><span>Ausgeschlossene Sätze</span><b>'+num.exclusionCount+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.reale_arbeitssaetze') + '</span><b>'+fmtDe(num.realWorkingSets)+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.beitrag_reale_saetze_koeffizient') + '</span><b>'+fmtDe(num.effectiveSetEquivalents)+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.zeitraum_') + '</span><b>'+days+'' + _uiT('ui.tage') + ''+fmtDe(weeks)+'' + _uiT('ui.wo') + '.)</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.konfidenz__') + '</span><b>'+(CONF[num.confidence]||num.confidence||'–')+(num.confidenceReason?' ('+escH(num.confidenceReason)+')':'')+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.korridor_basis') + '</span><b>'+escH(num.targetBasis==='produktwert'?'' + _uiT('ui.produktwert_keine_quelle') + '':(num.targetBasis||'–'))+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.korridor_kennung') + '</span><b>'+escH(num.targetSource||'–')+'</b></div>'+
+        '<div class="md-row"><span>' + _uiT('ui.ausgeschlossene_saetze') + '</span><b>'+num.exclusionCount+'</b></div>'+
       '</div>';
     }
   }
-  if(ex&&ex.exclusions&&ex.exclusions.length&&mode!=='anfaenger'){ body+='<p class="note" style="text-align:left;margin-top:8px">Ausgeschlossen: '+ex.exclusions.length+' Satz/Sätze (z. B. Aufwärm-/unvollständige Sätze) — nachvollziehbar, nicht gewertet.</p>'; }
-  if(m.confidenceReason==='legacy_synthetic_data'){ body+='<p class="note" style="text-align:left;margin-top:6px">Satzdetails aus älteren, zusammengefassten Trainingsdaten rekonstruiert.</p>'; }
-  body+='<p class="note" style="text-align:left;margin-top:6px">Evidenzinformierte Schätzung, keine exakte biologische Messung.</p>';
+  if(ex&&ex.exclusions&&ex.exclusions.length&&mode!=='anfaenger'){ body+='<p class="note" style="text-align:left;margin-top:8px">Ausgeschlossen: '+ex.exclusions.length+' Satz/' + _uiT('ui.saetze__') + ' (z. B. Aufwärm-/unvollständige ' + _uiT('ui.saetze__') + ') — nachvollziehbar, nicht gewertet.</p>'; }
+  if(m.confidenceReason==='legacy_synthetic_data'){ body+='<p class="note" style="text-align:left;margin-top:6px">' + _uiT('ui.satzdetails_aus_aelteren_zusammengefassten_trainingsdaten') + '</p>'; }
+  body+='<p class="note" style="text-align:left;margin-top:6px">' + _uiT('ui.evidenzinformierte_schaetzung_keine_exakte_biologische') + '</p>';
   if(typeof oModal==='function')oModal(mvLabelDe(m.muscleId)+' · '+fmtDe(num.effectiveSetEquivalents)+' effektiv',body);
 }
 
@@ -2614,21 +2620,21 @@ function renderMuscleVolume(){
      Golden-Master-Komponenten (.sk / .errbar / .card>.empty). */
   el.innerHTML='<div class="wo-fchips" style="padding:0 0 10px">'+ranges+'</div><div id="mvBody">'+gmStateLoading({bare:true})+'</div>';
   function out(html){var body=document.getElementById('mvBody');if(body)body.innerHTML=html;}
-  if(!(window.ORVIA&&ORVIA.gymVolume&&ORVIA.gymVolume.getProductiveVolumeModel)){out(gmStateError({icon:'alert',title:'Muskelvolumen-Modul nicht geladen.',desc:'Die Auswertung steht erst nach einem vollständigen Laden der App wieder zur Verfügung.'}));return;}
+  if(!(window.ORVIA&&ORVIA.gymVolume&&ORVIA.gymVolume.getProductiveVolumeModel)){out(gmStateError({icon:'alert',title:'' + _uiT('ui.muskelvolumen_modul_nicht_geladen') + '',desc:'' + _uiT('ui.die_auswertung_steht_erst_nach') + ''}));return;}
   var _mvP=(window.ORVIA&&window.ORVIA.perf)||{now:function(){return Date.now();},mark:function(){}};var _mvT0=_mvP.now();
   // experience aus Fähigkeitsstufe (nicht uiDetailMode) → Engine bestimmt den Zielkorridor.
   ORVIA.gymVolume.getProductiveVolumeModel({days:days,refresh:true,experience:mvExperience()}).then(function(model){
     _mvP.mark('renderMuscleVolume: getProductiveVolumeModel(refresh:true)',_mvT0);
     if(reqId!==_mvReq)return; window._mvModel=model; window._mvDays=days;
     if(model.status==='data_unavailable'||model.status==='load_error'||model.fallbackUsed){
-      out(gmStateError({title:'Eingeschränkte Datenbasis.',desc:'Muskelvolumen konnte momentan nicht vollständig berechnet werden.',retry:'renderMuscleVolume()',label:'Erneut versuchen'}));return;
+      out(gmStateError({title:'' + _uiT('ui.eingeschraenkte_datenbasis') + '',desc:'' + _uiT('ui.muskelvolumen_konnte_momentan_nicht_vollstaendig') + '',retry:'renderMuscleVolume()',label:'' + _uiT('ui.erneut_versuchen') + ''}));return;
     }
     if(model.status==='no_gym_workouts'||!model.muscles.length){
-      out(gmStateEmpty({icon:'dumbbell',title:'Noch keine Krafttrainingsdaten',desc:'Starte ein Gym-Training mit Übungen und Sätzen — dann erscheint dein Volumen je Muskelgruppe.'}));return;
+      out(gmStateEmpty({icon:'dumbbell',title:'' + _uiT('ui.noch_keine_krafttrainingsdaten') + '',desc:'' + _uiT('ui.starte_ein_gym_training_mit') + ''}));return;
     }
     /* Partial: vorhandene Inhalte bleiben sichtbar, nur der fehlende Teil wird
        markiert — GM-Fehlerkomponente statt Legacy-.mv-note (§3). */
-    var partial=model.status==='partial_data'?gmStateError({icon:'info',title:'Teilweise ausgewertet.',desc:'Ein Teil deiner Trainingsdaten konnte nicht berücksichtigt werden.'}):'';
+    var partial=model.status==='partial_data'?gmStateError({icon:'info',title:'' + _uiT('ui.teilweise_ausgewertet') + '',desc:'' + _uiT('ui.ein_teil_deiner_trainingsdaten_konnte') + ''}):'';
     var CONF={low:'niedrig',medium:'mittel',high:'hoch'};
     var cards=model.muscles.map(function(m){
       var st=mvStatusModel(m);
@@ -2637,29 +2643,29 @@ function renderMuscleVolume(){
          Evidenzklasse. Der Korridor ist ein ORVIA-Richtwert; das steht
          jetzt dran, kurz auf der Kachel und ausfuehrlich im Detail. */
       var corr=(m.targetRange&&m.targetRange.displayStatus==='insufficient_data')
-        ?'Noch kein individueller Zielkorridor'
-        :'Richtwert: '+fmtDe(m.targetRange.min)+'–'+fmtDe(m.targetRange.max)+'/Woche';
+        ?'' + _uiT('ui.noch_kein_individueller_zielkorridor') + ''
+        :'' + _uiT('ui.richtwert_') + ''+fmtDe(m.targetRange.min)+'–'+fmtDe(m.targetRange.max)+'/Woche';
       var lines='';
       if(mode==='anfaenger'){
-        lines='<div class="mvc-eff">'+fmtDe(m.effectiveSetEquivalents)+' effektive Sätze · letzte '+days+' T</div>'+
+        lines='<div class="mvc-eff">'+fmtDe(m.effectiveSetEquivalents)+'' + _uiT('ui.effektive_saetze_letzte') + ''+days+' T</div>'+
               '<div class="mvc-next">'+escH(mvNextStep(st.key))+'</div>';
       }else{
         lines='<div class="mvc-sub">'+fmtDe(m.directSets)+' direkt · '+fmtDe(m.indirectSetEquivalents)+' indirekt</div>'+
-              '<div class="mvc-eff">Letzte '+days+' T: '+fmtDe(m.effectiveSetEquivalents)+' eff. · Ø '+fmtDe(m.weeklyEquivalent)+'/Wo</div>'+
+              '<div class="mvc-eff">Letzte '+days+'' + _uiT('ui.t') + ''+fmtDe(m.effectiveSetEquivalents)+' eff. · Ø '+fmtDe(m.weeklyEquivalent)+'/Wo</div>'+
               '<div class="mvc-corr">'+escH(corr)+'</div>';
         if(mode==='profi'){lines+='<div class="mvc-conf">Datenbasis: '+(CONF[m.confidence]||m.confidence)+(m.confidenceReason?' · '+escH(m.confidenceReason):'')+'</div>';}
       }
       return '<button class="mvcard" data-m="'+m.muscleId+'" onclick="showMuscleDetail(\''+m.muscleId+'\')" onkeydown="muscleKeyActivate(event,\''+m.muscleId+'\')">'+
         '<div class="mvc-h"><span class="mvc-t">'+escH(m.label)+'</span>'+mvChip(st)+'</div>'+lines+'</button>';
     }).join('');
-    var info='<details class="mv-info"><summary>Was bedeuten diese Werte?</summary>'+
-      '<p><b>Direkte Sätze</b> – Sätze mit diesem Muskel als primärem Ziel.</p>'+
-      '<p><b>Indirekte Satzäquivalente</b> – gewichtete sekundäre Belastung aus zusammengesetzten Übungen.</p>'+
-      '<p><b>Effektive Satzäquivalente</b> – direkte plus gewichtete indirekte Beiträge (nicht über Muskeln aufsummierbar).</p>'+
-      '<p class="muted">Werte &amp; Zielkorridor stammen aus der ORVIA-Muskelvolumen-Engine. Evidenzinformierte Schätzungen, keine Messung.</p></details>';
+    var info='<details class="mv-info"><summary>' + _uiT('ui.was_bedeuten_diese_werte') + '</summary>'+
+      '<p><b>' + _uiT('ui.direkte_saetze') + '</b>' + _uiT('ui.saetze_mit_diesem_muskel_als') + '</p>'+
+      '<p><b>' + _uiT('ui.indirekte_satzaequivalente') + '</b>' + _uiT('ui.gewichtete_sekundaere_belastung_aus_zusammengesetzten') + '</p>'+
+      '<p><b>' + _uiT('ui.effektive_satzaequivalente') + '</b>' + _uiT('ui.direkte_plus_gewichtete_indirekte_beitraege') + '</p>'+
+      '<p class="muted">' + _uiT('ui.werte_amp_zielkorridor_stammen_aus') + '</p></details>';
     out(renderMuscleMap(model)+partial+'<div class="mvcards mvx-cards">'+cards+'</div>'+info+
-      '<p class="note" style="text-align:left;margin-top:8px">Antippen für Details (Beiträge je Übung, Ausschlüsse, Konfidenz). Zeitraum steuert die Datumsgrenzen; „/Woche" ist der daraus normalisierte Durchschnitt.</p>');
-  }).catch(function(e){ _mvP.mark('renderMuscleVolume: getProductiveVolumeModel (error)',_mvT0); if(reqId!==_mvReq)return; try{console.error('[muscleVolume]',e);}catch(_){ } out(gmStateError({title:'Muskelvolumen konnte momentan nicht berechnet werden.',retry:'renderMuscleVolume()',label:'Erneut versuchen'})); });
+      '<p class="note" style="text-align:left;margin-top:8px">' + _uiT('ui.antippen_fuer_details_beitraege_je') + '</p>');
+  }).catch(function(e){ _mvP.mark('renderMuscleVolume: getProductiveVolumeModel (error)',_mvT0); if(reqId!==_mvReq)return; try{console.error('[muscleVolume]',e);}catch(_){ } out(gmStateError({title:'Muskelvolumen konnte momentan nicht berechnet werden.',retry:'renderMuscleVolume()',label:'' + _uiT('ui.erneut_versuchen') + ''})); });
 }
 
 function gymInjuryHint(){
@@ -2667,25 +2673,25 @@ function gymInjuryHint(){
   var iss=(e&&e.issues)||{};var back=iss.back||0,shoulder=iss.shoulder||0;
   var pIss=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.issues)||[];
   var tips=[];
-  if(knee>=2)tips.push('Knie '+knee+'/10: meide tiefe Kniebeugen, Step-ups, Ausfallschritte, Sprünge. Besser: Beinpresse leicht, Glute Bridge, Beinstrecker leicht, Wadenheben.');
-  if(shoulder>=2||pIss.indexOf('shoulder')>=0)tips.push('Schulter: kein schweres Overhead-Drücken. Besser: Landmine-/Schrägdrücken, Seitheben leicht, Face Pulls.');
-  if(back>=2||pIss.indexOf('back')>=0)tips.push('Rücken: weniger axiale Last — Maschinen/gestützte Übungen, kein schweres Kreuzheben/Good Morning, kontrolliert.');
+  if(knee>=2)tips.push('' + _uiT('ui.knie') + ''+knee+'' + _uiT('ui.10_meide_tiefe_kniebeugen_step') + '');
+  if(shoulder>=2||pIss.indexOf('shoulder')>=0)tips.push('' + _uiT('ui.schulter_kein_schweres_overhead_druecken') + '');
+  if(back>=2||pIss.indexOf('back')>=0)tips.push('' + _uiT('ui.ruecken_weniger_axiale_last_maschinen') + '');
   if(!tips.length)return '';
   return '<div class="gym-injury">'+tips.map(esc).join('<br>')+'</div>';
 }
 function blockGym(d){return `<div class="sescard"><div class="seshead">${ic('dumbbell')}Gym</div>${(typeof gymInjuryHint==='function')?gymInjuryHint():''}
-  ${chips('Fokus (mehrfach)','g_sub',['Ganzkörper','Oberkörper','Push','Pull','Core','Beine','Glute-Aktivierung','VMO/Rehab'],d.sub,true)}
+  ${chips('' + _uiT('ui.fokus_mehrfach') + '','g_sub',['Ganzkörper','Oberkörper','Push','Pull','Core','Beine','Glute-Aktivierung','VMO/Rehab'],d.sub,true)}
   <div class="row2"><div class="field"><label>Dauer (min)</label><input type="number" inputmode="numeric" id="g_dur" value="${d.dur??''}" placeholder="45"></div>
   <div class="field"><label>Sätze gesamt</label><input type="number" inputmode="numeric" id="g_sets" value="${d.sets??''}" placeholder="20"></div></div>
-  ${slider('g_rpe','RPE (Anstrengung)',1,10,d.rpe??6,'leicht','max')}
+  ${slider('g_rpe','' + _uiT('ui.rpe_anstrengung') + '',1,10,d.rpe??6,'leicht','max')}
   ${slider('g_perf','Leistung',1,10,d.perf??6)}
-  ${slider('g_knee','Knie POST',0,10,d.knee??0,'kein','max')}
+  ${slider('g_knee','' + _uiT('ui.knie_post') + '',0,10,d.knee??0,'kein','max')}
   <div class="field"><label>Übungen &amp; Sätze</label>
     <button type="button" class="btn sec gym-ex-btn" id="g_ex_btn" onclick="openGymPicker()">+ Übungen wählen</button>
     <div class="gym-ex-rows" id="g_ex_rows">${gymRowsHTML(d.exLog&&d.exLog.length?d.exLog:migrateEx(d.exercises))}</div></div>
   <div class="field" style="margin-bottom:0"><label>Notiz</label><input type="text" id="g_note" value="${esc(d.note)}" placeholder="z.B. Bench 4×8..."></div></div>`;}
 function blockRad(d){return `<div class="sescard"><div class="seshead">${ic('bike')}Rad</div>
-  ${chips('Typ','r_sub',['Commute','Easy Z2','Tempo Z3','Intervalle','Long Ride'],d.sub?[d.sub]:[])}
+  ${chips('' + _uiT('ui.typ') + '','r_sub',['Commute','Easy Z2','' + _uiT('ui.tempo_z3') + '','Intervalle','' + _uiT('ui.long_ride') + ''],d.sub?[d.sub]:[])}
   <div class="row2"><div class="field"><label>Distanz (km)</label><input type="number" inputmode="decimal" id="r_dist" value="${d.dist??''}" placeholder="30" oninput="updRad()"></div>
   <div class="field"><label>Dauer (min)</label><input type="number" inputmode="numeric" id="r_dur" value="${d.dur??''}" placeholder="60" oninput="updRad()"></div></div>
   <div class="calc" id="r_calc"></div>
@@ -2694,7 +2700,7 @@ function blockRad(d){return `<div class="sescard"><div class="seshead">${ic('bik
   <div class="field"><label>Höhenmeter</label><input type="number" inputmode="numeric" id="r_elev" value="${d.elev??''}" placeholder="opt."></div></div>
   ${slider('r_rpe','RPE',1,10,d.rpe??5,'leicht','max')}
   ${slider('r_perf','Leistung',1,10,d.perf??6)}
-  ${slider('r_knee','Knie POST',0,10,d.knee??0,'kein','max')}
+  ${slider('r_knee','' + _uiT('ui.knie_post') + '',0,10,d.knee??0,'kein','max')}
   <div class="field" style="margin-bottom:0"><label>Notiz</label><input type="text" id="r_note" value="${esc(d.note)}" placeholder="flach / Wind..."></div></div>`;}
 function blockSwim(d){return `<div class="sescard"><div class="seshead">${ic('swim')}Schwimmen</div>
   ${chips('Fokus','s_sub',['Brust-Technik','Kraul-Integration','Kraul','Mixed','Kick-Drills'],d.sub?[d.sub]:[])}
@@ -2706,9 +2712,9 @@ function blockSwim(d){return `<div class="sescard"><div class="seshead">${ic('sw
   ${slider('s_perf','Gefühl/Technik',1,10,d.perf??5)}
   <div class="field" style="margin-bottom:0"><label>Technik-Notiz</label><input type="text" id="s_note" value="${esc(d.note)}" placeholder="Atmung / Gleitphase..."></div></div>`;}
 function blockMob(d){return `<div class="sescard"><div class="seshead">${ic('stretch')}Mobilität</div>
-  ${chips('Bereich (mehrfach)','mo_sub',['Sprunggelenk','Spanish Squats','Glute-Aktivierung','Stretching','Full Routine'],d.sub,true)}
+  ${chips('' + _uiT('ui.bereich_mehrfach') + '','mo_sub',['Sprunggelenk','' + _uiT('ui.spanish_squats') + '','Glute-Aktivierung','Stretching','' + _uiT('ui.full_routine') + ''],d.sub,true)}
   <div class="field"><label>Dauer (min)</label><input type="number" inputmode="numeric" id="mo_dur" value="${d.dur??''}" placeholder="15"></div>
-  ${slider('mo_knee','Knie POST',0,10,d.knee??0,'kein','max')}
+  ${slider('mo_knee','' + _uiT('ui.knie_post') + '',0,10,d.knee??0,'kein','max')}
   <div class="field" style="margin-bottom:0"><label>Notiz</label><input type="text" id="mo_note" value="${esc(d.note)}" placeholder="links extra..."></div></div>`;}
 function durMin(id,lo,hi){var s=(v(id)||'').trim();if(!s)return null;var m;
   if(s.indexOf(':')>=0){var p=s.split(':');var mm=parseInt(p[0],10),ss=parseInt(p[1],10);if(isNaN(mm)||isNaN(ss)||ss<0||ss>=60)return null;m=mm+ss/60;}
@@ -2748,8 +2754,8 @@ function savePost(silent){if(!canEditCur(silent))return;const e=entry(cur);e.ses
     var sig=(pbs&&pbs.length)?pbs.map(function(p){return p.label+':'+p.val;}).join('|'):'';
     if(pbs&&pbs.length&&L&&L._pbSig!==sig&&typeof celebratePB==='function'){L._pbSig=sig;save();celebratePB(pbs);}
     else{var fb=(activeTypes.has('Laufen')&&typeof trainingFeedback==='function')?trainingFeedback():null;
-      if(fb&&typeof oModal==='function')oModal('Training-Feedback','<div class="coachbubble">'+esc(fb)+'</div>');
-      else toast(activeTypes.size?activeTypes.size+' Einheit(en) gespeichert ✓':'Keine Einheit gewählt');}
+      if(fb&&typeof oModal==='function')oModal('' + _uiT('ui.training') + '-Feedback','<div class="coachbubble">'+esc(fb)+'</div>');
+      else toast(activeTypes.size?activeTypes.size+'' + _uiT('ui.einheit_en_gespeichert') + '':'' + _uiT('ui.keine_einheit_gewaehlt') + '');}
   }}
 function autoPost(){savePost(true);}
 /* Ausführliches, regelbasiertes Feedback nach dem Lauf */
@@ -2758,23 +2764,23 @@ function trainingFeedback(){
   if(!L.dist||!L.dur)return null;
   if(!_validRun(L))return null; // unplausibler Lauf → kein absurdes Feedback
   var pace=L.dur*60/L.dist;var p=[];
-  if(L.sub==='Wettkampf')p.push('Wettkampf im Kasten — stark, dass du dich gestellt hast! '+fmtDe(L.dist)+' km in '+fmtDurInput(L.dur)+' ('+fmtPace(pace)+'/km).');
-  else p.push('Einheit gespeichert: '+fmtDe(L.dist)+' km in '+fmtDurInput(L.dur)+', Schnitt '+fmtPace(pace)+'/km.');
+  if(L.sub==='Wettkampf')p.push('' + _uiT('ui.wettkampf_im_kasten_stark_dass') + ''+fmtDe(L.dist)+' km in '+fmtDurInput(L.dur)+' ('+fmtPace(pace)+'/km).');
+  else p.push('' + _uiT('ui.einheit_gespeichert') + ''+fmtDe(L.dist)+' km in '+fmtDurInput(L.dur)+'' + _uiT('ui.schnitt') + ''+fmtPace(pace)+'/km.');
   var days=Object.keys(DB).filter(isDay).filter(function(k){return k<cur;}).sort().reverse();
   for(var i=0;i<days.length;i++){var pe=DB[days[i]];if(pe&&pe.sessions&&pe.sessions.Laufen&&_validRun(pe.sessions.Laufen)){var P=pe.sessions.Laufen;
     if(P.dist&&P.dur&&Math.abs(P.dist-L.dist)/L.dist<=0.3){var diff=Math.round(P.dur*60/P.dist-pace);
-      if(diff>=8)p.push('Das sind '+diff+' s/km schneller als bei deinem letzten ähnlichen Lauf — deine Form geht klar nach vorne.');
-      else if(diff>=3)p.push('Etwas schneller als zuletzt bei ähnlicher Distanz — sauberer Fortschritt.');
-      else if(diff<=-8)p.push('Bewusst lockerer als letztes Mal — genau richtig, wenn Erholung das Ziel war.');
-      else p.push('Tempo auf dem Niveau deiner letzten ähnlichen Einheit — solide Konstanz.');
+      if(diff>=8)p.push('' + _uiT('ui.das_sind') + ''+diff+'' + _uiT('ui.s_km_schneller_als_bei') + '');
+      else if(diff>=3)p.push('' + _uiT('ui.etwas_schneller_als_zuletzt_bei') + '');
+      else if(diff<=-8)p.push('' + _uiT('ui.bewusst_lockerer_als_letztes_mal') + '');
+      else p.push('' + _uiT('ui.tempo_auf_dem_niveau_deiner') + '');
       break;}}}
   var g=(typeof goalOf==='function')?goalOf():null;var z=(g&&g.targetMin&&Calc.paceZones)?Calc.paceZones(g.distanceKm,g.targetMin):null;
   if(z){var easy=z.find(function(x){return x.k==='Easy';});
-    if(L.sub==='Easy Z2'&&easy&&pace<easy.lo)p.push('Für einen Easy Run war das zu schnell — '+fmtPace(easy.lo)+'–'+fmtPace(easy.hi)+'/km wäre der Bereich. Nächstes Mal 10–15 s/km langsamer, dann bringt er mehr.');}
-  if(L.knee!=null&&L.knee>=3)p.push('Knie nach dem Lauf '+L.knee+'/10 — heute kühlen, morgen lockerer angehen und im Warm-up genau hinspüren.');
-  else if(L.knee!=null&&L.knee<=1)p.push('Knie blieb ruhig ('+L.knee+'/10) — gutes Zeichen.');
-  if(L.felt)p.push('Du hast die Einheit als „'+L.felt+'" empfunden.'+(L.felt==='zu hart'?' Wenn das öfter vorkommt, Pace oder Umfang etwas zurücknehmen.':(L.felt==='zu leicht'?' Beim nächsten Mal ruhig etwas mehr fordern.':'')));
-  p.push('Nimm mit, was gut lief: geduldig starten, hinten rausdrehen.');
+    if(L.sub==='Easy Z2'&&easy&&pace<easy.lo)p.push('' + _uiT('ui.fuer_einen_easy_run_war') + ''+fmtPace(easy.lo)+'–'+fmtPace(easy.hi)+'' + _uiT('ui.km_waere_der_bereich_naechstes') + '');}
+  if(L.knee!=null&&L.knee>=3)p.push('' + _uiT('ui.knie_nach_dem_lauf') + ''+L.knee+'' + _uiT('ui.10_heute_kuehlen_morgen_lockerer') + '');
+  else if(L.knee!=null&&L.knee<=1)p.push('' + _uiT('ui.knie_blieb_ruhig') + ''+L.knee+'' + _uiT('ui.10_gutes_zeichen') + '');
+  if(L.felt)p.push('' + _uiT('ui.du_hast_die_einheit_als') + ''+L.felt+'" empfunden.'+(L.felt==='zu hart'?'' + _uiT('ui.wenn_das_oefter_vorkommt_pace') + '':(L.felt==='zu leicht'?'' + _uiT('ui.beim_naechsten_mal_ruhig_etwas') + '':'')));
+  p.push('' + _uiT('ui.nimm_mit_was_gut_lief') + '');
   return p.join(' ');
 }
 
@@ -2836,20 +2842,20 @@ function allSupps(){return [].concat(...Object.values(SUB_CATS));}
 function suppRecs(){
   const e=entry(cur);const m=e.morning||{};const ev=e.eve||{};
   const wd=(new Date(cur+'T12:00').getDay()+6)%7;const plan=activeWeekPlan()[wd]||[];const out=[];
-  out.push({n:'Vitamin D3',why:'Basis im Norden — 1000–4000 IE zum Essen'});
-  out.push({n:'Omega-3 (EPA/DHA)',why:'Entzündungsmodulation & Herz — 1–2g täglich'});
-  out.push({n:'Kreatin',why:'3–5g täglich, Timing egal'});
+  out.push({n:'Vitamin D3',why:'' + _uiT('ui.basis_im_norden_1000_4000') + ''});
+  out.push({n:'Omega-3 (EPA/DHA)',why:'' + _uiT('ui.entzuendungsmodulation_herz_1_2g_taeglich') + ''});
+  out.push({n:'Kreatin',why:'' + _uiT('ui.3_5g_taeglich_timing_egal') + ''});
   const run=plan.find(p=>p.t==='Laufen');
-  if(run&&/Intervalle|Tempo/.test(run.l))out.push({n:'Koffein',why:run.l+' heute — 3–6mg/kg, 45–60min vorher'});
-  if(run&&/Long/.test(run.l))out.push({n:'Elektrolyte/Natrium',why:'Long Run heute — Natrium ersetzen'});
-  if(run||plan.find(p=>p.t==='Rad'))out.push({n:'Kollagen + Vit C',why:'15g + Vit C ~1h vor der Einheit — Sehnen-Support'});
-  if(m.sleepQ!=null&&m.sleepQ<=5)out.push({n:'Magnesium-Glycinat',why:'Schlafqualität '+m.sleepQ+'/10 — heute Abend 300–400mg'});
-  else out.push({n:'Magnesium-Glycinat',why:'Abends — Schlaf & Muskelfunktion'});
-  if((activeWeekPlan()[(wd+1)%7]||[]).find(p=>p.t==='Schwimmen'))out.push({n:'Melatonin',why:'Morgen früher Schwimmtag — 0,5–1mg vor dem Schlaf'});
-  if(ev.prot!=null&&ev.prot<150)out.push({n:'Whey/Protein',why:'Erst '+ev.prot+'g — Lücke zum 150g-Ziel schließen'});
-  else out.push({n:'Whey/Protein',why:'Baustein fürs 150–165g-Ziel'});
+  if(run&&/Intervalle|Tempo/.test(run.l))out.push({n:'Koffein',why:run.l+' heute — 3–6mg/kg, ' + _uiT('ui.45') + '–60min vorher'});
+  if(run&&/Long/.test(run.l))out.push({n:'Elektrolyte/Natrium',why:'' + _uiT('ui.long_run_heute_natrium_ersetzen') + ''});
+  if(run||plan.find(p=>p.t==='Rad'))out.push({n:'Kollagen + Vit C',why:'' + _uiT('ui.15g_vit_c_1h_vor') + ''});
+  if(m.sleepQ!=null&&m.sleepQ<=5)out.push({n:'Magnesium-Glycinat',why:'' + _uiT('ui.schlafqualitaet') + ''+m.sleepQ+'' + _uiT('ui.10_heute_abend_300_400mg') + ''});
+  else out.push({n:'Magnesium-Glycinat',why:'' + _uiT('ui.abends_schlaf_muskelfunktion') + ''});
+  if((activeWeekPlan()[(wd+1)%7]||[]).find(p=>p.t==='Schwimmen'))out.push({n:'Melatonin',why:'' + _uiT('ui.morgen_frueher_schwimmtag_0_5') + ''});
+  if(ev.prot!=null&&ev.prot<150)out.push({n:'Whey/Protein',why:'' + _uiT('ui.erst') + ''+ev.prot+'' + _uiT('ui.g_luecke_zum_150g_ziel') + ''});
+  else out.push({n:'Whey/Protein',why:'' + _uiT('ui.baustein_fuers_150_165g_ziel') + ''});
   /* v8-317: Garmins echte Kategorien (Low UND Poor) plus Schwelle statt Gleichheit. */
-  if(Calc.hrvBelowBaseline(m.hrv)||(function(){var _s=Calc.hrvScoreOf(m,recoveryCtx(cur));return _s!=null&&_s<=40;})())out.push({n:'L-Theanin',why:'HRV gedrückt — beruhigend; Koffein heute meiden'});
+  if(Calc.hrvBelowBaseline(m.hrv)||(function(){var _s=Calc.hrvScoreOf(m,recoveryCtx(cur));return _s!=null&&_s<=40;})())out.push({n:'L-Theanin',why:'' + _uiT('ui.hrv_gedrueckt_beruhigend_koffein_heute') + ''});
   const seen=new Set();return out.filter(r=>!seen.has(r.n)&&seen.add(r.n));
 }
 function renderSupps(){
@@ -2857,7 +2863,7 @@ function renderSupps(){
   document.getElementById('recBox').innerHTML=`<div class="slot">Für heute empfohlen</div>`+suppRecs().map(r=>{const on=subs.includes(r.n);
     return `<div class="stackitem rec${on?' on':''}" onclick="toggleSub('${jsArg(r.n)}');renderSupps()">
       <div class="check">${on?'✓':''}</div><div><div class="sname">${esc(r.n)}</div><div class="sdose">${esc(r.why)}</div></div></div>`;}).join('');
-  let html='<div class="supphd">Dein Stack · Schnellauswahl <span>(antippen = heute genommen · „Stack bearbeiten" anpassen)</span></div>';
+  let html='<div class="supphd">' + _uiT('ui.dein_stack_schnellauswahl') + '<span>' + _uiT('ui.antippen_heute_genommen_stack_bearbeiten') + '</span></div>';
   if(stack.length){
     SLOTS.forEach(slot=>{const items=stack.filter(x=>x.timing===slot);if(!items.length)return;
       html+=`<div class="slot">${slot}</div>`;
@@ -2875,13 +2881,13 @@ function renderSupps(){
        gezeigt. Die Erfassungsaktion erscheint nur, wenn der Editor noch nicht
        offen ist — sie ruft openStackEditor(), das ausschliesslich den bereits
        vorhandenen, funktionsfaehigen Erfassungsweg (addStack()) oeffnet. */
-    html+=gmStateEmpty({icon:'db',title:'Noch kein Stack angelegt',
-      desc:'Lege feste Supplements an — auch eigene, frei benannte. Bis dahin bleibt der Stack leer; ORVIA schlägt hier nichts automatisch vor.',
-      action:stackEdit?null:'openStackEditor()',actionIcon:'plus',label:'Stack bearbeiten'});
+    html+=gmStateEmpty({icon:'db',title:'' + _uiT('ui.noch_kein_stack_angelegt') + '',
+      desc:'' + _uiT('ui.lege_feste_supplements_an_auch') + '',
+      action:stackEdit?null:'openStackEditor()',actionIcon:'plus',label:'' + _uiT('ui.stack_bearbeiten') + ''});
   }
   html+=`<div style="margin-top:10px;display:flex;gap:10px">
-    <button class="chip" onclick="stackEdit=!stackEdit;renderSupps()">${stackEdit?'Fertig ✓':'Stack bearbeiten'}</button>
-    <button class="chip" onclick="browseOpen=!browseOpen;renderBrowse()" id="browseBtn">${browseOpen?'Schließen':'+ Einmalig genommen'}</button></div>`;
+    <button class="chip" onclick="stackEdit=!stackEdit;renderSupps()">${stackEdit?'' + _uiT('ui.fertig') + '':'' + _uiT('ui.stack_bearbeiten') + ''}</button>
+    <button class="chip" onclick="browseOpen=!browseOpen;renderBrowse()" id="browseBtn">${browseOpen?'' + _uiT('ui.schliessen') + '':'' + _uiT('ui.einmalig_genommen') + ''}</button></div>`;
   if(stackEdit){
     html+=`<div class="addrow">
       <input id="addName" list="suppDatalist" placeholder="Eigenes Supplement…">
@@ -2901,7 +2907,7 @@ function addStack(){const name=v('addName').trim(),dose=v('addDose'),timing=v('a
   const st=getStack();if(!st.find(x=>x.name===name&&x.timing===timing))st.push({name,dose,timing});save();renderSupps();}
 function delStack(name,timing){DB._stack=getStack().filter(x=>!(x.name===name&&x.timing===timing));save();renderSupps();}
 function renderBrowse(){const subs=(entry(cur).subs)||[];const el=document.getElementById('subBrowse');
-  const bb=document.getElementById('browseBtn');if(bb)bb.textContent=browseOpen?'Schließen':'+ Einmalig genommen';
+  const bb=document.getElementById('browseBtn');if(bb)bb.textContent=browseOpen?'' + _uiT('ui.schliessen') + '':'' + _uiT('ui.einmalig_genommen') + '';
   el.innerHTML=browseOpen?
     Object.entries(SUB_CATS).map(([cat,items])=>`<div class="subcat">${cat}</div><div class="chips">`+
       items.map(s=>`<button type="button" class="chip gn${subs.includes(s)?' on':''}" onclick="toggleSub('${jsArg(s)}',this)">${esc(s)}</button>`).join('')+`</div>`).join(''):'';
@@ -2918,7 +2924,7 @@ function renderSuppBody(q){q=(q||'').toLowerCase();let html='';
   Object.entries(SUB_CATS).forEach(([cat,items])=>{const fil=items.filter(s=>s.toLowerCase().includes(q));if(!fil.length)return;
     html+=`<div class="scat">${cat}</div>`;
     fil.forEach(s=>{const m=vmeta((SUPP_INFO[s]||{}).v||2);html+=`<div class="suppli" onclick="openSuppDetail('${jsArg(s)}')"><span style="font-weight:600">${esc(s)}</span><span class="vb ${m.c}">${m.t}</span></div>`;});});
-  document.getElementById('suppListBody').innerHTML=html||'<p class="muted">Nichts gefunden.</p>';}
+  document.getElementById('suppListBody').innerHTML=html||'<p class="muted">' + _uiT('ui.nichts_gefunden') + '</p>';}
 function openSuppDetail(name){const i=SUPP_INFO[name]||{};const m=vmeta(i.v||2);
   document.getElementById('suppSheet').innerHTML=
    `<div class="sheethead"><button class="xbtn" onclick="openSuppList()">‹</button><button class="xbtn" onclick="closeSupp()">✕</button></div>
@@ -2945,9 +2951,9 @@ function renderEve(){const e=(entry(cur).eve)||{};
      (gmEveVisible), nicht mehr dauerhaft versteckt. */
   var done=!!(e&&e.ts);
   var head=done
-    ?'<div class="mini-note" style="margin:0 0 10px">'+icon('check','xs')+'<div><b>Heute erledigt.</b> Du kannst Werte bis Tagesende anpassen.</div></div>'
-    :'<div class="mini-note" style="margin:0 0 10px">'+icon('moon','xs')+'<div><b>Tagesabschluss.</b> 1 Minute — verbessert die Empfehlung für morgen.</div></div>';
-  document.getElementById('eveForm').innerHTML=head+(fields?_ciFormHTML(fields,e,'full'):gmStateError({icon:'alert',title:'Check-in-Modul nicht geladen.',desc:'Lade die App neu, sobald du wieder online bist.'}));
+    ?'<div class="mini-note" style="margin:0 0 10px">'+icon('check','xs')+'<div><b>' + _uiT('ui.heute_erledigt') + '</b>' + _uiT('ui.du_kannst_werte_bis_tagesende') + '</div></div>'
+    :'<div class="mini-note" style="margin:0 0 10px">'+icon('moon','xs')+'<div><b>' + _uiT('ui.tagesabschluss') + '</b>' + _uiT('ui.1_minute_verbessert_die_empfehlung') + '</div></div>';
+  document.getElementById('eveForm').innerHTML=head+(fields?_ciFormHTML(fields,e,'full'):gmStateError({icon:'alert',title:'' + _uiT('ui.check_in_modul_nicht_geladen') + '',desc:'' + _uiT('ui.lade_die_app_neu_sobald') + ''}));
   initRanges();}
 /* Wie gatherMorning: dirty-Slider-Logik auch abends — unberührte Defaults
    (Energie 6 / Schlaf-Erwartung 7 / Stimmung 7) sind keine Messwerte. */
@@ -2968,7 +2974,7 @@ function _persistEve(){try{var ev=entry(cur).eve;if(!ev)return;
   if(window.ORVIA&&ORVIA.checkinStore&&ORVIA.checkinStore.persistCheckin)
     ORVIA.checkinStore.persistCheckin(cur,'evening',{ts:ev.ts,knee:ev.knee,feel:ev.mood,energy:ev.energy,note:ev.note});}catch(e){}}
 function autoEve(){if(!document.getElementById('e_knee'))return;if(!canEditCur(true))return;entry(cur).eve=gatherEve();save();_persistEve();}
-function saveEve(){if(!canEditCur())return;entry(cur).eve=gatherEve();if(window._correctionMode&&cur!==todayStr())logCorrection('eve');save();_persistEve();toast(window._correctionMode&&cur!==todayStr()?'Korrektur gespeichert ✓':'Abend gespeichert ✓');}
+function saveEve(){if(!canEditCur())return;entry(cur).eve=gatherEve();if(window._correctionMode&&cur!==todayStr())logCorrection('eve');save();_persistEve();toast(window._correctionMode&&cur!==todayStr()?'' + _uiT('ui.korrektur_gespeichert') + '':'' + _uiT('ui.abend_gespeichert') + '');}
 
 /* ============ BANNERS ============ */
 function renderBanners(){const out=document.getElementById('banners');let html='';
@@ -2984,7 +2990,7 @@ function renderBanners(){const out=document.getElementById('banners');let html='
     html+=`<div class="banner info">${ic('sun')}<span>Morgen-Check-in fehlt noch — 2 Minuten, dann gibt's deine Ampel.</span></div>`;
   const lb=DB._lastBackup;const nDays=Object.keys(DB).filter(isDay).length;
   if(nDays>=5&&(!lb||Date.now()-lb>7*864e5))
-    html+=`<div class="banner warn2">${ic('save')}<span>${lb?'Backup älter als 7 Tage':'Noch kein Backup'} — Daten liegen nur im Browser.</span><button onclick="exportData();renderBanners()">Sichern</button></div>`;
+    html+=`<div class="banner warn2">${ic('save')}<span>${lb?'' + _uiT('ui.backup_aelter_als_7_tage') + '':'' + _uiT('ui.noch_kein_backup') + ''} — Daten liegen nur im Browser.</span><button onclick="exportData();renderBanners()">Sichern</button></div>`;
   out.innerHTML=html;}
 
 /* ============ ZENTRALE TAG-LOGIK ============ */
@@ -3010,13 +3016,13 @@ function renderDay(){if(typeof invalidateDecision==='function')invalidateDecisio
     var hn=document.getElementById('hdrName');
     if(hn)hn.textContent=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.name)?PROFILE.name:'Athlet';
     var mb=document.getElementById('modeBadge');
-    if(mb&&typeof uiDetailMode==='function'){var _m=uiDetailMode();mb.textContent=({anfaenger:'Einfache Ansicht',fortgeschritten:'Fortgeschritten',profi:'Profi-Ansicht'})[_m]||'';}
+    if(mb&&typeof uiDetailMode==='function'){var _m=uiDetailMode();mb.textContent=({anfaenger:'' + _uiT('ui.einfache_ansicht') + '',fortgeschritten:'' + _uiT('ui.fortgeschritten_') + '',profi:'Profi-Ansicht'})[_m]||'';}
     /* GM7: Geraete-Sync (Provider+last_sync) ist die kanonische Quelle dieser Zeile;
        Cloud-Sync-Status nur als klar benannter Fallback (gmApplySyncLine). */
     gmApplySyncLine();gmDeviceSyncRefresh();
   }catch(_){ }})();
   if(typeof renderCheckinCompact==='function')renderCheckinCompact();
-  document.getElementById('greet').textContent=today?(hr<11?'Guten Morgen':hr<18?'Hi':'Guten Abend'):'Ausgewählter Tag';
+  document.getElementById('greet').textContent=today?(hr<11?'' + _uiT('ui.guten_morgen') + '':hr<18?'Hi':'' + _uiT('ui.guten_abend') + ''):'' + _uiT('ui.ausgewaehlter_tag') + '';
   document.getElementById('dateLabel').textContent=fmtDate(cur);
   document.getElementById('nextDay').style.visibility=(cur>=todayStr())?'hidden':'visible';
   const tb=document.getElementById('todayBtn');if(tb)tb.style.display=today?'none':'inline-flex';
@@ -3048,8 +3054,8 @@ function applyDayLock(){
     if(anchor&&anchor.parentNode){
       var b=document.createElement('div');b.id='dayLockBanner';b.className='banner '+(window._correctionMode?'warn':'info');
       b.innerHTML=window._correctionMode
-        ?'<span>Korrektur-Modus: Änderungen an diesem abgeschlossenen Tag werden als Korrektur protokolliert. <button class="lexlink" onclick="endCorrection()">Fertig</button></span>'
-        :'<span>Dieser Tag ist abgeschlossen und kann nicht mehr bearbeitet werden. <button class="lexlink" onclick="startCorrection()">Korrektur erfassen</button></span>';
+        ?'<span>' + _uiT('ui.korrektur_modus_aenderungen_an_diesem') + '<button class="lexlink" onclick="endCorrection()">' + _uiT('ui.fertig_') + '</button></span>'
+        :'<span>' + _uiT('ui.dieser_tag_ist_abgeschlossen_und') + '<button class="lexlink" onclick="startCorrection()">' + _uiT('ui.korrektur_erfassen') + '</button></span>';
       anchor.parentNode.insertBefore(b,anchor);
     }
   }
@@ -3089,36 +3095,36 @@ function renderPhases(){
   var rd=(g&&g.raceDate)||'';
   var phases=(typeof Calc!=='undefined'&&Calc.racePhases)?Calc.racePhases(rd,todayStr()):[];
   if(!phases.length){
-    box.innerHTML='<div class="empty-card"><div class="empty-h">Phasen</div><p class="empty-p">Trainingsphasen erscheinen, sobald ein aktives Ziel ein Wettkampfdatum hat (Profil → Ziel).</p></div>';return;}
+    box.innerHTML='<div class="empty-card"><div class="empty-h">' + _uiT('ui.phasen_') + '</div><p class="empty-p">' + _uiT('ui.trainingsphasen_erscheinen_sobald_ein_aktives') + '</p></div>';return;}
   var t=todayStr();var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var d=(typeof daysTo==='function')?daysTo(rd):null;
   var past=(d!=null&&d<0);
   var segs=phases.map(function(p){var st=past?(_phState(p,t)==='now'?'done':_phState(p,t)):_phState(p,t);
-    return '<button type="button" class="phv5-seg is-'+st+'" data-ph="'+escH(p.n+'·'+(p.from||'')+'·'+(p.to||''))+'" data-state="'+st+'" onclick="openPhaseSheet(\''+escH(p.n)+'\')" aria-label="'+escH('Phase '+p.n+(st==='now'?', aktuell':st==='done'?', abgeschlossen':', kommend'))+'">'+
+    return '<button type="button" class="phv5-seg is-'+st+'" data-ph="'+escH(p.n+'·'+(p.from||'')+'·'+(p.to||''))+'" data-state="'+st+'" onclick="openPhaseSheet(\''+escH(p.n)+'\')" aria-label="'+escH('' + _uiT('ui.phase__') + ''+p.n+(st==='now'?', aktuell':st==='done'?', abgeschlossen':', kommend'))+'">'+
       '<b>'+escH(p.n)+'</b>'+(mode==='anfaenger'?'':'<span>'+escH((p.from?_phFmt(p.from)+'–':'bis ')+_phFmt(p.to))+'</span>')+'</button>';}).join('');
   var head='';
-  if(past){head='<p class="note phv5-note" style="text-align:left">Das Zieldatum ('+escH(_phFmt(rd))+') liegt '+Math.abs(d)+' Tage zurück — kein aktiver Trainingsblock. Aktualisiere dein Ziel im Profil.</p>';}
+  if(past){head='<p class="note phv5-note" style="text-align:left">Das Zieldatum ('+escH(_phFmt(rd))+') liegt '+Math.abs(d)+'' + _uiT('ui.tage_') + ' zurück — kein aktiver Trainingsblock. Aktualisiere ' + _uiT('ui.dein_ziel') + ' im Profil.</p>';}
   else if(d!=null){var now=null;for(var x=0;x<phases.length;x++)if(phases[x].on)now=phases[x];
-    head='<p class="phv5-head">'+(now?('Aktuell: <b>'+escH(now.n)+'</b> · '):'')+escH(String(d))+' Tage bis zum Ziel ('+escH(_phFmt(rd))+')</p>';}
+    head='<p class="phv5-head">'+(now?('Aktuell: <b>'+escH(now.n)+'</b> · '):'')+escH(String(d))+'' + _uiT('ui.tage_bis_zum_ziel') + ''+escH(_phFmt(rd))+')</p>';}
   var foot='';
-  if(mode==='anfaenger')foot='<p class="note phv5-note" style="text-align:left">Dein Training läuft in Phasen auf das Ziel zu. Tippe eine Phase für Details.</p>';
-  if(mode==='profi')foot='<p class="note phv5-note" style="text-align:left">Quelle: Calc.racePhases · Zieldatum aus dem aktiven Ziel (goalOf). Zeiträume kanonisch, keine UI-Berechnung.</p>';
+  if(mode==='anfaenger')foot='<p class="note phv5-note" style="text-align:left">' + _uiT('ui.dein_training_laeuft_in_phasen') + '</p>';
+  if(mode==='profi')foot='<p class="note phv5-note" style="text-align:left">' + _uiT('ui.quelle_calc_racephases_zieldatum_aus') + '</p>';
   box.innerHTML=head+'<div class="phv5-track" role="group" aria-label="Trainingsphasen bis zum Ziel">'+segs+'</div>'+foot;}
 function openPhaseSheet(name){
   var g=(typeof goalOf==='function')?goalOf():null;var rd=(g&&g.raceDate)||'';
   var phases=(typeof Calc!=='undefined'&&Calc.racePhases)?Calc.racePhases(rd,todayStr()):[];
   var p=null;for(var i=0;i<phases.length;i++)if(phases[i].n===name)p=phases[i];
-  if(!p){if(typeof oModal==='function')oModal(name,'<p class="muted" style="margin:0">Für diese Phase liegen keine Daten vor.</p>');return;}
+  if(!p){if(typeof oModal==='function')oModal(name,'<p class="muted" style="margin:0">' + _uiT('ui.fuer_diese_phase_liegen_keine') + '</p>');return;}
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var t=todayStr();var st=_phState(p,t);
-  var stTxt=st==='now'?'Aktuelle Phase':st==='done'?'Abgeschlossen':'Kommend';
+  var stTxt=st==='now'?'' + _uiT('ui.aktuelle_phase') + '':st==='done'?'' + _uiT('ui.abgeschlossen') + '':'Kommend';
   var body='<div class="rcv-sh-v">'+escH(p.n)+'</div>'+
     '<p style="margin:8px 0 0">'+escH(p.d||'')+'</p>'+
-    '<div class="rcv-sh-meta">Zeitraum: <b>'+escH((p.from?_phFmt(p.from)+' – ':'offen bis ')+_phFmt(p.to))+'</b> · Status: <b>'+escH(stTxt)+'</b></div>';
+    '<div class="rcv-sh-meta">' + _uiT('ui.zeitraum') + '<b>'+escH((p.from?_phFmt(p.from)+' – ':'offen bis ')+_phFmt(p.to))+'</b>' + _uiT('ui.status') + '<b>'+escH(stTxt)+'</b></div>';
   if(mode==='profi'){body+='<div class="rcv-sh-meta">Quelle: Calc.racePhases · Zieldatum '+escH(rd||'–')+' ('+escH((g&&g.type)||'–')+')</div>';}
-  body+='<p class="note" style="text-align:left;margin-top:10px">Phasenstruktur aus dem Wettkampfdatum — keine Wocheninhalte oder Prognosen.</p>';
+  body+='<p class="note" style="text-align:left;margin-top:10px">' + _uiT('ui.phasenstruktur_aus_dem_wettkampfdatum_keine') + '</p>';
   try{if(typeof _rcvLastFocus!=='undefined')_rcvLastFocus=document.activeElement;}catch(_){ }
-  if(typeof oModal==='function')oModal('Phase · '+p.n,body);
+  if(typeof oModal==='function')oModal('' + _uiT('ui.phase') + ''+p.n,body);
   try{var sh=document.getElementById('suppSheet');if(sh){sh.setAttribute('tabindex','-1');sh.focus();}}catch(_){ }
 }
 /* ====== E1-ENDE ====== */
@@ -3136,40 +3142,40 @@ function renderRamp(){
   var W=_wkVolData();
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   if(W.state==='unknown'){
-    box.innerHTML='<div class="empty-card"><div class="empty-h">Laufumfang</div><p class="empty-p">Wochen-km aktuell nicht bestimmbar (Aktivitätsdaten nicht verf\u00fcgbar).</p></div>';return;}
+    box.innerHTML='<div class="empty-card"><div class="empty-h">' + _uiT('ui.laufumfang') + '</div><p class="empty-p">' + _uiT('ui.wochen_km_aktuell_nicht_bestimmbar') + '</p></div>';return;}
   if(W.state==='no_target'){
-    box.innerHTML='<div class="empty-card"><div class="empty-h">Laufumfang</div><p class="empty-p">Kein Wochenziel \u2014 das Renndatum fehlt oder liegt vorbei. Ziel im Profil aktualisieren.</p>'+
-      (W.act!=null?'<p class="empty-p">Diese Woche gelaufen: <b>'+fmtDe(W.act)+' km</b></p>':'')+'</div>';return;}
+    box.innerHTML='<div class="empty-card"><div class="empty-h">' + _uiT('ui.laufumfang') + '</div><p class="empty-p">' + _uiT('ui.kein_wochenziel_das_renndatum_fehlt') + '</p>'+
+      (W.act!=null?'<p class="empty-p">' + _uiT('ui.diese_woche_gelaufen') + '<b>'+fmtDe(W.act)+' km</b></p>':'')+'</div>';return;}
   var barPct=Math.min(100,W.pct);
   var big=fmtDe(W.act)+' / '+W.eff+' km';
   var lead=mode==='anfaenger'
-    ?'Du bist bei <b>'+fmtDe(W.act)+'</b> von <b>'+W.eff+'</b> Lauf-Kilometern diese Woche.'
+    ?'Du bist bei <b>'+fmtDe(W.act)+'</b> von <b>'+W.eff+'</b>' + _uiT('ui.lauf_kilometern') + ' diese Woche.'
     :(W.over?'<b>+'+fmtDe(Math.round((W.act-W.eff)*10)/10)+' km</b> \u00fcber dem Wochenziel \u2014 ehrlich gez\u00e4hlt, Balken gedeckelt.'
       :'Noch <b>'+fmtDe(W.rest)+' km</b> offen bis zum Wochenziel.');
-  var head='<div class="wkv5-head"><span>Diese Woche \u00b7 Laufen</span><b class="wkv5-big" data-wk="'+_wkEsc(fmtDe(W.act)+'|'+W.eff+'|'+W.cal)+'">'+_wkEsc(big)+'</b></div>';
-  var bar='<div class="wkv5-bar'+(W.over?' wkv5-over':'')+'" role="img" aria-label="'+_wkEsc(fmtDe(W.act)+' von '+W.eff+' Lauf-Kilometern')+'"><i style="width:'+barPct.toFixed(0)+'%"></i></div>';
+  var head='<div class="wkv5-head"><span>' + _uiT('ui.diese_woche_laufen') + '</span><b class="wkv5-big" data-wk="'+_wkEsc(fmtDe(W.act)+'|'+W.eff+'|'+W.cal)+'">'+_wkEsc(big)+'</b></div>';
+  var bar='<div class="wkv5-bar'+(W.over?' wkv5-over':'')+'" role="img" aria-label="'+_wkEsc(fmtDe(W.act)+' von '+W.eff+'' + _uiT('ui.lauf_kilometern') + '')+'"><i style="width:'+barPct.toFixed(0)+'%"></i></div>';
   var notes='';
   if(mode!=='anfaenger'){
     if(W.deload)notes+='<p class="note wkv5-note">Kalenderziel w\u00e4re '+W.cal+' km \u2014 gedeckelt auf +10\u2009% \u00fcber deinem 3-Wochen-Maximum (Ist-Kopplung).</p>';
     var next='';for(var i2=1;i2<=3;i2++){var t2=Calc.weekKmTarget(W.d,i2);if(t2<=0)break;
-      next+='<div class="wkv5-next"><span>In '+i2+' Woche'+(i2>1?'n':'')+'</span><b>~'+t2+' km'+(Calc.weekKmTarget(W.d,i2)<Calc.weekKmTarget(W.d,i2-1)&&i2<3?' \u00b7 Entlastung':'')+'</b></div>';}
+      next+='<div class="wkv5-next"><span>In '+i2+'' + _uiT('ui.woche_') + ''+(i2>1?'n':'')+'</span><b>~'+t2+' km'+(Calc.weekKmTarget(W.d,i2)<Calc.weekKmTarget(W.d,i2-1)&&i2<3?'' + _uiT('ui.entlastung') + '':'')+'</b></div>';}
     if(next)notes+='<div class="wkv5-nextwrap">'+next+'</div>';
   }
-  if(mode==='profi')notes+='<p class="note wkv5-note">Zeitraum: '+_wkEsc(_wkVolRange())+' (lokale Zeitzone) \u00b7 Quelle: kanonische Wochenaggregation (dedupliziert, nur abgeschlossene Lauf-Einheiten) \u00b7 Ziel: weekKmTarget mit Ist-Kopplung.</p>';
-  box.innerHTML='<button type="button" class="wkv5-tap" onclick="openWeekVolumeSheet()" aria-label="Laufumfang-Details \u00f6ffnen">'+head+bar+'<p class="wkv5-lead">'+lead+'</p></button>'+notes;
+  if(mode==='profi')notes+='<p class="note wkv5-note">' + _uiT('ui.zeitraum') + ''+_wkEsc(_wkVolRange())+' (lokale Zeitzone) \u00b7 Quelle: kanonische Wochenaggregation (dedupliziert, nur abgeschlossene Lauf-' + _uiT('ui.einheiten_') + ') \u00b7 Ziel: weekKmTarget mit Ist-Kopplung.</p>';
+  box.innerHTML='<button type="button" class="wkv5-tap" onclick="openWeekVolumeSheet()" aria-label="' + _uiT('ui.laufumfang') + '-' + _uiT('ui.details_') + ' \u00f6ffnen">'+head+bar+'<p class="wkv5-lead">'+lead+'</p></button>'+notes;
 }
 function openWeekVolumeSheet(){
   var W=_wkVolData();
-  if(W.state!=='ok'){if(typeof oModal==='function')oModal('Laufumfang','<p class="muted" style="margin:0">'+(W.state==='unknown'?'Wochen-km aktuell nicht bestimmbar.':'Kein aktives Wochenziel.')+'</p>');return;}
+  if(W.state!=='ok'){if(typeof oModal==='function')oModal('' + _uiT('ui.laufumfang') + '','<p class="muted" style="margin:0">'+(W.state==='unknown'?'' + _uiT('ui.wochen_km_aktuell_nicht_bestimmbar_') + '':'' + _uiT('ui.kein_aktives_wochenziel') + '')+'</p>');return;}
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var body='<div class="rcv-sh-v" data-wk="'+_wkEsc(fmtDe(W.act)+'|'+W.eff)+'">'+_wkEsc(fmtDe(W.act)+' / '+W.eff+' km')+'</div>'+
-    '<p style="margin:8px 0 0">Lauf-Kilometer dieser Woche (Mo\u2013So) gegen dein effektives Wochenziel.</p>'+
-    '<div class="rcv-sh-meta">'+(W.over?'\u00dcber dem Ziel: <b>+'+fmtDe(Math.round((W.act-W.eff)*10)/10)+' km</b>':'Offen: <b>'+fmtDe(W.rest)+' km</b>')+
-    (W.deload?' \u00b7 Kalenderziel '+W.cal+' km, gedeckelt (Ist-Kopplung)':'')+'</div>';
-  if(mode==='profi')body+='<div class="rcv-sh-meta">Zeitraum: '+_wkEsc(_wkVolRange())+' \u00b7 Nur Laufen \u00b7 kanonische Aggregation (dedupliziert, Nutzer-Zeitzone).</div>';
-  body+='<p class="note" style="text-align:left;margin-top:10px">Richtwerte mit Entlastungswochen \u2014 bei Warnsignalen hat Erholung Vorrang.</p>';
+    '<p style="margin:8px 0 0">' + _uiT('ui.lauf_kilometer_dieser_woche_mo') + '</p>'+
+    '<div class="rcv-sh-meta">'+(W.over?'\u00dcber dem Ziel: <b>+'+fmtDe(Math.round((W.act-W.eff)*10)/10)+' km</b>':'' + _uiT('ui.offen') + ': <b>'+fmtDe(W.rest)+' km</b>')+
+    (W.deload?'' + _uiT('ui.kalenderziel') + ''+W.cal+'' + _uiT('ui.km_gedeckelt_ist_kopplung') + '':'')+'</div>';
+  if(mode==='profi')body+='<div class="rcv-sh-meta">' + _uiT('ui.zeitraum') + ''+_wkEsc(_wkVolRange())+' \u00b7 Nur Laufen \u00b7 kanonische Aggregation (dedupliziert, Nutzer-Zeitzone).</div>';
+  body+='<p class="note" style="text-align:left;margin-top:10px">' + _uiT('ui.richtwerte_mit_entlastungswochen_bei_warnsignalen') + '</p>';
   try{if(typeof _rcvLastFocus!=='undefined')_rcvLastFocus=document.activeElement;}catch(_){ }
-  if(typeof oModal==='function')oModal('Laufumfang \u00b7 Woche',body);
+  if(typeof oModal==='function')oModal('' + _uiT('ui.laufumfang_woche') + '',body);
   try{var sh=document.getElementById('suppSheet');if(sh){sh.setAttribute('tabindex','-1');sh.focus();}}catch(_){ }
 }
 /* Helfer NACH renderRamp (Function-Hoisting): so liegt alles im Quelltext-Slice
@@ -3190,7 +3196,7 @@ function _wkVolRange(){
   var mon=new Date(anc);mon.setDate(anc.getDate()-day);
   var sun=new Date(mon.getTime());sun.setDate(mon.getDate()+6);
   var f=function(dt){return dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});};
-  return 'Mo '+f(mon)+' \u2013 So '+f(sun);
+  return '' + _uiT('ui.mo') + ''+f(mon)+_uiT('ui.bis_so')+f(sun);
 }
 function _wkEsc(x){return (typeof escH==='function')?escH(x):String(x==null?'':x);}
 /* ====== E2-ENDE ====== */
@@ -3223,7 +3229,7 @@ function orviaRebuildPlan(){if(typeof PROFILE==='undefined'||!PROFILE)return;
   PROFILE.planImpact=Object.assign({},PROFILE.planImpact||{},{pending:false,userDecision:'rebuilt',updatedAt:new Date().toISOString()});
   if(typeof saveProfile==='function')saveProfile();
   if(typeof renderPlan==='function')renderPlan();
-  if(typeof toast==='function')toast('Plan neu aufgebaut ✓');}
+  if(typeof toast==='function')toast('' + _uiT('ui.plan_neu_aufgebaut') + '');}
 /* ====== E4: Wochenliste (v5-Session-Cards) — Sessions, Reihenfolge, Status und
    Prioritäten unverändert aus den bestehenden kanonischen Quellen; reine Darstellung. ====== */
 function renderWeekPlan(){
@@ -3234,14 +3240,14 @@ function renderWeekPlan(){
     if(!_pb){var _wpEl=document.getElementById('weekPlanBox')||document.getElementById('weekPlan');
       if(_wpEl&&_wpEl.parentNode){_pb=document.createElement('div');_pb.id='planRebuildBanner';_wpEl.parentNode.insertBefore(_pb,_wpEl);}}
     if(_pb){var _pend=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan&&PROFILE.planImpact&&PROFILE.planImpact.pending);
-      _pb.innerHTML=_pend?'<div class="banner warn"><span><b>Deine Konfiguration hat sich geändert.</b> Der angezeigte Plan basiert noch auf dem alten Stand.</span><button onclick="orviaRebuildPlan()">Plan neu aufbauen</button></div>':'';}}catch(e){}
+      _pb.innerHTML=_pend?'<div class="banner warn"><span><b>' + _uiT('ui.deine_konfiguration_hat_sich_geaendert') + '</b>' + _uiT('ui.der_angezeigte_plan_basiert_noch') + '</span><button onclick="orviaRebuildPlan()">' + _uiT('ui.plan_neu_aufbauen') + '</button></div>':'';}}catch(e){}
   const goal=buildGoal();
   const isRunna=(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&goalOf().raceDate);
   const baseWeek=isRunna?Calc.runnaWeek(daysTo(RACE.date)):1;
   const wk=Math.max(1,Math.min(25,baseWeek+off));
   const _rs=document.getElementById('runnaSub');if(_rs)_rs.textContent=isRunna
-    ?('ORVIA-Laufplan · Woche '+wk+'/25 — wird automatisch abgehakt, sobald du loggst.')
-    :'Dein Wochenplan — passt sich an Ziel, Trainingstage und Verlauf an.';
+    ?('' + _uiT('ui.orvia_laufplan_woche') + ''+wk+'/25 — wird automatisch abgehakt, sobald du loggst.')
+    :'' + _uiT('ui.dein_wochenplan_passt_sich_an') + '';
   const now=new Date();const day=(now.getDay()+6)%7;const mon=new Date(now);mon.setDate(now.getDate()-day+off*7);
   const sun=new Date(mon);sun.setDate(mon.getDate()+6);
   // Konkrete Pace-Zahlen nur bei HM (dort ist die Riegel-/HM_KM-Mathematik gültig).
@@ -3252,7 +3258,7 @@ function renderWeekPlan(){
     const ref=_pref;const rp=ref*60/Calc.HM_KM;
     pd={iv:fmtPace(rp*0.90)+'–'+fmtPace(rp*0.94)+' /km',ez:fmtPace(rp*1.18)+'–'+fmtPace(rp*1.30)+' /km',lr:fmtPace(rp*1.10)+'–'+fmtPace(rp*1.18)+' /km'};
   }else{   /* kein HM-Ziel — oder (4b) HM ohne Zielzeit und ohne Prognose: Cues statt erfundener Paces */
-    pd={iv:'zügig, kontrolliert',ez:'locker · Z2 (Gespräch möglich)',lr:'gleichmäßig locker'};
+    pd={iv:'' + _uiT('ui.zuegig_kontrolliert') + '',ez:'' + _uiT('ui.locker_z2_gespraech_moeglich') + '',lr:'' + _uiT('ui.gleichmaessig_locker') + ''};
   }
   const lk=lrKm(wk);
   // I3 Part B: Plan-Ist-Auflösung der angezeigten Woche über den kanonischen Resolver (SSOT).
@@ -3263,29 +3269,29 @@ function renderWeekPlan(){
     const dayInstance=(e&&e._adaptItem&&e._adaptItem.dayIndex===i)?e._adaptItem.item:null;
     const renderItems=dayInstance?[dayInstance]:activeWeekPlan()[i];
     const items=renderItems.length?renderItems.map((it,idx)=>{const det=pd[it.d]||it.d;var _occId=(it&&it.id)?('po:'+k+':'+it.id):null;var _paR=(_occId&&_paByOcc[_occId])?_paByOcc[_occId]:null;var _isDone=(_paR&&_paR.state==='completed'); // I3b.1 fail-closed: kein Rückfall auf Tag+Sport-done
-      let lbl=it.l; if(it.l==='Long Run'&&lk)lbl='Long Run · '+lk+' km';
+      let lbl=it.l; if(it.l==='Long Run'&&lk)lbl='' + _uiT('ui.long_run') + ''+lk+' km';
       const pri=(typeof unitPriority==='function')?unitPriority(it):'';
       // „angepasst“-Badge NUR für die echte Tagesinstanz — nie aus der wiederkehrenden Struktur.
       const isAdapt=!!dayInstance&&!!it.adaptiveReplacement;
       /* B-01/B-09: Lesepfad-Anpassungen (Zielphase, Krankheit/Verletzung/verpasst) sichtbar
          machen — dieselbe Badge-Klasse, anderer Text; nichts davon ist gespeichert. */
-      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">Renntag</span> ':(it.absenceAdjusted?'<span class="pl-adapt">angepasst · Ausfall</span> ':(it.phaseAdjusted?'<span class="pl-adapt">angepasst · Phase</span> ':'')));
+      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">' + _uiT('ui.renntag') + '</span> ':(it.absenceAdjusted?'<span class="pl-adapt">' + _uiT('ui.angepasst_ausfall') + '</span> ':(it.phaseAdjusted?'<span class="pl-adapt">' + _uiT('ui.angepasst_phase') + '</span> ':'')));
       // Anfänger: Titel + wichtigste vorhandene Angabe; Fortgeschritten/Profi: + Sportart + Prioritätsbadge.
       const sub=(mode==='anfaenger')?(det?esc(det):''):(esc(it.t)+(det?' · '+esc(det):''));
-      return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'✓ Erledigt':'›'}</span></button>`;
+      return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'' + _uiT('ui.erledigt') + '':'›'}</span></button>`;
     }).join('')
     :(function(){var _s5=(typeof gmDayStateFor==='function')?gmDayStateFor(i,(function(){try{return (window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){return null;}})()):'rest';
-      return _s5==='rest'?'<div class="sess5-rest"><span aria-hidden="true">☾</span> Ruhetag</div>'
-        :_s5==='unavailable'?'<div class="sess5-rest"><span aria-hidden="true">–</span> Nicht verfügbar</div>'
-        :'<div class="sess5-rest"><span aria-hidden="true">·</span> Frei</div>';})();
+      return _s5==='rest'?'<div class="sess5-rest"><span aria-hidden="true">☾</span>' + _uiT('ui.ruhetag') + '</div>'
+        :_s5==='unavailable'?'<div class="sess5-rest"><span aria-hidden="true">–</span>' + _uiT('ui.nicht_verfuegbar') + '</div>'
+        :'<div class="sess5-rest"><span aria-hidden="true">·</span>' + _uiT('ui.frei') + '</div>';})();
     const pz=(typeof pauseFor==='function')?pauseFor(k):null;
-    html+=`<div class="pday${isToday?' today':''}${pz?' paused':''}"><div class="pd">${DAYNAMES[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}${isToday?' · HEUTE':''}${pz?' <span class="pd-pause">'+esc(pz.reason||'Pause')+'</span>':''}</div>${items}</div>`;}
+    html+=`<div class="pday${isToday?' today':''}${pz?' paused':''}"><div class="pd">${DAYNAMES[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}${isToday?'' + _uiT('ui.heute') + '':''}${pz?' <span class="pd-pause">'+esc(pz.reason||'Pause')+'</span>':''}</div>${items}</div>`;}
   const fmt=function(dt){return dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});};
-  const nav='<div class="pweek-nav"><button class="pwk-arw" onclick="shiftPlanWeek(-1)"'+(isRunna&&wk<=1?' disabled':'')+' aria-label="vorige Woche">‹</button>'+
-    '<div class="pwk-mid"><span class="pwk-w">'+(isRunna?('Woche '+wk+' / 25'):'Woche')+'</span><span class="pwk-r">'+fmt(mon)+'–'+fmt(sun)+'</span></div>'+
-    '<button class="pwk-arw" onclick="shiftPlanWeek(1)"'+(isRunna&&wk>=25?' disabled':'')+' aria-label="nächste Woche">›</button></div>'+
-    (off!==0?'<button class="pwk-today" onclick="planWeekToday()">↑ Zur aktuellen Woche</button>':'');
-  const meta=(mode==='profi')?'<p class="sess5-meta">Quelle: Wochenplan (Profil/Generator) · Erledigt-Abgleich: kanonischer Plan-Ist-Resolver (fail-closed) · Prioritäten A/B/C aus dem bestehenden Einheiten-Helfer.</p>':'';
+  const nav='<div class="pweek-nav"><button class="pwk-arw" onclick="shiftPlanWeek(-1)"'+(isRunna&&wk<=1?' disabled':'')+' aria-label="' + _uiT('ui.vorige_woche') + '">‹</button>'+
+    '<div class="pwk-mid"><span class="pwk-w">'+(isRunna?('' + _uiT('ui.woche__') + ''+wk+' / 25'):'Woche')+'</span><span class="pwk-r">'+fmt(mon)+'–'+fmt(sun)+'</span></div>'+
+    '<button class="pwk-arw" onclick="shiftPlanWeek(1)"'+(isRunna&&wk>=25?' disabled':'')+' aria-label="' + _uiT('ui.naechste_woche_') + '">›</button></div>'+
+    (off!==0?'<button class="pwk-today" onclick="planWeekToday()">' + _uiT('ui.zur_aktuellen_woche') + '</button>':'');
+  const meta=(mode==='profi')?'<p class="sess5-meta">' + _uiT('ui.quelle_wochenplan_profil_generator_erledigt') + '</p>':'';
   document.getElementById('weekPlanBox').innerHTML=nav+html+meta;
   /* Escape/Rückfokus: Wiederverwendung des vorhandenen Sheet-Vertrags — GLEICHER Guard wie E3,
      dadurch maximal EIN globaler Handler. Zentrales Modal-Cleanup in oModal: spätere Aufgabe. */
@@ -3318,30 +3324,30 @@ function planVariants(){
 }
 function renderPlanVariants(){
   var el=document.getElementById('planVariantsBox');if(!el)return;
-  var v=planVariants();var dn=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var v=planVariants();var dn=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
   var aList=v.A.map(function(x){return dn[x.di]+' '+x.it.l;}).join(', ')||'—';
   el.innerHTML='<div class="pv-grid">'+
-    '<div class="pv"><span class="pv-h">Ideal</span><b>'+v.all.length+'</b><span class="pv-s">alle Einheiten</span></div>'+
-    '<div class="pv"><span class="pv-h">Realistisch</span><b>'+v.AB.length+'</b><span class="pv-s">A + B</span></div>'+
-    '<div class="pv"><span class="pv-h">Notfall</span><b>'+v.A.length+'</b><span class="pv-s">nur A</span></div></div>'+
-    '<div class="pv-must"><b>Pflicht (A):</b> '+esc(aList)+'</div>'+
-    '<p class="note" style="text-align:left;margin-top:8px">Wenig Zeit oder Recovery? Zuerst C streichen, dann B — die A-Einheiten halten Fortschritt und Routine.</p>';
+    '<div class="pv"><span class="pv-h">' + _uiT('ui.ideal') + '</span><b>'+v.all.length+'</b><span class="pv-s">' + _uiT('ui.alle_einheiten') + '</span></div>'+
+    '<div class="pv"><span class="pv-h">' + _uiT('ui.realistisch') + '</span><b>'+v.AB.length+'</b><span class="pv-s">' + _uiT('ui.a_b') + '</span></div>'+
+    '<div class="pv"><span class="pv-h">' + _uiT('ui.notfall') + '</span><b>'+v.A.length+'</b><span class="pv-s">' + _uiT('ui.nur_a') + '</span></div></div>'+
+    '<div class="pv-must"><b>' + _uiT('ui.pflicht_a') + '</b> '+esc(aList)+'</div>'+
+    '<p class="note" style="text-align:left;margin-top:8px">' + _uiT('ui.wenig_zeit_oder_recovery_zuerst') + '</p>';
 }
 function planQualityChecks(){
   var warns=[];var g=(typeof goalOf==='function')?goalOf():{};var lvl=(typeof userLevel==='function')?userLevel():'fortgeschritten';
   var w=activeWeekPlan();var sessDays=0;
   w.forEach(function(day){if(day.length)sessDays++;});
   var restDays=7-sessDays;
-  if(restDays===0)warns.push(['Kein fester Ruhetag','Plane mindestens 1 Ruhetag/Woche ein — Anpassung passiert in der Erholung.']);
-  if(lvl==='anfaenger'&&sessDays>=6)warns.push(['Viele Trainingstage für Anfänger','Reduziere auf 3–4 Tage, bis Konsistenz und Belastbarkeit stehen.']);
+  if(restDays===0)warns.push(['' + _uiT('ui.kein_fester_ruhetag') + '','' + _uiT('ui.plane_mindestens_1_ruhetag_woche') + '']);
+  if(lvl==='anfaenger'&&sessDays>=6)warns.push(['' + _uiT('ui.viele_trainingstage_fuer_anfaenger') + '','' + _uiT('ui.reduziere_auf_3_4_tage') + '']);
   var bb=false;for(var i=0;i<7;i++){if((w[i]||[]).some(isHardUnit)&&(w[(i+1)%7]||[]).some(isHardUnit))bb=true;}
-  if(bb)warns.push(['Harte Tage direkt hintereinander','Zwischen zwei harte Einheiten einen leichten Tag oder Ruhetag legen.']);
+  if(bb)warns.push(['' + _uiT('ui.harte_tage_direkt_hintereinander') + '','' + _uiT('ui.zwischen_zwei_harte_einheiten_einen') + '']);
   var dRace=g.raceDate?daysTo(g.raceDate):null;
-  if(g.type==='marathon'&&lvl==='anfaenger'&&dRace!=null&&dRace<84)warns.push(['Marathon-Ziel sehr ambitioniert','Als Anfänger braucht ein Marathon i. d. R. 4–6 Monate Aufbau — Zwischenziel (10 km/HM) erwägen.']);
-  if(gcat(g.type)==='half_marathon'&&lvl==='anfaenger'&&dRace!=null&&dRace<42)warns.push(['HM-Ziel knapp für Anfänger','Unter 6 Wochen ist riskant — Umfang vorsichtig steigern oder Datum schieben.']);
+  if(g.type==='marathon'&&lvl==='anfaenger'&&dRace!=null&&dRace<84)warns.push(['' + _uiT('ui.marathon_ziel_sehr_ambitioniert') + '','' + _uiT('ui.als_anfaenger_braucht_ein_marathon') + '']);
+  if(gcat(g.type)==='half_marathon'&&lvl==='anfaenger'&&dRace!=null&&dRace<42)warns.push(['' + _uiT('ui.hm_ziel_knapp_fuer_anfaenger') + '','' + _uiT('ui.unter_6_wochen_ist_riskant') + '']);
   var e=DB[todayStr()];var knee=(e&&e.morning&&e.morning.knee!=null)?e.morning.knee:0;
   var u=(typeof todayPrimaryUnit==='function')?todayPrimaryUnit():null;
-  if(knee>=4&&u&&isHardUnit(u))warns.push(['Knie '+knee+'/10 und harte Einheit geplant','Heute ersetzen (Easy/Bike) — siehe Tagesanpassung auf „Heute".']);
+  if(knee>=4&&u&&isHardUnit(u))warns.push(['' + _uiT('ui.knie') + ''+knee+'' + _uiT('ui.10_und_harte_einheit_geplant') + '','' + _uiT('ui.heute_ersetzen_easy_bike_siehe') + '']);
   var rating=warns.length===0?{l:'gut',c:'g'}:warns.length<=2?{l:'moderat',c:'y'}:{l:'riskant',c:'r'};
   return {rating:rating,warns:warns};
 }
@@ -3351,21 +3357,21 @@ function renderPlanQuality(){
   var el=document.getElementById('planQualityBox');if(!el)return;
   var q=planQualityChecks();var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var n=q.warns.length;
-  var head='<button type="button" class="pqv5-head" data-pq-rating="'+_pqEsc(q.rating.c)+'" data-pq-warns="'+n+'" onclick="openPlanQualitySheet()" aria-haspopup="dialog" aria-label="Planqualität-Details öffnen">'+_pqChip(q.rating)+'<span class="pqv5-more">Details ›</span></button>';
+  var head='<button type="button" class="pqv5-head" data-pq-rating="'+_pqEsc(q.rating.c)+'" data-pq-warns="'+n+'" onclick="openPlanQualitySheet()" aria-haspopup="dialog" aria-label="Planqualität-' + _uiT('ui.details_') + ' öffnen">'+_pqChip(q.rating)+'<span class="pqv5-more">' + _uiT('ui.details') + '</span></button>';
   var lead=n===0
-    ?'<p class="pqv5-lead">'+(mode==='anfaenger'?'Keine Auffälligkeiten — dein Wochenplan ist ausgewogen aufgebaut.':'Keine Auffälligkeiten in den Planprüfungen.')+'</p>'
-    :'<p class="pqv5-lead">'+n+(n===1?' Auffälligkeit':' Auffälligkeiten')+(mode==='anfaenger'?' — die Hinweise zeigen dir direkt, was du ändern kannst.':' in den Planprüfungen.')+'</p>';
-  var meta=mode==='profi'?'<p class="pqv5-meta">Datenbasis: Wochenplanstruktur, Zielkonfiguration, Level, heutiges Check-in · Status und Hinweise unverändert aus der ORVIA-Planprüfung.</p>':'';
+    ?'<p class="pqv5-lead">'+(mode==='anfaenger'?'' + _uiT('ui.keine_auffaelligkeiten_dein_wochenplan_ist') + '':'' + _uiT('ui.keine_auffaelligkeiten_in_den_planpruefungen') + '')+'</p>'
+    :'<p class="pqv5-lead">'+n+(n===1?'' + _uiT('ui.auffaelligkeit') + '':'' + _uiT('ui.auffaelligkeiten') + '')+(mode==='anfaenger'?'' + _uiT('ui.die_hinweise_zeigen_dir_direkt') + '':'' + _uiT('ui.in_den_planpruefungen') + '')+'</p>';
+  var meta=mode==='profi'?'<p class="pqv5-meta">' + _uiT('ui.datenbasis_wochenplanstruktur_zielkonfiguration_level_heutiges') + '</p>':'';
   el.innerHTML=head+lead+_pqWarnList(q)+meta;
 }
 function openPlanQualitySheet(){
   var q=planQualityChecks();var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var body='<div class="rcv-sh-v" data-pq-rating="'+_pqEsc(q.rating.c)+'" data-pq-warns="'+q.warns.length+'">'+_pqChip(q.rating)+'</div>'+
-    (q.warns.length?_pqWarnList(q):'<p style="margin:8px 0 0">Keine Auffälligkeiten in den Planprüfungen.</p>')+
-    '<div class="rcv-sh-meta">Bewertung und Hinweise stammen unverändert aus der ORVIA-Planprüfung — hier wird nichts automatisch am Plan geändert.</div>';
-  if(mode==='profi')body+='<div class="rcv-sh-meta">Datenbasis: Wochenplanstruktur, Zielkonfiguration, Level, heutiges Check-in.</div>';
+    (q.warns.length?_pqWarnList(q):'<p style="margin:8px 0 0">' + _uiT('ui.keine_auffaelligkeiten_in_den_planpruefungen') + '</p>')+
+    '<div class="rcv-sh-meta">' + _uiT('ui.bewertung_und_hinweise_stammen_unveraendert') + '</div>';
+  if(mode==='profi')body+='<div class="rcv-sh-meta">' + _uiT('ui.datenbasis_wochenplanstruktur_zielkonfiguration_level_heutiges_') + '</div>';
   try{_pqLastFocus=document.activeElement;if(typeof _rcvLastFocus!=='undefined')_rcvLastFocus=document.activeElement;}catch(_){ }
-  if(typeof oModal==='function')oModal('Planqualität & Sicherheit',body);
+  if(typeof oModal==='function')oModal('' + _uiT('ui.planqualitaet_sicherheit') + '',body);
   try{var sh=document.getElementById('suppSheet');if(sh){sh.setAttribute('tabindex','-1');sh.focus();}}catch(_){ }
   /* A11y: Escape schließt, Rückfokus zum Auslöser — idempotent, unabhängig davon,
      ob ein anderes Sheet die globale Bindung schon gesetzt hat. */
@@ -3502,7 +3508,7 @@ function gmPlannedLinesHTML(item){
   }
   var html='<ul class="sc-plex">';
   for(var i=0;i<lines.length;i++){
-    html+='<li'+(lines[i].resolved?'':' class="sc-plex-unknown" title="Diese Übung steht nicht in der Bibliothek — die Kennung wird unverändert angezeigt."')+'>'+
+    html+='<li'+(lines[i].resolved?'':' class="sc-plex-unknown" title="Diese Übung steht ' + _uiT('ui.nicht_in_der_bibliothek') + ' — die Kennung wird unverändert angezeigt."')+'>'+
       (lines[i].resolved?'':'⚠ ')+gmEsc(lines[i].text)+'</li>';
   }
   return html+'</ul>'+gmMuskelHinweisHTML(item);
@@ -3550,7 +3556,7 @@ function gmMuskelHinweisHTML(item){
        Vermerk wie die nicht zuordenbaren — fuer den Nutzer ist es dieselbe
        Frage: was ist hier nicht mitgezaehlt worden? */
     if(offen>0){
-      h[0].nichtGezaehlt=(h[0].nichtGezaehlt||[]).concat([{name:offen+' Übung(en) ohne Bibliothekseintrag'}]);
+      h[0].nichtGezaehlt=(h[0].nichtGezaehlt||[]).concat([{name:offen+'' + _uiT('ui.uebung_en_ohne_bibliothekseintrag') + ''}]);
     }
     var z=FMT.hinweisZeilen(h);
     if(!z||!z.length)return '';
@@ -3656,10 +3662,10 @@ var _planEdit=null;
 function openPlanEditor(){
   _planEdit=JSON.parse(JSON.stringify(activeWeekPlan()));
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
-  wrap.innerHTML='<div class="orvia-modal goal-modal plan-edit"><h3>Wochenplan bearbeiten</h3><div class="pe-scroll" id="pe_scroll"></div>'+
-    '<button class="btn" onclick="savePlanEdit()">Speichern</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="resetPlan()">Auf Standard zurücksetzen</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="closePlanEditor()">Abbrechen</button></div>';
+  wrap.innerHTML='<div class="orvia-modal goal-modal plan-edit"><h3>' + _uiT('ui.wochenplan_bearbeiten') + '</h3><div class="pe-scroll" id="pe_scroll"></div>'+
+    '<button class="btn" onclick="savePlanEdit()">' + _uiT('ui.speichern') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="resetPlan()">' + _uiT('ui.auf_standard_zuruecksetzen') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="closePlanEditor()">' + _uiT('ui.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);window._planEd=wrap;wrap.addEventListener('click',function(ev){if(ev.target===wrap)closePlanEditor();});
   /* v8-323: Panelzustand gehoert nicht ueber Editor-Sitzungen hinweg erhalten. */
   _peOpen=null;_peErr=null;
@@ -3675,13 +3681,13 @@ function openPlanEditor(){
 var _peOpen=null;   /* {di,ii} — geoeffnetes Uebungspanel */
 var _peErr=null;    /* {di,ii,msg} — sichtbarer Fehler statt stiller Ablehnung */
 var PE_ERR_TEXT={
-  missing:'Pflichtangabe fehlt', not_integer:'nur ganze Zahlen', not_finite:'keine Zahl',
-  out_of_range:'ausserhalb des zulaessigen Bereichs', reversed_range:'Von-Wert groesser als Bis-Wert',
-  too_many:'Obergrenze erreicht', not_object:'unbrauchbare Eingabe'
+  missing:'' + _uiT('ui.pflichtangabe_fehlt') + '', not_integer:'' + _uiT('ui.nur_ganze_zahlen') + '', not_finite:'' + _uiT('ui.keine_zahl_') + '',
+  out_of_range:'' + _uiT('ui.ausserhalb_des_zulaessigen_bereichs') + '', reversed_range:'' + _uiT('ui.von_wert_groesser_als_bis') + '',
+  too_many:'' + _uiT('ui.obergrenze_erreicht') + '', not_object:'' + _uiT('ui.unbrauchbare_eingabe') + ''
 };
-var PE_FIELD_DE={sets:'Sätze',minReps:'Wdh. von',maxReps:'Wdh. bis',targetWeightKg:'Zielgewicht',targetRir:'RIR',restSeconds:'Pause',exerciseId:'Übung'};
+var PE_FIELD_DE={sets:'' + _uiT('ui.saetze__') + '',minReps:'' + _uiT('ui.wdh_von') + '',maxReps:'' + _uiT('ui.wdh_bis') + '',targetWeightKg:'Zielgewicht',targetRir:'RIR',restSeconds:'Pause',exerciseId:'Übung'};
 function _peErrText(errs){
-  if(!errs||!errs.length)return 'Eingabe abgelehnt.';
+  if(!errs||!errs.length)return '' + _uiT('ui.eingabe_abgelehnt') + '';
   var e=errs[0];
   return (PE_FIELD_DE[e.field]||e.field||'Eingabe')+': '+(PE_ERR_TEXT[e.code]||e.code);
 }
@@ -3712,10 +3718,10 @@ function peAddEx(di,ii){
   var sel=document.getElementById('pe_ex_sel_'+di+'_'+ii);
   var setsEl=document.getElementById('pe_ex_sets_'+di+'_'+ii);
   var id=sel&&sel.value;
-  if(!id){_peErr={di:di,ii:ii,msg:'Bitte zuerst eine Übung auswählen.'};return renderPlanEditor();}
+  if(!id){_peErr={di:di,ii:ii,msg:'' + _uiT('ui.bitte_zuerst_eine_uebung_auswaehlen') + ''};return renderPlanEditor();}
   var sets=_peNum(setsEl);
   if(sets===null||(typeof sets==='number'&&isNaN(sets))){
-    _peErr={di:di,ii:ii,msg:'Sätze: Pflichtangabe fehlt'};return renderPlanEditor();
+    _peErr={di:di,ii:ii,msg:'' + _uiT('ui.saetze_pflichtangabe_fehlt') + ''};return renderPlanEditor();
   }
   var r=SP.insertExercise(_peList(di,ii),{exerciseId:id,sets:sets});
   if(!r.ok){_peErr={di:di,ii:ii,msg:_peErrText(r.errors)};return renderPlanEditor();}
@@ -3737,7 +3743,7 @@ function peUpdateEx(di,ii,idx,field,el){
   var SP=_peSP();if(!SP)return;
   var v=_peNum(el);
   if(typeof v==='number'&&isNaN(v)){
-    _peErr={di:di,ii:ii,msg:(PE_FIELD_DE[field]||field)+': keine Zahl'};return renderPlanEditor();
+    _peErr={di:di,ii:ii,msg:(PE_FIELD_DE[field]||field)+'' + _uiT('ui.keine_zahl') + ''};return renderPlanEditor();
   }
   var patch={};patch[field]=v;
   var r=SP.updateExerciseAt(_peList(di,ii),idx,patch);
@@ -3763,35 +3769,35 @@ function peExPanelHTML(di,ii){
     var idp=di+'_'+ii+'_'+i;
     rows+='<div class="pe-exrow">'+
       '<div class="pe-exname'+(nm?'':' pe-exname-unknown')+'">'+(nm?'':'⚠ ')+esc(nm||e.exerciseId)+
-        (nm?'':'<span class="pe-exhint">nicht in der Bibliothek</span>')+'</div>'+
+        (nm?'':'<span class="pe-exhint">' + _uiT('ui.nicht_in_der_bibliothek') + '</span>')+'</div>'+
       '<div class="pe-exfields">'+
-        '<label>Sätze<input type="number" inputmode="numeric" min="1" max="20" id="pe_f_sets_'+idp+'" value="'+e.sets+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'sets\',this)"></label>'+
-        '<label>Wdh. von<input type="number" inputmode="numeric" min="1" max="100" value="'+(e.minReps==null?'':e.minReps)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'minReps\',this)"></label>'+
+        '<label>' + _uiT('ui.saetze__') + '<input type="number" inputmode="numeric" min="1" max="20" id="pe_f_sets_'+idp+'" value="'+e.sets+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'sets\',this)"></label>'+
+        '<label>' + _uiT('ui.wdh_von') + '<input type="number" inputmode="numeric" min="1" max="100" value="'+(e.minReps==null?'':e.minReps)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'minReps\',this)"></label>'+
         '<label>bis<input type="number" inputmode="numeric" min="1" max="100" value="'+(e.maxReps==null?'':e.maxReps)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'maxReps\',this)"></label>'+
         '<label>kg<input type="number" inputmode="decimal" step="0.5" min="0" max="500" value="'+(e.targetWeightKg==null?'':e.targetWeightKg)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'targetWeightKg\',this)"></label>'+
-        '<label>Pause s<input type="number" inputmode="numeric" min="0" max="900" value="'+(e.restSeconds==null?'':e.restSeconds)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'restSeconds\',this)"></label>'+
+        '<label>' + _uiT('ui.pause_s') + '<input type="number" inputmode="numeric" min="0" max="900" value="'+(e.restSeconds==null?'':e.restSeconds)+'" onchange="peUpdateEx('+di+','+ii+','+i+',\'restSeconds\',this)"></label>'+
       '</div>'+
       '<div class="pe-exact">'+
         '<button type="button" onclick="peMoveEx('+di+','+ii+','+i+',-1)" aria-label="Nach oben"'+(i===0?' disabled':'')+'>↑</button>'+
         '<button type="button" onclick="peMoveEx('+di+','+ii+','+i+',1)" aria-label="Nach unten"'+(i===list.length-1?' disabled':'')+'>↓</button>'+
-        '<button type="button" onclick="peRemoveEx('+di+','+ii+','+i+')" aria-label="Übung entfernen">✕</button>'+
+        '<button type="button" onclick="peRemoveEx('+di+','+ii+','+i+')" aria-label="' + _uiT('ui.uebung_entfernen') + '">✕</button>'+
       '</div></div>';
   }
-  if(!rows)rows='<p class="pe-empty">Noch keine Übungen geplant.</p>';
+  if(!rows)rows='<p class="pe-empty">' + _uiT('ui.noch_keine_uebungen_geplant') + '</p>';
   var opts=peExOptions();
   var add;
   if(!opts){
-    add='<p class="pe-exwarn">Die Übungsbibliothek ist gerade nicht verfügbar (offline oder noch nicht geladen). Übungen lassen sich erst hinzufügen, wenn sie da ist — es wird keine Ersatzliste erfunden.</p>';
+    add='<p class="pe-exwarn">' + _uiT('ui.die_uebungsbibliothek_ist_gerade_nicht') + '</p>';
   }else{
-    var os='<option value="">Übung wählen …</option>';
+    var os='<option value="">' + _uiT('ui.uebung_waehlen') + '</option>';
     for(var k=0;k<opts.length;k++)os+='<option value="'+esc(opts[k].id)+'">'+esc(opts[k].name)+'</option>';
     add='<div class="pe-exadd"><select id="pe_ex_sel_'+di+'_'+ii+'">'+os+'</select>'+
-      '<input type="number" inputmode="numeric" min="1" max="20" id="pe_ex_sets_'+di+'_'+ii+'" value="3" aria-label="Sätze">'+
-      '<button type="button" class="btn sec" onclick="peAddEx('+di+','+ii+')">Hinzufügen</button></div>';
+      '<input type="number" inputmode="numeric" min="1" max="20" id="pe_ex_sets_'+di+'_'+ii+'" value="3" aria-label="' + _uiT('ui.saetze__') + '">'+
+      '<button type="button" class="btn sec" onclick="peAddEx('+di+','+ii+')">' + _uiT('ui.hinzufuegen') + '</button></div>';
   }
   var err=(_peErr&&_peErr.di===di&&_peErr.ii===ii)?'<p class="pe-exerr" role="alert">'+esc(_peErr.msg)+'</p>':'';
   var est=SP.estimateDurationMin(list);
-  var meta=list.length?'<p class="pe-exmeta">'+list.length+' Übung'+(list.length===1?'':'en')+(est?' · geschätzt '+est+' min':'')+'</p>':'';
+  var meta=list.length?'<p class="pe-exmeta">'+list.length+'' + _uiT('ui.uebung') + ''+(list.length===1?'':'en')+(est?'' + _uiT('ui.geschaetzt') + ''+est+' min':'')+'</p>':'';
   return '<div class="pe-expanel">'+rows+meta+err+add+'</div>';
 }
 function renderPlanEditor(){
@@ -3806,12 +3812,12 @@ function renderPlanEditor(){
       if(SP&&SP.isStrengthItem(it)){
         var n=SP.readPlanned(it).length;
         var open=!!(_peOpen&&_peOpen.di===di&&_peOpen.ii===ii);
-        chip+='<button type="button" class="pe-exbtn'+(open?' on':'')+'" onclick="peToggleEx('+di+','+ii+')" aria-expanded="'+(open?'true':'false')+'">Übungen ('+n+')</button>';
+        chip+='<button type="button" class="pe-exbtn'+(open?' on':'')+'" onclick="peToggleEx('+di+','+ii+')" aria-expanded="'+(open?'true':'false')+'' + _uiT('ui.uebungen') + ''+n+')</button>';
       }
-      chip+='<button type="button" onclick="removePlanItem('+di+','+ii+')" aria-label="Entfernen">✕</button></span>';
+      chip+='<button type="button" onclick="removePlanItem('+di+','+ii+')" aria-label="' + _uiT('ui.entfernen') + '">✕</button></span>';
       if(SP&&SP.isStrengthItem(it)&&_peOpen&&_peOpen.di===di&&_peOpen.ii===ii)chip+=peExPanelHTML(di,ii);
       return chip;
-    }).join(''):'<span class="pe-empty">Ruhetag</span>';
+    }).join(''):'<span class="pe-empty">' + _uiT('ui.ruhetag_') + '</span>';
     return '<div class="pe-day"><div class="pe-dh">'+DAYNAMES[di]+'</div><div class="pe-items">'+items+'</div>'+
       '<div class="pe-add"><select class="pe-sel" id="pe_sel_'+di+'">'+opts+'</select><button type="button" class="btn sec" onclick="addPlanItem('+di+')">+</button></div></div>';
   }).join('');
@@ -3832,10 +3838,10 @@ function savePlanEdit(){
      unveraenderter Legacy-Pfad. */
   if(typeof gmCanonPlanOn==='function'&&gmCanonPlanOn()&&_gmCanonPlan.plan&&typeof gmCanonPlanSaveEdit==='function'&&gmCanonPlanSaveEdit(JSON.parse(JSON.stringify(_planEdit)))){
     closePlanEditor();renderWeekPlan();try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }
-    if(typeof toast==='function')toast('Wochenplan gespeichert ✓ (kanonisch)');return;
+    if(typeof toast==='function')toast('' + _uiT('ui.wochenplan_gespeichert_kanonisch') + '');return;
   }
-  if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.weekPlan=JSON.parse(JSON.stringify(_planEdit));_planMeta('manual_edit');if(typeof saveProfile==='function')saveProfile();}closePlanEditor();renderWeekPlan();try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }if(typeof toast==='function')toast('Wochenplan gespeichert ✓');}
-function resetPlan(){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.weekPlan=null;PROFILE._planUndo=null;_planMeta('reset');if(PROFILE.planImpact)PROFILE.planImpact.pending=false;if(typeof saveProfile==='function')saveProfile();}closePlanEditor();renderWeekPlan();try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }if(typeof toast==='function')toast('Plan neu aufgebaut — aus deiner aktuellen Konfiguration');}
+  if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.weekPlan=JSON.parse(JSON.stringify(_planEdit));_planMeta('manual_edit');if(typeof saveProfile==='function')saveProfile();}closePlanEditor();renderWeekPlan();try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }if(typeof toast==='function')toast('' + _uiT('ui.wochenplan_gespeichert') + '');}
+function resetPlan(){if(typeof PROFILE!=='undefined'&&PROFILE){PROFILE.weekPlan=null;PROFILE._planUndo=null;_planMeta('reset');if(PROFILE.planImpact)PROFILE.planImpact.pending=false;if(typeof saveProfile==='function')saveProfile();}closePlanEditor();renderWeekPlan();try{if(typeof renderPlan==='function')renderPlan();}catch(_){ }if(typeof toast==='function')toast('' + _uiT('ui.plan_neu_aufgebaut_aus_deiner') + '');}
 function closePlanEditor(){if(window._planEd){try{window._planEd.remove();}catch(e){}window._planEd=null;}}
 /* ---- Pause / Urlaub ---- */
 function pauseFor(dateStr){var ps=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.pauses)||[];for(var i=0;i<ps.length;i++){if(dateStr>=ps[i].from&&dateStr<=ps[i].to)return ps[i];}return null;}
@@ -3844,7 +3850,7 @@ function renderPauseBanner(){
   var p=pauseFor(cur);
   if(!p){el.innerHTML='';el.style.display='none';return;}
   el.style.display='';
-  el.innerHTML='<div class="pause-banner"><div><b>Pause aktiv · '+esc(p.reason||'Pause')+'</b><span>bis '+(typeof fmtDate==='function'?fmtDate(p.to):p.to)+' — kein Trainingsdruck, Erholung zählt. Logge nur, was du wirklich machst.</span></div></div>';
+  el.innerHTML='<div class="pause-banner"><div><b>' + _uiT('ui.pause_aktiv') + ' · '+esc(p.reason||'Pause')+'</b><span>bis '+(typeof fmtDate==='function'?fmtDate(p.to):p.to)+' — kein Trainingsdruck, ' + _uiT('ui.erholung_') + ' zählt. Logge nur, was du wirklich machst.</span></div></div>';
 }
 /* ============ Phase 5D/5E (2026-08-05) · Kanonisches Planmodell — Integration ============
    Flag 'canonPlan' (Default AUS — Aktivierung erst NACH Migration 0030, Toggle im
@@ -4003,8 +4009,8 @@ function gmRecurringBaselineDays(){
 }
 var GM_PROV_NOTE={
   planned_week:null,
-  recurring_preview:'Vorschau aus deiner wiederkehrenden Wochenstruktur — für diese Woche ist noch kein eigener Plan festgelegt.',
-  loading:'Plan dieser Woche wird geladen …'
+  recurring_preview:'' + _uiT('ui.vorschau_aus_deiner_wiederkehrenden_wochenstruktur') + '',
+  loading:'' + _uiT('ui.plan_dieser_woche_wird_geladen') + ''
 };
 /* Projektion: kanonischer effektiver Plan → Legacy-Feld (EINE Wahrheit bis 5F). */
 function gmCanonPlanProject(plan){
@@ -4020,7 +4026,7 @@ function gmCanonPlanPersist(plan,after){
   var repo=gmCanonPlanRepo();if(!repo)return;
   _gmCanonPlan.plan=plan;
   repo.save(plan).then(function(r){
-    if(!r.success&&r.sync_status!=='pending'&&typeof toast==='function')toast('Plan-Sync fehlgeschlagen — lokal gespeichert');
+    if(!r.success&&r.sync_status!=='pending'&&typeof toast==='function')toast('' + _uiT('ui.plan_sync_fehlgeschlagen_lokal_gespeichert') + '');
     if(after)after(r);
   });
   gmCanonPlanProject(plan);
@@ -4045,7 +4051,7 @@ function gmCanonPlanEngineRebase(adjustedDays,batchId){
   var nb=PD.baselineFromDays(adjustedDays,{source:'engine',engineVersion:batchId||null,generatedAt:new Date().toISOString()});
   var r=PD.rebase(plan,nb,{now:new Date().toISOString()});
   gmCanonPlanPersist(r.plan);
-  if(r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+' Plan-Konflikt(e) — siehe Plan-Tab');
+  if(r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+'' + _uiT('ui.plan_konflikt_e_siehe_plan') + '');
   return true;
 }
 /* ============ Phase 8.4 (2026-08-06) · flag-gesteuerter Aktivierungspfad ============
@@ -4083,7 +4089,7 @@ function gmEngineActivateWeek(){
      Rueckweg erhalten (Canary-Kriterium „Migration reversibel"). */
   try{PROFILE._planEngineUndo=r.previous;}catch(_){ }
   gmCanonPlanPersist(r.plan);
-  if(r.conflicts&&r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+' Plan-Konflikt(e) — siehe Plan-Tab');
+  if(r.conflicts&&r.conflicts.length&&typeof toast==='function')toast(r.conflicts.length+'' + _uiT('ui.plan_konflikt_e_siehe_plan') + '');
   return r;
 }
 /* Rueckweg aus der Konsole/Notfall: ORVIA.enginePlanRevert() */
@@ -4109,15 +4115,15 @@ function gmOpenPlanConflictsSheet(){
   var PD=gmCanonPlanDomain();var plan=_gmCanonPlan.plan;
   var cs=(plan&&plan.pendingConflicts)||[];
   var body;
-  if(!cs.length){body='<p class="muted">Keine offenen Plan-Konflikte.</p>';}
+  if(!cs.length){body='<p class="muted">' + _uiT('ui.keine_offenen_plan_konflikte') + '</p>';}
   else{
     body=cs.map(function(c){
       return '<div class="card"><div class="ctitle"><div class="l">'+icon('alert')+' Änderung nicht übertragbar</div></div>'+
-        '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Deine Änderung („'+gmEsc(c.type)+'") hing an einer Einheit, die die Engine neu aufgebaut hat ('+gmEsc(c.reason)+'). Sie wird nicht geraten neu zugeordnet (E-16).</p>'+
+        '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Deine Änderung („'+gmEsc(c.type)+'' + _uiT('ui.hing_an_einer_einheit_die') + ''+gmEsc(c.reason)+'). Sie wird nicht geraten neu zugeordnet (E-16).</p>'+
         '<div class="sheet-cta"><button class="sec" onclick="gmCanonPlanDiscardConflict(\''+gmEsc(c.overrideId)+'\')">Änderung verwerfen</button></div></div>';
     }).join('');
   }
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--attention-t,rgba(237,180,78,.16));color:var(--attention)">'+icon('alert')+'</div><div><h3>Plan-Konflikte</h3><div class="sh-sub" style="margin:2px 0 0">Engine-Update vs. deine Änderungen</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--attention-t,rgba(237,180,78,.16));color:var(--attention)">'+icon('alert')+'</div><div><h3>' + _uiT('ui.plan_konflikte') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.engine_update_vs_deine_aenderungen') + '</div></div></div>'+
     '<div class="sh-block">'+body+'</div>'+
     '<div class="source">'+icon('info','xs')+' Jede Entscheidung wird in der Planhistorie dokumentiert.</div>';
   gmOpenSheet('detailSheet');
@@ -4133,17 +4139,17 @@ function renderPlanPauses(){
   var ps=((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.pauses)||[]).map(function(p,i){return {p:p,i:i};});
   ps.sort(function(a,b){return a.p.from<b.p.from?-1:1;});
   if(!ps.length){el.innerHTML='';return;}
-  el.innerHTML='<div class="pause-list">'+ps.map(function(o){return '<div class="pause-item"><span>'+esc(o.p.reason||'Pause')+' · '+(typeof fmtDate==='function'?fmtDate(o.p.from)+'–'+fmtDate(o.p.to):o.p.from+'–'+o.p.to)+'</span><button onclick="delPause('+o.i+')" aria-label="Entfernen">✕</button></div>';}).join('')+'</div>';
+  el.innerHTML='<div class="pause-list">'+ps.map(function(o){return '<div class="pause-item"><span>'+esc(o.p.reason||'Pause')+' · '+(typeof fmtDate==='function'?fmtDate(o.p.from)+'–'+fmtDate(o.p.to):o.p.from+'–'+o.p.to)+'</span><button onclick="delPause('+o.i+')" aria-label="' + _uiT('ui.entfernen') + '">✕</button></div>';}).join('')+'</div>';
 }
 function openPauseEditor(){
   var t=(typeof todayStr==='function'?todayStr():'');
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
-  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>Pause eintragen</h3>'+
-    '<div class="gm-field"><label>Grund</label><div class="gm-chips" id="pause_r"><button type="button" class="gm-chip on" data-v="Urlaub" onclick="gmPick(this,\'pause_r\')">Urlaub</button><button type="button" class="gm-chip" data-v="Krank" onclick="gmPick(this,\'pause_r\')">Krank</button><button type="button" class="gm-chip" data-v="Pause" onclick="gmPick(this,\'pause_r\')">Sonstiges</button></div></div>'+
-    '<div class="gm-field"><label>Von</label><input type="date" id="pause_f" value="'+t+'"></div>'+
-    '<div class="gm-field"><label>Bis</label><input type="date" id="pause_t" value="'+t+'"></div>'+
-    '<button class="btn" onclick="savePause()">Pause speichern</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="closePause()">Abbrechen</button></div>';
+  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>' + _uiT('ui.pause_eintragen') + '</h3>'+
+    '<div class="gm-field"><label>Grund</label><div class="gm-chips" id="pause_r"><button type="button" class="gm-chip on" data-v="Urlaub" onclick="gmPick(this,\'pause_r\')">Urlaub</button><button type="button" class="gm-chip" data-v="Krank" onclick="gmPick(this,\'pause_r\')">Krank</button><button type="button" class="gm-chip" data-v="Pause" onclick="gmPick(this,\'pause_r\')">' + _uiT('ui.sonstiges') + '</button></div></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.von') + '</label><input type="date" id="pause_f" value="'+t+'"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.bis') + '</label><input type="date" id="pause_t" value="'+t+'"></div>'+
+    '<button class="btn" onclick="savePause()">' + _uiT('ui.pause_speichern') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="closePause()">' + _uiT('ui.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);window._pauseEd=wrap;wrap.addEventListener('click',function(ev){if(ev.target===wrap)closePause();});
 }
 function closePause(){if(window._pauseEd){try{window._pauseEd.remove();}catch(e){}window._pauseEd=null;}}
@@ -4151,12 +4157,12 @@ function savePause(){
   if(typeof PROFILE!=='undefined'&&PROFILE){
     var rd=(document.querySelector('#pause_r .on')||{}).dataset;var r=rd?rd.v:'Pause';
     var f=(document.getElementById('pause_f')||{}).value,tt=(document.getElementById('pause_t')||{}).value;
-    if(!f||!tt){if(typeof toast==='function')toast('Von/Bis fehlt');return;}
+    if(!f||!tt){if(typeof toast==='function')toast('' + _uiT('ui.von_bis_fehlt') + '');return;}
     if(tt<f){var x=f;f=tt;tt=x;}
     PROFILE.pauses=PROFILE.pauses||[];PROFILE.pauses.push({from:f,to:tt,reason:r});
     if(typeof saveProfile==='function')saveProfile();
   }
-  closePause();if(typeof renderPlanPauses==='function')renderPlanPauses();renderWeekPlan();if(typeof renderPauseBanner==='function')renderPauseBanner();if(typeof toast==='function')toast('Pause gespeichert ✓');
+  closePause();if(typeof renderPlanPauses==='function')renderPlanPauses();renderWeekPlan();if(typeof renderPauseBanner==='function')renderPauseBanner();if(typeof toast==='function')toast('' + _uiT('ui.pause_gespeichert') + '');
 }
 function delPause(i){if(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.pauses){PROFILE.pauses.splice(i,1);if(typeof saveProfile==='function')saveProfile();if(typeof renderPlanPauses==='function')renderPlanPauses();renderWeekPlan();if(typeof renderPauseBanner==='function')renderPauseBanner();}}
 /* ---- Einheiten-Detail (anklickbar im Wochenplan) ---- */
@@ -4175,7 +4181,7 @@ function unitKind(item){
 function unitPace(kind){
   var g=(typeof goalOf==='function')?goalOf():null;
   var z=(g&&g.targetMin&&Calc.paceZones)?Calc.paceZones(g.distanceKm,g.targetMin):null;if(!z)return null;
-  var key={interval:'Intervall (VO2)',easy:'Easy',long:'Long Run',tempo:'Tempo / Schwelle'}[kind];if(!key)return null;
+  var key={interval:'' + _uiT('ui.intervall_vo2') + '',easy:'Easy',long:'Long Run',tempo:'' + _uiT('ui.tempo_schwelle') + ''}[kind];if(!key)return null;
   var zone=z.find(function(x){return x.k===key;});return zone?Calc.fmtPace(zone.lo)+'–'+Calc.fmtPace(zone.hi)+'/km':null;
 }
 function unitHF(kind){
@@ -4185,42 +4191,42 @@ function unitHF(kind){
 }
 function unitStruct(item,kind){
   var S={
-    interval:{goal:'VO2max & Schnelligkeit — Reize über der Schwelle.',warmup:'10–15 min locker + 3–4 Strides',main:'Konkret: 6 × 800 m im Intervall-Tempo, dazwischen 2 min Trab-Pause (~5 km Belastung). Gleichmäßig halten — die letzte Wiederholung darf nicht langsamer sein.',cooldown:'10 min auslaufen',rpe:'RPE 8–9',alt:'Bei Müdigkeit/Knie: Easy Z2 oder Bike Z2'},
-    easy:{goal:'Grundlagenausdauer — locker, aerob, fördert Erholung.',warmup:'5 min eintraben',main:'Gleichmäßig im Easy-Bereich — Unterhaltungstempo',cooldown:'kurz auslaufen',rpe:'RPE 3–4',alt:'Bei Knie: Bike/Schwimmen Z2'},
-    long:{goal:'Ausdauer & Long-Run-Ökonomie.',warmup:'locker starten',main:'Konkret: gleichmäßig im Long-Run-Tempo durchlaufen, bewusst nicht zu schnell starten. Ab der Peak-Phase die letzten 20 min als 2 × 10 min Race-Pace einbauen.',cooldown:'letzte Minuten locker',rpe:'RPE 4–5',alt:'Bei Knie: kürzen oder durch Bike ersetzen'},
-    tempo:{goal:'Laktatschwelle — kontrolliert hart.',warmup:'10 min locker',main:'Konkret: nach dem Warm-up 25 min am Stück im Tempo/Schwellen-Bereich — „komfortabel hart", noch kontrolliert und gleichmäßig.',cooldown:'10 min locker',rpe:'RPE 7',alt:'Bei Müdigkeit: in Easy umwandeln'},
-    gym:{goal:'Kraft & Stabilität — Verletzungsschutz und Laufökonomie.',warmup:'Mobilität + Aktivierung',main:item.l+' nach Plan; Grundübungen sauber, Technik vor Last',cooldown:'kurze Mobility',rpe:'Technik-Fokus',alt:'Bei Knie: keine schweren Beine — Oberkörper + Glute/Core'},
-    swim:{goal:'Gelenkschonende Ausdauer & Technik.',warmup:'4 × 25 m locker',main:item.l,cooldown:'2 × 25 m locker',rpe:'kontrolliert',alt:''},
-    bike:{goal:'Aerobe Basis — gelenkschonend.',warmup:'5 min locker',main:'Gleichmäßige Z2-Dauerfahrt',cooldown:'5 min ausrollen',rpe:'RPE 3–4',alt:''},
-    mob:{goal:'Beweglichkeit & Prävention.',warmup:'',main:item.l,cooldown:'',rpe:'',alt:''}
+    interval:{goal:'' + _uiT('ui.vo2max_schnelligkeit_reize_ueber_der') + '',warmup:'' + _uiT('ui.10_15_min_locker_3') + '',main:'' + _uiT('ui.konkret_6_800_m_im') + '',cooldown:'10 min auslaufen',rpe:'' + _uiT('ui.rpe_8_9') + '',alt:'' + _uiT('ui.bei_muedigkeit_knie_easy_z2') + ''},
+    easy:{goal:'' + _uiT('ui.grundlagenausdauer_locker_aerob_foerdert_erholung') + '',warmup:'5 min eintraben',main:'' + _uiT('ui.gleichmaessig_im_easy_bereich_unterhaltungstempo') + '',cooldown:'kurz auslaufen',rpe:'' + _uiT('ui.rpe_3_4') + '',alt:'' + _uiT('ui.bei_knie_bike_schwimmen_z2') + ''},
+    long:{goal:'' + _uiT('ui.ausdauer_long_run_oekonomie') + '',warmup:'locker starten',main:'' + _uiT('ui.konkret_gleichmaessig_im_long_run') + '',cooldown:'' + _uiT('ui.letzte_minuten_locker') + '',rpe:'' + _uiT('ui.rpe_4_5') + '',alt:'' + _uiT('ui.bei_knie_kuerzen_oder_durch') + ''},
+    tempo:{goal:'' + _uiT('ui.laktatschwelle_kontrolliert_hart') + '',warmup:'10 min locker',main:'' + _uiT('ui.konkret_nach_dem_warm_up') + '',cooldown:'10 min locker',rpe:'' + _uiT('ui.rpe_7') + '',alt:'' + _uiT('ui.bei_muedigkeit_in_easy_umwandeln') + ''},
+    gym:{goal:'' + _uiT('ui.kraft_stabilitaet_verletzungsschutz_und_laufoekonomie') + '',warmup:'' + _uiT('ui.mobilitaet_aktivierung') + '',main:item.l+'' + _uiT('ui.nach_plan_grunduebungen_sauber_technik') + '',cooldown:'' + _uiT('ui.kurze_mobility') + '',rpe:'Technik-Fokus',alt:'' + _uiT('ui.bei_knie_keine_schweren_beine') + ''},
+    swim:{goal:'' + _uiT('ui.gelenkschonende_ausdauer_technik') + '',warmup:'4 × 25 m locker',main:item.l,cooldown:'2 × 25 m locker',rpe:'kontrolliert',alt:''},
+    bike:{goal:'' + _uiT('ui.aerobe_basis_gelenkschonend') + '',warmup:'5 min locker',main:'' + _uiT('ui.gleichmaessige_z2_dauerfahrt') + '',cooldown:'5 min ausrollen',rpe:'' + _uiT('ui.rpe_3_4') + '',alt:''},
+    mob:{goal:'' + _uiT('ui.beweglichkeit_praevention') + '',warmup:'',main:item.l,cooldown:'',rpe:'',alt:''}
   };
   var s=Object.assign({},S[kind]||S.easy);
   s.pace=(item.t==='Laufen')?unitPace(kind):null;s.hf=unitHF(kind);return s;
 }
 function unitGuidance(item,kind){
   var e=DB[todayStr()];var m=e&&e.morning;
-  if(!m)return 'Mach zuerst den Morgen-Check-in — dann passt ORVIA die Einheit an deine Tagesform an.';
+  if(!m)return '' + _uiT('ui.mach_zuerst_den_morgen_check') + '';
   // R1.3: heutige Einheiten-Freigabe aus der zentralen Entscheidung (getDecision),
   // nicht mehr aus einer eigenen Ampel-Rechnung. Fallback konservativ 'y'.
   var a;try{var d0=(typeof getDecision==='function')?getDecision():null;
     a={c:({GREEN:'g',YELLOW:'y',ORANGE:'o',RED:'r'})[d0&&d0.dayState]||'y'};}catch(x){a={c:'y'};}
-  var knee=m.knee!=null?m.knee:0;var alt=unitStruct(item,kind).alt||'Bike/Schwimmen Z2';
+  var knee=m.knee!=null?m.knee:0;var alt=unitStruct(item,kind).alt||'' + _uiT('ui.bike_schwimmen_z2') + '';
   if(item.t==='Laufen'){
-    if(knee>=4)return 'Knie '+knee+'/10 — Lauf heute nicht empfohlen. Besser: '+alt+'.';
-    if(knee>=3)return 'Knie '+knee+'/10 — wenn überhaupt nur locker; steigt der Schmerz im Warm-up, abbrechen.';
-    if(a.c==='r'||a.c==='o')return 'Tagesform '+(a.c==='r'?'rot':'orange')+' — heute keine Intensität. '+((kind==='interval'||kind==='tempo')?'Easy Z2 statt der harten Einheit.':'Wenn, dann sehr locker und kürzer.');
-    if(a.c==='y')return 'Tagesform gelb — '+((kind==='interval'||kind==='tempo')?'reduzieren: weniger Wiederholungen oder Easy.':'nach Plan, aber Pace am langsamen Ende halten.');
-    var p=unitPace(kind);return 'Grünes Licht — Einheit nach Plan. '+(p?'Pace '+p+' halten.':'Im Zielbereich bleiben.');
+    if(knee>=4)return '' + _uiT('ui.knie') + ''+knee+'' + _uiT('ui.10_lauf_heute_nicht_empfohlen') + ''+alt+'.';
+    if(knee>=3)return '' + _uiT('ui.knie') + ''+knee+'' + _uiT('ui.10_wenn_ueberhaupt_nur_locker') + '';
+    if(a.c==='r'||a.c==='o')return '' + _uiT('ui.tagesform_') + ''+(a.c==='r'?'rot':'orange')+'' + _uiT('ui.heute_keine_intensitaet') + ''+((kind==='interval'||kind==='tempo')?'' + _uiT('ui.easy_z2_statt_der_harten') + '':'' + _uiT('ui.wenn_dann_sehr_locker_und') + '');
+    if(a.c==='y')return '' + _uiT('ui.tagesform_gelb') + ''+((kind==='interval'||kind==='tempo')?'' + _uiT('ui.reduzieren_weniger_wiederholungen_oder_easy') + '':'' + _uiT('ui.nach_plan_aber_pace_am') + '');
+    var p=unitPace(kind);return '' + _uiT('ui.gruenes_licht_einheit_nach_plan') + ''+(p?'' + _uiT('ui.pace_') + ''+p+' halten.':'' + _uiT('ui.im_zielbereich_bleiben') + '');
   }
-  if(item.t==='Gym'){if(knee>=3)return 'Knie '+knee+'/10 — keine schweren Beine. Oberkörper + Glute/Core.';return 'Technik vor Last. Vor Intervall-/Long-Run-Tagen Beine moderat halten.';}
-  return 'Locker und gleichmäßig — gelenkschonende Ausdauer, kein Wettkampf.';
+  if(item.t==='Gym'){if(knee>=3)return '' + _uiT('ui.knie') + ''+knee+'' + _uiT('ui.10_keine_schweren_beine_oberkoerper') + '';return '' + _uiT('ui.technik_vor_last_vor_intervall') + '';}
+  return '' + _uiT('ui.locker_und_gleichmaessig_gelenkschonende_ausdauer') + '';
 }
 /* ---- Detaillierte Einheiten-Vorgaben (km/Dauer/Pace/HF/Splits) ---- */
 function avgSec(z){return z?(z.lo+z.hi)/2:null;}
 function unitZone(kind){
   var g=(typeof goalOf==='function')?goalOf():null;
   var z=(g&&g.targetMin&&Calc.paceZones)?Calc.paceZones(g.distanceKm,g.targetMin):null;if(!z)return null;
-  var key={interval:'Intervall (VO2)',easy:'Easy',long:'Long Run',tempo:'Tempo / Schwelle'}[kind];if(!key)return null;
+  var key={interval:'' + _uiT('ui.intervall_vo2') + '',easy:'Easy',long:'Long Run',tempo:'' + _uiT('ui.tempo_schwelle') + ''}[kind];if(!key)return null;
   return z.find(function(x){return x.k===key;})||null;
 }
 function fmtDur(min){min=Math.round(min);var h=Math.floor(min/60),m=min%60;return h?(h+':'+String(m).padStart(2,'0')+' h'):(m+' min');}
@@ -4230,70 +4236,70 @@ function runPrescription(item,kind){
   var ez=unitZone('easy'),tz=unitZone('tempo'),iz=unitZone('interval'),lz=unitZone('long');
   var easyP=avgSec(ez)||390,tempoP=avgSec(tz)||315,intP=avgSec(iz)||290,longP=avgSec(lz)||405;
   var p={t:'Laufen',kind:kind};
-  if(kind==='easy'){p.dist=8;p.pace=ez;p.dur=8*easyP/60;p.splits=[['1 km','locker einlaufen'],['6 km','stabil locker @ '+pz(ez)],['1 km','auslaufen']];p.goal='Grundlagenausdauer — locker, aerob, fördert Erholung.';p.cues='Unterhaltungstempo.';}
-  else if(kind==='long'){p.dist=lk;p.pace=lz;p.dur=lk*longP/60;p.splits=[['0–'+Math.round(lk*0.3)+' km','sehr locker'],[Math.round(lk*0.3)+'–'+Math.round(lk*0.8)+' km','stabil @ '+pz(lz)],[Math.round(lk*0.8)+'–'+lk+' km','optional leicht zügiger, wenn Score gut']];p.goal='Ausdauer & Long-Run-Ökonomie.';p.cues='Bewusst langsam starten.';}
-  else if(kind==='tempo'){p.dist=10;p.pace=tz;p.dur=(2*easyP+5*tempoP+3*easyP)/60;p.splits=[['2 km','Warm-up easy'],['5 km','@ '+pz(tz)+' (komfortabel hart)'],['3 km','Cool-down easy']];p.goal='Laktatschwelle — kontrolliert hart.';p.cues='Gleichmäßig, noch kontrolliert.';}
-  else{p.dist=9;p.pace=iz;p.dur=(2*easyP+6*0.8*intP+6*0.4*easyP+2*easyP)/60;p.splits=[['2 km','Warm-up easy + 3–4 Strides'],['6 × 800 m','@ '+pz(iz)],['je 400 m / 2 min','Trab-Pause'],['2 km','Cool-down easy']];p.goal='VO2max & Schnelligkeit — Reize über der Schwelle.';p.cues='Letzte Wiederholung nicht langsamer.';}
-  p.hf=unitHF(kind);p.rpe={easy:'RPE 3–4',long:'RPE 4–5',tempo:'RPE 7',interval:'RPE 8–9'}[kind];p.alt=unitStruct(item,kind).alt;return p;
+  if(kind==='easy'){p.dist=8;p.pace=ez;p.dur=8*easyP/60;p.splits=[['1 km','locker einlaufen'],['6 km','stabil locker @ '+pz(ez)],['1 km','auslaufen']];p.goal='' + _uiT('ui.grundlagenausdauer_locker_aerob_foerdert_erholung') + '';p.cues='Unterhaltungstempo.';}
+  else if(kind==='long'){p.dist=lk;p.pace=lz;p.dur=lk*longP/60;p.splits=[['0–'+Math.round(lk*0.3)+' km','sehr locker'],[Math.round(lk*0.3)+'–'+Math.round(lk*0.8)+' km','stabil @ '+pz(lz)],[Math.round(lk*0.8)+'–'+lk+' km','' + _uiT('ui.optional_leicht_zuegiger_wenn_score') + '']];p.goal='' + _uiT('ui.ausdauer_long_run_oekonomie') + '';p.cues='' + _uiT('ui.bewusst_langsam_starten') + '';}
+  else if(kind==='tempo'){p.dist=10;p.pace=tz;p.dur=(2*easyP+5*tempoP+3*easyP)/60;p.splits=[['2 km','' + _uiT('ui.warm_up_easy') + ''],['5 km','@ '+pz(tz)+' (komfortabel hart)'],['3 km','' + _uiT('ui.cool_down_easy') + '']];p.goal='' + _uiT('ui.laktatschwelle_kontrolliert_hart') + '';p.cues='' + _uiT('ui.gleichmaessig_noch_kontrolliert') + '';}
+  else{p.dist=9;p.pace=iz;p.dur=(2*easyP+6*0.8*intP+6*0.4*easyP+2*easyP)/60;p.splits=[['2 km','' + _uiT('ui.warm_up_easy_3_4') + ''],['6 × 800 m','@ '+pz(iz)],['je 400 m / 2 min','Trab-Pause'],['2 km','' + _uiT('ui.cool_down_easy') + '']];p.goal='' + _uiT('ui.vo2max_schnelligkeit_reize_ueber_der') + '';p.cues='' + _uiT('ui.letzte_wiederholung_nicht_langsamer') + '';}
+  p.hf=unitHF(kind);p.rpe={easy:'' + _uiT('ui.rpe_3_4') + '',long:'' + _uiT('ui.rpe_4_5') + '',tempo:'' + _uiT('ui.rpe_7') + '',interval:'' + _uiT('ui.rpe_8_9') + ''}[kind];p.alt=unitStruct(item,kind).alt;return p;
 }
 function bikeSub(item){var l=(item.l||'').toLowerCase();if(l.indexOf('long')>=0)return 'long';if(l.indexOf('recovery')>=0||l.indexOf('regener')>=0||l.indexOf('commute')>=0)return 'recovery';if(l.indexOf('interval')>=0||l.indexOf('tempo')>=0||l.indexOf('z3')>=0)return 'interval';return 'easy';}
 function bikePrescription(item){
   var sub=bikeSub(item);var p={t:'Rad',kind:sub,hf:unitHF('bike')};
-  if(sub==='long'){p.dist=70;p.durStr='2:30–3:00 h';p.zone='HF Zone 2';p.splits=[['30 min','locker einrollen'],['~2 h','konstant Zone 2'],['20 min','nur zügiger, wenn Tagesform gut']];p.goal='Lange aerobe Ausdauer.';p.rpe='RPE 3–5';p.alt='Bei schlechter Form: 40 km locker oder Indoor Z2.';}
-  else if(sub==='recovery'){p.dist=25;p.durStr='45–60 min';p.zone='HF Zone 1–2';p.splits=[['gesamt','locker Z1–2, keine Antritte']];p.goal='Durchblutung & Erholung.';p.rpe='RPE 2–3';p.alt='Kann entfallen, wenn sehr müde.';}
-  else if(sub==='interval'){p.dist=45;p.durStr='90 min';p.zone='Z2 + Intervalle';p.splits=[['15 min','locker einrollen'],['5 × 5 min','hart / 5 min locker'],['15 min','ausrollen']];p.goal='Schwelle / VO2 auf dem Rad.';p.rpe='RPE 8 in den Blöcken';p.alt='Bei schlechter Form: nur Z2-Dauerfahrt.';}
-  else{p.dist=35;p.durStr='75–90 min';p.zone='HF Zone 2';p.splits=[['10 min','locker einrollen'],['60 min','konstant Zone 2'],['10 min','ausrollen']];p.goal='Aerobe Basis, gelenkschonend.';p.rpe='RPE 3–4';p.alt='Commute zählt als Regeneration.';}
+  if(sub==='long'){p.dist=70;p.durStr='2:30–3:00 h';p.zone='' + _uiT('ui.hf_zone_2') + '';p.splits=[['30 min','locker einrollen'],['~2 h','' + _uiT('ui.konstant_zone_2') + ''],['20 min','' + _uiT('ui.nur_zuegiger_wenn_tagesform_gut') + '']];p.goal='' + _uiT('ui.lange_aerobe_ausdauer') + '';p.rpe='' + _uiT('ui.rpe_3_5') + '';p.alt='' + _uiT('ui.bei_schlechter_form_40_km') + '';}
+  else if(sub==='recovery'){p.dist=25;p.durStr='' + _uiT('ui.45') + '–60 min';p.zone='' + _uiT('ui.hf_zone_1_2') + '';p.splits=[['gesamt','' + _uiT('ui.locker_z1_2_keine_antritte') + '']];p.goal='' + _uiT('ui.durchblutung_erholung') + '';p.rpe='' + _uiT('ui.rpe_2_3') + '';p.alt='' + _uiT('ui.kann_entfallen_wenn_sehr_muede') + '';}
+  else if(sub==='interval'){p.dist=45;p.durStr='90 min';p.zone='' + _uiT('ui.z2_intervalle') + '';p.splits=[['15 min','locker einrollen'],['5 × 5 min','hart / 5 min locker'],['15 min','ausrollen']];p.goal='' + _uiT('ui.schwelle_vo2_auf_dem_rad') + '';p.rpe='' + _uiT('ui.rpe_8_in_den_bloecken') + '';p.alt='' + _uiT('ui.bei_schlechter_form_nur_z2') + '';}
+  else{p.dist=35;p.durStr='75–90 min';p.zone='' + _uiT('ui.hf_zone_2') + '';p.splits=[['10 min','locker einrollen'],['60 min','' + _uiT('ui.konstant_zone_2') + ''],['10 min','ausrollen']];p.goal='' + _uiT('ui.aerobe_basis_gelenkschonend_') + '';p.rpe='' + _uiT('ui.rpe_3_4') + '';p.alt='' + _uiT('ui.commute_zaehlt_als_regeneration') + '';}
   return p;
 }
 function unitHero(cells){return '<div class="unit-hero">'+cells.map(function(c){return '<div class="uh-cell"><b>'+escH(c[0])+'</b><span>'+escH(c[1])+'</span></div>';}).join('')+'</div>';}
 function unitSplits(splits,profi){if(!splits||!splits.length)return '';
-  if(profi)return '<div class="unit-splits"><div class="us-h">Splits</div>'+splits.map(function(s){return '<div class="usp"><span class="usp-k">'+escH(s[0])+'</span><span class="usp-v">'+escH(s[1])+'</span></div>';}).join('')+'</div>';
+  if(profi)return '<div class="unit-splits"><div class="us-h">' + _uiT('ui.splits') + '</div>'+splits.map(function(s){return '<div class="usp"><span class="usp-k">'+escH(s[0])+'</span><span class="usp-v">'+escH(s[1])+'</span></div>';}).join('')+'</div>';
   return '<div class="unit-steps">'+splits.map(function(s){return '<div class="ustep"><span class="ust-l">'+escH(s[0])+'</span><span>'+escH(s[1])+'</span></div>';}).join('')+'</div>';}
 function unitBodyRun(item,kind,lvl){
   var p=runPrescription(item,kind);
-  var cells=[[p.dist+' km','Distanz'],['~'+fmtDur(p.dur),'Dauer']];
+  var cells=[[p.dist+' km','' + _uiT('ui.distanz_') + ''],['~'+fmtDur(p.dur),'Dauer']];
   if(lvl!=='anfaenger'&&p.pace)cells.push([Calc.fmtPace(p.pace.lo)+'–'+Calc.fmtPace(p.pace.hi),'/km']);
   var goal='<div class="unit-goal">'+escH(p.goal)+'</div>';
-  var guid='<div class="unit-rec"><b>Heute für dich</b><br>'+escH(unitGuidance(item,kind))+'</div>';
-  var alt=p.alt?'<div class="unit-alt"><b>Alternative:</b> '+escH(p.alt)+'</div>':'';
+  var guid='<div class="unit-rec"><b>' + _uiT('ui.heute_fuer_dich') + '</b><br>'+escH(unitGuidance(item,kind))+'</div>';
+  var alt=p.alt?'<div class="unit-alt"><b>' + _uiT('ui.alternative') + '</b> '+escH(p.alt)+'</div>':'';
   if(lvl==='anfaenger'){
-    var word={easy:'locker',long:'ruhig und gleichmäßig',tempo:'zügig, aber kontrolliert',interval:'mit ein paar schnellen Abschnitten'}[kind]||'locker';
-    var cue={easy:'Du solltest dich dabei noch unterhalten können.',long:'Starte langsam und halte ein angenehmes Tempo.',tempo:'„Komfortabel hart" — du kannst nur noch kurze Sätze sprechen.',interval:'Zwischen den schnellen Stücken locker traben.'}[kind]||'';
-    var simple='Laufe ca. '+Math.round(p.dur)+' Minuten '+word+'. '+cue+' Fühlst du dich schwer, kürze auf '+Math.round(p.dur*0.7)+' Minuten.';
+    var word={easy:'locker',long:'' + _uiT('ui.ruhig_und_gleichmaessig') + '',tempo:'' + _uiT('ui.zuegig_aber_kontrolliert') + '',interval:'' + _uiT('ui.mit_ein_paar_schnellen_abschnitten') + ''}[kind]||'locker';
+    var cue={easy:'' + _uiT('ui.du_solltest_dich_dabei_noch') + '',long:'' + _uiT('ui.starte_langsam_und_halte_ein') + '',tempo:'' + _uiT('ui.komfortabel_hart_du_kannst_nur') + '',interval:'' + _uiT('ui.zwischen_den_schnellen_stuecken_locker') + ''}[kind]||'';
+    var simple='' + _uiT('ui.laufe_ca') + ''+Math.round(p.dur)+'' + _uiT('ui.minuten') + ''+word+'. '+cue+'' + _uiT('ui.fuehlst_du_dich_schwer_kuerze') + ''+Math.round(p.dur*0.7)+'' + _uiT('ui.minuten_') + '';
     return unitHero(cells)+goal+'<div class="unit-simple">'+escH(simple)+'</div>'+guid+alt;
   }
-  var stats=[];if(p.hf)stats.push(['HF-Zone',p.hf]);if(p.rpe)stats.push(['Intensität',p.rpe]);
+  var stats=[];if(p.hf)stats.push(['HF-Zone',p.hf]);if(p.rpe)stats.push(['' + _uiT('ui.intensitaet') + '',p.rpe]);
   var statHTML='<div class="unit-stats">'+stats.map(function(x){return '<div class="unit-stat"><span class="us-k">'+escH(x[0])+'</span><span class="us-v">'+escH(x[1])+'</span></div>';}).join('')+'</div>';
-  var cues=(lvl==='profi'&&p.cues)?'<div class="unit-cues">'+escH(p.cues)+((kind==='easy'||kind==='long')?' Bei HR-Drift >5 % Pace reduzieren.':'')+'</div>':'';
+  var cues=(lvl==='profi'&&p.cues)?'<div class="unit-cues">'+escH(p.cues)+((kind==='easy'||kind==='long')?'' + _uiT('ui.bei_hr_drift_5_pace') + '':'')+'</div>':'';
   return unitHero(cells)+goal+statHTML+unitSplits(p.splits,lvl==='profi')+cues+guid+alt;
 }
 function unitBodyBike(item,lvl){
   var p=bikePrescription(item);
-  var cells=[[p.dist+' km','Distanz'],[p.durStr,'Dauer']];
+  var cells=[[p.dist+' km','' + _uiT('ui.distanz_') + ''],[p.durStr,'Dauer']];
   if(lvl!=='anfaenger')cells.push([p.zone,'Zone']);
   var goal='<div class="unit-goal">'+escH(p.goal)+'</div>';
-  var guid='<div class="unit-rec"><b>Heute für dich</b><br>'+escH(unitGuidance(item,'bike'))+'</div>';
-  var alt=p.alt?'<div class="unit-alt"><b>Alternative:</b> '+escH(p.alt)+'</div>':'';
+  var guid='<div class="unit-rec"><b>' + _uiT('ui.heute_fuer_dich') + '</b><br>'+escH(unitGuidance(item,'bike'))+'</div>';
+  var alt=p.alt?'<div class="unit-alt"><b>' + _uiT('ui.alternative') + '</b> '+escH(p.alt)+'</div>':'';
   if(lvl==='anfaenger'){
-    var simple='Fahre '+p.durStr+' '+(p.kind==='recovery'?'ganz locker':(p.kind==='long'?'gleichmäßig und ruhig':'locker'))+'. Kein hartes Antreten — du sollst dich danach gut fühlen.';
+    var simple='' + _uiT('ui.fahre') + ''+p.durStr+' '+(p.kind==='recovery'?'ganz locker':(p.kind==='long'?'' + _uiT('ui.gleichmaessig_und_ruhig') + '':'locker'))+'. Kein hartes Antreten — du sollst dich danach gut fühlen.';
     return unitHero(cells)+goal+'<div class="unit-simple">'+escH(simple)+'</div>'+guid+alt;
   }
-  var stats=[];if(p.hf)stats.push(['HF-Zone',p.hf]);if(p.rpe)stats.push(['Intensität',p.rpe]);
+  var stats=[];if(p.hf)stats.push(['HF-Zone',p.hf]);if(p.rpe)stats.push(['' + _uiT('ui.intensitaet') + '',p.rpe]);
   var statHTML='<div class="unit-stats">'+stats.map(function(x){return '<div class="unit-stat"><span class="us-k">'+escH(x[0])+'</span><span class="us-v">'+escH(x[1])+'</span></div>';}).join('')+'</div>';
-  var cues=(lvl==='profi')?'<div class="unit-cues">Ohne Powermeter HF-Zone & RPE führen. Kadenz 85–95.</div>':'';
+  var cues=(lvl==='profi')?'<div class="unit-cues">' + _uiT('ui.ohne_powermeter_hf_zone_rpe') + '</div>':'';
   return unitHero(cells)+goal+statHTML+unitSplits(p.splits,lvl==='profi')+cues+guid+alt;
 }
 function unitBodyOther(item,kind,lvl){
   var s=unitStruct(item,kind);
   var goal='<div class="unit-goal">'+escH(s.goal)+'</div>';
-  var guid='<div class="unit-rec"><b>Heute für dich</b><br>'+escH(unitGuidance(item,kind))+'</div>';
-  var alt=s.alt?'<div class="unit-alt"><b>Alternative:</b> '+escH(s.alt)+'</div>':'';
+  var guid='<div class="unit-rec"><b>' + _uiT('ui.heute_fuer_dich') + '</b><br>'+escH(unitGuidance(item,kind))+'</div>';
+  var alt=s.alt?'<div class="unit-alt"><b>' + _uiT('ui.alternative') + '</b> '+escH(s.alt)+'</div>':'';
   if(lvl==='anfaenger')return goal+'<div class="unit-simple">'+escH(s.main)+'</div>'+guid+alt;
   var steps='';
-  if(s.warmup)steps+='<div class="ustep"><span class="ust-l">Warm-up</span><span>'+escH(s.warmup)+'</span></div>';
-  if(s.main)steps+='<div class="ustep"><span class="ust-l">Hauptteil</span><span>'+escH(s.main)+'</span></div>';
-  if(s.cooldown)steps+='<div class="ustep"><span class="ust-l">Cool-down</span><span>'+escH(s.cooldown)+'</span></div>';
-  var statHTML=(lvl==='profi'&&s.rpe)?'<div class="unit-stats"><div class="unit-stat"><span class="us-k">Intensität</span><span class="us-v">'+escH(s.rpe)+'</span></div></div>':'';
+  if(s.warmup)steps+='<div class="ustep"><span class="ust-l">' + _uiT('ui.warm_up') + '</span><span>'+escH(s.warmup)+'</span></div>';
+  if(s.main)steps+='<div class="ustep"><span class="ust-l">' + _uiT('ui.hauptteil') + '</span><span>'+escH(s.main)+'</span></div>';
+  if(s.cooldown)steps+='<div class="ustep"><span class="ust-l">' + _uiT('ui.cool_down') + '</span><span>'+escH(s.cooldown)+'</span></div>';
+  var statHTML=(lvl==='profi'&&s.rpe)?'<div class="unit-stats"><div class="unit-stat"><span class="us-k">' + _uiT('ui.intensitaet') + '</span><span class="us-v">'+escH(s.rpe)+'</span></div></div>':'';
   return goal+statHTML+(steps?'<div class="unit-steps">'+steps+'</div>':'')+guid+alt;
 }
 function planEntryClick(di,ii,dateIso){
@@ -4312,7 +4318,7 @@ function planEntryClick(di,ii,dateIso){
     var au=(window.ORVIA&&ORVIA.activityUI)?ORVIA.activityUI:null;
     var res=(occ&&au&&au.resolvePlannedActivity)?au.resolvePlannedActivity(occ):{status:'none'};
     if(res&&res.status==='unique'&&res.id&&au&&au.openActivityDetail){ au.openActivityDetail(res.id,'plan'); return; }
-    if(res&&res.status==='ambiguous'&&typeof toast==='function'){ toast('Mehrere Aktivitäten für diese Einheit — bitte manuell zuordnen.'); }
+    if(res&&res.status==='ambiguous'&&typeof toast==='function'){ toast('' + _uiT('ui.mehrere_aktivitaeten_fuer_diese_einheit') + ''); }
     openUnit(di,ii,dIso);
   }catch(e){ try{ openUnit(di,ii,dateIso); }catch(_){} }
 }
@@ -4331,13 +4337,13 @@ function openUnit(di,ii,dateIso){
   var isToday=(dIso===todayStr());
   var foot='';
   if(isToday){
-    foot+='<button class="btn" onclick="startPlannedUnit('+di+','+ii+',\''+dIso+'\')">Training starten</button>'+
+    foot+='<button class="btn" onclick="startPlannedUnit('+di+','+ii+',\''+dIso+'\')">' + _uiT('ui.training_starten') + '</button>'+
       '<button class="btn sec" style="margin-top:10px" onclick="markPlannedDone(\''+escH(item.t)+'\','+di+','+ii+',\''+dIso+'\')">Als erledigt markieren</button>';
   }else if(dIso){
     var _dd3=null;try{var _d3=new Date(dIso+'T12:00');_dd3=_d3.getDate()+'.'+(_d3.getMonth()+1)+'.';}catch(_){ }
-    foot+='<div class="mini-note">'+icon('info','xs')+'<div>Nur lesbar — diese Einheit ist für '+(_dd3?('den '+_dd3):'einen anderen Tag')+' geplant. Starten und Erledigen sind nur am Tag selbst möglich.</div></div>';
+    foot+='<div class="mini-note">'+icon('info','xs')+'<div>Nur lesbar — diese ' + _uiT('ui.einheit') + ' ist für '+(_dd3?('den '+_dd3):'' + _uiT('ui.einen_anderen_tag') + '')+' geplant. Starten und Erledigen sind nur am Tag selbst möglich.</div></div>';
   }
-  foot+='<button class="btn sec" style="margin-top:10px" onclick="closeSupp();openPlanEditor()">Plan bearbeiten / verschieben</button>';
+  foot+='<button class="btn sec" style="margin-top:10px" onclick="closeSupp();openPlanEditor()">' + _uiT('ui.plan_bearbeiten_verschieben') + '</button>';
   if(typeof oModal==='function')oModal(item.l+' · '+item.t,body,foot);
 }
 /* F1+: kompakte Plan-Notiz aus der geplanten Einheit (Struktur/Sollwerte) für den Live-Modus. */
@@ -4346,7 +4352,7 @@ function planNoteFor(item){
     var kind=(typeof unitKind==='function')?unitKind(item):item.t;
     if(typeof unitStruct==='function'){
       var s=unitStruct(item,kind);var parts=[];
-      if(s){if(s.warmup)parts.push('Auf: '+s.warmup);if(s.main)parts.push(s.main);if(s.cooldown)parts.push('Ab: '+s.cooldown);}
+      if(s){if(s.warmup)parts.push('' + _uiT('ui.auf') + ''+s.warmup);if(s.main)parts.push(s.main);if(s.cooldown)parts.push('' + _uiT('ui.ab') + ''+s.cooldown);}
       if(parts.length)return parts.join(' · ');
       if(s&&s.goal)return s.goal;
     }
@@ -4366,12 +4372,12 @@ function startPlannedUnit(di,ii,dateIso){
   /* v8-310a-Haertung: fehlendes Datum ist ein VERTRAGSBRUCH des Aufrufers —
      benannter Fehler statt stiller Rekonstruktion, keine Mutation. */
   if(!dateIso){
-    if(typeof toast==='function')toast('Nicht gestartet — fehlender Datumskontext.');
+    if(typeof toast==='function')toast('' + _uiT('ui.nicht_gestartet_fehlender_datumskontext') + '');
     return {ok:false,code:'missing_date_context'};
   }
   var dIso=dateIso;
   if(dIso!==todayStr()){
-    if(typeof toast==='function')toast('Nicht gestartet — diese Einheit ist nicht für heute geplant.');
+    if(typeof toast==='function')toast('' + _uiT('ui.nicht_gestartet_diese_einheit_ist') + '');
     return {ok:false,code:'not_today'};
   }
   var note=planNoteFor(item);
@@ -4418,19 +4424,19 @@ function markPlannedDone(type,di,ii,dateIso){
     /* v8-310a-Haertung: ohne Datumskontext keine Mutation — benannter Fehler. */
     if(!dateIso){
       result.code='missing_date_context';
-      if(typeof toast==='function')toast('Nicht markiert — fehlender Datumskontext.');
+      if(typeof toast==='function')toast('' + _uiT('ui.nicht_markiert_fehlender_datumskontext') + '');
       return result;
     }
     var dIso=dateIso;
     if(dIso!==todayStr()){
       result.code='not_today';
-      if(typeof toast==='function')toast('Nicht markiert — Erledigen ist nur am Tag der Einheit möglich.');
+      if(typeof toast==='function')toast('' + _uiT('ui.nicht_markiert_erledigen_ist_nur') + '');
       return result;
     }
     var occ=(it&&it.id&&typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(it,dIso):null;
     if(!occ){
       result.code='no_plan_reference';
-      if(typeof toast==='function')toast('Nicht markiert — keine eindeutige Plan-Einheit gefunden.');
+      if(typeof toast==='function')toast('' + _uiT('ui.nicht_markiert_keine_eindeutige_plan') + '');
     }else{
       var e=entry(dIso);
       /* Batch 2h: Zustand VOR jeder Mutation sichern — EXISTENZ und WERT strikt
@@ -4454,7 +4460,7 @@ function markPlannedDone(type,di,ii,dateIso){
       }else if(ex){
         // Slot belegt (echte Trainingsdaten oder andere Occurrence): NIE überschreiben.
         result.code='slot_occupied';
-        if(typeof toast==='function')toast('Nicht markiert — für heute existiert bereits ein '+type+'-Eintrag. Nichts überschrieben.');
+        if(typeof toast==='function')toast('' + _uiT('ui.nicht_markiert_fuer_heute_existiert') + ''+type+'' + _uiT('ui.eintrag_nichts_ueberschrieben') + '');
       }else{
         /* Batch 2g: WIRKLICH fail-closed. Das reale save() (data.js) WIRFT bei
            Quota/Privatmodus/saveBlocked NICHT, sondern gibt false zurück — eine
@@ -4489,7 +4495,7 @@ function markPlannedDone(type,di,ii,dateIso){
         try{_pexDone=(window.ORVIA&&window.ORVIA.strengthPlan)?window.ORVIA.strengthPlan.readPlanned(it):[];}catch(_e){}
         var _snapDone={occurrenceId:occ,templateSessionId:it.id,plannedDate:dIso,t:it.t||null,l:it.l||null,d:it.d||null,capturedAt:Date.now()};
         if(_pexDone.length)_snapDone.plannedExercises=_pexDone;
-        var rec={note:'Als erledigt markiert (ohne Messwerte)',source:'plan_done',
+        var rec={note:'' + _uiT('ui.als_erledigt_markiert_ohne_messwerte') + '',source:'plan_done',
           plannedSessionId:occ,templateSessionId:it.id,
           planSnapshot:_snapDone};
         e.sessions=e.sessions||{};
@@ -4498,7 +4504,7 @@ function markPlannedDone(type,di,ii,dateIso){
         if(typeof save!=='function'){
           rollback();
           result.code='save_unavailable';
-          if(typeof toast==='function')toast('Speichern nicht möglich — nicht markiert.');
+          if(typeof toast==='function')toast('' + _uiT('ui.speichern_nicht_moeglich_nicht_markiert') + '');
         }else{
           try{persisted=(save()===true);}
           catch(err){persisted=false;}
@@ -4508,7 +4514,7 @@ function markPlannedDone(type,di,ii,dateIso){
           }else{
             rollback();
             result.code='save_failed';
-            if(typeof toast==='function')toast('Speichern fehlgeschlagen — nicht markiert.');
+            if(typeof toast==='function')toast('' + _uiT('ui.speichern_fehlgeschlagen_nicht_markiert') + '');
           }
         }
       }
@@ -4552,13 +4558,13 @@ function undoPlanDone(type,dateIso,occurrenceId){
   try{if(typeof renderWeekPlan==='function')renderWeekPlan();}catch(_){ }
   try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
   try{if(window.dispatchEvent)window.dispatchEvent(new CustomEvent('orvia:activity-updated',{detail:{planDoneUndone:true,occurrenceId:occurrenceId}}));}catch(_){ }
-  if(typeof toast==='function')toast('Erledigt-Markierung zurückgenommen');
+  if(typeof toast==='function')toast('' + _uiT('ui.erledigt_markierung_zurueckgenommen') + '');
   return {ok:true,code:'unmarked'};
 }
 function confirmUndoPlanDone(type,dateIso,occurrenceId){
   var run=function(){return undoPlanDone(type,dateIso,occurrenceId);};
   if(typeof orviaConfirm==='function'){
-    orviaConfirm({title:'Erledigt-Markierung zurücknehmen?',text:'Es wird nur die manuelle Markierung entfernt. Echte Aktivitäten und Trainingsdaten bleiben unverändert.',okLabel:'Markierung entfernen',onOk:run});
+    orviaConfirm({title:'' + _uiT('ui.erledigt_markierung_zuruecknehmen') + '',text:'' + _uiT('ui.es_wird_nur_die_manuelle') + '',okLabel:'' + _uiT('ui.markierung_entfernen') + '',onOk:run});
     return {ok:true,code:'confirmation_open'};
   }
   return run();
@@ -4592,7 +4598,7 @@ function renderGoals(){
   psports.forEach(function(s){if(!s)return;var gk=KEYMAP[_nS(s.sportId)];if(!gk||visible[gk])return;
     if(s.activeInApp!==false&&s.sessionsPerWeek!=null&&s.sessionsPerWeek>0)visible[gk]={tgt:s.sessionsPerWeek,ist:_ist(gk)};});   // Präferenz-Wochenziel
   var keys=order.filter(function(k){return visible[k];}).concat(Object.keys(visible).filter(function(k){return order.indexOf(k)<0;}));
-  if(!keys.length){box.innerHTML='<p class="muted" style="margin:0">Wochenziele erscheinen, sobald dein Trainingsplan steht.</p>';return;}
+  if(!keys.length){box.innerHTML='<p class="muted" style="margin:0">' + _uiT('ui.wochenziele_erscheinen_sobald_dein_trainingsplan') + '</p>';return;}
   box.innerHTML=keys.map(function(key){var v=visible[key];var tgt=v.tgt;var icon=ICONMAP[key]||'target';var c=v.ist;
     var pct=tgt>0?Math.min(100,c/tgt*100):(c>0?100:0);var sollLabel=tgt>0?tgt:'–';
     return `<div class="goal"><div class="goalhead"><span>${ic(icon)}${key}</span><span>${c} / ${sollLabel}</span></div>
@@ -4602,7 +4608,7 @@ function renderGoals(){
    Wert liest; der Legacy-Blob wird nur als Spiegel mitgeführt. */
 function setHmTarget(){const t=numIn('hmTarget',60,240);if(t){
   try{var g=goalOf();if(g&&g._canonicalId&&typeof goalUpdate==='function'){
-    goalUpdate(g._canonicalId,{metricType:'time',unit:'s',targetValue:Math.round(t*60)},'Zielzeit geändert (Pace-Seite)');}}catch(e){}
+    goalUpdate(g._canonicalId,{metricType:'time',unit:'s',targetValue:Math.round(t*60)},'' + _uiT('ui.zielzeit_geaendert_pace_seite') + '');}}catch(e){}
   DB._hmTargetMin=t;save();_goalCache=null;}renderPace();}
 function renderPace(){
   const t=goalTargetMin();
@@ -4611,7 +4617,7 @@ function renderPace(){
   /* B-01 4b: ohne Zielzeit (Flag) UND ohne Prognose gibt es keine Paces — Hinweis statt NaN. */
   if(t==null&&(goal.state==='nodata'||goal.tPred==null)){
     const _pb=document.getElementById('paceBox');
-    if(_pb)_pb.innerHTML='<p class="muted" style="margin:0">Keine Zielzeit und noch keine belastbare Prognose — trage oben eine Zielzeit ein, dann berechnet ORVIA deine Pace-Zonen. '+(goal.need?'<span class="muted">('+escH(goal.need)+')</span>':'')+'</p>';
+    if(_pb)_pb.innerHTML='<p class="muted" style="margin:0">Keine ' + _uiT('ui.zielzeit') + ' und noch keine belastbare ' + _uiT('ui.prognose__') + '— trage oben eine ' + _uiT('ui.zielzeit') + ' ein, dann berechnet ORVIA deine Pace-Zonen. '+(goal.need?'<span class="muted">('+escH(goal.need)+')</span>':'')+'</p>';
     return;
   }
   const ref=goal.state!=='nodata'?goal.tPred:t;
@@ -4619,11 +4625,11 @@ function renderPace(){
   const zone=(lab,lo,hi)=>`<div class="pace"><span>${lab}</span><b>${fmtPace(lo)}${hi?'–'+fmtPace(hi):''} /km</b></div>`;
   let html=(t!=null)?`<div class="pace hero"><span><b>Ziel-Pace</b> · ${Calc.fmtTime(t)}</span><b>${fmtPace(rpT)} /km</b></div>`:`<div class="pace hero"><span><b>Ziel-Pace</b> · keine Zielzeit</span><b>–</b></div>`;
   if(goal.state!=='nodata')html+=`<div class="pace"><span>Aktuelle Fitness (Prognose ${Calc.fmtTime(goal.tPred)})</span><b>${fmtPace(rp)} /km</b></div>`;
-  html+=zone('Easy / Z2',rp*1.18,rp*1.30)+zone('Long Run',rp*1.10,rp*1.18)
-    +zone('Tempo',rp*0.97,rp*1.02)+zone('Intervalle (1km)',rp*0.90,rp*0.94);
+  html+=zone('' + _uiT('ui.easy_z2') + '',rp*1.18,rp*1.30)+zone('Long Run',rp*1.10,rp*1.18)
+    +zone('Tempo',rp*0.97,rp*1.02)+zone('' + _uiT('ui.intervalle_1km') + '',rp*0.90,rp*0.94);
   html+=`<p class="note" style="text-align:left">${goal.state!=='nodata'
-    ?'Trainings-Zonen sind an deiner <b>aktuellen Fitness</b> verankert (nicht am Wunschziel) — das schützt vor systematischem Zu-schnell-Laufen.'
-    :'Noch keine Fitness-Prognose — Zonen basieren vorerst auf der Zielzeit. '+ (goal.need||'')}</p>`;
+    ?'Trainings-Zonen sind an deiner <b>' + _uiT('ui.aktuellen_fitness') + '</b> verankert (nicht am Wunschziel) — das schützt vor systematischem Zu-schnell-Laufen.'
+    :'' + _uiT('ui.noch_keine_fitness_prognose_zonen') + ''+ (goal.need||'')}</p>`;
   document.getElementById('paceBox').innerHTML=html;}
 /* ============ ZIELPLANER + PACE-ZONEN (Phase 3) ============ */
 const RACE_DIST={run_5k:5,run_10k:10,half_marathon:21.0975,marathon:42.195}; // R1.2: kanonische Keys; Lookups laufen über gcat()
@@ -4705,21 +4711,43 @@ function isRunDistanceGoal(g){g=g||goalOf();return ['run_5k','run_10k','half_mar
    Zielinformationen bzw. klare nicht-anwendbare Zustände — keine HM-Felder.
    „Ziel bearbeiten" öffnet exakt dieses kanonische Ziel im Wizard (per ID);
    ohne Ziel lautet die Aktion „Ziel hinzufügen". */
+/* S1/E2 (12.09.2026): Wettkampfergebnis im Plan-Kopf. Drei Zustaende, alle aus echten Daten:
+   (1) bestaetigtes Ergebnis am Ziel, (2) erkannte Aktivitaet am Renntag → Bestaetigen / Nicht mein Rennen,
+   (3) Datum vorbei, nichts erkannt → Ergebnis eintragen. Sonst leer. */
+function _raceMatchFor(g){try{var O=window.ORVIA;if(!O||!O.raceResult||!O.activityStore||!O.activityStore.listActivities)return null;return O.raceResult.match(g,O.activityStore.listActivities()||[],{isTombstoned:O.activityStore.isTombstoned||null});}catch(_){return null;}}
+function _fmtSecHMS(sec){if(sec==null)return '—';var neg=sec<0;sec=Math.abs(Math.round(sec));var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),x=sec%60;return (neg?'−':'')+(h?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0'));}
+function _raceResultBlockHTML(g){
+  try{
+    if(!g)return '';
+    var r=g.result&&g.result.verdict?g.result:null;
+    if(r){var v=r.verdict==='achieved'?_uiT('ui.rr_erreicht'):r.verdict==='missed'?_uiT('ui.rr_verfehlt'):_uiT('ui.rr_gefinisht');
+      var dl=r.deltaSec!=null?(' · '+(r.deltaSec<=0?'−':'+')+_fmtSecHMS(Math.abs(r.deltaSec))):'';
+      return '<div class="rh-race rh-race-'+escH(r.verdict)+'"><b>'+escH(v)+'</b> · '+escH(_fmtSecHMS(r.timeSec))+dl+' · '+escH(fmtDe(r.distanceKm))+' km</div>';}
+    var m=_raceMatchFor(g);
+    if(m){var vt=m.verdict==='achieved'?_uiT('ui.rr_ziel_erreicht_um'):m.verdict==='missed'?_uiT('ui.rr_ziel_verfehlt_um'):'';
+      var delta=m.deltaSec!=null?(' '+_fmtSecHMS(Math.abs(m.deltaSec))):'';
+      return '<div class="rh-race rh-race-match"><div class="rh-race-h">'+_uiT('ui.rr_wettkampf_erkannt')+'</div><div class="rh-race-t">'+escH(fmtDe(m.distanceKm))+' km · '+escH(_fmtSecHMS(m.timeSec))+(vt?' · '+escH(vt)+escH(delta):'')+'</div>'+
+        '<div class="rh-race-acts"><button class="btn" onclick="goalConfirmResult(\''+esc(g.id)+'\',\''+esc(m.activityId)+'\')">'+_uiT('ui.rr_bestaetigen')+'</button><button class="btn sec" onclick="goalDismissRace(\''+esc(g.id)+'\',\''+esc(m.activityId)+'\')">'+_uiT('ui.rr_nicht_mein_rennen')+'</button></div></div>';}
+    var O=window.ORVIA,pend=(O&&O.raceResult)?O.raceResult.pending(g,todayStr()):null;
+    if(pend)return '<div class="rh-race rh-race-pending"><div class="rh-race-t">'+escH(_uiT('ui.rr_rennen_war_vor_n_tagen',{n:pend.daysSince}))+'</div><div class="rh-race-acts"><button class="btn sec" onclick="goalSetStatus(\''+esc(g.id)+'\',\'achieved\')">'+_uiT('ui.rr_erreicht')+'</button><button class="btn sec" onclick="goalSetStatus(\''+esc(g.id)+'\',\'missed\')">'+_uiT('ui.rr_verfehlt')+'</button><button class="btn sec" onclick="openGoalEditor(\''+esc(g.id)+'\')">'+_uiT('ui.rr_neu_terminieren')+'</button></div></div>';
+    return '';
+  }catch(_){return '';}
+}
 function renderRaceHeader(){
   var el=document.getElementById('raceHeader');if(!el)return;
   var mg=(typeof mainGoalOf==='function')?mainGoalOf():null;
   if(!mg){
-    el.innerHTML='<div class="racehead"><div class="rh-top"><span class="rh-name">Noch kein Ziel</span>'+
-      '<button class="rh-edit" onclick="openGoalEditor()">Ziel hinzufügen</button></div>'+
-      '<div class="rh-date">Lege ein Ziel fest, dann plant ORVIA darauf hin.</div></div>';
+    el.innerHTML='<div class="racehead"><div class="rh-top"><span class="rh-name">' + _uiT('ui.noch_kein_ziel') + '</span>'+
+      '<button class="rh-edit" onclick="openGoalEditor()">' + _uiT('ui.ziel_hinzufuegen') + '</button></div>'+
+      '<div class="rh-date">' + _uiT('ui.lege_ein_ziel_fest_dann') + '</div></div>';
     return;
   }
   var runType=(typeof gcat==='function')?gcat(mg.category):mg.category;
   var isRun=['run_5k','run_10k','half_marathon','marathon'].indexOf(runType)>=0;
   var title=mg.title||(RACE_LABELS_P[runType])||(typeof goalCatLabel==='function'&&goalCatLabel(mg.category))||'Ziel';
   var d=mg.targetDate?daysTo(mg.targetDate):null;
-  var dateTxt=mg.targetDate?new Date(mg.targetDate+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'}):'kein Datum';
-  var editBtn='<button class="rh-edit" onclick="openGoalEditor(\''+esc(mg.id)+'\')">Ziel bearbeiten</button>';
+  var dateTxt=mg.targetDate?new Date(mg.targetDate+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'}):'' + _uiT('ui.kein_datum') + '';
+  var editBtn='<button class="rh-edit" onclick="openGoalEditor(\''+esc(mg.id)+'\')">' + _uiT('ui.ziel_bearbeiten') + '</button>';
   if(isRun){
     var tm=null;
     if(typeof mg.targetValue==='number'){ if(mg.unit==='min')tm=mg.targetValue; else if(mg.unit==='s'||mg.metricType==='time')tm=mg.targetValue/60; else if(!mg.unit)tm=mg.targetValue; }
@@ -4729,23 +4757,23 @@ function renderRaceHeader(){
     var tgtPace=(tm&&distKm)?Calc.fmtPace(tm*60/distKm)+'/km':'—';
     el.innerHTML='<div class="racehead">'+
       '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
-      '<div class="rh-date">'+escH(dateTxt)+'</div>'+
+      '<div class="rh-date">'+escH(dateTxt)+(mg.targetDate&&d!=null&&d<0?' · '+escH(_countdownText(mg.targetDate)):'')+'</div>'+
       '<div class="rh-grid">'+
-        '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
-        '<div class="rh-cell"><span class="rh-num">'+escH(tgtTime)+'</span><span class="rh-lab">Zielzeit</span></div>'+
+        '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">' + _uiT('ui.tage__') + '</span></div>'+
+        '<div class="rh-cell"><span class="rh-num">'+escH(tgtTime)+'</span><span class="rh-lab">' + _uiT('ui.zielzeit') + '</span></div>'+
         '<div class="rh-cell"><span class="rh-num">'+escH(tgtPace)+'</span><span class="rh-lab">Zielpace</span></div>'+
       '</div>'+
-      '<div class="rh-phase">Phase: <b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+'</div>';
+      '<div class="rh-phase">' + _uiT('ui.phase_') + '<b>'+escH(phase)+'</b></div>'+_feasibilityLineHTML()+_raceResultBlockHTML(mg)+'</div>';
     return;
   }
   // Nicht-Lauf-Hauptziel: allgemeine Zielinfo, KEINE Zeit/Pace/Distanz-Felder.
   var catTxt=(typeof goalCatLabel==='function')?goalCatLabel(mg.category):mg.category;
-  var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(''+mg.targetValue)+(mg.unit?' '+escH(mg.unit):'')+'</span><span class="rh-lab">Zielwert</span></div>'):'';
+  var tgt=(typeof mg.targetValue==='number')?('<div class="rh-cell"><span class="rh-num">'+escH(_goalValueFmt(mg,mg.targetValue))+'</span><span class="rh-lab">' + _uiT('ui.zielwert') + '</span></div>'):'';
   el.innerHTML='<div class="racehead">'+
     '<div class="rh-top"><button type="button" class="rh-name rh-name-btn" onclick="openGoalDetail(\''+esc(mg.id)+'\')" aria-label="Zieldetails öffnen">'+escH(title)+'</button>'+editBtn+'</div>'+
-    '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+'</div>'+
+    '<div class="rh-date">'+escH(catTxt)+' · '+escH(dateTxt)+(mg.targetDate&&d!=null&&d<0?' · '+escH(_countdownText(mg.targetDate)):'')+'</div>'+
     '<div class="rh-grid">'+
-      '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">Tage</span></div>'+
+      '<div class="rh-cell"><span class="rh-num">'+(d!=null?(d>=0?d:'—'):'–')+'</span><span class="rh-lab">' + _uiT('ui.tage__') + '</span></div>'+
       tgt+
     '</div></div>';
 }
@@ -4756,9 +4784,9 @@ function _feasibilityLineHTML(){
   try{
     if(typeof _goalPlanInputOn!=='function'||!_goalPlanInputOn())return '';
     var f=window.ORVIA&&ORVIA._lastFeasibility;if(!f||f.evaluated!==true)return '';
-    var txt=f.status==='within_modeled_corridor'?'Zielzeit liegt im modellierten Korridor deiner aktuellen Leistung.'
-      :f.status==='outside_modeled_corridor'?'Zielzeit liegt außerhalb des modellierten Korridors — ambitioniert für den Zeitraum.'
-      :f.status==='insufficient_data'?'Machbarkeit noch nicht bewertbar (zu wenig Leistungsdaten).':'';
+    var txt=f.status==='within_modeled_corridor'?'' + _uiT('ui.zielzeit_liegt_im_modellierten_korridor') + ''
+      :f.status==='outside_modeled_corridor'?'' + _uiT('ui.zielzeit_liegt_ausserhalb_des_modellierten') + ''
+      :f.status==='insufficient_data'?'' + _uiT('ui.machbarkeit_noch_nicht_bewertbar_zu') + '':'';
     if(!txt)return '';
     var cls=f.status==='outside_modeled_corridor'?' rh-feas-warn':'';
     return '<div class="rh-feas'+cls+'">'+escH(txt)+'</div>';
@@ -4779,14 +4807,14 @@ function mainGoalOf(){
 function renderPaceZones(){
   var el=document.getElementById('paceZonesBox');if(!el)return;
   var g=goalOf();
-  if(!g.targetMin){var _peId=g&&g._canonicalId?("openGoalEditor('"+esc(g._canonicalId)+"')"):"openGoalEditor()";el.innerHTML='<p class="muted" style="margin:0">Lege eine Zielzeit fest, dann berechnet ORVIA deine Pace-Zonen. <button class="lexlink" onclick="'+_peId+'">Ziel bearbeiten</button></p>';return;}
+  if(!g.targetMin){var _peId=g&&g._canonicalId?("openGoalEditor('"+esc(g._canonicalId)+"')"):"openGoalEditor()";el.innerHTML='<p class="muted" style="margin:0">' + _uiT('ui.lege_eine_zielzeit_fest_dann') + '<button class="lexlink" onclick="'+_peId+'">' + _uiT('ui.ziel_bearbeiten') + '</button></p>';return;}
   var zones=Calc.paceZones(g.distanceKm,g.targetMin);if(!zones){el.innerHTML='';return;}
   el.innerHTML=zones.map(function(z){
     var val=(z.lo===z.hi)?Calc.fmtPace(z.lo):Calc.fmtPace(z.lo)+'–'+Calc.fmtPace(z.hi);
     var hero=(z.k==='Zielpace')?' pz-hero':'';
     return '<div class="pz'+hero+'"><span class="pz-k">'+escH(z.k)+'</span><span class="pz-v">'+escH(val)+'<small> /km</small></span></div>';
   }).join('')+
-  '<p class="note" style="text-align:left;margin-top:12px">Automatisch aus Zielzeit &amp; Distanz (Riegel-Modell). Richtwerte — bei Hitze, Müdigkeit oder Knie eher am langsameren Ende.</p>';
+  '<p class="note" style="text-align:left;margin-top:12px">' + _uiT('ui.automatisch_aus_zielzeit_amp_distanz') + '</p>';
 }
 function gearChips(type,fieldId,sel){
   var gs=((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.gear)||[]).filter(function(x){return x.type===type;});
@@ -4812,18 +4840,18 @@ function parseTimeToMin(s){s=(s||'').trim();if(!s)return null;
 function _legacyRaceGoalEditor(){
   closeGoalEditor();
   var g=goalOf();
-  var types=[['run_5k','5 km'],['run_10k','10 km'],['half_marathon','Halbmarathon'],['marathon','Marathon'],['custom','Freie Distanz']]; // R1.2: nur kanonische IDs
-  var prios=[['finish','Finish'],['solide','Solide Leistung'],['ambitioniert','Ambitionierte Zeit']];
+  var types=[['run_5k','5 km'],['run_10k','10 km'],['half_marathon','Halbmarathon'],['marathon','Marathon'],['custom','' + _uiT('ui.freie_distanz') + '']]; // R1.2: nur kanonische IDs
+  var prios=[['finish','Finish'],['solide','' + _uiT('ui.solide_leistung') + ''],['ambitioniert','' + _uiT('ui.ambitionierte_zeit') + '']];
   var tval=g.targetMin?Math.floor(g.targetMin/60)+':'+String(Math.round(g.targetMin%60)).padStart(2,'0'):'';
   var wrap=document.createElement('div');wrap.className='orvia-modal-bg';
-  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>Ziel festlegen</h3>'+
-    '<div class="gm-field"><label>Distanz</label><div class="gm-chips" id="gmType">'+types.map(function(t){return '<button type="button" class="gm-chip'+(g.type===t[0]?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'gmType\')">'+t[1]+'</button>';}).join('')+'</div></div>'+
-    '<div class="gm-field"><label>Freie Distanz (km) — nur bei „Freie Distanz"</label><input type="number" inputmode="decimal" id="gmDist" placeholder="z. B. 15" value="'+escH(g.type==='custom'&&g.distanceKm?g.distanceKm:'')+'"></div>'+
-    '<div class="gm-field"><label>Wettkampfdatum</label><input type="date" id="gmDate" value="'+escH(g.raceDate||'')+'"></div>'+
-    '<div class="gm-field"><label>Zielzeit (Std:Min, z. B. 1:50)</label><input type="text" id="gmTime" inputmode="numeric" placeholder="1:50" value="'+escH(tval)+'"></div>'+
-    '<div class="gm-field"><label>Priorität</label><div class="gm-chips" id="gmPrio">'+prios.map(function(t){return '<button type="button" class="gm-chip'+((g.priority||'solide')===t[0]?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'gmPrio\')">'+t[1]+'</button>';}).join('')+'</div></div>'+
-    '<button class="btn" onclick="saveGoal()">Ziel speichern</button>'+
-    '<button class="btn sec" style="margin-top:10px" onclick="closeGoalEditor()">Abbrechen</button></div>';
+  wrap.innerHTML='<div class="orvia-modal goal-modal"><h3>' + _uiT('ui.ziel_festlegen') + '</h3>'+
+    '<div class="gm-field"><label>' + _uiT('ui.distanz_') + '</label><div class="gm-chips" id="gmType">'+types.map(function(t){return '<button type="button" class="gm-chip'+(g.type===t[0]?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'gmType\')">'+t[1]+'</button>';}).join('')+'</div></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.freie_distanz_km_nur_bei') + '</label><input type="number" inputmode="decimal" id="gmDist" placeholder="' + _uiT('ui.z_b_15') + '" value="'+escH(g.type==='custom'&&g.distanceKm?g.distanceKm:'')+'"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.wettkampfdatum') + '</label><input type="date" id="gmDate" value="'+escH(g.raceDate||'')+'"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.zielzeit_std_min_z_b') + '</label><input type="text" id="gmTime" inputmode="numeric" placeholder="' + _uiT('ui.1_50') + '" value="'+escH(tval)+'"></div>'+
+    '<div class="gm-field"><label>' + _uiT('ui.prioritaet') + '</label><div class="gm-chips" id="gmPrio">'+prios.map(function(t){return '<button type="button" class="gm-chip'+((g.priority||'solide')===t[0]?' on':'')+'" data-v="'+t[0]+'" onclick="gmPick(this,\'gmPrio\')">'+t[1]+'</button>';}).join('')+'</div></div>'+
+    '<button class="btn" onclick="saveGoal()">' + _uiT('ui.ziel_speichern') + '</button>'+
+    '<button class="btn sec" style="margin-top:10px" onclick="closeGoalEditor()">' + _uiT('ui.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);window._goalModal=wrap;
   wrap.addEventListener('click',function(e){if(e.target===wrap)closeGoalEditor();});
 }
@@ -4838,7 +4866,7 @@ function saveGoal(){
   var dist;
   if(type==='custom'){var dEl2=document.getElementById('gmDist');dist=dEl2?parseFloat((dEl2.value||'').replace(',','.')):null;if(!dist||dist<=0)dist=null;}
   else dist=RACE_DIST[type]||21.0975;
-  var label=RACE_LABELS_P[type]||(type==='custom'?(dist?dist+' km':'Freie Distanz'):type);
+  var label=RACE_LABELS_P[type]||(type==='custom'?(dist?dist+' km':'' + _uiT('ui.freie_distanz') + ''):type);
   // H2: KANONISCH in goals[] schreiben (goalAdd/goalUpdate → commitGoals → _profileSave
   // → Event + Cloud-Sync). Das Singular PROFILE.goal bleibt nur als Legacy-Spiegel.
   try{
@@ -4847,8 +4875,8 @@ function saveGoal(){
       var _patch={category:type,title:label+(targetMin?' unter '+Calc.fmtTime(targetMin):''),
         targetDate:date||null,metricType:'time',unit:'s',
         targetValue:targetMin!=null?Math.round(targetMin*60):null,status:'active'};
-      if(_cur&&_cur._canonicalId)goalUpdate(_cur._canonicalId,_patch,'Zieldatum geändert');
-      else goalAdd(Object.assign({priority:1},_patch),'Hauptziel geändert');
+      if(_cur&&_cur._canonicalId)goalUpdate(_cur._canonicalId,_patch,'' + _uiT('ui.zieldatum_geaendert') + '');
+      else goalAdd(Object.assign({priority:1},_patch),'' + _uiT('ui.hauptziel_geaendert') + '');
     }
   }catch(e){try{console.warn('[ORVIA] Kanonisches Ziel-Update fehlgeschlagen:',e&&e.message);}catch(_){}}
   PROFILE.goal={type:type,distanceKm:dist,raceDate:date,targetMin:targetMin,priority:prio};
@@ -4859,7 +4887,7 @@ function saveGoal(){
   if(typeof saveProfile==='function')saveProfile();
   closeGoalEditor();renderPlan();
   if(typeof renderProfileScreen==='function')renderProfileScreen();
-  if(typeof toast==='function')toast('Ziel gespeichert ✓');
+  if(typeof toast==='function')toast('' + _uiT('ui.ziel_gespeichert') + '');
 }
 function renderPlan(){flushAuto();renderRaceHeader();if(typeof renderRaceMode==='function')renderRaceMode();renderPaceZones();
   if(typeof renderPlanPauses==='function')renderPlanPauses();
@@ -4879,9 +4907,9 @@ function renderPlan(){flushAuto();renderRaceHeader();if(typeof renderRaceMode===
   if(isRun){
     renderRamp();renderPace();
   }else{
-    var lbl=(typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[g.type])||g.type||'dein Ziel';
-    _planEmpty('rampBox','Wochen-Umfang','Die Lauf-Umfangsrampe erscheint für Laufziele (5 km bis Marathon).');
-    _planEmpty('paceBox','Renn-Pace','Konkrete Renn-Paces gibt es für Laufdistanzen. Für '+escH(lbl)+' zählen Trainingszonen und Belastungssteuerung.');
+    var lbl=(typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[g.type])||g.type||'' + _uiT('ui.dein_ziel') + '';
+    _planEmpty('rampBox','Wochen-Umfang','' + _uiT('ui.die_lauf_umfangsrampe_erscheint_fuer') + '');
+    _planEmpty('paceBox','Renn-Pace','' + _uiT('ui.konkrete_renn_paces_gibt_es') + ''+escH(lbl)+'' + _uiT('ui.zaehlen_trainingszonen_und_belastungssteuerung') + '');
   }
 }
 function _planEmpty(id,h,p){var el=document.getElementById(id);if(el)el.innerHTML='<div class="empty-card"><div class="empty-h">'+escH(h)+'</div><p class="empty-p">'+p+'</p></div>';}
@@ -4923,33 +4951,34 @@ function bestTimes(){
   try{var _rb=window.ORVIA&&ORVIA.runBests,_st=window.ORVIA&&ORVIA.activityStore;
     if(_rb&&_rb.measuredRunBests&&_st&&_st.listActivities)
       meas=_rb.measuredRunBests(_st.listActivities(),{isTombstoned:_st.isTombstoned||null});}catch(_){ }
-  var rb={k1:null,k5:null,k10:null},src={k1:null,k5:null,k10:null};
+  var BT_KEYS=['k1','k5','k10','k21','k42'];
+  var rb={k1:null,k5:null,k10:null,k21:null,k42:null},src={k1:null,k5:null,k10:null,k21:null,k42:null};
   runs.forEach(function(r){if(!r.best)return;
-    ['k1','k5','k10'].forEach(function(kk){var v=r.best[kk];
+    BT_KEYS.forEach(function(kk){var v=r.best[kk];
       if(v&&(rb[kk]==null||v<rb[kk])){rb[kk]=v;src[kk]='manual_best';}});});
-  ['k1','k5','k10'].forEach(function(kk){var m=meas&&meas[kk];
+  BT_KEYS.forEach(function(kk){var m=meas&&meas[kk];
     if(m&&m.sec!=null&&(rb[kk]==null||m.sec<rb[kk])){rb[kk]=m.sec;src[kk]=m.method;}});
-  if(!runs.length&&rb.k1==null&&rb.k5==null&&rb.k10==null)return null;
+  if(!runs.length&&BT_KEYS.every(function(kk){return rb[kk]==null;}))return null;
   var elig=runs.filter(function(r){return r.dist>=2&&r.dur;});var est=null;
-  if(elig.length){var best=elig.reduce(function(a,b){return (b.dur/b.dist)<(a.dur/a.dist)?b:a;});var proj=function(d){return Math.round(best.dur*Math.pow(d/best.dist,1.06)*60);};est={pace:(best.dur/best.dist)*60,dist:best.dist,t1:proj(1),t5:proj(5),t10:proj(10)};}
+  if(elig.length){var best=elig.reduce(function(a,b){return (b.dur/b.dist)<(a.dur/a.dist)?b:a;});var proj=function(d){return Math.round(best.dur*Math.pow(d/best.dist,1.06)*60);};est={pace:(best.dur/best.dist)*60,dist:best.dist,t1:proj(1),t5:proj(5),t10:proj(10),t21:proj(21.0975),t42:proj(42.195)};}
   var pick=function(kk,ek){if(rb[kk]!=null)return rb[kk];if(est){src[kk]='estimate';return est[ek];}return null;};
-  var t1=pick('k1','t1'),t5=pick('k5','t5'),t10=pick('k10','t10');
-  if(t1==null&&t5==null&&t10==null)return null;
-  return {t1:t1,t5:t5,t10:t10,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null},
+  var t1=pick('k1','t1'),t5=pick('k5','t5'),t10=pick('k10','t10'),t21=pick('k21','t21'),t42=pick('k42','t42');
+  if(t1==null&&t5==null&&t10==null&&t21==null&&t42==null)return null;
+  return {t1:t1,t5:t5,t10:t10,t21:t21,t42:t42,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null,k21:rb.k21!=null,k42:rb.k42!=null},
     src:src,meas:meas||null,
     estPace:est?est.pace:null,estDist:est?est.dist:null,n:runs.length};
 }
 /* Einheitliche Quellenetiketten fuer alle Bestzeiten-Renderer — EINE Formulierung,
    damit Kachel, Liste und Detailsheet nicht unterschiedlich behaupten koennen,
    woher ein Wert stammt. */
-var GM_BT_SRC={lap_window:'gemessen · Runden aus der Uhr',activity_total:'gemessen · Aktivität',
-  stream_window:'gemessen · Messreihe der Uhr',
+var GM_BT_SRC={lap_window:'' + _uiT('ui.gemessen_runden_aus_der_uhr') + '',activity_total:'' + _uiT('ui.gemessen_aktivitaet') + '',
+  stream_window:'' + _uiT('ui.gemessen_messreihe_der_uhr') + '',
   /* 2026-08-05: Abschnitt aus einer laengeren Einheit, dessen Zeit aus der Gesamtdauer
      gleichmaessig abgeleitet wurde (die Messreihe traegt keinen Zeitstempel). Die volle
      Dauer inkl. Pausen wird mitverteilt ⇒ der Wert ist eine Obergrenze, nie zu schnell.
      Bewusst als EIGENE Quelle benannt, nicht als Rundenmessung. */
-  stream_uniform:'aus Messreihe abgeleitet (Abschnitt, Obergrenze)',
-  manual_best:'eingetragene Bestleistung',estimate:'geschätzt (Riegel-Modell, keine Messung)'};
+  stream_uniform:'' + _uiT('ui.aus_messreihe_abgeleitet_abschnitt_obergrenze') + '',
+  manual_best:'' + _uiT('ui.eingetragene_bestleistung') + '',estimate:'' + _uiT('ui.geschaetzt_riegel_modell_keine_messung') + ''};
 function gmBtSrcLabel(b,kk){
   var s=b&&b.src?b.src[kk]:null;
   if(!s)return GM_NA;
@@ -4967,7 +4996,7 @@ function gmBtSrcShort(b,kk){var s=b&&b.src?b.src[kk]:null;
   return s==='estimate'?'geschätzt':(s?'gemessen':'—');}
 function renderBestTimes(){
   var el=document.getElementById('bestTimesBox');if(!el)return;var b=bestTimes();
-  if(!b){el.innerHTML=gmStateEmpty({icon:'run',title:'Noch keine Läufe',desc:'Bestzeiten erscheinen, sobald du Läufe loggst.'});return;}
+  if(!b){el.innerHTML=gmStateEmpty({icon:'run',title:'' + _uiT('ui.noch_keine_laeufe') + '',desc:'' + _uiT('ui.bestzeiten_erscheinen_sobald_du_laeufe') + ''});return;}
   /* KF-021: Etikett folgt der TATSAECHLICHEN Quelle. „Strava" war seit dem
      Garmin-Sync ohnehin falsch und verdeckte, dass hinter „echt" eine Messung
      und hinter dem Rest eine Schaetzung steht. */
@@ -4986,10 +5015,10 @@ function renderBestTimes(){
   try{_scan=(_m.scanned!=null)?_m:null;}catch(_){ }
   el.innerHTML='<div class="bt-grid">'+cell('1 km',b.t1,'k1')+cell('5 km',b.t5,'k5')+cell('10 km',b.t10,'k10')+'</div>'+
     '<p class="note" style="text-align:left;margin-top:10px">'+
-    (anyReal?'„Gemessen" = echte Leistung aus deinen Runden bzw. Aktivitäten. ':'')+
-    (anyDerived?'„Abgeleitet" = schnellster Abschnitt aus einer längeren Einheit; die Zeit stammt aus der Gesamtdauer der Aktivität und ist damit eine Obergrenze — nie zu schnell. ':'')+
-    (b.estPace?'„Geschätzt" = aus deinem schnellsten Lauf ('+fmtDe(b.estDist)+' km @ '+fmtPace(b.estPace)+'/km, Riegel-Modell) — nur dort, wo keine Messung existiert.':'')+'</p>'+
-    (_scan?('<p class="note" style="text-align:left;margin-top:6px;opacity:.75">Datenlage: '+_scan.scanned+' Läufe ausgewertet · '+_scan.withSplits+' mit Runden · '+(_scan.withStreams||0)+' mit Messreihe'+((_scan.withDerivedTime||0)?' (davon '+_scan.withDerivedTime+' ohne Zeitstempel — Zeit aus der Gesamtdauer abgeleitet)':'')+'.</p>'):'');
+    (anyReal?'' + _uiT('ui.gemessen_echte_leistung_aus_deinen') + '':'')+
+    (anyDerived?'' + _uiT('ui.abgeleitet_schnellster_abschnitt_aus_einer') + '':'')+
+    (b.estPace?'' + _uiT('ui.geschaetzt_aus_deinem_schnellsten_lauf') + ''+fmtDe(b.estDist)+' km @ '+fmtPace(b.estPace)+'' + _uiT('ui.km_riegel_modell_nur_dort') + '':'')+'</p>'+
+    (_scan?('<p class="note" style="text-align:left;margin-top:6px;opacity:.75">Datenlage: '+_scan.scanned+'' + _uiT('ui.laeufe_ausgewertet') + ''+_scan.withSplits+'' + _uiT('ui.mit_runden') + ''+(_scan.withStreams||0)+'' + _uiT('ui.mit_messreihe') + ''+((_scan.withDerivedTime||0)?' (davon '+_scan.withDerivedTime+'' + _uiT('ui.ohne_zeitstempel_zeit_aus_der') + '':'')+'.</p>'):'');
 }
 function renderDash(){
   flushAuto();
@@ -5000,13 +5029,13 @@ function renderDash(){
   if(typeof renderWeekInsights==='function')renderWeekInsights();
   if(typeof renderIntel==='function')renderIntel();
   if(typeof renderProExtras==='function')renderProExtras();
-  document.getElementById('dashSegs').innerHTML=[['ueber','Überblick'],['ausdauer','Ausdauer'],['erholung','Erholung'],['koerper','Körper']]
+  document.getElementById('dashSegs').innerHTML=[['ueber','Überblick'],['ausdauer','' + _uiT('ui.ausdauer') + ''],['erholung','' + _uiT('ui.erholung_') + ''],['koerper','Körper']]
     .map(([k,l])=>`<button class="${seg===k?'on':''}" onclick="setSeg('${k}')">${l}</button>`).join('');
   ['ueber','ausdauer','erholung','koerper'].forEach(s=>document.getElementById('seg-'+s).classList.toggle('hide',s!==seg));
   const showRange=seg==='erholung'||seg==='koerper';
   document.getElementById('rangeTabs').style.display=showRange?'flex':'none';
   if(showRange)document.getElementById('rangeTabs').innerHTML=[7,14,30,90].map(n=>`<button class="${n===dashRange?'on':''}" onclick="setRange(${n})">${n}T</button>`).join('');
-  document.getElementById('chartWarn').innerHTML=chartOK()?'':'<div class="banner warn2">Charts brauchen einmalig Internet — die Bibliothek wird danach offline gecacht.</div>';
+  document.getElementById('chartWarn').innerHTML=chartOK()?'':'<div class="banner warn2">' + _uiT('ui.charts_brauchen_einmalig_internet_die') + '</div>';
   if(seg==='ueber')renderSegUeber();else if(seg==='ausdauer')renderSegAusdauer();else if(seg==='erholung')renderSegErholung();else renderSegKoerper();
 }
 function kpi(n,l,col){return `<div class="k"><div class="n" style="color:${col||'var(--txt)'}">${n}</div><div class="l">${l}</div></div>`}
@@ -5019,19 +5048,19 @@ function renderSegUeber(){
   const lastR=last?readinessFor(last.k):null;
   document.getElementById('kpiBox').innerHTML=
     kpi(lastR&&lastR.score!==''?lastR.score+'%':'–','Readiness',lastR&&lastR.color)+
-    kpi(r7!=null?Math.round(r7)+'%':'–','Ø Ready 7T')+
-    kpi(last?last.e.morning.knee:'–','Knie heute',last?(last.e.morning.knee<=2?'var(--green)':last.e.morning.knee>=6?'var(--red)':'var(--yellow)'):'')+
-    kpi((function(){var w=weekRunKm(0);return w==null?'–':w.toFixed(0);})(),'km diese Wo.')+
+    kpi(r7!=null?Math.round(r7)+'%':'–','' + _uiT('ui.ready_7t') + '')+
+    kpi(last?last.e.morning.knee:'–','' + _uiT('ui.knie_heute') + '',last?(last.e.morning.knee<=2?'var(--green)':last.e.morning.knee>=6?'var(--red)':'var(--yellow)'):'')+
+    kpi((function(){var w=weekRunKm(0);return w==null?'–':w.toFixed(0);})(),'' + _uiT('ui.km_diese_wo') + '')+
     (isRunDistanceGoal()
       ?kpi(goal.state!=='nodata'?Calc.fmtTime(goal.tPred):'–',(RACE_LABELS_P[goalOf().type]||'Ziel')+'-Prognose',goal.state==='ontrack'?'var(--green)':goal.state==='border'?'var(--yellow)':goal.state==='risk'?'var(--red)':'')
       :kpi('–','Prognose'))+
-    kpi((()=>{const p=[];for(let i=0;i<7;i++){const e=DB[dkey(-i)];if(e&&e.eve&&e.eve.prot!=null)p.push(e.eve.prot);}const a=avg(p);return a!=null?Math.round(a)+'g':'–';})(),'Ø Protein 7T');
+    kpi((()=>{const p=[];for(let i=0;i<7;i++){const e=DB[dkey(-i)];if(e&&e.eve&&e.eve.prot!=null)p.push(e.eve.prot);}const a=avg(p);return a!=null?Math.round(a)+'g':'–';})(),'' + _uiT('ui.protein_7t') + '');
   renderGoalCard('goalDetail');
   renderInsights();renderACWRCard();renderStreaks();renderHeat();renderBadges();renderWeek();
   const ld=allLoads();
   drawForm('cForm',ld.loads,ld.labels);
   const labels=S.map(s=>new Date(s.k+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}));
-  drawBarLine('cLoad',labels,{label:'Trainingslast',data:S.map(s=>Calc.sessionLoad(s.e)||null),color:'#c9ae7c'},{label:'Tagesform %',data:ready,color:'#16a34a'},{maxY2:100});
+  drawBarLine('cLoad',labels,{label:'Trainingslast',data:S.map(s=>Calc.sessionLoad(s.e)||null),color:'#c9ae7c'},{label:'' + _uiT('ui.tagesform') + '',data:ready,color:'#16a34a'},{maxY2:100});
 }
 function renderGoalCard(elId){
   const el=document.getElementById(elId);if(!el)return;
@@ -5040,7 +5069,7 @@ function renderGoalCard(elId){
   try{if(window.ORVIA&&ORVIA.activitySync&&ORVIA.activitySync.pullServerActivities)ORVIA.activitySync.pullServerActivities();}catch(e){}
   // Goal Engine (Riegel-Prognose) gilt nur für Lauf-Distanzziele. Sonst neutrale Zielkarte.
   if(!isRunDistanceGoal()){
-    var gg=goalOf();var glabel=(typeof GOAL_LABELS!=='undefined'&&GOAL_LABELS[gg.type])||gg.type||'Allgemeine Gesundheit';
+    var gg=goalOf();var glabel=(typeof GOAL_LABELS!=='undefined'&&GOAL_LABELS[gg.type])||gg.type||'' + _uiT('ui.allgemeine_gesundheit') + '';
     el.innerHTML=`<div class="rtr" style="background:linear-gradient(135deg,#2a3342,#1a2330)">
       <h2 style="color:#fff;margin-bottom:8px">${ic('target')}Ziel · ${escH(glabel)}</h2>
       <div style="font-size:14px;line-height:1.5">Prognosen für eine konkrete Zielzeit gibt es für Lauf-Distanzen (5 km, 10 km, Halbmarathon, Marathon). Für dein Ziel zählt vor allem Konsistenz und Belastungssteuerung.</div></div>`;return;}
@@ -5052,15 +5081,15 @@ function renderGoalCard(elId){
   if(g.state==='no_target'){var _ntId=(goalOf()._canonicalId)?("openGoalEditor('"+esc(goalOf()._canonicalId)+"')"):"openGoalEditor()";
     el.innerHTML=`<div class="rtr" style="background:linear-gradient(135deg,#2a3342,#1a2330)">
     <h2 style="color:#fff;margin-bottom:8px">${ic('target')}${escH(RACE_LABELS_P[goalOf().type]||'Ziel')} · Zielzeit fehlt</h2>
-    <div style="font-size:14px;line-height:1.6">Prognose aus deiner aktuellen Form: <b>${Calc.fmtTime(g.tPred)}</b> (Riegel ${Calc.fmtTime(g.tRiegel)}${g.tEF?' · EF-Check '+Calc.fmtTime(g.tEF):''}).<br>
+    <div style="font-size:14px;line-height:1.6">Prognose aus deiner aktuellen Form: <b>${Calc.fmtTime(g.tPred)}</b> (Riegel ${Calc.fmtTime(g.tRiegel)}${g.tEF?'' + _uiT('ui.ef_check') + ''+Calc.fmtTime(g.tEF):''}).<br>
     Ohne Zielzeit gibt es kein „on track" — ORVIA erfindet keine. <button class="lexlink" onclick="${_ntId}">Zielzeit festlegen</button></div></div>`;return;}
   const bg=g.state==='ontrack'?'linear-gradient(135deg,#0e9f6e,#056649)':g.state==='border'?'linear-gradient(135deg,#d97706,#92500a)':'linear-gradient(135deg,#e8345c,#9f1239)';
-  const lab=g.state==='ontrack'?'ON TRACK':g.state==='border'?'GRENZWERTIG':'GEFÄHRDET';
+  const lab=g.state==='ontrack'?'' + _uiT('ui.on_track') + '':g.state==='border'?'GRENZWERTIG':'GEFÄHRDET';
   el.innerHTML=`<div class="rtr" style="background:${bg}">
     <h2 style="color:#fff;margin-bottom:8px">${ic('target')}Goal Engine · ${lab}</h2>
-    <div style="font-size:14px;line-height:1.6">Prognose: <b>${Calc.fmtTime(g.tPred)}</b> (Riegel ${Calc.fmtTime(g.tRiegel)}${g.tEF?' · EF-Check '+Calc.fmtTime(g.tEF):''}) · Ziel ${Calc.fmtTime(g.target)} · Puffer ${g.delta>0?'+':''}${g.delta}%<br>
-    ${g.vetos.length?'<b>Engpässe:</b> '+g.vetos.map(esc).join(' · '):'Alle bewertbaren Volumen-Gates erfüllt.'}<br>
-    ${(g.notAssessable&&g.notAssessable.length)?'<b>Eingeschränkt bewertbar:</b> '+g.notAssessable.map(esc).join(', ')+' — Prognose mit reduzierter Sicherheit.<br>':''}
+    <div style="font-size:14px;line-height:1.6">Prognose: <b>${Calc.fmtTime(g.tPred)}</b> (Riegel ${Calc.fmtTime(g.tRiegel)}${g.tEF?'' + _uiT('ui.ef_check') + ''+Calc.fmtTime(g.tEF):''}) · Ziel ${Calc.fmtTime(g.target)} · Puffer ${g.delta>0?'+':''}${g.delta}%<br>
+    ${g.vetos.length?'<b>' + _uiT('ui.engpaesse') + '</b> '+g.vetos.map(esc).join(' · '):'' + _uiT('ui.alle_bewertbaren_volumen_gates_erfuellt') + ''}<br>
+    ${(g.notAssessable&&g.notAssessable.length)?'<b>' + _uiT('ui.eingeschraenkt_bewertbar') + '</b> '+g.notAssessable.map(esc).join(', ')+' — Prognose mit reduzierter Sicherheit.<br>':''}
     <span style="opacity:.85;font-size:12px">Basis: ${g.nRuns} Läufe / ${g.nQuality} Quality in 42T. Riegel-Exponent 1,06; EF nur aus Easy-Z2.</span></div></div>`;
 }
 function renderACWRCard(){
@@ -5074,13 +5103,13 @@ function renderACWRCard(){
   var _lcc=Calc.loadConfidenceContract?Calc.loadConfidenceContract(_lc):{tier:'hoch',suppressNumbers:false,ctlAtlNote:null,acwrTsbNote:null};
   const a=(lm&&lm.acwr!=null)?{ratio:lm.acwr,acute:lm.acute,chronic:lm.chronic,enough:lm.acwrReliable}:{ratio:null,acute:null,chronic:null,enough:false};
   let bg,txt,desc;
-  if(!a.enough){bg='linear-gradient(135deg,#2a3342,#1a2330)';txt='–';desc='Lastsprung-Indikator erscheint nach ≥21 Tagen Trainingshistorie.';}
-  else if(_lcc.suppressNumbers){bg='linear-gradient(135deg,#2a3342,#1a2330)';txt='nicht belastbar';desc='Lastserie unvollstaendig - ACWR aktuell nicht belastbar bewertbar.';}
-  else if(a.ratio<0.8){bg='linear-gradient(135deg,#0ea5e9,#0369a1)';txt=a.ratio;desc='Akute Last unter Kapazität — Spielraum zum kontrollierten Aufbauen.';}
-  else if(a.ratio<=1.3){bg='linear-gradient(135deg,#0e9f6e,#056649)';txt=a.ratio;desc='Optimaler Korridor (0,8–1,3) — Belastung und Kapazität im Gleichgewicht.';}
-  else if(a.ratio<=1.5){bg='linear-gradient(135deg,#d97706,#92500a)';txt=a.ratio;desc='Erhöht — du steigerst schneller als die Basis mitwächst. Plateau halten.';}
-  else{bg='linear-gradient(135deg,#e8345c,#9f1239)';txt=a.ratio;desc='Deutlicher Lastsprung (>1,5) — genau dieses Muster ging deiner Patella-Reizung voraus. Last senken.';}
-  document.getElementById('acwrBox').innerHTML=`<div class="acwr" style="background:${bg}"><div class="al">Lastsprung-Indikator · ACWR (EWMA)</div><div class="ar">${txt}</div><div class="ad">${desc}${(a.enough&&!_lcc.suppressNumbers)?`<br><span style="opacity:.8;font-size:12px">Akut: ${a.acute} AU · Chronisch: ${a.chronic} AU/Wo</span>`:''}${(_lcc.ctlAtlNote||_lcc.acwrTsbNote)?`<br><span style="opacity:.85;font-size:12px">${[_lcc.acwrTsbNote,_lcc.ctlAtlNote,(_ctlLB!=null?('Bekannte Teilsumme (nur gemessen): CTL ca. '+_ctlLB+' AU.'):null)].filter(Boolean).join(' ')}</span>`:''}</div></div>`;}
+  if(!a.enough){bg='linear-gradient(135deg,#2a3342,#1a2330)';txt='–';desc='' + _uiT('ui.lastsprung_indikator_erscheint_nach_21') + '';}
+  else if(_lcc.suppressNumbers){bg='linear-gradient(135deg,#2a3342,#1a2330)';txt='nicht belastbar';desc='' + _uiT('ui.lastserie_unvollstaendig_acwr_aktuell_nicht') + '';}
+  else if(a.ratio<0.8){bg='linear-gradient(135deg,#0ea5e9,#0369a1)';txt=a.ratio;desc='' + _uiT('ui.akute_last_unter_kapazitaet_spielraum') + '';}
+  else if(a.ratio<=1.3){bg='linear-gradient(135deg,#0e9f6e,#056649)';txt=a.ratio;desc='' + _uiT('ui.optimaler_korridor_0_8_1') + '';}
+  else if(a.ratio<=1.5){bg='linear-gradient(135deg,#d97706,#92500a)';txt=a.ratio;desc='' + _uiT('ui.erhoeht_du_steigerst_schneller_als') + '';}
+  else{bg='linear-gradient(135deg,#e8345c,#9f1239)';txt=a.ratio;desc='' + _uiT('ui.deutlicher_lastsprung_1_5_genau') + '';}
+  document.getElementById('acwrBox').innerHTML=`<div class="acwr" style="background:${bg}"><div class="al">Lastsprung-Indikator · ACWR (EWMA)</div><div class="ar">${txt}</div><div class="ad">${desc}${(a.enough&&!_lcc.suppressNumbers)?`<br><span style="opacity:.8;font-size:12px">Akut: ${a.acute} AU · Chronisch: ${a.chronic} AU/Wo</span>`:''}${(_lcc.ctlAtlNote||_lcc.acwrTsbNote)?`<br><span style="opacity:.85;font-size:12px">${[_lcc.acwrTsbNote,_lcc.ctlAtlNote,(_ctlLB!=null?('' + _uiT('ui.bekannte_teilsumme_nur_gemessen_ctl') + ''+_ctlLB+'' + _uiT('ui.au') + ''):null)].filter(Boolean).join(' ')}</span>`:''}</div></div>`;}
 function renderInsights(){const days=Object.keys(DB).filter(isDay).sort();let out=[];
   let mq=[],nq=[];days.forEach(k=>{const e=DB[k];if(e.morning&&e.morning.sleepQ!=null){((e.subs||[]).includes('Melatonin')?mq:nq).push(e.morning.sleepQ);}});
   if(mq.length>=3&&nq.length>=3){const d=avg(mq)-avg(nq);if(Math.abs(d)>=0.5)out.push(`Mit <b>Melatonin</b> ist deine Schlafqualität ${d>0?'+':''}${d.toFixed(1)} Punkte ${d>0?'höher':'niedriger'} (${avg(mq).toFixed(1)} vs ${avg(nq).toFixed(1)}).`);}
@@ -5089,7 +5118,7 @@ function renderInsights(){const days=Object.keys(DB).filter(isDay).sort();let ou
   let lh=[],ll=[];for(let i=1;i<days.length;i++){const p=DB[days[i-1]],c=DB[days[i]];if(p&&c&&c.morning&&c.morning.knee!=null)(Calc.sessionLoad(p)>=300?lh:ll).push(c.morning.knee);}
   if(lh.length>=3&&ll.length>=3){const d=avg(lh)-avg(ll);if(Math.abs(d)>=0.4)out.push(`Nach <b>hoher Last</b> (≥300 AU) ist dein Knie am Folgetag ${d>0?'+':''}${d.toFixed(1)} ${d>0?'höher':'niedriger'}.`);}
   const pd=days.map(k=>DB[k]).filter(e=>e.eve&&e.eve.prot!=null);if(pd.length>=3){const hit=pd.filter(e=>e.eve.prot>=150).length;out.push(`Protein-Ziel (≥150g) an <b>${hit}/${pd.length}</b> erfassten Tagen erreicht.`);}
-  document.getElementById('insightBox').innerHTML=out.length?out.map(x=>`<div class="insight">${x}</div>`).join(''):'<p class="muted">Mehr Daten nötig — Insights erscheinen nach ~1 Woche Tracking.</p>';}
+  document.getElementById('insightBox').innerHTML=out.length?out.map(x=>`<div class="insight">${x}</div>`).join(''):'<p class="muted">' + _uiT('ui.mehr_daten_noetig_insights_erscheinen') + '</p>';}
 function streak(pred){let n=0;for(let i=0;i<400;i++){const e=DB[dkey(-i)];if(i===0&&!pred(e))continue;if(pred(e))n++;else break;}return n;}
 function renderStreaks(){
   const issues=((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.issues)||[]);
@@ -5109,14 +5138,14 @@ function renderHeat(){const today=new Date(todayStr()+'T12:00');let start=new Da
 function renderBadges(){const days=Object.keys(DB).filter(isDay);
   const last7=[];for(let i=0;i<7;i++){const e=DB[dkey(-i)];if(e&&e.morning&&e.morning.knee!=null)last7.push(e.morning.knee);}
   const B=[
-    {ic:ic('swim'),t:'Erste 200m am Stück',d:'Schwimmen',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Schwimmen&&(DB[k].sessions.Schwimmen.long||0)>=200)},
-    {ic:ic('stretch'),t:'14-Tage Mobility',d:'Streak ≥14',on:streak(e=>e&&e.routines&&e.routines.mob)>=14},
-    {ic:ic('pulse'),t:'Knie 7T <2',d:'7 Tage stabil',on:last7.length>=7&&Math.max(...last7)<2},
-    {ic:ic('calendar'),t:'30 Check-ins',d:'Konsistenz',on:days.filter(k=>DB[k].morning).length>=30},
-    {ic:ic('bike'),t:'30 km Ride',d:'Distanz',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Rad&&(DB[k].sessions.Rad.dist||0)>=30)},
-    {ic:ic('dumbbell'),t:'14-Tage Squats',d:'Reha-Disziplin',on:streak(e=>e&&e.routines&&e.routines.ss)>=14},
-    {ic:ic('run'),t:'Comeback-Lauf',d:'Erster Lauf geloggt',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Laufen)},
-    {ic:ic('flag'),t:'10 km am Stück',d:'Lauf-Distanz',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Laufen&&(DB[k].sessions.Laufen.dist||0)>=10)}];
+    {ic:ic('swim'),t:'' + _uiT('ui.erste_200m_am_stueck') + '',d:'Schwimmen',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Schwimmen&&(DB[k].sessions.Schwimmen.long||0)>=200)},
+    {ic:ic('stretch'),t:'' + _uiT('ui.14_tage_mobility') + '',d:'' + _uiT('ui.streak_14') + '',on:streak(e=>e&&e.routines&&e.routines.mob)>=14},
+    {ic:ic('pulse'),t:'Knie 7T <2',d:'' + _uiT('ui.7_tage_stabil') + '',on:last7.length>=7&&Math.max(...last7)<2},
+    {ic:ic('calendar'),t:'' + _uiT('ui.30_check_ins') + '',d:'Konsistenz',on:days.filter(k=>DB[k].morning).length>=30},
+    {ic:ic('bike'),t:'' + _uiT('ui.30_km_ride') + '',d:'' + _uiT('ui.distanz_') + '',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Rad&&(DB[k].sessions.Rad.dist||0)>=30)},
+    {ic:ic('dumbbell'),t:'' + _uiT('ui.14_tage_squats') + '',d:'Reha-Disziplin',on:streak(e=>e&&e.routines&&e.routines.ss)>=14},
+    {ic:ic('run'),t:'Comeback-Lauf',d:'' + _uiT('ui.erster_lauf_geloggt') + '',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Laufen)},
+    {ic:ic('flag'),t:'' + _uiT('ui.10_km_am_stueck') + '',d:'Lauf-' + _uiT('ui.distanz_') + '',on:days.some(k=>DB[k].sessions&&DB[k].sessions.Laufen&&(DB[k].sessions.Laufen.dist||0)>=10)}];
   document.getElementById('badgeBox').innerHTML=B.map(b=>`<div class="badge${b.on?' on':''}"><div class="bi">${b.ic}</div><div><div class="bt">${b.t}</div><div class="bd">${b.d}</div></div></div>`).join('');}
 function renderWeek(){const now=new Date();const day=(now.getDay()+6)%7;const mon=new Date(now);mon.setDate(now.getDate()-day);
   let gym=0,rad=0,radKm=0,swim=0,swimM=0,mob=0,run=0,runKm=0,knee=[],sleeps=[],bbs=[],protOk=0,prots=0,ss=0,mobR=0,mela=0;
@@ -5146,7 +5175,7 @@ function renderSegAusdauer(){
   renderGoalCard('goalDetail2');
   // Nächster Lauf
   const e=DB[todayStr()];const m=e&&e.morning;
-  let nrTxt='Morgen-Check-in nötig für eine Empfehlung.';
+  let nrTxt='' + _uiT('ui.morgen_check_in_noetig_fuer') + '';
   // R1.3: Empfehlung aus der zentralen Tagesentscheidung (SSoT), keine eigene Ampel.
   if(m){const d0=(typeof getDecision==='function')?getDecision():null;
     if(d0)nrTxt=nextRunInfo(({GREEN:'g',YELLOW:'y',ORANGE:'o',RED:'r'})[d0.dayState]||'y',d0.score!=null?d0.score:0).txt;}
@@ -5155,11 +5184,11 @@ function renderSegAusdauer(){
   const runs28=runsWindow(28);const es=Calc.easyShare(runs28);
   const tooHard=runs28.filter(r=>Calc.easyTooHard(r)).length;
   let ezHtml;
-  if(es==null)ezHtml='<p class="muted">Erscheint ab 6 Läufen in 28 Tagen.</p>';
+  if(es==null)ezHtml='<p class="muted">' + _uiT('ui.erscheint_ab_6_laeufen_in') + '</p>';
   else{const pct=Math.round(es*100);const ok=pct>=75;
     ezHtml=`<div class="goal"><div class="goalhead"><span>Easy-Anteil (Ziel ≥80%)</span><span>${pct}%</span></div>
       <div class="goalbar"><i class="${ok?'done':''}" style="width:${pct}%${ok?'':';background:linear-gradient(90deg,#fbbf24,#d97706)'}"></i></div></div>
-      <p class="note" style="text-align:left">${ok?'Polarisierung stimmt — harte Einheiten bleiben hart, leichte leicht.':'Zu viel Intensität: Easy-Läufe wirklich easy laufen (HF ≤157).'}${tooHard?' · '+tooHard+'× Easy zu hart (HF >78% max).':''}</p>`;}
+      <p class="note" style="text-align:left">${ok?'' + _uiT('ui.polarisierung_stimmt_harte_einheiten_bleiben') + '':'' + _uiT('ui.zu_viel_intensitaet_easy_laeufe') + ''}${tooHard?' · '+tooHard+'' + _uiT('ui.easy_zu_hart_hf_78') + '':''}</p>`;}
   document.getElementById('split8020').innerHTML=ezHtml;
   // Wochensprung + LR
   // I2b: weeklyJump nur mit bekannten Wochen-km aufrufen — sonst kein Fehlalarm/keine Falschzahl.
@@ -5175,11 +5204,11 @@ function renderSegAusdauer(){
   // EF Chart (nur Easy-Z2)
   const efs=Calc.efSeries(runsWindow(90));
   const wrap=document.getElementById('efWrap');
-  if(!efs.length){killChart('cEF');wrap.innerHTML='<p class="muted" style="padding-top:50px;text-align:center">Braucht Easy-Z2-Läufe mit Distanz, Dauer + HF (131–157 bpm).</p>';}
+  if(!efs.length){killChart('cEF');wrap.innerHTML='<p class="muted" style="padding-top:50px;text-align:center">' + _uiT('ui.braucht_easy_z2_laeufe_mit') + '</p>';}
   else if(!chartOK())chartGuard('efWrap');
   else{wrap.innerHTML='<canvas id="cEF"></canvas>';
     drawLine('cEF',efs.map(p=>new Date(p.date+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})),
-      [{label:'EF Easy-Z2 (m/min ÷ bpm)',data:efs.map(p=>p.ef),color:'#fb7185'}],{minAuto:true});}
+      [{label:'' + _uiT('ui.ef_easy_z2_m_min') + '',data:efs.map(p=>p.ef),color:'#fb7185'}],{minAuto:true});}
   // Schwimmen
   renderSwimChart();
   // Interferenz heute
@@ -5193,12 +5222,12 @@ function renderSwimChart(){
   const days=Object.keys(DB).filter(k=>isDay(k)&&DB[k].sessions&&DB[k].sessions.Schwimmen).sort();
   const pts=days.map(k=>{const s=DB[k].sessions.Schwimmen;
     return{k,long:s.long||null,pace:(s.dist&&s.dur)?+(s.dur*60/(s.dist/100)).toFixed(0):null};}).filter(p=>p.long||p.pace);
-  if(!pts.length){killChart('cSwim');wrap.innerHTML=gmStateEmpty({icon:'drop',title:'Noch keine Schwimm-Einheiten',desc:'Sobald du eine Schwimmeinheit loggst, erscheint hier deine Entwicklung.'});return;}
+  if(!pts.length){killChart('cSwim');wrap.innerHTML=gmStateEmpty({icon:'drop',title:'' + _uiT('ui.noch_keine_schwimm_einheiten') + '',desc:'' + _uiT('ui.sobald_du_eine_schwimmeinheit_loggst') + ''});return;}
   if(!chartOK()){chartGuard('swimWrap');return;}
   wrap.innerHTML='<canvas id="cSwim"></canvas>';
   drawBarLine('cSwim',pts.map(p=>new Date(p.k+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})),
-    {label:'Längste am Stück (m)',data:pts.map(p=>p.long),color:'#c9ae7c'},
-    {label:'Pace s/100m',data:pts.map(p=>p.pace),color:'#16a34a'},{goalY:400,goalLabel:'Ziel 400m'});
+    {label:'' + _uiT('ui.laengste_am_stueck_m') + '',data:pts.map(p=>p.long),color:'#c9ae7c'},
+    {label:'' + _uiT('ui.pace_s_100m') + '',data:pts.map(p=>p.pace),color:'#16a34a'},{goalY:400,goalLabel:'' + _uiT('ui.ziel_400m') + ''});
 }
 /* --- Erholung --- */
 function renderSegErholung(){
@@ -5207,15 +5236,15 @@ function renderSegErholung(){
   const labels=S.map(s=>new Date(s.k+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}));
   const g=f=>S.map(s=>s.e&&s.e.morning?s.e.morning[f]:null);
   const ready=S.map(s=>readinessOf(s.k));
-  drawLine('cReady',labels,[{label:'Readiness %',data:ready,color:'#b89a60'},{label:'Knie',data:g('knee'),color:'#e11d48',y2:true}],{max:100});
+  drawLine('cReady',labels,[{label:'' + _uiT('ui.readiness') + '',data:ready,color:'#b89a60'},{label:'Knie',data:g('knee'),color:'#e11d48',y2:true}],{max:100});
   const hrvMs=g('hrvMs');
   const hrvAvg=hrvMs.map((_,i)=>{const win=[];for(let j=Math.max(0,i-6);j<=i;j++)if(hrvMs[j]!=null)win.push(hrvMs[j]);return win.length>=3?+avg(win).toFixed(0):null;});
-  drawLine('cHRV',labels,[{label:'HRV (ms)',data:hrvMs,color:'#dcc79a'},{label:'Ø 7T',data:hrvAvg,color:'#b89a60'}],{minAuto:true});
+  drawLine('cHRV',labels,[{label:'' + _uiT('ui.hrv_ms') + '',data:hrvMs,color:'#dcc79a'},{label:'' + _uiT('ui.7t') + '',data:hrvAvg,color:'#b89a60'}],{minAuto:true});
   drawLine('cSleep',labels,[{label:'Std',data:S.map(s=>s.e&&s.e.morning&&s.e.morning.sleepMin!=null?+(s.e.morning.sleepMin/60).toFixed(2):null),color:'#c9ae7c'},{label:'Qualität',data:g('sleepQ'),color:'#8e7647',y2:true}],{max:12});
-  drawLine('cBB',labels,[{label:'Body Batt %',data:g('bb'),color:'#16a34a'},{label:'Ruhepuls',data:g('rhr'),color:'#f59e0b',y2:true}],{max:100});
+  drawLine('cBB',labels,[{label:'' + _uiT('ui.body_batt') + '',data:g('bb'),color:'#16a34a'},{label:'Ruhepuls',data:g('rhr'),color:'#f59e0b',y2:true}],{max:100});
   const ctx=recoveryCtx(todayStr());
   document.getElementById('recovNote').innerHTML=
-    `<div class="insight">Baselines (28T): Ruhepuls ${ctx.rhrBase!=null?Math.round(ctx.rhrBase)+' bpm':'– (braucht ≥7 Werte)'} · HRV-Datenpunkte ${ctx.hrvN}/14 nötig für Baseline-Score · Schlaf-Konto 7T: ${ctx.sleepDebtH!=null?'−'+ctx.sleepDebtH.toFixed(1)+'h':'–'}</div>`;
+    `<div class="insight">Baselines (28T): Ruhepuls ${ctx.rhrBase!=null?Math.round(ctx.rhrBase)+' bpm':'' + _uiT('ui.braucht_7_werte') + ''} · HRV-Datenpunkte ${ctx.hrvN}/14 nötig für Baseline-Score · Schlaf-Konto 7T: ${ctx.sleepDebtH!=null?'−'+ctx.sleepDebtH.toFixed(1)+'h':'–'}</div>`;
 }
 /* --- Körper --- */
 function renderSegKoerper(){
@@ -5223,8 +5252,8 @@ function renderSegKoerper(){
   const labels=S.map(s=>new Date(s.k+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}));
   const w=S.map(s=>s.e&&s.e.morning?s.e.morning.weight:null);
   const wAvg=w.map((_,i)=>{const win=[];for(let j=Math.max(0,i-6);j<=i;j++)if(w[j]!=null)win.push(w[j]);return win.length>=2?+avg(win).toFixed(1):null;});
-  drawLine('cWeight',labels,[{label:'kg',data:w,color:'#b89a60'},{label:'Ø 7T',data:wAvg,color:'#16a34a'}],{minAuto:true});
-  drawLine('cProt',labels,[{label:'Protein g',data:S.map(s=>s.e&&s.e.eve?s.e.eve.prot:null),color:'#16a34a'}],{max:200,goal:150});
+  drawLine('cWeight',labels,[{label:'kg',data:w,color:'#b89a60'},{label:'' + _uiT('ui.7t') + '',data:wAvg,color:'#16a34a'}],{minAuto:true});
+  drawLine('cProt',labels,[{label:'' + _uiT('ui.protein_g') + '',data:S.map(s=>s.e&&s.e.eve?s.e.eve.prot:null),color:'#16a34a'}],{max:200,goal:150});
   // Gewichts-Hinweis: 7T-Schnitt jetzt vs. vor 4 Wochen
   const now7=[],prev7=[];
   for(let i=0;i<7;i++){const e=DB[dkey(-i)];if(e&&e.morning&&e.morning.weight!=null)now7.push(e.morning.weight);}
@@ -5232,25 +5261,25 @@ function renderSegKoerper(){
   const hint=Calc.weightHint(avg(now7),avg(prev7));
   document.getElementById('weightHint').innerHTML=hint
     ?`<div class="insight" style="border-left-color:${hint.lvl==='g'?'var(--green)':'var(--yellow)'}">${esc(hint.txt)}</div>`
-    :'<p class="muted">Gewichts-Trend erscheint nach ~5 Wochen Tracking.</p>';
+    :'<p class="muted">' + _uiT('ui.gewichts_trend_erscheint_nach_5') + '</p>';
 }
 
 /* ============ VERLAUF ============ */
 let histFilter='alle',histLimit=60;
 function renderHist(){
   flushAuto();
-  document.getElementById('histChips').innerHTML=[['alle','Alle'],['lauf','Läufe'],['train','Training'],['notiz','Notizen']]
+  document.getElementById('histChips').innerHTML=[['alle','Alle'],['lauf','Läufe'],['train','' + _uiT('ui.training') + ''],['notiz','Notizen']]
     .map(([k,l])=>`<button type="button" class="chip${histFilter===k?' on':''}" onclick="histFilter='${k}';histLimit=60;renderHist()">${l}</button>`).join('');
   let keys=Object.keys(DB).filter(isDay).sort().reverse();
   if(histFilter==='lauf')keys=keys.filter(k=>DB[k].sessions&&DB[k].sessions.Laufen);
   if(histFilter==='train')keys=keys.filter(k=>DB[k].sessions&&Object.keys(DB[k].sessions).filter(x=>x!=='_ts').length);
   if(histFilter==='notiz')keys=keys.filter(k=>DB[k].eve&&DB[k].eve.note);
-  if(!keys.length){document.getElementById('histList').innerHTML='<p class="muted">Keine passenden Einträge.</p>';return;}
+  if(!keys.length){document.getElementById('histList').innerHTML='<p class="muted">' + _uiT('ui.keine_passenden_eintraege') + '</p>';return;}
   const shown=keys.slice(0,histLimit);
   document.getElementById('histList').innerHTML=shown.map(k=>{const e=DB[k];const m=e.morning;
     const s=m?readinessFor(k):null;const dot=s&&s.color?s.color:'#2a3342';
     const dd=new Date(k+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
-    let bits=[];if(s&&s.score!=='')bits.push(s.score+'%');if(m)bits.push('Knie '+m.knee);
+    let bits=[];if(s&&s.score!=='')bits.push(s.score+'%');if(m)bits.push('' + _uiT('ui.knie') + ''+m.knee);
     const st=Object.keys(e.sessions||{}).filter(x=>x!=='_ts');if(st.length)bits.push(st.map(x=>(TYPES[x]||{ic:''}).ic).join(''));
     if(e.eve&&e.eve.note)bits.push(ic('list'));
     return `<div class="hist" onclick="goEdit('${k}')"><span><span class="pill" style="background:${dot}"></span>${dd}</span><span class="muted">${bits.join(' · ')||'—'}</span></div>`;}).join('')
@@ -5262,7 +5291,7 @@ function renderMehr(){
   const lb=DB._lastBackup;
   document.getElementById('backupStatus').innerHTML=lb
     ?`Letztes Backup: <b>${new Date(lb).toLocaleDateString('de-DE')}</b> (vor ${Math.floor((Date.now()-lb)/864e5)} Tagen)`
-    :'Noch kein Backup gemacht.';
+    :'' + _uiT('ui.noch_kein_backup_gemacht') + '';
   document.getElementById('aiPreview').textContent=weekSummaryText();
   if(typeof renderProfileScreen==='function')renderProfileScreen();
   if(typeof renderDataHub==='function')renderDataHub();
@@ -5295,7 +5324,7 @@ function buildAIReview(){
   const ac={ratio:_acwrAssessable?_lm.acwr:null}; // R1.4
   // Reason bei fehlender/ungültiger Last-Confidence bleibt verständlich und unterscheidbar
   // von einer echten (gemeldeten) not_assessable-Lastserie — kein zweiter Reason-Vertrag.
-  const _acwrReason2=_lcValid2?_lcc2.acwrTsbNote:'ACWR/TSB nicht belastbar (Last-Confidence fehlt oder ungültig: load_confidence_missing_or_invalid).';
+  const _acwrReason2=_lcValid2?_lcc2.acwrTsbNote:'' + _uiT('ui.acwr_tsb_nicht_belastbar_last') + '';
   // I3a.5: estimated korrigiert — 'not_assessable' hatte bisher value:null UND estimated:true
   // (Widerspruch: kein Wert, aber angeblich geschätzt). Jetzt exakt: estimated ist NUR true,
   // wenn ein modellierter Wert tatsächlich vorhanden ist (assessable) UND die aufgelöste
@@ -5308,9 +5337,9 @@ function buildAIReview(){
   const _acwrLegacy=((_lc2||'hoch')==='hoch')?acwrStatus.value:null;
   const warnungen=[];
   if(jump.msg)warnungen.push(jump.msg);
-  if(es!=null&&es<0.75)warnungen.push('Easy-Anteil nur '+Math.round(es*100)+'% (Ziel ≥75–80%)');
-  (goal.vetos||[]).forEach(x=>warnungen.push('Ziel-Veto: '+x));
-  var _g=(typeof goalOf==='function')?goalOf():{};var _zl=((typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[_g.type])||_g.type||'Allgemeine Fitness')+(_g.raceDate?(' · '+_g.raceDate):'');
+  if(es!=null&&es<0.75)warnungen.push('' + _uiT('ui.easy_anteil_nur') + ''+Math.round(es*100)+'% (' + _uiT('ui.ziel__') + '≥75–80%)');
+  (goal.vetos||[]).forEach(x=>warnungen.push('' + _uiT('ui.ziel_veto') + ''+x));
+  var _g=(typeof goalOf==='function')?goalOf():{};var _zl=((typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[_g.type])||_g.type||'' + _uiT('ui.allgemeine_fitness') + '')+(_g.raceDate?(' · '+_g.raceDate):'');
   return{erstellt:todayStr(),athlet:{name:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.name)||'Athlet',alter:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.age)||null,gewichtKg:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weightKg)||null,hfMax:(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.hfMax)||null,ziel:_zl},
     hmPrognose:goal,acwr:_acwrLegacy,acwrStatus:acwrStatus,easyAnteilProzent28T:es!=null?Math.round(es*100):null,
     wochenKm:{aktuell:_wkNowB!=null?+_wkNowB.toFixed(1):null,vorwoche:_wkPrevB!=null?+_wkPrevB.toFixed(1):null,soll:Calc.weekKmTarget(daysTo(RACE.date),0)},
@@ -5321,18 +5350,18 @@ function weekSummaryText(){
   const ready=r.letzte7Tage.map(t=>t.readiness).filter(x=>x!=null);
   const runs=r.letzte7Tage.reduce((s,t)=>s+t.einheiten.filter(e=>e.typ==='Laufen').length,0);
   const lines=[
-    'Woche bis '+r.erstellt+': '+(r.wochenKm.aktuell!=null?(r.wochenKm.aktuell+' km gelaufen'):'Wochen-km nicht bestimmbar')+' ('+runs+' Läufe, Soll '+r.wochenKm.soll+' km), Ø Readiness '+(ready.length?Math.round(Calc.avg(ready))+'%':'–')+'.',
-    g.state==='nodata'?'HM-Prognose: noch nicht belastbar ('+g.nQuality+' Quality-Läufe).':g.state==='no_target'?'Prognose: '+Calc.fmtTime(g.tPred)+' — keine Zielzeit hinterlegt.':'HM-Prognose: '+Calc.fmtTime(g.tPred)+' ('+(g.state==='ontrack'?'on track':g.state==='border'?'grenzwertig':'gefährdet')+') bei Ziel '+Calc.fmtTime(g.target)+'.',
-    r.warnungen.length?'Warnungen: '+r.warnungen.join(' | '):'Keine aktiven Warnungen.'];
+    '' + _uiT('ui.woche_bis') + ''+r.erstellt+': '+(r.wochenKm.aktuell!=null?(r.wochenKm.aktuell+' km gelaufen'):'' + _uiT('ui.wochen_km_nicht_bestimmbar') + '')+' ('+runs+'' + _uiT('ui.laeufe_soll') + ''+r.wochenKm.soll+'' + _uiT('ui.km_readiness') + ''+(ready.length?Math.round(Calc.avg(ready))+'%':'–')+'.',
+    g.state==='nodata'?'' + _uiT('ui.hm_prognose_noch_nicht_belastbar') + ''+g.nQuality+'' + _uiT('ui.quality_laeufe') + '':g.state==='no_target'?'' + _uiT('ui.prognose_') + ''+Calc.fmtTime(g.tPred)+'' + _uiT('ui.keine_zielzeit_hinterlegt') + '':'' + _uiT('ui.hm_prognose') + ''+Calc.fmtTime(g.tPred)+' ('+(g.state==='ontrack'?'on track':g.state==='border'?'grenzwertig':'gefährdet')+'' + _uiT('ui.bei_ziel') + ''+Calc.fmtTime(g.target)+'.',
+    r.warnungen.length?'' + _uiT('ui.warnungen') + ''+r.warnungen.join(' | '):'' + _uiT('ui.keine_aktiven_warnungen') + ''];
   return lines.join('\n');
 }
 function copyAIReview(){
   const j=JSON.stringify(buildAIReview(),null,1);
-  var _g=(typeof goalOf==='function')?goalOf():{};var _gl=(typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[_g.type])||_g.type||'allgemeine Fitness';
-  const prompt='Du bist mein Trainings-Coach. Ziel: '+_gl+(_g.raceDate?(' (Datum '+_g.raceDate+')'):'')+'. Analysiere die Woche: größter Engpass, konkrete Anpassung für nächste Woche, Risiken. Daten:\n'+j;
-  navigator.clipboard.writeText(prompt).then(()=>toast('Coach Briefing kopiert ✓')).catch(()=>toast('Kopieren fehlgeschlagen'));
+  var _g=(typeof goalOf==='function')?goalOf():{};var _gl=(typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[_g.type])||_g.type||'' + _uiT('ui.allgemeine_fitness_') + '';
+  const prompt='' + _uiT('ui.du_bist_mein_trainings_coach') + ''+_gl+(_g.raceDate?('' + _uiT('ui.datum') + ''+_g.raceDate+')'):'')+'. Analysiere die Woche: größter Engpass, konkrete Anpassung für ' + _uiT('ui.naechste_woche_') + ', Risiken. ' + _uiT('ui.daten') + '\n'+j;
+  navigator.clipboard.writeText(prompt).then(()=>toast('' + _uiT('ui.coach_briefing_kopiert') + '')).catch(()=>toast('' + _uiT('ui.kopieren_fehlgeschlagen') + ''));
 }
-function copySummary(){navigator.clipboard.writeText(weekSummaryText()).then(()=>toast('Zusammenfassung kopiert ✓')).catch(()=>toast('Kopieren fehlgeschlagen'));}
+function copySummary(){navigator.clipboard.writeText(weekSummaryText()).then(()=>toast('' + _uiT('ui.zusammenfassung_kopiert') + '')).catch(()=>toast('' + _uiT('ui.kopieren_fehlgeschlagen') + ''));}
 
 /* ============ TABS + INIT ============ */
 const TAB_TITLES={heute:'Heute',plan:'Plan',akt:'Aktivität',dash:'Insights',hist:'Verlauf'};
@@ -5609,15 +5638,15 @@ function renderFormFitnessV5(){
   var host=document.getElementById('formFitnessV5');if(!host)return;
   try{
     if(!(window.ORVIA&&window.ORVIA.charts&&window.ORVIA.charts.richChart)){
-      host.innerHTML=gmStateError({icon:'alert',title:'Diagramm-Modul nicht geladen.',desc:'Die Kurve erscheint nach einem vollständigen Laden der App wieder.'});return;}
+      host.innerHTML=gmStateError({icon:'alert',title:'' + _uiT('ui.diagramm_modul_nicht_geladen') + '',desc:'' + _uiT('ui.die_kurve_erscheint_nach_einem') + ''});return;}
     var ld=allLoads();
     var lcc=(typeof Calc!=='undefined'&&Calc.loadConfidenceContract)?Calc.loadConfidenceContract(ld.confidence):{tier:'hoch',suppressNumbers:false,ctlAtlNote:null};
     if(lcc.suppressNumbers){
       /* Partial/unbelastbar: GM-Empty statt Legacy-Absatz — keine erfundene Kurve. */
-      host.innerHTML=gmStateEmpty({icon:'chart',title:'Form-Kurve noch nicht belastbar',desc:lcc.ctlAtlNote||'CTL/ATL nicht belastbar — die Lastserie ist unvollständig.'});return;}
+      host.innerHTML=gmStateEmpty({icon:'chart',title:'' + _uiT('ui.form_kurve_noch_nicht_belastbar') + '',desc:lcc.ctlAtlNote||'' + _uiT('ui.ctl_atl_nicht_belastbar_die') + ''});return;}
     var S=Calc.loadSeries(ld.loads||[]);var n=(S.ctl||[]).length;
     if(n<14){
-      host.innerHTML=gmStateEmpty({icon:'chart',title:'Noch zu wenig Lasthistorie',desc:'Erst '+n+' Tage erfasst — die Form-Kurve erscheint ab 14 Tagen, wenn das 42-Tage-Fitnessmodell aussagekräftig wird.'});return;}
+      host.innerHTML=gmStateEmpty({icon:'chart',title:'' + _uiT('ui.noch_zu_wenig_lasthistorie') + '',desc:'' + _uiT('ui.erst') + ''+n+'' + _uiT('ui.tage_erfasst_die_form_kurve') + ''});return;}
     var k=Math.min(28,n);
     var ctl=S.ctl.slice(-k).map(function(v){return Math.round(v);});
     var atl=S.atl.slice(-k).map(function(v){return Math.round(v);});
@@ -5626,22 +5655,22 @@ function renderFormFitnessV5(){
     var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
     var cT=ctl[k-1],aT=atl[k-1],tT=tsb[k-1];
     var legend='<div class="ffv-legend">'+
-      '<span><i style="background:var(--accent,#C9AE7C)"></i>Fitness <b>'+cT+'</b></span>'+
-      '<span><i style="background:var(--crit,#F0637A)"></i>Ermüdung <b>'+aT+'</b></span>'+
-      '<span><i style="background:var(--ready,#43D693)"></i>Form <b>'+(tT>0?'+':'')+tT+'</b></span></div>';
+      '<span><i style="background:var(--accent,#C9AE7C)"></i>' + _uiT('ui.fitness') + '<b>'+cT+'</b></span>'+
+      '<span><i style="background:var(--crit,#F0637A)"></i>' + _uiT('ui.ermuedung') + '<b>'+aT+'</b></span>'+
+      '<span><i style="background:var(--ready,#43D693)"></i>' + _uiT('ui.form') + '<b>'+(tT>0?'+':'')+tT+'</b></span></div>';
     var expl=mode==='anfaenger'
-      ?'Gold = wie fit du bist. Liegt Grün (Form) über null, bist du frisch — unter null brauchst du Erholung.'
+      ?'' + _uiT('ui.gold_wie_fit_du_bist') + ''
       :mode==='profi'
-        ?'CTL = EWMA(42) der kanonischen Tageslast (sRPE), ATL = EWMA(7), Form (TSB) = CTL − ATL. Letzte '+k+' Tage; Scrubbing auf der Fitness-Kurve (Touch/Maus/Pfeiltasten).'
-        :'Fitness baut sich über Wochen auf, Ermüdung über Tage — Form ist die Differenz. Deutlich positiv = frisch, stark negativ = überlastet.';
+        ?'' + _uiT('ui.ctl_ewma_42_der_kanonischen') + ''+k+'' + _uiT('ui.tage_scrubbing_auf_der_fitness') + ''
+        :'' + _uiT('ui.fitness_baut_sich_ueber_wochen') + '';
     host.innerHTML=legend+'<div class="oc2" id="ffvChart"></div>'+
       '<p class="note" style="text-align:left;margin-top:8px">'+expl+(lcc.ctlAtlNote?' · '+escH(lcc.ctlAtlNote):'')+'</p>';
     window.ORVIA.charts.richChart(document.getElementById('ffvChart'),{
-      label:'Fitness (CTL)',series:ctl,times:labels,unit:'',color:'gold',
+      label:'' + _uiT('ui.fitness_ctl') + '',series:ctl,times:labels,unit:'',color:'gold',
       baseline:Math.round(ctl.reduce(function(x,y){return x+y;},0)/k),higherBetter:true,dec:0,
       overlays:[{series:atl,color:'var(--crit)'},{series:tsb,color:'var(--ready)',dash:'4 3'}]});
   }catch(e){try{console.error('[formFitnessV5]',e);}catch(_){}
-    host.innerHTML=gmStateError({title:'Form & Fitness konnte gerade nicht dargestellt werden.',retry:'renderFormFitnessV5()',label:'Erneut versuchen'});}
+    host.innerHTML=gmStateError({title:'' + _uiT('ui.form_fitness_konnte_gerade_nicht') + '',retry:'renderFormFitnessV5()',label:'' + _uiT('ui.erneut_versuchen') + ''});}
 }
 
 
@@ -5651,7 +5680,7 @@ function renderFormFitnessV5(){
    stale ⇒ sichtbar "veraltet". uiDetailMode ändert nur Erklärtiefe, nie Werte. ====== */
 var _rcvReq=0,_rcvLastFocus=null;
 var _RCV_TILES=[
-  {id:'sleep_duration_min',label:'Schlaf',icon:'zzz'},
+  {id:'sleep_duration_min',label:'' + _uiT('ui.schlaf') + '',icon:'zzz'},
   {id:'hrv_ms',label:'HRV',icon:'heart'},
   {id:'resting_hr',label:'Ruhepuls',icon:'pulse'},
   {id:'stress_avg',label:'Stress',icon:'flame'},
@@ -5661,7 +5690,7 @@ function _rcvVal(r){ /* reine Darstellung — keine Umrechnung außer Anzeigefor
   if(r.metricType==='sleep_duration_min'&&r.value!=null){var h=Math.floor(r.value/60),m=Math.round(r.value-h*60);return h+':'+String(m).padStart(2,'0')+' h';}
   if(r.value!=null)return fmtDe(r.value)+(r.unit?' '+r.unit:'');
   return r.valueText!=null?String(r.valueText):'–';}
-function _rcvSrc(r){return ({automatic:'Automatisch (Gerät)',manual:'Manuell',override:'Manuell korrigiert',estimate:'Schätzung',historical:'Historisch'})[r.source]||'Quelle unbekannt';}
+function _rcvSrc(r){return ({automatic:'' + _uiT('ui.automatisch_geraet') + '',manual:'Manuell',override:'' + _uiT('ui.manuell_korrigiert') + '',estimate:'Schätzung',historical:'Historisch'})[r.source]||'' + _uiT('ui.quelle_unbekannt') + '';}
 function _rcvWhen(r){try{var d=r.measuredAt?new Date(r.measuredAt):null;
   if(d&&!isNaN(d))return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+', '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
   }catch(_){ }
@@ -5713,7 +5742,7 @@ function renderRecoveryTilesV5(){
   var resolved=_rcvResolvedToday();
   if(resolved){_rcvRender(host,resolved);return;}
   var P=(typeof window!=='undefined')&&window.ORVIA&&window.ORVIA.profileMetricResolver;
-  if(!P||typeof P.collect!=='function'){host.innerHTML=gmStateError({icon:'alert',title:'Metrik-Modul nicht geladen.',desc:'Die Erholungswerte erscheinen nach einem vollständigen Laden der App wieder.'});return;}
+  if(!P||typeof P.collect!=='function'){host.innerHTML=gmStateError({icon:'alert',title:'' + _uiT('ui.metrik_modul_nicht_geladen') + '',desc:'' + _uiT('ui.die_erholungswerte_erscheinen_nach_einem') + ''});return;}
   var req=++_rcvReq;var t=todayStr();
   host.innerHTML=gmStateLoading({bare:true});
   /* GM7.5f: 8→14 Tage — die aus DIESEM Cache gespeisten Detail-Sheets beschriften ihre
@@ -5727,7 +5756,7 @@ function renderRecoveryTilesV5(){
       _rcvRender(host,res);}
     else{_rcvError(host);}
   }).catch(function(){if(req===_rcvReq)_rcvError(host);});}
-function _rcvError(host){host.innerHTML=gmStateError({title:'Erholungswerte konnten nicht geladen werden.',desc:'Offline oder Server nicht erreichbar.',retry:'renderRecoveryTilesV5()',label:'Erneut versuchen'});}
+function _rcvError(host){host.innerHTML=gmStateError({title:'' + _uiT('ui.erholungswerte_konnten_nicht_geladen_werden') + '',desc:'' + _uiT('ui.offline_oder_server_nicht_erreichbar') + '',retry:'renderRecoveryTilesV5()',label:'' + _uiT('ui.erneut_versuchen') + ''});}
 function _rcvRender(host,resolved){
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var tiles=[];
@@ -5738,9 +5767,9 @@ function _rcvRender(host,resolved){
     tiles.push('<button type="button" class="rcv-tile'+(r.stale?' is-stale':'')+'" data-m="'+tdef.id+'" data-val="'+escH(r.value!=null?r.value:r.valueText)+'" onclick="openRecoveryMetricSheet(\''+tdef.id+'\')" aria-label="'+escH(tdef.label+': '+_rcvVal(r)+(r.stale?', veraltet':''))+'">'+
       '<span class="rcv-l">'+escH(tdef.label)+'</span>'+
       '<span class="rcv-v">'+escH(_rcvVal(r))+'</span>'+staleBadge+meta+'</button>');}
-  if(!tiles.length){host.innerHTML=gmStateEmpty({icon:'moon',title:'Noch keine Erholungswerte für heute',desc:'Sobald dein Gerät Werte liefert oder du sie im Check-in einträgst, erscheinen sie hier.',action:'expandCheckinCard()',actionIcon:'activity',label:'Manuell erfassen'});return;}
+  if(!tiles.length){host.innerHTML=gmStateEmpty({icon:'moon',title:'' + _uiT('ui.noch_keine_erholungswerte_fuer_heute') + '',desc:'' + _uiT('ui.sobald_dein_geraet_werte_liefert') + '',action:'expandCheckinCard()',actionIcon:'activity',label:'' + _uiT('ui.manuell_erfassen') + ''});return;}
   host.innerHTML='<div class="rcv-grid">'+tiles.join('')+'</div>'+
-    (mode==='anfaenger'?'<p class="note" style="text-align:left;margin-top:8px">Tippe eine Kachel für Details. Werte kommen automatisch von deinem Gerät oder aus deinem Check-in.</p>':'');}
+    (mode==='anfaenger'?'<p class="note" style="text-align:left;margin-top:8px">' + _uiT('ui.tippe_eine_kachel_fuer_details') + '</p>':'');}
 function openRecoveryMetricSheet(metricId){
   /* GM7.5h: EIN Sheet-System (Mapping-Doc „GM-Sheet-System als EINZIGES Sheet-System") —
      delegiert an das volle GM-Metrik-Sheet (Kurve, Ø/vs-Ø, Quelle/Stand/Stale). Das
@@ -5749,14 +5778,14 @@ function openRecoveryMetricSheet(metricId){
   try{if(typeof openMetric==='function'&&document.getElementById('detailSheet')&&typeof GM_METRIC_DEFS!=='undefined'&&GM_METRIC_DEFS[metricId]){openMetric(metricId);return;}}catch(_){ }
   var resolved=_rcvResolvedToday();var r=resolved&&resolved[metricId];
   var tdef=null;for(var i=0;i<_RCV_TILES.length;i++)if(_RCV_TILES[i].id===metricId)tdef=_RCV_TILES[i];
-  if(!r||!tdef){if(typeof oModal==='function')oModal(tdef?tdef.label:'Metrik','<p class="muted" style="margin:0">Für diese Metrik liegt heute kein aufgelöster Wert vor.</p>');return;}
+  if(!r||!tdef){if(typeof oModal==='function')oModal(tdef?tdef.label:'Metrik','<p class="muted" style="margin:0">' + _uiT('ui.fuer_diese_metrik_liegt_heute') + '</p>');return;}
   var mode=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
-  var EXPL={sleep_duration_min:'Gemessene Schlafdauer der letzten Nacht.',hrv_ms:'Nächtliche Herzfrequenzvariabilität — Einzelwerte schwanken, aussagekräftig ist der Vergleich mit deiner eigenen Baseline.',resting_hr:'Ruhepuls der Nacht.',stress_avg:'Tages-Stresswert deines Geräts (0–100).',body_battery:'Energie-Schätzung deines Geräts (0–100).'};
+  var EXPL={sleep_duration_min:'' + _uiT('ui.gemessene_schlafdauer_der_letzten_nacht_') + '',hrv_ms:'' + _uiT('ui.naechtliche_herzfrequenzvariabilitaet_einzelwerte_schwanken_aussagekraeftig') + '',resting_hr:'' + _uiT('ui.ruhepuls_der_nacht') + '',stress_avg:'' + _uiT('ui.tages_stresswert_deines_geraets_0') + '',body_battery:'' + _uiT('ui.energie_schaetzung_deines_geraets_0') + ''};
   var body='<div class="rcv-sh-v" data-val="'+escH(r.value!=null?r.value:r.valueText)+'">'+escH(_rcvVal(r))+(r.stale?' <span class="rcv-stale">veraltet</span>':'')+'</div>'+
     '<p style="margin:8px 0 0">'+escH(EXPL[metricId]||'')+'</p>';
-  if(mode!=='anfaenger'){body+='<div class="rcv-sh-meta">Quelle: <b>'+escH(_rcvSrc(r))+'</b> · Stand: <b>'+escH(_rcvWhen(r))+'</b>'+(r.stale?' · <b>veraltet</b> (kein frischer Wert im Gültigkeitsfenster)':'')+'</div>';}
-  if(mode==='profi'){body+='<div class="rcv-sh-meta">Roh-Quelle: '+escH(r.sourceType||'–')+' · Metrik-Datum: '+escH(r.metricDate||'–')+(r.isOverride?' · manueller Override aktiv':'')+'</div>';}
-  body+='<p class="note" style="text-align:left;margin-top:10px">Anzeige aus dem kanonischen Metrik-Speicher — keine Bewertung, keine medizinische Aussage.</p>';
+  if(mode!=='anfaenger'){body+='<div class="rcv-sh-meta">' + _uiT('ui.quelle') + '<b>'+escH(_rcvSrc(r))+'</b>' + _uiT('ui.stand') + '<b>'+escH(_rcvWhen(r))+'</b>'+(r.stale?' · <b>veraltet</b> (kein frischer Wert im Gültigkeitsfenster)':'')+'</div>';}
+  if(mode==='profi'){body+='<div class="rcv-sh-meta">Roh-' + _uiT('ui.quelle') + ''+escH(r.sourceType||'–')+'' + _uiT('ui.metrik_datum') + ''+escH(r.metricDate||'–')+(r.isOverride?'' + _uiT('ui.manueller_override_aktiv') + '':'')+'</div>';}
+  body+='<p class="note" style="text-align:left;margin-top:10px">' + _uiT('ui.anzeige_aus_dem_kanonischen_metrik') + '</p>';
   try{_rcvLastFocus=document.activeElement;}catch(_){ }
   if(typeof oModal==='function')oModal(tdef.label,body);
   /* A11y: Fokus ins Sheet, Escape schließt, Rückfokus zum Auslöser (idempotent gebunden). */
@@ -5815,7 +5844,7 @@ function gmStandLbl(r){
     if(rl==='Gestern')return 'gestern';
   }catch(_){ }
   if(r.metricDate===todayStr())return 'heute';
-  try{var d=new Date(r.metricDate+'T12:00');return 'Stand '+d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});}catch(_){return 'Stand '+gmEsc(String(r.metricDate));}
+  try{var d=new Date(r.metricDate+'T12:00');return '' + _uiT('ui.stand__') + ''+d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});}catch(_){return '' + _uiT('ui.stand__') + ''+gmEsc(String(r.metricDate));}
 }
 /* GM7.4: read-only Serien-Anbindung (user_metric_series). Fetch injizierbar
    (Test-Override), sonst Supabase-Default. Rein lesend, kein Rückschreiben. */
@@ -5854,7 +5883,7 @@ function gmStressDistribution(pts){
     }
     if(!tot)return '';
     var fmtDur=function(s){var h=Math.floor(s/3600),m=Math.round((s-h*3600)/60);return (h?h+'h ':'')+m+'min';};
-    return '<div style="margin-top:12px"><div class="bh">Stressanalyse (gemessene Anteile)</div>'+buckets.map(function(bk,b){
+    return '<div style="margin-top:12px"><div class="bh">' + _uiT('ui.stressanalyse_gemessene_anteile') + '</div>'+buckets.map(function(bk,b){
       var pct=Math.round(acc[b]/tot*100);
       return '<div class="distb"><div class="dh"><span class="dl">'+bk[0]+'</span><span><span class="dp" style="color:'+bk[3]+'">'+pct+'%</span> <span class="dt">'+fmtDur(acc[b])+'</span></span></div><div class="dbar"><i style="width:'+Math.max(pct,acc[b]>0?1:0)+'%;background:'+bk[3]+'"></i></div></div>';
     }).join('')+'</div>';
@@ -5869,8 +5898,8 @@ function gmBbBalance(pts){
     var up=0,down=0;
     for(var i=1;i<pts.length;i++){var d=pts[i][1]-pts[i-1][1];if(!isFinite(d))continue;if(d>0)up+=d;else down+=-d;}
     return '<div style="display:flex;gap:10px;margin:0 0 10px">'+
-      '<div style="flex:1;background:var(--ready-t);border:1px solid rgba(67,214,147,.28);border-radius:14px;padding:13px"><div style="font-size:11px;color:var(--muted);font-weight:700">Aufgeladen</div><div style="font-size:22px;font-weight:800;color:var(--ready);margin-top:4px">+'+Math.round(up)+'</div><div style="font-size:10.5px;color:var(--muted)">Summe der Anstiege (gespeicherte Kurve)</div></div>'+
-      '<div style="flex:1;background:var(--crit-t);border:1px solid rgba(240,99,122,.28);border-radius:14px;padding:13px"><div style="font-size:11px;color:var(--muted);font-weight:700">Verbraucht</div><div style="font-size:22px;font-weight:800;color:var(--crit);margin-top:4px">−'+Math.round(down)+'</div><div style="font-size:10.5px;color:var(--muted)">Summe der Rückgänge (gespeicherte Kurve)</div></div></div>';
+      '<div style="flex:1;background:var(--ready-t);border:1px solid rgba(67,214,147,.28);border-radius:14px;padding:13px"><div style="font-size:11px;color:var(--muted);font-weight:700">' + _uiT('ui.aufgeladen') + '</div><div style="font-size:22px;font-weight:800;color:var(--ready);margin-top:4px">+'+Math.round(up)+'</div><div style="font-size:10.5px;color:var(--muted)">' + _uiT('ui.summe_der_anstiege_gespeicherte_kurve') + '</div></div>'+
+      '<div style="flex:1;background:var(--crit-t);border:1px solid rgba(240,99,122,.28);border-radius:14px;padding:13px"><div style="font-size:11px;color:var(--muted);font-weight:700">' + _uiT('ui.verbraucht') + '</div><div style="font-size:22px;font-weight:800;color:var(--crit);margin-top:4px">−'+Math.round(down)+'</div><div style="font-size:10.5px;color:var(--muted)">' + _uiT('ui.summe_der_rueckgaenge_gespeicherte_kurve') + '</div></div></div>';
   }catch(_){return '';}
 }
 /* Lädt eine Tages-Serie asynchron in einen vorhandenen Slot. Nur innerHTML-Ersatz
@@ -5975,7 +6004,7 @@ function gmReadinessDeltas(todayScore){
   var ys=null,ysAgo=0;
   for(var q=1;q<=7;q++){var dq=new Date(t);dq.setDate(t.getDate()-q);var vq=gmPastReadiness(todayStr(dq));
     if(vq!=null){ys=vq;ysAgo=q;break;}}
-  var ysLabel=ysAgo<=1?'vs. gestern':('vs. vor '+ysAgo+' Tagen');
+  var ysLabel=ysAgo<=1?'vs. gestern':('vs. vor '+ysAgo+'' + _uiT('ui.tagen_') + '');
   var vals=[];for(var i=1;i<=14;i++){var d=new Date(t);d.setDate(t.getDate()-i);var v=gmPastReadiness(todayStr(d));if(v!=null)vals.push(v);}
   var avg=vals.length>=5?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):null;
   /* GM7.6-Fix: Richtungscode 'dn' (GM-Vertrag arrow()/.delta.dn) — 'down' rendrte
@@ -5983,7 +6012,7 @@ function gmReadinessDeltas(todayScore){
   var mk=function(delta,lbl){if(delta==null)return ['flat',lbl+': —'];
     var dirn=delta>0?'up':delta<0?'dn':'flat';
     return [dirn,(delta>0?'+':'')+delta+' '+lbl];};
-  return [mk(ys!=null?todayScore-ys:null,ysLabel),mk(avg!=null?todayScore-avg:null,'vs. 14-T-Ø')];
+  return [mk(ys!=null?todayScore-ys:null,ysLabel),mk(avg!=null?todayScore-avg:null,'' + _uiT('ui.vs_14_t') + '')];
 }
 /* Breakdown aus der kanonischen Komponentenrechnung (readiness-store.buildComponents). */
 /* v9: Namen an die Engine angeglichen (Schlaf-Score (Gerät) / Schlafgefühl /
@@ -6004,7 +6033,7 @@ function gmReadinessBreakdown(os){
       });}
   }catch(_){ }
   if(out&&out.length)return out;
-  return [['Ausgangswert',null,'neutral','—'],['Schlaf',null,'sleep','—'],['HRV',null,'ready','—'],['Ruhepuls',null,'ready','—'],['Energie (subj.)',null,'cyan','—'],['Belastung',null,'activity','—'],['Schmerzen',null,'crit','—']];
+  return [['Ausgangswert',null,'neutral','—'],['' + _uiT('ui.schlaf') + '',null,'sleep','—'],['HRV',null,'ready','—'],['Ruhepuls',null,'ready','—'],['' + _uiT('ui.energie_subj') + '',null,'cyan','—'],['Belastung',null,'activity','—'],['Schmerzen',null,'crit','—']];
 }
 /* Konfidenz aus der kanonischen Datenqualitaetsquelle (dataConfidence + Baseline-Status). */
 function gmConfVM(){
@@ -6016,8 +6045,8 @@ function gmConfVM(){
     var sd=null;try{var _hr=(typeof gmMetricToday==='function')?gmMetricToday('hrv_ms'):null;var _cx=(typeof recoveryCtx==='function')?recoveryCtx(todayStr()):null;
       if(_hr&&_hr.value!=null&&_cx&&_cx.hrvBase7!=null){var _dv=Math.round(_hr.value-Math.exp(_cx.hrvBase7));sd=(_dv>=0?'+':'')+_dv+' ms';}}catch(_){ }
     return {levelLabel:c.level.l,levelColor:c.level.c==='g'?'ready':c.level.c==='y'?'attention':'crit',
-      complete:c.ci+' Check-ins · '+c.acts+' Aktivitäten · '+c.n+' Tage',
-      sd:sd,note:c.msg+(bs==='active'?' Persönliche Baseline aktiv.':bs==='building'?' Baseline wird aufgebaut.':''),pct:null};
+      complete:c.ci+'' + _uiT('ui.check_ins') + ''+c.acts+'' + _uiT('ui.aktivitaeten') + ''+c.n+'' + _uiT('ui.tage_') + '',
+      sd:sd,note:c.msg+(bs==='active'?'' + _uiT('ui.persoenliche_baseline_aktiv') + '':bs==='building'?'' + _uiT('ui.baseline_wird_aufgebaut') + '':''),pct:null};
   }catch(_){return {levelLabel:null,levelColor:'neutral',complete:null,sd:null,note:GM_NA,pct:null};}
 }
 /* Belastungs-Beitrag: letzte Einheiten mit Tageslast (sRPE) — ehrlich als Last, nicht als ATL. */
@@ -6034,7 +6063,7 @@ function gmLoadContrib(){
       var k=dkey(-(len-1-i));                                   /* i=len-1 → heute */
       var types=[];try{var e=DB[k];if(e&&e.sessions)types=Object.keys(e.sessions).filter(function(t){return t!=='_ts';});}catch(_){ }
       var wd='';try{wd=new Date(k+'T12:00').toLocaleDateString('de-DE',{weekday:'short'});}catch(_){ }
-      rows.push([types.length?types.join(' + '):'Training',wd+(types.length?'':' · Tageslast'),fmtDe(Math.round(v)),'activity']);
+      rows.push([types.length?types.join(' + '):'' + _uiT('ui.training') + '',wd+(types.length?'':'' + _uiT('ui.tageslast') + ''),fmtDe(Math.round(v)),'activity']);
     }
     return rows.length?rows:null;
   }catch(_){return null;}
@@ -6082,7 +6111,7 @@ function gmDeviceSyncRefresh(){
   }catch(_){ }
 }
 function gmDevProviderName(){
-  return ({garmin:'Garmin',strava:'Strava',apple_health:'Apple Health',applehealth:'Apple Health'})[String(_gmDevSync.provider||'').toLowerCase()]||_gmDevSync.provider;
+  return ({garmin:'Garmin',strava:'Strava',apple_health:'' + _uiT('ui.apple_health') + '',applehealth:'' + _uiT('ui.apple_health') + ''})[String(_gmDevSync.provider||'').toLowerCase()]||_gmDevSync.provider;
 }
 /* KF-019: braucht der Provider eine Neuanmeldung? (Worker setzt reauth_required,
    wenn das lokal erzeugte Garmin-Session-Token abgelaufen ist.) */
@@ -6091,11 +6120,11 @@ function gmDeviceSyncText(){
   var F=window.ORVIA&&ORVIA.fmt;
   if(_gmDevSync.state==='ready'&&_gmDevSync.provider){
     var provName=gmDevProviderName();
-    if(_gmDevSync.reauth)return provName+' · Neuanmeldung erforderlich';
+    if(_gmDevSync.reauth)return provName+'' + _uiT('ui.neuanmeldung_erforderlich') + '';
     var rel=F&&F.fmtRelTime?F.fmtRelTime(_gmDevSync.lastSyncAt):null;
     return rel?(provName+' · '+rel+' synchronisiert'):(provName+' · verbunden');
   }
-  if(_gmDevSync.state==='none')return 'Kein Gerät verbunden';
+  if(_gmDevSync.state==='none')return '' + _uiT('ui.kein_geraet_verbunden') + '';
   return null; /* unbekannt/lokal -> Cloud-Sync-Status anzeigen */
 }
 function gmApplySyncLine(){
@@ -6104,7 +6133,7 @@ function gmApplySyncLine(){
     /* KF-019: Neuanmeldung ist ein Fehlerzustand, kein „synced". */
     if(dev!=null){if(stx)stx.textContent=dev;if(sl)sl.dataset.state=(gmDevReauthNeeded()?'error':(_gmDevSync.state==='ready'?'synced':'local'));return;}
     if(stx&&typeof window.orviaSyncState==='function'){var st=window.orviaSyncState();
-      stx.textContent=({local:'Lokaler Modus',synced:'Cloud synchronisiert',pending:'Cloud-Sync läuft …',error:'Sync-Fehler',offline:'Offline – lokal'})[st]||'Lokaler Modus';
+      stx.textContent=({local:'' + _uiT('ui.lokaler_modus') + '',synced:'' + _uiT('ui.cloud_synchronisiert') + '',pending:'' + _uiT('ui.cloud_sync_laeuft') + '',error:'Sync-Fehler',offline:'' + _uiT('ui.offline_lokal') + ''})[st]||'' + _uiT('ui.lokaler_modus') + '';
       if(sl)sl.dataset.state=st;}
   }catch(_){ }
 }
@@ -6187,7 +6216,7 @@ function gmLoadEnvelopes(){
         coverage:{eligible:sessAll,available:sessKnown},
         provenance:{method:'duration_share_by_sport',version:'1.0.0',sources:['garmin','manual'],
           assumptions:[]},
-        reason:tot>0?null:'keine Einheiten mit bekannter Dauer in dieser Woche'});
+        reason:tot>0?null:'' + _uiT('ui.keine_einheiten_mit_bekannter_dauer') + ''});
     }
   }catch(_){ }
   try{
@@ -6205,7 +6234,7 @@ function gmLoadEnvelopes(){
       coverage:{eligible:ses.length,available:withRpe.length},
       provenance:{method:'session_rpe_hard_share',version:'1.0.0',sources:['garmin','manual'],
         inputs:{threshold:7,hardCount:hard.length},assumptions:[]},
-      reason:withRpe.length?null:'keine Einheiten mit RPE in den letzten 7 Tagen'});
+      reason:withRpe.length?null:'' + _uiT('ui.keine_einheiten_mit_rpe_in') + ''});
     /* 2.3 TRIMP (Banister) — nur mit GEMESSENEM Ruhepuls (PROFILE.rhrBaseline
        bzw. heutige Messung); kein Fallback (konsistent zu calc._rhrBase).
        HFmax: gemessen (PROFILE.hfMax), sonst Tanaka — als Annahme ausgewiesen. */
@@ -6234,11 +6263,11 @@ function gmLoadEnvelopes(){
       unit:'',period:roll7,
       coverage:{eligible:ses.length,available:trs.length},
       provenance:{method:'banister_trimp',version:'1.0.0',sources:['garmin','manual'],
-        inputs:{formula:'min × HRr × 0,64 × e^(k·HRr)',k:k,restingHr:rhr,maxHr:hrMax,
+        inputs:{formula:'' + _uiT('ui.min_hrr_0_64_e') + '',k:k,restingHr:rhr,maxHr:hrMax,
           maxHrSource:hrMaxMeasured!=null?'gemessen':'tanaka',sexParameter:female?'female':'male',
           durationUnit:'min',hrrClamp:'(0,1]',rounding:'ganzzahlig'},
         assumptions:assum},
-      reason:(hrMax==null||rhr==null)?'ohne gemessenen Ruhepuls bzw. HFmax kein TRIMP (kein Fallback)':(trs.length?null:'keine Einheiten mit Ø-HF')});
+      reason:(hrMax==null||rhr==null)?'' + _uiT('ui.ohne_gemessenen_ruhepuls_bzw_hfmax') + '':(trs.length?null:'' + _uiT('ui.keine_einheiten_mit_hf') + '')});
     /* 2.4 Interferenz — kanonischer Producer Calc.evaluateLoadAndInterference
        (Lastsprung 3/7 Tage + Bein-Interferenz), Eingaben aus der kanonischen
        Tageslast-Serie und dem heutigen Check-in. */
@@ -6256,13 +6285,13 @@ function gmLoadEnvelopes(){
         {loads:{load3:l3,load7:l7},doms:(m0&&m0.doms!=null)?m0.doms:0},
         {legLoad:!!(tt0&&/gym|kraft|leg|interval|tempo|long/i.test((tt0.t||'')+' '+(tt0.l||'')))}):null;
       var interfTxt=null;
-      if(eli){interfTxt=eli.notes&&eli.notes.length?eli.notes.join(' + ')+(eli.spikePct!=null?' (+'+eli.spikePct+' % über 7-Tage-Schnitt)':''):'Keine Auffälligkeit (Lastsprung/Bein-Interferenz)';}
+      if(eli){interfTxt=eli.notes&&eli.notes.length?eli.notes.join(' + ')+(eli.spikePct!=null?' (+'+eli.spikePct+' % ' + _uiT('ui.ueber') + ' 7-' + _uiT('ui.tage__') + '-Schnitt)':''):'' + _uiT('ui.keine_auffaelligkeit_lastsprung_bein_interferenz') + '';}
       out.interf=E.create({metricId:'load_interference',
         value:interfTxt,unit:null,period:roll7,
         coverage:{eligible:2,available:(l3!=null&&l7!=null?1:0)+(m0?1:0)},
         provenance:{method:'load_spike_and_leg_interference',version:'1.0.0',sources:['garmin','manual'],
           inputs:{load3:l3!=null?Math.round(l3):null,load7:l7!=null?Math.round(l7):null,doms:(m0&&m0.doms)||0},assumptions:[]},
-        reason:(l3==null||l7==null)?'Tageslast-Serie fuer 3/7-Tage-Vergleich unvollstaendig':null});
+        reason:(l3==null||l7==null)?'' + _uiT('ui.tageslast_serie_fuer_3_7') + '':null});
     }catch(_){ }
     /* 2.5 Easy Share — klassifizierte leichte Laeufe / alle KLASSIFIZIERTEN Laeufe. */
     try{
@@ -6275,7 +6304,7 @@ function gmLoadEnvelopes(){
         provenance:{method:'label_or_hr_easy_share',version:'1.0.0',sources:['garmin','manual'],
           inputs:{easyMin:esd.easyMin,classifiedMin:esd.classifiedMin,hrMax:esd.hrMaxUsed},
           assumptions:esd.hrMaxUsed==null?['ohne_hfmax_nur_labels']:[]},
-        reason:esd.share==null?'unter 6 klassifizierbare Laeufe in 28 Tagen':null});
+        reason:esd.share==null?'' + _uiT('ui.unter_6_klassifizierbare_laeufe_in') + '':null});
     }catch(_){ }
   }catch(_){ }
   return out;
@@ -6296,14 +6325,14 @@ function gmDashVM(){
   var e=(typeof DB!=='undefined'&&DB)?DB[todayStr()]:null;var m=e&&e.morning;
   var ciDone=!!(m&&Object.keys(m).length);
   var stC=os?({g:'ready',y:'attention',o:'attention',r:'crit'})[os.status.c]||'attention':'neutral';
-  var lead=os?(os.dayState==='GREEN'?'Trainieren – kontrolliert bleiben':os.dayState==='YELLOW'?'Reduzieren empfohlen':os.dayState==='ORANGE'?'Anpassen / Ersatztraining':'Regeneration priorisieren'):'Check-in ausstehend';
+  var lead=os?(os.dayState==='GREEN'?'' + _uiT('ui.trainieren_kontrolliert_bleiben') + '':os.dayState==='YELLOW'?'' + _uiT('ui.reduzieren_empfohlen') + '':os.dayState==='ORANGE'?'' + _uiT('ui.anpassen_ersatztraining') + '':'' + _uiT('ui.regeneration_priorisieren') + ''):'' + _uiT('ui.check_in_ausstehend') + '';
   /* GM7.2: kurzes Pill-Wort (GM: „Bereit"/„Moderat"/…) statt langem Statustext,
      der aus dem 150-px-Ring herausragte. Peak bleibt Peak (statusText). */
-  var pillWord=os?((os.statusText==='Peak')?'Peak':({GREEN:'Bereit',YELLOW:'Moderat',ORANGE:'Anpassen',RED:'Erholung'})[os.dayState]||os.status.l):'Check-in';
+  var pillWord=os?((os.statusText==='Peak')?'Peak':({GREEN:'Bereit',YELLOW:'Moderat',ORANGE:'' + _uiT('ui.anpassen') + '',RED:'' + _uiT('ui.erholung_') + ''})[os.dayState]||os.status.l):'Check-in';
   var why=[];try{var dd=os&&os.decision;
     if(dd&&dd.triggers&&dd.triggers.length)why=dd.triggers.map(function(t){return t.title+' — '+t.detail;});
     else if(dd&&dd.readinessReasons)why=dd.readinessReasons.slice(0,3);}catch(_){ }
-  if(!why.length)why=[os?'Stabile Werte – nichts Auffälliges.':'2 Minuten Morgen-Check-in, dann steht deine Tagesentscheidung.'];
+  if(!why.length)why=[os?'' + _uiT('ui.stabile_werte_nichts_auffaelliges') + '':'' + _uiT('ui.2_minuten_morgen_check_in') + ''];
   var rec=null;try{rec=os&&os.decision&&os.decision.recommendedSession;}catch(_){ }
   var ad=null;try{ad=(typeof adaptToday==='function')?adaptToday():null;}catch(_){ }
   var bb=gmMetric('body_battery');
@@ -6318,28 +6347,28 @@ function gmDashVM(){
   if(suppress){atl=null;ctl=null;tsb=null;}
   var u=null;try{u=(typeof todayPrimaryUnit==='function')?todayPrimaryUnit():null;}catch(_){ }
   var g=null;try{g=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
-  var wk=null;try{if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&g&&g.raceDate)wk='Woche '+Math.max(1,Math.min(25,Calc.runnaWeek(daysTo(RACE.date))))+' / 25';}catch(_){ }
+  var wk=null;try{if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&g&&g.raceDate)wk='' + _uiT('ui.woche__') + ''+Math.max(1,Math.min(25,Calc.runnaWeek(daysTo(RACE.date))))+' / 25';}catch(_){ }
   var goalName=null;try{goalName=gmGoalLabel(g);}catch(_){ }
   var ciVals=[];
-  if(ciDone){if(m.sleepMin!=null)ciVals.push(['Schlaf',fmtDe(m.sleepMin/60)+' h']);
+  if(ciDone){if(m.sleepMin!=null)ciVals.push(['' + _uiT('ui.schlaf') + '',fmtDe(m.sleepMin/60)+' h']);
     if(m.sleepQ!=null)ciVals.push(['Qualität',fmtDe(m.sleepQ)+'/10']);
     if(m.bb!=null)ciVals.push(['Body Battery',fmtDe(m.bb)]);
     if(m.knee!=null)ciVals.push(['Knie',fmtDe(m.knee)+'/10']);}
-  var pain=(m&&m.knee!=null&&m.knee>=1)?{region:'Knie',level:fmtDe(m.knee)+'/10 gemeldet',note:'aus deinem Morgen-Check-in'}:null;
+  var pain=(m&&m.knee!=null&&m.knee>=1)?{region:'Knie',level:fmtDe(m.knee)+'/10 gemeldet',note:'' + _uiT('ui.aus_deinem_morgen_check_in') + ''}:null;
   var warnings=[];try{if(os&&os.decision&&os.decision.triggers)warnings=os.decision.triggers.map(function(t){return ['alert',t.title,t.detail];});}catch(_){ }
-  try{var pz=(typeof pauseFor==='function')?pauseFor(todayStr()):null;if(pz)warnings.push(['moon','Pause aktiv',(pz.reason||'Pause')+' — der Plan pausiert bis '+(pz.to||'auf Weiteres')+'.']);}catch(_){ }
+  try{var pz=(typeof pauseFor==='function')?pauseFor(todayStr()):null;if(pz)warnings.push(['moon','' + _uiT('ui.pause_aktiv') + '',(pz.reason||'Pause')+'' + _uiT('ui.der_plan_pausiert_bis') + ''+(pz.to||'' + _uiT('ui.auf_weiteres') + '')+'.']);}catch(_){ }
   var hrv=gmMetric('hrv_ms'),rhr=gmMetric('resting_hr'),sl=gmMetric('sleep_duration_min'),str=gmMetric('stress_avg');
   var _vm={
-    hasScore:!!os,score:os?os.score:null,status:os?os.status.l:'Check-in ausstehend',statusColor:stC,pillWord:pillWord,
-    simpleStatus:os?os.status.l:'Check-in ausstehend',lead:lead,simpleLead:lead,
+    hasScore:!!os,score:os?os.score:null,status:os?os.status.l:'' + _uiT('ui.check_in_ausstehend') + '',statusColor:stC,pillWord:pillWord,
+    simpleStatus:os?os.status.l:'' + _uiT('ui.check_in_ausstehend') + '',lead:lead,simpleLead:lead,
     why:why.slice(0,3).join(' '),whyList:why,ciDone:ciDone,
     deltas:gmReadinessDeltas(os?((os.r&&os.r.score!=null)?os.r.score:os.score):null),
     reco:{cls:stC==='neutral'?'attention':stC,ic:stC==='ready'?'bolt':stC==='crit'?'shield':'gauge',
-      t:rec?rec.label:(os?lead:'Check-in ausfüllen'),d:rec?(rec.detail||''):'Danach steht deine konkrete Empfehlung.'},
+      t:rec?rec.label:(os?lead:'' + _uiT('ui.check_in_ausfuellen') + ''),d:rec?(rec.detail||''):'' + _uiT('ui.danach_steht_deine_konkrete_empfehlung') + ''},
     simpleReco:null,
     pro:rec?('<b>'+gmEsc(rec.label)+'.</b> '+gmEsc(rec.detail||'')):GM_NA,
     changelog:ad?{from:ad.origLabel||'—',to:ad.newTitle||'—',reason:(ad.why&&ad.why[0])||'Tagesanpassung'}:null,
-    session:{name:rec?rec.label:(u?u.l:'Training'),detail:rec?(rec.detail||''):(u?u.t:'')},
+    session:{name:rec?rec.label:(u?u.l:'' + _uiT('ui.training') + ''),detail:rec?(rec.detail||''):(u?u.t:'')},
     battery:bb?(bb.value!=null?bb.value:null):null,
     charge:null,drain:null,
     ciVals:ciVals,mCheck:m||null,
@@ -6373,7 +6402,7 @@ function gmDashVM(){
       try{var bt=(typeof bestTimes==='function')?bestTimes():null;
         if(bt&&bt.t10!=null&&g&&/half|hm/i.test(String(g.type||''))&&Calc.riegelHM){
           var hmMin=Calc.riegelHM(10,bt.t10/60);
-          if(hmMin!=null)pred='Prognose '+Calc.fmtTime(hmMin);}}catch(_){ }
+          if(hmMin!=null)pred='' + _uiT('ui.prognose__') + ''+Calc.fmtTime(hmMin);}}catch(_){ }
       return {name:goalName||'—',pct:null,wk:wk||'—',pred:pred,predD:predD};
     })(),
     pain:pain,warnings:warnings,
@@ -6452,18 +6481,18 @@ function gmLoadHeroBattBalance(){
 function gmHero(d){
   var lvl=gmLevel();
   var ringHtml=d.hasScore?ring(d.score,SC[d.statusColor],lvl==='a'?170:150,lvl==='a'?14:12):ring(0,'var(--neutral)',lvl==='a'?170:150,lvl==='a'?14:12);
-  var scoreRing='<div class="ring-wrap" role="button" tabindex="0" aria-label="ORVIA-Score, Details öffnen" onclick="openScore()" onkeydown="if(event.key===\'Enter\')openScore()">'+ringHtml+
-    '<div class="ring-c"><div class="big">'+(d.hasScore?gmEsc(String(d.score)):'—')+'</div><div class="u">'+(lvl==='a'?'DEIN SCORE':'ORVIA-SCORE')+' '+icon('chev','xs')+'</div>'+
+  var scoreRing='<div class="ring-wrap" role="button" tabindex="0" aria-label="' + _uiT('ui.orvia_score') + ', ' + _uiT('ui.details_') + ' öffnen" onclick="openScore()" onkeydown="if(event.key===\'Enter\')openScore()">'+ringHtml+
+    '<div class="ring-c"><div class="big">'+(d.hasScore?gmEsc(String(d.score)):'—')+'</div><div class="u">'+(lvl==='a'?'' + _uiT('ui.dein_score') + '':'ORVIA-SCORE')+' '+icon('chev','xs')+'</div>'+
     '<div class="statuspill sp-'+d.statusColor+'" style="background:'+(TINT[d.statusColor]||'var(--surface)')+';color:'+(SC[d.statusColor]||'var(--muted)')+'">'+icon(d.statusColor==='ready'?'bolt':d.statusColor==='crit'?'shield':'gauge','xs')+' '+gmEsc(d.pillWord||(lvl==='a'?d.simpleStatus:d.status))+'</div></div></div>';
   var reco;
   if(lvl==='p'){
     reco='<div class="reco flow '+d.reco.cls+'"><div class="rc-ic">'+icon(d.reco.ic)+'</div><div><div class="rt">'+gmEsc(d.reco.t)+'</div><div class="prescription">'+d.pro+'</div></div></div>'+
-      '<div class="adjust"><div class="adjust-h">Empfehlung anpassen</div><div class="adjust-row">'+
-      ['gauge|Intensität','calendar|Dauer','chart|Volumen','run|Sportart','target|Priorität'].map(function(x){var p=x.split('|');
+      '<div class="adjust"><div class="adjust-h">' + _uiT('ui.empfehlung_anpassen') + '</div><div class="adjust-row">'+
+      ['gauge|' + _uiT('ui.intensitaet') + '','calendar|Dauer','chart|Volumen','run|Sportart','target|' + _uiT('ui.prioritaet') + ''].map(function(x){var p=x.split('|');
         /* Phase 1b: war ein anklickbar wirkender Chip ohne Funktion. Jetzt reine
            Auflistung dessen, was die Empfehlung spaeter anpassen koennen soll. */
         return '<span class="adjchip adj-na">'+icon(p[0])+' '+p[1]+'</span>';}).join('')+'</div>'+
-      (d.changelog?'<div class="changelog">'+icon('pen','sm')+'<div><b>Zuletzt geändert:</b> '+gmEsc(d.changelog.from)+' → '+gmEsc(d.changelog.to)+' · Grund: '+gmEsc(d.changelog.reason)+'</div></div>':'')+'</div>';
+      (d.changelog?'<div class="changelog">'+icon('pen','sm')+'<div><b>' + _uiT('ui.zuletzt_geaendert') + '</b> '+gmEsc(d.changelog.from)+' → '+gmEsc(d.changelog.to)+'' + _uiT('ui.grund') + ''+gmEsc(d.changelog.reason)+'</div></div>':'')+'</div>';
   }else{
     var rc=(lvl==='a'&&d.simpleReco)?d.simpleReco:d.reco;
     reco='<div class="reco flow '+(lvl==='a'?'big ':'')+rc.cls+'"'+(lvl==='a'?' style="margin-top:16px"':'')+'><div class="rc-ic">'+icon(rc.ic)+'</div><div><div class="rt">'+gmEsc(rc.t)+'</div><div class="rd">'+gmEsc(rc.d)+'</div></div></div>';
@@ -6501,8 +6530,8 @@ function renderCheckinCompact(){try{
   if(lvl==='a'&&!d.ciDone){
     box.className='card';
     var GO='event.stopPropagation();gmSetMood(this);gotoCheckinForm()';
-    var MOODS=[['😃','Top','top'],['🙂','Geht so','ok'],['😴','Müde','tired']];
-    box.innerHTML='<div class="ci-simple"><div class="q">Wie fühlst du dich heute?</div><div class="moods">'+
+    var MOODS=[['😃','Top','top'],['🙂','' + _uiT('ui.geht_so') + '','ok'],['😴','Müde','tired']];
+    box.innerHTML='<div class="ci-simple"><div class="q">' + _uiT('ui.wie_fuehlst_du_dich_heute') + '</div><div class="moods">'+
       MOODS.map(function(m){var on=(d.mood===m[2]);
         return '<div class="mood'+(on?' on':'')+'" data-mood="'+m[2]+'" role="button" aria-pressed="'+(on?'true':'false')+'" tabindex="0" onclick="'+GO+'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();'+GO+';}"><div class="em">'+m[0]+'</div><div class="ml">'+m[1]+'</div></div>';}).join('')+
       '</div></div>';
@@ -6511,12 +6540,12 @@ function renderCheckinCompact(){try{
   }
   if(!d.ciDone){
     box.innerHTML='<div class="checkin"><div class="ci-ic" style="background:var(--attention-t);color:var(--attention)">'+icon('pen')+'</div>'+
-      '<div class="ci-b"><div class="ci-t">Morgen-Check-in</div><div class="ci-s">'+(lvl==='a'?'Kurz ausfüllen — dann steht deine Tagesentscheidung.':'Noch nicht ausgefüllt · verbessert die Empfehlung')+'</div></div>'+
-      '<span class="ci-pill ci-open">Offen</span></div>';
+      '<div class="ci-b"><div class="ci-t">' + _uiT('ui.morgen_check_in') + '</div><div class="ci-s">'+(lvl==='a'?'' + _uiT('ui.kurz_ausfuellen_dann_steht_deine') + '':'' + _uiT('ui.noch_nicht_ausgefuellt_verbessert_die') + '')+'</div></div>'+
+      '<span class="ci-pill ci-open">' + _uiT('ui.offen') + '</span></div>';
   }else{
     box.innerHTML='<div class="checkin"><div class="ci-ic" style="background:var(--ready-t);color:var(--ready)">'+icon('check')+'</div>'+
-      '<div class="ci-b"><div class="ci-t">Morgen-Check-in</div><div class="ci-s">Heute erledigt · fließt in den Score ein</div></div>'+
-      '<span class="ci-pill ci-done">Erledigt</span></div>'+
+      '<div class="ci-b"><div class="ci-t">' + _uiT('ui.morgen_check_in') + '</div><div class="ci-s">' + _uiT('ui.heute_erledigt_fliesst_in_den') + '</div></div>'+
+      '<span class="ci-pill ci-done">' + _uiT('ui.erledigt_') + '</span></div>'+
       (d.ciVals.length&&lvl!=='a'?'<div class="ci-vals">'+d.ciVals.map(function(v){return '<span class="ci-val">'+gmEsc(v[0])+' <b>'+gmEsc(v[1])+'</b></span>';}).join('')+'</div>':'');
   }
   box.dataset.state=d.ciDone?'done':'open';
@@ -6524,77 +6553,77 @@ function renderCheckinCompact(){try{
 /* --- Module (Struktur 1:1 GM; fehlende Quelle ⇒ „—"/Noch nicht verfügbar) --- */
 function gmTap(mid){return 'class="kcard tap" role="button" tabindex="0" onclick="openMetric(\''+mid+'\')" onkeydown="if(event.key===\'Enter\')openMetric(\''+mid+'\')"';}
 function gmModRecovery(d){var M=d.metrics;
-  return '<div '+gmTap('sleep_duration_min')+'><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('moon')+' Schlaf</div><div class="kv">'+(M.sleepScore!=null?gmEsc(fmtDe(M.sleepScore))+'<small>/100</small>':'—')+'</div><div class="kd flat">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h geschlafen':GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.sleepScore!=null?M.sleepScore:0)+'%;background:var(--sleep)"></i></div><div style="font-size:10.5px;color:var(--muted);font-weight:650;margin-top:7px">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h'+(function(){var _dp=gmMetric('sleep_deep_min');return (_dp&&_dp.value!=null)?' · Tief '+gmEsc(fmtDe(Math.round(_dp.value)))+' min':' · Phasen: —';})():'—')+'</div></div>'+
-  '<div class="kcard tap" role="button" tabindex="0" onclick="openRecoverySheet()" onkeydown="if(event.key===\'Enter\')openRecoverySheet()"><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('heart')+' Erholung</div><div class="kv">'+(M.recovery!=null?gmEsc(fmtDe(M.recovery))+'<small>%</small>':'—')+'</div><div class="kd flat">'+(M.hrv!=null?'HRV '+gmEsc(fmtDe(M.hrv))+' ms':GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.recovery!=null?M.recovery:0)+'%;background:var(--ready)"></i></div><div style="font-size:10.5px;color:var(--muted);font-weight:650;margin-top:7px">'+(M.rhr!=null?'Ruhepuls '+gmEsc(fmtDe(M.rhr))+' bpm':GM_NA)+'</div></div>';}
+  return '<div '+gmTap('sleep_duration_min')+'><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('moon')+' ' + _uiT('ui.schlaf') + '</div><div class="kv">'+(M.sleepScore!=null?gmEsc(fmtDe(M.sleepScore))+'<small>/100</small>':'—')+'</div><div class="kd flat">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h geschlafen':GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.sleepScore!=null?M.sleepScore:0)+'%;background:var(--sleep)"></i></div><div style="font-size:10.5px;color:var(--muted);font-weight:650;margin-top:7px">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h'+(function(){var _dp=gmMetric('sleep_deep_min');return (_dp&&_dp.value!=null)?'' + _uiT('ui.tief') + ''+gmEsc(fmtDe(Math.round(_dp.value)))+' min':'' + _uiT('ui.phasen') + '';})():'—')+'</div></div>'+
+  '<div class="kcard tap" role="button" tabindex="0" onclick="openRecoverySheet()" onkeydown="if(event.key===\'Enter\')openRecoverySheet()"><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('heart')+' ' + _uiT('ui.erholung_') + '</div><div class="kv">'+(M.recovery!=null?gmEsc(fmtDe(M.recovery))+'<small>%</small>':'—')+'</div><div class="kd flat">'+(M.hrv!=null?'' + _uiT('ui.hrv') + ''+gmEsc(fmtDe(M.hrv))+' ms':GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.recovery!=null?M.recovery:0)+'%;background:var(--ready)"></i></div><div style="font-size:10.5px;color:var(--muted);font-weight:650;margin-top:7px">'+(M.rhr!=null?'' + _uiT('ui.ruhepuls') + ''+gmEsc(fmtDe(M.rhr))+' bpm':GM_NA)+'</div></div>';}
 function gmModVitals(d){var M=d.metrics;
-  var chart=M.hrvSeries?sparkline(M.hrvSeries.slice(-8),SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">Verlauf '+GM_NA.toLowerCase()+'</div>';
-  return '<div class="kcard tap" role="button" tabindex="0" style="grid-column:span 2" onclick="openMetric(\'hrv_ms\')" onkeydown="if(event.key===\'Enter\')openMetric(\'hrv_ms\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="ctitle" style="margin-bottom:8px"><div class="l">'+icon('pulse')+' HRV &amp; Ruhepuls</div><span class="kd flat">'+(M.hrv!=null?'heute':'—')+'</span></div>'+
-    '<div style="display:flex;gap:14px;align-items:flex-end"><div style="flex:1">'+chart+'</div><div style="text-align:right"><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">'+(M.hrv!=null?gmEsc(fmtDe(M.hrv))+' ms':'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:700">HRV heute</div></div></div>'+
+  var chart=M.hrvSeries?sparkline(M.hrvSeries.slice(-8),SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">' + _uiT('ui.verlauf') + ''+GM_NA.toLowerCase()+'</div>';
+  return '<div class="kcard tap" role="button" tabindex="0" style="grid-column:span 2" onclick="openMetric(\'hrv_ms\')" onkeydown="if(event.key===\'Enter\')openMetric(\'hrv_ms\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="ctitle" style="margin-bottom:8px"><div class="l">'+icon('pulse')+' ' + _uiT('ui.hrv') + '&amp; Ruhepuls</div><span class="kd flat">'+(M.hrv!=null?'heute':'—')+'</span></div>'+
+    '<div style="display:flex;gap:14px;align-items:flex-end"><div style="flex:1">'+chart+'</div><div style="text-align:right"><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">'+(M.hrv!=null?gmEsc(fmtDe(M.hrv))+' ms':'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:700">' + _uiT('ui.hrv_heute') + '</div></div></div>'+
     '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);font-weight:650;margin-top:8px"><span>'+(function(){
       /* GM7.5h: kanonische HRV-Baseline (recoveryCtx.hrvBase7, ln-Mittel) — identische
          Anzeige-Konversion wie readiness-store.js (~exp(base)); ohne 4+ Messwerte „—". */
-      try{var _c=recoveryCtx(todayStr());if(_c&&_c.hrvBase7!=null)return 'Baseline ~'+Math.round(Math.exp(_c.hrvBase7))+' ms';}catch(_){ }
-      return 'Baseline —';})()+'</span><span>Ruhepuls '+(M.rhr!=null?gmEsc(fmtDe(M.rhr))+' bpm':'—')+'</span></div></div>';}
+      try{var _c=recoveryCtx(todayStr());if(_c&&_c.hrvBase7!=null)return '' + _uiT('ui.baseline') + ''+Math.round(Math.exp(_c.hrvBase7))+' ms';}catch(_){ }
+      return '' + _uiT('ui.baseline_') + '';})()+'</span><span>' + _uiT('ui.ruhepuls') + ''+(M.rhr!=null?gmEsc(fmtDe(M.rhr))+' bpm':'—')+'</span></div></div>';}
 function gmModVitalsFull(d){var M=d.metrics;
-  var chart=M.hrvSeries?sparkline(M.hrvSeries,SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">Verlauf '+GM_NA.toLowerCase()+'</div>';
+  var chart=M.hrvSeries?sparkline(M.hrvSeries,SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">' + _uiT('ui.verlauf') + ''+GM_NA.toLowerCase()+'</div>';
   var cell=function(v,l){return '<div style="text-align:center"><div style="font-size:15px;font-weight:800">'+(v==null?'—':gmEsc(fmtDe(v)))+'</div><div style="font-size:9.5px;color:var(--muted);font-weight:700">'+l+'</div></div>';};
-  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'hrv_ms\')" onkeydown="if(event.key===\'Enter\')openMetric(\'hrv_ms\')"><div class="ctitle"><div class="l">'+icon('pulse')+' Vitalwerte</div><span class="more">Details '+icon('chev','xs')+'</span></div>'+
-    '<div style="display:flex;gap:14px;align-items:flex-end"><div style="flex:1">'+chart+'</div><div style="text-align:right"><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums">'+(M.hrv!=null?gmEsc(fmtDe(M.hrv))+' ms':'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:700">HRV '+(M.hrv!=null?gmEsc(M.hrvLbl||'—'):'—')+'</div></div></div>'+
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)">'+cell(M.rhr,'Ruhepuls')+cell(null,'HRR')+cell(M.vo2max,M.vo2maxCycling!=null?'VO₂max Lauf':'VO₂max')+cell(M.respiration,'Atmung')+(M.vo2maxCycling!=null?cell(M.vo2maxCycling,'VO₂max Rad'):'')+'</div></div>';}
+  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'hrv_ms\')" onkeydown="if(event.key===\'Enter\')openMetric(\'hrv_ms\')"><div class="ctitle"><div class="l">'+icon('pulse')+' Vitalwerte</div><span class="more">' + _uiT('ui.details_') + ' '+icon('chev','xs')+'</span></div>'+
+    '<div style="display:flex;gap:14px;align-items:flex-end"><div style="flex:1">'+chart+'</div><div style="text-align:right"><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums">'+(M.hrv!=null?gmEsc(fmtDe(M.hrv))+' ms':'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:700">' + _uiT('ui.hrv') + ''+(M.hrv!=null?gmEsc(M.hrvLbl||'—'):'—')+'</div></div></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)">'+cell(M.rhr,'Ruhepuls')+cell(null,'HRR')+cell(M.vo2max,M.vo2maxCycling!=null?'' + _uiT('ui.vo_max_lauf') + '':'VO₂max')+cell(M.respiration,'Atmung')+(M.vo2maxCycling!=null?cell(M.vo2maxCycling,'' + _uiT('ui.vo_max_rad') + ''):'')+'</div></div>';}
 function gmModStress(d){var M=d.metrics;
-  var chart=M.stressSeries?sparkline(M.stressSeries,SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">Verlauf '+GM_NA.toLowerCase()+'</div>';
+  var chart=M.stressSeries?sparkline(M.stressSeries,SC.ready):'<div class="spark" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--faint)">' + _uiT('ui.verlauf') + ''+GM_NA.toLowerCase()+'</div>';
   return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'stress_avg\')" onkeydown="if(event.key===\'Enter\')openMetric(\'stress_avg\')"><div class="ctitle" style="margin-bottom:8px"><div class="l">'+icon('wind')+' Stress</div><span class="kd flat">'+(M.stress!=null?gmEsc(M.stress!=null&&M.stressLbl==='heute'?'Ø heute':(M.stressLbl||'—')):'—')+'</span></div>'+
     '<div style="display:flex;gap:14px;align-items:flex-end"><div style="flex:1">'+chart+'</div><div style="text-align:right"><div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">'+(M.stress!=null?gmEsc(fmtDe(M.stress)):'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:700">'+(M.stress!=null&&M.stressLbl==='heute'?'Ø heute':gmEsc(M.stressLbl||'—'))+'</div></div></div></div>';}
 function gmModActivity(d){var M=d.metrics;
   return '<div '+gmTap('steps')+'><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('activity')+' Schritte</div><div class="kv">'+(M.steps!=null?gmEsc(fmtDe(M.steps)):'—')+'</div><div class="kd flat">'+(M.steps!=null?gmEsc(M.stepsLbl||'—'):GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.stepsPct!=null?M.stepsPct:0)+'%;background:var(--activity)"></i></div></div>'+
-  '<div '+gmTap('active_kcal')+'><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('bolt')+' Aktive Energie</div><div class="kv">'+(M.kcal!=null?gmEsc(fmtDe(M.kcal))+'<small>kcal</small>':'—')+'</div><div class="kd flat">'+(M.kcal!=null?gmEsc(M.kcalLbl||'—'):GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.kcalPct!=null?M.kcalPct:0)+'%;background:var(--activity)"></i></div></div>';}
+  '<div '+gmTap('active_kcal')+'><span class="taphint">'+icon('chev','xs')+'</span><div class="kh">'+icon('bolt')+' ' + _uiT('ui.aktive_energie') + '</div><div class="kv">'+(M.kcal!=null?gmEsc(fmtDe(M.kcal))+'<small>kcal</small>':'—')+'</div><div class="kd flat">'+(M.kcal!=null?gmEsc(M.kcalLbl||'—'):GM_NA)+'</div><div class="bar-mini"><i style="width:'+(M.kcalPct!=null?M.kcalPct:0)+'%;background:var(--activity)"></i></div></div>';}
 function gmModLoadSimple(d){var L=d.load;
   var scv=L.statusColor&&L.statusColor!=='neutral'?L.statusColor:null;
-  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'load\')" onkeydown="if(event.key===\'Enter\')openMetric(\'load\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="simplecard"><div class="sc-ic" style="background:'+(scv?TINT[scv]:'var(--surface-2)')+';color:'+(scv?SC[scv]:'var(--muted)')+'">'+icon('gauge')+'</div><div><div class="sc-t">Belastung: '+(L.word?gmEsc(L.word):(L.atl!=null?'ATL '+gmEsc(fmtDe(L.atl)):'—'))+'</div><div class="sc-v">'+(L.status?'Status: '+gmEsc(L.status):GM_NA)+'</div></div><div class="sc-big" style="color:'+(scv?SC[scv]:'var(--muted)')+'">'+(scv?icon(scv==='ready'?'check':'alert','sm'):(L.ctl!=null?gmEsc(fmtDe(L.ctl)):'—'))+'</div></div>'+
-  '<div class="zoneband" style="margin-top:14px">'+(L.band!=null?'<div class="mk" style="left:'+L.band+'%"></div>':'')+'</div><div class="range-lbl"><span>Erholt</span><span>Optimal</span><span>Überlastet</span></div></div>';}
+  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'load\')" onkeydown="if(event.key===\'Enter\')openMetric(\'load\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="simplecard"><div class="sc-ic" style="background:'+(scv?TINT[scv]:'var(--surface-2)')+';color:'+(scv?SC[scv]:'var(--muted)')+'">'+icon('gauge')+'</div><div><div class="sc-t">Belastung: '+(L.word?gmEsc(L.word):(L.atl!=null?'' + _uiT('ui.atl') + ''+gmEsc(fmtDe(L.atl)):'—'))+'</div><div class="sc-v">'+(L.status?'' + _uiT('ui.status_') + ''+gmEsc(L.status):GM_NA)+'</div></div><div class="sc-big" style="color:'+(scv?SC[scv]:'var(--muted)')+'">'+(scv?icon(scv==='ready'?'check':'alert','sm'):(L.ctl!=null?gmEsc(fmtDe(L.ctl)):'—'))+'</div></div>'+
+  '<div class="zoneband" style="margin-top:14px">'+(L.band!=null?'<div class="mk" style="left:'+L.band+'%"></div>':'')+'</div><div class="range-lbl"><span>Erholt</span><span>' + _uiT('ui.optimal') + '</span><span>Überlastet</span></div></div>';}
 function gmModLoadPro(d){var L=d.load;
   var dc=function(v,l){return '<div class="datacell"><div class="dl">'+l+'</div><div class="dn">'+(v==null?GM_NA:gmEsc(String(v)))+'</div></div>';};
-  return '<div class="card mod-wide tap" role="button" tabindex="0" onclick="openMetric(\'load\')" onkeydown="if(event.key===\'Enter\')openMetric(\'load\')"><div class="ctitle"><div class="l">'+icon('gauge')+' Belastungssteuerung</div><span class="more">Details '+icon('chev','xs')+'</span></div>'+
-    '<div class="body"><div class="ring-wrap" style="width:74px;height:74px">'+ring(L.atl!=null?Math.min(L.atl/85*100,100):0,'var(--activity)',74,8)+'<div class="ring-c"><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">'+(L.atl!=null?gmEsc(fmtDe(L.atl)):'—')+'</div><div style="font-size:9px;color:var(--muted);font-weight:700">ATL</div></div></div>'+
-    '<div class="load-stats"><div class="ls"><div class="n">'+(L.ctl!=null?gmEsc(fmtDe(L.ctl)):'—')+'</div><div class="l">CTL</div></div><div class="ls"><div class="n">'+(L.tsb!=null?gmEsc(L.tsb):'—')+'</div><div class="l">TSB</div></div><div class="ls"><div class="n">'+(L.acwr!=null?gmEsc(String(L.acwr)):'—')+'</div><div class="l">ACWR</div></div></div></div>'+
-    '<div class="zoneband">'+(L.band!=null?'<div class="mk" style="left:'+L.band+'%"></div>':'')+'</div><div class="range-lbl"><span>Erhaltung</span><span>'+(L.status?gmEsc(L.status):'—')+'</span><span>Überlastet</span></div>'+
+  return '<div class="card mod-wide tap" role="button" tabindex="0" onclick="openMetric(\'load\')" onkeydown="if(event.key===\'Enter\')openMetric(\'load\')"><div class="ctitle"><div class="l">'+icon('gauge')+' Belastungssteuerung</div><span class="more">' + _uiT('ui.details_') + ' '+icon('chev','xs')+'</span></div>'+
+    '<div class="body"><div class="ring-wrap" style="width:74px;height:74px">'+ring(L.atl!=null?Math.min(L.atl/85*100,100):0,'var(--activity)',74,8)+'<div class="ring-c"><div style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">'+(L.atl!=null?gmEsc(fmtDe(L.atl)):'—')+'</div><div style="font-size:9px;color:var(--muted);font-weight:700">' + _uiT('ui.atl_') + '</div></div></div>'+
+    '<div class="load-stats"><div class="ls"><div class="n">'+(L.ctl!=null?gmEsc(fmtDe(L.ctl)):'—')+'</div><div class="l">' + _uiT('ui.ctl__') + '</div></div><div class="ls"><div class="n">'+(L.tsb!=null?gmEsc(L.tsb):'—')+'</div><div class="l">' + _uiT('ui.tsb__') + '</div></div><div class="ls"><div class="n">'+(L.acwr!=null?gmEsc(String(L.acwr)):'—')+'</div><div class="l">' + _uiT('ui.acwr__') + '</div></div></div></div>'+
+    '<div class="zoneband">'+(L.band!=null?'<div class="mk" style="left:'+L.band+'%"></div>':'')+'</div><div class="range-lbl"><span>' + _uiT('ui.erhaltung') + '</span><span>'+(L.status?gmEsc(L.status):'—')+'</span><span>Überlastet</span></div>'+
     /* Phase 2.2: „Harte Einheiten" (RPE-Proxy) — bewusst NICHT „Hochintensiv":
        das wuerde eine HF-Zonen-Auswertung suggerieren, die nicht existiert. */
-    '<div class="datarow">'+dc(L.mono,'Monotonie')+dc(L.strain,'Strain (Wo.)')+dc(L.trimp,'TRIMP Ø')+dc(L.hi,'Harte Einheiten')+'</div>'+
+    '<div class="datarow">'+dc(L.mono,'Monotonie')+dc(L.strain,'' + _uiT('ui.strain_wo') + '')+dc(L.trimp,'' + _uiT('ui.trimp') + '')+dc(L.hi,'' + _uiT('ui.harte_einheiten') + '')+'</div>'+
     /* Phase 2.0/2.3: Abdeckung sichtbar an der Zahl — kein Wochenmittelwert ohne
        Warnhinweis. Zeile erscheint NUR, wenn ein Wert auf Teilabdeckung beruht. */
     (function(){var env=L.env;if(!env)return '';
       var parts=[];
-      [['hard','Harte Einheiten','Einheiten'],['trimp','TRIMP','Einheiten']].forEach(function(x){
+      [['hard','' + _uiT('ui.harte_einheiten') + '','' + _uiT('ui.einheiten_') + ''],['trimp','TRIMP','' + _uiT('ui.einheiten_') + '']].forEach(function(x){
         var e=env[x[0]];if(e&&e.status==='partial')parts.push(x[1]+' aus '+e.coverage.available+' von '+e.coverage.eligible+' '+x[2]);});
       if(!parts.length)return '';
-      return '<div class="interf">'+icon('alert','xs')+' <b>Teilabdeckung:</b> '+gmEsc(parts.join(' · '))+' · letzte 7 Tage — Details im Last-Sheet.</div>';})()+
-    '<div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:800;margin-top:14px">Belastung nach Sportart</div>'+
+      return '<div class="interf">'+icon('alert','xs')+' <b>' + _uiT('ui.teilabdeckung') + '</b> '+gmEsc(parts.join(' · '))+' · letzte 7 ' + _uiT('ui.tage__') + ' — ' + _uiT('ui.details_') + ' im Last-Sheet.</div>';})()+
+    '<div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:800;margin-top:14px">' + _uiT('ui.belastung_nach_sportart') + '</div>'+
     '<div class="sportbars">'+L.sport.map(function(s){return '<div class="sportbar"><div class="sn">'+gmEsc(s[0])+'</div><div class="st"><i style="width:'+(s[1]!=null?s[1]:0)+'%;background:'+SC[s[2]]+'"></i></div><div class="sv">'+(s[1]!=null?gmEsc(fmtDe(s[1]))+'%':'—')+'</div></div>';}).join('')+'</div>'+
-    '<div class="interf">'+icon('info','xs')+' <b>Interferenz:</b> '+(L.interf?gmEsc(L.interf):GM_NA)+'</div></div>';}
+    '<div class="interf">'+icon('info','xs')+' <b>' + _uiT('ui.interferenz') + '</b> '+(L.interf?gmEsc(L.interf):GM_NA)+'</div></div>';}
 function gmModReadinessPro(d){
   var maxAbs=1;d.breakdown.forEach(function(b){if(b[1]!=null&&Math.abs(b[1])>maxAbs)maxAbs=Math.abs(b[1]);});
   var rows=d.breakdown.map(function(b){var v=b[1];var pos=v!=null&&v>=0;var w=v==null?0:Math.abs(v)/maxAbs*100;
     var col=b[2]==='neutral'||v==null?'var(--neutral)':(pos?SC[b[2]]:'var(--crit)');
     return '<div class="brow"><div class="bl"><span class="fdot" style="background:'+(SC[b[2]]||'var(--neutral)')+'"></span>'+gmEsc(b[0])+'</div><div class="bbar"><i style="'+(pos||v==null?'left:50%':'right:50%')+';width:'+(w/2)+'%;background:'+col+'"></i></div><div class="bv" style="color:'+(v==null?'var(--muted)':col)+'">'+(v==null?'—':(v>=0?(v===0?'0':'+'+v):v))+'</div><div class="bsd">'+gmEsc(b[3]||'—')+'</div></div>';}).join('');
-  return '<div class="card tap" role="button" tabindex="0" onclick="openScore()" onkeydown="if(event.key===\'Enter\')openScore()"><div class="ctitle"><div class="l">'+icon('target')+' Readiness &amp; Konfidenz</div><span class="more">'+(d.conf.levelLabel?gmEsc(d.conf.levelLabel)+' ':'')+icon('chev','xs')+'</span></div>'+
+  return '<div class="card tap" role="button" tabindex="0" onclick="openScore()" onkeydown="if(event.key===\'Enter\')openScore()"><div class="ctitle"><div class="l">'+icon('target')+' ' + _uiT('ui.readiness_') + '&amp; ' + _uiT('ui.konfidenz__') + '</div><span class="more">'+(d.conf.levelLabel?gmEsc(d.conf.levelLabel)+' ':'')+icon('chev','xs')+'</span></div>'+
     '<div class="breakdown">'+rows+'</div>'+
-    '<div class="datarow"><div class="datacell"><div class="dl">Datenkonfidenz</div><div class="dn" style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+(d.conf.levelLabel?gmEsc(d.conf.levelLabel):'—')+'</div></div><div class="datacell"><div class="dl">Baseline-Abw.</div><div class="dn">'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</div></div></div>'+
-    '<div class="interf" style="margin-top:8px">'+icon('db','xs')+' <b>Daten:</b> '+gmEsc(d.conf.complete!=null?d.conf.complete:GM_NA)+'. '+gmEsc(d.conf.note||'')+'</div></div>';}
+    '<div class="datarow"><div class="datacell"><div class="dl">' + _uiT('ui.datenkonfidenz') + '</div><div class="dn" style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+(d.conf.levelLabel?gmEsc(d.conf.levelLabel):'—')+'</div></div><div class="datacell"><div class="dl">' + _uiT('ui.baseline_abw') + '</div><div class="dn">'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</div></div></div>'+
+    '<div class="interf" style="margin-top:8px">'+icon('db','xs')+' <b>' + _uiT('ui.daten') + '</b> '+gmEsc(d.conf.complete!=null?d.conf.complete:GM_NA)+'. '+gmEsc(d.conf.note||'')+'</div></div>';}
 function gmModNext(d){
-  return '<div class="card"><div class="ctitle"><div class="l">'+icon('calendar')+' Bevorstehendes Training</div></div><div class="next-row"><div class="next-ic">'+icon('run')+'</div><div class="next-b"><div class="next-t">'+(d.next?gmEsc(d.next.t):'—')+'</div><div class="next-s">'+(d.next?gmEsc(d.next.s):'Kein Eintrag im Wochenplan')+'</div></div><span class="next-tag">'+(d.next?gmEsc(d.next.tag):'—')+'</span></div></div>';}
+  return '<div class="card"><div class="ctitle"><div class="l">'+icon('calendar')+' Bevorstehendes ' + _uiT('ui.training') + '</div></div><div class="next-row"><div class="next-ic">'+icon('run')+'</div><div class="next-b"><div class="next-t">'+(d.next?gmEsc(d.next.t):'—')+'</div><div class="next-s">'+(d.next?gmEsc(d.next.s):'' + _uiT('ui.kein_eintrag_im_wochenplan') + '')+'</div></div><span class="next-tag">'+(d.next?gmEsc(d.next.tag):'—')+'</span></div></div>';}
 function gmModNextSimple(d){
-  return '<div class="card"><div class="simplecard"><div class="sc-ic" style="background:var(--activity-t);color:var(--activity)">'+icon('run')+'</div><div><div class="sc-t">Nächstes Training</div><div class="sc-v">'+(d.next?gmEsc(d.next.t):'Kein Eintrag im Wochenplan')+'</div></div><span class="next-tag" style="margin-left:auto">'+(d.next?gmEsc(d.next.tag):'—')+'</span></div></div>';}
+  return '<div class="card"><div class="simplecard"><div class="sc-ic" style="background:var(--activity-t);color:var(--activity)">'+icon('run')+'</div><div><div class="sc-t">' + _uiT('ui.naechstes_training') + '</div><div class="sc-v">'+(d.next?gmEsc(d.next.t):'' + _uiT('ui.kein_eintrag_im_wochenplan') + '')+'</div></div><span class="next-tag" style="margin-left:auto">'+(d.next?gmEsc(d.next.tag):'—')+'</span></div></div>';}
 function gmModGoal(d){
-  return '<div class="card"><div class="ctitle"><div class="l">'+icon('target')+' Ziel-Fortschritt</div><span class="more">'+gmEsc(d.goal.wk)+'</span></div><div style="font-size:15px;font-weight:800">'+gmEsc(d.goal.name)+'</div><div class="goalbar"><i style="width:'+(d.goal.pct!=null?d.goal.pct:0)+'%"></i></div><div class="goalmeta"><span>'+(d.goal.pct!=null?gmEsc(fmtDe(d.goal.pct))+'% des Aufbaus':'Fortschritt: —')+'</span><span>'+arrow(d.goal.predD)+' '+gmEsc(d.goal.pred)+'</span></div></div>';}
+  return '<div class="card"><div class="ctitle"><div class="l">'+icon('target')+' Ziel-Fortschritt</div><span class="more">'+gmEsc(d.goal.wk)+'</span></div><div style="font-size:15px;font-weight:800">'+gmEsc(d.goal.name)+'</div><div class="goalbar"><i style="width:'+(d.goal.pct!=null?d.goal.pct:0)+'%"></i></div><div class="goalmeta"><span>'+(d.goal.pct!=null?gmEsc(fmtDe(d.goal.pct))+'% des Aufbaus':'' + _uiT('ui.fortschritt') + '')+'</span><span>'+arrow(d.goal.predD)+' '+gmEsc(d.goal.pred)+'</span></div></div>';}
 function gmModGoalSimple(d){
   return '<div class="card"><div class="simplecard" style="margin-bottom:2px"><div class="sc-ic" style="background:rgba(201,174,124,.14);color:var(--gold-soft)">'+icon('target')+'</div><div><div class="sc-t">'+gmEsc(d.goal.name)+'</div><div class="sc-v">'+gmEsc(d.goal.wk)+'</div></div><div class="sc-big" style="color:var(--gold-soft)">'+(d.goal.pct!=null?gmEsc(fmtDe(d.goal.pct))+'%':'—')+'</div></div><div class="goalbar"><i style="width:'+(d.goal.pct!=null?d.goal.pct:0)+'%"></i></div></div>';}
 function gmModSleepSimple(d){var M=d.metrics;
-  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'sleep_duration_min\')" onkeydown="if(event.key===\'Enter\')openMetric(\'sleep_duration_min\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="simplecard"><div class="sc-ic" style="background:var(--sleep-t);color:var(--sleep)">'+icon('moon')+'</div><div><div class="sc-t">Schlaf</div><div class="sc-v">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h geschlafen':GM_NA)+'</div></div><div class="sc-big">'+(M.sleepScore!=null?gmEsc(fmtDe(M.sleepScore)):'—')+'</div></div></div>';}
+  return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'sleep_duration_min\')" onkeydown="if(event.key===\'Enter\')openMetric(\'sleep_duration_min\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="simplecard"><div class="sc-ic" style="background:var(--sleep-t);color:var(--sleep)">'+icon('moon')+'</div><div><div class="sc-t">' + _uiT('ui.schlaf') + '</div><div class="sc-v">'+(M.sleepMin!=null?gmEsc(fmtDe(M.sleepMin/60))+' h geschlafen':GM_NA)+'</div></div><div class="sc-big">'+(M.sleepScore!=null?gmEsc(fmtDe(M.sleepScore)):'—')+'</div></div></div>';}
 function gmModActivitySimple(d){var M=d.metrics;
   return '<div class="card tap" role="button" tabindex="0" onclick="openMetric(\'steps\')" onkeydown="if(event.key===\'Enter\')openMetric(\'steps\')"><span class="taphint">'+icon('chev','xs')+'</span><div class="simplecard"><div class="sc-ic" style="background:var(--activity-t);color:var(--activity)">'+icon('activity')+'</div><div style="flex:1"><div class="sc-t">Schritte: '+(M.steps!=null?gmEsc(fmtDe(M.steps)):'—')+'</div><div class="sc-v">'+(M.steps!=null?'heute':GM_NA)+'</div><div class="bar-mini" style="margin-top:8px"><i style="width:'+(M.stepsPct!=null?M.stepsPct:0)+'%;background:var(--activity)"></i></div></div></div></div>';}
 function gmModPain(d){
-  if(!d.pain)return '<div class="card"><div class="simplecard"><div class="sc-ic" style="background:var(--ready-t);color:var(--ready)">'+icon('check')+'</div><div><div class="sc-t">Keine Beschwerden</div><div class="sc-v">Nichts gemeldet — weiter so</div></div></div></div>';
+  if(!d.pain)return '<div class="card"><div class="simplecard"><div class="sc-ic" style="background:var(--ready-t);color:var(--ready)">'+icon('check')+'</div><div><div class="sc-t">' + _uiT('ui.keine_beschwerden') + '</div><div class="sc-v">' + _uiT('ui.nichts_gemeldet_weiter_so') + '</div></div></div></div>';
   return '<div class="card" style="border-color:rgba(240,99,122,.3)"><div class="simplecard"><div class="sc-ic" style="background:var(--crit-t);color:var(--crit)">'+icon('knee')+'</div><div style="flex:1"><div class="sc-t">'+gmEsc(d.pain.region)+' · '+gmEsc(d.pain.level)+'</div><div class="sc-v">'+gmEsc(d.pain.note)+'</div></div></div></div>';}
 /* ============================================================
    Module Ernaehrung / Abend-Check-in / Routinen (2026-08-05, Nutzerentscheidung)
@@ -6619,21 +6648,21 @@ function gmModNutrition(d){
   if(!t){
     return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="openNutritionEditor()" onkeydown="if(event.key===\'Enter\')openNutritionEditor()"><span class="taphint">'+icon('chev','xs')+'</span>'+
       '<div class="simplecard"><div class="sc-ic" style="background:var(--activity-t);color:var(--activity)">'+icon('battery')+'</div>'+
-      '<div style="flex:1"><div class="sc-t">Energie &amp; Ernährung</div><div class="sc-v">Körperdaten fehlen — dann rechnet ORVIA Kalorien und Makros</div></div></div></div>';
+      '<div style="flex:1"><div class="sc-t">' + _uiT('ui.energie_amp_ernaehrung') + '</div><div class="sc-v">' + _uiT('ui.koerperdaten_fehlen_dann_rechnet_orvia') + '</div></div></div></div>';
   }
   var pk=t.protein*4,ck=t.carbs*4,fk=t.fat*9,tot=pk+ck+fk;
   var pct=function(v){return tot>0?Math.round(v/tot*100):0;};
-  var dtL={rest:'Ruhetag',easy:'Lockerer Tag',quality:'Intensiver Tag',long:'Long-Run-Tag',strength:'Krafttag'}[t.dayType]||'';
+  var dtL={rest:'' + _uiT('ui.ruhetag_') + '',easy:'' + _uiT('ui.lockerer_tag') + '',quality:'' + _uiT('ui.intensiver_tag') + '',long:'Long-Run-Tag',strength:'Krafttag'}[t.dayType]||'';
   return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmOpenNutritionSheet()" onkeydown="if(event.key===\'Enter\')gmOpenNutritionSheet()"><span class="taphint">'+icon('chev','xs')+'</span>'+
-    '<div class="ctitle"><div class="l">'+icon('battery')+' Energie &amp; Ernährung</div><span class="more">'+gmEsc(dtL)+'</span></div>'+
-    '<div class="nu-hero"><b>'+gmEsc(fmtDe(t.kcal))+'</b><span>kcal Tagesziel'+(t.burn?' · inkl. ~'+gmEsc(fmtDe(t.burn))+' kcal Training':'')+'</span></div>'+
+    '<div class="ctitle"><div class="l">'+icon('battery')+' ' + _uiT('ui.energie_amp_ernaehrung') + '</div><span class="more">'+gmEsc(dtL)+'</span></div>'+
+    '<div class="nu-hero"><b>'+gmEsc(fmtDe(t.kcal))+'</b><span>kcal Tagesziel'+(t.burn?' · inkl. ~'+gmEsc(fmtDe(t.burn))+'' + _uiT('ui.kcal_training') + '':'')+'</span></div>'+
     '<div class="nu-stack" role="img" aria-label="Makroverteilung">'+
       '<i class="nu-p" style="width:'+pct(pk)+'%"></i><i class="nu-c" style="width:'+pct(ck)+'%"></i><i class="nu-f" style="width:'+pct(fk)+'%"></i></div>'+
     '<div class="nu-legend">'+
-      '<span><i class="nu-p"></i>Protein <b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
-      '<span><i class="nu-c"></i>Carbs <b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
-      '<span><i class="nu-f"></i>Fett <b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div>'+
-    (wk?'<div class="nu-foot"><span>Protein-Ziel diese Woche</span><b>'+wk.proteinDays+'/7 Tage</b></div>':'')+
+      '<span><i class="nu-p"></i>' + _uiT('ui.protein') + '<b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
+      '<span><i class="nu-c"></i>' + _uiT('ui.carbs') + '<b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
+      '<span><i class="nu-f"></i>' + _uiT('ui.fett') + '<b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div>'+
+    (wk?'<div class="nu-foot"><span>' + _uiT('ui.protein_ziel_diese_woche') + '</span><b>'+wk.proteinDays+'/7 ' + _uiT('ui.tage__') + '</b></div>':'')+
     '</div>';
 }
 /* Detail-Sheet: gemessene Protein-Historie (echte Abend-Eintraege, KEINE erfundene
@@ -6654,16 +6683,16 @@ function gmOpenNutritionSheet(){
     return '<div class="nb-col"><div class="nb-track"><i class="'+(hit?'hit':'')+'" style="height:'+h+'%"></i></div><small>'+gmEsc(lb)+'</small></div>';
   }).join('');
   var got=days.filter(function(x){return x.v!=null;}).length;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('battery')+'</div><div><h3>Energie &amp; Ernährung</h3><div class="sh-sub" style="margin:2px 0 0">'+(t?fmtDe(t.kcal)+' kcal Tagesziel':GM_NA)+'</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('battery')+'</div><div><h3>' + _uiT('ui.energie_amp_ernaehrung') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+(t?fmtDe(t.kcal)+'' + _uiT('ui.kcal_tagesziel') + '':GM_NA)+'</div></div></div>'+
     (t?('<div class="sh-block"><div class="nu-legend nu-legend-lg">'+
-      '<span><i class="nu-p"></i>Protein <b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
-      '<span><i class="nu-c"></i>Carbs <b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
-      '<span><i class="nu-f"></i>Fett <b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div></div>'):'')+
-    '<div class="sh-block"><h4 style="margin:0 0 8px;font-size:13px">Protein · letzte 14 Tage</h4>'+
-      (got?('<div class="nu-bars">'+bars+'</div><p class="note" style="text-align:left;margin-top:8px">'+got+' von 14 Tagen erfasst'+(pT?' · Ziel '+fmtDe(pT)+' g (grün = mindestens 90 % erreicht)':'')+'. Nur eingetragene Abendwerte — nichts hochgerechnet.</p>')
-        :'<p class="note" style="text-align:left">Noch keine Protein-Einträge. Der Wert kommt aus dem Abend-Check-in.</p>')+'</div>'+
-    (wk&&wk.weightTrend?'<div class="sh-block"><div class="nu-foot"><span>Gewicht · 7 Tage</span><b>'+gmEsc(wk.weightTrend)+'</b></div></div>':'')+
-    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">Schließen</button><button class="prim" onclick="gmCloseSheets();openNutritionEditor()">Ernährung anpassen</button></div>';
+      '<span><i class="nu-p"></i>' + _uiT('ui.protein') + '<b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
+      '<span><i class="nu-c"></i>' + _uiT('ui.carbs') + '<b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
+      '<span><i class="nu-f"></i>' + _uiT('ui.fett') + '<b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div></div>'):'')+
+    '<div class="sh-block"><h4 style="margin:0 0 8px;font-size:13px">' + _uiT('ui.protein_letzte_14_tage') + '</h4>'+
+      (got?('<div class="nu-bars">'+bars+'</div><p class="note" style="text-align:left;margin-top:8px">'+got+'' + _uiT('ui.von_14_tagen_erfasst') + ''+(pT?'' + _uiT('ui.ziel') + ''+fmtDe(pT)+'' + _uiT('ui.g_gruen_mindestens_90_erreicht') + '':'')+'. Nur eingetragene Abendwerte — nichts hochgerechnet.</p>')
+        :'<p class="note" style="text-align:left">' + _uiT('ui.noch_keine_protein_eintraege_der') + '</p>')+'</div>'+
+    (wk&&wk.weightTrend?'<div class="sh-block"><div class="nu-foot"><span>' + _uiT('ui.gewicht_7_tage') + '</span><b>'+gmEsc(wk.weightTrend)+'</b></div></div>':'')+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">' + _uiT('ui.schliessen') + '</button><button class="prim" onclick="gmCloseSheets();openNutritionEditor()">' + _uiT('ui.ernaehrung_anpassen') + '</button></div>';
   gmOpenSheet('detailSheet');
 }
 /* Abend-Check-in: Statuskarte auf das VORHANDENE Formular (#eveCard). */
@@ -6673,10 +6702,10 @@ function gmModEvening(d){
   var filled=ev?Object.keys(ev).filter(function(k){return ev[k]!=null&&ev[k]!=='';}).length:0;
   var done=filled>0;
   var bits=[];
-  try{if(ev){if(ev.prot!=null)bits.push(fmtDe(ev.prot)+' g Protein');if(ev.knee!=null)bits.push('Knie '+ev.knee);if(ev.note)bits.push('Notiz');}}catch(_){ }
+  try{if(ev){if(ev.prot!=null)bits.push(fmtDe(ev.prot)+'' + _uiT('ui.g_protein') + '');if(ev.knee!=null)bits.push('' + _uiT('ui.knie') + ''+ev.knee);if(ev.note)bits.push('Notiz');}}catch(_){ }
   return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmGotoEveningCheckin()" onkeydown="if(event.key===\'Enter\')gmGotoEveningCheckin()"><span class="taphint">'+icon('chev','xs')+'</span>'+
     '<div class="simplecard"><div class="sc-ic" style="background:'+(done?'var(--ready-t);color:var(--ready)':'var(--sleep-t);color:var(--sleep)')+'">'+icon(done?'check':'moon')+'</div>'+
-    '<div style="flex:1"><div class="sc-t">Abend-Check-in</div><div class="sc-v">'+(done?gmEsc(bits.length?bits.join(' · '):'erfasst'):'Noch offen — Protein, Beschwerden, Tagesnotiz')+'</div></div></div></div>';
+    '<div style="flex:1"><div class="sc-t">' + _uiT('ui.abend_check_in') + '</div><div class="sc-v">'+(done?gmEsc(bits.length?bits.join(' · '):'erfasst'):'' + _uiT('ui.noch_offen_protein_beschwerden_tagesnotiz') + '')+'</div></div></div></div>';
 }
 function gmGotoEveningCheckin(){
   var c=document.getElementById('eveCard');if(!c)return;
@@ -6694,13 +6723,13 @@ function gmModSupplements(d){
   try{var e=entry(cur);subs=((e&&e.subs)||[]).length;}catch(_){ }
   var doneN=Math.max(0,act-open);
   var sub;
-  if(!act&&!subs)sub='Noch nichts eingerichtet — Routinen und Supplements festlegen';
-  else if(open>0)sub=doneN+' von '+act+' Routinen erledigt'+(subs?' · '+subs+' Supplements':'');
-  else sub=(act?'Alle '+act+' Routinen erledigt':'Keine Routinen')+(subs?' · '+subs+' Supplements':'');
+  if(!act&&!subs)sub='' + _uiT('ui.noch_nichts_eingerichtet_routinen_und') + '';
+  else if(open>0)sub=doneN+' von '+act+'' + _uiT('ui.routinen_erledigt') + ''+(subs?' · '+subs+'' + _uiT('ui.supplements') + '':'');
+  else sub=(act?'' + _uiT('ui.alle') + ''+act+'' + _uiT('ui.routinen_erledigt') + '':'' + _uiT('ui.keine_routinen') + '')+(subs?' · '+subs+'' + _uiT('ui.supplements') + '':'');
   var allDone=act>0&&open===0;
   return '<div class="card tap gm-ext" role="button" tabindex="0" onclick="gmGotoRoutines()" onkeydown="if(event.key===\'Enter\')gmGotoRoutines()"><span class="taphint">'+icon('chev','xs')+'</span>'+
     '<div class="simplecard"><div class="sc-ic" style="background:'+(allDone?'var(--ready-t);color:var(--ready)':'rgba(201,174,124,.14);color:var(--gold-soft)')+'">'+icon(allDone?'check':'calendar')+'</div>'+
-    '<div style="flex:1"><div class="sc-t">Routinen &amp; Supplements</div><div class="sc-v">'+gmEsc(sub)+'</div>'+
+    '<div style="flex:1"><div class="sc-t">' + _uiT('ui.routinen_amp_supplements') + '</div><div class="sc-v">'+gmEsc(sub)+'</div>'+
     (act>0?'<div class="bar-mini" style="margin-top:8px"><i style="width:'+Math.round(doneN/act*100)+'%;background:var(--ready)"></i></div>':'')+
     '</div></div></div>';
 }
@@ -6713,8 +6742,8 @@ function gmModContrib(d){
   var list=(d.contrib&&d.contrib.length)?d.contrib:[null,null,null];
   var rows=list.map(function(c){
     var col=c?SC[c[3]]:'var(--muted)';var bg=c?TINT[c[3]]:'var(--surface-2)';
-    return '<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--hair)"><div style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+bg+';color:'+col+'">'+icon('run','sm')+'</div><div><div style="font-size:12.5px;font-weight:700">'+(c?gmEsc(c[0]):'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:600">'+(c?gmEsc(c[1]):GM_NA)+'</div></div><div style="margin-left:auto;font-size:13px;font-weight:800;color:'+col+'">'+(c?gmEsc(c[2])+' <small style="font-weight:600;color:var(--muted)">sRPE</small>':'—')+'</div></div>';}).join('');
-  return '<div class="card"><div class="ctitle"><div class="l">'+icon('gauge')+' Belastungs-Beitrag <span style="color:var(--muted);font-weight:600;font-size:11px">· letzte Trainingstage · Tageslast (sRPE)</span></div></div>'+rows+'</div>';}
+    return '<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--hair)"><div style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+bg+';color:'+col+'">'+icon('run','sm')+'</div><div><div style="font-size:12.5px;font-weight:700">'+(c?gmEsc(c[0]):'—')+'</div><div style="font-size:10.5px;color:var(--muted);font-weight:600">'+(c?gmEsc(c[1]):GM_NA)+'</div></div><div style="margin-left:auto;font-size:13px;font-weight:800;color:'+col+'">'+(c?gmEsc(c[2])+' <small style="font-weight:600;color:var(--muted)">' + _uiT('ui.srpe') + '</small>':'—')+'</div></div>';}).join('');
+  return '<div class="card"><div class="ctitle"><div class="l">'+icon('gauge')+' Belastungs-' + _uiT('ui.beitrag') + '<span style="color:var(--muted);font-weight:600;font-size:11px">' + _uiT('ui.letzte_trainingstage_tageslast_srpe') + '</span></div></div>'+rows+'</div>';}
 function gmModWarnings(d){
   if(!d.warnings.length)return '';
   return '<div class="card warn"><div class="ctitle"><div class="l" style="color:var(--crit)">'+icon('alert')+' Braucht Aufmerksamkeit</div></div>'+d.warnings.map(function(w){return '<div class="wrow"><span class="w-ic">'+icon(w[0],'sm')+'</span><div><div class="wt">'+gmEsc(w[1])+'</div><div class="wd">'+gmEsc(w[2])+'</div></div></div>';}).join('')+'</div>';}
@@ -6724,11 +6753,11 @@ function gmLoadingMods(){var k='<div class="kcard"><div class="sk" style="height
   /* GM6: der Golden Master erzeugt repeat(level==='a'?2:4) Kacheln — Stufe a zeigt
      14, Stufe f/p 20 Skeletons. Vorher war die Zahl fest auf 4 verdrahtet. */
   var g='',n=(gmLevel()==='a')?2:4;for(var i=0;i<n;i++)g+=k;
-  return '<div class="card"><div class="sk" style="height:14px;width:45%;margin-bottom:14px"></div><div class="sk" style="height:44px"></div></div><div class="kgrid">'+g+'</div>';}
-function gmErrorBar(){return '<div class="errbar">'+icon('wifi','sm')+'<div><b>Offline — zwischengespeicherter Stand.</b> Werte werden aktualisiert, sobald die Verbindung zurück ist.</div></div>';}
-function gmEmptyHero(){return '<div class="hero gap"><div class="empty" style="padding:24px 14px"><div class="e-ic" style="width:64px;height:64px;border-radius:20px">'+icon('db')+'</div><div class="et" style="font-size:15px">Noch keine Bereitschaft berechnet</div><div class="ed"><b style="color:var(--activity)">Das ist kein schlechter Wert</b> — es fehlen nur Daten. ORVIA braucht Check-in, Schlaf und Belastung, um deinen Score zu berechnen.</div><div class="eb" style="margin-top:16px" onclick="gotoCheckinForm()">'+icon('bolt','sm')+' Check-in starten</div></div></div>'+
-  '<div class="gapnote">'+icon('info','sm')+'<div><b>Datenlücke ≠ schlechter Score.</b> Ein niedriger Score heißt „schlecht erholt". Fehlende Daten heißt „unbekannt" — beides wird bewusst unterschiedlich dargestellt.</div></div>';}
-function gmEmptyMods(){return '<div class="card"><div class="empty"><div class="e-ic">'+icon('moon')+'</div><div class="et">Schlaf &amp; Erholung</div><div class="ed">Verbinde ein Gerät oder erfasse manuell.</div><div class="eb" onclick="expandCheckinCard()">'+icon('activity','sm')+' Manuell erfassen</div></div></div>';}
+  return '<div class="card"><div class="sk" style="height:14px;width:' + _uiT('ui.45') + '%;margin-bottom:14px"></div><div class="sk" style="height:44px"></div></div><div class="kgrid">'+g+'</div>';}
+function gmErrorBar(){return '<div class="errbar">'+icon('wifi','sm')+'<div><b>' + _uiT('ui.offline_zwischengespeicherter_stand') + '</b>' + _uiT('ui.werte_werden_aktualisiert_sobald_die') + '</div></div>';}
+function gmEmptyHero(){return '<div class="hero gap"><div class="empty" style="padding:24px 14px"><div class="e-ic" style="width:64px;height:64px;border-radius:20px">'+icon('db')+'</div><div class="et" style="font-size:15px">' + _uiT('ui.noch_keine_bereitschaft_berechnet') + '</div><div class="ed"><b style="color:var(--activity)">' + _uiT('ui.das_ist_kein_schlechter_wert') + '</b>' + _uiT('ui.es_fehlen_nur_daten_orvia') + '</div><div class="eb" style="margin-top:16px" onclick="gotoCheckinForm()">'+icon('bolt','sm')+' Check-in starten</div></div></div>'+
+  '<div class="gapnote">'+icon('info','sm')+'<div><b>' + _uiT('ui.datenluecke_schlechter_score') + '</b>' + _uiT('ui.ein_niedriger_score_heisst_schlecht') + '</div></div>';}
+function gmEmptyMods(){return '<div class="card"><div class="empty"><div class="e-ic">'+icon('moon')+'</div><div class="et">' + _uiT('ui.schlaf_amp_erholung') + '</div><div class="ed">' + _uiT('ui.verbinde_ein_geraet_oder_erfasse') + '</div><div class="eb" onclick="expandCheckinCard()">'+icon('activity','sm')+' ' + _uiT('ui.manuell_erfassen') + '</div></div></div>';}
 /* --- GM6: systemweite Zustandskomponenten --------------------------------
    Ein Satz Bausteine fuer ALLE Hosts ausserhalb des Dashboards (Analyse,
    Plan, Profil, Aktivitaet). Sie erzeugen exakt die Golden-Master-Komponenten
@@ -6748,23 +6777,23 @@ function gmStateLoading(o){
   var kc=(o.kind==='kcard');
   var body=kc
     ? '<div class="sk" style="height:12px;width:60%;margin-bottom:12px"></div><div class="sk" style="height:26px;width:50%;margin-bottom:9px"></div><div class="sk" style="height:30px"></div>'
-    : '<div class="sk" style="height:14px;width:45%;margin-bottom:14px"></div><div class="sk" style="height:44px"></div>';
+    : '<div class="sk" style="height:14px;width:' + _uiT('ui.45') + '%;margin-bottom:14px"></div><div class="sk" style="height:44px"></div>';
   var n=(o.blocks>0)?o.blocks:1,h='';
   for(var i=0;i<n;i++)h+=o.bare?body:'<div class="'+(kc?'kcard':'card')+'">'+body+'</div>';
   return h;
 }
 function gmStateEmpty(o){
   o=o||{};
-  return '<div class="card"><div class="empty"><div class="e-ic">'+icon(o.icon||'db')+'</div><div class="et">'+gmEsc(o.title||'Noch keine Daten')+'</div><div class="ed">'+gmEsc(o.desc||'')+'</div>'+
+  return '<div class="card"><div class="empty"><div class="e-ic">'+icon(o.icon||'db')+'</div><div class="et">'+gmEsc(o.title||'' + _uiT('ui.noch_keine_daten') + '')+'</div><div class="ed">'+gmEsc(o.desc||'')+'</div>'+
     (o.action?'<div class="eb" onclick="'+o.action+'">'+icon(o.actionIcon||'bolt','sm')+' '+gmEsc(o.label||'')+'</div>':'')+'</div></div>';
 }
 function gmStateError(o){
   o=o||{};
-  return '<div class="errbar">'+icon(o.icon||'wifi','sm')+'<div><b>'+gmEsc(o.title||'Momentan nicht verfügbar.')+'</b>'+(o.desc?' '+gmEsc(o.desc):'')+'</div></div>'+
+  return '<div class="errbar">'+icon(o.icon||'wifi','sm')+'<div><b>'+gmEsc(o.title||'' + _uiT('ui.momentan_nicht_verfuegbar') + '')+'</b>'+(o.desc?' '+gmEsc(o.desc):'')+'</div></div>'+
     /* margin-top:14px = Golden Master errorView (orvia_dashboard_5.html:636).
        .cta setzt display:flex ⇒ der Button ist bereits blocklevel und fuellt die
        Kartenbreite; ein zusaetzliches width:100% waere redundant. */
-    (o.retry?'<button class="cta wide-ghost" style="margin-top:14px" onclick="'+o.retry+'">'+icon('wifi','sm')+' '+gmEsc(o.label||'Erneut versuchen')+'</button>':'');
+    (o.retry?'<button class="cta wide-ghost" style="margin-top:14px" onclick="'+o.retry+'">'+icon('wifi','sm')+' '+gmEsc(o.label||'' + _uiT('ui.erneut_versuchen') + '')+'</button>':'');
 }
 /* --- GM6-ENDE Zustandskomponenten ---------------------------------------
    Endmarke analog zu GM1-ENDE / D2-ENDE. Sie erlaubt Slice-basierten Tests,
@@ -6799,8 +6828,8 @@ function gmDashState(){
   return 'normal';
 }
 function gmErrorHero(){var d=gmDashVM();var sc=d.hasScore?d.score:null;
-  return '<div class="hero"><div class="hero-top"><div class="ring-wrap" style="width:150px;height:150px;opacity:.55">'+ring(sc!=null?sc:0,'var(--neutral)',150,12)+'<div class="ring-c"><div class="big" style="color:var(--muted)">'+(sc!=null?sc:'—')+'</div><div class="u">ZULETZT</div></div></div><div class="hero-right"><div class="lead" style="color:var(--muted)">Zwischengespeicherter Stand</div><div class="why">Werte könnten veraltet sein. Prüfe die Verbindung und versuche es erneut.</div></div></div>'+
-  '<button id="gmRetryBtn" class="cta wide-ghost" style="margin-top:14px;width:100%" onclick="renderDay&&renderDay()">'+icon('wifi','sm')+' Erneut versuchen</button></div>';}
+  return '<div class="hero"><div class="hero-top"><div class="ring-wrap" style="width:150px;height:150px;opacity:.55">'+ring(sc!=null?sc:0,'var(--neutral)',150,12)+'<div class="ring-c"><div class="big" style="color:var(--muted)">'+(sc!=null?sc:'—')+'</div><div class="u">' + _uiT('ui.zuletzt_') + '</div></div></div><div class="hero-right"><div class="lead" style="color:var(--muted)">' + _uiT('ui.zwischengespeicherter_stand') + '</div><div class="why">' + _uiT('ui.werte_koennten_veraltet_sein_pruefe') + '</div></div></div>'+
+  '<button id="gmRetryBtn" class="cta wide-ghost" style="margin-top:14px;width:100%" onclick="renderDay&&renderDay()">'+icon('wifi','sm')+' ' + _uiT('ui.erneut_versuchen') + '</button></div>';}
 function gmSetCheckinVisible(v){try{var a=document.getElementById('checkinCompact'),b=document.getElementById('checkinCard');
   if(a)a.style.display=v?'':'none';if(b)b.style.display=v?'':'none';}catch(_){ }}
 /* GM6-Fokusvertrag: ersetzt ein Zustandswechsel den fokussierten Knoten (z. B. den
@@ -6822,7 +6851,7 @@ function renderCommand(){
   var el=document.getElementById('command');if(!el)return;
   if(typeof applyLevelClass==='function')applyLevelClass();
   if(typeof orviaApplyTheme==='function')orviaApplyTheme();
-  try{var mb=document.getElementById('modeBadge');if(mb){var l=gmLevel();mb.innerHTML=l==='p'?icon('bolt','xs')+' Profi-Ansicht':l==='a'?'Einfache Ansicht':'';}}catch(_){ }
+  try{var mb=document.getElementById('modeBadge');if(mb){var l=gmLevel();mb.innerHTML=l==='p'?icon('bolt','xs')+'' + _uiT('ui.profi_ansicht') + '':l==='a'?'' + _uiT('ui.einfache_ansicht') + '':'';}}catch(_){ }
   if(typeof cur!=='undefined'&&cur!==todayStr()){gmSetHTML(el,'');return;}
   var state=(typeof window!=='undefined'&&window._gmStateOverride)||gmDashState();
   /* GM6.1 §2: im Zustand 'offline' (Cache vorhanden) bleibt der Check-in sichtbar. */
@@ -6860,8 +6889,8 @@ function renderModules(){
   var state=(typeof window!=='undefined'&&window._gmStateOverride)||gmDashState();
   /* GM6: eduhint erscheint im Golden Master ausschliesslich im Normalzweig.
      Der Empty-Zweig verwendet nur das sectlabel — deshalb sind beide getrennt. */
-  var edu=(lvl==='a'?'<div class="eduhint">'+icon('info','sm')+'<div><b>Neu bei ORVIA?</b> Dein Score fasst Schlaf, Erholung und Belastung zu einer Zahl zusammen. Tippe den Score oder eine Karte für Details.</div></div>':'');
-  var sect='<div class="sectlabel" data-gm-slot="dashboard-modules">'+(lvl==='a'?'Das Wichtigste':'Deine Module')+' <span class="edit" onclick="gmOpenMM()">'+icon('gear','xs')+' Anpassen</span></div>';
+  var edu=(lvl==='a'?'<div class="eduhint">'+icon('info','sm')+'<div><b>' + _uiT('ui.neu_bei_orvia') + '</b>' + _uiT('ui.dein_score_fasst_schlaf_erholung') + '</div></div>':'');
+  var sect='<div class="sectlabel" data-gm-slot="dashboard-modules">'+(lvl==='a'?'' + _uiT('ui.das_wichtigste') + '':'' + _uiT('ui.deine_module') + '')+' <span class="edit" onclick="gmOpenMM()">'+icon('gear','xs')+' ' + _uiT('ui.anpassen') + '</span></div>';
   if(state==='loading'){host.innerHTML=gmLoadingMods();return;}
   /* GM6.1 §2: NUR der Hard-Error (kein verwendbarer Cache) uebernimmt die
      reduzierte GM-errorView, in der nach dem Hero nichts mehr folgt. Der Zustand
@@ -6875,7 +6904,7 @@ function renderModules(){
   var buf=[];var flush=function(){if(buf.length){html+='<div class="kgrid">'+buf.join('')+'</div>';buf=[];}};
   gmModules().forEach(function(id){if(!GM_REND[id])return;if(GM_KGRID[id])buf.push(GM_REND[id](d));else{flush();html+=GM_REND[id](d);}});
   flush();
-  html+='<div class="addmod" onclick="gmOpenMM()">'+icon('bolt','sm')+' '+(lvl==='a'?'Mehr anzeigen':'Modul hinzufügen oder anordnen')+'</div>';
+  html+='<div class="addmod" onclick="gmOpenMM()">'+icon('bolt','sm')+' '+(lvl==='a'?'' + _uiT('ui.mehr_anzeigen') + '':'' + _uiT('ui.modul_hinzufuegen_oder_anordnen') + '')+'</div>';
   host.innerHTML=html;
 }
 /* --- GM-Sheet-System (EIN System: scrim + sheets, zentrale Escape-/Fokus-Logik) --- */
@@ -6907,8 +6936,8 @@ function oModal(title,body,footer){
 function gmOpenDaySheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var isToday=(typeof cur==='undefined')||cur===todayStr();
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('calendar')+'</div><div><h3>Tag wählen</h3><div class="sh-sub" style="margin:2px 0 0">'+gmEsc((typeof fmtDate==='function'&&typeof cur!=='undefined')?fmtDate(cur):'')+'</div></div></div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="shiftDay(-1);gmOpenDaySheet()">‹ Vortag</button>'+(isToday?'':'<button class="sec" onclick="shiftDay(1);gmOpenDaySheet()">Nächster ›</button>')+(isToday?'':'<button class="prim" onclick="goToday();gmCloseSheets()">Heute</button>')+'</div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('calendar')+'</div><div><h3>' + _uiT('ui.tag_waehlen') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+gmEsc((typeof fmtDate==='function'&&typeof cur!=='undefined')?fmtDate(cur):'')+'</div></div></div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="shiftDay(-1);gmOpenDaySheet()">' + _uiT('ui.vortag') + '</button>'+(isToday?'':'<button class="sec" onclick="shiftDay(1);gmOpenDaySheet()">' + _uiT('ui.naechster') + '</button>')+(isToday?'':'<button class="prim" onclick="goToday();gmCloseSheets()">Heute</button>')+'</div>';
   gmOpenSheet('detailSheet');
 }
 function gmShowCarryover(id){try{var el=document.getElementById(id);if(el){el.classList.add('gm-co-open');el.scrollIntoView({behavior:'smooth',block:'start'});}}catch(_){ }}
@@ -6956,7 +6985,7 @@ function openScore(){
       gmEsc(_dec.scoreParts.map(function(p){return p.name+' '+p.value+' × '+p.weight+' %';}).join('  +  '))+
       '  =  <b style="color:var(--text)">'+_dec.scoreRaw+'</b></p>';
     if(_dec.scoreCapped)_calcLine+='<p style="margin:6px 0 0;color:var(--attention);font-size:11.5px">'+
-      gmEsc('Sicherheitsgrenze aktiv: auf '+_dec.score+' begrenzt — '+((_dec.readinessReasons||[])[0]||'Zustand des Tages'))+'</p>';
+      gmEsc('' + _uiT('ui.sicherheitsgrenze_aktiv_auf') + ''+_dec.score+' begrenzt — '+((_dec.readinessReasons||[])[0]||'' + _uiT('ui.zustand_des_tages') + ''))+'</p>';
   }
   /* GM7.6 (Teilbereich 2): Aufschluesselung als GM-Faktorkarten (Prototyp factorRows:
      fcard mit Kopf, seg10-Fuellstand, Wert/Beitrag-Chips, Begruendung, Deeplink). Alle
@@ -6981,23 +7010,23 @@ function openScore(){
            richtig, aber nur eine stand da: 100 ist die BEWERTUNG (auf oder ueber
            dem eigenen Normalwert), 95 der Messwert. Ohne den Messwert daneben
            wirkt die Bewertung wie ein falscher Messwert. */
-        '<div class="fchips">'+((b.length>5&&b[5]!=null)?'<span class="fchipv">Gemessen <b>'+gmEsc(String(b[5]))+'</b></span>':'')+'<span class="fchipv">Bewertet <b>'+(norm!=null?norm:'—')+'</b>/100</span><span class="fchipv">Beitrag <b>+'+gmEsc(String(b[1]))+' Pkt</b></span></div>'+
+        '<div class="fchips">'+((b.length>5&&b[5]!=null)?'<span class="fchipv">' + _uiT('ui.gemessen') + '<b>'+gmEsc(String(b[5]))+'</b></span>':'')+'<span class="fchipv">' + _uiT('ui.bewertet') + '<b>'+(norm!=null?norm:'—')+'</b>/100</span><span class="fchipv">' + _uiT('ui.beitrag') + '<b>+'+gmEsc(String(b[1]))+' Pkt</b></span></div>'+
         (b[3]?'<div class="fex">'+gmEsc(b[3])+'</div>':'')+
-        (link?'<div class="deeplink" role="button" tabindex="0" onclick="openMetric(\''+link+'\')" onkeydown="if(event.key===\'Enter\')openMetric(\''+link+'\')">'+gmEsc(b[0])+' öffnen '+icon('chev','xs')+'</div>':'')+
+        (link?'<div class="deeplink" role="button" tabindex="0" onclick="openMetric(\''+link+'\')" onkeydown="if(event.key===\'Enter\')openMetric(\''+link+'\')">'+gmEsc(b[0])+'' + _uiT('ui.oeffnen') + ''+icon('chev','xs')+'</div>':'')+
       '</div></div></div>';}).join('');
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="ring-wrap" style="width:96px;height:96px">'+
     (brk.length?gmSegRing(d.breakdown,os?os.score:null,96):ring(os?os.score:0,SC[d.statusColor]||'var(--neutral)',96,9))+
     '<div class="ring-c"><div style="font-size:26px;font-weight:800">'+(os?os.score:'—')+'</div></div></div>'+
-    '<div><h3>ORVIA-Score</h3><div class="sh-sub" style="margin:3px 0 0"><span class="statuspill sp-'+d.statusColor+'" style="background:'+(TINT[d.statusColor]||'var(--surface)')+';color:'+(SC[d.statusColor]||'var(--muted)')+'">'+gmEsc(d.status)+'</span></div></div></div>'+
+    '<div><h3>' + _uiT('ui.orvia_score') + '</h3><div class="sh-sub" style="margin:3px 0 0"><span class="statuspill sp-'+d.statusColor+'" style="background:'+(TINT[d.statusColor]||'var(--surface)')+';color:'+(SC[d.statusColor]||'var(--muted)')+'">'+gmEsc(d.status)+'</span></div></div></div>'+
     (chips?'<div class="sh-block" style="padding-top:6px"><div class="ci-vals" style="flex-wrap:wrap;gap:6px">'+chips+'</div></div>':'')+
-    (rows?'<div class="sh-block"><div class="bh">So entsteht dein Score</div><div class="breakdown">'+rows+'</div>'+_calcLine+'</div>':'<div class="sh-block"><div class="bh">So entsteht dein Score</div><p>'+GM_NA+' — sobald dein Check-in vorliegt, erscheinen hier die Teilwerte.</p></div>')+
+    (rows?'<div class="sh-block"><div class="bh">' + _uiT('ui.so_entsteht_dein_score') + '</div><div class="breakdown">'+rows+'</div>'+_calcLine+'</div>':'<div class="sh-block"><div class="bh">' + _uiT('ui.so_entsteht_dein_score') + '</div><p>'+GM_NA+' — sobald dein Check-in vorliegt, erscheinen hier die Teilwerte.</p></div>')+
     /* v9: praezise Ueberschrift. „Aufschlüsselung" allein liess offen, WOVON —
        es sind ausschliesslich die Bestandteile der Erholung, nicht des Scores. */
-    (detail?'<div class="sh-block"><div class="bh">Aufschlüsselung der Erholung</div><p style="margin:0 0 10px;color:var(--muted);font-size:11.5px">Diese Faktoren ergeben den Erholungswert oben. Die Punkte sind Beiträge zum Erholungswert — nicht zum Gesamtscore.</p><div class="breakdown">'+detail+'</div></div>':'')+
+    (detail?'<div class="sh-block"><div class="bh">' + _uiT('ui.aufschluesselung_der_erholung') + '</div><p style="margin:0 0 10px;color:var(--muted);font-size:11.5px">' + _uiT('ui.diese_faktoren_ergeben_den_erholungswert') + '</p><div class="breakdown">'+detail+'</div></div>':'')+
     /* GM7.5h: Datenqualitaet (GM openScore, Prototyp Z.944) — bereits berechnetes conf-VM
        (gmConfVM: dataConfidence()+Baseline-Status), identisch zu gmModReadinessPro. */
-    (d.conf&&d.conf.levelLabel?'<div class="sh-block"><div class="bh">Datenqualität</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' Konfidenz <b style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+gmEsc(d.conf.levelLabel)+'</b></span>'+(d.conf.complete?'<span class="confchip">'+icon('db','xs')+' Daten <b>'+gmEsc(d.conf.complete)+'</b></span>':'')+'<span class="confchip">'+icon('pulse','xs')+' HRV-Abw. <b>'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</b></span></div>'+(d.conf.note?'<p style="margin-top:10px;color:var(--muted);font-size:11.5px">'+gmEsc(d.conf.note)+'</p>':'')+'</div>':'')+
-    (gmLevel()==='p'?'<div class="sh-block"><div class="bh">Berechnung</div><p>Zentrale Entscheidung der ORVIA-Engine (eine Quelle für alle Modi). Safety-Gates können optimistische Werte überstimmen. Nur die Darstellungstiefe unterscheidet sich je Modus.</p></div>':'')+
+    (d.conf&&d.conf.levelLabel?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+gmEsc(d.conf.levelLabel)+'</b></span>'+(d.conf.complete?'<span class="confchip">'+icon('db','xs')+' Daten <b>'+gmEsc(d.conf.complete)+'</b></span>':'')+'<span class="confchip">'+icon('pulse','xs')+' HRV-Abw. <b>'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</b></span></div>'+(d.conf.note?'<p style="margin-top:10px;color:var(--muted);font-size:11.5px">'+gmEsc(d.conf.note)+'</p>':'')+'</div>':'')+
+    (gmLevel()==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.berechnung') + '</div><p>' + _uiT('ui.zentrale_entscheidung_der_orvia_engine') + '</p></div>':'')+
     '<div class="source">'+icon('db','xs')+' ORVIA-Engine · Anzeige ohne Neuberechnung</div>';
   gmOpenSheet('detailSheet');
 }
@@ -7010,10 +7039,10 @@ function openMetric(key){
     if(r){curVal=(r.value!=null)?r.value:null;
       valTxt=(r.value!=null?fmtDe(r.value):String(r.valueText))+def.unit;
       /* GM7.6b: lesbares Quellen-Label statt Rohschluessel (device_measurement etc.). */
-      src=({device_measurement:'Gerätemessung',provider_calculation:'Provider-Berechnung',manual_entry:'Manuell erfasst',manual_override:'Manuell korrigiert',lab_test:'Labormessung',orvia_estimate:'ORVIA-Schätzung',historical:'Historisch'})[r.sourceType]||r.sourceType||'Metrik-Speicher';
+      src=({device_measurement:'Gerätemessung',provider_calculation:'Provider-' + _uiT('ui.berechnung') + '',manual_entry:'' + _uiT('ui.manuell_erfasst') + '',manual_override:'' + _uiT('ui.manuell_korrigiert') + '',lab_test:'Labormessung',orvia_estimate:'ORVIA-Schätzung',historical:'Historisch'})[r.sourceType]||r.sourceType||'Metrik-Speicher';
       /* GM7.2: Metrik-Datum sichtbar machen — so ist „64 Schritte / 0 kcal" als HEUTIGER
          Providerwert verifizierbar (nicht ein alter „latest value"). */
-      var _md='';try{if(r.metricDate){var _d=new Date(r.metricDate+'T12:00');_md=' · Stand '+_d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});}}catch(_){ }
+      var _md='';try{if(r.metricDate){var _d=new Date(r.metricDate+'T12:00');_md='' + _uiT('ui.stand_') + ''+_d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});}}catch(_){ }
       meta=(r.stale?' · veraltet':'')+_md;}}
   /* GM7: echte Serie + Aggregation aus dem Resolver-Cache — kein unbedingter Leerzustand mehr. */
   var series=(key==='load')?null:gmMetricSeries(key,14);
@@ -7035,7 +7064,7 @@ function openMetric(key){
       '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:650;margin-top:4px"><span>'+gmEsc(series.dates[0].slice(5))+'</span><span>'+gmEsc(series.dates[series.dates.length-1].slice(5))+'</span></div></div>';
   }else{
     chart='<div class="ochart"><div class="spark" style="height:60px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;padding:0 12px">'+
-      (series?'Verlauf '+GM_NA.toLowerCase()+' — erst '+series.values.length+' Messwert(e) gespeichert.':'Verlauf '+GM_NA.toLowerCase()+' — für diese Metrik ist keine Serie gespeichert.')+'</div></div>';
+      (series?'' + _uiT('ui.verlauf') + ''+GM_NA.toLowerCase()+' — erst '+series.values.length+'' + _uiT('ui.messwert_e_gespeichert') + '':'' + _uiT('ui.verlauf') + ''+GM_NA.toLowerCase()+'' + _uiT('ui.fuer_diese_metrik_ist_keine') + '')+'</div></div>';
   }
   /* GM7.6: GM-Statzeile (Prototyp openMetric: Ø 14 T. / Baseline / vs. Ø, statgrid3).
      Baseline nur aus kanonischen Quellen: HRV = exp(recoveryCtx.hrvBase7) (identische
@@ -7052,7 +7081,7 @@ function openMetric(key){
   var devCol=function(dv){if(dv==null||hb==null)return 'var(--text)';return (hb?dv>=0:dv<=0)?'var(--ready)':'var(--crit)';};
   var statsRow='<div class="statgrid3">'+
     '<div><div class="n">'+(stats?gmEsc(_fmtStat(stats.avg))+'<small>'+gmEsc(def.unit)+'</small>':'—')+'</div><div class="l">Ø '+(stats?stats.n:14)+' T.</div></div>'+
-    '<div><div class="n">'+(baseVal!=null?gmEsc(_fmtStat(baseVal))+'<small>'+gmEsc(def.unit)+'</small>':'—')+'</div><div class="l">Baseline</div></div>'+
+    '<div><div class="n">'+(baseVal!=null?gmEsc(_fmtStat(baseVal))+'<small>'+gmEsc(def.unit)+'</small>':'—')+'</div><div class="l">' + _uiT('ui.baseline__') + '</div></div>'+
     '<div><div class="n" style="color:'+devCol(stats&&stats.vs!=null?stats.vs:null)+'">'+((stats&&stats.vs!=null)?((stats.vs>=0?'+':'')+gmEsc(_fmtStat(stats.vs))+'<small>'+gmEsc(def.unit)+'</small>'):'—')+'</div><div class="l">vs. Ø</div></div></div>';
   var extra='';
   if(key==='sleep_duration_min'){
@@ -7076,9 +7105,9 @@ function openMetric(key){
       _phaseHtml='<div style="display:flex;height:10px;border-radius:6px;overflow:hidden;margin:8px 0 4px">'+_pv.map(function(x){var w=(x.v!=null)?(x.v/_tot*100):0;return x.v!=null?'<i style="width:'+w+'%;background:'+x.c+'"></i>':'';}).join('')+'</div>'+
         _pv.map(function(x){var _pct=(x.v!=null)?Math.round(x.v/_tot*100):null;
           return '<div class="phrow"><span class="pd" style="background:'+x.c+'"></span><span class="pn">'+x.l+'</span><span class="pv">'+(x.v!=null?gmEsc(_fmtHm(x.v)):'—')+'</span><span class="ppct" style="background:rgba(255,255,255,.06);color:var(--muted)">'+(_pct!=null?_pct+'%':'—')+'</span></div>';}).join('')+
-        '<p style="margin-top:8px;color:var(--muted);font-size:11px">Phasen-Dauern aus dem kanonischen Speicher.</p>';
+        '<p style="margin-top:8px;color:var(--muted);font-size:11px">' + _uiT('ui.phasen_dauern_aus_dem_kanonischen') + '</p>';
     }else{
-      _phaseHtml='<p style="margin-top:6px;color:var(--muted);font-size:11.5px">Schlafphasen (Tief/Leicht/REM/Wach): '+GM_NA+' — für diesen Tag sind keine Phasen-Dauern gespeichert. Kein erfundenes Hypnogramm.</p>';
+      _phaseHtml='<p style="margin-top:6px;color:var(--muted);font-size:11.5px">Schlafphasen (Tief/Leicht/REM/Wach): '+GM_NA+' — für diesen Tag sind keine ' + _uiT('ui.phasen_') + '-Dauern gespeichert. Kein erfundenes ' + _uiT('ui.hypnogramm') + '.</p>';
     }
     /* GM7.6: „Erholsamer Schlaf" (GM sleepSheet) — Anteil Tief+REM an der Schlafzeit
        (ohne Wachphasen), reine Aggregation der gespeicherten Phasen-Dauern. Idealband
@@ -7098,27 +7127,27 @@ function openMetric(key){
             _sl.dates.forEach(function(dt,ix){if(_by[dt])_by[dt].l=_sl.values[ix];});
             var _ps=[];Object.keys(_by).forEach(function(dt){var e2=_by[dt];if(e2.d!=null&&e2.r!=null&&(e2.d+(e2.l||0)+e2.r)>0)_ps.push((e2.d+e2.r)/(e2.d+(e2.l||0)+e2.r)*100);});
             if(_ps.length>=3){var _pavg=_ps.reduce(function(a,b){return a+b;},0)/_ps.length;var _pd2=Math.round(_restPct-_pavg);
-              _vs14='<p style="font-size:12px;color:var(--muted);margin-top:9px;line-height:1.5">Tief- und REM-Schlaf sind die erholsamen Phasen. <b style="color:'+(_pd2>=0?'var(--ready)':'var(--attention)')+'">'+(_pd2>=0?'+':'')+_pd2+' %P</b> vs. deinem '+_ps.length+'-Nächte-Durchschnitt.</p>';}}
+              _vs14='<p style="font-size:12px;color:var(--muted);margin-top:9px;line-height:1.5">' + _uiT('ui.tief_und_rem_schlaf_sind') + '<b style="color:'+(_pd2>=0?'var(--ready)':'var(--attention)')+'">'+(_pd2>=0?'+':'')+_pd2+' %P</b> vs. deinem '+_ps.length+'-Nächte-Durchschnitt.</p>';}}
         }catch(_){ }
-        _restHtml='<div class="sh-block"><div class="bh">Erholsamer Schlaf</div>'+
-          '<div class="ih" style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:20px;font-weight:800">'+_restPct+'<small>%</small> · '+gmEsc(_fmtHm(_restMin))+'</div><span class="ppct" style="background:'+((_restPct>=35&&_restPct<=50)?'var(--ready-t)':'rgba(255,255,255,.06)')+';color:'+((_restPct>=35&&_restPct<=50)?'var(--ready)':'var(--muted)')+'">'+((_restPct>=35&&_restPct<=50)?'Im Idealband':'Referenz 35–50%')+'</span></div>'+
+        _restHtml='<div class="sh-block"><div class="bh">' + _uiT('ui.erholsamer_schlaf') + '</div>'+
+          '<div class="ih" style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:20px;font-weight:800">'+_restPct+'<small>%</small> · '+gmEsc(_fmtHm(_restMin))+'</div><span class="ppct" style="background:'+((_restPct>=35&&_restPct<=50)?'var(--ready-t)':'rgba(255,255,255,.06)')+';color:'+((_restPct>=35&&_restPct<=50)?'var(--ready)':'var(--muted)')+'">'+((_restPct>=35&&_restPct<=50)?'' + _uiT('ui.im_idealband') + '':'' + _uiT('ui.referenz_35_50') + '')+'</span></div>'+
           '<div class="dbar" style="height:8px;border-radius:5px;background:#0a1019;overflow:hidden;margin-top:9px;position:relative"><i style="display:block;height:100%;width:'+Math.min(_restPct,100)+'%;background:linear-gradient(90deg,#2f9e6b,var(--ready))"></i></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-weight:650;margin-top:4px"><span>0%</span><span style="color:var(--ready)">Ideal 35–50% (Referenzwert)</span><span>100%</span></div>'+_vs14+'</div>';
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-weight:650;margin-top:4px"><span>0%</span><span style="color:var(--ready)">' + _uiT('ui.ideal_35_50_referenzwert') + '</span><span>100%</span></div>'+_vs14+'</div>';
       }
     }catch(_){ }
-    extra='<div class="sh-block"><div class="bh">Schlaf-Score</div><p>'+(ssc&&ssc.value!=null?('<b style="font-size:18px">'+gmEsc(fmtDe(ssc.value))+'</b>/100 — aus dem kanonischen Speicher (Provider-Score).'):(GM_NA+' — kein Schlaf-Score im kanonischen Speicher.'))+'</p></div>'+
+    extra='<div class="sh-block"><div class="bh">' + _uiT('ui.schlaf_score') + '</div><p>'+(ssc&&ssc.value!=null?('<b style="font-size:18px">'+gmEsc(fmtDe(ssc.value))+'</b>/100 — aus dem kanonischen Speicher (Provider-Score).'):(GM_NA+'' + _uiT('ui.kein_schlaf_score_im_kanonischen') + ''))+'</p></div>'+
       '<div class="sh-block"><div class="bh">Schlafphasen</div>'+_phaseHtml+'</div>'+_restHtml+
       /* GM7.6: Schlaf-Coach-Slot (GM sleepSheet) — es existiert kein produktiver
          Schlafziel-/Empfehlungsvertrag; Struktur bleibt, Inhalt ehrlich NA (Regel #12). */
-      '<div class="sh-block"><div class="bh">Schlaf-Coach · heute Nacht</div><p style="color:var(--muted);font-size:12px">'+GM_NA+' — eine persönliche Schlafenszeit-Empfehlung braucht den Schlafziel-Vertrag (Zielkorridor). ORVIA erfindet keine Empfehlung.</p></div>'+
+      '<div class="sh-block"><div class="bh">' + _uiT('ui.schlaf_coach_heute_nacht') + '</div><p style="color:var(--muted);font-size:12px">'+GM_NA+' — eine persönliche Schlafenszeit-' + _uiT('ui.empfehlung_') + ' braucht den Schlafziel-Vertrag (' + _uiT('ui.zielkorridor') + '). ORVIA erfindet keine ' + _uiT('ui.empfehlung_') + '.</p></div>'+
       /* GM7.4: echtes Hypnogramm aus user_metric_series (sleep_stages) — asynchron,
          ehrlicher Leerzustand solange nicht persistiert; kein erfundenes Bild. */
-      '<div class="sh-block"><div class="bh">Hypnogramm</div><div id="gmHypnoSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>'+
+      '<div class="sh-block"><div class="bh">' + _uiT('ui.hypnogramm') + '</div><div id="gmHypnoSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>'+
       /* GM7.4.1: Nachtverlauf HF/Stress/Body Battery/Atmung — echte Serien aus
          user_metric_series (sleep_hr/sleep_stress/sleep_body_battery/sleep_respiration),
          asynchron nachgeladen; je Serie ehrlicher Leerzustand solange nicht persistiert. */
-      '<div class="sh-block"><div class="bh">Nachtverlauf</div>'+
-      ['gmSleepHrSlot:Herzfrequenz','gmSleepStressSlot:Stress','gmSleepBbSlot:Body Battery','gmSleepRespSlot:Atmung'].map(function(s){
+      '<div class="sh-block"><div class="bh">' + _uiT('ui.nachtverlauf') + '</div>'+
+      ['gmSleepHrSlot:' + _uiT('ui.herzfrequenz__') + '','gmSleepStressSlot:Stress','' + _uiT('ui.gmsleepbbslot_body_battery') + '','gmSleepRespSlot:Atmung'].map(function(s){
         var p=s.split(':');return '<div style="margin-top:8px"><div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:3px">'+p[1]+'</div><div id="'+p[0]+'"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>';
       }).join('')+'</div>';
   }
@@ -7126,27 +7155,27 @@ function openMetric(key){
     /* GM7.4: Tages-Höchststress (stress_max) aus dem kanonischen Speicher. Die
        Intraday-Kurve ist eine Zeitreihe (separater Speicher) — kein interpoliertes Mittel. */
     var _smx=gmMetric('stress_max');
-    extra='<div class="sh-block"><div class="bh">Tages-Maximum</div><p>'+(_smx&&_smx.value!=null?('<b style="font-size:18px">'+gmEsc(fmtDe(_smx.value))+'</b> — höchster gemessener Stresswert des Tages (Garmin).'):(GM_NA+' — kein Tages-Maximum gespeichert.'))+'</p></div>'+
+    extra='<div class="sh-block"><div class="bh">' + _uiT('ui.tages_maximum') + '</div><p>'+(_smx&&_smx.value!=null?('<b style="font-size:18px">'+gmEsc(fmtDe(_smx.value))+'</b> — höchster gemessener Stresswert des Tages (Garmin).'):(GM_NA+'' + _uiT('ui.kein_tages_maximum_gespeichert') + ''))+'</p></div>'+
       /* GM7.4: echte Intraday-Stresskurve aus user_metric_series (stress_intraday) —
          nur gespeicherte Punkte, kein interpoliertes Tagesmittel. */
-      '<div class="sh-block"><div class="bh">Intraday-Verlauf</div><div id="gmStressIntraSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>'+
+      '<div class="sh-block"><div class="bh">' + _uiT('ui.intraday_verlauf') + '</div><div id="gmStressIntraSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>'+
       /* GM7.6: Skalen-Einordnung (GM stressSheet, statische Skala 0-100) — nur F/P. */
-      (((typeof gmLevel==='function'?gmLevel():'f')!=='a')?'<div class="sh-block"><div class="bh">Die Skala</div>'+[['0–25','Ruhe','var(--sleep)'],['26–50','Niedrig','var(--ready)'],['51–75','Mittel','var(--attention)'],['76–100','Hoch','var(--crit)']].map(function(r){return '<div class="scalerow"><span class="sr" style="color:'+r[2]+'">'+r[0]+'</span><span class="sd2" style="background:'+r[2]+'"></span><span class="sl">'+r[1]+'</span></div>';}).join('')+'</div>':'');
+      (((typeof gmLevel==='function'?gmLevel():'f')!=='a')?'<div class="sh-block"><div class="bh">' + _uiT('ui.die_skala') + '</div>'+[['0–25','Ruhe','var(--sleep)'],['26–50','Niedrig','var(--ready)'],['51–75','Mittel','var(--attention)'],['76–100','Hoch','var(--crit)']].map(function(r){return '<div class="scalerow"><span class="sr" style="color:'+r[2]+'">'+r[0]+'</span><span class="sd2" style="background:'+r[2]+'"></span><span class="sl">'+r[1]+'</span></div>';}).join('')+'</div>':'');
   }
   else if(key==='hrv_ms'){
     /* GM7.4.1: echte nächtliche HRV-Einzelmessreihe (sleep_hrv, user_metric_series) —
        zusätzlich zur skalaren Tages-/14-Tage-Serie oben (kanonischer Metrik-Speicher). */
-    extra='<div class="sh-block"><div class="bh">Nächtlicher HRV-Verlauf</div><div id="gmHrvNightSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>';
+    extra='<div class="sh-block"><div class="bh">' + _uiT('ui.naechtlicher_hrv_verlauf') + '</div><div id="gmHrvNightSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>';
   }
   else if(key==='body_battery'){
     /* GM7.4.1: echte Intraday-Body-Battery-Kurve (body_battery_intraday, user_metric_series). */
-    extra='<div class="sh-block"><div class="bh">Intraday-Verlauf</div><div id="gmBbIntraSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>';
+    extra='<div class="sh-block"><div class="bh">' + _uiT('ui.intraday_verlauf') + '</div><div id="gmBbIntraSlot"><div style="font-size:11px;color:var(--muted)">'+GM_NA+' — lädt …</div></div></div>';
   }
   /* GM7.6: metrikspezifischer Header-Untertitel (GM sleepSheet: „Letzte Nacht · 7h 31min · Score 84"). */
   var subTxt='heute '+valTxt;
   if(key==='sleep_duration_min'){try{var _ss2=gmMetric('sleep_score');
     var _durTxt=(curVal!=null)?(Math.floor(curVal/60)+'h '+String(Math.round(curVal%60)).padStart(2,'0')+'min'):valTxt;
-    subTxt='Letzte Nacht · '+_durTxt+((_ss2&&_ss2.value!=null)?' · Score '+Math.round(_ss2.value):'');}catch(_){ }}
+    subTxt='' + _uiT('ui.letzte_nacht') + ''+_durTxt+((_ss2&&_ss2.value!=null)?'' + _uiT('ui.score') + ''+Math.round(_ss2.value):'');}catch(_){ }}
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:'+(TINT[def.color]||'var(--surface-2)')+';color:'+(SC[def.color]||'var(--muted)')+'">'+icon(def.icon)+'</div><div><h3>'+gmEsc(def.label)+'</h3><div class="sh-sub" style="margin:2px 0 0">'+gmEsc(subTxt)+'</div></div></div>'+
     chart+statsRow+extra+
     (function(){
@@ -7154,7 +7183,7 @@ function openMetric(key){
          meaning) statt eines fuer alle Metriken identischen Generiktextes. Reine statische
          Erklaertexte; ohne Katalogeintrag bleibt der ehrliche Generikhinweis. */
       var lvl2=(typeof gmLevel==='function')?gmLevel():'f';
-      if(!info)return '<div class="sh-block"><div class="bh">Was das heißt</div><p>Anzeige aus dem kanonischen Speicher — keine Bewertung, keine medizinische Aussage. Ø und vs. Ø sind reine Aggregation der gespeicherten Serie.</p></div>';
+      if(!info)return '<div class="sh-block"><div class="bh">' + _uiT('ui.was_das_heisst') + '</div><p>' + _uiT('ui.anzeige_aus_dem_kanonischen_speicher') + '</p></div>';
       var interp=(lvl2==='a'&&info.a)?info.a:(lvl2==='p'&&info.p)?info.p:(info.f||info.p||info.a);
       var facts=(info.factors&&info.factors.length)?(lvl2==='a'?info.factors.slice(0,3):info.factors):null;
       /* GM7.6b: „Berechnung & Konfidenz" (GM openMetric, F/P) — ausschliesslich echte Werte:
@@ -7167,18 +7196,18 @@ function openMetric(key){
         var dqLbl=null;try{var _dq=dataConfidence();dqLbl=_dq&&_dq.level?_dq.level.l:null;}catch(_){ }
         var devChip='—';
         try{var _cx2=recoveryCtx(todayStr());
-          if(key==='hrv_ms'&&curVal!=null&&_cx2&&_cx2.hrvBase7!=null&&_cx2.hrvSd28){var _z=(Math.log(curVal)-_cx2.hrvBase7)/_cx2.hrvSd28;devChip=(_z>=0?'+':'')+fmtDe(Math.round(_z*10)/10)+' SD';}
+          if(key==='hrv_ms'&&curVal!=null&&_cx2&&_cx2.hrvBase7!=null&&_cx2.hrvSd28){var _z=(Math.log(curVal)-_cx2.hrvBase7)/_cx2.hrvSd28;devChip=(_z>=0?'+':'')+fmtDe(Math.round(_z*10)/10)+'' + _uiT('ui.sd') + '';}
           else if(key==='resting_hr'&&curVal!=null&&_cx2&&_cx2.rhrBase!=null){var _dv2=Math.round(curVal-_cx2.rhrBase);devChip=(_dv2>=0?'+':'')+_dv2+' bpm';}
         }catch(_){ }
-        confBlock='<div class="sh-block"><div class="bh">Berechnung &amp; Konfidenz</div><div class="confidence">'+
-          '<span class="confchip">'+icon('check','xs')+' Datenqualität <b>'+(dqLbl?gmEsc(dqLbl):'—')+'</b></span>'+
+        confBlock='<div class="sh-block"><div class="bh">' + _uiT('ui.berechnung_amp_konfidenz') + '</div><div class="confidence">'+
+          '<span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.datenqualitaet') + ' <b>'+(dqLbl?gmEsc(dqLbl):'—')+'</b></span>'+
           '<span class="confchip">'+icon('pulse','xs')+' Abweichung <b>'+gmEsc(devChip)+'</b></span>'+
-          '<span class="confchip">'+icon('db','xs')+' Baseline <b>'+(baseVal!=null?gmEsc(fmtDe(baseVal))+gmEsc(def.unit):'—')+'</b></span></div>'+
-          (lvl2==='p'?'<p style="margin-top:10px;font-size:11.5px;color:var(--muted)">'+(key==='hrv_ms'?'Abweichung in SD der persönlichen ln-Baseline (7-T-Mittel, 28-T-Streuung) — dieselbe Statistik wie in der Score-Engine. ':'')+'Ein Konfidenz-Prozentwert je Metrik existiert nicht als kanonischer Vertrag — ORVIA zeigt die echte Datenqualitätsstufe statt einer erfundenen Zahl.</p>':'')+'</div>';
+          '<span class="confchip">'+icon('db','xs')+' ' + _uiT('ui.baseline__') + ' <b>'+(baseVal!=null?gmEsc(fmtDe(baseVal))+gmEsc(def.unit):'—')+'</b></span></div>'+
+          (lvl2==='p'?'<p style="margin-top:10px;font-size:11.5px;color:var(--muted)">'+(key==='hrv_ms'?'' + _uiT('ui.abweichung_in_sd_der_persoenlichen') + '':'')+'Ein ' + _uiT('ui.konfidenz__') + '-Prozentwert je Metrik existiert nicht als kanonischer Vertrag — ORVIA zeigt die echte Datenqualitätsstufe statt einer erfundenen Zahl.</p>':'')+'</div>';
       }
-      return '<div class="sh-block"><div class="bh">Was das heißt</div><p>'+gmEsc(interp)+'</p></div>'+
-        (facts?'<div class="sh-block"><div class="bh">Mögliche Einflüsse</div><div class="factchips">'+facts.map(function(f){return '<span class="factchip">'+gmEsc(f)+'</span>';}).join('')+'</div></div>':'')+
-        (info.meaning?'<div class="sh-block"><div class="bh">Bedeutung für Training &amp; Erholung</div><p>'+gmEsc(info.meaning)+'</p></div>':'')+
+      return '<div class="sh-block"><div class="bh">' + _uiT('ui.was_das_heisst') + '</div><p>'+gmEsc(interp)+'</p></div>'+
+        (facts?'<div class="sh-block"><div class="bh">' + _uiT('ui.moegliche_einfluesse') + '</div><div class="factchips">'+facts.map(function(f){return '<span class="factchip">'+gmEsc(f)+'</span>';}).join('')+'</div></div>':'')+
+        (info.meaning?'<div class="sh-block"><div class="bh">' + _uiT('ui.bedeutung_fuer_training_amp_erholung') + '</div><p>'+gmEsc(info.meaning)+'</p></div>':'')+
         confBlock;
     })()+
     (key==='active_kcal'?'<div class="sh-block"><span class="deeplink" onclick="gmCloseSheets();gmShowCarryover(\'nutritionBox\')">'+icon('chev','xs')+' Ernährung erfassen</span></div>':'')+
@@ -7246,7 +7275,7 @@ function openLoadSheet(){
       '<div class="range-row" style="margin:0 0 0 auto">'+rbtn(30,'1M')+rbtn(90,'3M')+rbtn(180,'6M')+'</div></div><div class="oc2" id="loadSheetChart"></div>';
   }else{
     chart='<div class="ochart"><div class="spark" style="height:70px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);text-align:center;padding:0 12px;background:var(--surface);border:1px solid var(--border);border-radius:12px">'+
-      ((lcc&&lcc.ctlAtlNote)?gmEsc(lcc.ctlAtlNote):(GM_NA+' — CTL/ATL erscheinen ab belastbarer Lasthistorie.'))+'</div></div>';
+      ((lcc&&lcc.ctlAtlNote)?gmEsc(lcc.ctlAtlNote):(GM_NA+'' + _uiT('ui.ctl_atl_erscheinen_ab_belastbarer') + ''))+'</div></div>';
   }
   var last=(S&&S.ctl&&S.ctl.length)?Math.round(S.ctl[S.ctl.length-1]):null;
   var win=hasSeries?S.ctl.slice(-Math.min(rng,S.ctl.length)):[];
@@ -7262,11 +7291,11 @@ function openLoadSheet(){
     var _amax=Math.max.apply(null,(S.atl||[atl]).map(function(v){return Math.round(v);}).concat([atl,1]));
     var _apct=Math.max(4,Math.min(100,Math.round(atl/_amax*100)));
     headCard='<div class="card" style="margin:14px 0 0;padding:16px"><div style="display:flex;gap:14px;align-items:center">'+
-      '<div class="ring-wrap" style="width:82px;height:82px;flex-shrink:0">'+ring(_apct,SC.activity,82,7)+'<div class="ring-c"><div style="font-size:22px;font-weight:800">'+atl+'</div><div style="font-size:9px;color:var(--muted);font-weight:700">ATL</div></div></div>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:10px;letter-spacing:.08em;color:var(--faint);font-weight:800">WAS DAS BEDEUTET</div>'+
+      '<div class="ring-wrap" style="width:82px;height:82px;flex-shrink:0">'+ring(_apct,SC.activity,82,7)+'<div class="ring-c"><div style="font-size:22px;font-weight:800">'+atl+'</div><div style="font-size:9px;color:var(--muted);font-weight:700">' + _uiT('ui.atl_') + '</div></div></div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:10px;letter-spacing:.08em;color:var(--faint);font-weight:800">' + _uiT('ui.was_das_bedeutet') + '</div>'+
       '<div style="font-size:14px;font-weight:750;margin-top:3px">'+(statusWord?gmEsc(statusWord):'—')+'</div>'+
-      '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="fchipv" style="background:var(--activity-t);color:var(--activity);border-color:transparent">CTL <b>'+(ctl!=null?ctl:'—')+'</b></span><span class="fchipv">TSB <b>'+(tsb!=null?((tsb>=0?'+':'')+tsb):'—')+'</b></span><span class="fchipv">ACWR <b>'+(acwr!=null?gmEsc(acwr):'—')+'</b></span></div>'+
-      '<div style="margin-top:8px;font-size:11.5px;color:var(--muted)">Gesunder CTL-Bereich: <b>—</b> (kein kanonischer Vertrag)</div></div></div></div>';
+      '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="fchipv" style="background:var(--activity-t);color:var(--activity);border-color:transparent">' + _uiT('ui.ctl_') + '<b>'+(ctl!=null?ctl:'—')+'</b></span><span class="fchipv">' + _uiT('ui.tsb_') + '<b>'+(tsb!=null?((tsb>=0?'+':'')+tsb):'—')+'</b></span><span class="fchipv">' + _uiT('ui.acwr_') + '<b>'+(acwr!=null?gmEsc(acwr):'—')+'</b></span></div>'+
+      '<div style="margin-top:8px;font-size:11.5px;color:var(--muted)">' + _uiT('ui.gesunder_ctl_bereich') + '<b>—</b>' + _uiT('ui.kein_kanonischer_vertrag') + '</div></div></div></div>';
   }
   /* GM-Statusleitfaden: Struktur bleibt vollstaendig (6 Zustaende), Tagesanteile ehrlich „—" —
      es existiert kein kanonischer Fitness-Status-je-Tag-Produzent (Garmin-Konzept); nur der
@@ -7275,24 +7304,24 @@ function openLoadSheet(){
      Z.1030-1035) — hochwertiger Badge statt improvisierter Pill (Gian-Feedback).
      Tagesanteile weiterhin ehrlich „—" (kein kanonischer Status-Verlauf). */
   var guide=(function(){
-    var rows=[['Abnehmend','chart','sleep'],['Erhaltung','db','neutral'],['Aufbau','bolt','ready'],['Höchstform','target','activity'],['Überlastet','alert','attention'],['Übertrainiert','shield','crit']];
+    var rows=[['Abnehmend','chart','sleep'],['' + _uiT('ui.erhaltung') + '','db','neutral'],['Aufbau','bolt','ready'],['Höchstform','target','activity'],['Überlastet','alert','attention'],['Übertrainiert','shield','crit']];
     var map={'Erholt':'Abnehmend','Im grünen Bereich':'Aufbau','Erhöht':'Überlastet','Überlastet':'Überlastet'};
     var cur2=statusWord?map[statusWord]:null;
-    return '<div class="sh-block"><div class="bh">Statusleitfaden · 30 Tage</div><div class="sguide">'+rows.map(function(r){
+    return '<div class="sh-block"><div class="bh">' + _uiT('ui.statusleitfaden_30_tage') + '</div><div class="sguide">'+rows.map(function(r){
       var on=(cur2===r[0]);var col=SC[r[2]]||'var(--muted)',tint=TINT[r[2]]||'var(--surface-2)';
       return '<div class="srow"'+(on?' style="border-color:'+col+'"':'')+'><div class="st">'+
         '<span class="si" style="background:'+tint+';color:'+col+'">'+icon(r[1],'xs')+'</span>'+
         '<span class="sn">'+r[0]+'</span>'+
         (on?'<span class="sbadge" style="background:'+tint+';color:'+col+'">AKTUELL</span>':'')+
-        '<span class="sd"><b>—</b> Tage</span><span class="spct" style="background:'+tint+';color:'+col+'">—</span></div>'+
+        '<span class="sd"><b>—</b>' + _uiT('ui.tage_') + '</span><span class="spct" style="background:'+tint+';color:'+col+'">—</span></div>'+
         '<div class="sbar"><i style="width:0%;background:'+col+'"></i></div></div>';
-    }).join('')+'</div><p style="margin-top:4px;font-size:11px;color:var(--muted)">Tagesanteile je Status: '+GM_NA+' — es gibt keinen kanonischen Fitness-Status-Verlauf (Garmin-Konzept, keine Engine-Quelle). Markiert ist nur der heutige, aus dem echten ACWR abgeleitete Zustand.</p></div>';
+    }).join('')+'</div><p style="margin-top:4px;font-size:11px;color:var(--muted)">Tagesanteile je ' + _uiT('ui.status_') + ''+GM_NA+' — es gibt keinen kanonischen Fitness-Status-' + _uiT('ui.verlauf') + '(Garmin-Konzept, keine Engine-Quelle). Markiert ist nur der heutige, aus dem echten ' + _uiT('ui.acwr__') + ' abgeleitete Zustand.</p></div>';
   })();
   var band=headCard;
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('gauge')+'</div>'+
-    '<div><h3>Trainingsbelastung</h3><div class="sh-sub" style="margin:2px 0 0">heute '+(atl!=null?'ATL '+atl+' · CTL '+(ctl!=null?ctl:'—')+' · TSB '+(tsb!=null?((tsb>=0?'+':'')+tsb):'—'):'—')+'</div></div></div>'+
+    '<div><h3>' + _uiT('ui.trainingsbelastung') + '</h3><div class="sh-sub" style="margin:2px 0 0">heute '+(atl!=null?'' + _uiT('ui.atl') + ''+atl+'' + _uiT('ui.ctl') + ''+(ctl!=null?ctl:'—')+'' + _uiT('ui.tsb') + ''+(tsb!=null?((tsb>=0?'+':'')+tsb):'—'):'—')+'</div></div></div>'+
     chart+
-    '<div class="sh-stats">'+stat(ctl,'CTL')+stat(atl,'ATL')+stat(tsb!=null?((tsb>=0?'+':'')+tsb):null,'TSB (Form)')+stat(acwr,'ACWR')+'</div>'+
+    '<div class="sh-stats">'+stat(ctl,'' + _uiT('ui.ctl__') + '')+stat(atl,'' + _uiT('ui.atl_') + '')+stat(tsb!=null?((tsb>=0?'+':'')+tsb):null,'' + _uiT('ui.tsb_form') + '')+stat(acwr,'' + _uiT('ui.acwr__') + '')+'</div>'+
     band+guide+
     /* Phase 2.0 — Darstellungsvertrag: jede Kennzahl mit Wert · Zeitraum ·
        Abdeckung · Berechnungsgrundlage, direkt aus den Envelopes. */
@@ -7300,8 +7329,8 @@ function openLoadSheet(){
       var E=window.ORVIA&&ORVIA.metricEnvelope;var env=null;
       try{env=(typeof gmLoadEnvelopes==='function')?gmLoadEnvelopes():null;}catch(_){ }
       if(!E||!env)return '';
-      var DEFS=[['hard','Harte Einheiten','Einheiten'],['trimp','TRIMP Ø','Einheiten'],
-        ['easy','Easy Share (Laufen)','Läufen'],['sport','Belastung nach Sportart','Einheiten'],['interf','Interferenz','Signalen']];
+      var DEFS=[['hard','' + _uiT('ui.harte_einheiten') + '','' + _uiT('ui.einheiten_') + ''],['trimp','' + _uiT('ui.trimp') + '','' + _uiT('ui.einheiten_') + ''],
+        ['easy','' + _uiT('ui.easy_share_laufen') + '','Läufen'],['sport','' + _uiT('ui.belastung_nach_sportart') + '','' + _uiT('ui.einheiten_') + ''],['interf','Interferenz','Signalen']];
       var rows=DEFS.map(function(x){
         var e=env[x[0]];if(!e)return '';
         var vTxt;
@@ -7309,19 +7338,19 @@ function openLoadSheet(){
         else if(x[0]==='sport')vTxt=e.value.filter(function(s){return s[1]>0;}).map(function(s){return s[0]+' '+fmtDe(s[1])+' %';}).join(' · ')||'—';
         else if(typeof e.value==='number')vTxt=fmtDe(e.value)+(e.unit==='%'?' %':(e.unit||''));
         else vTxt=String(e.value);
-        var warn=e.status==='partial'?' <span style="color:var(--attention);font-weight:700">Teilabdeckung</span>':'';
+        var warn=e.status==='partial'?' <span style="color:var(--attention);font-weight:700">' + _uiT('ui.teilabdeckung_') + '</span>':'';
         var sub=(e.status==='none'&&e.reason)?gmEsc(e.reason):gmEsc(E.line(e,x[2]));
         return '<div style="padding:7px 0;border-bottom:1px solid var(--hair)"><div style="display:flex;justify-content:space-between;gap:10px"><span style="font-weight:700">'+x[1]+'</span><b style="font-variant-numeric:tabular-nums;text-align:right">'+gmEsc(vTxt)+'</b></div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+sub+warn+'</div></div>';
       }).join('');
-      return '<div class="sh-block"><div class="bh">Berechnungsgrundlage</div>'+rows+
-        '<p style="margin-top:6px;font-size:11px;color:var(--muted)">Kein Wert ohne Zeitraum, Abdeckung und Methode (Metrik-Envelope v'+gmEsc(E.VERSION)+'). Echte HF-Zonen folgen erst mit einem Zonen-Datenpfad — bis dahin keine Zonen-Behauptung.</p></div>';
+      return '<div class="sh-block"><div class="bh">' + _uiT('ui.berechnungsgrundlage') + '</div>'+rows+
+        '<p style="margin-top:6px;font-size:11px;color:var(--muted)">Kein Wert ohne ' + _uiT('ui.zeitraum_') + ', Abdeckung und Methode (Metrik-Envelope v'+gmEsc(E.VERSION)+'). Echte HF-Zonen folgen erst mit einem Zonen-Datenpfad — bis dahin keine Zonen-Behauptung.</p></div>';
     })()+
-    '<div class="sh-block"><div class="bh">Was das heißt</div><p>CTL = 42-Tage-EWMA der Tageslast (sRPE = Minuten × RPE, keine TSS-Skala). ATL = 7-Tage-EWMA. Form (TSB) = CTL − ATL. Dieselbe kanonische Serie wie die Belastungssteuerung — read-only, keine Neuberechnung.</p></div>'+
-    '<div class="source">'+icon('db','xs')+' ORVIA · kanonisches Lastmodell (sRPE)'+((L&&L.provenance==='legacy_fallback')?' · reduzierte Datenlage':'')+'</div>';
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.was_das_heisst') + '</div><p>' + _uiT('ui.ctl_42_tage_ewma_der') + '</p></div>'+
+    '<div class="source">'+icon('db','xs')+'' + _uiT('ui.orvia_kanonisches_lastmodell_srpe') + ''+((L&&L.provenance==='legacy_fallback')?'' + _uiT('ui.reduzierte_datenlage') + '':'')+'</div>';
   gmOpenSheet('detailSheet');
   if(hasSeries){try{var el=document.getElementById('loadSheetChart');
     if(el&&window.ORVIA&&ORVIA.charts&&ORVIA.charts.richChart){var k2=Math.min(rng,S.ctl.length);
-      ORVIA.charts.richChart(el,{label:'CTL (Fitness)',series:S.ctl.slice(-k2).map(function(v){return Math.round(v);}),
+      ORVIA.charts.richChart(el,{label:'' + _uiT('ui.ctl_fitness') + '',series:S.ctl.slice(-k2).map(function(v){return Math.round(v);}),
         times:(L.labels||[]).slice(-k2),unit:'',color:'gold',baseline:avg,higherBetter:true,dec:0,
         overlays:[{series:S.atl.slice(-k2).map(function(v){return Math.round(v);}),color:'var(--crit)'}]});}
   }catch(_){ }}
@@ -7341,7 +7370,7 @@ function openRecoverySheet(){
      Body Battery) aus dem kanonischen Metrik-Speicher, mit klar benannter Grenze. */
   var _rdefs=[['hrv_ms','HRV','ready',function(v){return fmtDe(Math.round(v))+' ms';}],
     ['resting_hr','Ruhepuls','crit',function(v){return fmtDe(Math.round(v))+' bpm';}],
-    ['sleep_duration_min','Schlaf','sleep',function(v){return fmtDe(Math.round(v/6)/10)+' h';}],
+    ['sleep_duration_min','' + _uiT('ui.schlaf') + '','sleep',function(v){return fmtDe(Math.round(v/6)/10)+' h';}],
     ['body_battery','Body Battery','activity',function(v){return fmtDe(Math.round(v));}]];
   var _rrows='',_rany=false;
   _rdefs.forEach(function(rd){
@@ -7349,15 +7378,15 @@ function openRecoverySheet(){
     if(s2&&s2.values.length>=3){_rany=true;
       _rrows+='<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--hair)"><div style="width:86px;font-size:11.5px;font-weight:700;color:var(--muted)">'+rd[1]+'</div><div style="flex:1;min-width:0">'+sparkline(s2.values,SC[rd[2]]||'var(--ready)')+'</div><div style="width:64px;text-align:right;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums">'+gmEsc(rd[3](s2.values[s2.values.length-1]))+'</div></div>';
     }else{
-      _rrows+='<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--hair)"><div style="width:86px;font-size:11.5px;font-weight:700;color:var(--muted)">'+rd[1]+'</div><div style="flex:1;font-size:10.5px;color:var(--faint)">'+(s2?'erst '+s2.values.length+' Messwert(e)':'keine Serie gespeichert')+'</div><div style="width:64px;text-align:right;font-weight:800;color:var(--muted)">—</div></div>';
+      _rrows+='<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--hair)"><div style="width:86px;font-size:11.5px;font-weight:700;color:var(--muted)">'+rd[1]+'</div><div style="flex:1;font-size:10.5px;color:var(--faint)">'+(s2?'erst '+s2.values.length+'' + _uiT('ui.messwert_e') + '':'' + _uiT('ui.keine_serie_gespeichert') + '')+'</div><div style="width:64px;text-align:right;font-weight:800;color:var(--muted)">—</div></div>';
     }});
-  var chart='<div class="sh-block" style="padding-top:8px"><div class="bh">Erholungstrend · 14 Tage</div>'+_rrows+
-    '<p style="margin-top:8px;color:var(--muted);font-size:11px">Ein zusammengefasster Erholungs-Verlauf wird nicht als Serie gespeichert — ORVIA zeigt die vier echten Teilserien statt einer nachgebauten Composite-Kurve.</p></div>';
+  var chart='<div class="sh-block" style="padding-top:8px"><div class="bh">' + _uiT('ui.erholungstrend_14_tage') + '</div>'+_rrows+
+    '<p style="margin-top:8px;color:var(--muted);font-size:11px">' + _uiT('ui.ein_zusammengefasster_erholungs_verlauf_wird') + '</p></div>';
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--ready-t);color:var(--ready)">'+icon('heart')+'</div>'+
-    '<div><h3>Erholung</h3><div class="sh-sub" style="margin:2px 0 0">heute '+(rec!=null?gmEsc(fmtDe(rec))+' %':'—')+'</div></div></div>'+
+    '<div><h3>' + _uiT('ui.erholung_') + '</h3><div class="sh-sub" style="margin:2px 0 0">heute '+(rec!=null?gmEsc(fmtDe(rec))+' %':'—')+'</div></div></div>'+
     chart+
-    '<div class="sh-stats">'+stat(M.hrv,'HRV',' ms')+stat(M.rhr,'Ruhepuls',' bpm')+stat(M.sleepMin!=null?M.sleepMin/60:null,'Schlaf',' h')+'</div>'+
-    '<div class="sh-block"><div class="bh">Was das heißt</div><p>'+(rec!=null?('Erholung '+fmtDe(rec)+' % — der kanonische ORVIA-Composite kombiniert HRV, Ruhepuls und Schlaf (plus subjektive Marker). Er entscheidet mit über die Trainingsfreigabe.'):(GM_NA+' — der Composite erscheint nach dem Morgen-Check-in.'))+'</p></div>'+
+    '<div class="sh-stats">'+stat(M.hrv,'HRV',' ms')+stat(M.rhr,'Ruhepuls',' bpm')+stat(M.sleepMin!=null?M.sleepMin/60:null,'' + _uiT('ui.schlaf') + '',' h')+'</div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.was_das_heisst') + '</div><p>'+(rec!=null?('' + _uiT('ui.erholung') + ''+fmtDe(rec)+' % — der kanonische ORVIA-Composite kombiniert HRV, Ruhepuls und ' + _uiT('ui.schlaf') + ' (plus subjektive Marker). Er entscheidet mit ' + _uiT('ui.ueber') + ' die Trainingsfreigabe.'):(GM_NA+'' + _uiT('ui.der_composite_erscheint_nach_dem') + ''))+'</p></div>'+
     '<div class="source">'+icon('db','xs')+' ORVIA-Engine · Erholungs-Subscore (read-only)</div>';
   gmOpenSheet('detailSheet');
 }
@@ -7419,7 +7448,7 @@ function gmOpenQA(){
   var gap=gmProfileGap();
   var grid=list.length?list.map(function(a,i){var c=tint[a.id]||'activity';
     /* Kontextaktionen tragen den Grund sichtbar — sonst bleibt die kanonische Beschreibung. */
-    var d=a.description||'';if(ctxIds[a.id])d=d?('Jetzt sinnvoll · '+d):'Jetzt sinnvoll';
+    var d=a.description||'';if(ctxIds[a.id])d=d?('' + _uiT('ui.jetzt_sinnvoll') + ''+d):'' + _uiT('ui.jetzt_sinnvoll_') + '';
     var act="gmRunQA('"+gmEsc(a.id)+"')";
     /* Profil-Luecke: konkreter Bereich statt Allgemeinplatz, Tap springt direkt hinein. */
     if(a.id==='profile_complete'&&gap){
@@ -7437,9 +7466,9 @@ function gmOpenQA(){
   if(list.length&&canEdit){
     grid+='<div class="qa" role="button" tabindex="0" onclick="gmOpenQAFavs()" onkeydown="if(event.key===\'Enter\')gmOpenQAFavs()">'+
       '<div class="q-ic" style="background:var(--surface-2);color:var(--gold-soft,#c9ae7c)"><svg class="ic"><use href="#i-list"/></svg></div>'+
-      '<div><div class="q-t">Anpassen</div><div class="q-d">Auswahl und Reihenfolge</div></div></div>';
+      '<div><div class="q-t">' + _uiT('ui.anpassen') + '</div><div class="q-d">' + _uiT('ui.auswahl_und_reihenfolge') + '</div></div></div>';
   }
-  sh.innerHTML='<div class="grab"></div><h3>Schnell hinzufügen</h3><div class="sh-sub">Häufig genutzt zuerst'+(canEdit?' · anpassbar':'')+'</div><div class="qa-grid">'+grid+'</div>';
+  sh.innerHTML='<div class="grab"></div><h3>' + _uiT('ui.schnell_hinzufuegen') + '</h3><div class="sh-sub">Häufig genutzt zuerst'+(canEdit?' · anpassbar':'')+'</div><div class="qa-grid">'+grid+'</div>';
   gmOpenSheet('qaSheet');
 }
 function gmOpenQAFavs(){
@@ -7466,7 +7495,7 @@ function gmStartTraining(){
     if(!r||r.ok!==false)return;
   }}catch(_){ }
   try{if(typeof gmOpenStartSheet==='function'){gmOpenStartSheet();return;}}catch(_){ }
-  try{if(typeof toast==='function')toast('Training lässt sich gerade nicht starten.');}catch(_){ }
+  try{if(typeof toast==='function')toast('' + _uiT('ui.training_laesst_sich_gerade_nicht') + '');}catch(_){ }
 }
 /* Modulverwaltung (mmSheet, reine UI-Präferenz mit localStorage) */
 function gmOpenMM(){gmRenderMM();gmOpenSheet('mmSheet');}
@@ -7499,11 +7528,11 @@ function gmRenderMM(){
   }
   var rows=active.map(function(id,i){return row(id,true,i,active.length);}).join('');
   if(inactive.length){
-    rows+='<div class="sectlabel" style="margin:14px 0 6px">Ausgeblendet<span class="ana-count">'+inactive.length+'</span></div>'+
+    rows+='<div class="sectlabel" style="margin:14px 0 6px">' + _uiT('ui.ausgeblendet') + '<span class="ana-count">'+inactive.length+'</span></div>'+
           inactive.map(function(id){return row(id,false,-1,0);}).join('');
   }
-  sh.innerHTML='<div class="grab"></div><h3>Module anpassen</h3><div class="sh-sub">Ein-/ausblenden und Reihenfolge · Sichtbarkeitsstufe je Modul</div><div id="mmList">'+rows+'</div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmMMReset()">Standard</button><button class="prim" onclick="gmMMDone()">Fertig</button></div>';
+  sh.innerHTML='<div class="grab"></div><h3>' + _uiT('ui.module_anpassen') + '</h3><div class="sh-sub">' + _uiT('ui.ein_ausblenden_und_reihenfolge_sichtbarkeitsstufe') + '</div><div id="mmList">'+rows+'</div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmMMReset()">' + _uiT('ui.standard') + '</button><button class="prim" onclick="gmMMDone()">' + _uiT('ui.fertig_') + '</button></div>';
 }
 /* Nimmt jetzt die MODUL-ID statt eines Listenindex — ein Index waere nach dem
    Ausblenden mehrdeutig (aktive und ausgeblendete Liste). */
@@ -7548,9 +7577,9 @@ function gmPlanWeekMeta(){
    wenn das Modul fehlt. */
 var GM_PLAN_VARIANTS=(function(){
   try{if(window.ORVIA&&ORVIA.planVariants&&ORVIA.planVariants.META)return ORVIA.planVariants.META;}catch(_){ }
-  return {A:{name:'Vollständig',desc:'Der Plan wie gebaut — alle Einheiten.'},
-    B:{name:'Reduziert',desc:'Gleiche Wochenstruktur, ohne Doppeleinheiten. Zeitsparend, alle Kernreize bleiben.'},
-    C:{name:'Minimal',desc:'Nur die Einheiten, die das Ziel tragen.'}};})();
+  return {A:{name:'Vollständig',desc:'' + _uiT('ui.der_plan_wie_gebaut_alle') + ''},
+    B:{name:'Reduziert',desc:'' + _uiT('ui.gleiche_wochenstruktur_ohne_doppeleinheiten_zeitsparend') + ''},
+    C:{name:'Minimal',desc:'' + _uiT('ui.nur_die_einheiten_die_das') + ''}};})();
 /* Wochenversatz der Planseite. Bewusst NUR im Speicher (kein localStorage):
    Beim naechsten Oeffnen soll wieder die laufende Woche stehen — sonst landet
    man Wochen spaeter unbemerkt in einer alten Woche und haelt sie fuer aktuell. */
@@ -7611,40 +7640,40 @@ function gmPlanVariantModel(){
 function gmOpenVariantSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var vm=null;try{vm=gmPlanVariantModel();}catch(_){ }
-  var dn=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var dn=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
   var blocks=['A','B','C'].map(function(v){
     var meta=GM_PLAN_VARIANTS[v];var d=vm&&vm.variants[v];
-    var stat=(d&&d.count!=null)?(d.count+' von '+vm.total+' Einheiten · '+d.days+' Trainingstage · '+d.rest+' Ruhetage'):GM_NA;
+    var stat=(d&&d.count!=null)?(d.count+' von '+vm.total+'' + _uiT('ui.einheiten') + ''+d.days+'' + _uiT('ui.trainingstage') + ''+d.rest+'' + _uiT('ui.ruhetage') + ''):GM_NA;
     var list='';
     if(d&&d.kept&&d.kept.length&&v!=='A'){
       list='<p style="margin:6px 0 0;font-size:12px;color:var(--muted)">'+d.kept.map(function(u){return dn[u.di]+' '+gmEsc(u.it.l||u.it.t);}).join(' · ')+'</p>';
     }
-    return '<div class="sh-block"><div class="bh">Variante '+v+' · '+meta.name+(vm&&vm.sel===v?' — ausgewählt':'')+'</div><p>'+meta.desc+'</p>'+
+    return '<div class="sh-block"><div class="bh">' + _uiT('ui.variante') + ''+v+' · '+meta.name+(vm&&vm.sel===v?'' + _uiT('ui.ausgewaehlt') + '':'')+'</div><p>'+meta.desc+'</p>'+
       '<p style="margin:6px 0 0;font-size:12.5px;font-weight:700">'+gmEsc(stat)+'</p>'+list+
-      '<div class="sheet-cta" style="margin-top:8px"><button class="'+(vm&&vm.sel===v?'':'sec ')+'" onclick="gmSetPlanVariant(\''+v+'\')">'+(vm&&vm.sel===v?'Ausgewählt':'Variante '+v+' wählen')+'</button></div></div>';
+      '<div class="sheet-cta" style="margin-top:8px"><button class="'+(vm&&vm.sel===v?'':'sec ')+'" onclick="gmSetPlanVariant(\''+v+'\')">'+(vm&&vm.sel===v?'Ausgewählt':'' + _uiT('ui.variante') + ''+v+'' + _uiT('ui.waehlen') + '')+'</button></div></div>';
   }).join('');
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('calendar')+'</div><div><h3>Planvarianten</h3><div class="sh-sub" style="margin:2px 0 0">A · B · C — Teilmengen deines echten Plans</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('calendar')+'</div><div><h3>' + _uiT('ui.planvarianten') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.a_b_c_teilmengen_deines') + '</div></div></div>'+
     blocks+
-    '<div class="source">'+icon('info','xs')+' Einstufung nach Einheitstyp (Kern / Aufbau / Ergänzung). Dein gespeicherter Plan bleibt unverändert — entfallende Einheiten werden nur ausgeblendet markiert. Die individuelle Varianten-Planung übernimmt die Trainingsengine.</div>';
+    '<div class="source">'+icon('info','xs')+' Einstufung nach Einheitstyp (Kern / Aufbau / Ergänzung). Dein gespeicherter Plan bleibt unverändert — entfallende ' + _uiT('ui.einheiten_') + ' werden nur ausgeblendet markiert. Die individuelle Varianten-Planung übernimmt die Trainingsengine.</div>';
   gmOpenSheet('detailSheet');
 }
 function gmOpenPlanSettingsSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   /* KF-011: Provenienz der letzten Planaenderung sichtbar machen. */
   var prov='';try{var pm=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlanMeta)||null;
-    if(pm&&pm.source){var srcDE={manual_edit:'manuell bearbeitet',engine_adjustment:'durch die Engine angepasst',reset:'neu aufgebaut'}[pm.source]||pm.source;
+    if(pm&&pm.source){var srcDE={manual_edit:'manuell bearbeitet',engine_adjustment:'' + _uiT('ui.durch_die_engine_angepasst') + '',reset:'neu aufgebaut'}[pm.source]||pm.source;
       var when='';try{var dt=new Date(pm.at);if(!isNaN(dt))when=' am '+dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+', '+dt.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}catch(_){ }
-      prov='<div class="source">'+icon('info','xs')+' Zuletzt '+gmEsc(srcDE)+gmEsc(when)+'.</div>';}}catch(_){ }
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gear')+'</div><div><h3>Plan &amp; Wochenstruktur</h3><div class="sh-sub" style="margin:2px 0 0">Bestehende Werkzeuge</div></div></div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets();openPlanEditor()">Plan bearbeiten</button><button class="sec" onclick="gmCloseSheets();openPauseEditor()">Pause / Urlaub</button>'+
+      prov='<div class="source">'+icon('info','xs')+'' + _uiT('ui.zuletzt') + ''+gmEsc(srcDE)+gmEsc(when)+'.</div>';}}catch(_){ }
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gear')+'</div><div><h3>' + _uiT('ui.plan_amp_wochenstruktur') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.bestehende_werkzeuge') + '</div></div></div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets();openPlanEditor()">' + _uiT('ui.plan_bearbeiten') + '</button><button class="sec" onclick="gmCloseSheets();openPauseEditor()">' + _uiT('ui.pause_urlaub') + '</button>'+
     /* Phase 3 · Block 2: Wochenreview + Coach Briefing — kontextueller Einstieg am Plan. */
-    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('weekReview'))?'<button class="sec" onclick="gmOpenWeekReviewSheet()">Wochenreview</button>':'')+'</div>'+prov+
+    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('weekReview'))?'<button class="sec" onclick="gmOpenWeekReviewSheet()">' + _uiT('ui.wochenreview') + '</button>':'')+'</div>'+prov+
     /* Phase 5D/5E: Beta-Toggle fuers kanonische Planmodell — Aktivierung setzt die
        ausgefuehrte Migration 0030 voraus (user_week_plans); sonst schlaegt der erste
        Sync sichtbar fehl (kein stiller Fallback). Flag aus ⇒ reiner Legacy-Pfad. */
-    '<div class="sh-block" style="margin-top:10px"><div class="bh">Kanonisches Planmodell (Beta)</div>'+
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Engine-Anpassungen und deine manuellen Änderungen werden getrennt gespeichert und überschreiben einander nie mehr — mit Planhistorie. Voraussetzung: Migration 0030 ist in Supabase ausgeführt.</p>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmSetFeatureFlag(\'canonPlan\',!gmCanonPlanOn());gmCloseSheets();try{renderGMPlan()}catch(e){}">'+((typeof gmCanonPlanOn==='function'&&gmCanonPlanOn())?'Deaktivieren (zurück zum Legacy-Plan)':'Aktivieren')+'</button></div></div>';
+    '<div class="sh-block" style="margin-top:10px"><div class="bh">' + _uiT('ui.kanonisches_planmodell_beta') + '</div>'+
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">' + _uiT('ui.engine_anpassungen_und_deine_manuellen') + '</p>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmSetFeatureFlag(\'canonPlan\',!gmCanonPlanOn());gmCloseSheets();try{renderGMPlan()}catch(e){}">'+((typeof gmCanonPlanOn==='function'&&gmCanonPlanOn())?'' + _uiT('ui.deaktivieren_zurueck_zum_legacy_plan') + '':'Aktivieren')+'</button></div></div>';
   gmOpenSheet('detailSheet');
 }
 /* Phase 3 · Block 2 (2026-08-05): Wochenreview als GM-Sheet auf dem Plan-Tab —
@@ -7656,14 +7685,14 @@ function gmOpenWeekReviewSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var body='';
   try{body=(typeof weeklyReviewHTML==='function')?weeklyReviewHTML():'<p class="muted">'+GM_NA+'</p>';}catch(_){body='<p class="muted">'+GM_NA+'</p>';}
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('chart')+'</div><div><h3>Wochenreview</h3><div class="sh-sub" style="margin:2px 0 0">Kanonischer Wochenvertrag · Mo–So</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('chart')+'</div><div><h3>' + _uiT('ui.wochenreview') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.kanonischer_wochenvertrag_mo_so') + '</div></div></div>'+
     '<div class="sh-block">'+body+'</div>'+
     '<div class="sheet-cta"><button class="sec" onclick="typeof copyAIReview===\'function\'&&copyAIReview()">'+icon('copy','sm')+' Coach Briefing kopieren</button></div>'+
-    '<div class="source">'+icon('info','xs')+' Briefing = vollständiges Wochen-Datenpaket (Prognose, ACWR-Status, Warnungen, letzte 7 Tage) als Prompt für deinen Coach oder eine KI — nur in die Zwischenablage, es verlässt das Gerät nicht automatisch.</div>';
+    '<div class="source">'+icon('info','xs')+' Briefing = vollständiges Wochen-Datenpaket (Prognose, ' + _uiT('ui.acwr__') + '-Status, Warnungen, letzte 7 ' + _uiT('ui.tage__') + ') als Prompt für deinen Coach oder eine KI — nur in die Zwischenablage, es verlässt das Gerät nicht automatisch.</div>';
   gmOpenSheet('detailSheet');
 }
 function gmDailyGoalsBlock(){
-  var slots=[['Schritte','foot'],['Aktive kcal','bolt'],['Wasser','drop'],['Schlaf','moon']];
+  var slots=[['Schritte','foot'],['' + _uiT('ui.aktive_kcal') + '','bolt'],['Wasser','drop'],['' + _uiT('ui.schlaf') + '','moon']];
   return '<div class="daily-goals">'+slots.map(function(s){
     return '<div class="daily-goal"><div class="dg-top"><span>'+s[0]+'</span>'+icon(s[1],'xs')+'</div><b>— / —</b><div class="mini-track"><i style="width:0%"></i></div></div>';}).join('')+'</div>'+
   '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>'+GM_NA+' — es existiert noch kein dailyTargets-Datenvertrag (Schritte-/kcal-/Wasser-/Schlafziele). ORVIA zeigt hier keine erfundenen Ziele.</div></div>';
@@ -7740,11 +7769,11 @@ function gmGoalForecastView(runPerf,goal,feas){
   }
   return v;
 }
-var GM_FEAS_TEXT={within_modeled_corridor:'Im Rahmen dessen, was das Modell trägt',
-  outside_modeled_corridor:'Außerhalb des Modellkorridors',insufficient_data:'Datenlage reicht nicht'};
-var GM_MISSING_TEXT={current_performance:'ein gemessener Leistungswert',
-  current_performance_not_decision_eligible:'ein Leistungswert MIT Datum (undatiert zählt nicht)',
-  goal:'eine bezifferte Zielzeit'};
+var GM_FEAS_TEXT={within_modeled_corridor:'' + _uiT('ui.im_rahmen_dessen_was_das') + '',
+  outside_modeled_corridor:'' + _uiT('ui.ausserhalb_des_modellkorridors') + '',insufficient_data:'' + _uiT('ui.datenlage_reicht_nicht') + ''};
+var GM_MISSING_TEXT={current_performance:'' + _uiT('ui.ein_gemessener_leistungswert') + '',
+  current_performance_not_decision_eligible:'' + _uiT('ui.ein_leistungswert_mit_datum_undatiert') + '',
+  goal:'' + _uiT('ui.eine_bezifferte_zielzeit') + ''};
 function gmGoalForecastCard(lvl,perfBySport){
   var runPerf=(perfBySport&&perfBySport.running)||null;
   var goal=null;try{goal=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
@@ -7754,10 +7783,10 @@ function gmGoalForecastCard(lvl,perfBySport){
   var v=gmGoalForecastView(runPerf,goal,feas);
   if(!v.ok){
     var why=v.reason==='no_goal_distance'
-      ?'Ohne Zieldistanz gibt es nichts zu prognostizieren — hinterlege ein Distanzziel.'
+      ?'' + _uiT('ui.ohne_zieldistanz_gibt_es_nichts') + ''
       :v.missing.length
-        ?('Es fehlt: '+v.missing.map(function(m){return gmEsc(GM_MISSING_TEXT[m]||m);}).join(', ')+'.')
-        :'Es fehlt ein belastbarer Leistungswert.';
+        ?('' + _uiT('ui.es_fehlt') + ''+v.missing.map(function(m){return gmEsc(GM_MISSING_TEXT[m]||m);}).join(', ')+'.')
+        :'' + _uiT('ui.es_fehlt_ein_belastbarer_leistungswert') + '';
     var cta=(v.reason==='no_performance')
       ?' <span class="edit" role="button" tabindex="0" onclick="gmOpenBestTimesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenBestTimesEntry()">Leistung erfassen</span>':'';
     return '<div class="card"><div class="fc-labels"><span>vorsichtig —</span><span>realistisch —</span><span>optimistisch —</span></div>'+
@@ -7770,16 +7799,16 @@ function gmGoalForecastCard(lvl,perfBySport){
   var inset=Math.max(4,Math.min(34,50-(v.bandPct||5)*2.2));
   var tgtTxt='';
   if(v.target>0){
-    var tw={likely:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt im Korridor.',
-      edge:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt an der optimistischen Kante.',
-      beyond:'Deine Zielzeit '+gmGoalForecastMin(v.target)+' liegt unter dem, was der heutige Wert trägt.'}[v.reachable];
+    var tw={likely:'' + _uiT('ui.deine_zielzeit') + ''+gmGoalForecastMin(v.target)+'' + _uiT('ui.liegt_im_korridor') + '',
+      edge:'' + _uiT('ui.deine_zielzeit') + ''+gmGoalForecastMin(v.target)+'' + _uiT('ui.liegt_an_der_optimistischen_kante') + '',
+      beyond:'' + _uiT('ui.deine_zielzeit') + ''+gmGoalForecastMin(v.target)+'' + _uiT('ui.liegt_unter_dem_was_der') + ''}[v.reachable];
     if(tw)tgtTxt=' '+gmEsc(tw);
   }
   var statusTxt=v.status?('<b>'+gmEsc(GM_FEAS_TEXT[v.status]||v.status)+'.</b>'):'';
   var weeksTxt=(v.weeks&&v.weeks.min!=null)
-    ?(' Geschätzter Zeitraum: etwa '+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+' Wochen':' Wochen oder deutlich mehr')+' — Spanne, keine Terminzusage.'):'';
+    ?('' + _uiT('ui.geschaetzter_zeitraum_etwa') + ''+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+'' + _uiT('ui.wochen') + '':'' + _uiT('ui.wochen_oder_deutlich_mehr') + '')+'' + _uiT('ui.spanne_keine_terminzusage') + ''):'';
   var basisTxt=(lvl==='p'&&v.confidence)
-    ?(' Grundlage: Beleglage '+gmEsc(String(v.confidence))+', Bandbreite ±'+gmEsc(String(v.bandPct))+' %.'):'';
+    ?('' + _uiT('ui.grundlage_beleglage') + ''+gmEsc(String(v.confidence))+'' + _uiT('ui.bandbreite') + ''+gmEsc(String(v.bandPct))+' %.'):'';
   return '<div class="card"><div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
       '</span><span>realistisch '+gmEsc(gmGoalForecastMin(v.realistic))+
       '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
@@ -7831,12 +7860,12 @@ function gmPlanQualityEval(week,perfBySport){
 }
 var GM_PQ_LABELS=[['goalCoverage','Zielabdeckung'],['recoveryDistribution','Erholungsverteilung'],
   ['loadBalance','Belastungsbalance'],['timeFeasibility','Zeitmachbarkeit'],
-  ['sportBalance','Sportbalance'],['dataQuality','Datenqualität']];
-var GM_PQ_NA_TEXT={no_goal:'kein Ziel hinterlegt',goal_without_distance_model:'für diese Zielart noch kein Modell',
-  no_availability_config:'Verfügbarkeit nicht gepflegt',single_sport:'nur eine Sportart aktiv',
-  no_sessions:'keine Einheiten geplant',too_few_active_days:'zu wenige Trainingstage',
-  no_sport_normalizer:'Sportart-Zuordnung nicht verfügbar',too_few_known_sports:'zu wenige bekannte Sportarten',
-  no_plan:'kein Plan'};
+  ['sportBalance','Sportbalance'],['dataQuality','' + _uiT('ui.datenqualitaet') + '']];
+var GM_PQ_NA_TEXT={no_goal:'' + _uiT('ui.kein_ziel_hinterlegt') + '',goal_without_distance_model:'' + _uiT('ui.fuer_diese_zielart_noch_kein') + '',
+  no_availability_config:'' + _uiT('ui.verfuegbarkeit_nicht_gepflegt') + '',single_sport:'' + _uiT('ui.nur_eine_sportart_aktiv') + '',
+  no_sessions:'' + _uiT('ui.keine_einheiten_geplant') + '',too_few_active_days:'' + _uiT('ui.zu_wenige_trainingstage') + '',
+  no_sport_normalizer:'' + _uiT('ui.sportart_zuordnung_nicht_verfuegbar') + '',too_few_known_sports:'' + _uiT('ui.zu_wenige_bekannte_sportarten') + '',
+  no_plan:'' + _uiT('ui.kein_plan') + ''};
 function gmPlanQualityCells(ev){
   return GM_PQ_LABELS.map(function(p){
     var s=ev&&ev.subscores?ev.subscores[p[0]]:null;
@@ -7864,7 +7893,7 @@ function gmAdaptiveSection(){
       body=AC.render(ORVIA.getAdaptiveExplanation())||'';
   }catch(_){body='';}
   if(!body)return '';
-  return '<div class="sectlabel" data-gm-slot="plan-adaptive">Adaptive Einschätzung</div>'+
+  return '<div class="sectlabel" data-gm-slot="plan-adaptive">' + _uiT('ui.adaptive_einschaetzung') + '</div>'+
     '<div class="card">'+body+'</div>';
 }
 function renderGMPlan(){
@@ -7876,8 +7905,8 @@ function renderGMPlan(){
   var _confN=(typeof gmCanonPlanConflictCount==='function')?gmCanonPlanConflictCount():0;
   var h='';
   /* 1. Header (+ 5E-Konflikt-Badge, Entscheidung ②: Badge statt Unterbrechung) */
-  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'Trainingswoche '+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>Dein Plan</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase):'')+(lvl==='p'?' · Struktur, Varianten & Prognose':'')+'</div></div><div class="hdr-actions">'+
-    '<button class="iconbtn" id="gmPlanConfBadge" style="color:var(--attention);'+(_confN>0?'':'display:none')+'" aria-label="Plan-Konflikte" onclick="gmOpenPlanConflictsSheet()">'+icon('alert','sm')+'</button>'+
+  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase):'')+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
+    '<button class="iconbtn" id="gmPlanConfBadge" style="color:var(--attention);'+(_confN>0?'':'display:none')+'" aria-label="' + _uiT('ui.plan_konflikte') + '" onclick="gmOpenPlanConflictsSheet()">'+icon('alert','sm')+'</button>'+
     '<button class="iconbtn" aria-label="Plan-Einstellungen" onclick="gmOpenPlanSettingsSheet()">'+icon('gear','sm')+'</button></div></div>';
   /* 2–4. Planvariante A/B/C — echte, waehlbare Teilmengen des realen Plans
      (Produktentscheidung 2026-08-04; ersetzt den frueheren Schein-Zustand
@@ -7886,16 +7915,16 @@ function renderGMPlan(){
   var pvm=null;try{pvm=gmPlanVariantModel();}catch(_){ }
   var pSel=pvm?pvm.sel:'A';
   var pMeta=GM_PLAN_VARIANTS[pSel]||GM_PLAN_VARIANTS.A;
-  h+='<div class="sectlabel" data-gm-slot="plan-variant">Planvariante <span class="edit" onclick="gmOpenVariantSheet()">'+gmEsc(pMeta.name)+' · Details</span></div>';
+  h+='<div class="sectlabel" data-gm-slot="plan-variant">' + _uiT('ui.planvariante') + '<span class="edit" onclick="gmOpenVariantSheet()">'+gmEsc(pMeta.name)+' · ' + _uiT('ui.details_') + '</span></div>';
   h+='<div class="pvar-row">'+['A','B','C'].map(function(v){
     var d=pvm&&pvm.variants[v];var n=(d&&d.count!=null)?d.count:null;
     return '<button class="pvar '+(pSel===v?'on':'')+'" onclick="gmSetPlanVariant(\''+v+'\')" aria-pressed="'+(pSel===v)+'"><b>'+v+'</b><span>'+gmEsc(GM_PLAN_VARIANTS[v].name)+(n!=null?' · '+n:'')+'</span></button>';}).join('')+'</div>';
   var pd=pvm?pvm.variants[pSel]:null;
   var pCell=function(v,l){return '<div class="wp"><b>'+(v!=null?gmEsc(String(v)):'—')+'</b><span>'+l+'</span></div>';};
-  h+='<div class="card"><div class="ctitle"><div class="l">Variante '+pSel+' · '+gmEsc(pMeta.name)+'</div><span class="more" onclick="gmOpenVariantSheet()">Wechseln '+icon('chev','xs')+'</span></div>'+
+  h+='<div class="card"><div class="ctitle"><div class="l">' + _uiT('ui.variante') + ''+pSel+' · '+gmEsc(pMeta.name)+'</div><span class="more" onclick="gmOpenVariantSheet()">Wechseln '+icon('chev','xs')+'</span></div>'+
     '<p class="prescription" style="margin-bottom:10px">'+gmEsc(pMeta.desc)+'</p>'+
     '<div class="week-progress">'+pCell(pd?pd.count:null,'EINHEITEN')+pCell(pd?pd.days:null,'TRAININGSTAGE')+pCell(pd?pd.core:null,'KERNREIZE')+pCell(pd?pd.rest:null,'RUHETAGE')+'</div>'+
-    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>Auswirkung:</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'Alle '+pvm.total+' geplanten Einheiten aktiv.':pd.count+' von '+pvm.total+' Einheiten aktiv · '+(pd.core||0)+' Kernreize bleiben. Entfallende sind unten markiert, dein gespeicherter Plan bleibt unverändert.'):GM_NA+' — ohne Variantenmodell keine Aussage.')+((pvm&&pvm.note)?' '+gmEsc(pvm.note):'')+'</div></div></div>';
+    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>' + _uiT('ui.auswirkung') + '</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'' + _uiT('ui.alle') + ''+pvm.total+'' + _uiT('ui.geplanten_einheiten_aktiv') + '':pd.count+' von '+pvm.total+'' + _uiT('ui.einheiten_aktiv') + ''+(pd.core||0)+'' + _uiT('ui.kernreize_bleiben_entfallende_sind_unten') + ''):GM_NA+'' + _uiT('ui.ohne_variantenmodell_keine_aussage') + '')+((pvm&&pvm.note)?' '+gmEsc(pvm.note):'')+'</div></div></div>';
   /* 5–6. Woche (kanonische Wochenliste, E4-Datenpfad in GM-session-cards) */
   /* Kopfzeile der Wochenliste mit Blaetterung. Der Zeitraum wird ausgeschrieben,
      damit beim Blaettern nie unklar ist, welche Woche man sieht.
@@ -7906,14 +7935,14 @@ function renderGMPlan(){
      und die Kopfzeile kommt aus der puren, testbaren Funktion
      gmPlanWeekHeader(). */
   var _wOff=(typeof gmPlanWeekOff==='function')?gmPlanWeekOff():0;
-  var _wLbl='Diese Woche',_wRange='';
+  var _wLbl='' + _uiT('ui.diese_woche') + '',_wRange='';
   try{var _wh=gmPlanWeekHeader(_wOff);_wLbl=_wh.label;_wRange=_wh.range;}catch(_){ }
   h+='<div class="sectlabel" data-gm-slot="plan-week">'+gmEsc(_wLbl)+
      '<span class="edit">'+
        '<button class="iconbtn" aria-label="Woche zurück" onclick="gmShiftPlanWeek(-1)">'+icon('chev','xs')+'</button>'+
        '<span style="margin:0 8px;font-variant-numeric:tabular-nums">'+gmEsc(_wRange)+'</span>'+
        '<button class="iconbtn" aria-label="Woche vor" onclick="gmShiftPlanWeek(1)">'+icon('chev','xs')+'</button>'+
-       (_wOff!==0?'<button class="iconbtn" aria-label="Zur aktuellen Woche" onclick="gmPlanWeekToday()" style="margin-left:6px">Heute</button>':'')+
+       (_wOff!==0?'<button class="iconbtn" aria-label="' + _uiT('ui.zur_aktuellen_woche_') + '" onclick="gmPlanWeekToday()" style="margin-left:6px">Heute</button>':'')+
      '</span></div>';
   /* v8-315: Der Wocheninhalt kommt jetzt aus dem wochenadressierten Lesepfad.
      Die Kopfnotiz benennt die HERKUNFT statt pauschal „Vorschau" zu behaupten —
@@ -7923,8 +7952,8 @@ function renderGMPlan(){
   var week=(_wSel&&_wSel.days)||[[],[],[],[],[],[],[]];
   if(_wOff!==0){
     var _provNote=(_wOff<0)
-      ?'Vergangene Woche — die Einheiten zeigen, wie sie tatsächlich absolviert wurden.'
-      :(GM_PROV_NOTE[_wSel&&_wSel.provenance]||'Kommende Woche — für diese Woche ist ein eigener Plan hinterlegt.');
+      ?'' + _uiT('ui.vergangene_woche_die_einheiten_zeigen') + ''
+      :(GM_PROV_NOTE[_wSel&&_wSel.provenance]||'' + _uiT('ui.kommende_woche_fuer_diese_woche') + '');
     h+='<div class="mini-note" style="margin:0 0 8px" data-gm-prov="'+gmEsc((_wSel&&_wSel.provenance)||'')+'">'+icon('info','xs')+'<div>'+gmEsc(_provNote)+'</div></div>';
   }
   /* WOCHENNAVIGATION (2026-08-07, Nutzerwunsch): Die Planseite zeigte immer nur
@@ -7994,9 +8023,9 @@ function renderGMPlan(){
          aus der Verfuegbarkeit — der Nutzer sah ZWEI „Ruhetage", hatte aber
          nur einen eingestellt; der zweite war schlicht unbelegt. */
       var _ds=(typeof gmDayStateFor==='function')?gmDayStateFor(di,_dayCfg):'rest';
-      var _dsL=_ds==='rest'?['moon','Ruhetag','—']
-        :_ds==='unavailable'?['info','Nicht verfügbar','laut Verfügbarkeit gesperrt']
-        :['info','Frei','verfügbar — keine Einheit geplant'];
+      var _dsL=_ds==='rest'?['moon','' + _uiT('ui.ruhetag_') + '','—']
+        :_ds==='unavailable'?['info','' + _uiT('ui.nicht_verfuegbar_') + '','' + _uiT('ui.laut_verfuegbarkeit_gesperrt') + '']
+        :['info','Frei','' + _uiT('ui.verfuegbar_keine_einheit_geplant') + ''];
       cards+='<div class="session-card rest"><span class="session-ico">'+icon(_dsL[0])+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · '+_dsL[1]+'</b><p>'+_dsL[2]+'</p></span><span class="session-state">—</span></div>';
       continue;
     }
@@ -8041,7 +8070,7 @@ function renderGMPlan(){
            Ohne Vorgaben liefert der Helfer '' — Altbestand sieht unveraendert
            aus, kein leerer Kasten. */
         gmPlannedLinesHTML(it)+gmRxLinesHTML(it)+'</span>'+
-        '<span class="session-state'+(done?' done':'')+'">'+(done?'Erledigt':(pSkip?'Entfällt ('+pSel+')':'—'))+'</span></div>';
+        '<span class="session-state'+(done?' done':'')+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':'—'))+'</span></div>';
       /* IST-Werte einer absolvierten Einheit — der eigentliche Zweck des
          Zurueckblaetterns. Quelle ist ausschliesslich der Resolver (`actual`);
          fehlt dort ein Wert, wird er weggelassen statt geschaetzt. */
@@ -8062,10 +8091,10 @@ function renderGMPlan(){
             var _dbKey=gmDbKey(k,it),_dbRec=null;
             try{_dbRec=gmDbFind(_dbKey);}catch(_e3){ }
             var _dbTxt=_dbRec&&_dbRec.rpe!=null
-              ?'RPE '+_dbRec.rpe+(_dbRec.pain?' · Schmerz gemeldet':'')+(_dbRec.deltaRpe!=null?' (erwartet '+_dbRec.expectedRpe+')':'')
-              :'Rückmeldung offen';
+              ?'' + _uiT('ui.rpe') + ''+_dbRec.rpe+(_dbRec.pain?'' + _uiT('ui.schmerz_gemeldet') + '':'')+(_dbRec.deltaRpe!=null?' (erwartet '+_dbRec.expectedRpe+')':'')
+              :'' + _uiT('ui.rueckmeldung_offen') + '';
             cards+='<div class="mini-note" style="margin:-4px 0 8px 44px">'+icon('check','xs')+
-              '<div><b>Absolviert:</b> '+gmEsc(_bits.join(' · '))+
+              '<div><b>' + _uiT('ui.absolviert') + '</b> '+gmEsc(_bits.join(' · '))+
               (_res.confidence&&_res.confidence!=='high'?' <span style="color:var(--muted)">(Zuordnung '+gmEsc(_res.confidence)+')</span>':'')+
               '<br><span class="edit" role="button" tabindex="0" onclick="gmOpenDebriefAt('+di+','+ii+',\''+gmEsc(k)+'\')">'+gmEsc(_dbTxt)+'</span>'+
               '</div></div>';
@@ -8081,9 +8110,9 @@ function renderGMPlan(){
   var pqCells=gmPlanQualityCells(_pqEval);
   var pqNote;
   if(!pq){pqNote=GM_NA+'.';}
-  else if(gmLevel()==='a'){pqNote='<b>Planqualität: '+gmEsc(pq.rating.l)+'.</b> '+(pq.warns.length?pq.warns.length+' Hinweis'+(pq.warns.length>1?'e':'')+' im Sheet.':'Keine Auffälligkeiten.');}
-  else{pqNote='<b>Planqualität: '+gmEsc(pq.rating.l)+'.</b> '+(pq.warns.length?gmEsc(pq.warns[0][0])+(pq.warns.length>1?' (+'+(pq.warns.length-1)+' weitere)':'')+' — Details im Planqualitäts-Sheet.':'Keine Auffälligkeiten in den Planprüfungen.')+(gmLevel()==='p'?' Subscores erscheinen mit der externen Engine.':'');}
-  h+='<div class="sectlabel" data-gm-slot="plan-quality">Planqualität <span class="edit" onclick="openPlanQualitySheet()">Details</span></div>';
+  else if(gmLevel()==='a'){pqNote='<b>Planqualität: '+gmEsc(pq.rating.l)+'.</b> '+(pq.warns.length?pq.warns.length+'' + _uiT('ui.hinweis') + ''+(pq.warns.length>1?'e':'')+'' + _uiT('ui.im_sheet') + '':'' + _uiT('ui.keine_auffaelligkeiten') + '');}
+  else{pqNote='<b>Planqualität: '+gmEsc(pq.rating.l)+'.</b> '+(pq.warns.length?gmEsc(pq.warns[0][0])+(pq.warns.length>1?' (+'+(pq.warns.length-1)+' weitere)':'')+'' + _uiT('ui.details_im_planqualitaets_sheet') + '':'' + _uiT('ui.keine_auffaelligkeiten_in_den_planpruefungen') + '')+(gmLevel()==='p'?'' + _uiT('ui.subscores_erscheinen_mit_der_externen') + '':'');}
+  h+='<div class="sectlabel" data-gm-slot="plan-quality">' + _uiT('ui.planqualitaet') + '<span class="edit" onclick="openPlanQualitySheet()">' + _uiT('ui.details_') + '</span></div>';
   h+='<div class="card" role="button" tabindex="0" onclick="openPlanQualitySheet()" onkeydown="if(event.key===\'Enter\')openPlanQualitySheet()"><div class="pq-grid">'+pqCells+'</div>'+
     '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>'+pqNote+'</div></div></div>';
   if(lvl!=='a'){
@@ -8120,10 +8149,10 @@ function renderGMPlan(){
     var _dts=daysToSafe();var _dtsOk=(_dts!=null&&isFinite(_dts));
     var _gShort='—';try{var _g2=goalOf();var _rl2=(typeof raceLabel==='function')?raceLabel(_g2&&_g2.type):null;if(_rl2)_gShort=_rl2==='Halbmarathon'?'HM':_rl2;}catch(_){ }
     var _wkLbl=function(p){return (window.ORVIA&&ORVIA.fmt&&ORVIA.fmt.phaseWeeksLabel)?ORVIA.fmt.phaseWeeksLabel(p):'—';};
-    h+='<div class="sectlabel" data-gm-slot="plan-phases">Phasen bis zum Ziel <span class="edit">'+(_dtsOk?'noch '+Math.max(0,Math.ceil(_dts/7))+' Wochen':'—')+'</span></div>';
+    h+='<div class="sectlabel" data-gm-slot="plan-phases">' + _uiT('ui.phasen_bis_zum_ziel') + '<span class="edit">'+(_dtsOk?'noch '+Math.max(0,Math.ceil(_dts/7))+'' + _uiT('ui.wochen') + '':'—')+'</span></div>';
     if(!phases.length){
       h+='<div class="card"><div class="ph-now"><b>—</b><span>'+GM_NA+' — ohne Zieldatum gibt es kein Phasenmodell.</span></div>'+
-        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>Sobald ein Wettkampfdatum im Ziel hinterlegt ist, erscheinen die Phasen bis dorthin.</div></div></div>';
+        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>' + _uiT('ui.sobald_ein_wettkampfdatum_im_ziel') + '</div></div></div>';
     }else{
       /* Segmentleiste: reine Fortschrittsanzeige, kein Text ⇒ kein Abschneiden moeglich. */
       var segs=phases.map(function(p){var cls=p.on?'now':((p.to&&p.to<t0)?'done':'todo');
@@ -8131,7 +8160,7 @@ function renderGMPlan(){
       segs+='<i class="ph-seg '+((_dtsOk&&_dts<0)?'done':'todo')+' ph-goal" aria-hidden="true"></i>';
       /* Aktuelle Phase gross — der eigentliche Bezugspunkt beim Planblick. */
       var _cur=null;for(var pi=0;pi<phases.length;pi++)if(phases[pi].on){_cur=phases[pi];break;}
-      var _curTxt=_cur?(_wkLbl(_cur)+(_cur.d?' · '+_cur.d:'')):(_dtsOk&&_dts<0?'Wettkampf liegt hinter dir':GM_NA);
+      var _curTxt=_cur?(_wkLbl(_cur)+(_cur.d?' · '+_cur.d:'')):(_dtsOk&&_dts<0?'' + _uiT('ui.wettkampf_liegt_hinter_dir') + '':GM_NA);
       h+='<div class="card">'+
         '<div class="ph-bar" role="img" aria-label="Phasenfortschritt">'+segs+'</div>'+
         '<div class="ph-now"><b>'+gmEsc(_cur?_cur.n:'—')+'</b><span>'+gmEsc(_curTxt)+'</span></div>'+
@@ -8141,9 +8170,9 @@ function renderGMPlan(){
           var mark=st==='done'?'✓':(st==='now'?'●':'');
           return '<div class="ph-row '+st+'"><span class="ph-mk">'+mark+'</span><span class="ph-n">'+gmEsc(p.n)+'</span><span class="ph-w">'+gmEsc(_wkLbl(p))+'</span></div>';
         }).join('')+
-        '<div class="ph-row '+((_dtsOk&&_dts<0)?'done':'todo')+'"><span class="ph-mk">'+((_dtsOk&&_dts<0)?'✓':'')+'</span><span class="ph-n">Ziel · '+gmEsc(_gShort)+'</span><span class="ph-w">'+(_dtsOk?(_dts<0?'vorbei':'in '+Math.max(0,Math.ceil(_dts/7))+' Wo'):'—')+'</span></div>'+
+        '<div class="ph-row '+((_dtsOk&&_dts<0)?'done':'todo')+'"><span class="ph-mk">'+((_dtsOk&&_dts<0)?'✓':'')+'</span><span class="ph-n">' + _uiT('ui.ziel__') + '· '+gmEsc(_gShort)+'</span><span class="ph-w">'+(_dtsOk?(_dts<0?'vorbei':'in '+Math.max(0,Math.ceil(_dts/7))+'' + _uiT('ui.wo') + ''):'—')+'</span></div>'+
         '</div>'+
-        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>Phasen aus dem kanonischen Phasenmodell — aktuelle Phase aus dem kanonischen Phasenfeld, ohne eigene Periodisierung. Austrittskriterien folgen mit der Engine.</div></div></div>';
+        '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>' + _uiT('ui.phasen_aus_dem_kanonischen_phasenmodell') + '</div></div></div>';
     }
     /* 9c. Wochenkilometer (E2-Quellen; 6 Spalten) */
     var dRace=daysToSafe();
@@ -8160,14 +8189,14 @@ function renderGMPlan(){
       return '<div class="vol-col"><div class="vol-bars">'+
         '<i class="vol-plan" style="height:'+(v.plan!=null?Math.round(v.plan/mx*100):0)+'%"></i>'+
         '<i class="vol-act" style="height:'+(v.act!=null?Math.round(v.act/mx*100):0)+'%"></i></div>'+
-        '<b>'+(v.act!=null?gmEsc(fmtDe(v.act)):(v.plan!=null?gmEsc(fmtDe(v.plan)):'—'))+'</b><small>'+v.lbl+(v.act!=null&&v.plan!=null?' · Ziel '+gmEsc(fmtDe(v.plan)):'')+'</small></div>';}).join('');
-    h+='<div class="sectlabel" data-gm-slot="plan-week-km">Wochenkilometer (Lauf) <span class="edit">Zielkorridor</span></div>';
+        '<b>'+(v.act!=null?gmEsc(fmtDe(v.act)):(v.plan!=null?gmEsc(fmtDe(v.plan)):'—'))+'</b><small>'+v.lbl+(v.act!=null&&v.plan!=null?'' + _uiT('ui.ziel') + ''+gmEsc(fmtDe(v.plan)):'')+'</small></div>';}).join('');
+    h+='<div class="sectlabel" data-gm-slot="plan-week-km">' + _uiT('ui.wochenkilometer_lauf') + '<span class="edit">' + _uiT('ui.zielkorridor') + '</span></div>';
     h+='<div class="card"><div class="vol-row">'+volCols+'</div>'+
-      '<div class="dist-leg" style="margin-top:6px"><span><i style="background:rgba(255,255,255,.4)"></i>Geplant (Ziel)</span><span><i style="background:var(--ready)"></i>Absolviert (Ist)</span></div>'+
-      '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>Ist aus der kanonischen Wochenaggregation, Ziel aus dem bestehenden Zielmodell. Ein Balken erscheint nur bei belastbarem Wert — keine neue Aggregation, keine Schätzwerte im UI.</div></div></div>';
+      '<div class="dist-leg" style="margin-top:6px"><span><i style="background:rgba(255,255,255,.4)"></i>' + _uiT('ui.geplant_ziel') + '</span><span><i style="background:var(--ready)"></i>' + _uiT('ui.absolviert_ist') + '</span></div>'+
+      '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>' + _uiT('ui.ist_aus_der_kanonischen_wochenaggregation') + '</div></div></div>';
   }
   /* 10–12. Tagesziele + Abschluss */
-  h+='<div class="sectlabel" data-gm-slot="plan-daily-goals">Tagesziele <span class="edit" onclick="gmOpenDailyGoalsSheet()">'+icon('pen','xs')+' Bearbeiten</span></div>';
+  h+='<div class="sectlabel" data-gm-slot="plan-daily-goals">' + _uiT('ui.tagesziele') + '<span class="edit" onclick="gmOpenDailyGoalsSheet()">'+icon('pen','xs')+' Bearbeiten</span></div>';
   h+=gmDailyGoalsBlock();
   h+='<div class="tabspacer"></div>';
   host.innerHTML=h;
@@ -8175,8 +8204,8 @@ function renderGMPlan(){
 function daysToSafe(){try{return daysTo(RACE.date);}catch(_){return null;}}
 function gmOpenDailyGoalsSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('target')+'</div><div><h3>Tagesziele</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
-    '<div class="sh-block"><p>Tagesziele (Schritte, Kalorien, Wasser, Schlaf) sind strukturell vorbereitet. Es existiert noch keine produktive Ziel- und Istwert-Quelle — hier wird nichts simuliert.</p></div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('target')+'</div><div><h3>' + _uiT('ui.tagesziele_') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
+    '<div class="sh-block"><p>' + _uiT('ui.tagesziele_schritte_kalorien_wasser_schlaf') + '</p></div>';
   gmOpenSheet('detailSheet');
 }
 /* Session-Vollseite (GM sessionView-Struktur) — ersetzt das openUnit-Sheet sichtbar,
@@ -8199,15 +8228,15 @@ function gmOpenSessionPage(di,ii,dateIso){
   var _occ2=(dIso&&it.id&&typeof plannedOccurrenceIdForDate==='function')?plannedOccurrenceIdForDate(it,dIso):null;
   var _pd2=(typeof planDoneMarkerFor==='function')?planDoneMarkerFor(it.t,dIso,_occ2):null;
   var cta=isToday
-    ?'<button class="cta prim" style="margin:0 18px;width:calc(100% - 36px)" onclick="gmCloseSessionPage();startPlannedUnit('+di+','+ii+',\''+dIso+'\')">'+icon('play','sm')+' Training starten</button>'
-    :'<div class="mini-note" style="margin:0 18px">'+icon('info','xs')+'<div>Nur lesbar — Starten ist nur am Tag der Einheit möglich.</div></div>'+
-     '<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="gmCloseSessionPage();openPlanEditor()">Plan bearbeiten / verschieben</button>';
+    ?'<button class="cta prim" style="margin:0 18px;width:calc(100% - 36px)" onclick="gmCloseSessionPage();startPlannedUnit('+di+','+ii+',\''+dIso+'\')">'+icon('play','sm')+' ' + _uiT('ui.training_starten') + '</button>'
+    :'<div class="mini-note" style="margin:0 18px">'+icon('info','xs')+'<div>' + _uiT('ui.nur_lesbar_starten_ist_nur') + '</div></div>'+
+     '<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="gmCloseSessionPage();openPlanEditor()">' + _uiT('ui.plan_bearbeiten_verschieben') + '</button>';
   var _dLbl2='';try{var _d4=new Date(dIso+'T12:00');_dLbl2=' · '+_d4.getDate()+'.'+(_d4.getMonth()+1);}catch(_){ }
-  var _undoPd=_pd2?'<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="confirmUndoPlanDone(\''+gmEsc(it.t)+'\',\''+gmEsc(dIso)+'\',\''+gmEsc(_occ2)+'\')">Erledigt-Markierung zurücknehmen</button>':'';
-  pg.innerHTML='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseSessionPage()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>'+gmEsc(DAYNAMES[di])+_dLbl2+' · '+gmEsc(it.l)+'</h2><p>Planvorgabe</p></div></div></div>'+   /* siehe GM7.9h-Notiz unter dieser Funktion */
-    '<div class="plan-hero"><div class="plan-kicker">'+gmEsc(it.t)+'</div><h2>'+gmEsc(it.l)+'</h2><p>Geplante Einheit aus deinem Wochenplan; Ziel- und Intensitätsbereiche folgen mit der externen Trainingsengine.</p>'+
-    '<div class="week-progress"><div class="wp"><b>'+(it.d&&!/^(iv|ez|lr|tempo)$/.test(it.d)?gmEsc(it.d):'—')+'</b><span>UMFANG</span></div><div class="wp"><b>—</b><span>INTENSITÄT</span></div><div class="wp"><b>—</b><span>ZIEL</span></div><div class="wp"><b>—</b><span>KONFIDENZ</span></div></div></div>'+
-    '<div class="coach-card"><h3>'+icon('sparkle','sm')+' Warum diese Einheit?</h3><p>'+(note?gmEsc(note):'Eine kanonische Begründung ist noch nicht verfügbar — ORVIA erfindet hier keine Erklärung. Die Einheit stammt unverändert aus deinem Wochenplan; Anpassungen nimmst du über den Plan-Editor vor, nicht hier.')+'</p></div>'+
+  var _undoPd=_pd2?'<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="confirmUndoPlanDone(\''+gmEsc(it.t)+'\',\''+gmEsc(dIso)+'\',\''+gmEsc(_occ2)+'\')">' + _uiT('ui.erledigt_') + '-Markierung zurücknehmen</button>':'';
+  pg.innerHTML='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseSessionPage()" aria-label="' + _uiT('ui.zurueck') + '">'+icon('chev')+'</button><div><h2>'+gmEsc(DAYNAMES[di])+_dLbl2+' · '+gmEsc(it.l)+'</h2><p>Planvorgabe</p></div></div></div>'+   /* siehe GM7.9h-Notiz unter dieser Funktion */
+    '<div class="plan-hero"><div class="plan-kicker">'+gmEsc(it.t)+'</div><h2>'+gmEsc(it.l)+'</h2><p>' + _uiT('ui.geplante_einheit_aus_deinem_wochenplan') + '</p>'+
+    '<div class="week-progress"><div class="wp"><b>'+(it.d&&!/^(iv|ez|lr|tempo)$/.test(it.d)?gmEsc(it.d):'—')+'</b><span>' + _uiT('ui.umfang') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.intensitaet_') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.ziel___') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.konfidenz___') + '</span></div></div></div>'+
+    '<div class="coach-card"><h3>'+icon('sparkle','sm')+' Warum diese ' + _uiT('ui.einheit') + '?</h3><p>'+(note?gmEsc(note):'' + _uiT('ui.eine_kanonische_begruendung_ist_noch') + '')+'</p></div>'+
     cta+_undoPd+'<div class="tabspacer"></div>';
   pg.classList.add('on');
   try{pg.scrollTop=0;}catch(_){ }
@@ -8255,14 +8284,14 @@ var GM_ACT_FILTER={Laufen:'running',Kraft:'gym',Radfahren:'cycling',Schwimmen:'s
 function gmActSrcLabel(src){
   /* GM7.7: Provider-Quellen ergaenzt — echte Garmin-/Strava-Importe zeigten bisher „—",
      weil nur die generischen Schluessel gemappt waren. */
-  return {import:'Import',manual:'Manuell erfasst',orvia_workout:'ORVIA Workout',live:'Live-Workout',legacy_local:'Lokal erfasst',
-    garmin:'Garmin',garmin_unofficial:'Garmin',garmin_official:'Garmin',strava:'Strava',apple_health:'Apple Health',health_connect:'Health Connect'}[src]||(src?String(src):'—');
+  return {import:'Import',manual:'' + _uiT('ui.manuell_erfasst') + '',orvia_workout:'' + _uiT('ui.orvia_workout') + '',live:'Live-Workout',legacy_local:'' + _uiT('ui.lokal_erfasst') + '',
+    garmin:'Garmin',garmin_unofficial:'Garmin',garmin_official:'Garmin',strava:'Strava',apple_health:'' + _uiT('ui.apple_health') + '',health_connect:'' + _uiT('ui.health_connect') + ''}[src]||(src?String(src):'—');
 }
 /* GM-SVG-Visualisierung: rein darstellerische Wahl anhand des kanonischen Sportfeldes. */
 function gmActGlyph(gmSport){
   var c={Laufen:'var(--ready)',Radfahren:'var(--activity)',Kraft:'var(--gold)',Schwimmen:'var(--cyan)'}[gmSport]||'var(--ready)';
   if(gmSport==='Kraft'){var bars=[34,52,44,64,50,68,56].map(function(h,i){return '<rect x="'+(16+i*40)+'" y="'+(72-h*0.72).toFixed(0)+'" width="20" height="'+(h*0.72).toFixed(0)+'" rx="5" fill="'+c+'" opacity="'+(0.5+i*0.06).toFixed(2)+'"/>';}).join('');return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none">'+bars+'</svg>';}
-  if(gmSport==='Schwimmen'){var lanes=[24,42,60].map(function(y,i){return '<path d="M0 '+y+' Q 37 '+(y-9)+' 75 '+y+' T 150 '+y+' T 225 '+y+' T 300 '+y+'" fill="none" stroke="'+c+'" stroke-width="2.6" opacity="'+(0.75-i*0.18).toFixed(2)+'"/>';}).join('');return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none">'+lanes+'</svg>';}
+  if(gmSport==='Schwimmen'){var lanes=[24,42,60].map(function(y,i){return '<path d="M0 '+y+'' + _uiT('ui.q_37') + ''+(y-9)+' 75 '+y+'' + _uiT('ui.t_150') + ''+y+'' + _uiT('ui.t_225') + ''+y+'' + _uiT('ui.t_300') + ''+y+'" fill="none" stroke="'+c+'" stroke-width="2.6" opacity="'+(0.75-i*0.18).toFixed(2)+'"/>';}).join('');return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none">'+lanes+'</svg>';}
   return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none"><path d="M18 62 L68 30 L128 42 L176 18 L236 50 L282 26" fill="none" stroke="'+c+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="62" r="5.2" fill="'+c+'"/><circle cx="282" cy="26" r="5.2" fill="#0c1017" stroke="'+c+'" stroke-width="2.4"/></svg>';
 }
 /* Kanonischer Wochenvertrag (DT1) — identisches Aufrufmuster wie weekRunKm; KEINE eigene
@@ -8357,19 +8386,19 @@ function renderGMActivity(){
   var h='';
   /* 1. Header (GM: Trainingszentrale / Aktivitäten / modusabhängige date / Verbindungs-Button).
      Verbindungs-Einstieg = bestehender Import-/Verbindungs-Sheet. */
-  var dateTxt=lvl==='a'?'Starten, ansehen, verstehen':lvl==='p'?'Start-Flow, Volumen, Belastung & Debrief':'Starten, planen und auswerten';
-  h+='<div class="hdr"><div><div class="greet">Trainingszentrale</div><h1>Aktivitäten</h1><div class="date">'+dateTxt+'</div></div><button class="iconbtn" aria-label="Verbindungen &amp; Import" onclick="openImportSheet()">'+icon('link','sm')+'</button></div>';
+  var dateTxt=lvl==='a'?'' + _uiT('ui.starten_ansehen_verstehen') + '':lvl==='p'?'' + _uiT('ui.start_flow_volumen_belastung_debrief') + '':'' + _uiT('ui.starten_planen_und_auswerten') + '';
+  h+='<div class="hdr"><div><div class="greet">' + _uiT('ui.trainingszentrale') + '</div><h1>' + _uiT('ui.aktivitaeten_') + '</h1><div class="date">'+dateTxt+'</div></div><button class="iconbtn" aria-label="' + _uiT('ui.verbindungen_amp_import') + '" onclick="openImportSheet()">'+icon('link','sm')+'</button></div>';
   /* 2. Erste hub-actions: 5 Slots. Fehlender Handler ⇒ sichtbar deaktiviert + ehrliches NA. */
   var tItem=gmActTodayItem();
   h+='<div class="hub-actions">'+
-    '<button class="hub-act primary" onclick="gmOpenStartSheet()"><span class="ha-ic">'+icon('play','sm')+'</span><div><b>Training starten</b><span>Sport wählen · geplant oder frei</span></div></button>'+
-    '<button class="hub-act" onclick="gmOpenStartSheet(\'planned\')"><span class="ha-ic">'+icon('calendar','sm')+'</span><div><b>Geplante Einheit</b><span>'+(tItem?'Heute: '+gmEsc(tItem.l):'Heute: —')+'</span></div></button>'+
-    '<button class="hub-act" onclick="gmOpenStartSheet(\'free\')"><span class="ha-ic">'+icon('bolt','sm')+'</span><div><b>Freies Training</b><span>Ohne Plan</span></div></button>'+
-    '<button class="hub-act" onclick="openManualActivity()"><span class="ha-ic">'+icon('pen','sm')+'</span><div><b>Manuell hinzufügen</b><span>Nachtragen</span></div></button>'+
+    '<button class="hub-act primary" onclick="gmOpenStartSheet()"><span class="ha-ic">'+icon('play','sm')+'</span><div><b>' + _uiT('ui.training_starten') + '</b><span>' + _uiT('ui.sport_waehlen_geplant_oder_frei') + '</span></div></button>'+
+    '<button class="hub-act" onclick="gmOpenStartSheet(\'planned\')"><span class="ha-ic">'+icon('calendar','sm')+'</span><div><b>' + _uiT('ui.geplante_einheit') + '</b><span>'+(tItem?'' + _uiT('ui.heute__') + ''+gmEsc(tItem.l):'' + _uiT('ui.heute_') + '')+'</span></div></button>'+
+    '<button class="hub-act" onclick="gmOpenStartSheet(\'free\')"><span class="ha-ic">'+icon('bolt','sm')+'</span><div><b>' + _uiT('ui.freies_training') + '</b><span>' + _uiT('ui.ohne_plan') + '</span></div></button>'+
+    '<button class="hub-act" onclick="openManualActivity()"><span class="ha-ic">'+icon('pen','sm')+'</span><div><b>' + _uiT('ui.manuell_hinzufuegen') + '</b><span>' + _uiT('ui.nachtragen') + '</span></div></button>'+
     (function(){var la=null;try{var _l=listActivitiesUnified(1);la=(_l&&_l[0])||null;}catch(_){ }
-      if(la){var vm2=null;try{vm2=activityDetailViewModel(la);}catch(_){ }var lbl=(vm2&&(vm2.sportLabel||vm2.title))||'letzte Einheit';var um=(vm2&&vm2.distanceLabel)?' '+vm2.distanceLabel:'';
-        return '<button class="hub-act" onclick="gmOpenStartSheet(\'repeat\')"><span class="ha-ic">'+icon('run','sm')+'</span><div><b>Letzte wiederholen</b><span>'+gmEsc(lbl+um)+'</span></div></button></div>';}
-      return '<button class="hub-act" disabled aria-disabled="true"><span class="ha-ic">'+icon('run','sm')+'</span><div><b>Letzte wiederholen</b><span>Noch keine Aktivität</span></div></button></div>';})();
+      if(la){var vm2=null;try{vm2=activityDetailViewModel(la);}catch(_){ }var lbl=(vm2&&(vm2.sportLabel||vm2.title))||'' + _uiT('ui.letzte_einheit') + '';var um=(vm2&&vm2.distanceLabel)?' '+vm2.distanceLabel:'';
+        return '<button class="hub-act" onclick="gmOpenStartSheet(\'repeat\')"><span class="ha-ic">'+icon('run','sm')+'</span><div><b>' + _uiT('ui.letzte_wiederholen') + '</b><span>'+gmEsc(lbl+um)+'</span></div></button></div>';}
+      return '<button class="hub-act" disabled aria-disabled="true"><span class="ha-ic">'+icon('run','sm')+'</span><div><b>' + _uiT('ui.letzte_wiederholen') + '</b><span>' + _uiT('ui.noch_keine_aktivitaet') + '</span></div></button></div>';})();
   /* 3. Subtabs Woche/Monat */
   h+='<div class="subtabs"><button class="'+(gmActScope==='week'?'on':'')+'" onclick="gmSetActScope(\'week\')">Woche</button><button class="'+(gmActScope==='month'?'on':'')+'" onclick="gmSetActScope(\'month\')">Monat</button></div>';
   /* 4. KPI-Zellen: alle 6 GM-Slots strukturell; Werte NUR aus kanonischen Aggregatoren.
@@ -8407,7 +8436,7 @@ function renderGMActivity(){
     [dist!=null?fmtDe(dist)+' km':'—','Laufdistanz'],
     [(wk&&wk.totals&&wk.totals.durationMin!=null)?gmActFmtMin(wk.totals.durationMin):'—','Dauer'],
     [kcalPeriod!=null?fmtDe(kcalPeriod)+' kcal':'—','aktive kcal'],
-    [(wk&&wk.totals&&wk.totals.sessionCount!=null)?String(wk.totals.sessionCount):'—','Einheiten'],
+    [(wk&&wk.totals&&wk.totals.sessionCount!=null)?String(wk.totals.sessionCount):'—','' + _uiT('ui.einheiten_') + ''],
     /* Bugfix (2026-08-05): im Monat nullte EINE unvollstaendige Woche die ganze Summe.
        Ehrlich: bekannte Teilsumme mit ≥-Kennzeichnung statt Dauer-Strich. */
     [(wk&&wk.totals&&wk.totals.loadUnits!=null)?String(wk.totals.loadUnits):((wk&&wk.totals&&wk.totals.knownLoadUnits>0)?'≥'+wk.totals.knownLoadUnits:'—'),'Belastung'],
@@ -8424,19 +8453,19 @@ function renderGMActivity(){
       var vRun=(bs.running&&bs.running.knownDurationMin)||0,vKraft=(bs.gym&&bs.gym.knownDurationMin)||0,vRad=(bs.cycling&&bs.cycling.knownDurationMin)||0;
       var vRest=Math.max(0,tot-vRun-vKraft-vRad);
       var pct=function(v){return Math.round(v/tot*100);};
-      segs=[['Laufen',pct(vRun),'var(--ready)'],['Kraft',pct(vKraft),'var(--gold)'],['Rad',pct(vRad),'var(--activity)'],['Sonstiges',pct(vRest),'var(--cyan)']];
+      segs=[['Laufen',pct(vRun),'var(--ready)'],['Kraft',pct(vKraft),'var(--gold)'],['Rad',pct(vRad),'var(--activity)'],['' + _uiT('ui.sonstiges') + '',pct(vRest),'var(--cyan)']];
     }
-    h+='<div class="card"><div class="ctitle"><div class="l">Sportartenverteilung</div><span class="more">'+(gmActScope==='week'?'Woche':'Monat')+'</span></div>'+
+    h+='<div class="card"><div class="ctitle"><div class="l">' + _uiT('ui.sportartenverteilung') + '</div><span class="more">'+(gmActScope==='week'?'Woche':'Monat')+'</span></div>'+
       '<div class="dist-bar">'+(segs?segs.map(function(s){return '<i style="width:'+s[1]+'%;background:'+s[2]+'"></i>';}).join(''):'<i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i>')+'</div>'+
-      '<div class="dist-leg">'+(segs?segs.map(function(s){return '<span><i style="background:'+s[2]+'"></i>'+s[0]+' '+s[1]+'%</span>';}).join(''):['Laufen','Kraft','Rad','Sonstiges'].map(function(n,i){var c=['var(--ready)','var(--gold)','var(--activity)','var(--cyan)'][i];return '<span><i style="background:'+c+'"></i>'+n+' —</span>';}).join(''))+'</div></div>';
+      '<div class="dist-leg">'+(segs?segs.map(function(s){return '<span><i style="background:'+s[2]+'"></i>'+s[0]+' '+s[1]+'%</span>';}).join(''):['Laufen','Kraft','Rad','' + _uiT('ui.sonstiges') + ''].map(function(n,i){var c=['var(--ready)','var(--gold)','var(--activity)','var(--cyan)'][i];return '<span><i style="background:'+c+'"></i>'+n+' —</span>';}).join(''))+'</div></div>';
   }
   /* 6. Teaser: Bestleistung / Meilenstein — keine produktiven Seiten ⇒ ehrliches NA-Sheet,
      keine Demo-Bestzeit, keine Demo-Meilensteine. */
   var _bt=null;try{_bt=(typeof bestTimes==='function')?bestTimes():null;}catch(_){ }
   var _btSub='—';if(_bt){var _fs=function(sec){var m=Math.floor(sec/60),ss=Math.round(sec%60);return m+':'+String(ss).padStart(2,'0');};
-    if(_bt.t5!=null)_btSub='5 km '+_fs(_bt.t5)+(_bt.real.k5?'':' (Prognose)');else if(_bt.t10!=null)_btSub='10 km '+_fs(_bt.t10)+(_bt.real.k10?'':' (Prognose)');}
+    if(_bt.t5!=null)_btSub='5 km '+_fs(_bt.t5)+(_bt.real.k5?'':'' + _uiT('ui.prognose') + '');else if(_bt.t10!=null)_btSub='10 km '+_fs(_bt.t10)+(_bt.real.k10?'':'' + _uiT('ui.prognose') + '');}
   var _msSub='—';try{var _ach=(typeof gmAchievements==='function')?gmAchievements():null;var _nm=(typeof gmNextMilestone==='function')?gmNextMilestone(_ach):null;if(_nm)_msSub=_nm.label+' '+gmAchFmtVal(_nm.next,_nm.unit);}catch(_){ }
-  h+='<div class="hub-actions"><button class="hub-act" onclick="gmOpenBestTimesEntry()"><span class="ha-ic">'+icon('bolt','sm')+'</span><div><b>Bestleistung</b><span>'+gmEsc(_btSub)+'</span></div></button><button class="hub-act" onclick="gmOpenMilestonesEntry()"><span class="ha-ic">'+icon('target','sm')+'</span><div><b>Meilenstein</b><span>'+gmEsc(_msSub)+'</span></div></button></div>';
+  h+='<div class="hub-actions"><button class="hub-act" onclick="gmOpenBestTimesEntry()"><span class="ha-ic">'+icon('bolt','sm')+'</span><div><b>Bestleistung</b><span>'+gmEsc(_btSub)+'</span></div></button><button class="hub-act" onclick="gmOpenMilestonesEntry()"><span class="ha-ic">'+icon('target','sm')+'</span><div><b>' + _uiT('ui.meilenstein') + '</b><span>'+gmEsc(_msSub)+'</span></div></button></div>';
   /* 7. Filter: 5 GM-Filter über das kanonische Sportfeld; unbekannte Sportarten bleiben
      unter „Alle" sichtbar. Keine neue Such-/Klassifikationslogik. */
   h+='<div class="filter-row">'+['Alle','Laufen','Kraft','Radfahren','Schwimmen'].map(function(f){return '<button class="filter-pill '+(gmActFilter===f?'on':'')+'" onclick="gmSetActivityFilter(\''+f+'\')">'+f+'</button>';}).join('')+'</div>';
@@ -8451,15 +8480,15 @@ function renderGMActivity(){
     var gsp=GM_ACT_SPORT[a.sportId]||null;
     var title=vm.title||vm.sportLabel||'Aktivität';
     var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'—')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
-    var um=vm.distanceLabel||((a.sportId==='gym'&&a.summary&&a.summary.exerciseCount!=null)?a.summary.exerciseCount+' Übungen':null)||'—';
-    var tempo=vm.paceLabel||((a.sportId==='gym'&&a.summary&&a.summary.rpe!=null)?'RPE '+a.summary.rpe:null)||'—';
+    var um=vm.distanceLabel||((a.sportId==='gym'&&a.summary&&a.summary.exerciseCount!=null)?a.summary.exerciseCount+'' + _uiT('ui.uebungen_') + '':null)||'—';
+    var tempo=vm.paceLabel||((a.sportId==='gym'&&a.summary&&a.summary.rpe!=null)?'' + _uiT('ui.rpe') + ''+a.summary.rpe:null)||'—';
     return '<article class="activity-card" role="button" tabindex="0" data-aid="'+gmEsc(aid)+'" onclick="gmOpenActivityPage(\''+gmEsc(aid)+'\')" onkeydown="if(event.key===\'Enter\')gmOpenActivityPage(\''+gmEsc(aid)+'\')">'+
       '<div class="activity-visual" data-sport="'+(gsp||'')+'">'+gmActGlyph(gsp||'Laufen')+'</div>'+
       '<div class="activity-body"><div class="activity-row"><div><h3>'+gmEsc(title)+'</h3><p>'+gmEsc(dl)+' · '+gmEsc(gmActSrcLabel(vm.source))+'</p></div>'+
-      (a.status==='completed'?'<span class="session-state done">Abgeschlossen</span>':'<span class="session-state">—</span>')+'</div>'+
-      '<div class="activity-metrics"><div><b>'+gmEsc(um)+'</b><span>UMFANG</span></div><div><b>'+gmEsc(vm.durationLabel||'—')+'</b><span>DAUER</span></div><div><b>'+gmEsc(tempo)+'</b><span>TEMPO</span></div><div><b>'+(vm.avgHr!=null?gmEsc(vm.avgHr)+' bpm':'—')+'</b><span>Ø HF</span></div></div></div></article>';
+      (a.status==='completed'?'<span class="session-state done">' + _uiT('ui.abgeschlossen') + '</span>':'<span class="session-state">—</span>')+'</div>'+
+      '<div class="activity-metrics"><div><b>'+gmEsc(um)+'</b><span>' + _uiT('ui.umfang') + '</span></div><div><b>'+gmEsc(vm.durationLabel||'—')+'</b><span>DAUER</span></div><div><b>'+gmEsc(tempo)+'</b><span>TEMPO</span></div><div><b>'+(vm.avgHr!=null?gmEsc(vm.avgHr)+' bpm':'—')+'</b><span>' + _uiT('ui.hf_') + '</span></div></div></div></article>';
   }).join('');
-  h+='<div class="activity-list">'+(list.length?cards:'<div class="empty"><div class="e-ic">'+icon('activity')+'</div><div class="et">Keine Aktivität in diesem Filter</div></div>')+'</div>';
+  h+='<div class="activity-list">'+(list.length?cards:'<div class="empty"><div class="e-ic">'+icon('activity')+'</div><div class="et">' + _uiT('ui.keine_aktivitaet_in_diesem_filter') + '</div></div>')+'</div>';
   /* 9. Abschluss */
   h+='<div class="tabspacer"></div>';
   host.innerHTML=h;
@@ -8475,15 +8504,15 @@ function gmActStreamDefs(sportId){
   var speedDef;
   /* Tempo konventionell als mm:ss lesen (nicht als Dezimalminuten) — reine Formatierung. */
   var paceFmt=function(v){if(v==null||!isFinite(v))return null;var m=Math.floor(v),s=Math.round((v-m)*60);if(s===60){m++;s=0;}return m+':'+String(s).padStart(2,'0');};
-  if(paceSports[sportId])speedDef={key:'speed',label:'Tempo (min/km)',unit:'/km',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.3?(1000/v/60):null;}};
-  else if(sportId==='cycling')speedDef={key:'speed',label:'Geschwindigkeit (km/h)',unit:' km/h',color:'sleep',hb:true,dec:1,conv:function(v){return v*3.6;}};
-  else if(sportId==='swimming')speedDef={key:'speed',label:'Tempo (min/100 m)',unit:'/100 m',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.1?(100/v/60):null;}};
-  else speedDef={key:'speed',label:'Geschwindigkeit (m/s)',unit:' m/s',color:'sleep',hb:true,dec:1,conv:null};
+  if(paceSports[sportId])speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_km') + '',unit:'/km',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.3?(1000/v/60):null;}};
+  else if(sportId==='cycling')speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_km_h') + '',unit:' km/h',color:'sleep',hb:true,dec:1,conv:function(v){return v*3.6;}};
+  else if(sportId==='swimming')speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_100_m') + '',unit:'/100 m',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.1?(100/v/60):null;}};
+  else speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_m_s') + '',unit:' m/s',color:'sleep',hb:true,dec:1,conv:null};
   return [
-    {key:'heart_rate',label:'Herzfrequenz (bpm)',unit:' bpm',color:'ready',hb:false,dec:0,conv:null},
+    {key:'heart_rate',label:'' + _uiT('ui.herzfrequenz_bpm') + '',unit:' bpm',color:'ready',hb:false,dec:0,conv:null},
     speedDef,
-    {key:'cadence',label:'Kadenz (spm)',unit:' spm',color:'cyan',hb:true,dec:0,conv:null},
-    {key:'elevation',label:'Höhe (m)',unit:' m',color:'activity',hb:null,dec:0,conv:null}
+    {key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:'cyan',hb:true,dec:0,conv:null},
+    {key:'elevation',label:'' + _uiT('ui.hoehe_m') + '',unit:' m',color:'activity',hb:null,dec:0,conv:null}
   ];
 }
 /* GM7.9: Sportfamilien-Aufloesung fuer sportgerechte Detail-/Story-Darstellung.
@@ -8613,12 +8642,12 @@ function gmOpenActivityPage(aid){
   var splitsCanon=!!(vm.canonicalSplits&&vm.canonicalSplits.length);
   var rate=null;try{if(run&&sess&&typeof rateActivity==='function')rate=rateActivity('Laufen',sess);}catch(_){ }
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'—')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
-  var h='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseActivityPage()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>'+gmEsc(vm.title||vm.sportLabel||'Aktivität')+'</h2><p>'+gmEsc(dl)+'</p></div></div></div>';
+  var h='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseActivityPage()" aria-label="' + _uiT('ui.zurueck') + '">'+icon('chev')+'</button><div><h2>'+gmEsc(vm.title||vm.sportLabel||'Aktivität')+'</h2><p>'+gmEsc(dl)+'</p></div></div></div>';
   /* Route-Slot nur bei Laufaktivitäten; ohne GPS ehrlicher Empty-State im selben Slot. */
   if(run||route){
-    h+='<div class="route-map">'+(route?((typeof routeSVG==='function')?routeSVG(route):''):'<div class="route-empty">'+icon('activity')+'<div>Keine GPS-Route für diese Einheit vorhanden.</div></div>')+'</div>';
+    h+='<div class="route-map">'+(route?((typeof routeSVG==='function')?routeSVG(route):''):'<div class="route-empty">'+icon('activity')+'<div>' + _uiT('ui.keine_gps_route_fuer_diese') + '</div></div>')+'</div>';
   }
-  h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?' · Plan-Ist verknüpft':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.planLink?' · dem Wochenplan zugeordnet':(vm.source==='orvia_workout'?' · in ORVIA aufgezeichnet — keine Nachbearbeitung im UI':' · Quelle unverändert übernommen — keine Nachbearbeitung im UI'))+'</p></div>';
+  h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
   /* GM7.5e: Schrittfrequenz war ein hartkodiertes „—", obwohl die kanonische
      Kadenz-Messreihe (canonicalStreams.cadence, echte Garmin-Werte, dieselbe Quelle
      wie die Kadenz-Kurve weiter unten) bereits vorliegt. Reiner arithmetischer
@@ -8633,7 +8662,7 @@ function gmOpenActivityPage(aid){
   var _gym=(_fam==='gym')?gmActGymAgg(a,vm,sess):null;
   var _rpe=(a.summary&&a.summary.rpe!=null)?a.summary.rpe:((sess&&sess.rpe!=null)?sess.rpe:null);
   var _spd=(function(){var s5=a.summary||{};if(s5.avgSpeedKmh!=null&&isFinite(s5.avgSpeedKmh)&&s5.avgSpeedKmh>0)return Math.round(s5.avgSpeedKmh*10)/10;if(s5.distanceKm>0&&a.durationSeconds>0)return Math.round(s5.distanceKm/(a.durationSeconds/3600)*10)/10;return null;})();
-  var _hrC=[vm.avgHr!=null?vm.avgHr+' bpm':'—','Ø HERZFREQUENZ'];
+  var _hrC=[vm.avgHr!=null?vm.avgHr+' bpm':'—','' + _uiT('ui.herzfrequenz') + ''];
   var kcells;
   if(_fam==='gym'){
     kcells=[
@@ -8642,13 +8671,13 @@ function gmOpenActivityPage(aid){
       [_gym&&_gym.setCount!=null?String(_gym.setCount):'—','SÄTZE'],
       [_gym&&_gym.volumeKg!=null?gmKg(_gym.volumeKg)+' kg':'—','VOLUMEN'],
       _hrC,
-      [_rpe!=null?'RPE '+_rpe:'—','BELASTUNG']
+      [_rpe!=null?'' + _uiT('ui.rpe') + ''+_rpe:'—','BELASTUNG']
     ];
   }else if(_fam==='cycling'){
     kcells=[
       [vm.distanceLabel||'—','DISTANZ'],
       [vm.durationLabel||'—','DAUER'],
-      [_spd!=null?fmtDe(_spd)+' km/h':'—','Ø GESCHWINDIGKEIT'],
+      [_spd!=null?fmtDe(_spd)+' km/h':'—','' + _uiT('ui.geschwindigkeit') + ''],
       _hrC,
       [(vm.elevationM!=null?vm.elevationM+' m':'—'),'HÖHENMETER'],
       [vm.caloriesKcal!=null?fmtDe(vm.caloriesKcal)+' kcal':'—','KALORIEN']
@@ -8657,16 +8686,16 @@ function gmOpenActivityPage(aid){
     kcells=[
       [vm.distanceLabel||'—','DISTANZ'],
       [vm.durationLabel||'—','DAUER'],
-      [vm.paceLabel||'—','Ø TEMPO'],
+      [vm.paceLabel||'—','' + _uiT('ui.tempo') + ''],
       _hrC,
       [vm.caloriesKcal!=null?fmtDe(vm.caloriesKcal)+' kcal':'—','KALORIEN'],
-      [_rpe!=null?'RPE '+_rpe:'—','BELASTUNG']
+      [_rpe!=null?'' + _uiT('ui.rpe') + ''+_rpe:'—','BELASTUNG']
     ];
   }else if(_fam==='pace'){
     kcells=[
       [vm.distanceLabel||'—','DISTANZ'],
       [vm.durationLabel||'—','DAUER'],
-      [vm.paceLabel||'—','Ø TEMPO'],
+      [vm.paceLabel||'—','' + _uiT('ui.tempo') + ''],
       _hrC,
       [_cadAvg!=null?_cadAvg+' spm':'—','SCHRITTFREQUENZ'],
       [(vm.elevationM!=null?vm.elevationM+' m':'—'),'HÖHENMETER']
@@ -8676,15 +8705,15 @@ function gmOpenActivityPage(aid){
       [vm.durationLabel||'—','DAUER'],
       [vm.distanceLabel||'—','DISTANZ'],
       _hrC,
-      [vm.maxHr!=null?vm.maxHr+' bpm':'—','MAX. HERZFREQUENZ'],
+      [vm.maxHr!=null?vm.maxHr+' bpm':'—','' + _uiT('ui.max_herzfrequenz') + ''],
       [vm.caloriesKcal!=null?fmtDe(vm.caloriesKcal)+' kcal':'—','KALORIEN'],
-      [_rpe!=null?'RPE '+_rpe:'—','BELASTUNG']
+      [_rpe!=null?'' + _uiT('ui.rpe') + ''+_rpe:'—','BELASTUNG']
     ];
   }
   /* GM7.4-A: per-Aktivitäts-Trainingslast (Garmin activityTrainingLoad → metrics.training_load).
      Produzierter Wert, bislang nicht dargestellt; nur zeigen wenn vorhanden. */
   var _actTl=(a&&a.metrics&&a.metrics.training_load!=null&&isFinite(a.metrics.training_load))?Math.round(a.metrics.training_load):null;
-  if(_actTl!=null)kcells.push([String(_actTl),'BELASTUNG (GARMIN)']);
+  if(_actTl!=null)kcells.push([String(_actTl),'' + _uiT('ui.belastung_garmin') + '']);
   h+='<div class="detail-kpis">'+kcells.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>';
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ORVIA-Workouts ist
      nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze. Eine
@@ -8692,9 +8721,9 @@ function gmOpenActivityPage(aid){
   if((vm.source==='orvia_workout'||vm.source==='live')&&vm.status!=='active'&&a.durationSeconds!=null){
     var _dc=a.metrics&&a.metrics.durationCorrection;
     h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('pen','xs')+'<div>'+
-      (_dc?('Dauer manuell korrigiert: '+(_dc.fromMin!=null?_dc.fromMin+' min':'—')+' → <b>'+_dc.toMin+' min</b>. '):'')+
-      '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" style="font-weight:700">Dauer korrigieren</a>'+
-      (_dc?'':' — z. B. wenn die App während des Trainings beendet wurde und Wartezeit mitzählte.')+'</div></div>';
+      (_dc?('' + _uiT('ui.dauer_manuell_korrigiert') + ''+(_dc.fromMin!=null?_dc.fromMin+' min':'—')+' → <b>'+_dc.toMin+' min</b>. '):'')+
+      '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" style="font-weight:700">' + _uiT('ui.dauer_korrigieren') + '</a>'+
+      (_dc?'':'' + _uiT('ui.z_b_wenn_die_app') + '')+'</div></div>';
   }
   /* v8-310b · Drei Korrekturwege bleiben sichtbar getrennt: Link loesen
      behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
@@ -8707,8 +8736,8 @@ function gmOpenActivityPage(aid){
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
     h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
   /* Debrief NUR aus bestehender produktiver Bewertung; sonst ehrliche Missingness. */
-  h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ORVIA Debrief</h3><p>'+(rate?gmEsc(rate.txt):'Ein kanonisches Debrief ist für diese Einheit noch nicht verfügbar — ORVIA erfindet keine Analyse. Die Werte oben stammen unverändert aus der Aktivitätsquelle und werden im UI weder nachberechnet noch ergänzt.')+'</p>'+
-    '<div class="coach-tags"><span>'+(rate?'Beibehalten: '+gmEsc(rate.badge):'Das beibehalten: —')+'</span><span>'+(rate&&rate.next?gmEsc(rate.next):'Nächstes Mal: —')+'</span><span>'+(rate?'Planwirkung: —':'Auswirkung auf die Planung: —')+'</span></div></div>';
+  h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p>'+
+    '<div class="coach-tags"><span>'+(rate?'' + _uiT('ui.beibehalten') + ''+gmEsc(rate.badge):'' + _uiT('ui.das_beibehalten') + '')+'</span><span>'+(rate&&rate.next?gmEsc(rate.next):'' + _uiT('ui.naechstes_mal') + '')+'</span><span>'+(rate?'' + _uiT('ui.planwirkung') + '':'' + _uiT('ui.auswirkung_auf_die_planung') + '')+'</span></div></div>';
   /* GM7.9: Krafttraining — Uebungs- & Satzliste aus den ECHTEN gespeicherten Saetzen
      (Snapshot/Legacy-Log). Reine Wiedergabe + Summen; ohne Details ehrlicher Leerzustand. */
   if(_fam==='gym'){
@@ -8719,13 +8748,13 @@ function gmOpenActivityPage(aid){
         if(e.sets&&e.sets.length){
           sub=e.sets.map(function(st,i){
             var mid=(st.weight!=null&&st.reps!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong><span class="gs-x">×</span><strong>'+st.reps+'</strong>'
-              :(st.reps!=null)?'<strong>'+st.reps+' Wdh.</strong>'
+              :(st.reps!=null)?'<strong>'+st.reps+'' + _uiT('ui.wdh') + '</strong>'
               :(st.weight!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong>':'<strong>—</strong>';
             return '<div class="gymset-row"><span>Satz '+(i+1)+'</span>'+mid+'</div>';}).join('');
         }else{
-          sub='<div class="gymset-row"><span>'+(e.setsN!=null?e.setsN+' Sätze':'—')+'</span><strong>'+(e.kg!=null?fmtDe(e.kg)+' kg':'—')+'</strong><span class="gs-x">×</span><strong>'+(e.reps!=null?e.reps:'—')+'</strong></div>';
+          sub='<div class="gymset-row"><span>'+(e.setsN!=null?e.setsN+'' + _uiT('ui.saetze_') + '':'—')+'</span><strong>'+(e.kg!=null?fmtDe(e.kg)+' kg':'—')+'</strong><span class="gs-x">×</span><strong>'+(e.reps!=null?e.reps:'—')+'</strong></div>';
         }
-        return '<div class="gymex"><div class="gymex-head"><b>'+gmEsc(e.name)+'</b><span>'+(e.volumeKg?gmKg(e.volumeKg)+' kg Volumen':'')+'</span></div>'+sub+'</div>';
+        return '<div class="gymex"><div class="gymex-head"><b>'+gmEsc(e.name)+'</b><span>'+(e.volumeKg?gmKg(e.volumeKg)+'' + _uiT('ui.kg_volumen') + '':'')+'</span></div>'+sub+'</div>';
       }).join('');
     }else{
       /* Bugfix-Nachbesserung (2026-08-05): Der bisherige Text behauptete pauschal „keine
@@ -8737,14 +8766,14 @@ function gmOpenActivityPage(aid){
       var _st=_gmActFallbackState[String(aid)]||null;
       var _canServer=!!(a&&(a.workoutSessionId||a.sourceRecordId)&&(vm.source==='orvia_workout'||vm.source==='live'));
       var _off=false;try{_off=(navigator.onLine===false);}catch(_){ }
-      if(_st==='loading')_grows='<div class="gm-split-empty">Satzdetails werden aus der Cloud nachgeladen …</div>';
-      else if(_off&&_canServer)_grows='<div class="gm-split-empty">Offline — die Satzdetails liegen nicht auf diesem Gerät und können gerade nicht aus der Cloud geladen werden. Sie sind nicht verloren.</div>';
-      else if(_st==='server_empty')_grows='<div class="gm-split-empty">Für diese Einheit sind weder auf diesem Gerät noch in der Cloud Satzdetails vorhanden. ORVIA erfindet keine Sätze.</div>';
-      else if(_st==='error')_grows='<div class="gm-split-empty">Die Satzdetails konnten nicht geladen werden (Verbindungsfehler). <a href="#" onclick="event.preventDefault();gmActRetryGym(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Erneut versuchen</a></div>';
-      else _grows='<div class="gm-split-empty">'+GM_NA+' — für diese Einheit sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine Sätze.</div>';
-      if(_canServer)_grows+='<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div><a href="#" onclick="event.preventDefault();gmOpenSetsDiagnose(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Warum fehlen die Sätze?</a> — zeigt, wo die Daten tatsächlich liegen.</div></div>';
+      if(_st==='loading')_grows='<div class="gm-split-empty">' + _uiT('ui.satzdetails_werden_aus_der_cloud') + '</div>';
+      else if(_off&&_canServer)_grows='<div class="gm-split-empty">' + _uiT('ui.offline_die_satzdetails_liegen_nicht') + '</div>';
+      else if(_st==='server_empty')_grows='<div class="gm-split-empty">' + _uiT('ui.fuer_diese_einheit_sind_weder') + '</div>';
+      else if(_st==='error')_grows='<div class="gm-split-empty">Die Satzdetails konnten nicht geladen werden (Verbindungsfehler). <a href="#" onclick="event.preventDefault();gmActRetryGym(\''+gmEsc(String(aid))+'\')" style="font-weight:700">' + _uiT('ui.erneut_versuchen') + '</a></div>';
+      else _grows='<div class="gm-split-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine ' + _uiT('ui.saetze__') + '.</div>';
+      if(_canServer)_grows+='<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div><a href="#" onclick="event.preventDefault();gmOpenSetsDiagnose(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Warum fehlen die ' + _uiT('ui.saetze__') + '?</a> — zeigt, wo die Daten tatsächlich liegen.</div></div>';
     }
-    h+='<div class="card"><div class="ctitle"><div class="l">'+icon('dumbbell')+' Übungen &amp; Sätze</div>'+(_gym&&_gym.setCount?'<span class="more">'+_gym.setCount+' Sätze</span>':'')+'</div>'+_grows+'</div>';
+    h+='<div class="card"><div class="ctitle"><div class="l">'+icon('dumbbell')+'' + _uiT('ui.uebungen_') + ' &amp;' + _uiT('ui.saetze_') + '</div>'+(_gym&&_gym.setCount?'<span class="more">'+_gym.setCount+'' + _uiT('ui.saetze_') + '</span>':'')+'</div>'+_grows+'</div>';
   }
   /* GM7.9: Messreihen/Runden nicht mehr Lauf-exklusiv — jede Sportart mit ECHTEN
      kanonischen Streams/Splits (Rad, Schwimmen, Gym-HF, Ballsport) zeigt dieselben
@@ -8769,8 +8798,8 @@ function gmOpenActivityPage(aid){
       _gmActCharts.push({id:'gmActStream'+i,vals:pts,label:c.label,unit:c.unit,color:c.color,hb:c.hb,dec:c.dec,fmt:c.fmt||null});
       return '<div style="margin-top:12px"><div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:2px">'+gmEsc(c.label)+'</div><div class="oc2" id="gmActStream'+i+'"></div></div>';
     }).join(''):'';
-    if(run||_slots)h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' Aktivitäts-Messreihen (Garmin)</div><span class="more">'+(_gmActCharts.length?_gmActCharts.length+' Serien':'')+'</span></div>'+
-      (_slots?_slots:'<div class="gm-chart-empty">'+GM_NA+' — für diese Einheit liegt keine kanonische Messreihe vor. Keine nachgebaute Kurve.</div>')+'</div>';
+    if(run||_slots)h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' Aktivitäts-Messreihen (Garmin)</div><span class="more">'+(_gmActCharts.length?_gmActCharts.length+'' + _uiT('ui.serien') + '':'')+'</span></div>'+
+      (_slots?_slots:'<div class="gm-chart-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' liegt keine kanonische Messreihe vor. Keine nachgebaute Kurve.</div>')+'</div>';
     /* Splits nur aus echten Splits (kanonische Story-Verknüpfung). */
     var srows='',_splitNote='';
     if(splits){
@@ -8787,11 +8816,11 @@ function gmOpenActivityPage(aid){
         var lbl=full?(i+1):(fmtDe(s.km)+' km');
         return '<div class="split-row'+(s.hr!=null?' has-hr':'')+'"><span>'+gmEsc(String(lbl))+'</span><span class="splitbar" style="width:'+w.toFixed(0)+'%"></span><strong>'+mm+':'+String(ss).padStart(2,'0')+'</strong>'+(s.hr!=null?'<span class="sp-hr">'+s.hr+' bpm</span>':'')+'</div>';
       }).join('');
-      _splitNote='<div style="margin-top:8px;font-size:10.5px;color:var(--muted)">'+(splitsCanon?'Echte Runden aus der Aktivitätsquelle (Garmin).':'Runden aus der verknüpften Trainingssession.')+'</div>';
+      _splitNote='<div style="margin-top:8px;font-size:10.5px;color:var(--muted)">'+(splitsCanon?'' + _uiT('ui.echte_runden_aus_der_aktivitaetsquelle') + '':'' + _uiT('ui.runden_aus_der_verknuepften_trainingssession') + '')+'</div>';
     }else{
-      srows='<div class="gm-split-empty">'+GM_NA+' — für diese Einheit liegen keine echten Runden vor. Aus den gespeicherten Messreihen lassen sich keine Splits ableiten (die Serien tragen keinen Zeitstempel) — ORVIA rechnet hier nichts hoch.</div>';
+      srows='<div class="gm-split-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' liegen keine echten ' + _uiT('ui.runden_') + ' vor. Aus den gespeicherten Messreihen lassen sich keine ' + _uiT('ui.splits') + ' ableiten (die Serien tragen keinen Zeitstempel) — ORVIA rechnet hier nichts hoch.</div>';
     }
-    if(run||splits)h+='<div class="card"><div class="ctitle"><div class="l">'+(splitsCanon?'Runden':'Kilometer-Splits')+'</div>'+(splits?'<span class="more">'+splits.length+'</span>':'')+'</div><div class="split-list">'+srows+'</div>'+_splitNote+'</div>';
+    if(run||splits)h+='<div class="card"><div class="ctitle"><div class="l">'+(splitsCanon?'' + _uiT('ui.runden_') + '':'Kilometer-' + _uiT('ui.splits') + '')+'</div>'+(splits?'<span class="more">'+splits.length+'</span>':'')+'</div><div class="split-list">'+srows+'</div>'+_splitNote+'</div>';
   }
   h+='<div class="tabspacer"></div>';
   pg.innerHTML=h;
@@ -8863,58 +8892,58 @@ function gmOpenSetsDiagnose(aid){
   var sid=a&&(a.workoutSessionId||a.sourceRecordId)||null;
   var on=true;try{on=navigator.onLine!==false;}catch(_){ }
   var body='<div class="md-pro">'+
-    row('Aktivität gefunden',a?'ja':'nein',!!a)+
+    row('' + _uiT('ui.aktivitaet_gefunden') + '',a?'ja':'nein',!!a)+
     row('Quelle',(a&&a.source)||'—')+
-    row('Übungen auf diesem Gerät',String(snapN),snapN>0)+
-    row('Sätze auf diesem Gerät',String(setsN),setsN>0)+
+    row('' + _uiT('ui.uebungen_auf_diesem_geraet') + '',String(snapN),snapN>0)+
+    row('' + _uiT('ui.saetze_auf_diesem_geraet') + '',String(setsN),setsN>0)+
     row('Server-Session-ID',sid?'vorhanden':'fehlt',!!sid)+
     row('Sync-Status',(a&&a.syncStatus)||'—',(a&&a.syncStatus)==='synced')+
     row('Verbindung',on?'online':'offline',on)+
     '</div>';
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('info')+'</div><div><h3>Wo liegen die Sätze?</h3><div class="sh-sub" style="margin:2px 0 0">Gemessener Ist-Zustand, keine Vermutung</div></div></div>'+
-    '<div class="sh-block">'+body+'<p class="note" style="text-align:left;margin-top:10px" id="gmSetsDiagOut">Tippe „In der Cloud nachsehen", um zu prüfen, ob die Sätze serverseitig noch vorhanden sind.</p></div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">Schließen</button>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('info')+'</div><div><h3>' + _uiT('ui.wo_liegen_die_saetze') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.gemessener_ist_zustand_keine_vermutung') + '</div></div></div>'+
+    '<div class="sh-block">'+body+'<p class="note" style="text-align:left;margin-top:10px" id="gmSetsDiagOut">' + _uiT('ui.tippe_in_der_cloud_nachsehen') + '</p></div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">' + _uiT('ui.schliessen') + '</button>'+
     (sid&&on?'<button class="prim" onclick="gmSetsDiagProbe(\''+gmEsc(String(aid))+'\',\''+gmEsc(String(sid))+'\')">In der Cloud nachsehen</button>':'')+'</div>';
   gmOpenSheet('detailSheet');
 }
 function gmSetsDiagProbe(aid,sid){
-  var out=document.getElementById('gmSetsDiagOut');if(out)out.textContent='Frage die Cloud ab …';
+  var out=document.getElementById('gmSetsDiagOut');if(out)out.textContent='' + _uiT('ui.frage_die_cloud_ab') + '';
   var repos=window.ORVIA&&ORVIA.repos&&ORVIA.repos.workout;
-  if(!repos||!repos.loadWorkoutTree){if(out)out.textContent='Cloud-Modul nicht geladen.';return;}
+  if(!repos||!repos.loadWorkoutTree){if(out)out.textContent='' + _uiT('ui.cloud_modul_nicht_geladen') + '';return;}
   repos.loadWorkoutTree(sid).then(function(r){
     if(!out)return;
-    if(!(r&&r.success)){out.textContent='Cloud-Abfrage fehlgeschlagen'+((r&&r.error&&r.error.message)?': '+r.error.message:'.')+' Die Sätze sind dadurch NICHT als verloren belegt.';return;}
+    if(!(r&&r.success)){out.textContent='' + _uiT('ui.cloud_abfrage_fehlgeschlagen_') + ''+((r&&r.error&&r.error.message)?': '+r.error.message:'.')+'' + _uiT('ui.die_saetze_sind_dadurch_nicht') + '';return;}
     var exs=(r.data&&r.data.exercises)||[];var n=0;exs.forEach(function(e){n+=((e&&e.sets)||[]).length;});
-    if(n>0){out.textContent='In der Cloud liegen '+exs.length+' Übungen mit '+n+' Sätzen. Sie werden jetzt auf dieses Gerät zurückgeholt.';
+    if(n>0){out.textContent='' + _uiT('ui.in_der_cloud_liegen') + ''+exs.length+'' + _uiT('ui.uebungen_mit') + ''+n+'' + _uiT('ui.saetzen_sie_werden_jetzt_auf') + '';
       try{var st=ORVIA.activityStore;var a=_resolveActivityAny(aid);
         if(st&&st.repairWorkoutSnapshot&&a)st.repairWorkoutSnapshot(a.clientRecordId||a.id,exs);}catch(_){ }
       setTimeout(function(){try{gmCloseSheets();gmOpenActivityPage(aid);}catch(_){ }},1200);
-    }else{out.textContent='Auch in der Cloud sind für diese Einheit keine Sätze gespeichert — die Details wurden beim Abschließen des Trainings nie serverseitig abgelegt. Das ist ein Schreib-, kein Anzeigefehler.';}
-  }).catch(function(e){if(out)out.textContent='Cloud-Abfrage fehlgeschlagen: '+String(e&&e.message||e);});
+    }else{out.textContent='' + _uiT('ui.auch_in_der_cloud_sind') + '';}
+  }).catch(function(e){if(out)out.textContent='' + _uiT('ui.cloud_abfrage_fehlgeschlagen') + ''+String(e&&e.message||e);});
 }
 function gmCloseActivityPage(){var pg=document.getElementById('gmActPage');if(pg)pg.classList.remove('on');}
 /* P0-Nachtrag 2026-08-05: Dauer-Korrektur-Sheet. Schreibt ueber den Store
    (Activity + Server-Session + Trainingslast) — das UI rechnet nichts selbst. */
 function gmOpenDurationCorrectSheet(aid,curMin){
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3>Dauer korrigieren</h3><div class="sh-sub" style="margin:2px 0 0">Aktuell '+curMin+' min</div></div></div>'+
-    '<div class="sh-block"><p>Trainierte Zeit in Minuten — z. B. wenn die App während des Trainings beendet wurde und Wartezeit mitzählte. Die Korrektur wird als manuelle Angabe protokolliert und passt auch die Trainingslast an.</p>'+
-    '<div class="calc-field" style="margin-top:8px"><label>Dauer (min)</label><input type="number" id="gmDurCorrIn" inputmode="numeric" min="1" max="1440" value="'+curMin+'" style="width:110px;text-align:right"></div></div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">Abbrechen</button><button class="prim" onclick="gmApplyDurationCorrect(\''+gmEsc(aid)+'\')">Speichern</button></div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3>' + _uiT('ui.dauer_korrigieren') + '</h3><div class="sh-sub" style="margin:2px 0 0">Aktuell '+curMin+' min</div></div></div>'+
+    '<div class="sh-block"><p>' + _uiT('ui.trainierte_zeit_in_minuten_z') + '</p>'+
+    '<div class="calc-field" style="margin-top:8px"><label>' + _uiT('ui.dauer_min') + '</label><input type="number" id="gmDurCorrIn" inputmode="numeric" min="1" max="1440" value="'+curMin+'" style="width:110px;text-align:right"></div></div>'+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">' + _uiT('ui.abbrechen') + '</button><button class="prim" onclick="gmApplyDurationCorrect(\''+gmEsc(aid)+'\')">' + _uiT('ui.speichern') + '</button></div>';
   gmOpenSheet('detailSheet');
   try{var inp=document.getElementById('gmDurCorrIn');if(inp){inp.focus();inp.select();}}catch(_){ }
 }
 function gmApplyDurationCorrect(aid){
   var v=null;try{v=parseInt(document.getElementById('gmDurCorrIn').value,10);}catch(_){ }
-  if(!(v>0&&v<=1440)){if(typeof toast==='function')toast('Bitte eine Dauer zwischen 1 und 1440 min angeben.');return;}
+  if(!(v>0&&v<=1440)){if(typeof toast==='function')toast('' + _uiT('ui.bitte_eine_dauer_zwischen_1') + '');return;}
   var ws=window.ORVIA&&ORVIA.workoutStore;
-  if(!ws||!ws.correctFinishedDuration){if(typeof toast==='function')toast('Korrektur nicht verfügbar.');return;}
+  if(!ws||!ws.correctFinishedDuration){if(typeof toast==='function')toast('' + _uiT('ui.korrektur_nicht_verfuegbar') + '');return;}
   ws.correctFinishedDuration(aid,v).then(function(r){
     gmCloseSheets();
-    if(r&&r.success){if(typeof toast==='function')toast('Dauer korrigiert: '+v+' min ✓');
+    if(r&&r.success){if(typeof toast==='function')toast('' + _uiT('ui.dauer_korrigiert') + ''+v+' min ✓');
       try{gmOpenActivityPage(aid);}catch(_){ }
       try{if(typeof renderAkt==='function')renderAkt();}catch(_){ }}
-    else{if(typeof toast==='function')toast('Korrektur fehlgeschlagen'+(r&&r.error&&r.error.message?': '+r.error.message:'.'));}
+    else{if(typeof toast==='function')toast('' + _uiT('ui.korrektur_fehlgeschlagen') + ''+(r&&r.error&&r.error.message?': '+r.error.message:'.'));}
   });
 }
 /* GM7.9: „Bestleistung"-Einstieg aus Aktivitäten/Analyse — bestTimes() ist DIESELBE
@@ -8934,7 +8963,7 @@ function gmOpenActTeaserSheet(kind){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var t=kind==='best'?'Bestleistungen':'Meilensteine';
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon(kind==='best'?'bolt':'target')+'</div><div><h3>'+t+'</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
-    '<div class="sh-block"><p>'+t+' erscheinen mit deinen ersten abgeschlossenen Aktivitäten — gemessen, nicht erfunden. ORVIA zeigt keine erfundenen Werte.</p></div>';
+    '<div class="sh-block"><p>'+t+' erscheinen mit deinen ersten abgeschlossenen ' + _uiT('ui.aktivitaeten_') + ' — gemessen, nicht erfunden. ORVIA zeigt keine erfundenen Werte.</p></div>';
   gmOpenSheet('detailSheet');
 }
 /* v8-312: Sportart-Icons im Training-Start-Sheet MUESSEN mit dem kanonischen Sport-
@@ -8962,8 +8991,8 @@ function gmOpenStartSheet(mode){
   _gmStartCtx={mode:mode||null,sport:null};
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var title=mode==='planned'?'Geplante Einheit starten':mode==='repeat'?'Letztes Training wiederholen':mode==='free'?'Freies Training':'Training starten';
-  var sub=lvl==='a'?'Wähle deine Sportart':lvl==='p'?'Sportart → geplant/frei → Pre-Start-Check':'Sportart wählen · dann geplant oder frei';
+  var title=mode==='planned'?'' + _uiT('ui.geplante_einheit_starten') + '':mode==='repeat'?'' + _uiT('ui.letztes_training_wiederholen') + '':mode==='free'?'' + _uiT('ui.freies_training') + '':'' + _uiT('ui.training_starten') + '';
+  var sub=lvl==='a'?'' + _uiT('ui.waehle_deine_sportart') + '':lvl==='p'?'' + _uiT('ui.sportart_geplant_frei_pre_start') + '':'' + _uiT('ui.sportart_waehlen_dann_geplant_oder') + '';
   var SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
   sh.innerHTML='<div class="grab"></div><h3>'+title+'</h3><div class="sh-sub">'+sub+'</div>'+
     '<div class="sport-grid">'+SPORTS.map(function(s){return '<button class="sport-tile" onclick="gmStartSport(\''+s[0]+'\')"><span class="st-ic" style="background:'+s[2]+';color:#0c1017">'+gmSportTileIcon(s[1],'sm')+'</span><b>'+s[0]+'</b></button>';}).join('')+'</div>';
@@ -8978,16 +9007,16 @@ function gmStartSport(sport){
   var tItem=planned?_sel.item:null;
   /* Readiness-/Safety-Hinweis NUR aus bestehender kanonischer Ausgabe — nie ausgeblendet. */
   var hint='';try{var d=(typeof getDecision==='function')?getDecision():null;if(d)hint=String(d.reco||d.title||'');}catch(_){ }
-  if(!hint)hint='Keine kanonische Readiness-Bewertung verfügbar — ORVIA erfindet keinen Zustand.';
+  if(!hint)hint='' + _uiT('ui.keine_kanonische_readiness_bewertung_verfuegbar') + '';
   if(plannedMode&&!planned)hint=(_sel.status==='ambiguous')
-    ?'Mehrere passende Planeinheiten heute — öffne die gewünschte Einheit direkt im Wochenplan.'
-    :'Für diese Sportart ist heute keine Planeinheit vorhanden. Wähle „Frei" oder öffne eine Plankarte.';
+    ?'' + _uiT('ui.mehrere_passende_planeinheiten_heute_oeffne') + ''
+    :'' + _uiT('ui.fuer_diese_sportart_ist_heute') + '';
   var canStart=plannedMode?planned:!!(window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.startSport);
   var rows=[
-    ['Ziel der Einheit',planned?gmEsc(tItem.l):'—'],
+    ['' + _uiT('ui.ziel_der_einheit') + '',planned?gmEsc(tItem.l):'—'],
     ['Dauer','—'],
-    [sport==='Krafttraining'?'Volumen':'Distanz','—'],
-    ['Intensität','—'],
+    [sport==='Krafttraining'?'Volumen':'' + _uiT('ui.distanz_') + '','—'],
+    ['' + _uiT('ui.intensitaet') + '','—'],
     ['Ausrüstung','—'],
     ['Wearable','—']
   ];
@@ -9004,14 +9033,14 @@ function gmStartSport(sport){
     var _os5=null;try{_os5=(typeof orviaScore==='function')?orviaScore():null;}catch(_){ }
     var pr=[
       ['Body Battery',(_bb&&_bb.value!=null)?fmtDe(_bb.value):'—'],
-      ['Stress (heute Ø)',(_st5&&_st5.value!=null)?fmtDe(_st5.value):'—'],
+      ['' + _uiT('ui.stress_heute') + '',(_st5&&_st5.value!=null)?fmtDe(_st5.value):'—'],
       ['Readiness',(_os5&&_os5.score!=null)?_os5.score+' · '+gmEsc(_os5.statusText||''):'—']
     ];
-    preRows='<div class="sh-block" style="margin:0 0 6px"><div class="bh">Vor-Start-Werte (gemessen)</div>'+
+    preRows='<div class="sh-block" style="margin:0 0 6px"><div class="bh">' + _uiT('ui.vor_start_werte_gemessen') + '</div>'+
       '<div class="card prestart" style="margin:6px 0 0">'+pr.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+gmEsc(r[1])+'</b></div>';}).join('')+'</div>'+
-      '<p style="margin:6px 0 0;font-size:11px;color:var(--muted)">Aus deinen Garmin-/Check-in-Daten — kein manueller Pre-Check-in nötig. Wird beim Start als Snapshot gesichert.</p></div>';
+      '<p style="margin:6px 0 0;font-size:11px;color:var(--muted)">' + _uiT('ui.aus_deinen_garmin_check_in') + '</p></div>';
   }
-  sh.innerHTML='<div class="grab"></div><h3>'+gmEsc(sport)+'</h3><div class="sh-sub">Vor dem Start</div>'+
+  sh.innerHTML='<div class="grab"></div><h3>'+gmEsc(sport)+'</h3><div class="sh-sub">' + _uiT('ui.vor_dem_start') + '</div>'+
     '<div class="subtabs" style="margin:6px 0 12px"><button class="'+(plannedMode?'on':'')+'" onclick="gmStartSetMode(\'planned\')">Geplant</button><button class="'+(plannedMode?'':'on')+'" onclick="gmStartSetMode(\'free\')">Frei</button></div>'+   /* Phase 1b: Subtab „Vorlage" entfernt — kein Endzustand vorhanden. */
     '<div class="card prestart" style="margin:0 0 6px">'+rows.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div>'+
     preRows+
@@ -9033,7 +9062,7 @@ function gmStartFromPreStart(){
      Einheit kommt aus gmPlannedStartSelection: nie wieder blind Index 0. */
   if(_gmStartCtx.mode==='planned'){
     if(!sel||sel.status!=='unique'){
-      if(typeof toast==='function')toast(sel&&sel.status==='ambiguous'?'Mehrere passende Planeinheiten — bitte im Plan auswählen.':'Keine passende Planeinheit für diese Sportart heute.');
+      if(typeof toast==='function')toast(sel&&sel.status==='ambiguous'?'' + _uiT('ui.mehrere_passende_planeinheiten_bitte_im') + '':'' + _uiT('ui.keine_passende_planeinheit_fuer_diese') + '');
       return {ok:false,code:sel&&sel.status==='ambiguous'?'ambiguous_planned_unit':'no_matching_planned_unit'};
     }
     try{if(typeof gmCloseSheets==='function')gmCloseSheets();}catch(_){ }
@@ -9161,7 +9190,7 @@ function gmStoryPages(a){
   var pages=[];
   /* Legacy-Sessions tragen ein synthetisches T00:00 — keine gemessene Uhrzeit. */
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
-  var title=vm.title||vm.sportLabel||'Training';
+  var title=vm.title||vm.sportLabel||'' + _uiT('ui.training') + '';
   var top='<div class="wst-top"><b>'+gmEsc(title)+'</b><span>'+gmEsc(dl)+(vm.source?' · '+gmEsc(gmActSrcLabel(vm.source)):'')+'</span></div>';
   var page=function(mid,footHtml){return '<div class="wst-bg" style="'+accCss+'"></div><div class="wst-in" style="'+accCss+'">'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
   var foot=function(hl,sub){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+'</div>';};
@@ -9175,7 +9204,7 @@ function gmStoryPages(a){
   var hr=cleanArr(st&&st.heart_rate,null);
   var gym=(fam==='gym')?gmActGymAgg(a,vm,sess):null;
   /* ---------- Headline: faktischer Satz aus echten Feldern ---------- */
-  var VERB={running:'gelaufen',trail_running:'gelaufen',walking:'gegangen',hiking:'gewandert',cycling:'Rad gefahren',swimming:'geschwommen',rowing:'gerudert'};
+  var VERB={running:'gelaufen',trail_running:'gelaufen',walking:'gegangen',hiking:'gewandert',cycling:'' + _uiT('ui.rad_gefahren') + '',swimming:'geschwommen',rowing:'gerudert'};
   var PLAY={football:1,handball:1,basketball:1,tennis:1,padel:1,volleyball:1,table_tennis:1,tabletennis:1};
   var sNorm=null;try{sNorm=(window.ORVIA&&ORVIA.trainingDomain&&ORVIA.trainingDomain.normSport)?ORVIA.trainingDomain.normSport(vm.sportId):null;}catch(_){ }
   sNorm=(sNorm||String(vm.sportId||'')).toLowerCase();
@@ -9189,23 +9218,23 @@ function gmStoryPages(a){
   if(fam==='cycling'){if(spdAvg!=null)subParts.push('Ø '+fmtDe(spdAvg)+' km/h');}
   else if(vm.paceLabel)subParts.push('Ø '+vm.paceLabel);
   if(durTxt)subParts.push(durTxt);
-  if(vm.avgHr!=null)subParts.push('Ø HF '+vm.avgHr+' bpm');
+  if(vm.avgHr!=null)subParts.push('' + _uiT('ui.hf') + ''+vm.avgHr+' bpm');
   if(vm.caloriesKcal!=null)subParts.push(fmtDe(vm.caloriesKcal)+' kcal');
   var sub=subParts.join(' · ');
   var hl;
   if(fam==='gym'&&gym&&gym.exCount){
-    hl='Du hast '+em(gym.exCount+(gym.exCount===1?' Übung':' Übungen'))+(gym.setCount?' mit '+em(gym.setCount+' Sätzen'):'')+' absolviert.';
-    sub=[gym.volumeKg?gmKg(gym.volumeKg)+' kg bewegtes Volumen':null,durTxt,vm.avgHr!=null?'Ø HF '+vm.avgHr+' bpm':null].filter(Boolean).join(' · ');
+    hl='' + _uiT('ui.du_hast') + ''+em(gym.exCount+(gym.exCount===1?'' + _uiT('ui.uebung') + '':'' + _uiT('ui.uebungen_') + ''))+(gym.setCount?' mit '+em(gym.setCount+'' + _uiT('ui.saetzen') + ''):'')+' absolviert.';
+    sub=[gym.volumeKg?gmKg(gym.volumeKg)+'' + _uiT('ui.kg_bewegtes_volumen') + '':null,durTxt,vm.avgHr!=null?'' + _uiT('ui.hf') + ''+vm.avgHr+' bpm':null].filter(Boolean).join(' · ');
   }else if(VERB[sNorm]&&vm.distanceLabel){
-    hl='Du bist '+em(vm.distanceLabel)+' '+VERB[sNorm]+'.';
+    hl='' + _uiT('ui.du_bist') + ''+em(vm.distanceLabel)+' '+VERB[sNorm]+'.';
   }else if(VERB[sNorm]&&durTxt){
-    hl='Du bist '+em(durTxt)+' '+VERB[sNorm]+'.';
+    hl='' + _uiT('ui.du_bist') + ''+em(durTxt)+' '+VERB[sNorm]+'.';
   }else if(PLAY[sNorm]&&durTxt){
-    hl='Du hast '+em(durTxt)+' '+gmEsc(vm.sportLabel||'')+' gespielt.';
+    hl='' + _uiT('ui.du_hast') + ''+em(durTxt)+' '+gmEsc(vm.sportLabel||'')+' gespielt.';
   }else if(durTxt){
-    hl='Du hast '+em(durTxt)+' '+gmEsc(vm.sportLabel||'Training')+' absolviert.';
+    hl='' + _uiT('ui.du_hast') + ''+em(durTxt)+' '+gmEsc(vm.sportLabel||'' + _uiT('ui.training') + '')+' absolviert.';
   }else{
-    hl=gmEsc(vm.sportLabel||'Einheit')+' abgeschlossen.';
+    hl=gmEsc(vm.sportLabel||'' + _uiT('ui.einheit') + '')+' abgeschlossen.';
   }
   /* ---------- 1) Cover: Route (zeichnet sich) oder grosse Kennzahl ---------- */
   var route=(vm.canonicalRoute&&vm.canonicalRoute.length>1)?vm.canonicalRoute:null;
@@ -9219,12 +9248,12 @@ function gmStoryPages(a){
       cover='<div class="wst-map big">'+svg+'</div>';}catch(_){ }
   }
   if(!cover){
-    var bigV=(fam==='gym'&&gym&&gym.setCount)?[String(gym.setCount),'Sätze']
-      :(vm.distanceLabel?[vm.distanceLabel,'Distanz']:(durTxt?[durTxt,'Dauer']:null));
+    var bigV=(fam==='gym'&&gym&&gym.setCount)?[String(gym.setCount),'' + _uiT('ui.saetze__') + '']
+      :(vm.distanceLabel?[vm.distanceLabel,'' + _uiT('ui.distanz_') + '']:(durTxt?[durTxt,'Dauer']:null));
     cover=bigV?'<div class="wst-bignum'+(String(bigV[0]).length>6?' long':'')+'"><b>'+gmStoryBigVal(bigV[0])+'</b><span>'+gmEsc(bigV[1])+'</span></div>':'';
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
-  pages.push(page('<div class="wst-kick'+(route?'':' ctr')+'">Einheit abgeschlossen</div>'+cover,foot(hl,sub)));
+  pages.push(page('<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub)));
   /* ---------- 1b) Neue Bestzeit — zwei kanonische Wege, EINE Rangfolge:
      (1) DISTANZ-Bestzeit aus dem kanonischen Bestzeitenmodell (bestTimes().meas):
          stammt eine gemessene 1/5/10-km-Bestzeit aus GENAU dieser Aktivitaet,
@@ -9248,22 +9277,22 @@ function gmStoryPages(a){
       var GOLD2='#DCC79A',GOLDSOFT2='rgba(220,199,154,.35)';
       var _fs3=function(sec){var m3=Math.floor(sec/60),s3=Math.round(sec%60);return m3+':'+String(s3).padStart(2,'0');};
       pages.push('<div class="wst-bg pr" style="--acc:'+GOLD2+';--accsoft:'+GOLDSOFT2+'"></div><div class="wst-in" style="--acc:'+GOLD2+';--accsoft:'+GOLDSOFT2+'">'+top+
-        '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>Neue Bestzeit · gemessen</span></div><div class="wst-prval">'+gmEsc(fmtDe(distPB.targetKm))+' km in '+gmEsc(_fs3(distPB.sec))+'</div></div>'+
-        foot('Deine schnellste gemessene '+em(fmtDe(distPB.targetKm)+' km')+'-Strecke — '+(distPB.method==='stream_window'?'aus den Messreihen deiner Uhr':distPB.method==='lap_window'?'aus den Runden deiner Uhr':'aus dieser Aktivität')+'.','Gemessen über '+fmtDe(distPB.km)+' km — keine Schätzung.')+'</div>');
+        '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>' + _uiT('ui.neue_bestzeit_gemessen') + '</span></div><div class="wst-prval">'+gmEsc(fmtDe(distPB.targetKm))+' km in '+gmEsc(_fs3(distPB.sec))+'</div></div>'+
+        foot('' + _uiT('ui.deine_schnellste_gemessene') + ''+em(fmtDe(distPB.targetKm)+' km')+'' + _uiT('ui.strecke') + ''+(distPB.method==='stream_window'?'' + _uiT('ui.aus_den_messreihen_deiner_uhr') + '':distPB.method==='lap_window'?'' + _uiT('ui.aus_den_runden_deiner_uhr') + '':'' + _uiT('ui.aus_dieser_aktivitaet') + '')+'.','' + _uiT('ui.gemessen_ueber') + ''+fmtDe(distPB.km)+'' + _uiT('ui.km_keine_schaetzung') + '')+'</div>');
     }
     var pb=distPB?null:gmActPersonalBest(a,vm,fam);
     if(pb){
       var GOLD='#DCC79A',GOLDSOFT='rgba(220,199,154,.35)';
-      var prTitle=(pb.cur.kind==='speed')?'Neue Bestleistung':'Neue Bestzeit';
+      var prTitle=(pb.cur.kind==='speed')?'' + _uiT('ui.neue_bestleistung') + '':'' + _uiT('ui.neue_bestzeit') + '';
       var curTxt=(pb.cur.kind==='speed')?(fmtDe(Math.round(pb.cur.metric*10)/10)+pb.cur.unit):(fmtPace(pb.cur.metric)+pb.cur.unit);
       var prevTxt=(pb.cur.kind==='speed')?(fmtDe(Math.round(pb.bestOther*10)/10)+pb.cur.unit):(fmtPace(pb.bestOther)+pb.cur.unit);
       var prSub;
       if(pb.cur.kind==='speed'){
         var dKmh=Math.round((pb.cur.metric-pb.bestOther)*10)/10;
-        prSub=fmtDe(dKmh)+' km/h schneller als deine bisherige Bestleistung ('+prevTxt+')';
+        prSub=fmtDe(dKmh)+'' + _uiT('ui.km_h_schneller_als_deine') + ''+prevTxt+')';
       }else{
         var dSec=Math.max(0,Math.round(pb.bestOther-pb.cur.metric));
-        prSub=fmtPace(dSec)+' schneller pro '+(pb.cur.kind==='pace100'?'100 m':'km')+' als deine bisherige Bestzeit ('+prevTxt+')';
+        prSub=fmtPace(dSec)+' schneller pro '+(pb.cur.kind==='pace100'?'100 m':'km')+'' + _uiT('ui.als_deine_bisherige_bestzeit') + ''+prevTxt+')';
       }
       pages.push('<div class="wst-bg pr" style="--acc:'+GOLD+';--accsoft:'+GOLDSOFT+'"></div><div class="wst-in" style="--acc:'+GOLD+';--accsoft:'+GOLDSOFT+'">'+top+
         '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>'+prTitle+'</span></div><div class="wst-prval">'+gmEsc(curTxt)+'</div></div>'+
@@ -9285,8 +9314,8 @@ function gmStoryPages(a){
         var lbl=full?String(i+1):(fmtDe(x.km)+' km');
         return '<div class="wst-lap'+(i===iFast?' best':'')+'" style="animation-delay:'+(140+i*95)+'ms"><span>'+gmEsc(lbl)+'</span><i style="width:'+w.toFixed(0)+'%"></i><strong>'+fmtL(x.sec)+'</strong></div>';
       }).join('');
-      pages.push(page('<div class="wst-kick">Runden</div><div class="wst-laps">'+rows+'</div>'+(laps.length>maxRows?'<div class="wst-note">+ '+(laps.length-maxRows)+' weitere im Aktivitätsdetail.</div>':''),
-        foot('Schnellste Runde: '+em(fmtL(fast)),'Runde '+(iFast+1)+' von '+laps.length+' · langsamste '+fmtL(slow))));
+      pages.push(page('<div class="wst-kick">' + _uiT('ui.runden_') + '</div><div class="wst-laps">'+rows+'</div>'+(laps.length>maxRows?'<div class="wst-note">+ '+(laps.length-maxRows)+' weitere im Aktivitätsdetail.</div>':''),
+        foot('' + _uiT('ui.schnellste_runde') + ''+em(fmtL(fast)),'' + _uiT('ui.runde') + ''+(iFast+1)+' von '+laps.length+' · langsamste '+fmtL(slow))));
     }
   }catch(_){ }
   /* ---------- 3) Gym: Uebungen & Saetze — fliegen gestaffelt ein ---------- */
@@ -9296,63 +9325,63 @@ function gmStoryPages(a){
       if(e.sets&&e.sets.length){
         det=e.sets.map(function(s4){
           if(s4.weight!=null&&s4.reps!=null)return fmtDe(s4.weight)+' kg × '+s4.reps;
-          if(s4.reps!=null)return s4.reps+' Wdh.';
+          if(s4.reps!=null)return s4.reps+'' + _uiT('ui.wdh') + '';
           return s4.weight!=null?fmtDe(s4.weight)+' kg':'—';
         }).join(' · ');
       }else{
-        det=[(e.setsN?e.setsN+' Sätze':null),(e.kg!=null?fmtDe(e.kg)+' kg':null),(e.reps!=null?'× '+e.reps:null)].filter(Boolean).join(' · ')||'—';
+        det=[(e.setsN?e.setsN+'' + _uiT('ui.saetze_') + '':null),(e.kg!=null?fmtDe(e.kg)+' kg':null),(e.reps!=null?'× '+e.reps:null)].filter(Boolean).join(' · ')||'—';
       }
       return '<div class="wst-ex" style="animation-delay:'+(140+i*95)+'ms"><div class="wst-exh"><b>'+gmEsc(e.name)+'</b>'+(e.volumeKg?'<span>'+gmKg(e.volumeKg)+' kg</span>':'')+'</div><div class="wst-exd">'+gmEsc(det)+'</div></div>';
     }).join('');
-    pages.push(page('<div class="wst-kick">Übungen</div><div class="wst-laps">'+exRows+'</div>'+(gym.list.length>8?'<div class="wst-note">+ '+(gym.list.length-8)+' weitere im Aktivitätsdetail.</div>':''),
-      foot(gym.setCount?em(gym.setCount+' Sätze')+' im Log.':'Dein Krafttraining.',gym.volumeKg?gmKg(gym.volumeKg)+' kg Gesamtvolumen — Summe aus Gewicht × Wiederholungen':null)));
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.uebungen__') + '</div><div class="wst-laps">'+exRows+'</div>'+(gym.list.length>8?'<div class="wst-note">+ '+(gym.list.length-8)+' weitere im Aktivitätsdetail.</div>':''),
+      foot(gym.setCount?em(gym.setCount+'' + _uiT('ui.saetze_') + '')+'' + _uiT('ui.im_log') + '':'' + _uiT('ui.dein_krafttraining') + '',gym.volumeKg?gmKg(gym.volumeKg)+'' + _uiT('ui.kg_gesamtvolumen_summe_aus_gewicht') + '':null)));
   }
   /* ---------- 4) Herzfrequenz: Dot-Matrix-Flaeche ueber die ganze Seite ---------- */
   if(hr){
     var hrAvg=Math.round(hr.reduce(function(x,y){return x+y;},0)/hr.length);
     var hrMax=Math.max.apply(null,hr);
-    pages.push(page('<div class="wst-kick">Herzfrequenz</div>'+gmStoryDotChart(hr,' bpm',0),
-      foot('Ø '+em(hrAvg+' bpm')+' über die Einheit.','Maximal '+hrMax+' bpm · gemessene Werte, nichts nachgerechnet')));
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.herzfrequenz__') + '</div>'+gmStoryDotChart(hr,' bpm',0),
+      foot('Ø '+em(hrAvg+' bpm')+'' + _uiT('ui.ueber_die_einheit') + '','' + _uiT('ui.maximal') + ''+hrMax+'' + _uiT('ui.bpm_gemessene_werte_nichts_nachgerechnet') + '')));
   }
   /* ---------- 5) Rad: Geschwindigkeit als Dot-Matrix (reine km/h-Umrechnung) ---------- */
   if(fam==='cycling'){
     var spdC=cleanArr(st&&st.speed,function(v){return v>0?v*3.6:null;});
     if(spdC){
       var spAvg=Math.round(spdC.reduce(function(x,y){return x+y;},0)/spdC.length*10)/10;
-      pages.push(page('<div class="wst-kick">Geschwindigkeit</div>'+gmStoryDotChart(spdC,' km/h',1),
-        foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','Gemessene Geschwindigkeit — reine Einheitenumrechnung aus m/s')));
+      pages.push(page('<div class="wst-kick">' + _uiT('ui.geschwindigkeit__') + '</div>'+gmStoryDotChart(spdC,' km/h',1),
+        foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','' + _uiT('ui.gemessene_geschwindigkeit_reine_einheitenumrechnung_aus') + '')));
     }
   }
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
-  if(vm.distanceLabel)cells.push([vm.distanceLabel,'Distanz']);
+  if(vm.distanceLabel)cells.push([vm.distanceLabel,'' + _uiT('ui.distanz_') + '']);
   if(durTxt)cells.push([durTxt,'Dauer']);
-  if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','Ø Geschwindigkeit']);}
-  else if(vm.paceLabel)cells.push([vm.paceLabel,'Ø Tempo']);
-  if(vm.avgHr!=null)cells.push([vm.avgHr+' bpm','Ø Herzfrequenz']);
-  if(vm.maxHr!=null)cells.push([vm.maxHr+' bpm','Max. Herzfrequenz']);
+  if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','' + _uiT('ui.geschwindigkeit_') + '']);}
+  else if(vm.paceLabel)cells.push([vm.paceLabel,'' + _uiT('ui.tempo_') + '']);
+  if(vm.avgHr!=null)cells.push([vm.avgHr+' bpm','' + _uiT('ui.herzfrequenz_') + '']);
+  if(vm.maxHr!=null)cells.push([vm.maxHr+' bpm','' + _uiT('ui.max_herzfrequenz_') + '']);
   if(gym){
-    if(gym.exCount!=null)cells.push([String(gym.exCount),'Übungen']);
-    if(gym.setCount!=null)cells.push([String(gym.setCount),'Sätze']);
+    if(gym.exCount!=null)cells.push([String(gym.exCount),'' + _uiT('ui.uebungen__') + '']);
+    if(gym.setCount!=null)cells.push([String(gym.setCount),'' + _uiT('ui.saetze__') + '']);
     if(gym.volumeKg!=null)cells.push([gmKg(gym.volumeKg)+' kg','Volumen']);
   }
   var cad=null;try{var cs2=st&&st.cadence;if(Array.isArray(cs2)){var sm2=0,nn=0;cs2.forEach(function(v){if(typeof v==='number'&&isFinite(v)){sm2+=v;nn++;}});cad=nn?Math.round(sm2/nn):null;}}catch(_){ }
-  if(cad!=null&&fam==='pace')cells.push([cad+' spm','Ø Schrittfrequenz']);
+  if(cad!=null&&fam==='pace')cells.push([cad+' spm','' + _uiT('ui.schrittfrequenz') + '']);
   if(vm.elevationM!=null&&(fam==='pace'||fam==='cycling'))cells.push([vm.elevationM+' m','Höhenmeter']);
   if(vm.caloriesKcal!=null)cells.push([fmtDe(vm.caloriesKcal)+' kcal','Energie']);
   var rpe0=(a&&a.summary&&a.summary.rpe!=null)?a.summary.rpe:((sess&&sess.rpe!=null)?sess.rpe:null);
-  if(rpe0!=null)cells.push(['RPE '+rpe0,'Belastung']);
+  if(rpe0!=null)cells.push(['' + _uiT('ui.rpe') + ''+rpe0,'Belastung']);
   if(cells.length>=2){
-    pages.push(page('<div class="wst-kick">Deine Zahlen</div><div class="wst-grid">'+cells.slice(0,8).map(function(c,i){
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.deine_zahlen') + '</div><div class="wst-grid">'+cells.slice(0,8).map(function(c,i){
       return '<div class="wst-cell" style="animation-delay:'+(120+i*80)+'ms"><b>'+gmEsc(String(c[0]))+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>',
-      foot('Alles aus deiner Einheit.','Werte unverändert aus der Aktivitätsquelle — ORVIA rechnet nichts nach')));
+      foot('' + _uiT('ui.alles_aus_deiner_einheit') + '','' + _uiT('ui.werte_unveraendert_aus_der_aktivitaetsquelle') + '')));
   }
   /* ---------- 7) Debrief: nur bestehende produktive Bewertung ---------- */
   var rate2=null;try{if(vm.sportId==='running'&&sess&&typeof rateActivity==='function')rate2=rateActivity('Laufen',sess);}catch(_){ }
   if(rate2){
-    pages.push(page('<div class="wst-kick">ORVIA Debrief</div><div class="wst-debrief">'+gmEsc(rate2.txt)+'</div>'+
-      '<div class="wst-tags"><span>Beibehalten: '+gmEsc(rate2.badge||'—')+'</span>'+(rate2.next?'<span>'+gmEsc(rate2.next)+'</span>':'')+'</div>',
-      foot('Eingeordnet: '+em(rate2.badge||'—'),null)));
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.orvia_debrief') + '</div><div class="wst-debrief">'+gmEsc(rate2.txt)+'</div>'+
+      '<div class="wst-tags"><span>' + _uiT('ui.beibehalten') + ''+gmEsc(rate2.badge||'—')+'</span>'+(rate2.next?'<span>'+gmEsc(rate2.next)+'</span>':'')+'</div>',
+      foot('' + _uiT('ui.eingeordnet') + ''+em(rate2.badge||'—'),null)));
   }
   /* ---------- 8) Wirkung auf die Belastung: kanonisches Lastmodell, nur F/P ---------- */
   if(lvl!=='a'){
@@ -9363,9 +9392,9 @@ function gmStoryPages(a){
       if(S2&&S2.ctl&&S2.ctl.length&&!sup3){
         var ctl2=Math.round(S2.ctl[S2.ctl.length-1]),atl2=Math.round(S2.atl[S2.atl.length-1]);
         var tsb2=(S2.tsb&&S2.tsb.length)?Math.round(S2.tsb[S2.tsb.length-1]):(ctl2-atl2);
-        pages.push(page('<div class="wst-kick">Wirkung</div><div class="wst-grid">'+[[String(ctl2),'Fitness (CTL)'],[String(atl2),'Ermüdung (ATL)'],[(tsb2>=0?'+':'')+tsb2,'Form (TSB)']].map(function(c,i){
+        pages.push(page('<div class="wst-kick">' + _uiT('ui.wirkung') + '</div><div class="wst-grid">'+[[String(ctl2),'' + _uiT('ui.fitness_ctl') + ''],[String(atl2),'' + _uiT('ui.ermuedung_atl') + ''],[(tsb2>=0?'+':'')+tsb2,'' + _uiT('ui.form_tsb') + '']].map(function(c,i){
           return '<div class="wst-cell" style="animation-delay:'+(120+i*80)+'ms"><b>'+gmEsc(String(c[0]))+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>',
-          foot('Deine Belastung heute.','Tageswerte des kanonischen Lastmodells (sRPE) — dieselbe Serie wie die Belastungssteuerung, read-only')));
+          foot('' + _uiT('ui.deine_belastung_heute') + '','' + _uiT('ui.tageswerte_des_kanonischen_lastmodells_srpe') + '')));
       }
     }catch(_){ }
   }
@@ -9379,8 +9408,8 @@ function gmStoryRender(){
     return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+'"><b></b></i>';}).join('')+'</div>';
   host.innerHTML=bars+
     '<button class="wst-x" aria-label="Story schließen" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
-    '<button class="wst-nav prev" aria-label="Zurück" onclick="gmStoryPrev()"></button>'+
-    '<button class="wst-nav next" aria-label="Weiter" onclick="gmStoryNext()"></button>'+
+    '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
+    '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');
   /* Auto-Weiterschaltung wie im Story-Muster; Tap uebersteuert jederzeit. */
   gmStoryStop();
@@ -9568,32 +9597,32 @@ function gmAnaOverview(ctx){
   var ctl=(ctx.ok&&ctx.S)?Math.round(ctx.S.ctl[ctx.S.ctl.length-1]):null;
   var atl=(ctx.ok&&ctx.S)?Math.round(ctx.S.atl[ctx.S.atl.length-1]):null;
   var acwrShow=(ctx.lm&&ctx.lm.acwr!=null&&ctx.lm.acwrReliable&&ctx.lcc&&!ctx.lcc.suppressNumbers)?ctx.lm.acwr:null;
-  if(d&&lvl==='p'){heroP='Readiness '+(sc&&sc.score!=null?sc.score:'—')+' · CTL '+(ctl!=null?ctl:'—')+' · ACWR '+(acwrShow!=null?fmtDe(acwrShow):'—')+' — alle Werte read-only aus den kanonischen Verträgen. Grenzen setzt weiterhin der Plan. Kein UI-Rechenweg.';}
-  if(!heroP)heroP=GM_NA+' — die Entscheidung erscheint nach dem Check-in aus der kanonischen Engine. ORVIA erfindet keine Erkenntnis.';
-  var h='<div class="decision-hero"><div class="eyebrow">Wichtigste Erkenntnis heute</div><h2>'+gmEsc(heroT)+'</h2><p>'+gmEsc(heroP)+'</p>'+
+  if(d&&lvl==='p'){heroP='' + _uiT('ui.readiness_') + ''+(sc&&sc.score!=null?sc.score:'—')+'' + _uiT('ui.ctl') + ''+(ctl!=null?ctl:'—')+'' + _uiT('ui.acwr') + ''+(acwrShow!=null?fmtDe(acwrShow):'—')+'' + _uiT('ui.alle_werte_read_only_aus') + '';}
+  if(!heroP)heroP=GM_NA+'' + _uiT('ui.die_entscheidung_erscheint_nach_dem') + '';
+  var h='<div class="decision-hero"><div class="eyebrow">' + _uiT('ui.wichtigste_erkenntnis_heute') + '</div><h2>'+gmEsc(heroT)+'</h2><p>'+gmEsc(heroP)+'</p>'+
     '<div class="decision-actions"><button onclick="gmAnaGoPlan()">Im Plan ansehen</button><button onclick="gmSetAnaSeg(\'endurance\')">Daten prüfen</button></div></div>';
   /* 4 KPI-Slots — nur kanonische Werte */
   var kpis=[
     [sc&&sc.score!=null?String(sc.score):'—','Readiness',sc&&sc.status?gmEsc(sc.status.l):'—'],
-    [ctl!=null?String(ctl):'—','Fitness · CTL',lvl==='p'?('sRPE-Skala · ATL '+(atl!=null?atl:'—')):(ctl!=null?'sRPE-Skala · 42 T.':'—')],
-    [acwrShow!=null?fmtDe(acwrShow):'—','Belastung ACWR',acwrShow!=null?'Lastmodell':'—'],
+    [ctl!=null?String(ctl):'—','' + _uiT('ui.fitness_ctl_') + '',lvl==='p'?('' + _uiT('ui.srpe_skala_atl') + ''+(atl!=null?atl:'—')):(ctl!=null?'' + _uiT('ui.srpe_skala_42_t') + '':'—')],
+    [acwrShow!=null?fmtDe(acwrShow):'—','' + _uiT('ui.belastung_acwr') + '',acwrShow!=null?'Lastmodell':'—'],
     (function(){/* GM7: Planerfuellung aus dem kanonischen Plan-Ist-Abgleich (7 Tage) */
       try{if(typeof planActualResolveForDates==='function'&&Calc.resolvePlanActual){
         var ds=[];var now=new Date();for(var i=6;i>=0;i--){var dd=new Date(now);dd.setDate(now.getDate()-i);ds.push(todayStr(dd));}
         var pr=planActualResolveForDates(ds)||{};var occ=pr.byOcc||{};var tot=0,donec=0;
         Object.keys(occ).forEach(function(k){tot++;if(occ[k]&&occ[k].state==='completed')donec++;});
-        if(tot>0)return [Math.round(donec/tot*100)+'%','Planerfüllung','7 Tage · '+donec+'/'+tot];
+        if(tot>0)return [Math.round(donec/tot*100)+'%','Planerfüllung','' + _uiT('ui.7_tage') + ''+donec+'/'+tot];
       }}catch(_){ }
-      return ['—','Planerfüllung','kein Plan-Ist-Abgleich'];})()
+      return ['—','Planerfüllung','' + _uiT('ui.kein_plan_ist_abgleich') + ''];})()
   ];
   /* Phase 4 (P2-2a): 4 Kacheln als 2×2 — bei repeat(auto-fit) wurden es 4 Spalten à ~62 px
      Inhaltsbreite, „PLANERFÜLLUNG" (≈78 px) lief über. */
   h+='<div class="kpi-row" style="grid-template-columns:repeat(2,1fr)">'+kpis.map(function(k){return '<div class="kpi"><b>'+k[0]+'</b><span>'+k[1]+'</span><small>'+k[2]+'</small></div>';}).join('')+'</div>';
   /* Form & Belastbarkeit — Serie ausschließlich Calc.loadSeries (Form/TSB) */
-  h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' Form &amp; Belastbarkeit</div><span class="more">14 Tage</span></div>'+
-    (ctx.ok?'<div class="oc2" id="gmAnaChart"></div>':gmAnaChartEmpty((ctx.lcc&&ctx.lcc.ctlAtlNote)?ctx.lcc.ctlAtlNote:GM_NA+' — die Form-Kurve erscheint ab 14 Tagen belastbarer Lasthistorie. Keine nachgebaute Kurve.'))+'</div>';
+  h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' ' + _uiT('ui.form') + '&amp; Belastbarkeit</div><span class="more">' + _uiT('ui.14_tage') + '</span></div>'+
+    (ctx.ok?'<div class="oc2" id="gmAnaChart"></div>':gmAnaChartEmpty((ctx.lcc&&ctx.lcc.ctlAtlNote)?ctx.lcc.ctlAtlNote:GM_NA+'' + _uiT('ui.die_form_kurve_erscheint_ab') + ''))+'</div>';
   /* 3 Insight-Slots: Safety-Warnung zuerst (in allen Modi), dann weekInsights, Rest Missing */
-  h+='<div class="sectlabel" data-gm-slot="analysis-insights">Was ORVIA daraus macht</div>';
+  h+='<div class="sectlabel" data-gm-slot="analysis-insights">' + _uiT('ui.was_orvia_daraus_macht') + '</div>';
   var slots=[];
   if(d&&d.warnings&&d.warnings.length){d.warnings.slice(0,3).forEach(function(w){slots.push({ic:'alert',b:w[1]||'Hinweis',p:w[2]||'',il:'Safety',ir:'Beachten'});});}
   var ins=[];try{ins=(typeof weekInsights==='function')?(weekInsights()||[]):[];}catch(_){ }
@@ -9608,38 +9637,38 @@ function gmAnaOverview(ctx){
       var tips=(typeof tipEngine==='function')?(tipEngine()||[]):[];
       tips.forEach(function(t){if(slots.length>=3)return;
         slots.push({ic:t.sev>=4?'alert':t.sev>=3?'gauge':'info',b:t.title,
-          p:t.reason+' (Konfidenz: '+t.conf+')',il:'Tip-Engine',ir:t.rec||'—'});});
+          p:t.reason+'' + _uiT('ui.konfidenz') + ''+t.conf+')',il:'Tip-Engine',ir:t.rec||'—'});});
     }catch(_){ }
   }
-  while(slots.length<3)slots.push({ic:'info',b:'—',p:GM_NA+' — ORVIA zeigt hier nur echte, kanonische Muster. Es wird keine Empfehlung erfunden.',il:'Insight',ir:'—'});
+  while(slots.length<3)slots.push({ic:'info',b:'—',p:GM_NA+'' + _uiT('ui.orvia_zeigt_hier_nur_echte') + '',il:'Insight',ir:'—'});
   slots.slice(0,3).forEach(function(x){h+='<div class="insight-card"><div class="insight-head"><span>'+icon(x.ic,'sm')+'</span><div><b>'+gmEsc(x.b)+'</b></div></div><p>'+gmEsc(x.p)+'</p><div class="impact"><span>'+x.il+'</span><strong>'+gmEsc(x.ir)+'</strong></div></div>';});
   /* Fortschritt: 2 Mile-Slots — ohne kanonische Daten — + NA-Seite */
-  h+='<div class="sectlabel" data-gm-slot="analysis-progress">Fortschritt &amp; nächster Schritt</div>';
+  h+='<div class="sectlabel" data-gm-slot="analysis-progress">' + _uiT('ui.fortschritt_amp_naechster_schritt') + '</div>';
   h+=(function(){/* Naechster Meilenstein aus dem gemessenen Achievements-Modell (2026-08-04). */
     var ach=(typeof gmAchievements==='function')?gmAchievements():null;
     var nm=(typeof gmNextMilestone==='function')?gmNextMilestone(ach):null;
-    if(!nm)return '<div class="mile" role="button" tabindex="0" onclick="gmOpenAnaTeaserSheet(\'ms\')" onkeydown="if(event.key===\'Enter\')gmOpenAnaTeaserSheet(\'ms\')"><div class="mi-ic">'+icon('target','sm')+'</div><div class="mile-b"><div class="mile-t">Nächster Meilenstein: —</div><div class="mile-d">'+GM_NA+' — folgt mit deinen ersten Aktivitäten.</div><div class="mile-track"><i style="width:0%"></i></div></div>'+icon('chev','sm')+'</div>';
-    return '<div class="mile" role="button" tabindex="0" onclick="gmOpenMilestonesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenMilestonesEntry()"><div class="mi-ic">'+icon(nm.icon||'target','sm')+'</div><div class="mile-b"><div class="mile-t">Nächster Meilenstein: '+gmEsc(nm.label)+' '+gmEsc(gmAchFmtVal(nm.next,nm.unit))+'</div><div class="mile-d">Ist '+gmEsc(gmAchFmtVal(nm.current,nm.unit))+' — gemessen aus deinen Aktivitäten.</div><div class="mile-track"><i style="width:'+(nm.progress||0)+'%"></i></div></div>'+icon('chev','sm')+'</div>';})();
+    if(!nm)return '<div class="mile" role="button" tabindex="0" onclick="gmOpenAnaTeaserSheet(\'ms\')" onkeydown="if(event.key===\'Enter\')gmOpenAnaTeaserSheet(\'ms\')"><div class="mi-ic">'+icon('target','sm')+'</div><div class="mile-b"><div class="mile-t">' + _uiT('ui.naechster_meilenstein') + '</div><div class="mile-d">'+GM_NA+' — folgt mit deinen ersten ' + _uiT('ui.aktivitaeten_') + '.</div><div class="mile-track"><i style="width:0%"></i></div></div>'+icon('chev','sm')+'</div>';
+    return '<div class="mile" role="button" tabindex="0" onclick="gmOpenMilestonesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenMilestonesEntry()"><div class="mi-ic">'+icon(nm.icon||'target','sm')+'</div><div class="mile-b"><div class="mile-t">Nächster ' + _uiT('ui.meilenstein') + ': '+gmEsc(nm.label)+' '+gmEsc(gmAchFmtVal(nm.next,nm.unit))+'</div><div class="mile-d">Ist '+gmEsc(gmAchFmtVal(nm.current,nm.unit))+' — gemessen aus deinen ' + _uiT('ui.aktivitaeten_') + '.</div><div class="mile-track"><i style="width:'+(nm.progress||0)+'%"></i></div></div>'+icon('chev','sm')+'</div>';})();
   h+=(function(){/* GM7: Bestzeiten aus bestTimes() (kanonisch, gleicher Renderer wie Profil) */
     var bt=null;try{bt=(typeof bestTimes==='function')?bestTimes():null;}catch(_){ }
     var fs0=function(sec){var m2=Math.floor(sec/60),ss=Math.round(sec%60);return m2+':'+String(ss).padStart(2,'0');};
-    var t2=(bt&&bt.t5!=null)?('5 km '+fs0(bt.t5)+(bt.real.k5?'':' (Prognose)')):(bt&&bt.t10!=null)?('10 km '+fs0(bt.t10)+(bt.real.k10?'':' (Prognose)')):null;
+    var t2=(bt&&bt.t5!=null)?('5 km '+fs0(bt.t5)+(bt.real.k5?'':'' + _uiT('ui.prognose') + '')):(bt&&bt.t10!=null)?('10 km '+fs0(bt.t10)+(bt.real.k10?'':'' + _uiT('ui.prognose') + '')):null;
     /* KF-021: die Unterzeile nennt die tatsaechliche Quelle des angezeigten Werts. */
-    var d2=t2?(bt.n+' Läufe ausgewertet · '+gmBtSrcLabel(bt,(bt.t5!=null?'k5':'k10'))):(GM_NA+' — keine erfundene Bestzeit.');
-    return '<div class="mile" role="button" tabindex="0" onclick="gmOpenBestTimesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenBestTimesEntry()"><div class="mi-ic">'+icon('bolt','sm')+'</div><div class="mile-b"><div class="mile-t">'+(t2?'Beste Zeit: '+gmEsc(t2):'Letzte Bestzeit: —')+'</div><div class="mile-d">'+gmEsc(d2)+'</div></div>'+icon('chev','sm')+'</div>';})();
+    var d2=t2?(bt.n+'' + _uiT('ui.laeufe_ausgewertet') + ''+gmBtSrcLabel(bt,(bt.t5!=null?'k5':'k10'))):(GM_NA+'' + _uiT('ui.keine_erfundene_bestzeit') + '');
+    return '<div class="mile" role="button" tabindex="0" onclick="gmOpenBestTimesEntry()" onkeydown="if(event.key===\'Enter\')gmOpenBestTimesEntry()"><div class="mi-ic">'+icon('bolt','sm')+'</div><div class="mile-b"><div class="mile-t">'+(t2?'' + _uiT('ui.beste_zeit') + ''+gmEsc(t2):'' + _uiT('ui.letzte_bestzeit') + '')+'</div><div class="mile-d">'+gmEsc(d2)+'</div></div>'+icon('chev','sm')+'</div>';})();
   return h;
 }
 function gmAnaGoPlan(){try{var b=document.querySelector('.tabbar button[data-tab="plan"]');if(b){b.click();return;}}catch(_){ }try{if(typeof showTab==='function')showTab('plan');}catch(_){ }}
 /* --- Ausdauer --- */
 function gmAnaEndurance(ctx){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var sub=lvl==='a'?'Deine Fitness und Form auf einen Blick':lvl==='p'?'Form/Fitness-Modell, Schwellen und Prognosen':'Form, Belastung und Entwicklung je Sportart';
-  var h='<div class="body-head"><div class="ana-kick">Ausdauer</div><div class="ana-sub">'+sub+'</div></div>';
+  var sub=lvl==='a'?'' + _uiT('ui.deine_fitness_und_form_auf') + '':lvl==='p'?'' + _uiT('ui.form_fitness_modell_schwellen_und') + '':'' + _uiT('ui.form_belastung_und_entwicklung_je') + '';
+  var h='<div class="body-head"><div class="ana-kick">' + _uiT('ui.ausdauer') + '</div><div class="ana-sub">'+sub+'</div></div>';
   /* Form & Fitness — D1-Anbindung (CTL/ATL/TSB read-only) */
-  var note=lvl==='a'?'Gold steigend = du wirst fitter.':lvl==='p'?'CTL = 42-Tage-EWMA der Tageslast (sRPE = min × RPE, keine TSS-Skala), ATL = 7-Tage-EWMA, Form = CTL − ATL — read-only.':'Fitness baut sich über Wochen auf, Ermüdung über Tage — Form ist die Differenz. Skala: sRPE-Last.';
-  var ffLegend='<div class="dist-leg" style="margin-top:6px"><span><i style="background:var(--gold-soft,#c9ae7c)"></i>CTL (Fitness)</span><span><i style="background:var(--crit)"></i>ATL (Ermüdung)</span><span><i style="background:var(--ready)"></i>Form (TSB)</span></div>';
-  h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' Form &amp; Fitness</div><span class="more">42 Tage</span></div>'+
-    (ctx.ok?'<div class="oc2" id="gmFFChart"></div>'+ffLegend:gmAnaChartEmpty((ctx.lcc&&ctx.lcc.ctlAtlNote)?ctx.lcc.ctlAtlNote:GM_NA+' — CTL/ATL erscheinen ab 14 Tagen belastbarer Lasthistorie.'))+
+  var note=lvl==='a'?'' + _uiT('ui.gold_steigend_du_wirst_fitter') + '':lvl==='p'?'' + _uiT('ui.ctl_42_tage_ewma_der_') + '':'' + _uiT('ui.fitness_baut_sich_ueber_wochen_') + '';
+  var ffLegend='<div class="dist-leg" style="margin-top:6px"><span><i style="background:var(--gold-soft,#c9ae7c)"></i>' + _uiT('ui.ctl_fitness') + '</span><span><i style="background:var(--crit)"></i>' + _uiT('ui.atl_ermuedung') + '</span><span><i style="background:var(--ready)"></i>' + _uiT('ui.form_tsb') + '</span></div>';
+  h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' ' + _uiT('ui.form') + '&amp; Fitness</div><span class="more">' + _uiT('ui.42_tage') + '</span></div>'+
+    (ctx.ok?'<div class="oc2" id="gmFFChart"></div>'+ffLegend:gmAnaChartEmpty((ctx.lcc&&ctx.lcc.ctlAtlNote)?ctx.lcc.ctlAtlNote:GM_NA+'' + _uiT('ui.ctl_atl_erscheinen_ab_14') + ''))+
     '<div class="mini-note">'+icon('info','xs')+'<div>'+note+'</div></div></div>';
   /* 4 KPI — VO₂max/Schwelle aus Resolver, Wochen-km/Ausdauerdauer aus Wochenvertrag */
   var res=gmAnaResolved();
@@ -9655,9 +9684,9 @@ function gmAnaEndurance(ctx){
   }catch(_){ }
   var kv=[
     [vo2?fmtDe(vo2.value):'—','VO₂max',lvl==='a'?'—':(vo2?'Resolver':'—')],
-    [thr?(Calc&&Calc.fmtPace?Calc.fmtPace(thr.value):fmtDe(thr.value)):'—','Schwelle /km',lvl==='a'?'':(thr?'LT-Pace':'—')],
+    [thr?(Calc&&Calc.fmtPace?Calc.fmtPace(thr.value):fmtDe(thr.value)):'—','' + _uiT('ui.schwelle_km') + '',lvl==='a'?'':(thr?'LT-Pace':'—')],
     [rkm!=null?fmtDe(rkm):'—','Wochen-km','Laufen'],
-    [endMin!=null?gmActFmtMin(endMin):'—','Ausdauer h','Woche']
+    [endMin!=null?gmActFmtMin(endMin):'—','' + _uiT('ui.ausdauer_h') + '','Woche']
   ];
   /* Phase 4 (P2-2a): 4 Kacheln als 2×2 (gleiche Ursache wie Übersicht). */
   h+='<div class="kpi-row" style="grid-template-columns:repeat(2,1fr)">'+kv.map(function(k){return '<div class="kpi"><b>'+gmEsc(k[0])+'</b><span>'+k[1]+'</span><small>'+k[2]+'</small></div>';}).join('')+'</div>';
@@ -9665,9 +9694,9 @@ function gmAnaEndurance(ctx){
   if(lvl!=='a'){
     var wkm=[];var wkOk=true;
     for(var o=5;o>=0;o--){var v=null;try{v=weekRunKm(o);}catch(_){ }wkm.push(v);if(v==null)wkOk=false;}
-    h+='<div class="card"><div class="ctitle"><div class="l">'+icon('activity')+' Wochenvolumen Laufen</div><span class="more">6 Wochen</span></div>'+
-      (wkOk?'<div class="oc2" id="gmVolChart"></div>':gmAnaChartEmpty(GM_NA+' — für Wochen ohne belastbare kanonische Aggregation zeigt ORVIA keinen Balken: '+wkm.map(function(v){return v==null?'—':fmtDe(v);}).join(' · ')))+
-      '<div class="mini-note">'+icon('info','xs')+'<div>Ist-Kilometer aus der kanonischen Wochenaggregation — Tageskilometer werden nie als Longrun gewertet.</div></div></div>';
+    h+='<div class="card"><div class="ctitle"><div class="l">'+icon('activity')+' Wochenvolumen Laufen</div><span class="more">' + _uiT('ui.6_wochen') + '</span></div>'+
+      (wkOk?'<div class="oc2" id="gmVolChart"></div>':gmAnaChartEmpty(GM_NA+'' + _uiT('ui.fuer_wochen_ohne_belastbare_kanonische') + ''+wkm.map(function(v){return v==null?'—':fmtDe(v);}).join(' · ')))+
+      '<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.ist_kilometer_aus_der_kanonischen') + '</div></div></div>';
   }
   /* GM7: Wettkampfprognose aus bestTimes() (Riegel-Modell) — klar als Prognose, nie als Messung. */
   h+=(function(){
@@ -9675,11 +9704,12 @@ function gmAnaEndurance(ctx){
     var hmSec=null;try{if(bt&&bt.t10!=null&&Calc.riegelHM){var _m=Calc.riegelHM(10,bt.t10/60);if(_m!=null)hmSec=Math.round(_m*60);}}catch(_){ }
     var fs=function(sec){if(sec==null)return null;var h2=Math.floor(sec/3600),m2=Math.floor((sec%3600)/60),ss=Math.round(sec%60);
       return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(ss).padStart(2,'0')):(m2+':'+String(ss).padStart(2,'0'));};
-    var rows=[['5 km',bt?bt.t5:null,bt&&bt.real.k5],['10 km',bt?bt.t10:null,bt&&bt.real.k10],['Halbmarathon',hmSec,false]];
+    /* S1/E1: ein GEMESSENER Halbmarathon (k21) schlaegt die Riegel-Prognose aus 10 km. */
+    var rows=[['5 km',bt?bt.t5:null,bt&&bt.real.k5],['10 km',bt?bt.t10:null,bt&&bt.real.k10],(bt&&bt.real&&bt.real.k21)?['Halbmarathon',bt.t21,true]:['Halbmarathon',hmSec,false]];
     var body=rows.map(function(r2){var v=r2[1];
-      return '<div class="calc-field" style="margin-bottom:8px"><label>'+r2[0]+'</label><div style="text-align:right"><b style="font-size:16px">'+(v!=null?gmEsc(fs(v)):'—')+'</b><div style="font-size:10px;color:var(--muted)">'+(v!=null?(r2[2]?'echte Bestzeit':'Prognose (Riegel)'):'—')+'</div></div></div>';}).join('');
-    var noteP=bt?('Prognose aus deinem schnellsten Lauf ('+bt.n+' Läufe, Riegel-Exponent 1,06). Keine Garantie — Unsicherheit steigt mit der Distanz. „Echte Bestzeit" = gemessene Leistung.'):(GM_NA+' — noch keine auswertbaren Läufe für eine Prognose.');
-    return '<div class="sectlabel" data-gm-slot="analysis-race-forecast">Wettkampfprognose</div><div class="card"><div class="link-row">'+body+'</div><div class="mini-note">'+icon('info','xs')+'<div>'+noteP+'</div></div></div>';})();
+      return '<div class="calc-field" style="margin-bottom:8px"><label>'+r2[0]+'</label><div style="text-align:right"><b style="font-size:16px">'+(v!=null?gmEsc(fs(v)):'—')+'</b><div style="font-size:10px;color:var(--muted)">'+(v!=null?(r2[2]?'' + _uiT('ui.echte_bestzeit') + '':'' + _uiT('ui.prognose_riegel') + ''):'—')+'</div></div></div>';}).join('');
+    var noteP=bt?('' + _uiT('ui.prognose_aus_deinem_schnellsten_lauf') + ''+bt.n+'' + _uiT('ui.laeufe_riegel_exponent_1_06') + ''):(GM_NA+'' + _uiT('ui.noch_keine_auswertbaren_laeufe_fuer') + '');
+    return '<div class="sectlabel" data-gm-slot="analysis-race-forecast">' + _uiT('ui.wettkampfprognose') + '</div><div class="card"><div class="link-row">'+body+'</div><div class="mini-note">'+icon('info','xs')+'<div>'+noteP+'</div></div></div>';})();
   /* GM7.4-A: Garmin-eigene Wettkampfprognosen (race_prediction_*, gemessen von der
      Uhr) — separat und quellen-etikettiert neben der Riegel-Prognose. NUR anzeigen,
      wenn tatsächlich Werte gespeichert sind (kein erfundener Platzhalter). */
@@ -9690,16 +9720,16 @@ function gmAnaEndurance(ctx){
     var fs2=function(sec){if(sec==null)return '—';var h2=Math.floor(sec/3600),m2=Math.floor((sec%3600)/60),ss=Math.round(sec%60);
       return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(ss).padStart(2,'0')):(m2+':'+String(ss).padStart(2,'0'));};
     var body2=got.map(function(g){return '<div class="calc-field" style="margin-bottom:8px"><label>'+g.l+'</label><div style="text-align:right"><b style="font-size:16px">'+(g.v!=null?gmEsc(fs2(g.v)):'—')+'</b><div style="font-size:10px;color:var(--muted)">'+(g.v!=null?'Garmin-Prognose':'—')+'</div></div></div>';}).join('');
-    return '<div class="sectlabel">Garmin-Wettkampfprognose</div><div class="card"><div class="link-row">'+body2+'</div><div class="mini-note">'+icon('info','xs')+'<div>Von der Uhr gemessene Prognose (Garmin), unabhängig vom Riegel-Modell aus deinen Läufen.</div></div></div>';})();
+    return '<div class="sectlabel">' + _uiT('ui.garmin_wettkampfprognose') + '</div><div class="card"><div class="link-row">'+body2+'</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.von_der_uhr_gemessene_prognose') + '</div></div></div>';})();
   /* GM7.4-2: Group-1 Leistungswerte (Worker-produziert, generisches Detail-Sheet).
      Nur Kacheln mit echtem Wert (fehlend ⇒ keine Kachel, nie 0). Stale sichtbar. */
   h+=(function(){
-    var perf=[['vo2max_running','VO₂max Lauf','pulse'],['vo2max_cycling','VO₂max Rad','pulse'],['endurance_score','Endurance','activity'],['running_tolerance','Run-Toleranz','activity'],['fitness_age','Fitnessalter','pulse'],['respiration_avg','Atemfrequenz','wind']];
+    var perf=[['vo2max_running','' + _uiT('ui.vo_max_lauf') + '','pulse'],['vo2max_cycling','' + _uiT('ui.vo_max_rad') + '','pulse'],['endurance_score','Endurance','activity'],['running_tolerance','Run-Toleranz','activity'],['fitness_age','Fitnessalter','pulse'],['respiration_avg','Atemfrequenz','wind']];
     var tiles='',any=false;
     perf.forEach(function(p){var r=gmAnaMetric(res,p[0]);if(!r||r.value==null)return;any=true;
       var stale=r.stale?' <span class="rcv-stale">veraltet</span>':'';
       tiles+='<div class="kcard tap" role="button" tabindex="0" onclick="openMetric(\''+p[0]+'\')" onkeydown="if(event.key===\'Enter\')openMetric(\''+p[0]+'\')"><div class="kc-h"><span class="kc-ic">'+icon(p[2],'sm')+'</span><span class="kc-l">'+p[1]+'</span></div><div class="kc-v">'+gmEsc(fmtDe(r.value))+stale+'</div></div>';});
-    return any?('<div class="sectlabel">Leistungswerte <span class="ana-count">tippen für Details</span></div><div class="kgrid">'+tiles+'</div>'):'';
+    return any?('<div class="sectlabel">' + _uiT('ui.leistungswerte') + '<span class="ana-count">' + _uiT('ui.tippen_fuer_details') + '</span></div><div class="kgrid">'+tiles+'</div>'):'';
   })();
   /* Schnellzugriff — bestehende Einstiege bzw. ehrliches NA. Unterzeile Bestzeiten aus
      derselben Quelle wie der Direct-Entry (gmOpenBestTimesEntry) — kein Widerspruch
@@ -9707,12 +9737,12 @@ function gmAnaEndurance(ctx){
   var _btSub2=(function(){var b2=null;try{b2=(typeof bestTimes==='function')?bestTimes():null;}catch(_){return '—';}
     if(!b2)return '—';
     var fs2=function(sec){var m=Math.floor(sec/60),ss=Math.round(sec%60);return m+':'+String(ss).padStart(2,'0');};
-    if(b2.t5!=null)return '5 km '+fs2(b2.t5)+(b2.real&&b2.real.k5?'':' (Prognose)');
-    if(b2.t10!=null)return '10 km '+fs2(b2.t10)+(b2.real&&b2.real.k10?'':' (Prognose)');
+    if(b2.t5!=null)return '5 km '+fs2(b2.t5)+(b2.real&&b2.real.k5?'':'' + _uiT('ui.prognose') + '');
+    if(b2.t10!=null)return '10 km '+fs2(b2.t10)+(b2.real&&b2.real.k10?'':'' + _uiT('ui.prognose') + '');
     return '—';})();
-  h+='<div class="sectlabel" data-gm-slot="analysis-quick-access">Schnellzugriff</div><div class="hub-actions">'+
+  h+='<div class="sectlabel" data-gm-slot="analysis-quick-access">' + _uiT('ui.schnellzugriff') + '</div><div class="hub-actions">'+
     '<button class="hub-act" onclick="gmOpenBestTimesEntry()"><span class="ha-ic">'+icon('bolt','sm')+'</span><div><b>Bestzeiten</b><span>'+gmEsc(_btSub2)+'</span></div></button>'+
-    '<button class="hub-act" onclick="gmOpenPaceCalcSheet()"><span class="ha-ic">'+icon('gauge','sm')+'</span><div><b>Pace-Rechner</b><span>Zielzeit, Pace und Prognose</span></div></button>'+
+    '<button class="hub-act" onclick="gmOpenPaceCalcSheet()"><span class="ha-ic">'+icon('gauge','sm')+'</span><div><b>' + _uiT('ui.pace_rechner') + '</b><span>' + _uiT('ui.zielzeit_pace_und_prognose') + '</span></div></button>'+
     (function(){/* Unterzeilen aus dem gemessenen Achievements-Modell; ohne Daten ehrliches NA-Sheet. */
       var ach=(typeof gmAchievements==='function')?gmAchievements():null;
       var nm=(typeof gmNextMilestone==='function')?gmNextMilestone(ach):null;
@@ -9724,25 +9754,25 @@ function gmAnaEndurance(ctx){
 }
 /* --- Erholung --- */
 var GM_RCV_TILES=[
-  {id:'sleep_duration_min',label:'Schlaf',ic:'moon'},
+  {id:'sleep_duration_min',label:'' + _uiT('ui.schlaf') + '',ic:'moon'},
   {id:'hrv_ms',label:'HRV',ic:'pulse'},
   {id:'resting_hr',label:'Ruhepuls',ic:'heart'},
   {id:'stress_avg',label:'Stress',ic:'gauge'},
   {id:'body_battery',label:'Body Battery',ic:'battery'},
-  {id:'recovery_time_h',label:'Recovery Time',ic:'heart'},
+  {id:'recovery_time_h',label:'' + _uiT('ui.recovery_time') + '',ic:'heart'},
   /* GM7.4-2: Group-1 load_recovery (Garmin-Provider-Werte, keine ORVIA-Scores) */
   {id:'training_readiness',label:'Readiness',ic:'bolt'},
-  {id:'acute_load',label:'Acute Load',ic:'gauge'},
-  {id:'load_ratio',label:'Load Ratio',ic:'gauge'}
+  {id:'acute_load',label:'' + _uiT('ui.acute_load') + '',ic:'gauge'},
+  {id:'load_ratio',label:'' + _uiT('ui.load_ratio') + '',ic:'gauge'}
 ];
 function gmAnaRecovery(){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var sub=lvl==='a'?'Wie gut du dich erholst':lvl==='p'?'Resolver-Snapshot: Werte, Quelle, Freshness':'Schlaf, HRV, Stress und Energie im Zusammenhang';
-  var h='<div class="body-head"><div class="ana-kick">Erholung</div><div class="ana-sub">'+sub+'</div></div>';
+  var sub=lvl==='a'?'' + _uiT('ui.wie_gut_du_dich_erholst') + '':lvl==='p'?'' + _uiT('ui.resolver_snapshot_werte_quelle_freshness') + '':'' + _uiT('ui.schlaf_hrv_stress_und_energie') + '';
+  var h='<div class="body-head"><div class="ana-kick">' + _uiT('ui.erholung_') + '</div><div class="ana-sub">'+sub+'</div></div>';
   /* GM7: Es fehlt der kanonische Erholungs-COMPOSITE (den erfindet ORVIA weiterhin nicht).
      Die vier kanonischen Einzelserien existieren und werden hier direkt gezeigt. */
   h+=(function(){
-    var defs=[['sleep_duration_min','Schlaf','sleep',function(v){return fmtDe(v/60)+' h';}],
+    var defs=[['sleep_duration_min','' + _uiT('ui.schlaf') + '','sleep',function(v){return fmtDe(v/60)+' h';}],
       ['hrv_ms','HRV','ready',function(v){return fmtDe(v)+' ms';}],
       ['resting_hr','Ruhepuls','crit',function(v){return fmtDe(v)+' bpm';}],
       ['body_battery','Body Battery','activity',function(v){return fmtDe(v);}]];
@@ -9752,11 +9782,11 @@ function gmAnaRecovery(){
       if(ser&&ser.values.length>=3){any=true;
         rows2+='<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair)"><div style="width:92px;font-size:11.5px;font-weight:700;color:var(--muted)">'+df[1]+'</div><div style="flex:1;min-width:0">'+sparkline(ser.values,SC[df[2]]||'var(--ready)')+'</div><div style="width:70px;text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+gmEsc(df[3](ser.values[ser.values.length-1]))+'</div></div>';
       }else{
-        rows2+='<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair)"><div style="width:92px;font-size:11.5px;font-weight:700;color:var(--muted)">'+df[1]+'</div><div style="flex:1;font-size:10.5px;color:var(--faint)">'+(ser?'erst '+ser.values.length+' Messwert(e)':'keine Serie gespeichert')+'</div><div style="width:70px;text-align:right;font-size:13px;font-weight:800;color:var(--muted)">—</div></div>';
+        rows2+='<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair)"><div style="width:92px;font-size:11.5px;font-weight:700;color:var(--muted)">'+df[1]+'</div><div style="flex:1;font-size:10.5px;color:var(--faint)">'+(ser?'erst '+ser.values.length+'' + _uiT('ui.messwert_e') + '':'' + _uiT('ui.keine_serie_gespeichert') + '')+'</div><div style="width:70px;text-align:right;font-size:13px;font-weight:800;color:var(--muted)">—</div></div>';
       }});
-    var note2=lvl==='p'?'Einzelserien aus dem kanonischen Metrik-Speicher (14 T.). Ein Erholungs-Composite existiert als Vertrag nicht — ORVIA berechnet keinen Ersatz im UI.':'Deine gemessenen Erholungswerte der letzten 14 Tage. Einen zusammengefassten Erholungswert gibt es erst mit dem entsprechenden Datenvertrag.';
-    return '<div class="card"><div class="ctitle"><div class="l">'+icon('moon')+' Erholungstrend</div><span class="more">14 Tage</span></div>'+
-      (any?rows2:gmAnaChartEmpty(GM_NA+' — noch keine gespeicherten Erholungsserien (min. 3 Messtage je Wert).'))+
+    var note2=lvl==='p'?'' + _uiT('ui.einzelserien_aus_dem_kanonischen_metrik') + '':'' + _uiT('ui.deine_gemessenen_erholungswerte_der_letzten') + '';
+    return '<div class="card"><div class="ctitle"><div class="l">'+icon('moon')+' Erholungstrend</div><span class="more">' + _uiT('ui.14_tage') + '</span></div>'+
+      (any?rows2:gmAnaChartEmpty(GM_NA+'' + _uiT('ui.noch_keine_gespeicherten_erholungsserien_min') + ''))+
       '<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div>'+note2+'</div></div></div>';})();
   /* GM6.1 §3: gmAnaResolved() MUSS vor der Zustandsabfrage laufen — der Aufruf
      startet den bereits vorhandenen Resolver-Ladevorgang und setzt _gmAnaState.
@@ -9767,10 +9797,10 @@ function gmAnaRecovery(){
      Rein visuelle Orchestrierung: kein zusaetzlicher Netzwerkaufruf, keine
      kuenstliche Wartezeit, keine Datenlogik. */
   var res=gmAnaResolved();
-  h+='<div class="sectlabel" data-gm-slot="analysis-recovery-all">Alle Erholungswerte <span class="ana-count">'+(_gmAnaState==='loading'?'wird geladen':_gmAnaState==='error'?'nicht verfügbar':'tippen für Details')+'</span></div>';
+  h+='<div class="sectlabel" data-gm-slot="analysis-recovery-all">' + _uiT('ui.alle_erholungswerte') + '<span class="ana-count">'+(_gmAnaState==='loading'?'wird geladen':_gmAnaState==='error'?'' + _uiT('ui.nicht_verfuegbar__') + '':'' + _uiT('ui.tippen_fuer_details') + '')+'</span></div>';
   if(_gmAnaState==='error'){
-    h+=gmStateError({icon:'wifi',title:'Erholungswerte konnten nicht geladen werden.',
-      desc:'Die Werte sind unbekannt — ORVIA zeigt hier bewusst keine 0 und keinen Ersatzwert.',
+    h+=gmStateError({icon:'wifi',title:'' + _uiT('ui.erholungswerte_konnten_nicht_geladen_werden') + '',
+      desc:'' + _uiT('ui.die_werte_sind_unbekannt_orvia') + '',
       retry:'gmAnaRetry()'});
   }else if(_gmAnaState==='loading'){
     h+='<div class="kgrid">'+gmStateLoading({kind:'kcard',bare:false,blocks:GM_RCV_TILES.length})+'</div>';
@@ -9789,7 +9819,7 @@ function gmAnaRecovery(){
     h+='</div>';
   }
   if(lvl!=='a'){
-    h+='<div class="insight-card"><div class="insight-head"><span>'+icon('info','sm')+'</span><div><b>Zusammenhang</b></div></div><p>'+(lvl==='p'?GM_NA+' — keine kanonische Zusammenhangsanalyse. ORVIA erfindet keine Korrelation und keine Kausalität — es zählt nur der echte, kanonische Vertrag.':GM_NA+' — keine kanonische Analyse.')+'</p><div class="impact"><span>Empfehlung</span><strong>—</strong></div></div>';
+    h+='<div class="insight-card"><div class="insight-head"><span>'+icon('info','sm')+'</span><div><b>Zusammenhang</b></div></div><p>'+(lvl==='p'?GM_NA+'' + _uiT('ui.keine_kanonische_zusammenhangsanalyse_orvia_erfindet') + '':GM_NA+'' + _uiT('ui.keine_kanonische_analyse') + '')+'</p><div class="impact"><span>' + _uiT('ui.empfehlung_') + '</span><strong>—</strong></div></div>';
   }
   /* Phase 3 · Block 2 (2026-08-05): Belastungsrisiko + Regenerationsdefizit —
      die strukturierten Produzenten (riskCard/recoveryDebt, intelligence.js)
@@ -9799,22 +9829,22 @@ function gmAnaRecovery(){
      Produzenten bleibt: sie widersprechen nie der Tagesentscheidung. */
   if((typeof gmFeatureFlag!=='function'||gmFeatureFlag('recoveryIntel'))
      &&typeof riskCard==='function'&&typeof recoveryDebt==='function'){
-    h+='<div class="sectlabel" data-gm-slot="recovery-risk">Belastungsrisiko &amp; Regeneration</div>';
+    h+='<div class="sectlabel" data-gm-slot="recovery-risk">' + _uiT('ui.belastungsrisiko_amp_regeneration') + '</div>';
     var _dd3=0;try{_dd3=(typeof dataDays==='function')?dataDays():0;}catch(_){ }
     if(_dd3<4){
-      h+='<div class="card"><p class="muted" style="margin:0">'+GM_NA+' — belastbar ab ~7 Tagen Check-in-Daten (aktuell '+_dd3+').</p></div>';
+      h+='<div class="card"><p class="muted" style="margin:0">'+GM_NA+'' + _uiT('ui.belastbar_ab_7_tagen_check') + ''+_dd3+').</p></div>';
     }else{
       try{
         var _rk=riskCard(),_rd3=recoveryDebt();
         var _cmap={g:'var(--ready)',y:'var(--attention)',r:'var(--crit)'};
         var _mk3=function(title,d){
           return '<div class="card"><div class="ctitle"><div class="l">'+icon(title==='Belastungsrisiko'?'shield':'heart')+' '+title+'</div>'+
-            '<span class="pill-badge" style="background:transparent;color:'+(_cmap[d.state.c]||'var(--muted)')+';border:1px solid currentColor">'+gmEsc(d.state.l)+'</span></div>'+
+            '<span class="pill-badge" style="background:transparent;color:'+(_cmap[d.state.c]||'var(--muted)')+'' + _uiT('ui.border_1px_solid_currentcolor') + ''+gmEsc(d.state.l)+'</span></div>'+
             '<div class="bar-mini" style="margin:8px 0 10px"><i style="width:'+d.score+'%;background:'+(_cmap[d.state.c]||'var(--muted)')+'"></i></div>'+
             (d.why&&d.why.length?'<p style="margin:0 0 6px;font-size:12px;color:var(--muted)">'+gmEsc(d.why.join(' · '))+'</p>':'')+
-            '<div class="mini-note">'+icon('info','xs')+'<div><b>Empfehlung:</b> '+gmEsc(d.rec)+'</div></div></div>';};
+            '<div class="mini-note">'+icon('info','xs')+'<div><b>' + _uiT('ui.empfehlung') + '</b> '+gmEsc(d.rec)+'</div></div></div>';};
         h+=_mk3('Belastungsrisiko',_rk)+_mk3('Regenerationsdefizit',_rd3);
-        h+='<div class="mini-note" style="margin:2px 18px 0">'+icon('db','xs')+'<div>Regelbasierte Heuristik aus Check-ins, HRV/Ruhepuls-Baselines und Wochenvolumen · Datenbasis '+_dd3+' Tage · kein Ersatz für die Tagesentscheidung.</div></div>';
+        h+='<div class="mini-note" style="margin:2px 18px 0">'+icon('db','xs')+'<div>Regelbasierte Heuristik aus Check-ins, HRV/Ruhepuls-Baselines und Wochenvolumen · Datenbasis '+_dd3+'' + _uiT('ui.tage_') + ' · kein Ersatz für die Tagesentscheidung.</div></div>';
       }catch(_){ }
     }
   }
@@ -9837,11 +9867,11 @@ var GM_BODY_POS={
 /* Statusdarstellung: kanonische Engine-Keys → GM-Farben/-Symbole. KEIN Warn-Status in der
    Engine ⇒ der GM-Legendenslot „Warnung" bleibt strukturell, neutral gekennzeichnet. */
 var GM_MV_META={
-  below:{l:'Unter Ziel',c:'var(--attention)',t:'rgba(237,180,78,.16)',sym:'▽'},
-  in:{l:'Im Ziel',c:'var(--ready)',t:'rgba(67,214,147,.16)',sym:'✓'},
-  above:{l:'Über Ziel',c:'var(--activity)',t:'rgba(90,160,240,.16)',sym:'▲'},
-  low_history:{l:'Wenig Historie',c:'var(--sleep)',t:'rgba(149,133,237,.16)',sym:'~'},
-  no_data:{l:'Keine Daten',c:'var(--faint)',t:'rgba(138,147,161,.14)',sym:'–'}
+  below:{l:'' + _uiT('ui.unter_ziel_') + '',c:'var(--attention)',t:'rgba(237,180,78,.16)',sym:'▽'},
+  in:{l:'' + _uiT('ui.im_ziel_') + '',c:'var(--ready)',t:'rgba(67,214,147,.16)',sym:'✓'},
+  above:{l:'' + _uiT('ui.ueber_ziel_') + '',c:'var(--activity)',t:'rgba(90,160,240,.16)',sym:'▲'},
+  low_history:{l:'' + _uiT('ui.wenig_historie_') + '',c:'var(--sleep)',t:'rgba(149,133,237,.16)',sym:'~'},
+  no_data:{l:'' + _uiT('ui.keine_daten') + '',c:'var(--faint)',t:'rgba(138,147,161,.14)',sym:'–'}
 };
 function gmAnaBodyModel(){
   if(_gmMvModel&&_gmMvModel.days===gmBodyRange){_gmMvState=null;return _gmMvModel.model;}
@@ -9868,7 +9898,7 @@ function gmAnaBodyModel(){
   return null;
 }
 function gmMvSt(m){
-  var st=(typeof mvStatusModel==='function')?mvStatusModel(m):{key:'no_data',label:'Keine Daten',sym:'–'};
+  var st=(typeof mvStatusModel==='function')?mvStatusModel(m):{key:'no_data',label:'' + _uiT('ui.keine_daten') + '',sym:'–'};
   var meta=GM_MV_META[st.key]||GM_MV_META.no_data;
   return {key:st.key,l:meta.l,c:meta.c,t:meta.t,sym:meta.sym};
 }
@@ -9905,7 +9935,7 @@ function gmBodySVG(model,side){
   var groups={},neutral='';
   Object.keys(data).forEach(function(slug){
     var id=map[slug];
-    if(!id){data[slug].forEach(function(pts){neutral+='<polygon points="'+pts+'" fill="var(--surface-2)" stroke="rgba(0,0,0,.45)" stroke-width="0.5"/>';});return;}
+    if(!id){data[slug].forEach(function(pts){neutral+='<polygon points="'+pts+'" fill="var(--surface-2)" stroke="rgba(0,0,0,.' + _uiT('ui.45') + ')" stroke-width="0.5"/>';});return;}
     groups[id]=groups[id]||[];groups[id]=groups[id].concat(data[slug]);
   });
   var plates=Object.keys(groups).map(function(id){
@@ -9916,7 +9946,7 @@ function gmBodySVG(model,side){
     return '<g class="mgrp" role="button" tabindex="0" data-m="'+id+'" aria-label="'+gmEsc(name)+', '+gmEsc(st.l)+'" onclick="gmOpenMuscleSheet(\''+id+'\')" onkeydown="if(event.key===\'Enter\')gmOpenMuscleSheet(\''+id+'\')">'+polys+
       '<text x="'+ctr[0].toFixed(1)+'" y="'+(ctr[1]+2).toFixed(1)+'" class="mglyph" style="font-size:6px">'+st.sym+'</text></g>';
   }).join('');
-  return '<svg viewBox="0 0 100 200" class="bodysvg anat" role="img" aria-label="Anatomische Muskelkarte '+(side==='front'?'Vorderseite':'Rückseite')+'">'+neutral+plates+'</svg>';
+  return '<svg viewBox="0 0 100 200" class="bodysvg anat" role="img" aria-label="Anatomische Muskelkarte '+(side==='front'?'' + _uiT('ui.vorderseite') + '':'' + _uiT('ui.rueckseite') + '')+'">'+neutral+plates+'</svg>';
 }
 function gmMuscleTile(model,id){
   var byId={};((model&&model.muscles)||[]).forEach(function(m){byId[m.muscleId]=m;});
@@ -9930,7 +9960,7 @@ function gmMuscleTile(model,id){
   if(m&&m.confidence!=null){conf=(typeof m.confidence==='string')?(CONF_LABEL_DE[m.confidence]||m.confidence):Math.round(m.confidence*100)+'%';}
   /* v8-352: „Ziel" → „Richtwert". Der Korridor ist ein Produktwert ohne
      Quelle; wer ihn „Ziel" nennt, macht ihn zur Vorgabe. */
-  var sub=(eq!=null?fmtDe(eq)+' effektive Sätze':'—')+' · Richtwert '+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?' · Konfidenz '+conf:'');
+  var sub=(eq!=null?fmtDe(eq)+'' + _uiT('ui.effektive_saetze') + '':'—')+'' + _uiT('ui.richtwert') + ''+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?'' + _uiT('ui.konfidenz_') + ''+conf:'');
   var bar='';
   if(eq!=null&&lo!=null&&hi!=null){
     var scaleMax=Math.max(hi*1.25,eq*1.1);
@@ -9944,10 +9974,10 @@ function gmMuscleTile(model,id){
 }
 function gmAnaBody(){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var sub=lvl==='a'?'So gut deckst du deine Muskeln ab':lvl==='p'?'Effektive Satzäquivalente (direkt + indirekt) vs. Zielkorridor, mit Konfidenz':'Wöchentliches Volumen je Muskelgruppe vs. Zielkorridor';
-  var h='<div class="body-head"><div class="ana-kick">Körper · Muskelvolumen</div><div class="ana-sub">'+sub+'</div></div>';
+  var sub=lvl==='a'?'' + _uiT('ui.so_gut_deckst_du_deine') + '':lvl==='p'?'' + _uiT('ui.effektive_satzaequivalente_direkt_indirekt_vs') + '':'' + _uiT('ui.woechentliches_volumen_je_muskelgruppe_vs') + '';
+  var h='<div class="body-head"><div class="ana-kick">' + _uiT('ui.koerper_muskelvolumen') + '</div><div class="ana-sub">'+sub+'</div></div>';
   h+='<div class="range-row">'+[7,14,28,90].map(function(d){return '<button class="range-chip '+(gmBodyRange===d?'on':'')+'" onclick="gmSetBodyRange('+d+')">'+d+' T.</button>';}).join('')+'</div>';
-  h+='<div class="body-toggle"><button class="'+(gmBodySide==='front'?'on':'')+'" onclick="gmSetBodySide(\'front\')">Vorderseite</button><button class="'+(gmBodySide==='back'?'on':'')+'" onclick="gmSetBodySide(\'back\')">Rückseite</button></div>';
+  h+='<div class="body-toggle"><button class="'+(gmBodySide==='front'?'on':'')+'" onclick="gmSetBodySide(\'front\')">' + _uiT('ui.vorderseite') + '</button><button class="'+(gmBodySide==='back'?'on':'')+'" onclick="gmSetBodySide(\'back\')">' + _uiT('ui.rueckseite') + '</button></div>';
   /* GM6.1 §3: gmAnaBodyModel() startet den bereits vorhandenen Volumen-Ladevorgang
      und meldet den Lebenszyklus ueber _gmMvState. Kopf, Zeitraumwahl und
      Seitenumschalter bleiben in JEDEM Zustand bedienbar — sie sind reine
@@ -9957,14 +9987,14 @@ function gmAnaBody(){
   /* GM7 (§8.3 fail closed): ein aufgeloestes Promise mit Fehler-Status ist ein FEHLER,
      kein „Keine Daten". Vorher wurde load_error/data_unavailable still als leer gerendert. */
   if(model&&(model.status==='load_error'||model.status==='data_unavailable')){
-    h+=gmStateError({icon:'wifi',title:'Muskelvolumen konnte nicht geladen werden.',
-      desc:(model.status==='data_unavailable'?'Der lokale Speicher war nicht bereit — das Volumen ist unbekannt, nicht null.':'Mindestens eine Datenquelle ist fehlgeschlagen — das Volumen ist unbekannt, nicht null.'),
+    h+=gmStateError({icon:'wifi',title:'' + _uiT('ui.muskelvolumen_konnte_nicht_geladen_werden') + '',
+      desc:(model.status==='data_unavailable'?'' + _uiT('ui.der_lokale_speicher_war_nicht') + '':'' + _uiT('ui.mindestens_eine_datenquelle_ist_fehlgeschlagen') + ''),
       retry:'gmAnaRetry()'});
     return h;
   }
   if(_gmMvState==='error'){
-    h+=gmStateError({icon:'wifi',title:'Muskelvolumen konnte nicht geladen werden.',
-      desc:'Das Volumen ist unbekannt — fehlende Daten bedeuten nicht null Sätze.',
+    h+=gmStateError({icon:'wifi',title:'' + _uiT('ui.muskelvolumen_konnte_nicht_geladen_werden') + '',
+      desc:'' + _uiT('ui.das_volumen_ist_unbekannt_fehlende') + '',
       retry:'gmAnaRetry()'});
     return h;
   }
@@ -9972,7 +10002,7 @@ function gmAnaBody(){
     /* Karten- und Kachelbaustein — ausschliesslich die beiden echten
        Golden-Master-Skelette, an denselben Stellen wie die spaeteren Inhalte. */
     h+=gmStateLoading({blocks:1});
-    h+='<div class="sectlabel" data-gm-slot="analysis-body-map">'+(gmBodySide==='front'?'Vorderseite':'Rückseite')+' <span class="ana-count">wird geladen</span></div>';
+    h+='<div class="sectlabel" data-gm-slot="analysis-body-map">'+(gmBodySide==='front'?'' + _uiT('ui.vorderseite') + '':'' + _uiT('ui.rueckseite') + '')+' <span class="ana-count">wird geladen</span></div>';
     h+='<div class="kgrid">'+gmStateLoading({kind:'kcard',blocks:ids.length})+'</div>';
     return h;
   }
@@ -9982,16 +10012,16 @@ function gmAnaBody(){
     var lastGym=null;
     try{Object.keys(DB).filter(isDay).sort().reverse().some(function(k){var g2=DB[k]&&DB[k].sessions&&DB[k].sessions.Gym;if(g2){lastGym=k;return true;}return false;});}catch(_){ }
     var ago=null;try{if(lastGym&&window.ORVIA&&ORVIA.fmt)ago=ORVIA.fmt.daysBetween(lastGym,todayStr());}catch(_){ }
-    h+='<div class="mini-note" style="margin-bottom:10px">'+icon('info','xs')+'<div><b>Im gewählten Zeitraum ('+gmBodyRange+' T.) liegen keine Krafttrainingsdaten.</b> '+
-      (ago!=null?('Letztes Krafttraining vor '+ago+' Tagen. '):'')+
-      '<span class="deeplink" role="button" tabindex="0" onclick="gmSetBodyRange(90)">Zeitraum auf 90 T. stellen</span></div></div>';
+    h+='<div class="mini-note" style="margin-bottom:10px">'+icon('info','xs')+'<div><b>Im gewählten ' + _uiT('ui.zeitraum_') + ' ('+gmBodyRange+' T.) liegen keine Krafttrainingsdaten.</b> '+
+      (ago!=null?('' + _uiT('ui.letztes_krafttraining_vor') + ''+ago+'' + _uiT('ui.tagen') + ''):'')+
+      '<span class="deeplink" role="button" tabindex="0" onclick="gmSetBodyRange(90)">' + _uiT('ui.zeitraum_auf_90_t_stellen') + '</span></div></div>';
   }
   h+='<div class="body-wrap">'+gmBodySVG(model,gmBodySide)+'</div>';
   /* Legende: vollständige GM-Struktur; „Warnung" neutral als nicht verfügbar */
-  var legs=[GM_MV_META.below,GM_MV_META.in,GM_MV_META.above,{l:'Warnung',c:'var(--neutral)',sym:'!'},GM_MV_META.low_history,GM_MV_META.no_data];
-  h+='<div class="mlegend">'+legs.map(function(v){var na=(v.c==='var(--neutral)')?' aria-label="Warnung — Statusart mit der kanonischen Engine noch nicht verfügbar" title="Noch nicht verfügbar"':'';return '<span class="mleg"'+na+'><i style="background:'+v.c+'"></i>'+v.sym+' '+v.l+'</span>';}).join('')+'</div>';
-  h+='<div class="mini-note">'+icon('info','xs')+'<div>Farbe <b>und</b> Symbol zeigen den Status. Fehlende Daten (–) bedeuten <b>nicht</b> zu wenig Training.'+(gmBodySide==='front'?' <b>Seitliche Schulter</b> hat keine eigene anatomische Region und wird unten in der Liste geführt.':'')+'</div></div>';
-  h+='<div class="sectlabel" data-gm-slot="analysis-body-map">'+(gmBodySide==='front'?'Vorderseite':'Rückseite')+' <span class="ana-count">'+ids.length+' Gruppen</span></div>';
+  var legs=[GM_MV_META.below,GM_MV_META.in,GM_MV_META.above,{l:'' + _uiT('ui.warnung') + '',c:'var(--neutral)',sym:'!'},GM_MV_META.low_history,GM_MV_META.no_data];
+  h+='<div class="mlegend">'+legs.map(function(v){var na=(v.c==='var(--neutral)')?' aria-label="' + _uiT('ui.warnung') + ' — Statusart mit der kanonischen Engine noch ' + _uiT('ui.nicht_verfuegbar__') + '" title="' + _uiT('ui.noch_nicht_verfuegbar') + '"':'';return '<span class="mleg"'+na+'><i style="background:'+v.c+'"></i>'+v.sym+' '+v.l+'</span>';}).join('')+'</div>';
+  h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.farbe') + '<b>und</b>' + _uiT('ui.symbol_zeigen_den_status_fehlende') + '<b>nicht</b> zu wenig ' + _uiT('ui.training') + '.'+(gmBodySide==='front'?' <b>' + _uiT('ui.seitliche_schulter_') + '</b> hat keine eigene anatomische Region und wird unten in der Liste geführt.':'')+'</div></div>';
+  h+='<div class="sectlabel" data-gm-slot="analysis-body-map">'+(gmBodySide==='front'?'' + _uiT('ui.vorderseite') + '':'' + _uiT('ui.rueckseite') + '')+' <span class="ana-count">'+ids.length+' Gruppen</span></div>';
   h+='<div class="mtiles">'+ids.map(function(id){return gmMuscleTile(model,id);}).join('')+'</div>';
   return h;
 }
@@ -10011,15 +10041,15 @@ function gmOpenMuscleSheet(id){
     ex=ORVIA.gymVolume.explainMuscleVolume(id,snaps,{days:gmBodyRange,weeks:Math.round(gmBodyRange/7*10)/10,experience:(typeof mvExperience==='function')?mvExperience():'beginner'});
   }}catch(_){ }
   var exNames=[];try{((ex&&ex.contributions)||[]).forEach(function(c){var n=c.exerciseName||c.name;if(n&&exNames.indexOf(n)<0)exNames.push(n);});}catch(_){ }
-  var eff=(eq==null||lo==null||hi==null)?(GM_NA+' — ohne Zielkorridor keine Einordnung.')
-    :(eq<lo?'Aktuell <b>unter</b> dem wirksamen Bereich für spürbaren Aufbau.':eq>hi?'Aktuell <b>über</b> dem nötigen Bereich – mehr bringt kaum Zusatznutzen, erhöht aber Ermüdung.':'Aktuell im <b>wirksamen</b> Bereich für dein Ziel.')+' Direkt + indirekt zusammengefasst — unverändert aus der Engine.';
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:'+st.t+';color:'+st.c+'">'+icon('dumbbell')+'</div><div><h3>'+gmEsc(name)+'</h3><div class="sh-sub" style="margin:2px 0 0">'+st.sym+' '+st.l+' · letzte '+gmBodyRange+' Tage</div></div></div>'+
-    '<div class="statgrid3"><div><div class="n">'+(m&&m.realWorkingSets!=null?m.realWorkingSets:'—')+'</div><div class="l">Arbeitssätze</div></div><div><div class="n">'+(eq!=null?fmtDe(eq):'—')+'</div><div class="l">effektiv</div></div><div><div class="n">'+(lo!=null&&hi!=null?lo+'–'+hi:'—')+'</div><div class="l">Ziel/Woche</div></div></div>'+
-    '<div class="sh-block"><div class="bh">Verlauf (Sätze/Woche)</div><div class="oc2"><div class="gm-chart-empty">'+GM_NA+' — eine kanonische Wochenhistorie je Muskel liegt noch nicht vor.</div></div></div>'+
-    '<div class="sh-block"><div class="bh">Wirksamkeit fürs Ziel</div><p>'+eff+'</p></div>'+
-    '<div class="sh-block"><div class="bh">Zuletzt beteiligte Übungen</div><div class="msheet-ex">'+(exNames.length?exNames.slice(0,6).map(function(e){return '<span>'+gmEsc(e)+'</span>';}).join(''):'<span>—</span>')+'</div></div>'+
-    '<div class="sh-block"><div class="bh">Empfehlung nächste Woche</div><p>'+gmEsc((typeof mvNextStep==='function')?mvNextStep(st.key):'—')+'</p></div>'+
-    (lvl==='p'?'<div class="sh-block"><div class="bh">Datenqualität</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' Konfidenz <b>'+(m&&m.confidence!=null?Math.round(m.confidence*100)+'%':'—')+'</b></span><span class="confchip">'+icon('db','xs')+' Trend <b>—</b></span></div></div>':'')+
+  var eff=(eq==null||lo==null||hi==null)?(GM_NA+'' + _uiT('ui.ohne_zielkorridor_keine_einordnung') + '')
+    :(eq<lo?'Aktuell <b>unter</b> dem wirksamen Bereich für spürbaren Aufbau.':eq>hi?'Aktuell <b>' + _uiT('ui.ueber') + '</b> dem nötigen Bereich – mehr bringt kaum Zusatznutzen, erhöht aber Ermüdung.':'Aktuell im <b>wirksamen</b> Bereich für ' + _uiT('ui.dein_ziel') + '.')+'' + _uiT('ui.direkt_indirekt_zusammengefasst_unveraendert_aus') + '';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:'+st.t+';color:'+st.c+'">'+icon('dumbbell')+'</div><div><h3>'+gmEsc(name)+'</h3><div class="sh-sub" style="margin:2px 0 0">'+st.sym+' '+st.l+' · letzte '+gmBodyRange+'' + _uiT('ui.tage_') + '</div></div></div>'+
+    '<div class="statgrid3"><div><div class="n">'+(m&&m.realWorkingSets!=null?m.realWorkingSets:'—')+'</div><div class="l">' + _uiT('ui.arbeitssaetze') + '</div></div><div><div class="n">'+(eq!=null?fmtDe(eq):'—')+'</div><div class="l">effektiv</div></div><div><div class="n">'+(lo!=null&&hi!=null?lo+'–'+hi:'—')+'</div><div class="l">' + _uiT('ui.ziel_woche') + '</div></div></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.verlauf_saetze_woche') + '</div><div class="oc2"><div class="gm-chart-empty">'+GM_NA+' — eine kanonische Wochenhistorie je Muskel liegt noch nicht vor.</div></div></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.wirksamkeit_fuers_ziel') + '</div><p>'+eff+'</p></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.zuletzt_beteiligte_uebungen') + '</div><div class="msheet-ex">'+(exNames.length?exNames.slice(0,6).map(function(e){return '<span>'+gmEsc(e)+'</span>';}).join(''):'<span>—</span>')+'</div></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.empfehlung_naechste_woche') + '</div><p>'+gmEsc((typeof mvNextStep==='function')?mvNextStep(st.key):'—')+'</p></div>'+
+    (lvl==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b>'+(m&&m.confidence!=null?Math.round(m.confidence*100)+'%':'—')+'</b></span><span class="confchip">'+icon('db','xs')+' Trend <b>—</b></span></div></div>':'')+
     '<div class="source">'+icon('info','xs')+' Kanonische Muskelengine (effektive Satzäquivalente) — keine medizinische Aussage.</div>';
   gmOpenSheet('detailSheet');
 }
@@ -10028,7 +10058,7 @@ function gmOpenAnaTeaserSheet(kind){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var t=kind==='best'?'Bestzeiten':kind==='medals'?'Medaillen':'Meilensteine';
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon(kind==='best'?'bolt':kind==='medals'?'shield':'target')+'</div><div><h3>'+t+'</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
-    '<div class="sh-block"><p>'+t+' erscheinen mit deinen ersten abgeschlossenen Aktivitäten — gemessen, nicht erfunden. ORVIA zeigt keine erfundenen Werte.</p></div>';
+    '<div class="sh-block"><p>'+t+' erscheinen mit deinen ersten abgeschlossenen ' + _uiT('ui.aktivitaeten_') + ' — gemessen, nicht erfunden. ORVIA zeigt keine erfundenen Werte.</p></div>';
   gmOpenSheet('detailSheet');
 }
 /* --- GM7.5i: Kennzahlenbibliothek (Prototyp openPage('metrics'): anaTile-Grid nach
@@ -10040,15 +10070,15 @@ function gmOpenMetricsLibrary(){
   var pg=document.getElementById('gmAnaPage');if(!pg)return;
   window._gmMetricsLibOpen=true;
   var reg=window.ORVIA&&ORVIA.metricRegistry;
-  var h='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseMetricsLibrary()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>Kennzahlenbibliothek</h2><p>Alle Rohdaten, Quellen und Trends</p></div></div></div>';
+  var h='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseMetricsLibrary()" aria-label="' + _uiT('ui.zurueck') + '">'+icon('chev')+'</button><div><h2>' + _uiT('ui.kennzahlenbibliothek') + '</h2><p>' + _uiT('ui.alle_rohdaten_quellen_und_trends') + '</p></div></div></div>';
   if(!reg||!reg.METRICS){
     h+='<div class="card"><p>'+GM_NA+' — Metrik-Katalog nicht geladen.</p></div>';
   }else{
     var res=gmAnaResolved();
     if(res==null&&_gmAnaState==='loading'){
-      h+='<div class="sectlabel">Kennzahlen <span class="ana-count">wird geladen</span></div><div class="ana-grid">'+gmStateLoading({kind:'kcard',bare:false,blocks:6})+'</div>';
+      h+='<div class="sectlabel">' + _uiT('ui.kennzahlen') + '<span class="ana-count">wird geladen</span></div><div class="ana-grid">'+gmStateLoading({kind:'kcard',bare:false,blocks:6})+'</div>';
     }else if(res==null&&_gmAnaState==='error'){
-      h+=gmStateError({icon:'wifi',title:'Kennzahlen konnten nicht geladen werden.',desc:'Die Werte sind unbekannt — ORVIA zeigt keine 0 und keinen Ersatzwert.',retry:'gmAnaRetry();gmOpenMetricsLibrary()'});
+      h+=gmStateError({icon:'wifi',title:'' + _uiT('ui.kennzahlen_konnten_nicht_geladen_werden') + '',desc:'' + _uiT('ui.die_werte_sind_unbekannt_orvia_') + '',retry:'gmAnaRetry();gmOpenMetricsLibrary()'});
     }else{
       var cats=['body','cardio','sleep','daily_activity','performance','load_recovery'];
       cats.forEach(function(cat){
@@ -10065,7 +10095,7 @@ function gmOpenMetricsLibrary(){
         }).join('');
         h+='<div class="sectlabel">'+gmEsc((reg.CATEGORY_LABELS&&reg.CATEGORY_LABELS[cat])||cat)+' <span class="ana-count">'+have+'/'+ms.length+'</span></div><div class="ana-grid">'+tiles+'</div>';
       });
-      h+='<div class="mini-note" style="margin:4px 18px 12px">'+icon('info','xs')+'<div>Werte aus dem kanonischen Metrik-Speicher (Resolver-Snapshot). Nicht belegte Kennzahlen bleiben sichtbar und ehrlich leer — keine 0, kein Ersatzwert.</div></div>';
+      h+='<div class="mini-note" style="margin:4px 18px 12px">'+icon('info','xs')+'<div>' + _uiT('ui.werte_aus_dem_kanonischen_metrik') + '</div></div>';
     }
     /* GM7.9i: Die Check-in-Sektionen haengen NICHT am Provider-Resolver — ihre Werte stammen
        aus dem lokalen Check-in. Sie werden daher ausserhalb der Resolver-Verzweigung
@@ -10111,18 +10141,18 @@ function gmLibCheckinSections(){
   var rng=function(list,key){try{var f=CF&&CF.byKey(CF[list],key);return (f&&f.min!=null&&f.max!=null)?(' / '+f.max):'';}catch(_){return '';}};
   /* GM-Reihenfolge und -Beschriftungen; Werte aus dem Check-in, Einheiten aus dessen Registry. */
   var SEC=[
-    {t:'Subjektiv · Check-in',rows:[
-      {label:'Tagesenergie',where:'eve',key:'energy',unit:rng('EVENING','energy'),src:'Abend-Check-in'},
-      {label:'Stimmung',where:'eve',key:'mood',unit:rng('EVENING','mood'),src:'Abend-Check-in'},
-      {label:lbl('MORNING','doms','Muskelschmerz / DOMS'),where:'morning',key:'doms',unit:rng('MORNING','doms'),src:'Morgen-Check-in'},
-      {label:'Schmerz',where:'morning',key:'knee',unit:rng('MORNING','knee')||' / 10',src:'Morgen-Check-in'},
-      {label:'Stress (subj.)',where:'morning',key:'stress',unit:'',src:'Morgen-Check-in'}
+    {t:'' + _uiT('ui.subjektiv_check_in') + '',rows:[
+      {label:'Tagesenergie',where:'eve',key:'energy',unit:rng('EVENING','energy'),src:'' + _uiT('ui.abend_check_in') + ''},
+      {label:'Stimmung',where:'eve',key:'mood',unit:rng('EVENING','mood'),src:'' + _uiT('ui.abend_check_in') + ''},
+      {label:lbl('MORNING','doms','' + _uiT('ui.muskelschmerz_doms') + ''),where:'morning',key:'doms',unit:rng('MORNING','doms'),src:'' + _uiT('ui.morgen_check_in') + ''},
+      {label:'Schmerz',where:'morning',key:'knee',unit:rng('MORNING','knee')||' / 10',src:'' + _uiT('ui.morgen_check_in') + ''},
+      {label:'' + _uiT('ui.stress_subj') + '',where:'morning',key:'stress',unit:'',src:'' + _uiT('ui.morgen_check_in') + ''}
     ]},
     {t:'Ernährung',rows:[
-      {label:'Tagesumsatz',where:null,key:null,unit:'',src:'Kein Ernährungsvertrag'},
-      {label:'Protein',where:'eve',key:'prot',unit:' g',src:'Abend-Check-in'},
-      {label:'Kohlenhydrate',where:'eve',key:'carbs',unit:'',src:'Abend-Check-in'},
-      {label:'Flüssigkeit',where:'eve',key:'hydL',unit:' l',src:'Abend-Check-in'}
+      {label:'Tagesumsatz',where:null,key:null,unit:'',src:'' + _uiT('ui.kein_ernaehrungsvertrag') + ''},
+      {label:'Protein',where:'eve',key:'prot',unit:' g',src:'' + _uiT('ui.abend_check_in') + ''},
+      {label:'Kohlenhydrate',where:'eve',key:'carbs',unit:'',src:'' + _uiT('ui.abend_check_in') + ''},
+      {label:'Flüssigkeit',where:'eve',key:'hydL',unit:' l',src:'' + _uiT('ui.abend_check_in') + ''}
     ]}
   ];
   var out='';
@@ -10139,7 +10169,7 @@ function gmLibCheckinSections(){
         var _age;
         try{var _F3=(window.ORVIA&&ORVIA.fmt)||null;var _rl3=(_F3&&_F3.dayLabel)?_F3.dayLabel(got.date,todayStr()):null;
           _age=(_rl3==='Heute')?'heute':(_rl3==='Gestern')?'gestern':null;}catch(_){_age=null;}
-        if(_age==null)_age=(got.ageDays===0?'heute':(got.ageDays===1?'gestern':('vor '+got.ageDays+' Tagen')));
+        if(_age==null)_age=(got.ageDays===0?'heute':(got.ageDays===1?'gestern':('vor '+got.ageDays+'' + _uiT('ui.tagen_') + '')));
         foot=r.src+' · '+_age;
       }else if(!r.where){foot=r.src;}
       return '<div class="mtile"><div class="mt-h"><span class="mt-l">'+gmEsc(r.label)+'</span></div>'+
@@ -10174,17 +10204,17 @@ function gmOpenPaceCalcSheet(){
     }
   }catch(_){ }
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gauge')+'</div><div><h3>Pace-Rechner</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
-    '<div class="sh-block"><p>Der Pace-Rechner ist gerade nicht erreichbar. ORVIA öffnet keine Demo-Ansicht.</p></div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gauge')+'</div><div><h3>' + _uiT('ui.pace_rechner') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div>'+
+    '<div class="sh-block"><p>' + _uiT('ui.der_pace_rechner_ist_gerade') + '</p></div>';
   gmOpenSheet('detailSheet');
 }
 /* --- Hauptrenderer --- */
 function renderGMAnalysis(){
   var host=document.getElementById('gmAna');if(!host)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var dateTxt=lvl==='a'?'Einfach erklärt':lvl==='p'?'Datenlage, Baselines &amp; Konfidenz':'Trends &amp; Zusammenhänge';
-  var segs=[['overview','Überblick'],['endurance','Ausdauer'],['recovery','Erholung'],['body','Körper']];
-  var h='<div class="hdr"><div><div class="greet">ORVIA Intelligence</div><h1>Analyse</h1><div class="date">'+dateTxt+'</div></div><button class="iconbtn" role="button" aria-label="Kennzahlenbibliothek" onclick="gmOpenMetricsLibrary()">'+icon('chart','sm')+'</button></div>';
+  var dateTxt=lvl==='a'?'' + _uiT('ui.einfach_erklaert') + '':lvl==='p'?'' + _uiT('ui.datenlage_baselines_amp_konfidenz') + '':'' + _uiT('ui.trends_amp_zusammenhaenge') + '';
+  var segs=[['overview','Überblick'],['endurance','' + _uiT('ui.ausdauer') + ''],['recovery','' + _uiT('ui.erholung_') + ''],['body','Körper']];
+  var h='<div class="hdr"><div><div class="greet">' + _uiT('ui.orvia_intelligence') + '</div><h1>' + _uiT('ui.analyse') + '</h1><div class="date">'+dateTxt+'</div></div><button class="iconbtn" role="button" aria-label="' + _uiT('ui.kennzahlenbibliothek') + '" onclick="gmOpenMetricsLibrary()">'+icon('chart','sm')+'</button></div>';
   h+='<div class="seg-nav" role="tablist">'+segs.map(function(s){return '<button id="gmSegBtn-'+s[0]+'" class="seg-btn '+(gmAnaSeg===s[0]?'on':'')+'" role="tab" aria-selected="'+(gmAnaSeg===s[0])+'" aria-controls="gmAnaPanel" onclick="gmSetAnaSeg(\''+s[0]+'\')">'+s[1]+'</button>';}).join('')+'</div>';
   var ctx=(gmAnaSeg==='overview'||gmAnaSeg==='endurance')?gmAnaLoadCtx():{ok:false};
   var body=gmAnaSeg==='endurance'?gmAnaEndurance(ctx):gmAnaSeg==='recovery'?gmAnaRecovery():gmAnaSeg==='body'?gmAnaBody():gmAnaOverview(ctx);
@@ -10200,7 +10230,7 @@ function renderGMAnalysis(){
       var el2=document.getElementById('gmFFChart');
       if(el2){var k=Math.min(28,ctx.S.ctl.length);
         var _win=ctx.S.ctl.slice(-k);var _avg=Math.round(_win.reduce(function(a,b){return a+b;},0)/(_win.length||1));
-        ORVIA.charts.richChart(el2,{label:'Fitness (CTL, sRPE)',series:_win.map(function(v){return Math.round(v);}),times:(ctx.ld.labels||[]).slice(-k),unit:'',color:'gold',baseline:_avg,higherBetter:true,dec:0,
+        ORVIA.charts.richChart(el2,{label:'' + _uiT('ui.fitness_ctl_srpe') + '',series:_win.map(function(v){return Math.round(v);}),times:(ctx.ld.labels||[]).slice(-k),unit:'',color:'gold',baseline:_avg,higherBetter:true,dec:0,
           overlays:[{series:ctx.S.atl.slice(-k).map(function(v){return Math.round(v);}),color:'var(--crit)'},{series:ctx.S.tsb.slice(-k).map(function(v){return Math.round(v);}),color:'var(--ready)',dash:'4 3'}]});}
     }
     var el3=document.getElementById('gmVolChart');
@@ -10254,7 +10284,7 @@ function gmPToggleNA(ic,title,desc){
   return '<div class="setting-item gm-dis"><span class="setting-icon">'+icon(ic,'sm')+'</span><span class="setting-copy"><b>'+title+'</b><span>'+desc+'</span></span><span class="setting-value">'+GM_NA+'</span></div>';
 }
 function gmPPageHead(title,sub,action){
-  return '<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseProfPage()" aria-label="Zurück">'+icon('chev')+'</button><div><h2>'+gmEsc(title)+'</h2>'+(sub?'<p>'+gmEsc(sub)+'</p>':'')+'</div>'+(action?'<span class="page-action" role="button" tabindex="0" onclick="'+action.fn+'">'+action.label+'</span>':'')+'</div></div>';
+  return '<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseProfPage()" aria-label="' + _uiT('ui.zurueck') + '">'+icon('chev')+'</button><div><h2>'+gmEsc(title)+'</h2>'+(sub?'<p>'+gmEsc(sub)+'</p>':'')+'</div>'+(action?'<span class="page-action" role="button" tabindex="0" onclick="'+action.fn+'">'+action.label+'</span>':'')+'</div></div>';
 }
 function gmProfName(){try{return (typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.name)?String(PROFILE.name):null;}catch(_){return null;}}
 function gmProfInitials(){var n=gmProfName();if(!n)return '—';var p=n.trim().split(/\s+/);return ((p[0]||'').charAt(0)+(p[1]||'').charAt(0)).toUpperCase()||'—';}
@@ -10267,20 +10297,20 @@ function gmProfSports(){
 }
 function gmProfGoalCard(){
   var g=null;try{g=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
-  if(!g||!g.type)return '<div class="goal-card"><div class="goal-top"><div><h4>—</h4><p>'+GM_NA+' — lege dein Hauptziel im Ziel-Editor fest.</p></div><span class="goal-badge">HAUPTZIEL</span></div><div class="goal-line"><i style="width:0%"></i></div></div>';
+  if(!g||!g.type)return '<div class="goal-card"><div class="goal-top"><div><h4>—</h4><p>'+GM_NA+' — lege dein Hauptziel ' + _uiT('ui.im_ziel') + '-Editor fest.</p></div><span class="goal-badge">' + _uiT('ui.hauptziel') + '</span></div><div class="goal-line"><i style="width:0%"></i></div></div>';
   var lbl=null;try{lbl=(typeof RACE_LABELS_P!=='undefined'&&RACE_LABELS_P[g.type])||null;}catch(_){ }
   var t=lbl||String(g.type);
   if(g.targetMin){var hh=Math.floor(g.targetMin/60),mm=Math.round(g.targetMin%60);t+=' unter '+hh+':'+String(mm).padStart(2,'0');}
   var sub='—';
   try{if(g.raceDate){var d=new Date(g.raceDate+'T12:00');sub=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
-    if(typeof daysTo==='function'){var w=Math.max(0,Math.ceil(daysTo(g.raceDate)/7));sub+=' · noch '+w+' Wochen';}}}catch(_){ }
+    var _cd=_countdownText(g.raceDate);if(_cd)sub+=' · '+_cd;}}catch(_){ }
   /* Kein Zielprozent im UI — die Fortschrittsspur bleibt als ehrlich leerer Slot. */
-  return '<div class="goal-card"><div class="goal-top"><div><h4>'+gmEsc(t)+'</h4><p>'+gmEsc(sub)+'</p></div><span class="goal-badge">HAUPTZIEL</span></div><div class="goal-line"><i style="width:0%"></i></div></div>';
+  return '<div class="goal-card"><div class="goal-top"><div><h4>'+gmEsc(t)+'</h4><p>'+gmEsc(sub)+'</p></div><span class="goal-badge">' + _uiT('ui.hauptziel') + '</span></div><div class="goal-line"><i style="width:0%"></i></div></div>';
 }
 function gmProfEdit(){
   if(window.ORVIA&&ORVIA.profileCenter&&typeof ORVIA.profileCenter.open==='function'){ORVIA.profileCenter.open();return;}
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3>Profil bearbeiten</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div><div class="sh-block"><p>Der Profil-Editor ist gerade nicht verfügbar.</p></div>';
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3>' + _uiT('ui.profil_bearbeiten') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+GM_NA+'</div></div></div><div class="sh-block"><p>' + _uiT('ui.der_profil_editor_ist_gerade') + '</p></div>';
   gmOpenSheet('detailSheet');
 }
 function gmProfAddGoal(){
@@ -10292,7 +10322,7 @@ function gmProfSyncLabel(){
   try{var dev=(typeof gmDeviceSyncText==='function')?gmDeviceSyncText():null;if(dev!=null)return dev;}catch(_){ }
   try{if(typeof gmDeviceSyncRefresh==='function')gmDeviceSyncRefresh();}catch(_){ }
   try{if(typeof window.orviaSyncState==='function'){var st=window.orviaSyncState();
-    return ({local:'Cloud: lokaler Modus',synced:'Cloud synchronisiert',pending:'Cloud-Sync läuft …',error:'Cloud-Sync-Fehler',offline:'Offline – lokal'})[st]||'—';}}catch(_){ }
+    return ({local:'' + _uiT('ui.cloud_lokaler_modus') + '',synced:'' + _uiT('ui.cloud_synchronisiert') + '',pending:'' + _uiT('ui.cloud_sync_laeuft') + '',error:'Cloud-Sync-Fehler',offline:'' + _uiT('ui.offline_lokal') + ''})[st]||'—';}}catch(_){ }
   return '—';
 }
 /* ---------- Profilhauptseite ---------- */
@@ -10316,58 +10346,58 @@ function renderGMProfile(){
   var ctl=null;
   try{var ld=allLoads();var lcc=(typeof Calc!=='undefined'&&Calc.loadConfidenceContract)?Calc.loadConfidenceContract(ld.confidence):{suppressNumbers:false};
     if(!lcc.suppressNumbers&&Calc.loadSeries){var S=Calc.loadSeries(ld.loads||[]);if((S.ctl||[]).length>=14)ctl=Math.round(S.ctl[S.ctl.length-1]);}}catch(_){ }
-  var h='<div class="profile-cover"></div><div class="ig-profile"><div class="ig-top"><div class="ig-avatar">'+avatar+'</div><div class="ig-actions"><button class="mini-btn primary" onclick="gmProfEdit()">Profil bearbeiten</button><button class="mini-btn" aria-label="Einstellungen" onclick="gmOpenProfPage(\'settings\')">'+icon('gear','sm')+'</button></div></div>'+
+  var h='<div class="profile-cover"></div><div class="ig-profile"><div class="ig-top"><div class="ig-avatar">'+avatar+'</div><div class="ig-actions"><button class="mini-btn primary" onclick="gmProfEdit()">' + _uiT('ui.profil_bearbeiten') + '</button><button class="mini-btn" aria-label="Einstellungen" onclick="gmOpenProfPage(\'settings\')">'+icon('gear','sm')+'</button></div></div>'+
     '<div class="ig-name">'+gmEsc(name||'—')+'</div>'+
     /* Phase 4 (P2-5, 0029): Handle + Bio aus dem Profil — leer bleibt ehrlich '—' bzw.
        ein Einrichtungs-Hinweis; beides ist jetzt im Editor (Persönliche Grunddaten) pflegbar. */
     '<div class="ig-handle">'+((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.handle)?'@'+gmEsc(PROFILE.handle):'—')+'</div>'+
-    '<div class="ig-bio">'+((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.bio)?gmEsc(PROFILE.bio):(GM_NA+' — Bio im Profil-Editor (Persönliche Grunddaten) hinterlegen.'))+'</div>'+
+    '<div class="ig-bio">'+((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.bio)?gmEsc(PROFILE.bio):(GM_NA+'' + _uiT('ui.bio_im_profil_editor_persoenliche') + ''))+'</div>'+
     (function(){/* GM7: Einheiten = Gesamtzahl der kanonisch zusammengefuehrten Aktivitaeten (Server+lokal+Legacy, dedupliziert) */
       var units=null;try{if(typeof listActivitiesUnified==='function'){var la=listActivitiesUnified();units=Array.isArray(la)?la.length:null;}}catch(_){ }
-      return '<div class="ig-stats"><div class="ig-stat"><b>'+(units!=null?fmtDe(units):'—')+'</b><span>Einheiten</span></div><div class="ig-stat"><b>'+(sports.length?sports.length:'—')+'</b><span>Sportarten</span></div><div class="ig-stat"><b>'+(ctl!=null?ctl:'—')+'</b><span>Fitness (sRPE)</span></div><div class="ig-stat"><b>—</b><span>Zielaufbau</span></div></div></div>';})();
-  h+='<div class="sectlabel" data-gm-slot="profile-sports">Deine Sportarten <span class="edit" role="button" tabindex="0" onclick="gmOpenProfPage(\'goals\')">Bearbeiten</span></div>';
+      return '<div class="ig-stats"><div class="ig-stat"><b>'+(units!=null?fmtDe(units):'—')+'</b><span>' + _uiT('ui.einheiten_') + '</span></div><div class="ig-stat"><b>'+(sports.length?sports.length:'—')+'</b><span>' + _uiT('ui.sportarten') + '</span></div><div class="ig-stat"><b>'+(ctl!=null?ctl:'—')+'</b><span>' + _uiT('ui.fitness_srpe') + '</span></div><div class="ig-stat"><b>—</b><span>' + _uiT('ui.zielaufbau') + '</span></div></div></div>';})();
+  h+='<div class="sectlabel" data-gm-slot="profile-sports">Deine ' + _uiT('ui.sportarten') + ' <span class="edit" role="button" tabindex="0" onclick="gmOpenProfPage(\'goals\')">Bearbeiten</span></div>';
   h+='<div class="sport-chips">'+(sports.length?sports.map(function(s){return '<span class="sport-chip on">'+s+'</span>';}).join(''):'<span class="sport-chip">—</span>')+'</div>';
   h+='<div class="sectlabel" data-gm-slot="profile-goal-journey">Zielreise <span class="edit" role="button" tabindex="0" onclick="gmOpenProfPage(\'goals\')">Alle Ziele</span></div><div class="goal-stack">'+gmProfGoalCard()+'</div>';
-  h+='<div class="sectlabel" data-gm-slot="profile-control">Profil &amp; Kontrolle</div><div class="setting-group">'+
-    gmPRow('target','Ziele &amp; Sportarten','Prioritäten, Rollen und Langfristziele','',"gmOpenProfPage('goals')")+
-    gmPRow('link','Geräte &amp; Daten',gmEsc(gmProfSyncLabel()),'',"gmOpenProfPage('connections')")+
-    gmPRow('gear','Einstellungen','Ansicht, Training, Datenschutz und Konto','',"gmOpenProfPage('settings')")+'</div>';
-  h+='<div class="sectlabel" data-gm-slot="profile-performance">Leistung &amp; Fortschritt</div><div class="setting-group">'+
-    gmPRow('gauge','Leistungsdaten',(typeof gmPerfRowSub==='function'?gmPerfRowSub():'Wettkampf, Test und Schwellenwerte'),'',"gmOpenProfPage('performance')")+
-    gmPRow('bolt','Bestzeiten','Persönliche Rekorde je Distanz','',"gmOpenProfPage('bestTimes')")+
-    gmPRow('shield','Medaillen','Erreichte und offene Auszeichnungen','',"gmOpenProfPage('medals')")+
-    gmPRow('target','Meilensteine','Fortschritt Richtung Ziel','',"gmOpenProfPage('milestones')")+
-    gmPRow('gauge','Pace-Rechner','Lauf, Rad und Schwimmen','',"gmOpenProfPage('paceCalc')")+'</div>';
+  h+='<div class="sectlabel" data-gm-slot="profile-control">' + _uiT('ui.profil_amp_kontrolle') + '</div><div class="setting-group">'+
+    gmPRow('target','' + _uiT('ui.ziele_amp_sportarten') + '','' + _uiT('ui.prioritaeten_rollen_und_langfristziele') + '','',"gmOpenProfPage('goals')")+
+    gmPRow('link','' + _uiT('ui.geraete_amp_daten') + '',gmEsc(gmProfSyncLabel()),'',"gmOpenProfPage('connections')")+
+    gmPRow('gear','Einstellungen','' + _uiT('ui.ansicht_training_datenschutz_und_konto') + '','',"gmOpenProfPage('settings')")+'</div>';
+  h+='<div class="sectlabel" data-gm-slot="profile-performance">' + _uiT('ui.leistung_amp_fortschritt') + '</div><div class="setting-group">'+
+    gmPRow('gauge','Leistungsdaten',(typeof gmPerfRowSub==='function'?gmPerfRowSub():'' + _uiT('ui.wettkampf_test_und_schwellenwerte') + ''),'',"gmOpenProfPage('performance')")+
+    gmPRow('bolt','Bestzeiten','' + _uiT('ui.persoenliche_rekorde_je_distanz') + '','',"gmOpenProfPage('bestTimes')")+
+    gmPRow('shield','Medaillen','' + _uiT('ui.erreichte_und_offene_auszeichnungen') + '','',"gmOpenProfPage('medals')")+
+    gmPRow('target','Meilensteine','' + _uiT('ui.fortschritt_richtung_ziel') + '','',"gmOpenProfPage('milestones')")+
+    gmPRow('gauge','' + _uiT('ui.pace_rechner') + '','' + _uiT('ui.lauf_rad_und_schwimmen') + '','',"gmOpenProfPage('paceCalc')")+'</div>';
   h+='<div class="tabspacer"></div>';
   host.innerHTML=h;
 }
 /* ---------- Subpages ---------- */
 function gmProfSetMode(m){if(typeof setUiDetailMode==='function')setUiDetailMode(m);if(_gmProfRoute)gmOpenProfPage(_gmProfRoute);}
-function gmProfModeLabel(){var m=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';return ({anfaenger:'Einfach',fortgeschritten:'Fortgeschritten',profi:'Profi'})[m]||'—';}
+function gmProfModeLabel(){var m=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';return ({anfaenger:'Einfach',fortgeschritten:'' + _uiT('ui.fortgeschritten_') + '',profi:'Profi'})[m]||'—';}
 function gmProfSettings(){
-  return gmPPageHead('Einstellungen','Dein ORVIA, deine Regeln')+
-    '<div class="page-intro">Alle Anzeige-, Trainings-, Datenschutz- und Kontoeinstellungen an einem Ort. Aktiv ist nur, was einen echten produktiven Vertrag hat.</div>'+
-    '<div class="setting-title">Darstellung</div><div class="setting-group">'+
-    gmPRow('sun','Erscheinungsbild','Dunkel, Hell oder automatisch',gmEsc(({dark:'Dunkel',light:'Hell',auto:'Automatisch'})[(typeof orviaThemePref==='function')?orviaThemePref():'dark']||'Dunkel'),"gmOpenProfPage('appearance')")+
-    gmPRow('activity','Ansicht &amp; Detailtiefe','Ändert Erklärungen und Informationsdichte',gmEsc(gmProfModeLabel()),"gmOpenProfPage('appearance')")+
-    gmPToggleNA('activity','Bewegung reduzieren',GM_NA)+'</div>'+
-    '<div class="setting-title">Training &amp; Gesundheit</div><div class="setting-group">'+
-    gmPRow('calendar','Plan &amp; Wochenstruktur','Ruhetage, Zeitfenster, Struktur und Doppel-Einheiten',(function(){
+  return gmPPageHead('Einstellungen','' + _uiT('ui.dein_orvia_deine_regeln') + '')+
+    '<div class="page-intro">' + _uiT('ui.alle_anzeige_trainings_datenschutz_und') + '</div>'+
+    '<div class="setting-title">' + _uiT('ui.darstellung') + '</div><div class="setting-group">'+
+    gmPRow('sun','Erscheinungsbild','' + _uiT('ui.dunkel_hell_oder_automatisch') + '',gmEsc(({dark:'Dunkel',light:'Hell',auto:'Automatisch'})[(typeof orviaThemePref==='function')?orviaThemePref():'dark']||'Dunkel'),"gmOpenProfPage('appearance')")+
+    gmPRow('activity','' + _uiT('ui.ansicht_amp_detailtiefe') + '','' + _uiT('ui.aendert_erklaerungen_und_informationsdichte') + '',gmEsc(gmProfModeLabel()),"gmOpenProfPage('appearance')")+
+    gmPToggleNA('activity','' + _uiT('ui.bewegung_reduzieren') + '',GM_NA)+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.training_amp_gesundheit') + '</div><div class="setting-group">'+
+    gmPRow('calendar','' + _uiT('ui.plan_amp_wochenstruktur') + '','' + _uiT('ui.ruhetage_zeitfenster_struktur_und_doppel') + '',(function(){
       try{var M2=window.ORVIA&&ORVIA.profileModel;if(M2&&M2.availabilitySummary&&typeof PROFILE!=='undefined'&&PROFILE){
         var av=M2.availabilitySummary(PROFILE.availability);
-        return gmEsc(av.availableDays+' Tage'+(av.preferredRestDays&&av.preferredRestDays.length?' · Ruhe: '+av.preferredRestDays.join(', '):''));}}catch(_){ }
+        return gmEsc(av.availableDays+'' + _uiT('ui.tage_') + ''+(av.preferredRestDays&&av.preferredRestDays.length?'' + _uiT('ui.ruhe') + ''+av.preferredRestDays.join(', '):''));}}catch(_){ }
       return '—';})(),"gmOpenProfPage('planSettings')")+
-    gmPRow('target','Ziele &amp; Sportarten','Hauptziel, Nebenziele, Rollen',(gmProfSports().length||'—')+'',"gmOpenProfPage('goals')")+
-    gmPRow('heart','Gesundheit &amp; Check-in','Warnzeichen, Schmerz, Schlaf, HRV','—',"gmOpenProfPage('health')")+
-    gmPRow('link','Geräte &amp; Datenquellen','Cloud-Sync, Import, manuelle Daten',gmEsc(gmProfSyncLabel()),"gmOpenProfPage('connections')")+
-    gmPRow('gauge','Einheiten &amp; Berechnungen','Metrisch, Wochenbeginn, Herzfrequenzzonen','km · kg',"gmOpenProfPage('units')")+'</div>'+
-    '<div class="setting-title">Kommunikation</div><div class="setting-group">'+
-    gmPRow('bell','Benachrichtigungen','Training, Erholung, Planänderungen','—',"gmOpenProfPage('notifications')")+'</div>'+
-    '<div class="setting-title">Konto &amp; Kontrolle</div><div class="setting-group">'+
-    gmPRow('lock','Datenschutz &amp; KI','Profil, Einwilligungen, Datenverwendung und Consent','—',"gmOpenProfPage('privacy')")+
-    gmPRow('db','Daten verwalten','Export, Sicherung, Löschen','',"gmOpenProfPage('data')")+
-    gmPRow('shield','Konto &amp; Sicherheit','E-Mail, Passwort, Geräte','',"gmOpenProfPage('account')")+
-    gmPRow('info','Hilfe &amp; über ORVIA','Support, Dokumentation, Version, Build und medizinischer Hinweis','',"gmOpenProfPage('about')")+'</div>'+
+    gmPRow('target','' + _uiT('ui.ziele_amp_sportarten') + '','' + _uiT('ui.hauptziel_nebenziele_rollen') + '',(gmProfSports().length||'—')+'',"gmOpenProfPage('goals')")+
+    gmPRow('heart','' + _uiT('ui.gesundheit_amp_check_in') + '','' + _uiT('ui.warnzeichen_schmerz_schlaf_hrv') + '','—',"gmOpenProfPage('health')")+
+    gmPRow('link','' + _uiT('ui.geraete_amp_datenquellen') + '','' + _uiT('ui.cloud_sync_import_manuelle_daten') + '',gmEsc(gmProfSyncLabel()),"gmOpenProfPage('connections')")+
+    gmPRow('gauge','' + _uiT('ui.einheiten_amp_berechnungen') + '','' + _uiT('ui.metrisch_wochenbeginn_herzfrequenzzonen') + '','km · kg',"gmOpenProfPage('units')")+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.kommunikation') + '</div><div class="setting-group">'+
+    gmPRow('bell','Benachrichtigungen','' + _uiT('ui.training_erholung_planaenderungen') + '','—',"gmOpenProfPage('notifications')")+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.konto_amp_kontrolle') + '</div><div class="setting-group">'+
+    gmPRow('lock','' + _uiT('ui.datenschutz_amp_ki') + '','' + _uiT('ui.profil_einwilligungen_datenverwendung_und_consent') + '','—',"gmOpenProfPage('privacy')")+
+    gmPRow('db','' + _uiT('ui.daten_verwalten') + '','' + _uiT('ui.export_sicherung_loeschen') + '','',"gmOpenProfPage('data')")+
+    gmPRow('shield','' + _uiT('ui.konto_amp_sicherheit') + '','' + _uiT('ui.e_mail_passwort_geraete') + '','',"gmOpenProfPage('account')")+
+    gmPRow('info','' + _uiT('ui.hilfe_amp_ueber_orvia') + '','' + _uiT('ui.support_dokumentation_version_build_und') + '','',"gmOpenProfPage('about')")+'</div>'+
     '<div class="danger-link" role="button" tabindex="0" onclick="orviaLogout&&orviaLogout()" onkeydown="if(event.key===\'Enter\')orviaLogout&&orviaLogout()">Abmelden</div>';
 }
 function gmRerenderAppearance(){
@@ -10378,36 +10408,36 @@ function gmRerenderAppearance(){
 function gmProfAppearance(){
   var m=(typeof uiDetailMode==='function')?uiDetailMode():'fortgeschritten';
   var th=(typeof orviaThemePref==='function')?orviaThemePref():'dark';
-  return gmPPageHead('Ansicht & Detailtiefe','Persönlich, ohne die Engine zu verändern')+
-    '<div class="setting-title">Farbmodus</div><div class="choice-grid">'+
+  return gmPPageHead('' + _uiT('ui.ansicht_detailtiefe') + '','' + _uiT('ui.persoenlich_ohne_die_engine_zu') + '')+
+    '<div class="setting-title">' + _uiT('ui.farbmodus') + '</div><div class="choice-grid">'+
     '<button class="choice '+(th==='dark'?'on':'')+'" onclick="orviaSetThemePref(\'dark\')">Dunkel</button>'+
     '<button class="choice '+(th==='light'?'on':'')+'" onclick="orviaSetThemePref(\'light\')">Hell</button>'+
     '<button class="choice '+(th==='auto'?'on':'')+'" onclick="orviaSetThemePref(\'auto\')">Automatisch</button></div>'+
-    '<div class="setting-title">Informationsdichte</div><div class="choice-grid">'+
+    '<div class="setting-title">' + _uiT('ui.informationsdichte') + '</div><div class="choice-grid">'+
     '<button class="choice '+(m==='anfaenger'?'on':'')+'" onclick="gmProfSetMode(\'anfaenger\')">Einfach</button>'+
-    '<button class="choice '+(m==='fortgeschritten'?'on':'')+'" onclick="gmProfSetMode(\'fortgeschritten\')">Fortgeschritten</button>'+
+    '<button class="choice '+(m==='fortgeschritten'?'on':'')+'" onclick="gmProfSetMode(\'fortgeschritten\')">' + _uiT('ui.fortgeschritten_') + '</button>'+
     '<button class="choice '+(m==='profi'?'on':'')+'" onclick="gmProfSetMode(\'profi\')">Profi</button></div>'+
-    '<div class="card"><div class="ctitle"><div class="l">'+icon('info')+' Was ändert sich?</div></div><p class="prescription"><b>Einfach:</b> klare Handlung und wenig Kennzahlen.<br><br><b>Fortgeschritten:</b> Zusammenhänge, Trends und Planwirkung.<br><br><b>Profi:</b> Datenqualität, Lastmodelle, Quellen und Entscheidungsgründe.<br><br>Die Trainingsentscheidung bleibt in allen Ansichten identisch.</p></div>';
+    '<div class="card"><div class="ctitle"><div class="l">'+icon('info')+' Was ändert sich?</div></div><p class="prescription"><b>' + _uiT('ui.einfach') + '</b>' + _uiT('ui.klare_handlung_und_wenig_kennzahlen') + '<br><br><b>' + _uiT('ui.fortgeschritten') + '</b>' + _uiT('ui.zusammenhaenge_trends_und_planwirkung') + '<br><br><b>' + _uiT('ui.profi') + '</b>' + _uiT('ui.datenqualitaet_lastmodelle_quellen_und_entscheidungsgruende') + '<br><br>' + _uiT('ui.die_trainingsentscheidung_bleibt_in_allen') + '</p></div>';
 }
 function gmProfNotifications(){
-  return gmPPageHead('Benachrichtigungen','Nur das, was dir wirklich hilft')+
-    '<div class="setting-title">Grundsätzlich</div><div class="setting-group">'+gmPToggleNA('bell','Benachrichtigungen erlauben','Master-Schalter — '+GM_NA)+'</div>'+
-    '<div class="setting-title">Coaching</div><div class="setting-group">'+
+  return gmPPageHead('Benachrichtigungen','' + _uiT('ui.nur_das_was_dir_wirklich') + '')+
+    '<div class="setting-title">' + _uiT('ui.grundsaetzlich') + '</div><div class="setting-group">'+gmPToggleNA('bell','' + _uiT('ui.benachrichtigungen_erlauben') + '','' + _uiT('ui.master_schalter') + ''+GM_NA)+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.coaching') + '</div><div class="setting-group">'+
     gmPToggleNA('run','Trainingserinnerungen',GM_NA)+
-    gmPToggleNA('calendar','Planänderungen','Noch nicht verfügbar — kein Mitteilungsvertrag')+
-    '<div class="setting-item gm-dis"><span class="setting-icon">'+icon('heart','sm')+'</span><span class="setting-copy"><b>Erholung &amp; Warnzeichen</b><span>Nur relevante Veränderungen und Safety-Hinweise</span></span><span class="setting-value" title="Safety-Hinweise sind nicht abschaltbar">Immer aktiv</span></div>'+
-    gmPToggleNA('chart','Wochenreview','Noch nicht verfügbar — kein Wochenreview-Vertrag')+'</div>'+
-    '<div class="setting-title">Sonstiges</div><div class="setting-group">'+gmPToggleNA('sparkle','Produktneuigkeiten',GM_NA)+'</div>';
+    gmPToggleNA('calendar','Planänderungen','' + _uiT('ui.noch_nicht_verfuegbar_kein_mitteilungsvertrag') + '')+
+    '<div class="setting-item gm-dis"><span class="setting-icon">'+icon('heart','sm')+'</span><span class="setting-copy"><b>' + _uiT('ui.erholung_amp_warnzeichen') + '</b><span>' + _uiT('ui.nur_relevante_veraenderungen_und_safety') + '</span></span><span class="setting-value" title="' + _uiT('ui.safety_hinweise_sind_nicht_abschaltbar') + '">' + _uiT('ui.immer_aktiv') + '</span></div>'+
+    gmPToggleNA('chart','' + _uiT('ui.wochenreview') + '','' + _uiT('ui.noch_nicht_verfuegbar_kein_wochenreview') + '')+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.sonstiges') + '</div><div class="setting-group">'+gmPToggleNA('sparkle','Produktneuigkeiten',GM_NA)+'</div>';
 }
 function gmProfPrivacy(){
-  return gmPPageHead('Datenschutz & KI','Du entscheidest über deine Daten')+
-    '<div class="setting-title">Sichtbarkeit</div><div class="setting-group">'+
-    gmPToggleNA('lock','Privates Profil','Noch nicht verfügbar — kein Sichtbarkeitsvertrag')+
-    gmPToggleNA('heart','Gesundheitsfreigabe','Kein Consent-Vertrag — '+GM_NA.toLowerCase())+'</div>'+
-    '<div class="setting-title">Intelligente Auswertung</div><div class="setting-group">'+
-    gmPToggleNA('sparkle','Personalisierte KI-Analyse','Noch nicht verfügbar — erfordert Consent-Vertrag')+
-    gmPRow('shield','Safety-Regeln','Medizinische Warnzeichen überstimmen Leistungsziele','Immer aktiv','',false)+'</div>'+
-    '<div class="card"><p class="prescription">ORVIA zeigt nachvollziehbar, welche Daten eine Empfehlung beeinflussen. Fehlende Daten werden nicht als Null interpretiert. Einwilligungen folgen mit dem Consent-Vertrag.</p></div>';
+  return gmPPageHead('' + _uiT('ui.datenschutz_ki') + '','' + _uiT('ui.du_entscheidest_ueber_deine_daten') + '')+
+    '<div class="setting-title">' + _uiT('ui.sichtbarkeit') + '</div><div class="setting-group">'+
+    gmPToggleNA('lock','' + _uiT('ui.privates_profil') + '','' + _uiT('ui.noch_nicht_verfuegbar_kein_sichtbarkeitsvertrag') + '')+
+    gmPToggleNA('heart','Gesundheitsfreigabe','' + _uiT('ui.kein_consent_vertrag') + ''+GM_NA.toLowerCase())+'</div>'+
+    '<div class="setting-title">' + _uiT('ui.intelligente_auswertung') + '</div><div class="setting-group">'+
+    gmPToggleNA('sparkle','' + _uiT('ui.personalisierte_ki_analyse') + '','' + _uiT('ui.noch_nicht_verfuegbar_erfordert_consent') + '')+
+    gmPRow('shield','Safety-Regeln','' + _uiT('ui.medizinische_warnzeichen_ueberstimmen_leistungsziele') + '','' + _uiT('ui.immer_aktiv') + '','',false)+'</div>'+
+    '<div class="card"><p class="prescription">' + _uiT('ui.orvia_zeigt_nachvollziehbar_welche_daten') + '</p></div>';
 }
 /* GM7.9f: Die beiden Zielportfolio-Karten (MITTELFRISTIG/LANGFRISTIG) waren fest auf „—"
    verdrahtet, obwohl die kanonischen Produzenten vorhanden sind: listGoals() (js/profile.js)
@@ -10451,7 +10481,7 @@ function gmProfHorizonCard(horizon,badge,adj){
   var head,sub;
   if(!mine.length){
     head='—';
-    sub=GM_NA+' — kein aktives '+adj+' Ziel hinterlegt.';
+    sub=GM_NA+' — kein aktives '+adj+'' + _uiT('ui.ziel_hinterlegt') + '';
   }else{
     var g=mine[0],parts=[];
     head=(g.title&&String(g.title).trim())||lab('goalRole',roleOf(g))||'—';
@@ -10459,7 +10489,7 @@ function gmProfHorizonCard(horizon,badge,adj){
       try{var d=new Date(g.targetDate+'T12:00');
         if(!isNaN(d.getTime()))parts.push(d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}));
         if(typeof daysTo==='function'){var w=Math.ceil(daysTo(g.targetDate)/7);
-          if(isFinite(w)&&w>0)parts.push('noch '+w+' Wochen');}
+          if(isFinite(w)&&w>0)parts.push('noch '+w+'' + _uiT('ui.wochen') + '');}
       }catch(_){ }
     }
     if(!parts.length){var rl=lab('goalRole',roleOf(g));if(rl)parts.push(rl);}
@@ -10471,17 +10501,17 @@ function gmProfHorizonCard(horizon,badge,adj){
 }
 function gmProfGoals(){
   var chips=gmProfSports();
-  return gmPPageHead('Ziele & Sportarten','Hierarchie statt Zielchaos',{label:'Hinzufügen',fn:'gmProfAddGoal()'})+
-    '<div class="page-intro">Dein Hauptziel steuert die aktuelle Planung. Langfristige Ziele beeinflussen den Aufbau, ohne das nächste Event zu verdrängen.</div>'+
+  return gmPPageHead('' + _uiT('ui.ziele_sportarten') + '','' + _uiT('ui.hierarchie_statt_zielchaos') + '',{label:'' + _uiT('ui.hinzufuegen') + '',fn:'gmProfAddGoal()'})+
+    '<div class="page-intro">' + _uiT('ui.dein_hauptziel_steuert_die_aktuelle') + '</div>'+
     '<div class="goal-stack">'+gmProfGoalCard()+
     gmProfHorizonCard('mid','MITTELFRISTIG','mittelfristiges')+
     gmProfHorizonCard('long','LANGFRISTIG','langfristiges')+'</div>'+
-    '<div class="setting-title">Aktive Sportprofile</div><div class="sport-chips">'+(chips.length?chips.map(function(s){return '<span class="sport-chip on">'+s+'</span>';}).join(''):'<span class="sport-chip">—</span>')+'</div>';
+    '<div class="setting-title">' + _uiT('ui.aktive_sportprofile') + '</div><div class="sport-chips">'+(chips.length?chips.map(function(s){return '<span class="sport-chip on">'+s+'</span>';}).join(''):'<span class="sport-chip">—</span>')+'</div>';
 }
 function gmProfDailyGoals(){
-  var rows=[['Schritte','Dein tägliches Bewegungsziel'],['Aktive Kalorien','Aktivität ohne Grundumsatz'],['Wasser','Tagesziel in Millilitern'],['Schlaf','Persönliche Zielstunden']];
-  return gmPPageHead('Tagesziele','Individuell statt starrer Standardwerte',{label:'Fertig',fn:'gmCloseProfPage()'})+
-    '<div class="page-intro">Diese Ziele sind Leitplanken. Ein produktiver Tagesziel-Vertrag ist noch nicht verfügbar — ORVIA erzeugt keine Scheineinstellung.</div>'+
+  var rows=[['Schritte','' + _uiT('ui.dein_taegliches_bewegungsziel') + ''],['' + _uiT('ui.aktive_kalorien') + '','' + _uiT('ui.aktivitaet_ohne_grundumsatz') + ''],['Wasser','' + _uiT('ui.tagesziel_in_millilitern') + ''],['' + _uiT('ui.schlaf') + '','' + _uiT('ui.persoenliche_zielstunden') + '']];
+  return gmPPageHead('' + _uiT('ui.tagesziele_') + '','' + _uiT('ui.individuell_statt_starrer_standardwerte') + '',{label:'' + _uiT('ui.fertig_') + '',fn:'gmCloseProfPage()'})+
+    '<div class="page-intro">' + _uiT('ui.diese_ziele_sind_leitplanken_ein') + '</div>'+
     '<div class="setting-group">'+rows.map(function(r){
       /* Phase 1b: die +/- Knoepfe waren Attrappen. Zeile und Wert bleiben als
          Anzeigeslot, die Bedienelemente sind weg. */
@@ -10494,22 +10524,22 @@ function gmProfPlanSettings(){
   try{var M2=window.ORVIA&&ORVIA.profileModel;
     if(M2&&M2.availabilitySummary&&typeof PROFILE!=='undefined'&&PROFILE){
       var av=M2.availabilitySummary(PROFILE.availability);
-      rest=(av.preferredRestDays&&av.preferredRestDays.length)?av.preferredRestDays.join(', '):'Keiner festgelegt';
-      days=av.availableDays+' Tage';
-      dbl=(av.doubleDays>0)?(av.doubleDays+' Tage erlaubt'):'Aus';}}catch(_){ }
-  return gmPPageHead('Plan & Wochenstruktur','Wie ORVIA deine Woche bauen darf')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
-    gmPRow('moon','Fester Ruhetag','Wird vom Planer niemals automatisch belegt',gmEsc(rest),"openAvailabilityEditor&&openAvailabilityEditor()")+
-    gmPRow('calendar','Bevorzugte Trainingstage','Für Plan und Wochenreview',gmEsc(days),"openAvailabilityEditor&&openAvailabilityEditor()")+
-    gmPRow('activity','Doppel-Einheiten','Nur nach ausdrücklicher Freigabe',gmEsc(dbl),"openAvailabilityEditor&&openAvailabilityEditor()")+
-    gmPRow('gauge','Maximale Tagesbelastung','Noch nicht verfügbar — wird später aus Kapazität und Datenqualität abgeleitet (loadCap-Vertrag)','—','',true)+'</div>';
+      rest=(av.preferredRestDays&&av.preferredRestDays.length)?av.preferredRestDays.join(', '):'' + _uiT('ui.keiner_festgelegt') + '';
+      days=av.availableDays+'' + _uiT('ui.tage_') + '';
+      dbl=(av.doubleDays>0)?(av.doubleDays+'' + _uiT('ui.tage_erlaubt') + ''):'Aus';}}catch(_){ }
+  return gmPPageHead('' + _uiT('ui.plan_wochenstruktur') + '','' + _uiT('ui.wie_orvia_deine_woche_bauen') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
+    gmPRow('moon','' + _uiT('ui.fester_ruhetag') + '','' + _uiT('ui.wird_vom_planer_niemals_automatisch') + '',gmEsc(rest),"openAvailabilityEditor&&openAvailabilityEditor()")+
+    gmPRow('calendar','' + _uiT('ui.bevorzugte_trainingstage') + '','' + _uiT('ui.fuer_plan_und_wochenreview') + '',gmEsc(days),"openAvailabilityEditor&&openAvailabilityEditor()")+
+    gmPRow('activity','Doppel-' + _uiT('ui.einheiten_') + '','' + _uiT('ui.nur_nach_ausdruecklicher_freigabe') + '',gmEsc(dbl),"openAvailabilityEditor&&openAvailabilityEditor()")+
+    gmPRow('gauge','' + _uiT('ui.maximale_tagesbelastung') + '','' + _uiT('ui.noch_nicht_verfuegbar_wird_spaeter') + '','—','',true)+'</div>';
 }
 function gmProfHealth(){
-  var h=gmPPageHead('Gesundheit & Check-in','Safety zuerst')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
-    gmPRow('alert','Warnzeichen','Nur sichtbar, wenn Symptome = Ja','Aktiv','',false)+
-    gmPRow('knee','Verletzungshistorie','Aus deinem Check-in','—','',true)+
-    gmPRow('moon','Schlafziel','Kein produktiver Zielkorridor-Vertrag','—','',true);
+  var h=gmPPageHead('' + _uiT('ui.gesundheit_check_in') + '','' + _uiT('ui.safety_zuerst') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
+    gmPRow('alert','Warnzeichen','' + _uiT('ui.nur_sichtbar_wenn_symptome_ja') + '','' + _uiT('ui.aktiv') + '','',false)+
+    gmPRow('knee','Verletzungshistorie','' + _uiT('ui.aus_deinem_check_in') + '','—','',true)+
+    gmPRow('moon','Schlafziel','' + _uiT('ui.kein_produktiver_zielkorridor_vertrag') + '','—','',true);
   /* Phase 3 · Block 2: Zyklus — bestehender Editor (extras.js), kontextuell hier.
      Zeile nur bei weiblichem Profil bzw. bereits konfiguriertem Zyklus. */
   try{
@@ -10517,7 +10547,7 @@ function gmProfHealth(){
     var _cyc=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.cycle)||null;
     if((typeof gmFeatureFlag!=='function'||gmFeatureFlag('cycle'))&&(_sexF||_cyc)){
       var _cp=null;try{_cp=(typeof cyclePhase==='function')?cyclePhase():null;}catch(_){ }
-      h+=gmPRow('calendar','Zyklus',_cp?('Tag '+_cp.day+' · '+_cp.phase):'Optional — unterstützende Hinweise, keine Diagnose',_cyc?'Aktiv':'—','gmCloseSheets&&gmCloseSheets();openCycleEditor&&openCycleEditor()',false);
+      h+=gmPRow('calendar','Zyklus',_cp?('' + _uiT('ui.tag') + ''+_cp.day+' · '+_cp.phase):'' + _uiT('ui.optional_unterstuetzende_hinweise_keine_diagnose') + '',_cyc?'' + _uiT('ui.aktiv') + '':'—','gmCloseSheets&&gmCloseSheets();openCycleEditor&&openCycleEditor()',false);
     }
   }catch(_){ }
   h+='</div>';
@@ -10530,10 +10560,10 @@ function gmProfHealth(){
       if(_rows&&_rows.length){
         _bl=_rows.map(function(r){return gmPRow('pulse',gmEsc(r[0]),gmEsc(r[1]),'','',false);}).join('');
       }else{
-        _bl=gmPRow('pulse','Baselines',GM_NA+' — belastbar ab ~7 Tagen Check-in-Daten','—','',true);
+        _bl=gmPRow('pulse','Baselines',GM_NA+'' + _uiT('ui.belastbar_ab_7_tagen_check_') + '','—','',true);
       }
     }catch(_){_bl=gmPRow('pulse','Baselines',GM_NA,'—','',true);}
-    h+='<div class="setting-title">Baselines (7/28 Tage, read-only)</div><div class="setting-group">'+_bl+'</div>';
+    h+='<div class="setting-title">' + _uiT('ui.baselines_7_28_tage_read') + '</div><div class="setting-group">'+_bl+'</div>';
   }
   return h;
 }
@@ -10576,14 +10606,14 @@ function gmDeviceSyncPoll(base,token,baseline){
   var deadline=Date.now()+90000,delay=2000;
   function tick(){
     if(Date.now()>deadline){
-      _gmDevSyncNow={state:'error',error:'Läuft im Hintergrund weiter (Zeitüberschreitung beim Abfragen).'};
+      _gmDevSyncNow={state:'error',error:'' + _uiT('ui.laeuft_im_hintergrund_weiter_zeitueberschreitung') + ''};
       gmDeviceSyncPollFinish();
       return;
     }
     gmDeviceSyncStatus(base,token).then(function(st){
       var errNow=st&&st.lastErrorCode,succNow=st&&st.lastSuccessfulSyncAt;
       if(errNow&&errNow!==baseline.err){
-        _gmDevSyncNow={state:'error',error:'Sync fehlgeschlagen ('+errNow+').'};
+        _gmDevSyncNow={state:'error',error:'' + _uiT('ui.sync_fehlgeschlagen') + ''+errNow+').'};
         gmDeviceSyncPollFinish();
         return;
       }
@@ -10613,17 +10643,17 @@ async function gmDeviceSyncNowTrigger(){
     var sess=sb?await sb.auth.getSession():null;
     token=sess&&sess.data&&sess.data.session&&sess.data.session.access_token;
   }catch(_){ }
-  if(!token){_gmDevSyncNow={state:'error',error:'Keine aktive Sitzung.'};gmRerenderConnections();return;}
-  if(!base){_gmDevSyncNow={state:'error',error:'Worker nicht konfiguriert.'};gmRerenderConnections();return;}
+  if(!token){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.keine_aktive_sitzung') + ''};gmRerenderConnections();return;}
+  if(!base){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.worker_nicht_konfiguriert') + ''};gmRerenderConnections();return;}
   var baseline=null;
   try{var st0=await gmDeviceSyncStatus(base,token);baseline={succ:st0&&st0.lastSuccessfulSyncAt,err:st0&&st0.lastErrorCode};}catch(_){ }
-  if(!baseline){_gmDevSyncNow={state:'error',error:'Status nicht abrufbar (offline oder Netzwerkfehler).'};gmRerenderConnections();return;}
+  if(!baseline){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.status_nicht_abrufbar_offline_oder') + ''};gmRerenderConnections();return;}
   try{
     var resp=await fetch(base+'/sync',{method:'POST',headers:{'Authorization':'Bearer '+token}});
     if(resp.status===202){gmDeviceSyncPoll(base,token,baseline);return;}
-    else if(resp.status===409){_gmDevSyncNow={state:'error',error:'Gerät ist nicht verbunden.'};}
-    else{_gmDevSyncNow={state:'error',error:'Synchronisierung fehlgeschlagen ('+resp.status+').'};}
-  }catch(e){_gmDevSyncNow={state:'error',error:'Worker nicht erreichbar (offline oder Netzwerkfehler).'};}
+    else if(resp.status===409){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.geraet_ist_nicht_verbunden') + ''};}
+    else{_gmDevSyncNow={state:'error',error:'' + _uiT('ui.synchronisierung_fehlgeschlagen') + ''+resp.status+').'};}
+  }catch(e){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.worker_nicht_erreichbar_offline_oder') + ''};}
   try{_gmDevSync.fetchedAt=0;gmDeviceSyncRefresh();}catch(_){ }
   gmRerenderConnections();
 }
@@ -10635,19 +10665,19 @@ function gmProfConnections(){
      (Garmin blockt Cloud-Logins); der Worker wartet auf ein frisches Token. */
   var reauth=false;try{reauth=(typeof gmDevReauthNeeded==='function')&&gmDevReauthNeeded();}catch(_){ }
   var running=_gmDevSyncNow.state==='running';
-  var syncValue=reauth?'Gesperrt':(running?'Läuft …':(_gmDevSyncNow.state==='success'?'Abgeschlossen':(_gmDevSyncNow.state==='error'?'Fehler':'')));
-  var syncNote=!connected?'Kein Gerät verbunden':(reauth?'Anmeldung abgelaufen — erst neu anmelden, dann synchronisieren':(running?'Synchronisiert gerade …':(_gmDevSyncNow.state==='error'?_gmDevSyncNow.error:(_gmDevSyncNow.state==='success'?'Neue Daten sind eingetroffen':'Ruft die neuesten Daten vom Garmin-Worker ab'))));
-  var reauthRow=reauth?gmPRow('alert','Neuanmeldung erforderlich','Die Garmin-Anmeldung ist abgelaufen. Führe auf deinem Computer das Anmelde-Skript (local_login) aus — danach synchronisiert der Worker automatisch weiter.'+(_gmDevSync.errCode?' · Code: '+gmEsc(_gmDevSync.errCode):''),'','',false):'';
-  return gmPPageHead('Geräte & Datenquellen','Eine Wahrheit, klare Herkunft')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
+  var syncValue=reauth?'Gesperrt':(running?'' + _uiT('ui.laeuft') + '':(_gmDevSyncNow.state==='success'?'' + _uiT('ui.abgeschlossen') + '':(_gmDevSyncNow.state==='error'?'Fehler':'')));
+  var syncNote=!connected?'' + _uiT('ui.kein_geraet_verbunden') + '':(reauth?'' + _uiT('ui.anmeldung_abgelaufen_erst_neu_anmelden') + '':(running?'' + _uiT('ui.synchronisiert_gerade') + '':(_gmDevSyncNow.state==='error'?_gmDevSyncNow.error:(_gmDevSyncNow.state==='success'?'' + _uiT('ui.neue_daten_sind_eingetroffen') + '':'' + _uiT('ui.ruft_die_neuesten_daten_vom') + ''))));
+  var reauthRow=reauth?gmPRow('alert','' + _uiT('ui.neuanmeldung_erforderlich_') + '','' + _uiT('ui.die_garmin_anmeldung_ist_abgelaufen') + ''+(_gmDevSync.errCode?'' + _uiT('ui.code') + ''+gmEsc(_gmDevSync.errCode):''),'','',false):'';
+  return gmPPageHead('' + _uiT('ui.geraete_datenquellen') + '','' + _uiT('ui.eine_wahrheit_klare_herkunft') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
     gmPRow('check','Cloud-Sync',gmEsc(gmProfSyncLabel()),'',"",false)+
-    gmPRow('link','Garmin',connected?gmEsc(devLbl):'—',reauth?'Neuanmeldung nötig':'','',false)+
+    gmPRow('link','Garmin',connected?gmEsc(devLbl):'—',reauth?'' + _uiT('ui.neuanmeldung_noetig') + '':'','',false)+
     reauthRow+
-    gmPRow('activity','Jetzt synchronisieren',gmEsc(syncNote),gmEsc(syncValue),(connected&&!running&&!reauth)?'gmDeviceSyncNowTrigger()':'',!connected||running||reauth)+
-    gmPRow('link','Apple Health','Zusätzliche Gesundheitsdaten','—','',true)+
-    gmPRow('db','Manuelle Daten','Check-in, Training, Körperwerte','Aktiv','',false)+
+    gmPRow('activity','' + _uiT('ui.jetzt_synchronisieren') + '',gmEsc(syncNote),gmEsc(syncValue),(connected&&!running&&!reauth)?'gmDeviceSyncNowTrigger()':'',!connected||running||reauth)+
+    gmPRow('link','' + _uiT('ui.apple_health') + '','' + _uiT('ui.zusaetzliche_gesundheitsdaten') + '','—','',true)+
+    gmPRow('db','' + _uiT('ui.manuelle_daten') + '','' + _uiT('ui.check_in_training_koerperwerte') + '','' + _uiT('ui.aktiv') + '','',false)+
     /* Phase 3 · Block 2: Equipment-Verschleiss — bestehender km-Zaehler je Schuh/Rad. */
-    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('equipment'))?gmPRow('gauge','Equipment &amp; Verschleiß','Schuhe und Rad — km-Zähler und Wechsel-Limit','',"gmOpenEquipmentSheet()",false):'')+'</div>'+
+    ((typeof gmFeatureFlag!=='function'||gmFeatureFlag('equipment'))?gmPRow('gauge','' + _uiT('ui.equipment_amp_verschleiss') + '','' + _uiT('ui.schuhe_und_rad_km_zaehler') + '','',"gmOpenEquipmentSheet()",false):'')+'</div>'+
     gmRxPreviewSection()+gmGateTestSection();
 }
 
@@ -10687,16 +10717,16 @@ function gmGateRef(){return 'swe:'+gmGateOcc()+':v1';}
 function gmGateBuild(){
   var O=window.ORVIA||{};
   var EXP=O.garminWorkoutExport,SP=O.strengthPlan,MAP=O.garminExerciseMap;
-  if(!EXP||!SP||!MAP){_gmGate.state='error';_gmGate.msg='Module nicht geladen (Seite neu laden).';return null;}
+  if(!EXP||!SP||!MAP){_gmGate.state='error';_gmGate.msg='' + _uiT('ui.module_nicht_geladen_seite_neu') + '';return null;}
   var r=EXP.buildGarminStrengthWorkout({
-    occurrence:{occurrenceId:gmGateOcc(),l:'Gerätetest G1–G3',t:'Gym'},
+    occurrence:{occurrenceId:gmGateOcc(),l:'' + _uiT('ui.geraetetest_g1_g3') + '',t:'Gym'},
     plannedExercises:gmGatePlanned(),
     mapping:MAP,
     /* Beide Gates ausdruecklich geoeffnet — das IST der Zweck dieses Laufs.
        Der Worker verlangt zusaetzlich die serverseitige Freigabe. */
     options:{fillUnverifiedIds:true,includeWeight:true}
   });
-  if(!r.ok){_gmGate.state='error';_gmGate.msg='Exporter: '+r.reason;return null;}
+  if(!r.ok){_gmGate.state='error';_gmGate.msg='' + _uiT('ui.exporter') + ''+r.reason;return null;}
   r.payloadHash=SP.fingerprint(gmGatePlanned());
   r.mappingVersion=MAP.VERSION;
   _gmGate.built=r;_gmGate.state='built';_gmGate.msg='';
@@ -10707,12 +10737,12 @@ async function gmGateSend(){
   if(_gmGate.state==='sending')return;
   var b=_gmGate.built||gmGateBuild();
   if(!b)return gmRerenderConnections();
-  _gmGate.state='sending';_gmGate.msg='Sende …';_gmGate.result=null;gmRerenderConnections();
+  _gmGate.state='sending';_gmGate.msg='' + _uiT('ui.sende') + '';_gmGate.result=null;gmRerenderConnections();
   var base=(window.ORVIA_CFG&&ORVIA_CFG.GARMIN_WORKER_URL)||'';
   var sb=window.ORVIA&&ORVIA.sb,token=null;
   try{var s=sb?await sb.auth.getSession():null;token=s&&s.data&&s.data.session&&s.data.session.access_token;}catch(_){ }
-  if(!base){_gmGate.state='error';_gmGate.msg='Worker nicht konfiguriert.';return gmRerenderConnections();}
-  if(!token){_gmGate.state='error';_gmGate.msg='Keine aktive Sitzung — bitte neu anmelden.';return gmRerenderConnections();}
+  if(!base){_gmGate.state='error';_gmGate.msg='' + _uiT('ui.worker_nicht_konfiguriert') + '';return gmRerenderConnections();}
+  if(!token){_gmGate.state='error';_gmGate.msg='' + _uiT('ui.keine_aktive_sitzung_bitte_neu') + '';return gmRerenderConnections();}
   var body={clientRef:gmGateRef(),occurrenceId:gmGateOcc(),payloadVersion:b.version,
     mappingVersion:b.mappingVersion,payloadHash:b.payloadHash,workout:b.workout,
     stepBindings:b.stepBindings,deviceTest:true};
@@ -10725,46 +10755,46 @@ async function gmGateSend(){
     _gmGate.state=(resp.status===200)?'sent':'error';
     /* Die haeufigsten Faelle im Klartext, damit im Gym niemand raten muss. */
     if(resp.status===200)_gmGate.msg='Übertragen.';
-    else if(resp.status===422)_gmGate.msg='Abgelehnt — sehr wahrscheinlich steht STRENGTH_PUSH_DEVICE_TEST im Worker noch auf false.';
-    else if(resp.status===409)_gmGate.msg='Dieser clientRef wurde heute schon verwendet.';
-    else if(resp.status===401)_gmGate.msg='Anmeldung abgelaufen oder Garmin-Token ungültig.';
-    else _gmGate.msg='Worker antwortet mit '+resp.status+'.';
+    else if(resp.status===422)_gmGate.msg='' + _uiT('ui.abgelehnt_sehr_wahrscheinlich_steht_strength') + '';
+    else if(resp.status===409)_gmGate.msg='' + _uiT('ui.dieser_clientref_wurde_heute_schon') + '';
+    else if(resp.status===401)_gmGate.msg='' + _uiT('ui.anmeldung_abgelaufen_oder_garmin_token') + '';
+    else _gmGate.msg='' + _uiT('ui.worker_antwortet_mit') + ''+resp.status+'.';
   }catch(e){
-    _gmGate.state='error';_gmGate.msg='Worker nicht erreichbar (offline oder Netzwerkfehler).';
+    _gmGate.state='error';_gmGate.msg='' + _uiT('ui.worker_nicht_erreichbar_offline_oder') + '';
   }
   gmRerenderConnections();
 }
 function gmGateTestSection(){
   if(!gmGateOn())return '';
   var b=_gmGate.built,rows='';
-  rows+=gmPRow('activity','Payload prüfen','Rechnet mit den echten Modulen. Kein Netz.','',
+  rows+=gmPRow('activity','' + _uiT('ui.payload_pruefen') + '','' + _uiT('ui.rechnet_mit_den_echten_modulen') + '','',
     (_gmGate.state==='sending')?'':'gmGateCheck()',_gmGate.state==='sending');
   if(b){
     var lines=[];
     for(var i=0;i<b.stepBindings.length;i++){
       var s=b.stepBindings[i];
       if(s.kind==='repeat')lines.push(s.exerciseName+' · '+s.sets+'×');
-      if(s.kind==='set')lines.push('  '+s.reps+' Wdh.');
-      if(s.kind==='rest')lines.push('  '+s.seconds+' s Pause');
+      if(s.kind==='set')lines.push('  '+s.reps+'' + _uiT('ui.wdh') + '');
+      if(s.kind==='rest')lines.push('  '+s.seconds+'' + _uiT('ui.s_pause') + '');
     }
-    rows+=gmPRow('check','Kontrollwerte',gmEsc('clientRef '+gmGateRef()),'',"",false);
+    rows+=gmPRow('check','Kontrollwerte',gmEsc('' + _uiT('ui.clientref') + ''+gmGateRef()),'',"",false);
     rows+=gmPRow('check','payloadHash',gmEsc(b.payloadHash),'',"",false);
     rows+=gmPRow('dumbbell','Schritte',gmEsc(lines.join(' · ')),'',"",false);
-    rows+=gmPRow('gauge','Gewichte','20 kg → 20000 · 30 kg → 30000 (Gramm-Annahme, Gate G3)','',"",false);
+    rows+=gmPRow('gauge','Gewichte','' + _uiT('ui.20_kg_20000_30_kg') + '','',"",false);
   }
-  rows+=gmPRow('link','An Garmin senden',
-    b?'Sendet mit deviceTest — der Worker muss serverseitig freigeschaltet sein.':'Erst prüfen.',
-    (_gmGate.state==='sending')?'Läuft …':(_gmGate.state==='sent'?'Gesendet':''),
+  rows+=gmPRow('link','' + _uiT('ui.an_garmin_senden') + '',
+    b?'' + _uiT('ui.sendet_mit_devicetest_der_worker') + '':'' + _uiT('ui.erst_pruefen') + '',
+    (_gmGate.state==='sending')?'' + _uiT('ui.laeuft') + '':(_gmGate.state==='sent'?'Gesendet':''),
     (b&&_gmGate.state!=='sending')?'gmGateSend()':'',!b||_gmGate.state==='sending');
-  if(_gmGate.msg)rows+=gmPRow(_gmGate.state==='error'?'alert':'check','Ergebnis',gmEsc(_gmGate.msg),'',"",false);
+  if(_gmGate.msg)rows+=gmPRow(_gmGate.state==='error'?'alert':'check','' + _uiT('ui.ergebnis') + '',gmEsc(_gmGate.msg),'',"",false);
   var r=_gmGate.result;
   if(r){
-    rows+=gmPRow('info','Antwort','HTTP '+r.status+' · '+gmEsc(JSON.stringify(r.body).slice(0,180)),'',"",false);
+    rows+=gmPRow('info','Antwort','' + _uiT('ui.http') + ''+r.status+' · '+gmEsc(JSON.stringify(r.body).slice(0,180)),'',"",false);
     if(r.status===200&&r.body&&r.body.workoutId){
-      rows+=gmPRow('check','workoutId — NOTIEREN',gmEsc(String(r.body.workoutId)),'',"",false);
+      rows+=gmPRow('check','' + _uiT('ui.workoutid_notieren') + '',gmEsc(String(r.body.workoutId)),'',"",false);
     }
   }
-  return '<div class="setting-title">Gerätetest G1–G3 (nur mit ?gate=1)</div><div class="setting-group">'+rows+'</div>'+
+  return '<div class="setting-title">' + _uiT('ui.geraetetest_g1_g3_nur_mit') + '</div><div class="setting-group">'+rows+'</div>'+
     '<div class="source">'+icon('info','xs')+' Kein Produktweg. Dieser Abschnitt erscheint nur, solange die Adresse ?gate=1 enthält, und wird nirgends gespeichert.</div>';
 }
 
@@ -10805,26 +10835,26 @@ function gmRxPreviewBuild(){
   var sh=(window.ORVIA&&ORVIA.engineShadow)||null;
   var WP=(window.ORVIA&&ORVIA.weekProjection)||null;
   if(!sh||typeof sh.buildWeekNow!=='function'||!WP){
-    _gmRxPrev.state='error';_gmRxPrev.msg='Engine-Module nicht geladen — Seite neu laden.';
+    _gmRxPrev.state='error';_gmRxPrev.msg='' + _uiT('ui.engine_module_nicht_geladen_seite') + '';
     gmRerenderConnections();return null;
   }
   var wk=null;
   try{wk=sh.buildWeekNow();}catch(e){
-    _gmRxPrev.state='error';_gmRxPrev.msg='Die Engine konnte nicht rechnen: '+((e&&e.message)||'unbekannter Fehler');
+    _gmRxPrev.state='error';_gmRxPrev.msg='' + _uiT('ui.die_engine_konnte_nicht_rechnen') + ''+((e&&e.message)||'' + _uiT('ui.unbekannter_fehler') + '');
     gmRerenderConnections();return null;
   }
   if(!wk||!wk.result){
     _gmRxPrev.state='error';
-    _gmRxPrev.msg='Die Engine hat keine Woche geliefert. Meist fehlen noch Trainingsdaten oder Zielangaben.';
+    _gmRxPrev.msg='' + _uiT('ui.die_engine_hat_keine_woche') + '';
     gmRerenderConnections();return null;
   }
   var proj=null;
   try{proj=WP.projectWeek(wk.result);}catch(e2){
-    _gmRxPrev.state='error';_gmRxPrev.msg='Die Woche liess sich nicht darstellen: '+((e2&&e2.message)||'unbekannter Fehler');
+    _gmRxPrev.state='error';_gmRxPrev.msg='' + _uiT('ui.die_woche_liess_sich_nicht') + ''+((e2&&e2.message)||'' + _uiT('ui.unbekannter_fehler') + '');
     gmRerenderConnections();return null;
   }
   if(!proj||proj.ok!==true){
-    _gmRxPrev.state='error';_gmRxPrev.msg='Die Woche liess sich nicht darstellen'+((proj&&proj.error)?(' ('+proj.error+')'):'')+'.';
+    _gmRxPrev.state='error';_gmRxPrev.msg='' + _uiT('ui.die_woche_liess_sich_nicht_') + ''+((proj&&proj.error)?(' ('+proj.error+')'):'')+'.';
     gmRerenderConnections();return null;
   }
   _gmRxPrev.week=proj;_gmRxPrev.state='built';
@@ -10838,7 +10868,7 @@ function gmRxPreviewUnitHTML(it){
   var F=(window.ORVIA&&ORVIA.prescriptionFormat)||null;
   var kopf='<div style="font-weight:600">'+gmEsc(it.t+' · '+it.l)+(it.d?(' <span class="muted" style="font-weight:400">· '+gmEsc(it.d)+'</span>'):'')+'</div>';
   if(!F||!it.rx){
-    return kopf+'<div class="muted" style="font-size:12px;margin-top:2px">Keine Vorgabe hinterlegt</div>';
+    return kopf+'<div class="muted" style="font-size:12px;margin-top:2px">' + _uiT('ui.keine_vorgabe_hinterlegt') + '</div>';
   }
   var r=F.formatPrescription(it.rx,{nameOf:(typeof gmExName==='function')?gmExName:null});
   if(!r.ok){
@@ -10850,7 +10880,7 @@ function gmRxPreviewUnitHTML(it){
     return '<div style="font-size:12px;margin-top:2px;'+(stark?'':'opacity:.7')+'">'+gmEsc(l.text)+'</div>';
   }).join('');
   var warn=(r.warnings&&r.warnings.length)
-    ? '<div class="muted" style="font-size:11px;margin-top:3px">'+gmEsc(r.warnings.length+' Block/Bloecke nicht darstellbar')+'</div>' : '';
+    ? '<div class="muted" style="font-size:11px;margin-top:3px">'+gmEsc(r.warnings.length+'' + _uiT('ui.block_bloecke_nicht_darstellbar') + '')+'</div>' : '';
   /* v8-349: auch die Vorschau zeigt die Hinweise. Zwei Ansichten derselben
      Einheit, von denen eine die Herkunft weglaesst, waeren zwei Wahrheiten
      — und die Vorschau ist genau die Stelle, an der man nachsieht, ob das
@@ -10868,17 +10898,17 @@ function gmRxPreviewUnitHTML(it){
 }
 
 function gmRxPreviewSection(){
-  var WD=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  var WD=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
   var rows='';
-  rows+=gmPRow('activity','Engine-Woche berechnen',
-    'Rechnet die Woche und zeigt sie an. Dein Plan wird NICHT verändert.',
+  rows+=gmPRow('activity','' + _uiT('ui.engine_woche_berechnen') + '',
+    '' + _uiT('ui.rechnet_die_woche_und_zeigt') + '',
     (_gmRxPrev.state==='built')?'Berechnet':'','gmRxPreviewBuild()',false);
-  if(_gmRxPrev.msg)rows+=gmPRow('alert','Kein Ergebnis',gmEsc(_gmRxPrev.msg),'',"",false);
+  if(_gmRxPrev.msg)rows+=gmPRow('alert','' + _uiT('ui.kein_ergebnis') + '',gmEsc(_gmRxPrev.msg),'',"",false);
   var p=_gmRxPrev.week;
   if(p){
     var gesamt=0;
     for(var d=0;d<7;d++)gesamt+=((p.days&&p.days[d])||[]).length;
-    rows+=gmPRow('check','Einheiten in der Woche',
+    rows+=gmPRow('check','' + _uiT('ui.einheiten_in_der_woche') + '',
       gesamt+' geplant'+((p.counts&&p.counts.unmapped)?(' · '+p.counts.unmapped+' nicht darstellbar'):''),'',"",false);
     for(var i=0;i<7;i++){
       var tag=(p.days&&p.days[i])||[];
@@ -10888,12 +10918,12 @@ function gmRxPreviewSection(){
         '<div class="sr-tx" style="flex:1"><div class="sr-t">'+WD[i]+'</div><div class="sr-s" style="white-space:normal">'+inhalt+'</div></div></div>';
     }
     if(p.unmapped&&p.unmapped.length){
-      rows+=gmPRow('info','Nicht darstellbar',
+      rows+=gmPRow('info','' + _uiT('ui.nicht_darstellbar') + '',
         gmEsc(p.unmapped.map(function(u){return u.reason;}).join(', ')),'',"",false);
     }
   }
-  return '<div class="setting-title">Trainingsplan-Vorschau (Engine)</div><div class="setting-group">'+rows+'</div>'+
-    '<div class="source">'+icon('info','xs')+' Reine Vorschau: dein Wochenplan wird nicht verändert, nichts wird aktiviert, es entsteht kein Rückweg-Schnappschuss. Die Engine schreibt dabei nur ihren üblichen Schatten-Eintrag für die laufende Woche — der wird ersetzt, nicht vermehrt. Angezeigt wird ausschließlich, was die Engine tatsächlich ausgerechnet hat; fehlende Angaben werden nicht ergänzt.</div>';
+  return '<div class="setting-title">' + _uiT('ui.trainingsplan_vorschau_engine') + '</div><div class="setting-group">'+rows+'</div>'+
+    '<div class="source">'+icon('info','xs')+' Reine Vorschau: dein Wochenplan wird nicht verändert, nichts wird aktiviert, es entsteht kein Rückweg-Schnappschuss. Die Engine schreibt dabei nur ihren üblichen Schatten-Eintrag für die laufende ' + _uiT('ui.woche__') + '— der wird ersetzt, nicht vermehrt. Angezeigt wird ausschließlich, was die Engine tatsächlich ausgerechnet hat; fehlende Angaben werden nicht ergänzt.</div>';
 }
 try{window.ORVIA=window.ORVIA||{};ORVIA.enginePlanPreview=gmRxPreviewBuild;}catch(_){ }
 /* Phase 3 · Block 2 (2026-08-05): Equipment-Sheet — identische Quelle wie der
@@ -10903,9 +10933,9 @@ function gmOpenEquipmentSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var body='';
   try{body=(typeof equipmentHTML==='function')?equipmentHTML():'<p class="muted">'+GM_NA+'</p>';}catch(_){body='<p class="muted">'+GM_NA+'</p>';}
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gauge')+'</div><div><h3>Equipment &amp; Verschleiß</h3><div class="sh-sub" style="margin:2px 0 0">km je Schuh/Rad — automatisch gezählt bei Auswahl in der Einheit</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('gauge')+'</div><div><h3>' + _uiT('ui.equipment_amp_verschleiss') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.km_je_schuh_rad_automatisch') + '</div></div></div>'+
     '<div class="sh-block" id="gmEquipSheetBody">'+body+'</div>'+
-    '<div class="source">'+icon('info','xs')+' Warnung ab 90 % des Wechsel-Limits — kein Limit gesetzt = reiner Zähler, keine erfundene Lebensdauer.</div>';
+    '<div class="source">'+icon('info','xs')+' ' + _uiT('ui.warnung') + ' ab 90 % des Wechsel-Limits — kein Limit gesetzt = reiner Zähler, keine erfundene Lebensdauer.</div>';
   gmOpenSheet('detailSheet');
 }
 function gmRefreshEquipmentSheet(){
@@ -10913,92 +10943,97 @@ function gmRefreshEquipmentSheet(){
   try{host.innerHTML=(typeof equipmentHTML==='function')?equipmentHTML():host.innerHTML;}catch(_){ }
 }
 function gmProfUnits(){
-  return gmPPageHead('Einheiten & Berechnungen','Einheitlich über alle Bereiche')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
-    gmPRow('activity','Distanz &amp; Gewicht','Kilometer, Kilogramm','Metrisch','',false)+
-    gmPRow('calendar','Wochenbeginn','Für Plan und Wochenreview','Montag','',false)+
-    gmPRow('heart','Herzfrequenzzonen','Keine neue Zonenregel im UI','—','',true)+'</div>';
+  return gmPPageHead('' + _uiT('ui.einheiten_berechnungen') + '','' + _uiT('ui.einheitlich_ueber_alle_bereiche') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
+    gmPRow('activity','' + _uiT('ui.distanz_amp_gewicht') + '','' + _uiT('ui.kilometer_kilogramm') + '','Metrisch','',false)+
+    gmPRow('calendar','Wochenbeginn','' + _uiT('ui.fuer_plan_und_wochenreview') + '','Montag','',false)+
+    gmPRow('heart','Herzfrequenzzonen','' + _uiT('ui.keine_neue_zonenregel_im_ui') + '','—','',true)+'</div>';
 }
 function gmProfData(){
   var lb='—';try{if(typeof DB!=='undefined'&&DB&&DB._lastBackup){var d=new Date(DB._lastBackup);if(!isNaN(d))lb=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+', '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});}}catch(_){ }
-  return gmPPageHead('Daten verwalten','Volle Kontrolle')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
-    gmPRow('db','Daten exportieren','JSON-Export über die Sicherung','Export','exportData&&exportData()')+
+  return gmPPageHead('' + _uiT('ui.daten_verwalten') + '','' + _uiT('ui.volle_kontrolle') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
+    gmPRow('db','' + _uiT('ui.daten_exportieren') + '','' + _uiT('ui.json_export_ueber_die_sicherung') + '','Export','exportData&&exportData()')+
     /* Phase 6.5 ② (2026-08-05): vollständiger Cloud-Export (alle nutzerbezogenen
        Tabellen, maschinenlesbar) — schliesst die Art.-20-Lücke des lokalen Exports. */
-    gmPRow('db','Cloud-Export (vollständig)','Alle Cloud-Tabellen als JSON — Datenübertragbarkeit','Export','exportCloudData&&exportCloudData()')+
-    gmPRow('copy','Lokale Sicherung','Letzte Sicherung: '+gmEsc(lb),'','',false)+
-    gmPRow('x','Alle Daten löschen','Nur mit erneuter Bestätigung','','orviaDeleteAccount&&orviaDeleteAccount()')+'</div>';
+    gmPRow('db','' + _uiT('ui.cloud_export_vollstaendig') + '','' + _uiT('ui.alle_cloud_tabellen_als_json') + '','Export','exportCloudData&&exportCloudData()')+
+    gmPRow('copy','' + _uiT('ui.lokale_sicherung') + '','' + _uiT('ui.letzte_sicherung') + ''+gmEsc(lb),'','',false)+
+    gmPRow('x','' + _uiT('ui.alle_daten_loeschen') + '','' + _uiT('ui.nur_mit_erneuter_bestaetigung') + '','','orviaDeleteAccount&&orviaDeleteAccount()')+'</div>';
 }
 function gmProfAccount(){
   var email='—';try{email=(window.ORVIA&&ORVIA.user&&ORVIA.user.email)?ORVIA.user.email:'—';}catch(_){ }
-  return gmPPageHead('Konto & Sicherheit','Persönliche Zugangsdaten')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
+  return gmPPageHead('' + _uiT('ui.konto_sicherheit') + '','' + _uiT('ui.persoenliche_zugangsdaten') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
     gmPRow('heart',gmEsc(gmProfName()||'—'),gmEsc(email),'','',false)+
-    gmPRow('lock','Passwort &amp; Anmeldung','Über den bestehenden Auth-Flow','—','orviaChangePassword&&orviaChangePassword()')+
-    gmPRow('shield','Angemeldete Geräte','Keine kanonische Geräteliste','—','',true)+'</div>';
+    gmPRow('lock','' + _uiT('ui.passwort_amp_anmeldung') + '','' + _uiT('ui.ueber_den_bestehenden_auth_flow') + '','—','orviaChangePassword&&orviaChangePassword()')+
+    gmPRow('shield','' + _uiT('ui.angemeldete_geraete') + '','' + _uiT('ui.keine_kanonische_geraeteliste') + '','—','',true)+'</div>';
 }
 function gmOrviaBuildLabel(){
   try{
     var m=document.querySelector('meta[name="orvia-build"]');
     var v=m&&m.content;
-    return v?('Build '+v.replace(/^orvia-/,'')):'—';
+    return v?('' + _uiT('ui.build') + ''+v.replace(/^orvia-/,'')):'—';
   }catch(_){return '—';}
 }
 function gmProfAbout(){
-  return gmPPageHead('Über ORVIA','Das System hinter deinem Training')+
-    '<div class="setting-title">Konfiguration</div><div class="setting-group">'+
-    gmPRow('info','ORVIA','Progressive Web App',gmOrviaBuildLabel(),'',false)+
-    gmPRow('shield','Medizinischer Hinweis','Kein Ersatz für medizinische Diagnose','','',false)+
-    gmPRow('book','Hilfe &amp; Support','Dokumentation folgt — '+GM_NA,'—','',true)+'</div>';
+  return gmPPageHead('' + _uiT('ui.ueber_orvia') + '','' + _uiT('ui.das_system_hinter_deinem_training') + '')+
+    '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
+    gmPRow('info','ORVIA','' + _uiT('ui.progressive_web_app') + '',gmOrviaBuildLabel(),'',false)+
+    gmPRow('shield','' + _uiT('ui.medizinischer_hinweis') + '','' + _uiT('ui.kein_ersatz_fuer_medizinische_diagnose') + '','','',false)+
+    gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true)+'</div>';
 }
 /* ---------- GM5.3: Zeilenregister der Profil-Unterseiten ----------
    Die beiden Register halten ausschliesslich die Werte, die die jeweilige Zeile
    ohnehin schon gerendert hat bzw. die im kanonischen Datensatz der Zeile bereits
    vorliegen. Es wird nichts berechnet, abgeleitet, ergaenzt oder gespeichert. */
 var _gmBtSlots=[],_gmMileSlots=[];
-var GM_MS_STATUS={planned:'geplant',in_progress:'in Arbeit',achieved:'erreicht',skipped:'übersprungen'};
+var GM_MS_STATUS={planned:'geplant',in_progress:'' + _uiT('ui.in_arbeit') + '',achieved:'erreicht',skipped:'übersprungen'};
 function gmProfBestTimes(){
   var b=null;try{b=(typeof bestTimes==='function')?bestTimes():null;}catch(_){ }
+  /* S1/E1 (12.09.2026): Rad- und Schwimm-Bestzeiten aus denselben gemessenen Fenstern (run-bests.measuredAllBests). */
+  var _ms={};try{var _rb2=window.ORVIA&&ORVIA.runBests,_st2=window.ORVIA&&ORVIA.activityStore;if(_rb2&&_rb2.measuredAllBests&&_st2&&_st2.listActivities)_ms=_rb2.measuredAllBests(_st2.listActivities(),{isTombstoned:_st2.isTombstoned||null})||{};}catch(_){ }
+  var _fsec=function(sec){if(sec==null)return null;var h2=Math.floor(sec/3600),m2=Math.floor((sec%3600)/60),ss=Math.round(sec%60);return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(ss).padStart(2,'0')):(m2+':'+String(ss).padStart(2,'0'));};
   var fp=function(sec){try{return (typeof fmtPace==='function')?fmtPace(sec):(Calc&&Calc.fmtPace?Calc.fmtPace(sec):'—');}catch(_){return '—';}};
   var rows=[
     {d:'1',u:'km',k:'k1',t:b&&b.t1!=null?fp(b.t1):null,real:b&&b.real&&b.real.k1},
     {d:'5',u:'km',k:'k5',t:b&&b.t5!=null?fp(b.t5):null,real:b&&b.real&&b.real.k5},
     {d:'10',u:'km',k:'k10',t:b&&b.t10!=null?fp(b.t10):null,real:b&&b.real&&b.real.k10},
-    {d:'21,1',u:'km',t:null},{d:'400',u:'m Schwimm',t:null},{d:'20',u:'km Rad',t:null}
+    {d:'21,1',u:'km',k:'k21',t:b&&b.t21!=null?fp(b.t21):null,real:b&&b.real&&b.real.k21},
+    {d:'400',u:'' + _uiT('ui.m_schwimm') + '',k:'m400',ms:'swimming',t:_ms.swimming&&_ms.swimming.m400?_fsec(_ms.swimming.m400.sec):null,real:!!(_ms.swimming&&_ms.swimming.m400)},
+    {d:'20',u:'' + _uiT('ui.km_rad') + '',k:'k20',ms:'cycling',t:_ms.cycling&&_ms.cycling.k20?_fsec(_ms.cycling.k20.sec):null,real:!!(_ms.cycling&&_ms.cycling.k20)}
   ];
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
-  var h=gmPPageHead('Bestzeiten','Persönliche Rekorde je Distanz')+'<div style="padding:0 18px">';
+  var h=gmPPageHead('Bestzeiten','' + _uiT('ui.persoenliche_rekorde_je_distanz') + '')+'<div style="padding:0 18px">';
   _gmBtSlots=[];
   rows.forEach(function(r,i){
     /* KF-021: Quelle und Messdistanz kommen aus bestTimes().src/.meas — die Zeile
        behauptet nicht mehr pauschal „Import", wo eine Runde gemessen wurde. */
-    var m=(r.k&&b&&b.meas)?b.meas[r.k]:null;
-    var sub=r.t==null?GM_NA:(r.k?gmBtSrcLabel(b,r.k):(r.real?'eingetragene Bestleistung':'geschätzt (Riegel-Modell, keine Messung)'));
-    var subFull=sub+(lvl==='p'&&r.t!=null&&m&&m.laps?' · '+m.laps+(m.laps===1?' Runde':' Runden'):'');
+    var m=r.ms?((_ms[r.ms]&&_ms[r.ms][r.k])||null):((r.k&&b&&b.meas)?b.meas[r.k]:null);
+    var sub=r.t==null?GM_NA:(r.ms?((GM_BT_SRC[m&&m.method]||GM_NA)+(m&&m.km!=null?' ('+(typeof fmtDe==='function'?fmtDe(m.km):m.km)+' km)':'')):r.k?gmBtSrcLabel(b,r.k):(r.real?'' + _uiT('ui.eingetragene_bestleistung') + '':'' + _uiT('ui.geschaetzt_riegel_modell_keine_messung') + ''));
+    var subFull=sub+(lvl==='p'&&r.t!=null&&m&&m.laps?' · '+m.laps+(m.laps===1?'' + _uiT('ui.runde_') + '':'' + _uiT('ui.runden') + ''):'');
     var timeTxt=(r.t!=null?r.t:'—');
     _gmBtSlots.push({dist:r.d+' '+r.u,time:timeTxt,sub:subFull,
       date:(m&&m.date)?((typeof fmtDate==='function')?fmtDate(m.date):m.date):null,
       meas:m||null,imp:null,has:(r.t!=null)});
     h+='<button type="button" class="bt-row'+(r.t!=null?'':' bt-empty')+'" onclick="gmOpenBtRowSheet('+i+')"><div class="bt-dist"><b>'+r.d+'</b><span>'+r.u+'</span></div><div class="bt-b"><div class="bt-time">'+gmEsc(timeTxt)+'</div><div class="bt-sub">'+gmEsc(subFull)+'</div></div><div class="bt-imp">'+icon('chev','sm')+'</div></button>';
   });
-  h+='<div class="mini-note">'+icon('info','xs')+'<div>Gemessene Bestzeiten stammen aus zusammenhängenden Runden deiner Uhr. Das Messfenster darf höchstens 5 % länger sein als die Distanz — die Zeit ist damit eine Obergrenze, nie schöngerechnet. Geschätzte Werte erscheinen nur dort, wo keine Messung existiert.</div></div></div><div class="tabspacer"></div>';
+  h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.gemessene_bestzeiten_stammen_aus_zusammenhaengenden') + '</div></div></div><div class="tabspacer"></div>';
   return h;
 }
 /* Bestzeiten-Detailsheet: konsumiert exakt die Werte der angetippten Zeile. */
 function gmOpenBtRowSheet(i){
   var s=_gmBtSlots[i];if(!s)return;
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  var kv=[['Disziplin / Distanz',s.dist],['Leistung',s.has?s.time:GM_NA],['Datum',s.date!=null?s.date:GM_NA]];
+  var kv=[['' + _uiT('ui.disziplin_distanz') + '',s.dist],['Leistung',s.has?s.time:GM_NA],['' + _uiT('ui.datum_') + '',s.date!=null?s.date:GM_NA]];
   /* KF-021: bei gemessenen Werten die tatsaechlich gemessene Strecke ausweisen —
      5 km aus einem 5,12-km-Fenster ist eine Obergrenze, keine exakte 5-km-Zeit. */
-  if(s.meas&&s.meas.km!=null)kv.push(['Gemessene Strecke',(typeof fmtDe==='function'?fmtDe(s.meas.km):s.meas.km)+' km']);
-  if(s.meas&&s.meas.laps)kv.push(['Runden im Messfenster',String(s.meas.laps)]);
+  if(s.meas&&s.meas.km!=null)kv.push(['' + _uiT('ui.gemessene_strecke') + '',(typeof fmtDe==='function'?fmtDe(s.meas.km):s.meas.km)+' km']);
+  if(s.meas&&s.meas.laps)kv.push(['' + _uiT('ui.runden_im_messfenster') + '',String(s.meas.laps)]);
   if(s.imp!=null)kv.push(['Verbesserung',s.imp]);
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('bolt')+'</div><div><h3>'+gmEsc(s.dist)+'</h3><div class="sh-sub" style="margin:2px 0 0">Bestzeit</div></div></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('bolt')+'</div><div><h3>'+gmEsc(s.dist)+'</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.bestzeit') + '</div></div></div>'+
     '<div class="card prestart" style="margin:14px 0 0">'+kv.map(function(r){return '<div class="ps-row"><span>'+gmEsc(r[0])+'</span><b>'+gmEsc(r[1])+'</b></div>';}).join('')+'</div>'+
-    '<div class="sh-block"><div class="bh">Herkunft &amp; Einordnung</div><p>'+gmEsc(s.sub)+'</p></div>'+
-    '<div class="source">'+icon('info','xs')+' Gleiche Werte wie in der Zeile — keine zusätzliche Berechnung.</div>';
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.herkunft_amp_einordnung') + '</div><p>'+gmEsc(s.sub)+'</p></div>'+
+    '<div class="source">'+icon('info','xs')+' Gleiche Werte wie in der Zeile — keine zusätzliche ' + _uiT('ui.berechnung') + '.</div>';
   gmOpenSheet('detailSheet');
 }
 /* ---------- Meilensteine & Medaillen (Produktentscheidung 2026-08-04) ----------
@@ -11040,12 +11075,12 @@ function gmNextMilestone(ach){
 }
 function gmProfMedals(){
   var ach=gmAchievements();
-  var h=gmPPageHead('Medaillen','Für nachhaltigen Fortschritt – nicht für Raubbau')+'<div class="medal-grid" style="padding:0 18px">';
+  var h=gmPPageHead('Medaillen','' + _uiT('ui.fuer_nachhaltigen_fortschritt_nicht_fuer') + '')+'<div class="medal-grid" style="padding:0 18px">';
   if(!ach){
     for(var i=0;i<6;i++){
       h+='<div class="medal locked"><div class="m-badge">'+icon('shield')+'</div><b>—</b><span>'+GM_NA+'</span><div class="m-prog"><i style="width:0%"></i></div></div>';
     }
-    h+='</div><div class="mini-note">'+icon('info','xs')+'<div>Medaillen erscheinen mit deinen ersten abgeschlossenen Aktivitäten — keine erfundenen Auszeichnungen, Tiers oder Fortschritte.</div></div><div class="tabspacer"></div>';
+    h+='</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.medaillen_erscheinen_mit_deinen_ersten') + '</div></div><div class="tabspacer"></div>';
     return h;
   }
   /* Bugfix (2026-08-05, Nutzer-Feedback „12 verdient, nur 6 angezeigt"): das Raster
@@ -11065,7 +11100,7 @@ function gmProfMedals(){
   /* Naechste erreichbare Stufen als gesperrte Slots mit ECHTEM, gemessenem Fortschritt. */
   ach.milestones.forEach(function(m){
     if(slots.length>=lockedCap||m.next==null)return;
-    slots.push('<div class="medal locked"><div class="m-badge">'+icon(m.icon||'shield')+'</div><b>'+gmEsc(gmAchFmtVal(m.next,m.unit))+'</b><span>'+gmEsc(m.label)+' · Ist '+gmEsc(gmAchFmtVal(m.current,m.unit))+'</span><div class="m-prog"><i style="width:'+m.progress+'%"></i></div></div>');
+    slots.push('<div class="medal locked"><div class="m-badge">'+icon(m.icon||'shield')+'</div><b>'+gmEsc(gmAchFmtVal(m.next,m.unit))+'</b><span>'+gmEsc(m.label)+'' + _uiT('ui.ist') + ''+gmEsc(gmAchFmtVal(m.current,m.unit))+'</span><div class="m-prog"><i style="width:'+m.progress+'%"></i></div></div>');
   });
   while(slots.length<6)slots.push('<div class="medal locked"><div class="m-badge">'+icon('shield')+'</div><b>—</b><span>'+GM_NA+'</span><div class="m-prog"><i style="width:0%"></i></div></div>');
   h+=slots.join('');
@@ -11085,18 +11120,18 @@ function gmMileSlot(m,t,d){
 function gmProfMilestones(){
   var list=[];try{if(typeof PROFILE!=='undefined'&&PROFILE&&Array.isArray(PROFILE.milestones))list=PROFILE.milestones.slice(0,6);}catch(_){ }
   var ach=gmAchievements();
-  var h=gmPPageHead('Meilensteine','Fortschritt mit realistischen nächsten Schritten')+'<div style="padding:0 18px">';
+  var h=gmPPageHead('Meilensteine','' + _uiT('ui.fortschritt_mit_realistischen_naechsten_schritten') + '')+'<div style="padding:0 18px">';
   _gmMileSlots=[];
   if(!ach){
     /* Bisheriger ehrlicher Zustand: nur Zielportfolio-Eintraege, kein berechneter Fortschritt. */
     for(var i=0;i<6;i++){
       var m=list[i];
       var t=m?(m.label||m.title||m.name||'—'):'—';
-      var d=m?'Aus deinem Zielportfolio':GM_NA;
+      var d=m?'' + _uiT('ui.aus_deinem_zielportfolio') + '':GM_NA;
       _gmMileSlots.push(gmMileSlot(m,t,d));
-      h+='<button type="button" class="mile" onclick="gmOpenMileRowSheet('+i+')"><div class="mi-ic">'+icon(m?'target':'info','sm')+'</div><div class="mile-b"><div class="mile-t">'+gmEsc(t)+'</div><div class="mile-d">'+gmEsc(d)+'</div><div class="mile-track"><i style="width:0%"></i></div><div class="mile-meta"><span>Start —</span><span>—</span><span>Ziel —</span></div></div></button>';
+      h+='<button type="button" class="mile" onclick="gmOpenMileRowSheet('+i+')"><div class="mi-ic">'+icon(m?'target':'info','sm')+'</div><div class="mile-b"><div class="mile-t">'+gmEsc(t)+'</div><div class="mile-d">'+gmEsc(d)+'</div><div class="mile-track"><i style="width:0%"></i></div><div class="mile-meta"><span>' + _uiT('ui.start') + '</span><span>—</span><span>' + _uiT('ui.ziel_') + '</span></div></div></button>';
     }
-    h+='<div class="mini-note">'+icon('info','xs')+'<div>Kein Fortschritt wird im UI berechnet.</div></div></div><div class="tabspacer"></div>';
+    h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.kein_fortschritt_wird_im_ui') + '</div></div></div><div class="tabspacer"></div>';
     return h;
   }
   /* GEMESSENE Leitern zuerst (mit echtem Fortschritt), danach Zielportfolio-
@@ -11106,24 +11141,24 @@ function gmProfMilestones(){
     var last=mm.lastAchieved;
     rows.push({
       kind:'measured',
-      t:mm.label+(mm.next!=null?' · nächste Stufe '+gmAchFmtVal(mm.next,mm.unit):' · alle Stufen erreicht'),
-      d:'Ist: '+gmAchFmtVal(mm.current,mm.unit)+' — gemessen',
+      t:mm.label+(mm.next!=null?'' + _uiT('ui.naechste_stufe') + ''+gmAchFmtVal(mm.next,mm.unit):'' + _uiT('ui.alle_stufen_erreicht') + ''),
+      d:'' + _uiT('ui.ist_') + ''+gmAchFmtVal(mm.current,mm.unit)+' — gemessen',
       prog:mm.progress,icon:mm.icon||'target',
-      slot:{title:mm.label,desc:'Gemessen aus deinen abgeschlossenen Aktivitäten.',present:true,
+      slot:{title:mm.label,desc:'' + _uiT('ui.gemessen_aus_deinen_abgeschlossenen_aktivitaeten') + '',present:true,
         start:last?gmAchFmtVal(last.step,mm.unit):null,
-        target:mm.next!=null?gmAchFmtVal(mm.next,mm.unit):'alle Stufen erreicht',
+        target:mm.next!=null?gmAchFmtVal(mm.next,mm.unit):'' + _uiT('ui.alle_stufen_erreicht_') + '',
         current:gmAchFmtVal(mm.current,mm.unit),
         status:mm.done?'achieved':'in_progress',
         date:last&&last.date?((typeof fmtDate==='function')?fmtDate(last.date):last.date):null},
-      meta:['Stufe '+(last?gmAchFmtVal(last.step,mm.unit):'—'),gmAchFmtVal(mm.current,mm.unit),(mm.next!=null?'Ziel '+gmAchFmtVal(mm.next,mm.unit):'Erreicht')]
+      meta:['' + _uiT('ui.stufe') + ''+(last?gmAchFmtVal(last.step,mm.unit):'—'),gmAchFmtVal(mm.current,mm.unit),(mm.next!=null?'' + _uiT('ui.ziel__') + ''+gmAchFmtVal(mm.next,mm.unit):'Erreicht')]
     });
   });
   list.forEach(function(m){
-    rows.push({kind:'goal',t:m.label||m.title||m.name||'—',d:'Aus deinem Zielportfolio',prog:0,icon:'target',
-      slot:gmMileSlot(m,m.label||m.title||m.name||'—','Aus deinem Zielportfolio'),meta:['Start —','—','Ziel —']});
+    rows.push({kind:'goal',t:m.label||m.title||m.name||'—',d:'' + _uiT('ui.aus_deinem_zielportfolio') + '',prog:0,icon:'target',
+      slot:gmMileSlot(m,m.label||m.title||m.name||'—','' + _uiT('ui.aus_deinem_zielportfolio') + ''),meta:['' + _uiT('ui.start') + '','—','' + _uiT('ui.ziel_') + '']});
   });
   while(rows.length<6)rows.push({kind:'na',t:'—',d:GM_NA,prog:0,icon:'info',
-    slot:gmMileSlot(null,'—',GM_NA),meta:['Start —','—','Ziel —']});
+    slot:gmMileSlot(null,'—',GM_NA),meta:['' + _uiT('ui.start') + '','—','' + _uiT('ui.ziel_') + '']});
   rows.slice(0,6).forEach(function(r,i){
     _gmMileSlots.push(r.slot);
     h+='<button type="button" class="mile" onclick="gmOpenMileRowSheet('+i+')"><div class="mi-ic">'+icon(r.icon,'sm')+'</div><div class="mile-b"><div class="mile-t">'+gmEsc(r.t)+'</div><div class="mile-d">'+gmEsc(r.d)+'</div><div class="mile-track"><i style="width:'+(r.prog||0)+'%"></i></div><div class="mile-meta"><span>'+gmEsc(r.meta[0])+'</span><span>'+gmEsc(r.meta[1])+'</span><span>'+gmEsc(r.meta[2])+'</span></div></div></button>';
@@ -11137,10 +11172,10 @@ function gmOpenMileRowSheet(i){
   var s=_gmMileSlots[i];if(!s)return;
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var st=(s.status!=null)?(GM_MS_STATUS[s.status]||String(s.status)):null;
-  var kv=[['Startwert',s.start],['Zielwert',s.target],['Aktueller Stand',s.current],['Status',st]];
+  var kv=[['Startwert',s.start],['' + _uiT('ui.zielwert') + '',s.target],['' + _uiT('ui.aktueller_stand') + '',s.current],['Status',st]];
   if(s.date!=null)kv.push(['Zieldatum',s.date]);
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon(s.present?'target':'info')+'</div><div><h3>'+gmEsc(s.title)+'</h3><div class="sh-sub" style="margin:2px 0 0">Meilenstein</div></div></div>'+
-    '<div class="sh-block"><div class="bh">Beschreibung</div><p>'+gmEsc(s.desc)+'</p></div>'+
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon(s.present?'target':'info')+'</div><div><h3>'+gmEsc(s.title)+'</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.meilenstein') + '</div></div></div>'+
+    '<div class="sh-block"><div class="bh">' + _uiT('ui.beschreibung') + '</div><p>'+gmEsc(s.desc)+'</p></div>'+
     '<div class="card prestart" style="margin:14px 0 0">'+kv.map(function(r){return '<div class="ps-row"><span>'+gmEsc(r[0])+'</span><b>'+gmEsc(r[1]!=null?r[1]:GM_NA)+'</b></div>';}).join('')+'</div>'+
     '<div class="source">'+icon('info','xs')+' Werte unverändert aus deinem Zielportfolio — im UI wird kein Fortschritt berechnet.</div>';
   gmOpenSheet('detailSheet');
@@ -11206,24 +11241,24 @@ function gmPcCompute(){
 function gmProfPaceCalc(){
   var sp=_gmPcSport,tgt=_gmPcTarget;
   var sports=[['run','Laufen'],['swim','Schwimmen'],['bike','Radfahren']];
-  var targets=sp==='bike'?[['speed','Geschwindigkeit'],['time','Zeit'],['dist','Distanz']]:[['pace','Pace'],['time','Zeit'],['dist','Distanz']];
+  var targets=sp==='bike'?[['speed','' + _uiT('ui.geschwindigkeit__') + ''],['time','' + _uiT('ui.zeit') + ''],['dist','' + _uiT('ui.distanz_') + '']]:[['pace','Pace'],['time','' + _uiT('ui.zeit') + ''],['dist','' + _uiT('ui.distanz_') + '']];
   var fld=function(id,label,mode,ph){return '<div class="calc-field"><label>'+label+'</label><input id="'+id+'" inputmode="'+mode+'" placeholder="'+ph+'" oninput="gmPcCompute()" autocomplete="off"></div>';};
-  var distF=fld('pcDist','Distanz ('+(sp==='swim'?'m':'km')+')','decimal',sp==='swim'?'1500':'10');
-  var timeF=fld('pcTime','Zeit (h:mm:ss)','numeric','52:30');
-  var paceF=fld('pcPace','Pace ('+(sp==='swim'?'mm:ss/100m':'mm:ss/km')+')','numeric',sp==='swim'?'1:52':'5:15');
-  var speedF=fld('pcSpeed','Geschw. (km/h)','decimal','33');
+  var distF=fld('pcDist','' + _uiT('ui.distanz') + ''+(sp==='swim'?'m':'km')+')','decimal',sp==='swim'?'1500':'10');
+  var timeF=fld('pcTime','' + _uiT('ui.zeit_h_mm_ss') + '','numeric','52:30');
+  var paceF=fld('pcPace','' + _uiT('ui.pace') + ''+(sp==='swim'?'mm:ss/100m':'mm:ss/km')+')','numeric',sp==='swim'?'1:52':'5:15');
+  var speedF=fld('pcSpeed','' + _uiT('ui.geschw_km_h') + '','decimal','33');
   var fields;
   if(sp==='bike'){fields=tgt==='speed'?distF+timeF:tgt==='time'?distF+speedF:timeF+speedF;}
   else{fields=tgt==='pace'?distF+timeF:tgt==='time'?distF+paceF:timeF+paceF;}
-  var h=gmPPageHead('Pace- & Geschwindigkeitsrechner','Zwei Werte eingeben – der dritte wird berechnet')+'<div style="padding:0 18px">';
+  var h=gmPPageHead('' + _uiT('ui.pace_geschwindigkeitsrechner') + '','' + _uiT('ui.zwei_werte_eingeben_der_dritte') + '')+'<div style="padding:0 18px">';
   h+='<div class="calc-seg">'+sports.map(function(s){return '<button class="'+(sp===s[0]?'on':'')+'" onclick="gmProfSetPcSport(\''+s[0]+'\')">'+s[1]+'</button>';}).join('')+'</div>';
   h+='<div class="calc-target">'+targets.map(function(t){return '<button class="'+(tgt===t[0]?'on':'')+'" onclick="gmProfSetPcTarget(\''+t[0]+'\')">'+t[1]+' berechnen</button>';}).join('')+'</div>';
   h+=fields;
-  h+='<div class="calc-field result"><label>Ergebnis</label><b id="pcResult">—</b></div>';
+  h+='<div class="calc-field result"><label>' + _uiT('ui.ergebnis') + '</label><b id="pcResult">—</b></div>';
   if(sp==='run'){
-    h+='<div class="sectlabel">Wettkampfprognosen</div><div class="card"><div class="link-row">'+
+    h+='<div class="sectlabel">' + _uiT('ui.wettkampfprognosen') + '</div><div class="card"><div class="link-row">'+
       [['5 km','pcP5'],['10 km','pcP10'],['Halbmarathon','pcPHM']].map(function(r){return '<div class="calc-field" style="margin-bottom:8px"><label>'+r[0]+'</label><b id="'+r[1]+'" style="font-size:16px">—</b></div>';}).join('')+
-      '</div><div class="mini-note">'+icon('info','xs')+'<div>Riegel-Schätzung aus deiner Eingabe (kanonischer Rechenkern). Grobe Orientierung, keine Garantie — keine Messung und kein Trainingsziel.</div></div></div>';
+      '</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.riegel_schaetzung_aus_deiner_eingabe') + '</div></div></div>';
   }
   h+='</div><div class="tabspacer"></div>';
   return h;
@@ -12025,21 +12060,21 @@ var GM_PERF_SPORTS=[['running','Laufen'],['cycling','Radfahren'],['swimming','Sc
    zeigt, ist fuer den Nutzer wertlos — und eine, die nicht sagt WARUM, laedt
    dazu ein, den Wert so lange zu veraendern, bis er durchgeht. */
 var GM_PERF_REASONS={
-  out_of_range:'Der Wert liegt ausserhalb des plausiblen Bereichs',
-  implausible_pace:'Daraus ergibt sich keine realistische Pace',
-  implausible_css:'Daraus ergibt sich keine realistische Schwimmgeschwindigkeit',
-  implausible_swim_pace:'Daraus ergibt sich keine realistische Schwimmgeschwindigkeit',
-  css_400_not_slower_than_200:'Die 400-m-Zeit muss groesser sein als die 200-m-Zeit',
-  date_in_future:'Das Datum liegt in der Zukunft',
-  date_too_old:'Das Datum liegt mehr als zehn Jahre zurueck — vertippt?',
-  date_unreadable:'Das Datum ist nicht lesbar',
-  not_a_time:'Das ist keine lesbare Zeitangabe',
-  not_positive:'Der Wert muss groesser als null sein',
-  unknown_protocol:'Unbekanntes Testprotokoll',
-  unknown_field:'Unbekanntes Feld'
+  out_of_range:'' + _uiT('ui.der_wert_liegt_ausserhalb_des') + '',
+  implausible_pace:'' + _uiT('ui.daraus_ergibt_sich_keine_realistische_') + '',
+  implausible_css:'' + _uiT('ui.daraus_ergibt_sich_keine_realistische') + '',
+  implausible_swim_pace:'' + _uiT('ui.daraus_ergibt_sich_keine_realistische') + '',
+  css_400_not_slower_than_200:'' + _uiT('ui.die_400_m_zeit_muss') + '',
+  date_in_future:'' + _uiT('ui.das_datum_liegt_in_der') + '',
+  date_too_old:'' + _uiT('ui.das_datum_liegt_mehr_als') + '',
+  date_unreadable:'' + _uiT('ui.das_datum_ist_nicht_lesbar') + '',
+  not_a_time:'' + _uiT('ui.das_ist_keine_lesbare_zeitangabe') + '',
+  not_positive:'' + _uiT('ui.der_wert_muss_groesser_als') + '',
+  unknown_protocol:'' + _uiT('ui.unbekanntes_testprotokoll') + '',
+  unknown_field:'' + _uiT('ui.unbekanntes_feld') + ''
 };
 function gmPerfReason(e){
-  var t=GM_PERF_REASONS[e&&e.reason]||('Ungueltige Eingabe ('+gmEsc(String(e&&e.reason||'?'))+')');
+  var t=GM_PERF_REASONS[e&&e.reason]||('' + _uiT('ui.ungueltige_eingabe') + ''+gmEsc(String(e&&e.reason||'?'))+')');
   if(e&&e.expected)t+=' — erwartet '+e.expected[0]+' bis '+e.expected[1]+(e.unit?' '+e.unit:'')+(e.got!=null?', eingetragen '+e.got:'');
   else if(e&&e.got!=null)t+=' — eingetragen '+e.got;
   if(e&&e.detail)t+='. '+e.detail;
@@ -12050,11 +12085,11 @@ function gmPerfShow(res){
   if(res.status==='ok'){_gmPerfMsg={k:'ok',t:'Gespeichert.'};return;}
   if(res.status==='needs_input'){
     var n=(res.needs||[])[0];
-    _gmPerfMsg={k:'need',t:(n&&n.hint)||'Es fehlt noch eine Angabe.',
+    _gmPerfMsg={k:'need',t:(n&&n.hint)||'' + _uiT('ui.es_fehlt_noch_eine_angabe') + '',
       alts:(n&&n.alternatives)||null};
     return;
   }
-  _gmPerfMsg={k:'bad',t:(res.errors||[]).map(gmPerfReason).join(' · ')||'Eingabe abgelehnt.'};
+  _gmPerfMsg={k:'bad',t:(res.errors||[]).map(gmPerfReason).join(' · ')||'' + _uiT('ui.eingabe_abgelehnt') + ''};
 }
 function _gmPerfVal(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';}
 function _gmPerfPersist(){try{if(typeof saveProfile==='function')saveProfile();}catch(_){ }}
@@ -12133,14 +12168,14 @@ function gmPerfDeleteBest(idx){
   var P=_gmPerfProfile();if(!P)return;
   if(idx<0||idx>=P.performance.personalBests.length)return;
   P.performance.personalBests.splice(idx,1);_gmPerfPersist();
-  _gmPerfMsg={k:'ok',t:'Eintrag entfernt.'};
+  _gmPerfMsg={k:'ok',t:'' + _uiT('ui.eintrag_entfernt') + ''};
   gmOpenProfPage('performance');
 }
 function gmPerfDeleteTest(idx){
   var P=_gmPerfProfile();if(!P)return;
   if(idx<0||idx>=P.performance.tests.length)return;
   P.performance.tests.splice(idx,1);_gmPerfPersist();
-  _gmPerfMsg={k:'ok',t:'Test entfernt.'};
+  _gmPerfMsg={k:'ok',t:'' + _uiT('ui.test_entfernt') + ''};
   gmOpenProfPage('performance');
 }
 
@@ -12153,9 +12188,9 @@ function gmPerfEvLine(hull){
 
 function gmProfPerformance(){
   var PI=gmPerfMod(),EV=gmPerfEv();
-  var h=gmPPageHead('Leistungsdaten','Wettkampf, Test und Schwellenwerte je Sportart');
+  var h=gmPPageHead('Leistungsdaten','' + _uiT('ui.wettkampf_test_und_schwellenwerte_je') + '');
   if(!PI){
-    return h+'<div style="padding:0 18px"><div class="mini-note">'+icon('info','xs')+'<div>Das Leistungsmodul ist nicht geladen. Bitte die App neu starten.</div></div></div><div class="tabspacer"></div>';
+    return h+'<div style="padding:0 18px"><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.das_leistungsmodul_ist_nicht_geladen') + '</div></div></div><div class="tabspacer"></div>';
   }
   var P=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:null;
   var cov=null;try{cov=PI.coverage(P,{today:gmPerfToday()});}catch(_){ }
@@ -12170,7 +12205,7 @@ function gmProfPerformance(){
     if(_gmPerfMsg.alts){
       h+='<br><span style="color:var(--muted)">Moegliche Lesarten: '+
         Object.keys(_gmPerfMsg.alts).map(function(k){return gmEsc(k)+' = '+gmEsc(String(Math.round(_gmPerfMsg.alts[k]*100)/100))+' min';}).join(' · ')+
-        '. Trag die Zeit eindeutig ein, z. B. „1:50:00".</span>';
+        '. Trag die ' + _uiT('ui.zeit') + ' eindeutig ein, z. B. „' + _uiT('ui.1_50') + ':00".</span>';
     }
     h+='</div></div>';
     _gmPerfMsg=null;
@@ -12184,41 +12219,41 @@ function gmProfPerformance(){
   h+='</div>';
 
   /* ABDECKUNG — beantwortet „warum steht da ein Strich" */
-  h+='<div class="sectlabel">Stand</div>';
+  h+='<div class="sectlabel">' + _uiT('ui.stand___') + '</div>';
   if(mine&&mine.ok){
     h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time">Zonen vorhanden '+gmEsc(EV?EV.marker(mine.evidence):'')+'</div>'+
       '<div class="bt-sub">Beleg: '+gmEsc((EV&&EV.LEVEL_LABEL[mine.evidence])||mine.evidence)+
-      (mine.ageDays!=null?' · '+mine.ageDays+(mine.ageDays===1?' Tag':' Tage')+' alt':'')+
-      ' · Status: '+gmEsc((EV&&EV.FRESH_LABEL[mine.freshness])||'—')+'</div></div></div>';
+      (mine.ageDays!=null?' · '+mine.ageDays+(mine.ageDays===1?'' + _uiT('ui.tag_') + '':'' + _uiT('ui.tage_') + '')+' alt':'')+
+      '' + _uiT('ui.status') + ''+gmEsc((EV&&EV.FRESH_LABEL[mine.freshness])||'—')+'</div></div></div>';
     if(mine.staleHint){
-      h+='<div class="mini-note">'+icon('info','xs')+'<div>Dieser Wert ist ueber seiner Haltbarkeit. Die Zonen stammen weiterhin daraus — ein neuer Test oder Wettkampf wuerde sie schaerfen.</div></div>';
+      h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.dieser_wert_ist_ueber_seiner') + '</div></div>';
     }
   }else{
-    h+='<div class="mini-note">'+icon('info','xs')+'<div><b>Noch keine Zonen fuer diese Sportart.</b> Solange hier nichts steht, bleiben Intensitaet, Zielprognose und Tagesziele im Plan bei „—". '+
-      gmEsc((mine&&mine.suggestion)||'Trag ein Ergebnis ein oder mach einen der Tests unten.')+'</div></div>';
+    h+='<div class="mini-note">'+icon('info','xs')+'<div><b>' + _uiT('ui.noch_keine_zonen_fuer_diese') + '</b> Solange hier nichts steht, bleiben Intensitaet, Zielprognose und ' + _uiT('ui.tagesziele_') + ' im Plan bei „—". '+
+      gmEsc((mine&&mine.suggestion)||'' + _uiT('ui.trag_ein_ergebnis_ein_oder') + '')+'</div></div>';
   }
 
   /* WETTKAMPF / BESTZEIT */
-  h+='<div class="sectlabel">Ergebnis eintragen</div>';
+  h+='<div class="sectlabel">' + _uiT('ui.ergebnis_eintragen') + '</div>';
   h+='<div class="perf-form">'+
-    '<label>Distanz<input id="gmPerfDist" type="text" inputmode="decimal" placeholder="10 km, HM, Marathon"></label>'+
-    '<label>Zeit<input id="gmPerfTime" type="text" inputmode="numeric" placeholder="48:30 oder 1:50:00"></label>'+
-    '<label>Kontext<select id="gmPerfCtx"><option value="Wettkampf">Wettkampf</option><option value="Test">Test / Trainingsbestzeit</option></select></label>'+
-    '<label>Datum<input id="gmPerfDate" type="date"></label>'+
-    '<button class="mini-btn primary" onclick="gmPerfSaveRace()">Eintragen</button>'+
+    '<label>' + _uiT('ui.distanz_') + '<input id="gmPerfDist" type="text" inputmode="decimal" placeholder="' + _uiT('ui.10_km_hm_marathon') + '"></label>'+
+    '<label>' + _uiT('ui.zeit') + '<input id="gmPerfTime" type="text" inputmode="numeric" placeholder="' + _uiT('ui.48_30_oder_1_50') + '"></label>'+
+    '<label>' + _uiT('ui.kontext') + '<select id="gmPerfCtx"><option value="Wettkampf">Wettkampf</option><option value="Test">' + _uiT('ui.test_trainingsbestzeit') + '</option></select></label>'+
+    '<label>' + _uiT('ui.datum_') + '<input id="gmPerfDate" type="date"></label>'+
+    '<button class="mini-btn primary" onclick="gmPerfSaveRace()">' + _uiT('ui.eintragen') + '</button>'+
     '</div>';
-  h+='<div class="mini-note">'+icon('info','xs')+'<div>Ein Wettkampf ist der staerkste Beleg. Eine Trainingsbestzeit zaehlt schwaecher — sie entsteht meist in einem Tempolauf und liegt systematisch ueber der Wettkampfform. Bei mehrdeutigen Zeiten („1:50") fragt die App nach, statt zu raten.</div></div>';
+  h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.ein_wettkampf_ist_der_staerkste') + '</div></div>';
 
   /* TESTS — mit Anleitung direkt hier */
   var protos=PI.protocolsFor(_gmPerfSport)||[];
   if(protos.length){
-    h+='<div class="sectlabel">Test machen</div>';
+    h+='<div class="sectlabel">' + _uiT('ui.test_machen') + '</div>';
     protos.forEach(function(p){
       var open=(_gmPerfTest===p.id);
       var suggested=(mine&&mine.level==='beginner'&&p.level==='anfaenger');
       h+='<button type="button" class="bt-row" onclick="gmPerfPickTest(\''+p.id+'\')"><div class="bt-b">'+
         '<div class="bt-time" style="font-size:15px">'+gmEsc(p.label)+(suggested?' <span style="color:var(--muted);font-size:12px">empfohlen</span>':'')+'</div>'+
-        '<div class="bt-sub">'+gmEsc(p.level==='anfaenger'?'Einsteiger':'Fortgeschritten')+'</div></div>'+
+        '<div class="bt-sub">'+gmEsc(p.level==='anfaenger'?'Einsteiger':'' + _uiT('ui.fortgeschritten_') + '')+'</div></div>'+
         '<div class="bt-imp">'+icon('chev','sm')+'</div></button>';
       if(open){
         h+='<div class="perf-form perf-open">';
@@ -12226,8 +12261,8 @@ function gmProfPerformance(){
         (p.needs||[]).forEach(function(f){
           h+='<label>'+gmEsc(GM_PERF_FIELD_LABEL[f]||f)+'<input id="gmPerfT_'+f+'" type="text" inputmode="decimal" placeholder="'+gmEsc(GM_PERF_FIELD_HINT[f]||'')+'"></label>';
         });
-        h+='<label>Datum<input id="gmPerfTestDate" type="date"></label>';
-        h+='<button class="mini-btn primary" onclick="gmPerfSaveTest()">Ergebnis speichern</button></div>';
+        h+='<label>' + _uiT('ui.datum_') + '<input id="gmPerfTestDate" type="date"></label>';
+        h+='<button class="mini-btn primary" onclick="gmPerfSaveTest()">' + _uiT('ui.ergebnis_speichern') + '</button></div>';
       }
     });
   }
@@ -12237,15 +12272,15 @@ function gmProfPerformance(){
   if(_gmPerfSport==='cycling')vals=['ftp','thresholdHr'];
   if(_gmPerfSport==='swimming')vals=['pace100'];
   if(vals.length){
-    h+='<div class="sectlabel">Bekannte Werte</div><div class="perf-form">';
+    h+='<div class="sectlabel">' + _uiT('ui.bekannte_werte') + '</div><div class="perf-form">';
     vals.forEach(function(f){
       var spec=PI.VALUE_FIELDS[f];
       h+='<label>'+gmEsc(spec.label)+' ('+gmEsc(spec.unit)+')<input id="gmPerfV_'+f+'" type="text" inputmode="decimal"></label>'+
-        '<label>Datum<input id="gmPerfVDate_'+f+'" type="date"></label>'+
+        '<label>' + _uiT('ui.datum_') + '<input id="gmPerfVDate_'+f+'" type="date"></label>'+
         '<button class="mini-btn" onclick="gmPerfSaveValue(\''+f+'\')">'+gmEsc(spec.label)+' speichern</button>';
     });
     h+='</div>';
-    h+='<div class="mini-note">'+icon('info','xs')+'<div>Ein selbst eingetragener Wert zaehlt als Selbstauskunft. Wer den Wert wirklich getestet hat, traegt oben den Test ein — dafuer gibt es die hoehere Belegstufe.</div></div>';
+    h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.ein_selbst_eingetragener_wert_zaehlt') + '</div></div>';
   }
 
   /* ERFASSTES */
@@ -12255,19 +12290,19 @@ function gmProfPerformance(){
   var mineTests=tests.map(function(t,i){return {t:t,i:i};}).filter(function(x){return String((x.t&&x.t.sportId)||'').toLowerCase()===_gmPerfSport;});
 
   if(mineBests.length||mineTests.length){
-    h+='<div class="sectlabel">Erfasst</div>';
+    h+='<div class="sectlabel">' + _uiT('ui.erfasst') + '</div>';
     mineBests.forEach(function(x){
       var b=x.b,sec=b.timeSeconds||0;
       var tt=sec?(Math.floor(sec/3600)?Math.floor(sec/3600)+':'+('0'+Math.floor(sec%3600/60)).slice(-2)+':'+('0'+(sec%60)).slice(-2):Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2)):'—';
       h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time">'+gmEsc(String(b.distance))+' km · '+gmEsc(tt)+'</div>'+
         (b.evidence?gmPerfEvLine(b.evidence):'<div class="bt-sub">'+gmEsc(b.context||'—')+'</div>')+'</div>'+
-        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteBest('+x.i+')">Entfernen</span></div>';
+        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteBest('+x.i+')">' + _uiT('ui.entfernen') + '</span></div>';
     });
     mineTests.forEach(function(x){
       var t=x.t,proto=PI.protocolById(_gmPerfSport,t.id);
       h+='<div class="bt-row" style="cursor:default"><div class="bt-b"><div class="bt-time" style="font-size:15px">'+gmEsc((proto&&proto.label)||t.id)+'</div>'+
-        (t.evidence?gmPerfEvLine(t.evidence):'<div class="bt-sub">'+gmEsc(t.date||'ohne Datum')+'</div>')+'</div>'+
-        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteTest('+x.i+')">Entfernen</span></div>';
+        (t.evidence?gmPerfEvLine(t.evidence):'<div class="bt-sub">'+gmEsc(t.date||'' + _uiT('ui.ohne_datum') + '')+'</div>')+'</div>'+
+        '<span class="edit" role="button" tabindex="0" onclick="gmPerfDeleteTest('+x.i+')">' + _uiT('ui.entfernen') + '</span></div>';
     });
   }
 
@@ -12276,27 +12311,27 @@ function gmProfPerformance(){
 }
 
 var GM_PERF_FIELD_LABEL={
-  distanceKm:'Distanz in km',durationMin:'Dauer in Minuten',avgWatts:'Durchschnittsleistung in Watt',
-  avgHr:'Durchschnittliche Herzfrequenz',distanceM:'Distanz in Metern',
-  t400Sec:'400-m-Zeit in Sekunden',t200Sec:'200-m-Zeit in Sekunden'
+  distanceKm:'' + _uiT('ui.distanz_in_km') + '',durationMin:'' + _uiT('ui.dauer_in_minuten') + '',avgWatts:'' + _uiT('ui.durchschnittsleistung_in_watt') + '',
+  avgHr:'' + _uiT('ui.durchschnittliche_herzfrequenz') + '',distanceM:'' + _uiT('ui.distanz_in_metern') + '',
+  t400Sec:'' + _uiT('ui.400_m_zeit_in_sekunden') + '',t200Sec:'' + _uiT('ui.200_m_zeit_in_sekunden') + ''
 };
 var GM_PERF_FIELD_HINT={
-  distanceKm:'z. B. 2.8',durationMin:'z. B. 22',avgWatts:'z. B. 263',avgHr:'z. B. 172',
-  distanceM:'z. B. 520',t400Sec:'z. B. 372',t200Sec:'z. B. 178'
+  distanceKm:'' + _uiT('ui.z_b_2_8') + '',durationMin:'' + _uiT('ui.z_b_22') + '',avgWatts:'' + _uiT('ui.z_b_263') + '',avgHr:'' + _uiT('ui.z_b_172') + '',
+  distanceM:'' + _uiT('ui.z_b_520') + '',t400Sec:'' + _uiT('ui.z_b_372') + '',t200Sec:'' + _uiT('ui.z_b_178') + ''
 };
 /* Untertitel der Profilzeile: nennt beim Namen, was fehlt. „Leistungsdaten" allein
    sagt nicht, dass genau hier die Striche im Plan herkommen. */
 function gmPerfRowSub(){
   try{
-    var PI=gmPerfMod();if(!PI)return 'Wettkampf, Test und Schwellenwerte';
+    var PI=gmPerfMod();if(!PI)return '' + _uiT('ui.wettkampf_test_und_schwellenwerte') + '';
     var cov=PI.coverage((typeof PROFILE!=='undefined'&&PROFILE)||null,{today:gmPerfToday()});
-    if(!cov)return 'Wettkampf, Test und Schwellenwerte';
+    if(!cov)return '' + _uiT('ui.wettkampf_test_und_schwellenwerte') + '';
     var miss=cov.missing||[];
-    if(!miss.length)return 'Zonen für alle drei Sportarten vorhanden';
-    if(!cov.anyOk)return 'Noch keine Zonen — deshalb steht im Plan „—"';
+    if(!miss.length)return '' + _uiT('ui.zonen_fuer_alle_drei_sportarten') + '';
+    if(!cov.anyOk)return '' + _uiT('ui.noch_keine_zonen_deshalb_steht') + '';
     var L={running:'Laufen',cycling:'Rad',swimming:'Schwimmen'};
-    return 'Fehlt: '+miss.map(function(m){return L[m]||m;}).join(', ');
-  }catch(_){return 'Wettkampf, Test und Schwellenwerte';}
+    return '' + _uiT('ui.fehlt') + ''+miss.map(function(m){return L[m]||m;}).join(', ');
+  }catch(_){return '' + _uiT('ui.wettkampf_test_und_schwellenwerte') + '';}
 }
 
 /* ============================================================
@@ -12358,27 +12393,27 @@ function gmDbTogglePain(){_gmDbPain=!_gmDbPain;gmRenderDebriefSheet();}
 function gmRenderDebriefSheet(){
   if(!_gmDbCtx)return;
   var c=_gmDbCtx;
-  var h='<div class="sheet-head"><h3>Wie war die Einheit?</h3><p>'+gmEsc((c.unit&&c.unit.l)||'')+'</p></div><div class="sheet-body">';
-  h+='<div class="sectlabel" style="padding-left:0">Anstrengung</div>';
+  var h='<div class="sheet-head"><h3>' + _uiT('ui.wie_war_die_einheit') + '</h3><p>'+gmEsc((c.unit&&c.unit.l)||'')+'</p></div><div class="sheet-body">';
+  h+='<div class="sectlabel" style="padding-left:0">' + _uiT('ui.anstrengung') + '</div>';
   h+='<div class="db-rpe">';
   for(var i=1;i<=10;i++){
     h+='<button type="button" class="db-rpe-b'+(_gmDbRpe===i?' on':'')+'" onclick="gmDbSetRpe('+i+')">'+i+'</button>';
   }
-  h+='</div><div class="mini-note">'+icon('info','xs')+'<div>1 = sehr locker · 10 = maximal. Das ist die einzige Zahl, die die App nicht selbst ausrechnen kann.</div></div>';
-  h+='<div class="sectlabel" style="padding-left:0">Schmerzen?</div>';
-  h+='<div class="seg"><button type="button" class="seg-b'+(!_gmDbPain?' on':'')+'" onclick="if('+(_gmDbPain?'true':'false')+')gmDbTogglePain()">Nein</button>'+
+  h+='</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.1_sehr_locker_10_maximal') + '</div></div>';
+  h+='<div class="sectlabel" style="padding-left:0">' + _uiT('ui.schmerzen') + '</div>';
+  h+='<div class="seg"><button type="button" class="seg-b'+(!_gmDbPain?' on':'')+'" onclick="if('+(_gmDbPain?'true':'false')+')gmDbTogglePain()">' + _uiT('ui.nein') + '</button>'+
      '<button type="button" class="seg-b'+(_gmDbPain?' on':'')+'" onclick="if('+(_gmDbPain?'false':'true')+')gmDbTogglePain()">Ja</button></div>';
 
   /* Der Grund wird NUR erfragt, wenn eine Abweichung erkannt wurde. */
   var pre=null;try{var SD=gmDbMod();if(SD&&c.planned&&c.actual)pre=SD.debrief({planned:c.planned,actual:c.actual,zones:c.zones||null});}catch(_){ }
   if(pre&&pre.judged&&(pre.adherence==='abgebrochen'||pre.adherence==='zu langsam'||pre.adherence==='zu schnell')){
-    h+='<div class="sectlabel" style="padding-left:0">Woran lag es?</div><div class="db-reasons">';
+    h+='<div class="sectlabel" style="padding-left:0">' + _uiT('ui.woran_lag_es') + '</div><div class="db-reasons">';
     GM_DB_REASONS.forEach(function(r){
       h+='<button type="button" class="db-reason'+(_gmDbReason===r[0]?' on':'')+'" onclick="gmDbSetReason(\''+r[0]+'\')">'+gmEsc(r[1])+'</button>';
     });
     h+='</div>';
   }
-  h+='<button class="mini-btn primary" style="width:100%;margin-top:14px" onclick="gmDbSave()">Speichern</button>';
+  h+='<button class="mini-btn primary" style="width:100%;margin-top:14px" onclick="gmDbSave()">' + _uiT('ui.speichern') + '</button>';
   h+='</div>';
   try{gmOpenSheet('debrief',h);}catch(_){ }
 }
@@ -12386,8 +12421,8 @@ function gmRenderDebriefSheet(){
 var _gmDbReason=null;
 function gmDbSetReason(r){_gmDbReason=(_gmDbReason===r)?null:r;gmRenderDebriefSheet();}
 var GM_DB_REASONS=[
-  ['fatigue','Müde / schwere Beine'],['time','Zeit gefehlt'],['pain','Beschwerden'],
-  ['weather','Wetter / Strecke'],['illness','Krank / angeschlagen'],['felt_good','Ging leicht'],
+  ['fatigue','' + _uiT('ui.muede_schwere_beine') + ''],['time','' + _uiT('ui.zeit_gefehlt') + ''],['pain','Beschwerden'],
+  ['weather','' + _uiT('ui.wetter_strecke') + ''],['illness','' + _uiT('ui.krank_angeschlagen') + ''],['felt_good','' + _uiT('ui.ging_leicht') + ''],
   ['other','Anderes']
 ];
 
@@ -12463,7 +12498,7 @@ function gmDbSave(){
   _gmDbCtx=null;_gmDbRpe=null;_gmDbPain=false;_gmDbReason=null;
   try{gmCloseSheets();}catch(_){ }
   try{renderGMPlan();}catch(_){ }
-  try{toast('Rückmeldung gespeichert');}catch(_){ }
+  try{toast('' + _uiT('ui.rueckmeldung_gespeichert') + '');}catch(_){ }
 }
 
 /* Verträglichkeitsstand — beantwortet „was weiß die App über mich". */
@@ -12491,11 +12526,11 @@ function gmOpenDebriefAt(di,ii,clickDateIso){
        gibt es keine Rueckmeldung (missing_date_context), denn ein erratenes
        Datum wuerde das Debrief an den falschen Tag binden. */
     if(!dateIso){
-      if(typeof toast==='function')toast('Keine Rückmeldung möglich — fehlender Datumskontext.');
+      if(typeof toast==='function')toast('' + _uiT('ui.keine_rueckmeldung_moeglich_fehlender_datumskontext') + '');
       return;
     }
     if(dateIso>todayStr()){
-      if(typeof toast==='function')toast('Keine Rückmeldung möglich — diese Einheit liegt in der Zukunft.');
+      if(typeof toast==='function')toast('' + _uiT('ui.keine_rueckmeldung_moeglich_diese_einheit') + '');
       return;
     }
 

@@ -541,7 +541,8 @@
           motivation: r.motivation != null ? r.motivation : (prev.motivation || ''),
           sports: Array.isArray(r.sports) ? r.sports : (Array.isArray(prev.sports) ? prev.sports : []),
           categoryData: (r.category_data && typeof r.category_data === 'object' && !Array.isArray(r.category_data)) ? r.category_data : (prev.categoryData || {}),
-          milestones: Array.isArray(r.milestones) ? r.milestones : (Array.isArray(prev.milestones) ? prev.milestones : [])
+          milestones: Array.isArray(r.milestones) ? r.milestones : (Array.isArray(prev.milestones) ? prev.milestones : []),
+          result: (r.result && typeof r.result === 'object') ? r.result : (prev.result || null)
         });
       });
       PROFILE.goals = M.normalizeGoals(incoming);

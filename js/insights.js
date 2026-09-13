@@ -1,3 +1,5 @@
+/* B-13: nutzersichtbare Texte ueber t() (locales/de.js); eigener Wrapper-Name je Datei (profile.js fuehrt das globale T). */
+var _insT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 /* ============================================================
    ORVIA — Insights  (Phase 6)
    "Erkenntnis zuerst": narrative Insights aus den Daten ableiten.
@@ -33,10 +35,10 @@ function insDecisionMemory() {
     }
   });
   if (cases < 3 || bad / cases < 0.5) return null;
-  return { area: 'Decision Memory', statement: 'Hartes Training trotz gelber oder roter Tagesform rächt sich bei dir oft.',
-    reason: 'In ' + bad + ' von ' + cases + ' Fällen stieg am Folgetag der Knie-Schmerz oder die HRV fiel deutlich.',
-    impact: 'Wiederholtes Forcieren erhöht dein Beschwerde- und Übermüdungsrisiko.',
-    rec: 'Bei gelber/roter Tagesform Intensität rausnehmen — Easy, Bike oder Mobility statt harter Einheit.', conf: cases >= 6 ? 'hoch' : 'mittel' };
+  return { area: '' + _insT('ins.decision_memory') + '', statement: '' + _insT('ins.hartes_training_trotz_gelber_oder') + '',
+    reason: _insT('ins.grund_folgetag_knie_hrv', { bad: bad, cases: cases }),
+    impact: '' + _insT('ins.wiederholtes_forcieren_erhoeht_dein_beschwerde') + '',
+    rec: '' + _insT('ins.bei_gelber_roter_tagesform_intensitaet') + '', conf: cases >= 6 ? 'hoch' : 'mittel' };
 }
 
 /* ---- Interferenz: Krafttraining (Beine) zu nah am Lauf ---- */
@@ -51,10 +53,10 @@ function insInterference() {
     if (ndm.knee > m.knee + 0.5) bad++;
   });
   if (cases < 3 || bad < 2) return null;
-  return { area: 'Interferenz', statement: 'Krafttraining direkt vor einem Lauf reizt bei dir das Knie.',
-    reason: 'Nach ' + cases + ' Gym→Lauf-Folgen stieg in ' + bad + ' Fällen am Lauftag der Knie-Schmerz.',
-    impact: 'Schwere Beine zu nah am Lauf verschlechtern Laufqualität und Knie-Belastung.',
-    rec: 'Beine nicht 24 h vor Intervall/Long Run schwer trainieren; an harten Lauftagen nur Oberkörper-Kraft.', conf: 'mittel' };
+  return { area: 'Interferenz', statement: '' + _insT('ins.krafttraining_direkt_vor_einem_lauf') + '',
+    reason: _insT('ins.grund_gym_lauf_knie', { bad: bad, cases: cases }),
+    impact: '' + _insT('ins.schwere_beine_zu_nah_am') + '',
+    rec: '' + _insT('ins.beine_nicht_24_h_vor') + '', conf: 'mittel' };
 }
 
 /* ---- Lauf-Effizienz: Easy Runs zu schnell ---- */
@@ -71,18 +73,18 @@ function insEasyPace() {
   });
   if (over.length < 2) return null;
   var avg = Math.round(over.reduce(function (a, b) { return a + b; }, 0) / over.length);
-  return { area: 'Lauf-Effizienz', statement: 'Deine Easy Runs waren im Schnitt zu schnell.',
-    reason: over.length + ' Easy-Läufe lagen Ø ' + avg + ' s/km unter dem Easy-Bereich (' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + ').',
-    impact: 'Mehr Belastung ohne echten Mehrwert — das kostet Erholung und Grundlagentempo.',
-    rec: 'Easy konsequent ' + Calc.fmtPace(easy.lo) + '/km oder langsamer laufen.', conf: over.length >= 4 ? 'hoch' : 'mittel' };
+  return { area: 'Lauf-Effizienz', statement: '' + _insT('ins.deine_easy_runs_waren_im') + '',
+    reason: _insT('ins.grund_easy_zu_schnell', { n: over.length, avg: avg, lo: Calc.fmtPace(easy.lo), hi: Calc.fmtPace(easy.hi) }),
+    impact: '' + _insT('ins.mehr_belastung_ohne_echten_mehrwert') + '',
+    rec: _insT('ins.rec_easy_konsequent', { lo: Calc.fmtPace(easy.lo) }), conf: over.length >= 4 ? 'hoch' : 'mittel' };
 }
 
 /* ---- Recovery: HRV-Trend ---- */
 function insHrv() {
   if (typeof intelCtx !== 'function') return null; var c; try { c = intelCtx(); } catch (e) { return null; }
   if (c.hrvDevPct == null) return null;
-  if (c.hrvDevPct <= -8) return { area: 'Recovery', statement: 'Deine HRV liegt unter deiner Baseline.', reason: 'Aktuell ' + c.hrvDevPct.toFixed(0) + '% unter dem 7-Tage-Schnitt.', impact: 'Erhöhte Ermüdung — deine Belastbarkeit ist aktuell reduziert.', rec: '1–2 Tage Intensität rausnehmen, Schlaf priorisieren.', conf: 'mittel' };
-  if (c.hrvDevPct >= 6) return { area: 'Recovery', statement: 'Deine HRV liegt über deiner Baseline.', reason: '+' + c.hrvDevPct.toFixed(0) + '% über dem 7-Tage-Schnitt.', impact: 'Gute Erholung — deine Belastbarkeit ist aktuell erhöht.', rec: 'Guter Moment für eine Qualitätseinheit, solange Knie ≤ 2/10.', conf: 'mittel' };
+  if (c.hrvDevPct <= -8) return { area: 'Recovery', statement: '' + _insT('ins.deine_hrv_liegt_unter_deiner') + '', reason: _insT('ins.grund_hrv_unter_schnitt', { pct: c.hrvDevPct.toFixed(0) }), impact: '' + _insT('ins.erhoehte_ermuedung_deine_belastbarkeit_ist') + '', rec: '' + _insT('ins.1_2_tage_intensitaet_rausnehmen') + '', conf: 'mittel' };
+  if (c.hrvDevPct >= 6) return { area: 'Recovery', statement: '' + _insT('ins.deine_hrv_liegt_ueber_deiner') + '', reason: _insT('ins.grund_hrv_ueber_schnitt', { pct: c.hrvDevPct.toFixed(0) }), impact: '' + _insT('ins.gute_erholung_deine_belastbarkeit_ist') + '', rec: '' + _insT('ins.guter_moment_fuer_eine_qualitaetseinheit') + '', conf: 'mittel' };
   return null;
 }
 
@@ -90,14 +92,14 @@ function insHrv() {
 function insVolume() {
   if (typeof intelCtx !== 'function') return null; var c; try { c = intelCtx(); } catch (e) { return null; }
   if (!c.targetKm || !c.weekKm) return null;
-  if (c.weekKm > c.targetKm * 1.15) return { area: 'Belastung', statement: 'Dein Wochenvolumen liegt über Plan.', reason: Math.round(c.weekKm) + ' von ' + c.targetKm + ' km Soll (' + Math.round((c.weekKm / c.targetKm - 1) * 100) + '% drüber).', impact: 'Steigerung schneller als die Erholung mithält → Risiko steigt.', rec: 'Nächste Woche höchstens +5–10 %, eine harte Einheit weniger.', conf: 'mittel' };
+  if (c.weekKm > c.targetKm * 1.15) return { area: 'Belastung', statement: '' + _insT('ins.dein_wochenvolumen_liegt_ueber_plan') + '', reason: _insT('ins.grund_volumen_ueber_plan', { km: Math.round(c.weekKm), soll: c.targetKm, pct: Math.round((c.weekKm / c.targetKm - 1) * 100) }), impact: '' + _insT('ins.steigerung_schneller_als_die_erholung') + '', rec: '' + _insT('ins.naechste_woche_hoechstens_5_10') + '', conf: 'mittel' };
   return null;
 }
 
 /* ---- Ernährung: Protein-Treffer ---- */
 function insProtein() {
   if (typeof nutWeekly !== 'function') return null; var w; try { w = nutWeekly(); } catch (e) { return null; }
-  if (w.proteinDays <= 2) return { area: 'Ernährung', statement: 'Dein Protein-Ziel triffst du selten.', reason: 'Nur ' + w.proteinDays + '/7 Tage im Zielbereich.', impact: 'Zu wenig Protein bremst Regeneration und Muskelerhalt.', rec: 'Pro Mahlzeit eine Proteinquelle einplanen (Ziel ~1,9 g/kg).', conf: 'mittel' };
+  if (w.proteinDays <= 2) return { area: 'Ernährung', statement: '' + _insT('ins.dein_protein_ziel_triffst_du') + '', reason: _insT('ins.grund_protein_tage', { days: w.proteinDays }), impact: '' + _insT('ins.zu_wenig_protein_bremst_regeneration') + '', rec: '' + _insT('ins.pro_mahlzeit_eine_proteinquelle_einplanen') + '', conf: 'mittel' };
   return null;
 }
 
@@ -115,10 +117,10 @@ function weekInsights() {
 function renderWeekInsights() {
   var el = document.getElementById('weekInsights'); if (!el) return;
   var n = 0; try { n = Object.keys(DB).filter(isDay).length; } catch (e) {}
-  var head = '<h2><svg class="ic"><use href="#i-zap"/></svg>Diese Woche erkannt</h2>';
-  if (n < 5) { el.innerHTML = '<div class="card">' + head + '<p class="muted" style="margin:0">Nach ~7 Tagen Daten erkennt ORVIA erste Muster. Aktuell ' + n + ' Tage.</p></div>'; return; }
+  var head = '<h2><svg class="ic"><use href="#i-zap"/></svg>' + _insT('ins.diese_woche_erkannt') + '</h2>';
+  if (n < 5) { el.innerHTML = '<div class="card">' + head + '<p class="muted" style="margin:0">' + _insT('ins.leer_nach_7_tagen', { n: n }) + '</p></div>'; return; }
   var ins = weekInsights();
-  if (!ins.length) { el.innerHTML = '<div class="card">' + head + '<p class="muted" style="margin:0">Keine auffälligen Muster — Training, Erholung und Ernährung sind im grünen Bereich.</p></div>'; return; }
+  if (!ins.length) { el.innerHTML = '<div class="card">' + head + '<p class="muted" style="margin:0">' + _insT('ins.keine_auffaelligen_muster_training_erholung') + '</p></div>'; return; }
   var rows = ins.slice(0, 5).map(function (x) {
     var cc = x.conf === 'hoch' ? 'g' : x.conf === 'mittel' ? 'y' : 'r';
     return '<div class="ins"><div class="ins-top"><span class="ins-area">' + escH(x.area) + '</span><span class="conf conf-' + cc + '">' + escH(x.conf) + '</span></div>' +

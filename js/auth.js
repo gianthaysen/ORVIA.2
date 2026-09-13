@@ -8,6 +8,8 @@
   const CFG = window.ORVIA_CFG || {};
   window.ORVIA = window.ORVIA || {};
   const O = window.ORVIA;
+  /* B-13: nutzersichtbare Texte ueber t() (locales/de.js); ohne i18n-Modul bleibt der Key sichtbar. */
+  function T(k, p) { try { if (O.i18n && typeof O.i18n.t === 'function') return O.i18n.t(k, p); } catch (e) {} return String(k); }
 
   // VOR jedem möglichen failClosedAuth()-Aufruf deklarieren (sonst Temporal Dead Zone in buildGate).
   let mode = 'login';
@@ -17,16 +19,16 @@
   let recoveryTimer = null;
 
   const SAFE_MESSAGES = {
-    invite_only: 'Registrierung ist nur mit gültigem Beta-Code möglich.',
-    invalid_invite: 'Beta-Code ungültig.',
-    invite_used: 'Beta-Code wurde zu oft verwendet.',
-    invite_expired: 'Beta-Code abgelaufen.',
+    invite_only: '' + T('auth.registrierung_ist_nur_mit_gueltigem') + '',
+    invalid_invite: '' + T('auth.beta_code_ungueltig') + '',
+    invite_used: '' + T('auth.beta_code_wurde_zu_oft') + '',
+    invite_expired: '' + T('auth.beta_code_abgelaufen') + '',
     // #16.7: bewusst neutraler Server-Wortlaut (keine Account-Enumeration verschärfen),
     // aber NICHT mehr als „Beta-Code ungültig" maskiert (Diagnose-Verschleierung, Issue #14).
-    email_taken: 'Diese E-Mail kann nicht verwendet werden.',
-    email_failed: 'E-Mail konnte nicht bestätigt werden.',
-    password_mismatch: 'Die Passwörter stimmen nicht überein.',
-    weak_password: 'Das Passwort muss mindestens 8 Zeichen lang sein.'
+    email_taken: '' + T('auth.diese_e_mail_kann_nicht') + '',
+    email_failed: '' + T('auth.e_mail_konnte_nicht_bestaetigt') + '',
+    password_mismatch: '' + T('auth.die_passwoerter_stimmen_nicht_ueberein') + '',
+    weak_password: '' + T('auth.das_passwort_muss_mindestens_8') + ''
   };
 
   // Reine Auth-Entscheidungen aus auth-logic.js (Single Source of Truth). KEIN stiller Fallback.
@@ -34,7 +36,7 @@
 
   function pwRulesHTML(c) {
     function row(ok, t) { return '<span class="pwrule ' + (ok ? 'ok' : '') + '">' + (ok ? '✓' : '○') + ' ' + t + '</span>'; }
-    return row(c.len, 'min. 8 Zeichen') + row(c.upper, 'Großbuchstabe') + row(c.lower, 'Kleinbuchstabe') + row(c.digit, 'Zahl');
+    return row(c.len, '' + T('auth.min_8_zeichen') + '') + row(c.upper, 'Großbuchstabe') + row(c.lower, 'Kleinbuchstabe') + row(c.digit, 'Zahl');
   }
   // Zweckgebundene Redirect-URL: action bleibt als ?auth_action erhalten, damit der Client den
   // PKCE-Callback nach dem Code-Austausch korrekt routen kann (recovery/signup/email_change).
@@ -63,12 +65,12 @@
   // Fehlende/unvollständige Auth-Logik → fail-closed (NICHT still als 'normal' degradieren).
   if (!AL || typeof AL.detectAuthFlow !== 'function' || typeof AL.acceptRegistration !== 'function'
     || typeof AL.pwValid !== 'function' || typeof AL.stripAuthParams !== 'function') {
-    failClosedAuth('Anmeldung wird gerade vorbereitet. Bitte später erneut versuchen.');
+    failClosedAuth('' + T('auth.anmeldung_wird_gerade_vorbereitet_bitte') + '');
     return;
   }
 
   if (!CFG.configured) {
-    failClosedAuth('Zugang wird gerade vorbereitet. Bitte später erneut versuchen.');
+    failClosedAuth('' + T('auth.zugang_wird_gerade_vorbereitet_bitte') + '');
     return;
   }
 
@@ -81,7 +83,7 @@
     });
   } catch (e) {
     console.error('[ORVIA auth] Supabase-Init fehlgeschlagen.', e);
-    failClosedAuth('Anmeldung aktuell nicht verfügbar. Bitte später erneut versuchen.');
+    failClosedAuth('' + T('auth.anmeldung_aktuell_nicht_verfuegbar_bitte') + '');
     return;
   }
 
@@ -104,7 +106,7 @@
     cleanAuthUrl();
     authFlow = 'normal';
     showGate('login');
-    err('Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.');
+    err('' + T('auth.der_link_ist_ungueltig_oder') + '');
   } else if (authFlow === 'implicit_recovery') {
     // Kompatibilitäts-Fallback. Recovery-Screen im Status „checking"; Freigabe erst bei PASSWORD_RECOVERY.
     showRecovery();
@@ -113,7 +115,7 @@
   } else if (authFlow === 'error') {
     cleanAuthUrl();
     showGate('login');
-    err('Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.');
+    err('' + T('auth.der_link_ist_ungueltig_oder') + '');
   } else {
     sb.auth.getSession()
       .then(({ data }) => {
@@ -137,7 +139,7 @@
       cleanAuthUrl();
       authFlow = 'normal';
       showGate('login');
-      err('Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.');
+      err('' + T('auth.der_link_ist_ungueltig_oder') + '');
       return;
     }
     if (action === 'recovery') {
@@ -163,7 +165,7 @@
     authFlow = 'normal';
     if (session) { onAuthed(session); return; }
     showGate('login');
-    err('E-Mail bestätigt. Bitte melde dich an.');
+    err('' + T('auth.e_mail_bestaetigt_bitte_melde') + '');
   }
 
   sb.auth.onAuthStateChange((evt, session) => {
@@ -361,14 +363,14 @@
       }
       if (!data) {
         roleLog('PROFILE_ROW_MISSING');
-        return { ok: false, message: 'Es wurde kein gültiges Profil gefunden.' };
+        return { ok: false, message: '' + T('auth.es_wurde_kein_gueltiges_profil') + '' };
       }
       if (data.is_active !== true) {
-        return { ok: false, message: 'Dein Zugang ist nicht aktiv.' };
+        return { ok: false, message: '' + T('auth.dein_zugang_ist_nicht_aktiv') + '' };
       }
       if (KNOWN_ROLES.indexOf(data.role) < 0) {
         roleLog('UNKNOWN_ROLE', String(data.role));
-        return { ok: false, message: 'Dein Zugang ist nicht aktiv.' };
+        return { ok: false, message: '' + T('auth.dein_zugang_ist_nicht_aktiv') + '' };
       }
       // 3) Serverwert überschreibt IMMER einen alten Cache; alte globale Schlüssel entfernen.
       try {
@@ -390,27 +392,27 @@
       '<div class="og-card">' +
         '<svg class="og-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#orvia-mark"/></svg>' +
         '<div class="og-wm">ORVIA</div>' +
-        '<div class="og-claim">Know your state. Move with precision.</div>' +
+        '<div class="og-claim">' + T('auth.know_your_state_move_with') + '</div>' +
         '<div class="og-tabs">' +
-          '<button type="button" data-m="login">Anmelden</button>' +
-          '<button type="button" data-m="register">Registrieren</button>' +
+          '<button type="button" data-m="login">' + T('auth.anmelden') + '</button>' +
+          '<button type="button" data-m="register">' + T('auth.registrieren') + '</button>' +
         '</div>' +
         '<form class="og-form" autocomplete="on">' +
-          '<div class="og-field og-invite"><label>Beta-Code</label>' +
-            '<input type="text" id="ogCode" autocapitalize="characters" autocomplete="one-time-code" placeholder="ORVIA-BETA-..."></div>' +
-          '<div class="og-field"><label>E-Mail</label>' +
-            '<input type="email" id="ogEmail" autocomplete="email" placeholder="du@mail.de"></div>' +
-          '<div class="og-field"><label>Passwort</label>' +
-            '<input type="password" id="ogPw" autocomplete="current-password" placeholder="mind. 8 Zeichen"></div>' +
+          '<div class="og-field og-invite"><label>' + T('auth.beta_code') + '</label>' +
+            '<input type="text" id="ogCode" autocapitalize="characters" autocomplete="one-time-code" placeholder="' + T('auth.orvia_beta') + '"></div>' +
+          '<div class="og-field"><label>' + T('auth.e_mail') + '</label>' +
+            '<input type="email" id="ogEmail" autocomplete="email" placeholder="' + T('auth.du_mail_de') + '"></div>' +
+          '<div class="og-field"><label>' + T('auth.passwort') + '</label>' +
+            '<input type="password" id="ogPw" autocomplete="current-password" placeholder="' + T('auth.mind_8_zeichen') + '"></div>' +
           '<div class="og-pwrules og-pw-confirm" id="ogPwRules"></div>' +
-          '<div class="og-field og-pw-confirm"><label>Passwort bestätigen</label>' +
-            '<input type="password" id="ogPw2" autocomplete="new-password" placeholder="noch einmal eingeben"></div>' +
-          '<label class="og-show"><input type="checkbox" id="ogShow"> Passwort anzeigen</label>' +
+          '<div class="og-field og-pw-confirm"><label>' + T('auth.passwort_bestaetigen') + '</label>' +
+            '<input type="password" id="ogPw2" autocomplete="new-password" placeholder="' + T('auth.noch_einmal_eingeben') + '"></div>' +
+          '<label class="og-show"><input type="checkbox" id="ogShow">' + T('auth.passwort_anzeigen') + '</label>' +
           '<div class="og-err" id="ogErr"></div>' +
-          '<button type="submit" class="btn" id="ogSubmit">Anmelden</button>' +
+          '<button type="submit" class="btn" id="ogSubmit">' + T('auth.anmelden') + '</button>' +
         '</form>' +
-        '<button type="button" class="og-link" id="ogForgot">Passwort vergessen?</button>' +
-        '<div class="og-note">Geschlossene Beta. Registrierung nur mit gültigem Beta-Code und bestätigter E-Mail möglich.</div>' +
+        '<button type="button" class="og-link" id="ogForgot">' + T('auth.passwort_vergessen') + '</button>' +
+        '<div class="og-note">' + T('auth.geschlossene_beta_registrierung_nur_mit') + '</div>' +
       '</div>';
     document.body.appendChild(gateEl);
 
@@ -435,7 +437,7 @@
     gateEl.querySelector('.og-invite').style.display = reg ? '' : 'none';
     gateEl.querySelectorAll('.og-pw-confirm').forEach(el => { el.style.display = reg ? '' : 'none'; });
     gateEl.querySelector('.og-show').style.display = reg ? '' : 'none';
-    gateEl.querySelector('#ogSubmit').textContent = reg ? 'Account erstellen' : 'Anmelden';
+    gateEl.querySelector('#ogSubmit').textContent = reg ? '' + T('auth.account_erstellen') + '' : '' + T('auth.anmelden') + '';
     gateEl.querySelector('#ogPw').setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
     gateEl.querySelector('#ogForgot').style.display = reg ? 'none' : 'block';
     if (reg) gateEl.querySelector('#ogPwRules').innerHTML = pwRulesHTML(AL.pwChecks(gateEl.querySelector('#ogPw').value));
@@ -470,12 +472,12 @@
   async function onSubmit(ev) {
     ev.preventDefault();
     err('');
-    if (!sb) { err('Anmeldung aktuell nicht verfügbar.'); return; }
+    if (!sb) { err('' + T('auth.anmeldung_aktuell_nicht_verfuegbar') + ''); return; }
     const email = val('ogEmail').trim().toLowerCase();
     const pw = val('ogPw');
 
     if (!email || !pw) {
-      err('Bitte E-Mail und Passwort eingeben.');
+      err('' + T('auth.bitte_e_mail_und_passwort') + '');
       return;
     }
 
@@ -490,7 +492,7 @@
           return;
         }
         if (!AL.pwValid(pw)) {
-          err('Passwort: min. 8 Zeichen, Groß- und Kleinbuchstabe sowie Zahl.');
+          err('' + T('auth.passwort_min_8_zeichen_gross') + '');
           busy(false);
           return;
         }
@@ -510,7 +512,7 @@
         // FAIL-CLOSED: nur ein ausdrücklich versionierter Bestätigungs-Vertrag gilt als gültige
         // Registrierung. KEIN stiller Fallback auf einen vorbestätigten Account.
         if (!AL.acceptRegistration(reg.data)) {
-          err('Registrierung wurde serverseitig nicht korrekt bestätigt. Bitte später erneut versuchen.');
+          err('' + T('auth.registrierung_wurde_serverseitig_nicht_korrekt') + '');
           busy(false);
           return;
         }
@@ -524,12 +526,12 @@
           // #16 (2026-07-02): unbestätigte E-Mail NICHT als „Passwort falsch" maskieren —
           // stattdessen Bestätigungs-Screen mit Resend-Pfad zeigen (GoTrue: "Email not confirmed").
           const em = String((error && error.message) || '').toLowerCase();
-          if (em.includes('not confirmed') || em.includes('nicht bestätigt')) {
+          if (em.includes('not confirmed') || em.includes('' + T('auth.nicht_bestaetigt') + '')) {
             showConfirmPending(email);
             busy(false);
             return;
           }
-          err('E-Mail oder Passwort ist falsch.');
+          err('' + T('auth.e_mail_oder_passwort_ist') + '');
           busy(false);
           return;
         }
@@ -537,7 +539,7 @@
       }
     } catch (e) {
       console.error(e);
-      err('Unerwarteter Fehler. Bitte erneut versuchen.');
+      err('' + T('auth.unerwarteter_fehler_bitte_erneut_versuchen') + '');
     }
     busy(false);
   }
@@ -592,15 +594,15 @@
   async function onForgot() {
     const email = val('ogEmail').trim().toLowerCase();
     if (!email) {
-      err('E-Mail eingeben, dann Passwort-Reset anfordern.');
+      err('' + T('auth.e_mail_eingeben_dann_passwort') + '');
       return;
     }
     try {
       // Zweckgebundene Redirect-URL → muss bei Supabase unter Additional Redirect URLs eingetragen sein.
       await sb.auth.resetPasswordForEmail(email, { redirectTo: authRedirectUrl('recovery') });
-      err('Falls die E-Mail existiert, wurde ein Reset-Link gesendet.');
+      err('' + T('auth.falls_die_e_mail_existiert') + '');
     } catch (e) {
-      err('Reset aktuell nicht möglich.');
+      err('' + T('auth.reset_aktuell_nicht_moeglich') + '');
     }
   }
 
@@ -617,18 +619,18 @@
     wrap.innerHTML =
       '<div class="og-card">' +
         '<div class="og-wm">ORVIA</div>' +
-        '<div class="og-claim">E-Mail bestätigen</div>' +
-        '<p class="og-note" style="text-align:center">Wir haben einen Bestätigungslink an<br><b id="cfEmail"></b> gesendet. Öffne den Link, dann melde dich an.</p>' +
+        '<div class="og-claim">' + T('auth.e_mail_bestaetigen') + '</div>' +
+        '<p class="og-note" style="text-align:center">' + T('auth.wir_haben_einen_bestaetigungslink_an') + '<br><b id="cfEmail"></b>' + T('auth.gesendet_oeffne_den_link_dann') + '</p>' +
         '<div class="og-err" id="cfErr"></div>' +
-        '<button type="button" class="btn" id="cfDone">Ich habe meine E-Mail bestätigt</button>' +
-        '<button type="button" class="og-link" id="cfResend">Bestätigung erneut senden</button>' +
-        '<button type="button" class="og-link" id="cfBack">Adresse korrigieren / zurück</button>' +
+        '<button type="button" class="btn" id="cfDone">' + T('auth.ich_habe_meine_e_mail') + '</button>' +
+        '<button type="button" class="og-link" id="cfResend">' + T('auth.bestaetigung_erneut_senden') + '</button>' +
+        '<button type="button" class="og-link" id="cfBack">' + T('auth.adresse_korrigieren_zurueck') + '</button>' +
       '</div>';
     document.body.appendChild(wrap);
     wrap.querySelector('#cfEmail').textContent = email || '';
     function se(m) { var e = wrap.querySelector('#cfErr'); e.style.display = 'block'; e.textContent = m; }
     if (regData && regData.emailSent === false) {
-      se('Dein Konto wurde erstellt, aber die Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte „Bestätigung erneut senden" antippen.');
+      se('' + T('auth.dein_konto_wurde_erstellt_aber') + '');
     }
     wrap.querySelector('#cfBack').onclick = function () { wrap.remove(); showGate('register'); };
     // „Ich habe bestätigt": NUR lokale Session prüfen (Remote-Status kann der Client nicht
@@ -642,14 +644,14 @@
       wrap.remove();
       showGate('login');
       var emEl = document.getElementById('ogEmail'); if (emEl) emEl.value = email || '';
-      err('Bitte melde dich mit deiner bestätigten E-Mail-Adresse an.');
+      err('' + T('auth.bitte_melde_dich_mit_deiner') + '');
     };
     wrap.querySelector('#cfResend').onclick = async function () {
       this.disabled = true;
       try {
         var r = await sb.auth.resend({ type: 'signup', email: email, options: { emailRedirectTo: authRedirectUrl('signup') } });
-        se((r && r.error) ? 'Erneut senden fehlgeschlagen.' : 'Bestätigung erneut gesendet.');
-      } catch (_) { se('Erneut senden fehlgeschlagen.'); }
+        se((r && r.error) ? '' + T('auth.erneut_senden_fehlgeschlagen') + '' : '' + T('auth.bestaetigung_erneut_gesendet') + '');
+      } catch (_) { se('' + T('auth.erneut_senden_fehlgeschlagen') + ''); }
       this.disabled = false;
     };
   }
@@ -672,17 +674,17 @@
     wrap.innerHTML =
       '<div class="og-card">' +
         '<div class="og-wm">ORVIA</div>' +
-        '<div class="og-claim">Neues Passwort setzen</div>' +
-        '<div class="og-note" id="rcStatus" style="text-align:center">Reset-Link wird geprüft …</div>' +
+        '<div class="og-claim">' + T('auth.neues_passwort_setzen') + '</div>' +
+        '<div class="og-note" id="rcStatus" style="text-align:center">' + T('auth.reset_link_wird_geprueft') + '</div>' +
         '<form class="og-form" autocomplete="off">' +
-          '<div class="og-field"><label>Neues Passwort</label>' +
-            '<input type="password" id="rcPw" autocomplete="new-password" placeholder="min. 8 Zeichen" disabled></div>' +
+          '<div class="og-field"><label>' + T('auth.neues_passwort') + '</label>' +
+            '<input type="password" id="rcPw" autocomplete="new-password" placeholder="' + T('auth.min_8_zeichen') + '" disabled></div>' +
           '<div class="og-pwrules" id="rcRules"></div>' +
-          '<div class="og-field"><label>Passwort bestätigen</label>' +
-            '<input type="password" id="rcPw2" autocomplete="new-password" placeholder="noch einmal eingeben" disabled></div>' +
-          '<label class="og-show"><input type="checkbox" id="rcShow"> Passwort anzeigen</label>' +
+          '<div class="og-field"><label>' + T('auth.passwort_bestaetigen') + '</label>' +
+            '<input type="password" id="rcPw2" autocomplete="new-password" placeholder="' + T('auth.noch_einmal_eingeben') + '" disabled></div>' +
+          '<label class="og-show"><input type="checkbox" id="rcShow">' + T('auth.passwort_anzeigen') + '</label>' +
           '<div class="og-err" id="rcErr"></div>' +
-          '<button type="submit" class="btn" id="rcSubmit" disabled>Passwort speichern</button>' +
+          '<button type="submit" class="btn" id="rcSubmit" disabled>' + T('auth.passwort_speichern') + '</button>' +
         '</form>' +
       '</div>';
     document.body.appendChild(wrap);
@@ -695,28 +697,28 @@
     wrap.querySelector('.og-form').addEventListener('submit', async function (ev) {
       ev.preventDefault();
       // Race-Schutz: vor gültiger Recovery-Session NICHT updateUser aufrufen.
-      if (!recoveryReady) { rcErrShow('Der Reset-Link ist noch nicht bestätigt oder nicht mehr gültig.'); return; }
+      if (!recoveryReady) { rcErrShow('' + T('auth.der_reset_link_ist_noch') + ''); return; }
       var pw = pwEl.value, pw2 = pw2El.value;
-      if (!AL.pwValid(pw)) { rcErrShow('Passwort: min. 8 Zeichen, Groß- und Kleinbuchstabe sowie Zahl.'); return; }
-      if (pw !== pw2) { rcErrShow('Die Passwörter stimmen nicht überein.'); return; }
+      if (!AL.pwValid(pw)) { rcErrShow('' + T('auth.passwort_min_8_zeichen_gross') + ''); return; }
+      if (pw !== pw2) { rcErrShow('' + T('auth.die_passwoerter_stimmen_nicht_ueberein') + ''); return; }
       var btn = document.getElementById('rcSubmit'); btn.disabled = true;
       try {
         var r = await sb.auth.updateUser({ password: pw });
-        if (r && r.error) { rcErrShow('Konnte nicht gespeichert werden. Der Link ist evtl. abgelaufen oder schon benutzt.'); btn.disabled = false; return; }
+        if (r && r.error) { rcErrShow('' + T('auth.konnte_nicht_gespeichert_werden_der') + ''); btn.disabled = false; return; }
         await safeSignOut();
         cleanAuthUrl();
         authFlow = 'normal';
         wrap.remove();
         showGate('login');
-        err('Passwort geändert. Bitte neu anmelden.');
-      } catch (_) { rcErrShow('Unerwarteter Fehler. Bitte erneut versuchen.'); btn.disabled = false; }
+        err('' + T('auth.passwort_geaendert_bitte_neu_anmelden') + '');
+      } catch (_) { rcErrShow('' + T('auth.unerwarteter_fehler_bitte_erneut_versuchen') + ''); btn.disabled = false; }
     });
     if (recoveryReady) { enableRecoveryForm(); return; }
     // Kontrollierter Timeout: kommt keine Recovery-Session, neutralen Fehler zeigen (kein falsches „abgelaufen").
     recoveryTimer = setTimeout(function () {
       if (recoveryReady) return;
       var st = document.getElementById('rcStatus'); if (st) st.style.display = 'none';
-      rcErrShow('Der Reset-Link konnte nicht bestätigt werden. Bitte fordere einen neuen Link an.');
+      rcErrShow('' + T('auth.der_reset_link_konnte_nicht') + '');
     }, 12000);
   }
 
@@ -735,37 +737,37 @@
 
   /* H4 (2026-07-11): echte Konto-Flows für eingeloggte Nutzer. */
   window.orviaChangePassword = async function () {
-    var p1 = prompt('Neues Passwort (min. 8 Zeichen, Groß-/Kleinbuchstabe, Zahl):');
+    var p1 = prompt('' + T('auth.neues_passwort_min_8_zeichen') + '');
     if (p1 == null) return;
-    if (!AL.pwValid(p1)) { alert('Passwort erfüllt die Regeln nicht (min. 8 Zeichen, Groß-/Kleinbuchstabe, Zahl).'); return; }
-    var p2 = prompt('Neues Passwort wiederholen:');
+    if (!AL.pwValid(p1)) { alert('' + T('auth.passwort_erfuellt_die_regeln_nicht') + ''); return; }
+    var p2 = prompt('' + T('auth.neues_passwort_wiederholen') + '');
     if (p2 !== p1) { alert(SAFE_MESSAGES.password_mismatch); return; }
     try {
       var r = await sb.auth.updateUser({ password: p1 });
       if (r && r.error) throw r.error;
-      alert('Passwort geändert.');
-    } catch (e) { alert('Passwort-Änderung fehlgeschlagen: ' + ((e && e.message) || 'unbekannt')); }
+      alert('' + T('auth.passwort_geaendert') + '');
+    } catch (e) { alert('' + T('auth.passwort_aenderung_fehlgeschlagen') + '' + ((e && e.message) || 'unbekannt')); }
   };
   window.orviaChangeEmail = async function () {
-    var mail = prompt('Neue E-Mail-Adresse:');
+    var mail = prompt('' + T('auth.neue_e_mail_adresse') + '');
     if (!mail) return;
     try {
       // Bestätigungslink nutzt den bereits vorhandenen pkce_email_change-Callback-Router.
       var r = await sb.auth.updateUser({ email: mail.trim() }, { emailRedirectTo: authRedirectUrl('email_change') });
       if (r && r.error) throw r.error;
-      alert('Bestätigungs-E-Mail versendet — bitte den Link in der neuen Mailbox öffnen.');
-    } catch (e) { alert('E-Mail-Änderung fehlgeschlagen: ' + ((e && e.message) || 'unbekannt')); }
+      alert('' + T('auth.bestaetigungs_e_mail_versendet_bitte') + '');
+    } catch (e) { alert('' + T('auth.e_mail_aenderung_fehlgeschlagen') + '' + ((e && e.message) || 'unbekannt')); }
   };
   /* H4: ECHTE serverseitige Löschung über die Edge Function delete-account
      (löscht den Auth-User; alle Tabellen hängen mit on delete cascade daran).
      Fail-closed: ohne Server-Erfolg wird lokal NICHTS gelöscht. */
   window.orviaDeleteAccount = async function () {
-    var sure = prompt('Konto DAUERHAFT löschen? Alle Cloud- und Gerätedaten gehen verloren. Zum Bestätigen LÖSCHEN eingeben:');
-    if (sure !== 'LÖSCHEN') { if (sure != null) alert('Nicht bestätigt — es wurde nichts gelöscht.'); return; }
+    var sure = prompt('' + T('auth.konto_dauerhaft_loeschen_alle_cloud') + '');
+    if (sure !== 'LÖSCHEN') { if (sure != null) alert('' + T('auth.nicht_bestaetigt_es_wurde_nichts') + ''); return; }
     try {
       var sess = await sb.auth.getSession();
       var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
-      if (!token) { alert('Keine aktive Sitzung.'); return; }
+      if (!token) { alert('' + T('auth.keine_aktive_sitzung') + ''); return; }
       var resp = await fetch(CFG.SUPABASE_URL + '/functions/v1/delete-account', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'apikey': CFG.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
@@ -773,7 +775,7 @@
       });
       var body = null; try { body = await resp.json(); } catch (e) {}
       if (!resp.ok || !(body && body.ok)) {
-        alert('Serverseitige Löschung fehlgeschlagen (' + resp.status + '). Es wurde nichts gelöscht.');
+        alert(T('auth.serverseitige_loeschung_fehlgeschlagen_status', { status: resp.status }));
         return;
       }
       try { await sb.auth.signOut(); } catch (e) {}
@@ -785,9 +787,9 @@
         localStorage.removeItem('orvia_data_owner');
         localStorage.removeItem('orvia_sync_rev');
       } catch (e) {}
-      alert('Konto und Daten wurden gelöscht.');
+      alert('' + T('auth.konto_und_daten_wurden_geloescht') + '');
       location.reload();
-    } catch (e) { alert('Löschung fehlgeschlagen: ' + ((e && e.message) || 'unbekannt') + ' — es wurde nichts gelöscht.'); }
+    } catch (e) { alert(T('auth.loeschung_fehlgeschlagen_nichts_geloescht', { msg: (e && e.message) || 'unbekannt' })); }
   };
 
   function val(id) {
@@ -795,6 +797,10 @@
     return e ? e.value : '';
   }
 })();
+
+/* B-13: Texte der globalen Konto-Karte ueber t(); eigener Name, weil dieser Teil ausserhalb
+   der IIFE liegt und profile.js bereits ein globales T fuehrt (kein Redeclare-Risiko). */
+var _authT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 
 /* ============================================================
    Konto-/Sync-Karte im Profil  (global, von Profil-Render + Sync genutzt)
@@ -822,43 +828,43 @@ window.renderAccountCard = function () {
   if (roleName != null) {
     roleHTML = '<b>' + _esc(roleName) + '</b>';
   } else {
-    roleHTML = '<b class="err" style="color:var(--danger,#f66)">Konnte nicht geladen werden</b>';
+    roleHTML = '<b class="err" style="color:var(--danger,#f66)">' + _authT('auth.konnte_nicht_geladen_werden') + '</b>';
     // Nur loggen, wenn tatsächlich ein eingeloggter Nutzer eine Rolle sehen müsste.
     if (O.user && cfg.configured) { try { console.error('[ORVIA auth] role_display_failed', JSON.stringify({ code: 'ACCESS_PROFILE_MISSING', at: new Date().toISOString() })); } catch (e) {} }
   }
 
   if (!cfg.configured) {
     box.innerHTML =
-      '<div class="acc-row"><span>Modus</span><b>Lokal (kein Konto)</b></div>' +
-      '<div class="acc-row"><span>Status</span>' + badge + '</div>' +
-      '<p class="note" style="text-align:left">Cloud-Sync &amp; Accounts sind vorbereitet. Sobald Supabase-URL und anon public key konfiguriert sind, aktivieren sich Login, Invite-Gate und geräteübergreifender Sync.</p>';
+      '<div class="acc-row"><span>' + _authT('auth.modus') + '</span><b>' + _authT('auth.lokal_kein_konto') + '</b></div>' +
+      '<div class="acc-row"><span>' + _authT('auth.status') + '</span>' + badge + '</div>' +
+      '<p class="note" style="text-align:left">' + _authT('auth.cloud_sync_amp_accounts_sind') + '</p>';
   } else if (O.user) {
     box.innerHTML =
-      '<div class="acc-row"><span>Angemeldet</span><b>' + _esc(O.user.email || '—') + '</b></div>' +
-      '<div class="acc-row"><span>Rolle</span>' + roleHTML + '</div>' +
-      '<div class="acc-row"><span>Sync</span>' + badge + '</div>' +
+      '<div class="acc-row"><span>' + _authT('auth.angemeldet') + '</span><b>' + _esc(O.user.email || '—') + '</b></div>' +
+      '<div class="acc-row"><span>' + _authT('auth.rolle') + '</span>' + roleHTML + '</div>' +
+      '<div class="acc-row"><span>' + _authT('auth.sync') + '</span>' + badge + '</div>' +
       '<div class="row2" style="margin-top:12px">' +
-        '<button class="btn sec" onclick="orviaSchedulePush&&orviaSchedulePush()">Jetzt synchronisieren</button>' +
-        '<button class="btn sec" onclick="orviaLogout&&orviaLogout()">Abmelden</button>' +
+        '<button class="btn sec" onclick="orviaSchedulePush&&orviaSchedulePush()">' + _authT('auth.jetzt_synchronisieren') + '</button>' +
+        '<button class="btn sec" onclick="orviaLogout&&orviaLogout()">' + _authT('auth.abmelden') + '</button>' +
       '</div>' +
       '<div class="row2" style="margin-top:10px">' +
-        '<button class="btn sec" onclick="orviaChangePassword&&orviaChangePassword()">Passwort ändern</button>' +
-        '<button class="btn sec" onclick="orviaChangeEmail&&orviaChangeEmail()">E-Mail ändern</button>' +
+        '<button class="btn sec" onclick="orviaChangePassword&&orviaChangePassword()">' + _authT('auth.passwort_aendern') + '</button>' +
+        '<button class="btn sec" onclick="orviaChangeEmail&&orviaChangeEmail()">' + _authT('auth.e_mail_aendern') + '</button>' +
       '</div>' +
-      '<button class="btn gline" style="margin-top:10px" onclick="orviaDeleteAccount&&orviaDeleteAccount()">Konto löschen</button>';
+      '<button class="btn gline" style="margin-top:10px" onclick="orviaDeleteAccount&&orviaDeleteAccount()">' + _authT('auth.konto_loeschen') + '</button>';
   } else {
-    box.innerHTML = '<div class="acc-row"><span>Status</span><b>Nicht angemeldet</b></div>';
+    box.innerHTML = '<div class="acc-row"><span>' + _authT('auth.status') + '</span><b>' + _authT('auth.nicht_angemeldet') + '</b></div>';
   }
 
   const el = document.getElementById('syncBadge');
   if (el) {
     const L = {
-      local: ['Lokaler Modus', 'muted'],
+      local: ['' + _authT('auth.lokaler_modus') + '', 'muted'],
       synced: ['Synchronisiert', 'ok'],
-      pending: ['Sync läuft ...', 'warn'],
-      error: ['Sync-Fehler', 'err'],
-      offline: ['Offline - lokal', 'warn']
-    }[state] || ['Lokaler Modus', 'muted'];
+      pending: ['' + _authT('auth.sync_laeuft') + '', 'warn'],
+      error: ['' + _authT('auth.sync') + '-Fehler', 'err'],
+      offline: ['' + _authT('auth.offline_lokal') + '', 'warn']
+    }[state] || ['' + _authT('auth.lokaler_modus') + '', 'muted'];
     el.textContent = L[0];
     el.className = 'syncbadge ' + L[1];
   }

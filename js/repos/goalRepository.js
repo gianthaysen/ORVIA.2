@@ -45,6 +45,9 @@
     row.sports = Array.isArray(goal.sports) ? goal.sports.slice() : [];
     row.category_data = (goal.categoryData && typeof goal.categoryData === 'object' && !Array.isArray(goal.categoryData)) ? goal.categoryData : {};
     row.milestones = Array.isArray(goal.milestones) ? goal.milestones : [];
+    /* S1/E2 (Migration 0044): result NUR senden, wenn belegt — auf einer Instanz ohne 0044 bleibt der
+       Upsert fuer Ziele ohne Ergebnis intakt; ein bestaetigtes Ergebnis braucht die Migration. */
+    if (goal.result && typeof goal.result === 'object') row.result = goal.result;
     return row;
   }
 

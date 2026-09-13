@@ -254,6 +254,45 @@ function _goalShadowNote(ereignis){
     gcat:(typeof gcat==='function')?gcat:null
   });
 }
+/* A-06 Nachtrag (12.09.2026): Laufzeit-Beleg. Einmal je Geraet und Kalendertag nach
+   orvia:auth-ready (Profil und Ziele sind dann hydriert) ein 'session'-Ereignis — abseits
+   des kritischen Login-Pfads (setTimeout). Ohne Migration 0043 lehnt der CHECK die Zeile
+   ab: das ist ein gezaehlter Schreibfehler, kein Verhalten. */
+function _goalShadowSession(){
+  try{
+    var k='orvia_gs_session_day',today=new Date().toISOString().slice(0,10);
+    if(localStorage.getItem(k)===today)return false;
+    localStorage.setItem(k,today);
+    _goalShadowNote('session');
+    return true;
+  }catch(e){return false;}
+}
+try{window.addEventListener('orvia:auth-ready',function(){setTimeout(_goalShadowSession,1500);});}catch(e){}
+/* S1/E4 (12.09.2026): gemessene Bestzeiten aus Aktivitaeten → profile.performance.personalBests
+   (source 'activity'). Laeuft nach der Login-Hydration und nach jedem Aktivitaets-Update; schreibt
+   nur bei tatsaechlicher Aenderung. Manuelle Eintraege bleiben unberuehrt (pb-sync.merge). */
+function _pbSyncFromActivities(){
+  try{
+    var O=window.ORVIA; if(!O||!O.pbSync||!O.runBests||!O.runBests.measuredAllBests||!O.activityStore||!O.activityStore.listActivities)return null;
+    if(typeof PROFILE==='undefined'||!PROFILE)return null;
+    var acts=O.activityStore.listActivities()||[];
+    var meas=O.runBests.measuredAllBests(acts,{isTombstoned:O.activityStore.isTombstoned||null});
+    var raceIds=[];
+    try{ if(O.raceResult&&typeof O.raceResult.raceActivityIds==='function')raceIds=O.raceResult.raceActivityIds(listGoals(),acts)||[]; }catch(e){}
+    var perf=PROFILE.performance||{};
+    var r=O.pbSync.merge(perf.personalBests||[],meas,{raceActivityIds:raceIds});
+    if(!r.changed)return r;
+    PROFILE.performance=Object.assign({},perf,{personalBests:r.list});
+    _profileSave(['performance'],'system');
+    try{window.dispatchEvent(new CustomEvent('orvia:profile-updated',{detail:{sections:['performance'],source:'pb-sync'}}));}catch(e){}
+    return r;
+  }catch(e){return null;}
+}
+try{
+  window.addEventListener('orvia:auth-ready',function(){setTimeout(_pbSyncFromActivities,800);});
+  window.addEventListener('orvia:activities-pulled',function(){setTimeout(_pbSyncFromActivities,200);});
+  window.addEventListener('orvia:activity-updated',function(){setTimeout(_pbSyncFromActivities,200);});
+}catch(e){}
 function _goalShadowId(){
   try{ if(window.crypto&&crypto.randomUUID)return 'gs_'+crypto.randomUUID(); }catch(e){}
   return 'gs_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
@@ -309,6 +348,32 @@ function _goalShadowEnsureSink(){
 function goalAdd(input,reason){commitGoals(pmModel().addGoal(listGoals(),input),'add');}
 function goalUpdate(id,patch,reason){commitGoals(pmModel().updateGoal(listGoals(),id,patch),'update');}
 function goalRemove(id){commitGoals(pmModel().removeGoal(listGoals(),id),'remove');}
+/* S1/E2 (12.09.2026): Wettkampfergebnis bestaetigen — setzt result + Status (achieved/missed) in EINEM Update;
+   danach ist das Ziel nicht mehr aktiv, mainGoalOf() rueckt das naechste nach. */
+function goalConfirmResult(goalId,activityId){
+  try{
+    var O=window.ORVIA,g=listGoals().filter(function(x){return x&&x.id===goalId;})[0];
+    if(!g||!O||!O.raceResult||!O.activityStore)return;
+    var m=O.raceResult.match(g,O.activityStore.listActivities()||[],{isTombstoned:O.activityStore.isTombstoned||null});
+    if(!m||(activityId&&m.activityId!==String(activityId))){if(typeof toast==='function')toast(T('pf.rr_keine_passende_aktivitaet'));return;}
+    var res=O.raceResult.toResult(m,new Date().toISOString());
+    goalUpdate(goalId,{result:res,status:O.raceResult.statusFor(m)},'race_result');
+    if(typeof toast==='function')toast(res.verdict==='achieved'?T('pf.rr_ziel_erreicht_gespeichert'):res.verdict==='missed'?T('pf.rr_ziel_verfehlt_gespeichert'):T('pf.rr_ergebnis_gespeichert'));
+    try{_pbSyncFromActivities();}catch(e){}
+    try{if(typeof renderRaceHeader==='function')renderRaceHeader();}catch(e){}
+    try{if(document.getElementById('goalsMgrBody'))renderGoalsList();}catch(e){}
+  }catch(e){}
+}
+function goalDismissRace(goalId,activityId){
+  try{
+    var g=listGoals().filter(function(x){return x&&x.id===goalId;})[0];if(!g)return;
+    var prev=(g.result&&Array.isArray(g.result.dismissed))?g.result.dismissed.slice():[];
+    if(prev.indexOf(String(activityId))<0)prev.push(String(activityId));
+    goalUpdate(goalId,{result:{dismissed:prev}},'race_dismiss');
+    try{if(typeof renderRaceHeader==='function')renderRaceHeader();}catch(e){}
+    try{if(document.getElementById('goalsMgrBody'))renderGoalsList();}catch(e){}
+  }catch(e){}
+}
 function goalSetStatus(id,st){commitGoals(pmModel().setGoalStatus(listGoals(),id,st),'status');}
 /* ---- Profil-Zusammenfassung (Rollen, keine IDs/Kategorien) ---- */
 var GOAL_ROLE_DE={main:'Hauptziel',secondary:'' + T('pf.sekundaeres_ziel') + '',maintain:'Erhaltungsziel',longterm:'Langfristig'};
@@ -667,26 +732,61 @@ try{if(typeof document!=='undefined'&&document.addEventListener)document.addEven
 
 function openGoalsManager(){window._goalsMgr=_modal('_goalsMgr','<h3>' + T('pf.ziele_verwalten') + '</h3><div id="goalsMgrBody"></div>');renderGoalsList();}
 function closeGoalsManager(){_closeM('_goalsMgr');window._goalsMgr=null;}
+/* Zielwert lesbar: metricType 'time' ⇒ Sekunden als h:mm:ss, 'pace' ⇒ min/km; sonst Wert + Einheit.
+   Befund 12.09.: „Ziel: 6600 s" in der Zielliste. */
+function _fmtSecShort(sec){if(sec==null)return '—';sec=Math.round(sec);var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),x=sec%60;return h?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0');}
+function _goalValueLabel(g,v){try{var M=pmModel();if(M&&typeof M.formatGoalValue==='function')return escH(M.formatGoalValue(g,v));}catch(e){}return escH(''+v)+(g&&g.unit?' '+escH(g.unit):'');}
+/* Mehrere aktive Ziele mit Prioritaet 1: der kanonische Selektor mainGoalOf() nimmt das
+   zuerst angelegte — fuer den Nutzer unsichtbar. Die Liste benennt deshalb nur das
+   tatsaechliche Hauptziel so und bietet fuer die anderen „Zum Hauptziel machen" an
+   (explizite Entscheidung statt stiller Umsortierung). */
+function _mainGoalId(){try{var m=(typeof mainGoalOf==='function')?mainGoalOf():null;return m?m.id:null;}catch(e){return null;}}
+function goalMakeMain(id){var gs=listGoals();var patched=false;
+  gs.forEach(function(g){if(!g||g.status!=='active')return;
+    if(g.id===id){if(g.priority!==1){goalUpdate(g.id,{priority:1});patched=true;}}
+    else if(g.priority===1){goalUpdate(g.id,{priority:2});patched=true;}});
+  if(patched&&typeof toast==='function')toast(T('pf.hauptziel_festgelegt'));renderGoalsList();
+  try{if(typeof renderRaceHeader==='function')renderRaceHeader();}catch(e){}}
 function renderGoalsList(){var box=document.getElementById('goalsMgrBody');if(!box)return;var M=pmModel();var gs=listGoals();
-  var byStatus={active:[],paused:[],achieved:[],archived:[],abandoned:[]};gs.forEach(function(g){(byStatus[g.status]||byStatus.active).push(g);});
+  var byStatus={active:[],paused:[],achieved:[],missed:[],archived:[],abandoned:[]};gs.forEach(function(g){(byStatus[g.status]||byStatus.active).push(g);});
   byStatus.active.sort(function(a,b){return a.priority-b.priority;});
-  function card(g){var role=GOAL_ROLE_DE[M.roleOfGoal(g)]||'Ziel';var when=g.targetDate?(' · '+(typeof shortDate==='function'?shortDate(g.targetDate):g.targetDate)):(g.timeHorizon==='long'?' · langfristig':'');
-    var prog=(g.currentValue!=null||g.targetValue!=null)?('<div class="gmc-prog">'+(g.currentValue!=null?'' + T('pf.aktuell') + ''+escH(''+g.currentValue)+(g.unit?' '+escH(g.unit):''):'')+(g.targetValue!=null?'' + T('pf.ziel') + ''+escH(''+g.targetValue)+(g.unit?' '+escH(g.unit):''):'')+'</div>'):'';
+  var mainId=_mainGoalId();var prio1=byStatus.active.filter(function(g){return g.priority===1;});
+  var todayKey=(function(){try{return new Date().toISOString().slice(0,10);}catch(e){return '';}})();
+  var titleOf=function(id){var g=gs.filter(function(x){return x&&x.id===id;})[0];return g?(g.title||goalCatLabel(g.category)):id;};
+  function card(g){var roleKey=M.roleOfGoal(g);var role=GOAL_ROLE_DE[roleKey]||'Ziel';
+    var notMain=(roleKey==='main'&&g.status==='active'&&mainId&&g.id!==mainId);
+    if(notMain)role=T('pf.prioritaet_1_nicht_hauptziel');
+    var when=g.targetDate?(' · '+(typeof shortDate==='function'?shortDate(g.targetDate):g.targetDate)):(g.timeHorizon==='long'?' · langfristig':'');
+    var past=(g.status==='active'&&g.targetDate&&todayKey&&String(g.targetDate).slice(0,10)<todayKey);
+    var prog=(g.currentValue!=null||g.targetValue!=null)?('<div class="gmc-prog">'+(g.currentValue!=null?T('pf.aktuell')+_goalValueLabel(g,g.currentValue):'')+(g.targetValue!=null?T('pf.ziel')+_goalValueLabel(g,g.targetValue):'')+'</div>'):'';
+    /* S1/E2: Wettkampfergebnis auf der Karte — bestaetigt, erkannt (mit Uebernehmen) oder Datum vorbei. */
+    var hint='';
+    try{var O=window.ORVIA,rr=g.result&&g.result.verdict?g.result:null;
+      if(rr){hint='<div class="gmc-meta gmc-rr gmc-rr-'+escH(rr.verdict)+'">'+escH((rr.verdict==='achieved'?T('pf.rr_erreicht'):rr.verdict==='missed'?T('pf.rr_verfehlt'):T('pf.rr_gefinisht'))+' · '+_fmtSecShort(rr.timeSec)+(rr.deltaSec!=null?' ('+(rr.deltaSec<=0?'−':'+')+_fmtSecShort(Math.abs(rr.deltaSec))+')':''))+'</div>';}
+      else if(g.status==='active'&&O&&O.raceResult&&O.activityStore&&O.activityStore.listActivities){
+        var mm=O.raceResult.match(g,O.activityStore.listActivities()||[],{isTombstoned:O.activityStore.isTombstoned||null});
+        if(mm)hint='<div class="gmc-meta gmc-rr gmc-rr-match">'+escH(T('pf.rr_wettkampf_erkannt')+' · '+_fmtSecShort(mm.timeSec)+(mm.verdict==='achieved'?' · '+T('pf.rr_erreicht'):mm.verdict==='missed'?' · '+T('pf.rr_verfehlt'):''))+' <button class="gmc-b" onclick="goalConfirmResult(\''+g.id+'\',\''+escH(mm.activityId)+'\')">'+T('pf.rr_uebernehmen')+'</button></div>';
+        else if(past)hint='<div class="gmc-meta gmc-warn">'+T('pf.zieldatum_ueberschritten')+'</div>';}
+      else if(past)hint='<div class="gmc-meta gmc-warn">'+T('pf.zieldatum_ueberschritten')+'</div>';
+    }catch(e){hint=past?'<div class="gmc-meta gmc-warn">'+T('pf.zieldatum_ueberschritten')+'</div>':'';}
     var acts='<div class="gmc-acts">'+
       '<button class="gmc-b" onclick="openGoalDetail(\''+g.id+'\')">Details</button>'+
       '<button class="gmc-b" onclick="openGoalEditor(\''+g.id+'\')">' + T('pf.bearbeiten') + '</button>'+
+      (notMain?'<button class="gmc-b" onclick="goalMakeMain(\''+g.id+'\')">'+T('pf.zum_hauptziel_machen')+'</button>':'')+
       (g.status==='active'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'paused\')">Pausieren</button>':'')+
       (g.status==='paused'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'active\')">Fortsetzen</button>':'')+
       (g.status!=='achieved'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'achieved\')">Erreicht</button>':'')+
       (g.status!=='archived'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'archived\')">Archivieren</button>':'')+
       '<button class="gmc-b danger-btn" onclick="confirmDeleteGoal(\''+g.id+'\')">Löschen</button></div>';
-    return '<div class="gmcard"><div class="gmc-h">'+escH(g.title||'Ziel')+'</div><div class="gmc-meta">'+escH(role+' · '+goalCatLabel(g.category)+when)+'</div>'+prog+acts+'</div>';}
+    return '<div class="gmcard'+(notMain?' gmcard-notmain':'')+'"><div class="gmc-h">'+escH(g.title||'Ziel')+'</div><div class="gmc-meta">'+escH(role+' · '+goalCatLabel(g.category)+when)+'</div>'+hint+prog+acts+'</div>';}
   function section(title,arr){return arr.length?('<div class="gm-sec">'+escH(title)+'</div>'+arr.map(card).join('')):'';}
+  var prioHint=prio1.length>1?'<div class="gm-conflict gm-prio"><b>'+T('pf.mehrere_hauptziele')+'</b><p>'+escH(T('pf.mehrere_hauptziele_text',{n:prio1.length,title:titleOf(mainId)}))+'</p></div>':'';
   var conflicts=M.detectGoalConflicts(gs).filter(function(c){return !_conflictDecided(c);});
   var conflictHTML=conflicts.map(function(c){return '<div class="gm-conflict"><b>' + T('pf.zielkonflikt_erkannt') + '</b><p>'+escH(c.explanation)+'</p>'+
-    '<div class="gm-cacts">'+['' + T('pf.ausdauer_priorisieren_kraft_erhalten') + '','' + T('pf.muskelaufbau_priorisieren_ausdauer_erhalten') + '','' + T('pf.ziele_zeitlich_staffeln') + '','' + T('pf.eigene_entscheidung') + ''].map(function(opt,i){return '<button class="gmc-b" onclick="decideConflict(\''+escH(c.conflictType)+'\',\''+escH(c.goalIds.join(','))+'\','+i+')">'+escH(opt)+'</button>';}).join('')+'</div></div>';}).join('');
-  box.innerHTML='<button class="btn" onclick="openGoalEditor()">' + T('pf.ziel_hinzufuegen') + '</button>'+conflictHTML+
-    section('' + T('pf.aktive_ziele') + '',byStatus.active)+section('Pausiert',byStatus.paused)+section('Erreicht',byStatus.achieved)+section('Archiviert',byStatus.archived)+
+    '<div class="gmc-meta">'+escH(T('pf.betroffen')+' '+c.goalIds.map(titleOf).join(' ↔ '))+'</div>'+
+    '<div class="gm-cacts">'+[T('pf.ausdauer_priorisieren_kraft_erhalten'),T('pf.muskelaufbau_priorisieren_ausdauer_erhalten'),T('pf.ziele_zeitlich_staffeln'),T('pf.eigene_entscheidung')].map(function(opt,i){return '<button class="gmc-b" onclick="decideConflict(\''+escH(c.conflictType)+'\',\''+escH(c.goalIds.join(','))+'\','+i+')">'+escH(opt)+'</button>';}).join('')+'</div></div>';}).join('');
+  box.innerHTML='<button class="btn" onclick="openGoalEditor()">' + T('pf.ziel_hinzufuegen') + '</button>'+prioHint+conflictHTML+
+    section(T('pf.aktive_ziele'),byStatus.active)+section('Pausiert',byStatus.paused)+section('Erreicht',byStatus.achieved)+section(T('pf.rr_verfehlt'),byStatus.missed)+section('Archiviert',byStatus.archived)+
     '<button class="btn sec" style="margin-top:12px" onclick="closeGoalsManager()">' + T('pf.schliessen') + '</button>';}
 
 function _conflictDecided(c){try{var dec=(PROFILE.goalConflictDecisions||[]);return dec.some(function(d){return d.conflictType===c.conflictType&&d.goalIds.slice().sort().join(',')===c.goalIds.slice().sort().join(',');});}catch(e){return false;}}
@@ -723,7 +823,8 @@ function gwRender(){var box=document.getElementById('gwBody');if(!box)return;var
   if(nav)nav.innerHTML=
     (W.step>0?'<button class="btn sec" onclick="gwBack()">' + T('pf.zurueck') + '</button>':'<button class="btn sec" onclick="gwCancel()">' + T('pf.abbrechen') + '</button>')+
     (W.step<GW_STEPS.length-1?'<button class="btn" onclick="gwNext()">' + T('pf.weiter') + '</button>':'<button class="btn" onclick="gwSave()">'+(W.id?'' + T('pf.speichern') + '':'' + T('pf.ziel_anlegen') + '')+'</button>');}
-function _gwField(f,cd){var id='gwf_'+f.key;var v=cd[f.key];var lab='<label>'+escH(f.label)+(f.unit?' ('+escH(f.unit)+')':'')+'</label>';
+function _gwField(f,cd){var id='gwf_'+f.key;var v=cd[f.key];
+  if(f.type==='link')return '<div class="gm-field"><label>'+escH(f.label)+'</label><button type="button" class="gmc-b" onclick="openProfileSection(\''+escH(f.target||'constraints')+'\')">'+T('pf.in_beschwerden_pflegen')+'</button><div class="gmc-meta">'+T('pf.beschwerden_liest_der_plan')+'</div></div>';var lab='<label>'+escH(f.label)+(f.unit?' ('+escH(f.unit)+')':'')+'</label>';
   if(f.type==='bool')return '<div class="gm-field gm-inline"><input type="checkbox" id="'+id+'"'+(v?' checked':'')+'>'+lab+'</div>';
   if(f.type==='select'){var pairs=f.optionPairs?f.optionPairs:(f.options||[]).map(function(o){return [o,o];});return '<div class="gm-field">'+lab+segHTML(id,pairs,v)+'</div>';}
   if(f.type==='longtext')return '<div class="gm-field">'+lab+'<textarea id="'+id+'" rows="2">'+escH(v!=null?v:'')+'</textarea></div>';
@@ -737,6 +838,8 @@ function _gwStepHTML(key){var M=pmModel();var d=window._gw.draft;
       '<div class="gm-field"><label>' + T('pf.beschreibung_optional') + '</label><input id="gw_desc" value="'+escH(d.description)+'"></div>'+
       '<div class="gm-field"><label>' + T('pf.warum_ist_dir_das_wichtig') + '</label><input id="gw_motiv" value="'+escH(d.motivation||'')+'"></div>';}
   if(key==='details'){var fields=M.categoryFieldsFor(d.category);var html='';
+    /* S1/E7 (12.09.2026): Feld-Audit — kein Konsument in Engine/Planer liest categoryData (77 Felder). Ehrlicher Hinweis statt stiller Eingabe. */
+    if(fields.length)html+='<p class="note gw-audit" style="text-align:left">' + T('pf.details_ohne_planwirkung') + '</p>';
     if(d.category==='shredded')html+='<p class="note" style="text-align:left">' + T('pf.sehr_definiert_werden_koerperfett_reduzieren') + '</p>';
     if(d.category==='ironman'||d.category==='triathlon')html+='<p class="note" style="text-align:left">' + T('pf.langfristiges_ziel_ohne_festes_datum') + '</p>';
     if(d.category==='football'){var fo=M.sportFollowupSchema('football').focusOptions;var sel=d.categoryData.focus||[];
@@ -773,7 +876,7 @@ function _gwStepHTML(key){var M=pmModel();var d=window._gw.draft;
       (d.description?'<p>'+escH(d.description)+'</p>':'')+
       '<div class="gmc-meta">' + T('pf.zeitraum') + ': '+escH(d.timeHorizon||'offen')+(d.targetDate?' · '+escH(d.targetDate):'' + T('pf.ohne_datum') + '')+'</div>'+
       (d.sports.length?'<div class="gmc-meta">' + T('pf.sportarten') + ': '+escH(d.sports.join(', '))+'</div>':'')+
-      ((d.currentValue!=null||d.targetValue!=null)?'<div class="gmc-meta">'+(d.currentValue!=null?'' + T('pf.aktuell_') + ''+escH(''+d.currentValue):'')+(d.targetValue!=null?'' + T('pf.ziel_') + ''+escH(''+d.targetValue):'')+(d.unit?' '+escH(d.unit):'')+'</div>':'')+
+      ((d.currentValue!=null||d.targetValue!=null)?'<div class="gmc-meta">'+(d.currentValue!=null?T('pf.aktuell_')+_goalValueLabel(d,d.currentValue):'')+(d.targetValue!=null?T('pf.ziel_')+_goalValueLabel(d,d.targetValue):'')+'</div>':'')+
       (cdKeys.length?'<div class="gmc-meta">' + T('pf.spezialdaten') + ': '+escH(cdKeys.length+'' + T('pf.felder_ausgefuellt') + '')+'</div>':'')+
       (d.milestones.length?'<div class="gmc-meta">' + T('pf.meilensteine') + ': '+d.milestones.length+'</div>':'')+
       '</div>';}
@@ -790,7 +893,7 @@ function _gwCollect(){var d=window._gw.draft;var st=GW_STEPS[window._gw.step].ke
   function val(id){var e=document.getElementById(id);return e?e.value:undefined;}
   if(st==='type'){var c=_segVal('gw_cat');if(c!=null&&c!=='')d.category=c;var t=val('gw_title');if(t!=null)d.title=t.trim();var ds=val('gw_desc');if(ds!=null)d.description=ds;
     var cc=val('gw_customcat');if(cc!=null)d.customCategory=cc.trim()||null;var mv=val('gw_motiv');if(mv!=null)d.motivation=mv;}
-  else if(st==='details'){var M=pmModel();M.categoryFieldsFor(d.category).forEach(function(f){if(f.type==='select'){var sv=_segVal('gwf_'+f.key);if(sv!=null)d.categoryData[f.key]=sv;return;}var e=document.getElementById('gwf_'+f.key);if(!e)return;if(f.type==='bool')d.categoryData[f.key]=e.checked;else if(f.type==='number'){d.categoryData[f.key]=e.value===''?null:(isNaN(parseFloat(e.value.replace(',','.')))?e.value:parseFloat(e.value.replace(',','.')));}else d.categoryData[f.key]=e.value;});
+  else if(st==='details'){var M=pmModel();M.categoryFieldsFor(d.category).forEach(function(f){if(f.type==='link')return;if(f.type==='select'){var sv=_segVal('gwf_'+f.key);if(sv!=null)d.categoryData[f.key]=sv;return;}var e=document.getElementById('gwf_'+f.key);if(!e)return;if(f.type==='bool')d.categoryData[f.key]=e.checked;else if(f.type==='number'){d.categoryData[f.key]=e.value===''?null:(isNaN(parseFloat(e.value.replace(',','.')))?e.value:parseFloat(e.value.replace(',','.')));}else d.categoryData[f.key]=e.value;});
     var fc=document.getElementById('gw_focus');if(fc)d.categoryData.focus=Array.prototype.slice.call(fc.querySelectorAll('.on')).map(function(b){return b.dataset.v;});}
   else if(st==='sports'){var sc=document.getElementById('gw_sports');if(sc)d.sports=Array.prototype.slice.call(sc.querySelectorAll('.on')).map(function(b){return b.dataset.v;});}
   else if(st==='metrics'){var hz=_segVal('gw_hz');if(hz!=null&&hz!=='')d.timeHorizon=hz;var dt=val('gw_date');d.targetDate=dt||null;
@@ -853,7 +956,7 @@ function openGoalDetail(id){var M=pmModel();var g=listGoals().filter(function(x)
     (g.description?'<p>'+escH(g.description)+'</p>':'')+
     (g.sports&&g.sports.length?'<div class="gmc-meta">' + T('pf.sportarten') + ': '+escH(g.sports.join(', '))+'</div>':'')+
     '<div class="gmc-meta">' + T('pf.zeitraum') + ': '+escH(g.timeHorizon||'offen')+(g.targetDate?' · '+escH(g.targetDate):'' + T('pf.ohne_datum') + '')+'</div>'+
-    ((g.currentValue!=null||g.targetValue!=null)?'<div class="gmc-meta">'+(g.currentValue!=null?'' + T('pf.aktuell_') + ''+escH(''+g.currentValue):'')+(g.targetValue!=null?'' + T('pf.ziel_') + ''+escH(''+g.targetValue):'')+(g.unit?' '+escH(g.unit):'')+'</div>':'')+
+    ((g.currentValue!=null||g.targetValue!=null)?'<div class="gmc-meta">'+(g.currentValue!=null?T('pf.aktuell_')+_goalValueLabel(g,g.currentValue):'')+(g.targetValue!=null?T('pf.ziel_')+_goalValueLabel(g,g.targetValue):'')+'</div>':'')+
     (special?'<div class="gm-sec">' + T('pf.spezialdaten') + '</div>'+special:'')+
     '<div class="gm-sec">' + T('pf.meilensteine') + '</div>'+ms+
     conf+pi+

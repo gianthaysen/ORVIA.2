@@ -1,3 +1,5 @@
+/* B-13: nutzersichtbare Texte ueber t() (locales/de.js). Lokaler Name, damit das globale T aus profile.js nicht doppelt deklariert wird. */
+var _actT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; if (I && typeof I.t === 'function') return I.t(k, p); } catch (e) {} return String(k); };
 /* ============================================================
    ORVIA — Aktivität  (Phase 4)
    Aktivitäten-Liste, ORVIA Workout Card mit eigener SVG-Streckenkarte,
@@ -77,21 +79,21 @@ function rateActivity(typ, s) {
   if (typ !== 'Laufen' || !s.dist || !s.dur) return null;
   // Unplausible Läufe nicht loben — sie fließen auch nicht in Statistik/Prognose.
   if (typeof Calc !== 'undefined' && Calc.isValidRunForAnalytics && !Calc.isValidRunForAnalytics(s)) {
-    return { badge: 'Daten prüfen', cls: 'r', txt: 'Die Werte wirken für einen Lauf unplausibel und werden nicht für Statistiken oder Prognosen verwendet.', next: 'Sportart oder Werte bearbeiten.' };
+    return { badge: '' + _actT('act.daten_pruefen') + '', cls: 'r', txt: '' + _actT('act.die_werte_wirken_fuer_einen') + '', next: '' + _actT('act.sportart_oder_werte_bearbeiten') + '' };
   }
   var pace = s.dur * 60 / s.dist; // sec/km
   var g = (typeof goalOf === 'function') ? goalOf() : null;
   var zones = (g && g.targetMin && typeof Calc.paceZones === 'function') ? Calc.paceZones(g.distanceKm, g.targetMin) : null;
   if (!zones) {
-    return { badge: 'erfasst', cls: 'y', txt: 'Pace ' + Calc.fmtPace(pace) + '/km. Lege eine Zielzeit fest, dann bewertet ORVIA die Einheit gegen deine Pace-Zonen.', next: '' };
+    return { badge: 'erfasst', cls: 'y', txt: '' + _actT('act.pace') + '' + Calc.fmtPace(pace) + '' + _actT('act.km_lege_eine_zielzeit_fest') + '', next: '' };
   }
   var easy = zones.find(function (z) { return z.k === 'Easy'; });
   var tgt = zones.find(function (z) { return z.k === 'Zielpace'; });
   // Heuristik: lange/langsame Läufe = Easy-Vergleich
-  if (pace < easy.lo - 25) return { badge: 'stark / schnell', cls: 'g', txt: 'Deutlich schneller als Easy (' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '). Das war eine Qualitäts- oder Tempoeinheit.', next: 'Auf einen leichten Tag danach achten.' };
-  if (pace < easy.lo) return { badge: 'leicht zu schnell', cls: 'y', txt: 'Schneller als der Easy-Bereich (' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '). Easy-Läufe bringen mehr, wenn sie wirklich locker bleiben.', next: 'Nächster Easy Run 10–15 s/km langsamer.' };
-  if (pace <= easy.hi + 10) return { badge: 'kontrolliert', cls: 'g', txt: 'Sauber im Easy-Bereich (' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '). Genau richtig für Grundlage.', next: 'So weitermachen.' };
-  return { badge: 'sehr locker', cls: 'g', txt: 'Langsamer als Easy — als Recovery ideal.', next: 'Für Tempoeffekt gezielt eine schnellere Einheit einbauen.' };
+  if (pace < easy.lo - 25) return { badge: 'stark / schnell', cls: 'g', txt: '' + _actT('act.deutlich_schneller_als_easy') + '' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '' + _actT('act.das_war_eine_qualitaets_oder') + '', next: '' + _actT('act.auf_einen_leichten_tag_danach') + '' };
+  if (pace < easy.lo) return { badge: 'leicht zu schnell', cls: 'y', txt: '' + _actT('act.schneller_als_der_easy_bereich') + '' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '' + _actT('act.easy_laeufe_bringen_mehr_wenn') + '', next: '' + _actT('act.naechster_easy_run_10_15') + '' };
+  if (pace <= easy.hi + 10) return { badge: 'kontrolliert', cls: 'g', txt: '' + _actT('act.sauber_im_easy_bereich') + '' + Calc.fmtPace(easy.lo) + '–' + Calc.fmtPace(easy.hi) + '' + _actT('act.genau_richtig_fuer_grundlage') + '', next: '' + _actT('act.so_weitermachen') + '' };
+  return { badge: 'sehr locker', cls: 'g', txt: '' + _actT('act.langsamer_als_easy_als_recovery') + '', next: '' + _actT('act.fuer_tempoeffekt_gezielt_eine_schnellere') + '' };
 }
 
 /* ---- ORVIA Workout Card ---- */
@@ -104,10 +106,10 @@ function workoutCardHTML(date, typ, s) {
   if (s.dur != null) rows.push(['Zeit', Calc.fmtDuration(s.dur, 'min')]);
   if (typ === 'Laufen' && s.dist && s.dur) rows.push(['Pace', paceStr(s.dist, s.dur)]);
   if (typ === 'Rad' && s.dist && s.dur) rows.push(['Schnitt', fmtDe(s.dist / (s.dur / 60)) + ' km/h']);
-  if (s.hr != null) rows.push(['HF Ø', s.hr + ' bpm']);
+  if (s.hr != null) rows.push(['' + _actT('act.hf') + '', s.hr + ' bpm']);
   if (s.cad != null) rows.push(['Schrittfreq.', s.cad + ' spm']);
   if (s.gearId && typeof gearName === 'function') { var _gn = gearName(s.gearId); if (_gn) rows.push([typ === 'Rad' ? 'Rad' : 'Schuhe', _gn]); }
-  if (s.elev != null) rows.push(['Höhenmeter', Math.round(s.elev) + ' m']);
+  if (s.elev != null) rows.push(['' + _actT('act.hoehenmeter') + '', Math.round(s.elev) + ' m']);
   if (s.rpe != null) rows.push(['RPE', s.rpe + '/10']);
   var rate = rateActivity(typ, s);
   var dlabel = (typeof relDayTitle === 'function') ? relDayTitle(date) : date;
@@ -116,13 +118,13 @@ function workoutCardHTML(date, typ, s) {
       '<span class="wc-type"><svg class="ic"><use href="#i-' + meta.ic + '"/></svg>' + escH(typ) + '</span></div>' +
     '<div class="wc-title">' + escH(typ) + (s.dist != null && typ !== 'Schwimmen' ? ' · ' + fmtDe(s.dist) + ' km' : '') + '</div>' +
     '<div class="wc-day">' + escH(dlabel) + (s.note ? ' · ' + escH(s.note) : '') + '</div>' +
-    (route ? '<div class="wc-map">' + routeSVG(route) + '</div>' : '<div class="wc-nomap">' + (isIndoorType(typ, s) ? 'Indoor-Aktivität ohne GPS-Route' : 'Für diese Aktivität sind keine Routendaten vorhanden.') + '</div>') +
+    (route ? '<div class="wc-map">' + routeSVG(route) + '</div>' : '<div class="wc-nomap">' + (isIndoorType(typ, s) ? '' + _actT('act.indoor_aktivitaet_ohne_gps_route') + '' : '' + _actT('act.fuer_diese_aktivitaet_sind_keine') + '') + '</div>') +
     '<div class="wc-stats">' + rows.map(function (r) { return '<div class="wc-stat"><span class="wc-sv">' + escH(r[1]) + '</span><span class="wc-sk">' + escH(r[0]) + '</span></div>'; }).join('') + '</div>' +
     ((s.splits && s.splits.length && typeof splitsMiniHTML === 'function') ? splitsMiniHTML(s.splits) : '') +
-    (function () { var lg = (s.exLog && s.exLog.length) ? s.exLog : ((s.exercises && s.exercises.length) ? s.exercises.map(function (n) { return { n: n }; }) : null); if (!lg) return ''; return '<div class="wc-ex"><div class="wc-ex-h">Übungen (' + lg.length + ')</div>' + lg.map(function (x) { var det = []; if (x.sets != null || x.reps != null) det.push((x.sets != null ? x.sets : '?') + '×' + (x.reps != null ? x.reps : '?')); if (x.kg != null) det.push(x.kg + ' kg'); return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(x.n) + '</span>' + (det.length ? '<span class="wc-exrow-d">' + escH(det.join(' · ')) + '</span>' : '') + '</div>'; }).join('') + '</div>'; })() +
+    (function () { var lg = (s.exLog && s.exLog.length) ? s.exLog : ((s.exercises && s.exercises.length) ? s.exercises.map(function (n) { return { n: n }; }) : null); if (!lg) return ''; return '<div class="wc-ex"><div class="wc-ex-h">' + _actT('act.uebungen_n', { n: lg.length }) + '</div>' + lg.map(function (x) { var det = []; if (x.sets != null || x.reps != null) det.push((x.sets != null ? x.sets : '?') + '×' + (x.reps != null ? x.reps : '?')); if (x.kg != null) det.push(x.kg + ' kg'); return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(x.n) + '</span>' + (det.length ? '<span class="wc-exrow-d">' + escH(det.join(' · ')) + '</span>' : '') + '</div>'; }).join('') + '</div>'; })() +
     (rate ? '<div class="wc-rate"><span class="wc-badge wc-' + rate.cls + '">' + escH(rate.badge) + '</span>' +
       '<p class="wc-analysis">' + escH(rate.txt) + '</p>' +
-      (rate.next ? '<p class="wc-next"><b>Nächste Einheit:</b> ' + escH(rate.next) + '</p>' : '') + '</div>' : '') +
+      (rate.next ? '<p class="wc-next"><b>' + _actT('act.naechste_einheit') + '</b> ' + escH(rate.next) + '</p>' : '') + '</div>' : '') +
     '</div>';
 }
 
@@ -146,21 +148,21 @@ function openEditActivity(date, typ) {
   var chips = EDIT_TYPES.map(function (t, i) { return '<button type="button" class="gm-chip' + (t === typ ? ' on' : '') + '" data-v="' + t + '" onclick="gmPick(this,\'eaType\')">' + t + '</button>'; }).join('');
   var src = s.externalId ? 'Import' : (s.source === 'live' ? 'Live-Workout' : (s.note || 'Manuell'));
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Aktivität bearbeiten</h3>' +
-    '<div class="gm-field"><label>Sportart</label><div class="gm-chips" id="eaType">' + chips + '</div></div>' +
-    '<div class="gm-field"><label>Untertyp (optional)</label><input id="eaSub" value="' + escH(s.sub || '') + '" placeholder="z.B. Easy Run, Intervall, Long Run, Indoor"></div>' +
-    '<div class="gm-field"><label>Datum</label><input type="date" id="eaDate" value="' + escH(date) + '"></div>' +
-    '<div class="row2"><div class="gm-field"><label>Distanz (km / Schwimmen m)</label><input type="number" inputmode="decimal" id="eaDist" value="' + (s.dist != null ? s.dist : '') + '"></div>' +
-    '<div class="gm-field"><label>Dauer (min)</label><input type="number" inputmode="numeric" id="eaDur" value="' + (s.dur != null ? s.dur : '') + '"></div></div>' +
-    '<div class="row2"><div class="gm-field"><label>HF Ø</label><input type="number" inputmode="numeric" id="eaHr" value="' + (s.hr != null ? s.hr : '') + '"></div>' +
-    '<div class="gm-field"><label>HF max</label><input type="number" inputmode="numeric" id="eaHrMax" value="' + (s.hrMax != null ? s.hrMax : '') + '"></div></div>' +
-    '<div class="row2"><div class="gm-field"><label>Höhenmeter</label><input type="number" inputmode="numeric" id="eaElev" value="' + (s.elev != null ? s.elev : '') + '"></div>' +
-    '<div class="gm-field"><label>RPE (1–10)</label><input type="number" inputmode="numeric" id="eaRpe" value="' + (s.rpe != null ? s.rpe : '') + '"></div></div>' +
-    '<div class="gm-field"><label>Notiz</label><input id="eaNote" value="' + escH(s.note || '') + '"></div>' +
-    '<p class="note" style="text-align:left">Quelle: ' + escH(src) + (s.externalId ? ' · ID bleibt erhalten' : '') + '</p>' +
-    '<button class="btn" onclick="saveEditActivity(\'' + date + '\',\'' + escH(typ) + '\')">Speichern</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="deleteActivity(\'' + date + '\',\'' + escH(typ) + '\')">Aktivität löschen</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeEditActivity()">Änderungen verwerfen</button></div>';
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + _actT('act.aktivitaet_bearbeiten') + '</h3>' +
+    '<div class="gm-field"><label>' + _actT('act.sportart') + '</label><div class="gm-chips" id="eaType">' + chips + '</div></div>' +
+    '<div class="gm-field"><label>' + _actT('act.untertyp_optional') + '</label><input id="eaSub" value="' + escH(s.sub || '') + '" placeholder="' + _actT('act.z_b_easy_run_intervall') + '"></div>' +
+    '<div class="gm-field"><label>' + _actT('act.datum') + '</label><input type="date" id="eaDate" value="' + escH(date) + '"></div>' +
+    '<div class="row2"><div class="gm-field"><label>' + _actT('act.distanz_km_schwimmen_m') + '</label><input type="number" inputmode="decimal" id="eaDist" value="' + (s.dist != null ? s.dist : '') + '"></div>' +
+    '<div class="gm-field"><label>' + _actT('act.dauer_min') + '</label><input type="number" inputmode="numeric" id="eaDur" value="' + (s.dur != null ? s.dur : '') + '"></div></div>' +
+    '<div class="row2"><div class="gm-field"><label>' + _actT('act.hf') + '</label><input type="number" inputmode="numeric" id="eaHr" value="' + (s.hr != null ? s.hr : '') + '"></div>' +
+    '<div class="gm-field"><label>' + _actT('act.hf_max') + '</label><input type="number" inputmode="numeric" id="eaHrMax" value="' + (s.hrMax != null ? s.hrMax : '') + '"></div></div>' +
+    '<div class="row2"><div class="gm-field"><label>' + _actT('act.hoehenmeter') + '</label><input type="number" inputmode="numeric" id="eaElev" value="' + (s.elev != null ? s.elev : '') + '"></div>' +
+    '<div class="gm-field"><label>' + _actT('act.rpe_1_10') + '</label><input type="number" inputmode="numeric" id="eaRpe" value="' + (s.rpe != null ? s.rpe : '') + '"></div></div>' +
+    '<div class="gm-field"><label>' + _actT('act.notiz') + '</label><input id="eaNote" value="' + escH(s.note || '') + '"></div>' +
+    '<p class="note" style="text-align:left">Quelle: ' + escH(src) + (s.externalId ? '' + _actT('act.id_bleibt_erhalten') + '' : '') + '</p>' +
+    '<button class="btn" onclick="saveEditActivity(\'' + date + '\',\'' + escH(typ) + '\')">' + _actT('act.speichern') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="deleteActivity(\'' + date + '\',\'' + escH(typ) + '\')">' + _actT('act.aktivitaet_loeschen') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeEditActivity()">' + _actT('act.aenderungen_verwerfen') + '</button></div>';
   document.body.appendChild(wrap); window._editModal = wrap;
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeEditActivity(); });
 }
@@ -185,7 +187,7 @@ function applyActivityPatchPreview(current, patch) { return Calc.applyActivityPa
 function saveEditActivity(origDate, origType) {
   var tEl = document.querySelector('#eaType .on'); var newType = tEl ? tEl.dataset.v : origType;
   var dEl = document.getElementById('eaDate'); var newDate = dEl && dEl.value ? dEl.value : origDate;
-  if (!isDay(newDate)) { if (typeof toast === 'function') toast('Bitte gültiges Datum'); return; }
+  if (!isDay(newDate)) { if (typeof toast === 'function') toast('' + _actT('act.bitte_gueltiges_datum') + ''); return; }
   // Echte Lösch-Semantik: leeres Feld → null. moveActivity entfernt null-Felder aus dem Datensatz
   // (Altwert verschwindet). KEIN Strip mehr — sonst bliebe der alte Wert stehen.
   var patch = { sub: _eaStr('eaSub'), dist: _eaNum('eaDist'), dur: _eaNum('eaDur'), hr: _eaNum('eaHr'), hrMax: _eaNum('eaHrMax'), elev: _eaNum('eaElev'), rpe: _eaNum('eaRpe'), note: _eaStr('eaNote') };
@@ -195,30 +197,30 @@ function saveEditActivity(origDate, origType) {
   var eff = applyActivityPatchPreview(cur, patch);
   // Pflichtfeld-Validierung sportartspezifisch: Distanzsportarten brauchen Distanz UND Dauer.
   if (EDIT_DISTANCE_SPORTS.indexOf(newType) >= 0 && (!(eff.dist > 0) || !(eff.dur > 0))) {
-    if (typeof toast === 'function') toast('Distanz und Dauer sind für „' + newType + '" erforderlich'); return;
+    if (typeof toast === 'function') toast('' + _actT('act.distanz_und_dauer_sind_fuer') + '' + newType + '" erforderlich'); return;
   }
   // Gym/Mobilität: Dauer ist Pflicht.
   if ((newType === 'Gym' || newType === 'Mobilität') && !(eff.dur > 0)) {
-    if (typeof toast === 'function') toast('Dauer ist für „' + newType + '" erforderlich'); return;
+    if (typeof toast === 'function') toast('' + _actT('act.dauer_ist_fuer') + '' + newType + '" erforderlich'); return;
   }
   /* P1A: native Browser-Bestätigungen → orviaConfirm (Continuation-Kette; Reihenfolge und
      Abbruch-Semantik unverändert: jede Absage lässt das Editor-Modal offen). */
   function _finalizeSave() {
     var r = Calc.moveActivity(DB, origDate, origType, newDate, newType, patch);
     if (!r.ok && r.code === 'target_conflict') {
-      if (typeof orviaConfirm === 'function') orviaConfirm({ title: 'Zielkonflikt', text: 'An diesem Tag existiert bereits eine „' + newType + '"-Aktivität. Es ist nur eine Aktivität je Sportart und Tag möglich — wähle ein anderes Datum oder eine andere Sportart. Es wird nichts überschrieben.', okLabel: 'Verstanden', cancelLabel: null });
-      else if (typeof toast === 'function') toast('Zielkonflikt: bereits eine „' + newType + '"-Aktivität an diesem Tag');
+      if (typeof orviaConfirm === 'function') orviaConfirm({ title: 'Zielkonflikt', text: '' + _actT('act.an_diesem_tag_existiert_bereits') + '' + newType + '' + _actT('act.aktivitaet_es_ist_nur_eine') + '', okLabel: 'Verstanden', cancelLabel: null });
+      else if (typeof toast === 'function') toast('' + _actT('act.zielkonflikt_bereits_eine') + '' + newType + '' + _actT('act.aktivitaet_an_diesem_tag') + '');
       return; // Editor-Modal bleibt offen — Nutzer kann Datum/Sportart anpassen, nichts wird überschrieben.
     }
-    if (!r.ok) { if (typeof toast === 'function') toast('Aktivität nicht gefunden'); return; }
+    if (!r.ok) { if (typeof toast === 'function') toast('' + _actT('act.aktivitaet_nicht_gefunden') + ''); return; }
     closeEditActivity();
     _mvRerender();
-    if (typeof toast === 'function') toast(newType !== origType ? 'Auf „' + newType + '" korrigiert ✓' : 'Aktivität aktualisiert ✓');
+    if (typeof toast === 'function') toast(newType !== origType ? '' + _actT('act.auf') + '' + newType + '" korrigiert ✓' : '' + _actT('act.aktivitaet_aktualisiert') + '');
   }
   function _confirmTypeChange() {
     // Sportartwechsel bestätigen (verändert alle sportartspezifischen Statistiken)
     if (newType !== origType && typeof orviaConfirm === 'function') {
-      orviaConfirm({ title: 'Sportart ändern?', text: 'Sportart von „' + origType + '" zu „' + newType + '" ändern? Alle ' + origType + '-Statistiken (Pace, Bestzeiten, Wochenumfang …) werden entfernt und für ' + newType + ' neu berechnet.', okLabel: 'Sportart ändern', danger: true, onOk: _finalizeSave });
+      orviaConfirm({ title: '' + _actT('act.sportart_aendern') + '', text: '' + _actT('act.sportart_von') + '' + origType + '" zu „' + newType + '' + _actT('act.aendern_alle') + '' + origType + '' + _actT('act.statistiken_pace_bestzeiten_wochenumfang_werden') + '' + newType + ' neu berechnet.', okLabel: '' + _actT('act.sportart_aendern_') + '', danger: true, onOk: _finalizeSave });
       return;
     }
     _finalizeSave();
@@ -226,7 +228,7 @@ function saveEditActivity(origDate, origType) {
   // Plausibilität (inkl. HF-Konsistenz, RPE-Bereich, Einheiten).
   var plaus = Calc.activityPlausibility(newType, eff);
   if (plaus.warn && typeof orviaConfirm === 'function') {
-    orviaConfirm({ title: 'Plausibilität prüfen', text: plaus.msg, okLabel: 'Trotzdem speichern', onOk: _confirmTypeChange });
+    orviaConfirm({ title: '' + _actT('act.plausibilitaet_pruefen') + '', text: plaus.msg, okLabel: '' + _actT('act.trotzdem_speichern') + '', onOk: _confirmTypeChange });
     return;
   }
   _confirmTypeChange();
@@ -315,13 +317,13 @@ function renderAktLegacy() {
   var acts = listActivitiesUnified(40);
   var demoEnabled = !!(window.ORVIA_CFG && window.ORVIA_CFG.enableDemoData && window.ORVIA_REAL_RUN);
   var head = '<div class="act-actions">' +
-    (demoEnabled ? '<button class="btn" onclick="importRealRun()"><svg class="ic"><use href="#i-pulse"/></svg>Demo-Strava-Lauf importieren</button>' : '') +
-    '<button class="btn' + (demoEnabled ? ' sec' : '') + '" style="' + (demoEnabled ? 'margin-top:10px' : '') + '" onclick="openImportSheet()"><svg class="ic"><use href="#i-pulse"/></svg>Strava / GPX / TCX importieren</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="openManualActivity()"><svg class="ic"><use href="#i-plus"/></svg>Aktivität manuell hinzufügen</button>' +
-    '<p class="note" style="text-align:left;margin-top:10px">Import per GPX/TCX-Datei oder JSON (Strava/Garmin-Export). Routen erscheinen als Karte. Strava/Garmin-Autosync folgt serverseitig.</p></div>';
+    (demoEnabled ? '<button class="btn" onclick="importRealRun()"><svg class="ic"><use href="#i-pulse"/></svg>' + _actT('act.demo_strava_lauf_importieren') + '</button>' : '') +
+    '<button class="btn' + (demoEnabled ? ' sec' : '') + '" style="' + (demoEnabled ? 'margin-top:10px' : '') + '" onclick="openImportSheet()"><svg class="ic"><use href="#i-pulse"/></svg>' + _actT('act.strava_gpx_tcx_importieren') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="openManualActivity()"><svg class="ic"><use href="#i-plus"/></svg>' + _actT('act.aktivitaet_manuell_hinzufuegen') + '</button>' +
+    '<p class="note" style="text-align:left;margin-top:10px">' + _actT('act.import_per_gpx_tcx_datei') + '</p></div>';
   if (!acts.length) {
-    el.innerHTML = head + '<div class="empty-card" style="margin-top:14px"><div class="empty-h">Noch keine Aktivitäten</div>' +
-      '<p class="empty-p">Trage eine Aktivität manuell ein oder schließe ein Training ab — beides erscheint hier.</p></div>';
+    el.innerHTML = head + '<div class="empty-card" style="margin-top:14px"><div class="empty-h">' + _actT('act.noch_keine_aktivitaeten') + '</div>' +
+      '<p class="empty-p">' + _actT('act.trage_eine_aktivitaet_manuell_ein') + '</p></div>';
     return;
   }
   var cfg = ORVIA.activityConfig;
@@ -333,11 +335,11 @@ function renderAktLegacy() {
     var hasRoute = a._legacy && actRoute((DB[a._legacy.date] && DB[a._legacy.date].sessions || {})[a._legacy.type]);
     return '<button class="actrow" data-aid="' + escH(a.clientRecordId || a.id) + '" onclick="openActivityDetails(this)">' +
       '<span class="actrow-ic"><svg class="ic"><use href="#i-' + _iconForSport(a.sportId) + '"/></svg></span>' +
-      '<span class="actrow-main"><span class="actrow-t">' + escH(label) + (hasRoute ? ' <span class="actrow-route">Strecke</span>' : '') + '</span>' +
+      '<span class="actrow-main"><span class="actrow-t">' + escH(label) + (hasRoute ? ' <span class="actrow-route">' + _actT('act.strecke') + '</span>' : '') + '</span>' +
       '<span class="actrow-sub">' + escH(dl) + ' · ' + escH(sub) + '</span></span>' +
       '<svg class="ic actrow-go"><use href="#i-chart"/></svg></button>';
   }).join('');
-  el.innerHTML = head + '<div class="card" style="margin-top:14px"><h2><svg class="ic"><use href="#i-list"/></svg>Deine Aktivitäten</h2><div class="actlist">' + rows + '</div></div>';
+  el.innerHTML = head + '<div class="card" style="margin-top:14px"><h2><svg class="ic"><use href="#i-list"/></svg>' + _actT('act.deine_aktivitaeten') + '</h2><div class="actlist">' + rows + '</div></div>';
 }
 // Activity über stabile ID auflösen (verbindliche Reihenfolge: lokal id → server id → clientRecordId → source+sourceRecordId).
 function _resolveActivity(aid) {
@@ -480,23 +482,23 @@ function _workoutDetailHtml(vm) {
     /* B-05: Superset-Label nur fuer ECHTE Gruppen (>= 2 Uebungen mit gleicher Gruppe). */
     var gcount = {}; ex.forEach(function (x) { var g = x && x.supersetGroup; if (g != null) gcount[g] = (gcount[g] || 0) + 1; });
     var labels = ex.map(function (x) { var g = x && x.supersetGroup; if (g == null || gcount[g] < 2) return ''; var GA = window.ORVIA && ORVIA.gymAdapters; var l = (GA && GA.groupLabel) ? GA.groupLabel(g) : String(g); return l ? '<span class="wc-exrow-ss">Superset ' + escH(l) + '</span>' : ''; });
-    return '<div class="wc-ex"><div class="wc-ex-h">Übungen (' + ex.length + ')</div>' + names.map(function (n, i) { return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(n) + '</span>' + labels[i] + '</div>'; }).join('') + '</div>';
+    return '<div class="wc-ex"><div class="wc-ex-h">' + _actT('act.uebungen_n', { n: ex.length }) + '</div>' + names.map(function (n, i) { return '<div class="wc-exrow"><span class="wc-exrow-n">' + escH(n) + '</span>' + labels[i] + '</div>'; }).join('') + '</div>';
   }
-  if (vm.workoutDetailState === 'loading') return '<div class="wc-ex"><div class="wc-ex-h">Übungen werden geladen …</div></div>';
-  if (vm.workoutDetailState === 'error') return '<div class="wc-nomap">Übungsdetails konnten nicht geladen werden.</div>';
-  if (vm.workoutDetailState === 'missing') return '<div class="wc-nomap">Für diese Einheit sind keine Satzdetails hinterlegt.</div>';
+  if (vm.workoutDetailState === 'loading') return '<div class="wc-ex"><div class="wc-ex-h">' + _actT('act.uebungen_werden_geladen') + '</div></div>';
+  if (vm.workoutDetailState === 'error') return '<div class="wc-nomap">' + _actT('act.uebungsdetails_konnten_nicht_geladen_werden') + '</div>';
+  if (vm.workoutDetailState === 'missing') return '<div class="wc-nomap">' + _actT('act.fuer_diese_einheit_sind_keine') + '</div>';
   return '';
 }
 function _activityDetailHtml(vm, context) {
   var rows = [];
-  if (vm.date) rows.push(_adRow('Datum', (typeof fmtDate === 'function') ? fmtDate(vm.date) : vm.date));
+  if (vm.date) rows.push(_adRow('' + _actT('act.datum') + '', (typeof fmtDate === 'function') ? fmtDate(vm.date) : vm.date));
   if (vm.time) rows.push(_adRow('Uhrzeit', vm.time));
   if (vm.durationLabel) rows.push(_adRow('Dauer', vm.durationLabel));
   if (vm.distanceLabel) rows.push(_adRow('Distanz', vm.distanceLabel));
   if (vm.paceLabel) rows.push(_adRow('Pace', vm.paceLabel));
-  if (vm.elevationM != null) rows.push(_adRow('Höhenmeter', vm.elevationM + ' m'));
-  if (vm.avgHr != null) rows.push(_adRow('HF Ø', vm.avgHr + ' bpm'));
-  if (vm.maxHr != null) rows.push(_adRow('HF max', vm.maxHr + ' bpm'));
+  if (vm.elevationM != null) rows.push(_adRow('' + _actT('act.hoehenmeter') + '', vm.elevationM + ' m'));
+  if (vm.avgHr != null) rows.push(_adRow('' + _actT('act.hf') + '', vm.avgHr + ' bpm'));
+  if (vm.maxHr != null) rows.push(_adRow('' + _actT('act.hf_max') + '', vm.maxHr + ' bpm'));
   if (vm.caloriesKcal != null) rows.push(_adRow('Kalorien', vm.caloriesKcal + ' kcal'));
   if (vm.source) rows.push(_adRow('Quelle', vm.source));
   var wd = _workoutDetailHtml(vm);
@@ -505,9 +507,9 @@ function _activityDetailHtml(vm, context) {
     '<div class="wc-title">' + escH(vm.title || vm.sportLabel || 'Aktivität') + '</div>' +
     '<div class="wc-day">' + escH(vm.sportLabel || '') + '</div>' +
     '<div class="wc-stats">' + rows.join('') + '</div>' + wd + '</div>' + story +
-    (vm.planLink ? '<button class="btn sec" style="margin-top:12px" onclick="unlinkActivityPlanCanonical(\'' + escH(vm.id) + '\',\'' + escH(vm.planLink) + '\')">Vom Wochenplan lösen</button>' : '') +
-    '<button class="btn sec danger-btn" style="margin-top:12px" onclick="deleteActivityCanonical(\'' + escH(vm.id) + '\')">Aktivität löschen</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">Schließen</button></div>';
+    (vm.planLink ? '<button class="btn sec" style="margin-top:12px" onclick="unlinkActivityPlanCanonical(\'' + escH(vm.id) + '\',\'' + escH(vm.planLink) + '\')">' + _actT('act.vom_wochenplan_loesen_btn') + '</button>' : '') +
+    '<button class="btn sec danger-btn" style="margin-top:12px" onclick="deleteActivityCanonical(\'' + escH(vm.id) + '\')">' + _actT('act.aktivitaet_loeschen') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">' + _actT('act.schliessen') + '</button></div>';
 }
 function renderActivityDetail(vm, context) {
   if (!vm || !vm.id) return renderActivityUnavailable(null, context);
@@ -543,9 +545,9 @@ function renderActivityUnavailable(activityId, context) {
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
   wrap.dataset.activityId = ''; wrap.dataset.unavailable = '1'; wrap.dataset.context = context || '';
   wrap.innerHTML = '<div class="orvia-modal wcard-modal" role="dialog" aria-modal="true"><div class="wcard">' +
-    '<div class="wc-title">Aktivität nicht verfügbar</div>' +
-    '<p class="wc-nomap">Zu dieser Auswahl ist keine eindeutige Aktivität hinterlegt.</p></div>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">Schließen</button></div>';
+    '<div class="wc-title">' + _actT('act.aktivitaet_nicht_verfuegbar') + '</div>' +
+    '<p class="wc-nomap">' + _actT('act.zu_dieser_auswahl_ist_keine') + '</p></div>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeActivityDetail()">' + _actT('act.schliessen') + '</button></div>';
   document.body.appendChild(wrap); window._activityDetailOverlay = wrap;
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeActivityDetail(); });
   return wrap;
@@ -584,9 +586,9 @@ function deleteActivityCanonical(activityId) {
     }
     doDeleteActivity(a.clientRecordId || a.id || activityId);
   };
-  var title = isWk ? 'Workout wirklich löschen?' : 'Aktivität wirklich löschen?';
-  var text = isWk ? 'Das Workout inkl. Übungen und Sätzen wird dauerhaft entfernt.' : 'Diese Aktivität und ihre zugehörigen Daten werden dauerhaft entfernt.';
-  if (typeof orviaConfirm === 'function') { orviaConfirm({ title: title, text: text, okLabel: 'Endgültig löschen', danger: true, onOk: run }); return; }
+  var title = isWk ? '' + _actT('act.workout_wirklich_loeschen') + '' : '' + _actT('act.aktivitaet_wirklich_loeschen') + '';
+  var text = isWk ? '' + _actT('act.das_workout_inkl_uebungen_und') + '' : '' + _actT('act.diese_aktivitaet_und_ihre_zugehoerigen') + '';
+  if (typeof orviaConfirm === 'function') { orviaConfirm({ title: title, text: text, okLabel: '' + _actT('act.endgueltig_loeschen') + '', danger: true, onOk: run }); return; }
   run();
 }
 
@@ -601,7 +603,7 @@ function unlinkActivityPlanCanonical(activityId, expectedOccurrenceId) {
   var run = function () {
     var r = store.unlinkActivityFromPlan(a.clientRecordId || a.id || activityId, expectedOccurrenceId || null);
     if (!r || !r.ok) {
-      if (typeof toast === 'function') toast('Zuordnung nicht geändert' + (r && r.code ? ': ' + r.code : '.'));
+      if (typeof toast === 'function') toast('' + _actT('act.zuordnung_nicht_geaendert') + '' + (r && r.code ? ': ' + r.code : '.'));
       return r;
     }
     try { closeActivityDetail(); } catch (_) {}
@@ -609,11 +611,11 @@ function unlinkActivityPlanCanonical(activityId, expectedOccurrenceId) {
     try { if (typeof renderAkt === 'function') renderAkt(); } catch (_) {}
     try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { planLinkCorrected: true, activityId: activityId } })); } catch (_) {}
     try { if (ORVIA.activitySync && ORVIA.activitySync.flushPendingActivities) ORVIA.activitySync.flushPendingActivities(); } catch (_) {}
-    if (typeof toast === 'function') toast('Aktivität bleibt erhalten · Planzuordnung gelöst');
+    if (typeof toast === 'function') toast('' + _actT('act.aktivitaet_bleibt_erhalten_planzuordnung_geloest') + '');
     return r;
   };
   if (typeof orviaConfirm === 'function') {
-    orviaConfirm({ title: 'Vom Wochenplan lösen?', text: 'Die Aktivität und alle Trainingsdaten bleiben erhalten. Nur die Zuordnung zu dieser Planeinheit wird entfernt.', okLabel: 'Zuordnung lösen', onOk: run });
+    orviaConfirm({ title: '' + _actT('act.vom_wochenplan_loesen') + '', text: '' + _actT('act.die_aktivitaet_und_alle_trainingsdaten') + '', okLabel: '' + _actT('act.zuordnung_loesen') + '', onOk: run });
     return { ok: true, code: 'confirmation_open' };
   }
   return run();
@@ -729,17 +731,17 @@ function parseGpxTcx(text) {
 }
 function importGpxTcxFile(input) {
   var f = input && input.files && input.files[0]; if (!f) return;
-  if (/\.fit$/i.test(f.name)) { if (typeof toast === 'function') toast('FIT-Dateien bitte als GPX oder TCX exportieren (Garmin Connect / Strava)'); input.value = ''; return; }
+  if (/\.fit$/i.test(f.name)) { if (typeof toast === 'function') toast('' + _actT('act.fit_dateien_bitte_als_gpx') + ''); input.value = ''; return; }
   var r = new FileReader();
   r.onload = function () {
     try {
       var act = parseGpxTcx(String(r.result));
-      if (!act) { if (typeof toast === 'function') toast('Datei nicht lesbar — GPX oder TCX erwartet'); return; }
+      if (!act) { if (typeof toast === 'function') toast('' + _actT('act.datei_nicht_lesbar_gpx_oder') + ''); return; }
       if (!act.route || act.route.length < 2) delete act.route;
       var res = (typeof importActivityArray === 'function') ? importActivityArray([act]) : null;
       _importToCanonical([act]);   // H3: kanonisch spiegeln (Cloud-Sync)
       if (res && typeof reportImport === 'function') reportImport(res);
-    } catch (e) { if (typeof toast === 'function') toast('Import-Fehler: ' + (e && e.message || 'unbekannt')); }
+    } catch (e) { if (typeof toast === 'function') toast('' + _actT('act.import_fehler') + '' + (e && e.message || 'unbekannt')); }
   };
   r.readAsText(f); input.value = '';
 }
@@ -776,20 +778,20 @@ function _importToCanonical(arr){
 /* ---- Paste-Import (JSON) als Sheet, self-contained ---- */
 function openImportSheet() {
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Aktivitäten importieren</h3>' +
-    '<p class="note" style="text-align:left">GPX-/TCX-Datei (Garmin/Strava-Export) oder JSON einfügen. Routen werden auf der Karte angezeigt. Duplikate werden übersprungen.</p>' +
-    '<label class="btn sec" style="margin-top:10px;display:block;text-align:center">GPX/TCX-Datei wählen' +
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + _actT('act.aktivitaeten_importieren') + '</h3>' +
+    '<p class="note" style="text-align:left">' + _actT('act.gpx_tcx_datei_garmin_strava') + '</p>' +
+    '<label class="btn sec" style="margin-top:10px;display:block;text-align:center">' + _actT('act.gpx_tcx_datei_waehlen') + '' +
     '<input type="file" accept=".gpx,.tcx,application/gpx+xml,application/octet-stream" style="display:none" onchange="importGpxTcxFile(this);closeImportSheet()"></label>' +
     '<textarea class="paste" id="impPaste" style="margin-top:12px;width:100%;min-height:120px" placeholder=\'[{"date":"2026-06-15","type":"run","dist":7.2,"dur":36.1,"hr":150,"polyline":"…"}]\'></textarea>' +
-    '<button class="btn" style="margin-top:10px" onclick="runPasteImport()">JSON importieren</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeImportSheet()">Schließen</button></div>';
+    '<button class="btn" style="margin-top:10px" onclick="runPasteImport()">' + _actT('act.json_importieren') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeImportSheet()">' + _actT('act.schliessen') + '</button></div>';
   document.body.appendChild(wrap); window._impModal = wrap;
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeImportSheet(); });
 }
 function closeImportSheet() { if (window._impModal) { try { window._impModal.remove(); } catch (e) {} window._impModal = null; } }
 function runPasteImport() {
   var el = document.getElementById('impPaste'); if (!el) return;
-  var arr; try { arr = JSON.parse(el.value); if (!Array.isArray(arr)) throw 0; } catch (e) { if (typeof toast === 'function') toast('Ungültiges JSON'); return; }
+  var arr; try { arr = JSON.parse(el.value); if (!Array.isArray(arr)) throw 0; } catch (e) { if (typeof toast === 'function') toast('' + _actT('act.ungueltiges_json') + ''); return; }
   var res = (typeof importActivityArray === 'function') ? importActivityArray(arr) : null;
   _importToCanonical(arr);   // H3: kanonisch spiegeln (Cloud-Sync)
   closeImportSheet();
@@ -800,7 +802,7 @@ function runPasteImport() {
 function importAnimation(steps, onDone) {
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg import-bg';
   wrap.innerHTML = '<div class="import-card"><svg class="import-mark" viewBox="0 0 512 512" aria-hidden="true"><use href="#orvia-mark"/></svg>' +
-    '<div class="import-title">Synchronisiere …</div><div class="import-steps">' +
+    '<div class="import-title">' + _actT('act.synchronisiere') + '</div><div class="import-steps">' +
     steps.map(function (s, i) { return '<div class="import-step" data-i="' + i + '"><span class="is-dot"></span><span class="is-txt">' + escH(s) + '</span></div>'; }).join('') +
     '</div></div>';
   document.body.appendChild(wrap);
@@ -833,14 +835,14 @@ function importDemoActivity() {
   if (e.sessions.Laufen && !e.sessions.Laufen.demo) {
     // P1A: native Browser-Bestätigung → orviaConfirm (destruktiv: überschreibt echten Lauf).
     if (typeof orviaConfirm === 'function') {
-      orviaConfirm({ title: 'Lauf überschreiben?', text: 'Heute ist bereits ein Lauf erfasst. Mit einer Demo-Aktivität überschreiben?', okLabel: 'Überschreiben', danger: true, onOk: function () { e.sessions.Laufen = null; delete e.sessions.Laufen; importDemoActivity(); } });
+      orviaConfirm({ title: '' + _actT('act.lauf_ueberschreiben') + '', text: '' + _actT('act.heute_ist_bereits_ein_lauf') + '', okLabel: 'Überschreiben', danger: true, onOk: function () { e.sessions.Laufen = null; delete e.sessions.Laufen; importDemoActivity(); } });
       return;
     }
     return;
   }
   window._importing = true;
   importAnimation(
-    ['Aktivität geladen', 'GPS-Route geladen', 'Pace-Zonen geprüft', 'Herzfrequenz analysiert', 'Trainingslast berechnet', 'Tagesentscheidung aktualisiert'],
+    ['' + _actT('act.aktivitaet_geladen') + '', '' + _actT('act.gps_route_geladen') + '', '' + _actT('act.pace_zonen_geprueft') + '', '' + _actT('act.herzfrequenz_analysiert') + '', '' + _actT('act.trainingslast_berechnet') + '', '' + _actT('act.tagesentscheidung_aktualisiert') + ''],
     function () {
       window._importing = false;
       e.sessions.Laufen = { dist: 7.2, dur: 43, hr: 149, elev: 54, rpe: 4, perf: 7, note: 'Demo-Import', route: demoRoute(), demo: true };
@@ -849,7 +851,7 @@ function importDemoActivity() {
       if (typeof renderDay === 'function') renderDay();
       renderAkt();
       openActivity(k, 'Laufen');
-      if (typeof toast === 'function') toast('Demo-Aktivität importiert ✓');
+      if (typeof toast === 'function') toast('' + _actT('act.demo_aktivitaet_importiert') + '');
     }
   );
 }
@@ -860,7 +862,7 @@ function _maTiles() {
   var cfg = window.ORVIA && ORVIA.activityConfig;
   if (cfg) { var t = cfg.userSportTiles(sel); if (t && t.length > 1) return t; }
   // Fallback ohne Auswahl: Katalog-Standard (KEINE hart codierte Fünferliste im Renderpfad).
-  return [{ sportId: 'running', label: 'Laufen' }, { sportId: 'gym', label: 'Krafttraining' }, { sportId: 'other', label: 'Weitere Aktivität', isMore: true }];
+  return [{ sportId: 'running', label: 'Laufen' }, { sportId: 'gym', label: 'Krafttraining' }, { sportId: 'other', label: '' + _actT('act.weitere_aktivitaet_') + '', isMore: true }];
 }
 // onlyWhen-Bedingung erfüllt? (z. B. Höhenmeter nur outdoor, Beckenlänge nur Pool)
 function _maFieldVisible(fld, vals) {
@@ -921,14 +923,14 @@ function openManualActivity(presetSportId) {
   window._maType = presetSportId || (tiles[0] && tiles[0].sportId) || 'other';
   var cfg = ORVIA.activityConfig;
   var chips = tiles.map(function (t) { return '<button type="button" class="gm-chip' + (t.sportId === window._maType ? ' on' : '') + '" data-v="' + escH(t.sportId) + '" onclick="maPickType(this)">' + escH(t.label) + '</button>'; }).join('') +
-    '<button type="button" class="gm-chip gm-chip-more" onclick="openMoreActivityPicker()">+ Weitere Aktivität</button>';
+    '<button type="button" class="gm-chip gm-chip-more" onclick="openMoreActivityPicker()">' + _actT('act.weitere_aktivitaet') + '</button>';
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg';
   wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3 id="maTitle">' + escH(cfg.activityTitle(window._maType)) + '</h3>' +
-    '<p class="note" style="text-align:left;margin:-4px 0 12px">Erfasse die Werte, die für diese Sportart relevant sind.</p>' +
-    '<div class="gm-field"><label>Sportart</label><div class="gm-chips" id="maType">' + chips + '</div></div>' +
+    '<p class="note" style="text-align:left;margin:-4px 0 12px">' + _actT('act.erfasse_die_werte_die_fuer') + '</p>' +
+    '<div class="gm-field"><label>' + _actT('act.sportart') + '</label><div class="gm-chips" id="maType">' + chips + '</div></div>' +
     '<div id="maFields">' + _maFieldsHTML(window._maType, _maPrefillFor(window._maType)) + '</div>' +
-    '<div class="ma-actions"><button class="btn" onclick="saveManualActivity()">Speichern</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="closeManualActivity()">Abbrechen</button></div></div>';
+    '<div class="ma-actions"><button class="btn" onclick="saveManualActivity()">' + _actT('act.speichern') + '</button>' +
+    '<button class="btn sec" style="margin-top:10px" onclick="closeManualActivity()">' + _actT('act.abbrechen') + '</button></div></div>';
   document.body.appendChild(wrap); window._maModal = wrap;
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeManualActivity(); });
 }
@@ -952,8 +954,8 @@ function openMoreActivityPicker() {
       g.items.map(function (it) { return '<button type="button" class="gm-chip" onclick="pickMoreActivity(\'' + escH(it.sportId) + '\')">' + escH(it.label) + '</button>'; }).join('') + '</div></div>';
   }).join('');
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg'; window._moreModal = wrap;
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Weitere Aktivität auswählen</h3>' + body +
-    '<button class="btn sec" style="margin-top:12px" onclick="closeMorePicker()">Zurück</button></div>';
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + _actT('act.weitere_aktivitaet_auswaehlen') + '</h3>' + body +
+    '<button class="btn sec" style="margin-top:12px" onclick="closeMorePicker()">' + _actT('act.zurueck') + '</button></div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) closeMorePicker(); });
 }
@@ -965,12 +967,12 @@ function showActivityDuplicate(date, typ, prior, dup) {
   var conf = dup && dup.confidence ? dup.confidence : 'mittel';
   var src = prior && prior.source === 'live' ? 'live erfasst' : (prior && prior.note) ? prior.note : 'bereits vorhanden';
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg'; window._maDup = wrap;
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Bereits vorhanden?</h3>' +
-    '<p class="modtext" style="margin:0 0 12px">Für <b>' + escH(typ) + '</b> am ' + escH(date) + ' gibt es schon eine Einheit (' + escH(src) + ', Übereinstimmung: ' + escH(conf) + '). Was möchtest du tun?</p>' +
-    '<button class="btn sec" onclick="dupOpenExisting(\'' + date + '\',\'' + typ + '\')">Vorhandene öffnen</button>' +
-    '<button class="btn" style="margin-top:10px" onclick="dupMerge()">Zusammenführen</button>' +
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + _actT('act.bereits_vorhanden') + '</h3>' +
+    '<p class="modtext" style="margin:0 0 12px">' + _actT('act.dup_einheit_frage', { typ: '<b>' + escH(typ) + '</b>', date: escH(date), src: escH(src), conf: escH(conf) }) + '</p>' +
+    '<button class="btn sec" onclick="dupOpenExisting(\'' + date + '\',\'' + typ + '\')">' + _actT('act.vorhandene_oeffnen') + '</button>' +
+    '<button class="btn" style="margin-top:10px" onclick="dupMerge()">' + _actT('act.zusammenfuehren') + '</button>' +
     '<button class="btn sec" style="margin-top:10px" onclick="dupReplace(\'' + date + '\',\'' + typ + '\')">Trotzdem als neu speichern</button>' +
-    '<button class="btn sec" style="margin-top:10px" onclick="dupCancel()">Abbrechen</button></div>';
+    '<button class="btn sec" style="margin-top:10px" onclick="dupCancel()">' + _actT('act.abbrechen') + '</button></div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) dupCancel(); });
 }
@@ -991,12 +993,12 @@ function gmFindCrossSourceDuplicateActivity(date, sportId) {
   return null;
 }
 function showCrossSourceDuplicate(date, typ, act) {
-  var src = ({ garmin: 'Garmin', strava: 'Strava', apple_health: 'Apple Health' })[String(act.source || '').toLowerCase()] || act.source || 'einer anderen Quelle';
+  var src = ({ garmin: 'Garmin', strava: 'Strava', apple_health: '' + _actT('act.apple_health') + '' })[String(act.source || '').toLowerCase()] || act.source || '' + _actT('act.einer_anderen_quelle') + '';
   var wrap = document.createElement('div'); wrap.className = 'orvia-modal-bg'; window._maCrossDup = wrap;
-  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>Bereits synchronisiert?</h3>' +
-    '<p class="modtext" style="margin:0 0 12px">Für <b>' + escH(typ) + '</b> am ' + escH(date) + ' liegt bereits eine Aktivität aus ' + escH(src) + ' vor. Doppelte Erfassung kann Wochenumfang und Belastung verfälschen.</p>' +
-    '<button class="btn sec" onclick="_closeCrossDup()">Abbrechen</button>' +
-    '<button class="btn" style="margin-top:10px" onclick="_crossDupForceSave()">Trotzdem speichern</button></div>';
+  wrap.innerHTML = '<div class="orvia-modal goal-modal"><h3>' + _actT('act.bereits_synchronisiert') + '</h3>' +
+    '<p class="modtext" style="margin:0 0 12px">' + _actT('act.dup_aktivitaet_hinweis', { typ: '<b>' + escH(typ) + '</b>', date: escH(date), src: escH(src) }) + '</p>' +
+    '<button class="btn sec" onclick="_closeCrossDup()">' + _actT('act.abbrechen') + '</button>' +
+    '<button class="btn" style="margin-top:10px" onclick="_crossDupForceSave()">' + _actT('act.trotzdem_speichern') + '</button></div>';
   document.body.appendChild(wrap);
   wrap.addEventListener('click', function (ev) { if (ev.target === wrap) _closeCrossDup(); });
 }
@@ -1011,13 +1013,13 @@ function saveManualActivity() {
   var sportId = window._maType || 'other';
   var vals = _maReadVals(sportId);
   var date = vals.date || (typeof todayStr === 'function' ? todayStr() : '');
-  if (!isDay(date)) { if (typeof toast === 'function') toast('Bitte gültiges Datum'); return; }
+  if (!isDay(date)) { if (typeof toast === 'function') toast('' + _actT('act.bitte_gueltiges_datum') + ''); return; }
   // Pflicht: Dauer ODER Distanz (Gym/Sonstige: Dauer reicht; Sonstige braucht zusätzlich Name).
   var dur = vals.durationMin != null ? vals.durationMin : null;
   var distKm = vals.distanceKm != null ? vals.distanceKm : null;
   var distM = vals.distanceM != null ? vals.distanceM : null;
-  if (dur == null && distKm == null && distM == null) { if (typeof toast === 'function') toast('Mindestens Dauer oder Distanz'); return; }
-  if (sportId === 'other' && !vals.name) { if (typeof toast === 'function') toast('Bitte Name angeben'); return; }
+  if (dur == null && distKm == null && distM == null) { if (typeof toast === 'function') toast('' + _actT('act.mindestens_dauer_oder_distanz') + ''); return; }
+  if (sportId === 'other' && !vals.name) { if (typeof toast === 'function') toast('' + _actT('act.bitte_name_angeben') + ''); return; }
   var typ = cfg.sportLabel(sportId);                  // DB-Schlüssel = deutsches Label (kompatibel mit Edit/Move/openActivity)
   var e = entry(date); e.sessions = e.sessions || {};
   var prior = e.sessions[typ];
@@ -1076,5 +1078,5 @@ function saveManualActivity() {
   renderAkt();
   try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { activityId: canonId } })); } catch (e2) {}
   try { if (window.ORVIA && ORVIA.activitySync) ORVIA.activitySync.flushPendingActivities(); } catch (e4) {}   // Server-Sync anstoßen
-  if (typeof toast === 'function') toast('Aktivität gespeichert ✓');
+  if (typeof toast === 'function') toast('' + _actT('act.aktivitaet_gespeichert') + '');
 }
