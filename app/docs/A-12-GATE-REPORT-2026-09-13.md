@@ -13,10 +13,10 @@
 
 ## Die zwei S2-Divergenzen — und die Korrektur (decision-engine-v2, RULE_VERSION v2.0.1-parallel)
 
-1. **21.08.** v1 YELLOW / v2 GREEN, beide KEEP. v2-Grund `low_data_confidence` (info) — dünne Lastdatenlage änderte den Zustand nur bei harter Einheit. **Fix:** dünne Datenlage ⇒ mindestens YELLOW (Aktion nur bei harter Einheit begrenzt; lockere Einheit bleibt KEEP). Gilt auch für fehlende Lasthistorie.
+1. **21.08.** v1 YELLOW / v2 GREEN, beide KEEP. v2-Grund `low_data_confidence` (info). **Korrektur (nach Suite-Befund Batch 2c/2d):** v2 bleibt bewusst GREEN — eine Datenlücke ist keine Warnung, die Unsicherheit trägt `confidence` („Datenlücke ≠ Wert“). v1s YELLOW ist genau die Semantik, die v2 ersetzt. Stattdessen stuft **shadow-eval v1.1** eine Divergenz als `v2_confidence_carried` (kein Blocker) ein, wenn NUR der Zustand lockerer ist, die Aktion identisch ist und v2 ausschließlich Info-Gründe zur Datenqualität nennt. Jeder Nicht-Info-Grund oder eine lockerere Aktion bleibt Blocker.
 2. **13.09.** v1 RED/REST / v2 RED/REPLACE_WITH_RECOVERY bei `severe_pain` Intensität **9**. v2 sagte „kein belastendes Training“ und plante trotzdem 20 min aktive Erholung. **Fix:** Schmerz ≥ 8 ⇒ REST. Die v2-Invariante „Knie 4 + Oberkörper ≠ Stopp“ bleibt für moderaten Schmerz unberührt.
 
-Beide Fixes verschärfen v2 ausschließlich (nie lockern) — Tests engine_v2 D2b–D2d (133).
+Tests: engine_v2 D2b–D2d (133), phase8_shadow_eval +3 (41), batch2c/2d unverändert grün.
 
 ## Was jetzt fehlt
 - **S1**: 9 weitere vergleichbare Tage. Der Shadow läuft je Gerät beim Öffnen der App; ein Tag zählt nur mit Check-in (vergleichbar). Alternative: Tages-Shadow-Protokoll serverseitig sammeln (wie A-06 goal-shadow), damit Handy und Mac zusammen zählen — noch nicht gebaut.

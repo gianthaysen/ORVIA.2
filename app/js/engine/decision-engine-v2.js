@@ -137,12 +137,11 @@
         unknownUnits: load.unknownUnits != null ? load.unknownUnits : null,
         ambiguousUnits: load.ambiguousUnits != null ? load.ambiguousUnits : null
       }));
-      /* Gate A-12 (Shadow-Divergenz 2026-08-21): duenne Datenlage ist fuer sich ein Grund zur Vorsicht —
-         v1 stand auf YELLOW, v2 auf GREEN. Zustand mindestens YELLOW; die Aktion wird nur bei harter
-         Einheit begrenzt (eine lockere Einheit bleibt KEEP). */
-      escalate('YELLOW');
+      /* Gate A-12 (13.09.): BEWUSST kein YELLOW bei duenner Datenlage — Batch 2c/2d: eine Datenluecke
+         ist keine Warnung, die Unsicherheit traegt das Feld confidence. Die Shadow-Divergenz vom 21.08.
+         (v1 YELLOW, v2 GREEN, beide KEEP) wird im Auswerter als confidence-getragen eingestuft. */
       if (sessionIsHard(planned)) {
-        limitAction('REDUCE_INTENSITY');
+        escalate('YELLOW'); limitAction('REDUCE_INTENSITY');
         safeguards.push('Die Belastungshistorie ist aktuell nicht zuverlässig beurteilbar — heute keine volle Intensität auf unsicherer Basis.');
       }
     } else if (load.dataDays != null && load.dataDays >= 7 && load.acute7 != null && load.chronic28PerWeek != null && load.chronic28PerWeek > 0) {
@@ -156,7 +155,6 @@
       }
     } else if (load.acute7 != null || load.chronic28PerWeek != null) {
       missing.push('load_history');
-      escalate('YELLOW');   /* Gate A-12: ohne belastbare Lasthistorie kein GREEN */
       reasons.push(CT.reason('low_data_confidence', { marker: 'load', days: load.dataDays || 0 }));
     }
     if (load.hardStreak != null && load.hardStreak >= 2 && sessionIsHard(planned)) {

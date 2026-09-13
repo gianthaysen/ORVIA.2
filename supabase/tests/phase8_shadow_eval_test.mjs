@@ -216,5 +216,17 @@ ok('S2 · ohne Vergleichstage ⇒ insufficient_data (nicht „0 Divergenzen = pa
   ok('SW-Version >= 244, genau einmal', swv != null && Number(swv) >= 244 && (sw.match(/orvia-v8-\d+/g) || []).length === 1, 'orvia-v8-' + swv);
 }
 
+/* v1.1 (A-12, 13.09.2026): confidence-getragene Zustandsdivergenz ist keine Safety-Divergenz */
+{
+  const info = [{ code: 'low_data_confidence', severity: 'info', title: 'x' }];
+  const carried = SE.evaluate({ dailyLog: days(13, 'GREEN', 'GREEN').concat([day('2026-07-14', 'YELLOW', 'GREEN', { v2: { state: 'GREEN', action: 'KEEP', confidence: 'low', reasons: info }, agree: false })]), weeklyLog: GOOD.weeklyLog });
+  const s2c = crit(carried, 'S2');
+  ok('S2: v1 YELLOW / v2 GREEN, gleiche Aktion, nur Info-Datenqualitaetsgrund ⇒ confidence-getragen, kein Blocker', s2c.status === 'pass' && s2c.evidence.confidenceCarriedDivergences === 1 && s2c.evidence.divergencesTotal === 1);
+  const real = SE.evaluate({ dailyLog: days(13, 'GREEN', 'GREEN').concat([day('2026-07-14', 'RED', 'RED', { v1: { state: 'RED', action: 'REST' }, v2: { state: 'RED', action: 'REPLACE_WITH_RECOVERY', confidence: 'high', reasons: [{ code: 'severe_pain', severity: 'critical' }] }, agree: true })]), weeklyLog: GOOD.weeklyLog });
+  ok('S2: lockerere AKTION bleibt Blocker, auch bei gleichem Zustand', crit(real, 'S2').status === 'fail');
+  const mixed = SE.evaluate({ dailyLog: days(13, 'GREEN', 'GREEN').concat([day('2026-07-14', 'YELLOW', 'GREEN', { v2: { state: 'GREEN', action: 'KEEP', confidence: 'low', reasons: info.concat([{ code: 'poor_sleep', severity: 'medium' }]) }, agree: false })]), weeklyLog: GOOD.weeklyLog });
+  ok('S2: sobald ein Nicht-Info-Grund dabei ist, bleibt die Zustandsdivergenz safety-relevant', crit(mixed, 'S2').status === 'fail');
+}
+
 console.log('\nphase8_shadow_eval: ' + (fail ? fail + ' FAILED (' + pass + ' ok)' : 'ALL PASSED (' + pass + ' ok)'));
 process.exit(fail ? 1 : 0);
