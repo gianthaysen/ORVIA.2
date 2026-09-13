@@ -101,3 +101,16 @@ Befund aus den Screenshots (Ursache jeweils belegt):
 Nicht geändert (bewusst): HM-Ergebnis 2:22:12 (ganze Aktivität, 21,3 km) vs. Bestzeit 2:20:13 (schnellste 21,1 km innerhalb) — beides korrekt, zwei verschiedene Größen. „0 km diese Woche" / ACWR 0,36 sind echte Werte der Woche nach dem Wettkampf.
 
 Verifikation: `profile_v14_test` 39 (neu G1–G8), Vorschau der drei Reiter mit Prototyp-nahen Daten per Playwright gerendert (Cloud) — Layout stimmt jetzt mit v14 überein. Offen bleibt S2 (Kraftprofil) für die Pflege der Kraftwerte im Editor.
+
+## 9 · Zweite Sichtprüfung v8-372 (13.09.) → S1c
+
+| Befund (Gian) | Ursache | Fix |
+|---|---|---|
+| Phasen zeigen nur die letzten Wochen, Peak/Taper wirken wie Einzeltage, keine Wochenzahlen | `Calc.racePhases` kennt nur Aufbau(offen)/Peak 3 Wo/Taper 2 Wo/Renntag; Anzeige zeigte Enddaten | neues `engine/season-phases.js`: Basis → Aufbau → Spitze → Tapering über die ganze Strecke (Planstart = Zielanlage), Wochenzahlen, „fertig“, Titel „Basisphase · Woche 1 von 21“, Wettkampfdatum in der Quelle. Tapering 2 Wo deckt sich mit A-09. |
+| Profilstärke bei 100 % ist kein Inhalt | Karte immer gerendert | `strengthNeedsCard()`: nur bei < 100 % oder offenen Lücken |
+| Marathon 3:49 „geschätzt“ trotz HM 2:20 | `bestTimes()` projizierte aus dem schnellsten Lauf (5-km-Segment, Faktor 8) | Projektion aus der nächstgelegenen gemessenen Distanz (HM → 4:52), Quelle im Label „geschätzt aus HM (Riegel)“ |
+| Schwellenpace 6:22/km, real ~5:20–5:30 | `performance-zones` nahm die frischeste Referenz (HM vom 06.09., schlechter Tag) | v3: innerhalb der belastbaren Gruppe (≥ 80 % des Spitzengewichts) gewinnt die Referenz mit der Dauer am nächsten an 60 min → 10 km 54:30 → **5:29/km**, HM-Äquivalent 2:00. Wirkt auch auf die Plan-Zonen (bisher aus dem 2:20-HM). |
+| „garmin_unofficial“ im Klartext | Provider-Map unvollständig | Garmin |
+| Profil & Kontrolle ohne rechte Werte | Prototyp zeigt „3 aktiv“ / „Garmin · 06:14“ | `p-v`: aktive Ziele, Provider |
+
+Bewusst nicht geändert: Marathon-Schätzung aus dem HM ist pessimistisch (2:20 war ein Problemtag), aber die einzige Distanz mit vergleichbarer Ausdauerkomponente; eine bessere Zahl entsteht durch einen sauberen HM oder einen langen Lauf, nicht durch eine andere Formel. Tests: `season_phases_test` (10), `performance_zones_test` +2, `profile_v14_test` 44.

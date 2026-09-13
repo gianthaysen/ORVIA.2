@@ -108,11 +108,26 @@ function baseData(over) {
   ok('G7 Quellenlabel: automatic ⇒ automatisch, garmin_unofficial ⇒ Garmin', /automatisch/.test(PV.performanceHTML(baseData({ vo2: { value: 53, source: 'automatic' } }))) && /Garmin/.test(PV.performanceHTML(baseData({ vo2: { value: 53, source: 'garmin_unofficial' } }))));
   ok('G8 Profilstaerke-Ring: Prozent in eigener Klasse ps-pct (kein globales .pv)', /class="ps-pct"/.test(PV.strengthCardHTML(baseData().strength)) && !/class="pv"/.test(PV.strengthCardHTML(baseData().strength)));
 }
+/* H · S1c (13.09., zweite Sichtpruefung): Saisonmodell mit Wochen, Profilstaerke-Karte bei 100 % weg, Schaetzquelle, rechte Werte */
+{
+  const sb = makeSb(); const PV = sb.ORVIA.screens.profileV14;
+  const season = { model: 'season', totalWeeks: 13, weeksToRace: 5, daysTo: 35, targetDate: '2026-10-18', phases: [
+    { key: 'base', n: 'Basis', weeks: 4, on: false, done: true, week: null }, { key: 'build', n: 'Aufbau', weeks: 4, on: true, done: false, week: 4 },
+    { key: 'peak', n: 'Spitze', weeks: 3, on: false, done: false, week: null }, { key: 'taper', n: 'Tapering', weeks: 2, on: false, done: false, week: null }] };
+  const h = PV.overviewHTML(baseData({ season }));
+  ok('H1 Saison (Wochenmodell): „Aufbauphase · Woche 4 von 4", Basis „4 Wo · fertig", Spitze „3 Wo", Wettkampfdatum in der Quelle', /Aufbauphase · Woche 4 von 4/.test(h) && /pv-phase done"><b>Basis<\/b><span>4 Wo · fertig/.test(h) && /<b>Spitze<\/b><span>3 Wo</.test(h) && /Wettkampf 18\.10\.2026 \(in 35 Tagen\)/.test(h));
+  ok('H2 Profil & Kontrolle: „3 aktiv" rechts, Provider rechts, Sync-Rest in der Zeile', /p-v">3 aktiv</.test(h));
+  const h2 = makeSb({ gmProfSyncLabel: () => 'Garmin · vor 4 Min synchronisiert' }).ORVIA.screens.profileV14.overviewHTML(baseData({ season }));
+  ok('H3 Geraete & Daten: Provider als rechter Wert, Rest als Untertitel', /p-d">vor 4 Min synchronisiert</.test(h2) && /p-v">Garmin</.test(h2));
+  ok('H4 Profilstaerke-Karte nur bei Luecken: 100 % ohne Luecken ⇒ keine Karte; 80 % ⇒ Karte', PV.strengthNeedsCard({ score: 100, gaps: [] }) === false && PV.strengthNeedsCard({ score: 80, gaps: [{}] }) === true && PV.strengthNeedsCard({ score: 100, gaps: [{}] }) === true);
+  const p = PV.performanceHTML(baseData({ bests: { t5: 1414, t10: 3270, t21: 8413, t42: 17537, real: { k5: 1, k10: 1, k21: 1 }, estFrom: { k42: 'k21' }, meas: { k21: { date: '2026-09-06' } } } }));
+  ok('H5 Marathon-Schaetzung benennt ihre Quelle („geschätzt aus HM")', /4:52:17/.test(p) && /geschätzt aus HM \(Riegel\)/.test(p));
+}
 /* F · Verdrahtung */
 {
   const ui = readFileSync(new URL('js/ui.js', APP), 'utf8'), idx = readFileSync(new URL('index.html', APP), 'utf8'), sw = readFileSync(new URL('sw.js', APP), 'utf8');
   ok('F1 renderGMProfile delegiert an ORVIA.screens.profileV14.render, Kopf ueber gmProfHeaderHTML', /ORVIA\.screens\.profileV14;if\(PV&&typeof PV\.render==='function'&&PV\.render\(host\)\)return;/.test(ui) && /^function gmProfHeaderHTML\(\)/m.test(ui));
-  ok('F2 Modul in index.html (nach goal-detail.js) und im SW-Vorrat', idx.indexOf('js/screens/profile-v14.js') > idx.indexOf('js/goal-detail.js') && sw.indexOf("'./js/screens/profile-v14.js'") > 0);
+  ok('F2 Modul in index.html (nach goal-detail.js) und im SW-Vorrat; season-phases ebenso', idx.indexOf('js/screens/profile-v14.js') > idx.indexOf('js/goal-detail.js') && sw.indexOf("'./js/screens/profile-v14.js'") > 0 && idx.indexOf('js/engine/season-phases.js') > 0 && sw.indexOf("'./js/engine/season-phases.js'") > 0);
   const src = readFileSync(new URL('js/screens/profile-v14.js', APP), 'utf8');
   ok('F3 keine Demo-Zahlen aus dem Prototyp im Modul (184, 412, 1:51:20, 58 %)', !/\b184\b|\b412\b|1:51:20|58 %/.test(src));
   /* Strukturvertrag (gm-ref/structure-contract.json · requiredSlots.mehr): die vier Profil-Slots muessen im Standard-Reiter sichtbar bleiben */

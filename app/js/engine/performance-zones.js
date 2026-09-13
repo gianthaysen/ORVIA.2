@@ -51,7 +51,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'performance-zones@2';
+  var VERSION = 'performance-zones@3';
 
   /* Herkunftsvertrag (0b). In Node liegt er nicht auf globalThis, deshalb der
      require-Zweig — ohne ihn wuerde das Modul still auf eigene Schwellen
@@ -171,6 +171,22 @@
       ageRatio: Math.round(ratio * 100) / 100 };
   }
 
+  /* Referenzwahl (v3, 13.09.2026): Unter den vergleichbar belastbaren Referenzen
+     (Gewicht >= 80 % der besten) gewinnt NICHT die frischeste, sondern die, deren
+     Dauer der 60-Minuten-Belastung am naechsten liegt. Grund: Schwelle und Zonen
+     sind ueber das Stundentempo definiert; ein 5-km-Segment (Faktor 2,5 Extrapolation)
+     oder ein 2:20-Halbmarathon (Faktor 0,4) verzerren beide. Beispiel Gian: 5 km 23:34,
+     10 km 54:30, HM 2:20 innerhalb von fuenf Wochen — die alte Regel nahm den HM
+     (7 Tage juenger) und lieferte 6:22/km; der 10er liefert 5:29/km, die Selbst-
+     einschaetzung des Athleten (5:20–5:30). Ausserhalb der 80-%-Gruppe bleibt
+     die Gewichtsreihenfolge (Wettkampf > Test > harter Lauf, Frische) massgeblich. */
+  function _pickReference(refs) {
+    if (!refs || !refs.length) return null;
+    var top = refs[0].weight || 0, pool = refs.filter(function (r) { return (r.weight || 0) >= top * 0.8 && r.durationMin > 0; });
+    if (pool.length < 2) return refs[0];
+    return pool.reduce(function (a, b) { return Math.abs(Math.log(b.durationMin / 60)) < Math.abs(Math.log(a.durationMin / 60)) ? b : a; });
+  }
+
   /* ---- Hauptfunktion ----
      Liefert das vollständige Leistungsbild oder ehrlich `none`. */
   function resolve(input) {
@@ -182,7 +198,7 @@
         availableTests: testsFor('running', (input || {}).level),
         version: VERSION, references: [] };
     }
-    var best = refs[0];
+    var best = _pickReference(refs);
     var conf = _confidenceOf(best);
 
     /* Halbmarathon-Äquivalent als gemeinsame Bezugsgröße: Es ist die Zielgröße
@@ -653,7 +669,7 @@
     testsFor: testsFor, targetForUnit: targetForUnit,
     LEVELS: LEVELS.slice(), normalizeLevel: normalizeLevel,
     levelForSport: levelForSport, diagnosticPathFor: diagnosticPathFor,
-    _zonesFrom: _zonesFrom, _solveHourDistance: _solveHourDistance };
+    _zonesFrom: _zonesFrom, _solveHourDistance: _solveHourDistance, _pickReference: _pickReference };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.performanceZones = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

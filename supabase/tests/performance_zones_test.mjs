@@ -230,5 +230,18 @@ sec('10 · Der Leistungsstand steuert den Weg — pro Sportart');
      r.ok === false && r.path && r.path.tests[0].level === 'anfaenger', r.path && r.path.prompt);
 }
 
+/* v3 (S1c): Referenzwahl nach Naehe zur 60-Minuten-Belastung innerhalb der belastbaren Gruppe */
+{
+  const r = PZ.resolve({ today: '2026-09-13', races: [
+    { distanceKm: 5, durationMin: 23.57, date: '2026-08-13', kind: 'test' },
+    { distanceKm: 10, durationMin: 54.5, date: '2026-08-09', kind: 'test' },
+    { distanceKm: 21.0975, durationMin: 140.2, date: '2026-09-06', kind: 'test' }] });
+  ok('v3 Referenz: 10 km (54:30) statt des 7 Tage juengeren HM (2:20) — Schwelle 5:29/km, HM-Aequivalent 2:00', r.reference.distanceKm === 10 && r.thresholdPaceSecPerKm === 329 && Math.round(r.halfMarathonEquivalentMin) === 120);
+  const r2 = PZ.resolve({ today: '2026-09-13', races: [
+    { distanceKm: 10, durationMin: 54.5, date: '2025-01-09', kind: 'test' },
+    { distanceKm: 21.0975, durationMin: 140.2, date: '2026-09-06', kind: 'race' }] });
+  ok('v3 ausserhalb der 80-%-Gruppe bleibt die Gewichtung: alter 10er (Frische 0,5) verliert gegen frischen Wettkampf-HM', r2.reference.distanceKm > 21);
+}
+
 console.log('\nperformance_zones: ' + (fail ? fail + ' FAILED (' + pass + ' ok)' : 'ALL PASSED (' + pass + ' ok)'));
 process.exit(fail ? 1 : 0);

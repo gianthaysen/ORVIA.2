@@ -4961,11 +4961,19 @@ function bestTimes(){
   if(!runs.length&&BT_KEYS.every(function(kk){return rb[kk]==null;}))return null;
   var elig=runs.filter(function(r){return r.dist>=2&&r.dur;});var est=null;
   if(elig.length){var best=elig.reduce(function(a,b){return (b.dur/b.dist)<(a.dur/a.dist)?b:a;});var proj=function(d){return Math.round(best.dur*Math.pow(d/best.dist,1.06)*60);};est={pace:(best.dur/best.dist)*60,dist:best.dist,t1:proj(1),t5:proj(5),t10:proj(10),t21:proj(21.0975),t42:proj(42.195)};}
-  var pick=function(kk,ek){if(rb[kk]!=null)return rb[kk];if(est){src[kk]='estimate';return est[ek];}return null;};
+  /* S1c (13.09.2026): fehlende Distanzen werden aus der NAECHSTGELEGENEN gemessenen Bestzeit
+     projiziert (Riegel 1,06), nicht mehr aus dem schnellsten Lauf. Vorher: Marathon aus einem
+     5-km-Segment (23:34 → 3:49) trotz gemessenem HM 2:20 — Faktor 8 Extrapolation ist keine
+     Schaetzung, sondern Raten. Quelle steht in estFrom[kk] (z. B. 'k21') fuer die Anzeige. */
+  var BT_KM={k1:1,k5:5,k10:10,k21:21.0975,k42:42.195},estFrom={};
+  var nearest=function(kk){var best=null,bd=Infinity;BT_KEYS.forEach(function(o){if(o===kk||rb[o]==null)return;var d=Math.abs(Math.log(BT_KM[o]/BT_KM[kk]));if(d<bd){bd=d;best=o;}});return best;};
+  var pick=function(kk,ek){if(rb[kk]!=null)return rb[kk];var from=nearest(kk);
+    if(from){src[kk]='estimate';estFrom[kk]=from;return Math.round(rb[from]*Math.pow(BT_KM[kk]/BT_KM[from],1.06));}
+    if(est){src[kk]='estimate';return est[ek];}return null;};
   var t1=pick('k1','t1'),t5=pick('k5','t5'),t10=pick('k10','t10'),t21=pick('k21','t21'),t42=pick('k42','t42');
   if(t1==null&&t5==null&&t10==null&&t21==null&&t42==null)return null;
   return {t1:t1,t5:t5,t10:t10,t21:t21,t42:t42,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null,k21:rb.k21!=null,k42:rb.k42!=null},
-    src:src,meas:meas||null,
+    src:src,estFrom:estFrom,meas:meas||null,
     estPace:est?est.pace:null,estDist:est?est.dist:null,n:runs.length};
 }
 /* Einheitliche Quellenetiketten fuer alle Bestzeiten-Renderer — EINE Formulierung,
@@ -6111,7 +6119,7 @@ function gmDeviceSyncRefresh(){
   }catch(_){ }
 }
 function gmDevProviderName(){
-  return ({garmin:'Garmin',strava:'Strava',apple_health:'' + _uiT('ui.apple_health') + '',applehealth:'' + _uiT('ui.apple_health') + ''})[String(_gmDevSync.provider||'').toLowerCase()]||_gmDevSync.provider;
+  return ({garmin:'Garmin',garmin_unofficial:'Garmin',garmin_connect:'Garmin',strava:'Strava',apple_health:'' + _uiT('ui.apple_health') + '',applehealth:'' + _uiT('ui.apple_health') + ''})[String(_gmDevSync.provider||'').toLowerCase()]||_gmDevSync.provider;
 }
 /* KF-019: braucht der Provider eine Neuanmeldung? (Worker setzt reauth_required,
    wenn das lokal erzeugte Garmin-Session-Token abgelaufen ist.) */

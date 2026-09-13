@@ -4074,7 +4074,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .prow .p-b{flex:1;min-width:0}
 .prow .p-t{font-size:13.5px;font-weight:750}
 .prow .p-d{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
-.prow .p-v{font-size:13px;color:var(--text);font-weight:800;text-align:right;flex:0 0 auto;max-width:42%;font-variant-numeric:tabular-nums}
+.prow .p-v{font-size:12px;color:var(--gold-soft);font-weight:780;text-align:right;flex:0 0 auto;max-width:42%;font-variant-numeric:tabular-nums}
 .prow .p-ch,.prow>.ic:last-child{color:var(--faint);flex:0 0 auto}
 .prow .pill-badge{flex:0 0 auto}
 .card.tight .prow{padding-left:0;padding-right:0}
@@ -4092,3 +4092,6 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .pv-alloc-note{display:flex;gap:6px;align-items:flex-start;margin:4px 18px 12px;font-size:11px;color:var(--faint);line-height:1.4}
 .pv-alloc-note .ic{flex-shrink:0;margin-top:2px}
 .goal-stack+.pv-alloc-note{margin-top:-6px}
+.pv-phase.done{opacity:.55}
+.pv-phase.done b{text-decoration:none}
+.prow .p-v.pv-est{color:var(--attention)}
