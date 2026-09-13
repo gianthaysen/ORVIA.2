@@ -17,6 +17,13 @@
 
     /* ---- B-02 Ziel-Detailseite ---- */
     'goal.detail.title': 'Ziel',
+    'goal.race.title': 'Wettkampfergebnis',
+    'goal.race.detected': 'Wettkampf erkannt',
+    'goal.race.achieved': 'Erreicht',
+    'goal.race.missed': 'Verfehlt',
+    'goal.race.finished': 'Gefinisht',
+    'goal.race.confirm': 'Als Ergebnis übernehmen',
+    'goal.race.dismiss': 'Nicht mein Rennen',
     'goal.detail.edit': 'Ziel bearbeiten',
     'goal.detail.none': 'Kein Ziel ausgewählt.',
     'goal.detail.target': 'Zielwert',
@@ -500,6 +507,8 @@
     'pf.rr_gefinisht': 'Gefinisht',
     'pf.rr_wettkampf_erkannt': 'Wettkampf erkannt',
     'pf.rr_uebernehmen': 'Übernehmen',
+    'pf.wieder_aktivieren': 'Wieder aktivieren',
+    'pf.ziel_wieder_aktiv': 'Ziel ist wieder aktiv.',
     'pf.rr_ziel_erreicht_gespeichert': 'Ziel erreicht — Ergebnis gespeichert.',
     'pf.rr_ziel_verfehlt_gespeichert': 'Ergebnis gespeichert — Ziel verfehlt.',
     'pf.rr_ergebnis_gespeichert': 'Ergebnis gespeichert.',
