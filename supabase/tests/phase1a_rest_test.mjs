@@ -68,7 +68,9 @@ ok('KF-009 · ehrlicher Fallback bleibt erhalten', /GM_NA/.test(paceSheet));
 ok('KF-009 · der produktive Rechner existiert', /function gmProfPaceCalc\(\)/.test(ui));
 
 /* ---------- P0-6 ---------- */
-const gmProf = ui.slice(ui.indexOf('function renderGMProfile()'), ui.indexOf('function renderGMProfile()') + 1400);
+/* S1-UI (13.09.2026): der Profilkopf liegt jetzt in gmProfHeaderHTML(), renderGMProfile delegiert an den v14-Screen. */
+const _hdrAt = ui.indexOf('function gmProfHeaderHTML()');
+const gmProf = _hdrAt >= 0 ? ui.slice(_hdrAt, _hdrAt + 1800) : ui.slice(ui.indexOf('function renderGMProfile()'), ui.indexOf('function renderGMProfile()') + 1400);
 ok('P0-6 · Profilkopf liest avatarStore.currentSrc()', /avatarStore&&ORVIA\.avatarStore\.currentSrc/.test(gmProf));
 ok('P0-6 · PROFILE.avatar bleibt Rueckfall', /PROFILE\.avatar/.test(gmProf));
 ok('P0-6 · renderGMProfile ist im avatarStore-Hydrate registriert',
