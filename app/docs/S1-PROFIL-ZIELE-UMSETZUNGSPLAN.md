@@ -77,3 +77,27 @@ Gemeinsamer Kern von F1/F3/F5/F6: **Aktivitäten fließen nicht in Leistungsbele
 - Tests: `profile_v14_test` (30), i18n_guard führt das Modul (0 Literale, 130 Keys `pv.*`).
 
 **Sichtprüfung offen (Gian):** Profil-Tab öffnen → drei Reiter, Profilstärke-Karte, Zielreise; Ziele-Tab → HM unter „Erreicht & verfehlt" mit Zeit; Leistung-Tab → Bestzeiten, Kraftwerte, Zonen; „Neues Ziel" → Sheet.
+
+## 8 · Sichtprüfung v8-371 (13.09., Gian: „ganz schwach noch") → Korrekturpaket S1b
+
+Befund aus den Screenshots (Ursache jeweils belegt):
+
+| Symptom | Ursache | Fix |
+|---|---|---|
+| Profil & Kontrolle, Zonen, Medaillen-Links, Erreicht/Verfehlt als unformatierter Textblock | `.prow/.p-ic/.p-b/.p-t/.p-d/.p-v` aus Prototyp v14 nie nach `styles.css` übernommen | Regeln portiert (S1b-Block am Ende von styles.css) |
+| KPI-Beschriftungen zerhackt („AK-TIV", „VO ₂M AX", „A C W R") | altes Dashboard-`.kpi{display:grid;1fr 1fr 1fr}` traf die v14-Kacheln; dazu `hyphens:auto` | `.kpi-row>.kpi{display:block}` + Trennung aus |
+| Profilstärke ohne Ring, Prozent als dunkler Kasten | Prozent-Element hieß `.pv` — globaler Kartenstil `.pv{background;border;padding}` | Klasse `.ps-pct` |
+| Sportarten-Chips abgeschnitten („Krafttraini…") | horizontaler Scroll wie im Prototyp, am Desktop unsichtbar | Chips umbrechen |
+| „400 m Schwimmen" überlappt „gemessen" | `.pv-btd` 64 px, Sportart im selben `<b>` | Distanz fett + Sportart als kleine Zeile, 78 px |
+| Ziel „12%" als Titel, „Kein Zielwert" | Titel bestand nur aus dem Wert; `targetValue` als String gespeichert | `goalTitle()` (Wert-Titel → Kategorie), `numLoose()` |
+| Leere Fortschrittsleiste bei jedem Ziel | 0 %-Balken bei fehlender Prognose | ohne `pct` gedämpfte Leiste (`goal-line none`) |
+| „Zielanteil …"-Hinweis 4× | je Karte gerendert | einmal unter der Liste |
+| Saison „Aufbau · noch 357 Tage" | Countdown zum Wettkampf am Phasennamen | „Aufbau · Wettkampf in 357 Tagen", Phasen „bis dd.mm.yyyy" |
+| „1 Einheiten / Woche (Ø 4 Wo)" | Heuristik über `listActivitiesUnified` + `startedAt`; Legacy-Aktivitäten ohne dieses Feld fielen raus | Ø aus `weeklyActivityTotals` (gleicher Vertrag wie km/Woche), Heuristik nur als Rückfall |
+| Kraftwerte alle „—" trotz Gym-Training | nur manuelle `strengthRecords` gelesen | e1RM (Epley, ganze kg) aus abgeschlossenen Arbeitssätzen 1–12 Wdh. der Gym-Snapshots; Klimmzüge = max. Wdh. ohne Zusatzgewicht; Quelle je Kachel |
+| VO₂max-Quelle „automatic" | Enum unübersetzt | `srcLabel`: automatic → „automatisch", garmin_unofficial → Garmin |
+| Kopf „Zielaufbau —" | dauerhaft leerer Slot | vierter Slot = aktive Ziele (`listGoals`) |
+
+Nicht geändert (bewusst): HM-Ergebnis 2:22:12 (ganze Aktivität, 21,3 km) vs. Bestzeit 2:20:13 (schnellste 21,1 km innerhalb) — beides korrekt, zwei verschiedene Größen. „0 km diese Woche" / ACWR 0,36 sind echte Werte der Woche nach dem Wettkampf.
+
+Verifikation: `profile_v14_test` 39 (neu G1–G8), Vorschau der drei Reiter mit Prototyp-nahen Daten per Playwright gerendert (Cloud) — Layout stimmt jetzt mit v14 überein. Offen bleibt S2 (Kraftprofil) für die Pflege der Kraftwerte im Editor.

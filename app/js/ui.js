@@ -10342,7 +10342,7 @@ function gmProfHeaderHTML(){
     avatar=_av?'<img src="'+gmEsc(_av)+'" alt="Profilbild">':'<span>'+gmProfInitials()+'</span>';
   }catch(_){avatar='<span>'+gmProfInitials()+'</span>';}
   /* 4 Statistikslots — nur kanonische Werte: Sportarten (vollständige kanonische Liste),
-     Fitness (CTL aus Calc.loadSeries). Einheiten/Zielaufbau ohne Vertrag ⇒ — . */
+     Fitness (CTL aus Calc.loadSeries), aktive Ziele (listGoals). Ohne Vertrag ⇒ — . */
   var sports=gmProfSports();
   var ctl=null;
   try{var ld=allLoads();var lcc=(typeof Calc!=='undefined'&&Calc.loadConfidenceContract)?Calc.loadConfidenceContract(ld.confidence):{suppressNumbers:false};
@@ -10355,7 +10355,9 @@ function gmProfHeaderHTML(){
     '<div class="ig-bio">'+((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.bio)?gmEsc(PROFILE.bio):(GM_NA+'' + _uiT('ui.bio_im_profil_editor_persoenliche') + ''))+'</div>'+
     (function(){/* GM7: Einheiten = Gesamtzahl der kanonisch zusammengefuehrten Aktivitaeten (Server+lokal+Legacy, dedupliziert) */
       var units=null;try{if(typeof listActivitiesUnified==='function'){var la=listActivitiesUnified();units=Array.isArray(la)?la.length:null;}}catch(_){ }
-      return '<div class="ig-stats"><div class="ig-stat"><b>'+(units!=null?fmtDe(units):'—')+'</b><span>' + _uiT('ui.einheiten_') + '</span></div><div class="ig-stat"><b>'+(sports.length?sports.length:'—')+'</b><span>' + _uiT('ui.sportarten') + '</span></div><div class="ig-stat"><b>'+(ctl!=null?ctl:'—')+'</b><span>' + _uiT('ui.fitness_srpe') + '</span></div><div class="ig-stat"><b>—</b><span>' + _uiT('ui.zielaufbau') + '</span></div></div></div>';})();
+      /* S1-UI: vierter Slot = aktive Ziele (kanonisch aus listGoals) statt des dauerhaft leeren „Zielaufbau" */
+      var goalsN=null;try{if(typeof listGoals==='function'){var lg=listGoals();goalsN=Array.isArray(lg)?lg.filter(function(g){return g&&g.status==='active';}).length:null;}}catch(_){ }
+      return '<div class="ig-stats"><div class="ig-stat"><b>'+(units!=null?fmtDe(units):'—')+'</b><span>' + _uiT('ui.einheiten_') + '</span></div><div class="ig-stat"><b>'+(sports.length?sports.length:'—')+'</b><span>' + _uiT('ui.sportarten') + '</span></div><div class="ig-stat"><b>'+(ctl!=null?ctl:'—')+'</b><span>' + _uiT('ui.fitness_srpe') + '</span></div><div class="ig-stat"><b>'+(goalsN!=null?goalsN:'—')+'</b><span>' + _uiT('ui.ziele') + '</span></div></div></div>';})();
   return h;
 }
 function renderGMProfile(){

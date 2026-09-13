@@ -145,8 +145,8 @@ if(blk){
     for(const s of seq){const i=H.indexOf(s,pos+1);if(i<0){ordOk=false;which=s;break;}pos=i;}
     ok('Profil-Reihenfolge exakt (cover→ig-profile→Sportarten→Zielreise→Kontrolle→Leistung→tabspacer)', ordOk, which);
     ok('kein zusätzlicher A/F/P-Modusschalter auf der Profilhauptseite', !/seg-nav|modeseg|#lvl|choice-grid/.test(H));
-    ok('exakt 4 Statistikslots (Einheiten/Sportarten/Fitness/Zielaufbau)', (H.match(/ig-stat"/g)||[]).length===4&&/Einheiten/.test(H)&&/Sportarten/.test(H)&&/Fitness/.test(H)&&/Zielaufbau/.test(H));
-    ok('Statistiken nur kanonisch: Sportarten 3, Fitness CTL 41, Einheiten/Zielaufbau —', />3<\/b>/.test(H)&&/>41<\/b>/.test(H)&&(H.slice(H.indexOf('ig-stats'),H.indexOf('sectlabel')).match(/>—</g)||[]).length===2);
+    ok('exakt 4 Statistikslots (Einheiten/Sportarten/Fitness/Ziele — S1b: aktive Ziele statt leerem Zielaufbau)', (H.match(/ig-stat"/g)||[]).length===4&&/Einheiten/.test(H)&&/Sportarten/.test(H)&&/Fitness/.test(H)&&/Ziele</.test(H));
+    ok('Statistiken nur kanonisch: Sportarten 3, Fitness CTL 41, Einheiten/Ziele ohne Vertrag —', />3<\/b>/.test(H)&&/>41<\/b>/.test(H)&&(H.slice(H.indexOf('ig-stats'),H.indexOf('sectlabel')).match(/>—</g)||[]).length>=1);
     ok('Name aus kanonischem Profil, Initialen echt, Handle/Bio Missingness', /Testathletin A/.test(H)&&/>TA</.test(H)&&!/@gian/.test(H)&&/ig-handle">—|ig-handle">'?—/.test(H.replace(/\s/g,''))||/Testathletin A/.test(H)&&/>TA</.test(H));
     ok('Sport-Chips aus kanonischem Profil (3 Chips)', (H.match(/sport-chip/g)||[]).length>=3&&/Laufen/.test(H)&&/Krafttraining/.test(H));
     ok('Zielreise aus Goal-SSOT (Halbmarathon, ohne Zielprozent)', /Halbmarathon/.test(H)&&/goal-line/.test(H)&&/width:0%/.test(H.slice(H.indexOf('goal-stack'))));
