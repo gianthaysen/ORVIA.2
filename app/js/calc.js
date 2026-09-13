@@ -1884,7 +1884,7 @@ const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,pac
   classifyTrainingType,SPORT_PROFILES,sportProfileFor,safetyCheck,detectDeficits,buildTrainingDecision,
   evaluateExtraState,escalateWithExtras,loadSpikeInfo,
   evaluatePainImpact,evaluateDomsImpact,evaluatePainAndDOMS,evaluateRecoveryState,evaluateLoadAndInterference,
-  applyDecisionCaps,stateSeverity,hrvBelowBaseline,illnessReturnWindow,buildTriggerHighlights,combineScore,combineHeadline};
+  applyDecisionCaps,stateSeverity,hrvBelowBaseline,illnessReturnWindow,buildTriggerHighlights,combineScore,combineHeadline,_hrMax};
 root.Calc=Calc;
 if(typeof module!=='undefined'&&module.exports)module.exports=Calc;
 })(typeof window!=='undefined'?window:globalThis);

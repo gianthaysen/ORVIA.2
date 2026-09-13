@@ -114,3 +114,25 @@ Verifikation: `profile_v14_test` 39 (neu G1–G8), Vorschau der drei Reiter mit 
 | Profil & Kontrolle ohne rechte Werte | Prototyp zeigt „3 aktiv“ / „Garmin · 06:14“ | `p-v`: aktive Ziele, Provider |
 
 Bewusst nicht geändert: Marathon-Schätzung aus dem HM ist pessimistisch (2:20 war ein Problemtag), aber die einzige Distanz mit vergleichbarer Ausdauerkomponente; eine bessere Zahl entsteht durch einen sauberen HM oder einen langen Lauf, nicht durch eine andere Formel. Tests: `season_phases_test` (10), `performance_zones_test` +2, `profile_v14_test` 44.
+
+## 10 · S1.5 · Ziel-Detail in Prototyp-Tiefe (13.09., Build v8-374, Migration **0045**)
+
+Entscheidung Gian („a“): Ziel-Detail vor S2. Gebaut mit echten Quellen, ehrliche Platzhalter nur dort, wo die Plan-Engine (S3) fehlt.
+
+| Block (Prototyp) | Quelle | Stand |
+|---|---|---|
+| Zielzeit-Hero (Zeit, Distanz, Pace, Tage/Wochen/Wettkampf) | goalPlanInput | ✅ |
+| Machbarkeit mit Gründen | `Calc.goalEngine` (Zustand, Vetos, Schätzer-Streuung) + Wochenumfang/Soll, längster Lauf/Bedarf, Schlüsseleinheiten/Woche vs. Plan, Bestzeit-Äquivalent (Riegel) | ✅ |
+| Zielvertrag | beschreibt die tatsächlichen Regeln von `engine/race-result` (±1 Tag, ±5 %, Status verfehlt, Reaktivierung) + Ausgangswert | ✅ |
+| Prognoseverlauf | `forecastSeries()`: Goal-Engine je Wochenstichtag neu gerechnet (12 Wochen), Ziellinie; kein Streubereich (keine Aufzeichnung) | ✅ |
+| Was der Plan daraus macht | `activeWeekPlan()`-Einheiten; **Zielanteil = Platzhalter bis S3** | ◐ |
+| Stellschrauben | nur beeinflussbare Minus-Gründe (Umfang, langer Lauf, Schlüsseleinheiten, CTL), als Handlung; **Sekundenwirkung = Platzhalter bis S3** | ◐ |
+| Meilensteine | `goal.milestones` + Renntag; Anlegen über den Editor | ✅ |
+| Einzahlungen 4 Wochen | Schlüsseleinheiten je Kalenderwoche aus Aktivitäten vs. harte Laufeinheiten im Wochenplan | ✅ |
+| Historie | **neu:** `goal.history` (Migration 0045), append-only aus `profile-model.updateGoal/addGoal` — Zielwert/Datum/Prio/Status/Ergebnis/Meilensteine, mit Prognose zum Zeitpunkt (Hauptziel) | ✅ |
+| Wechselwirkungen | `detectGoalConflicts` für dieses Ziel; Synergien erst mit Plan-Engine | ◐ |
+| Ziel verwalten | Bearbeiten, Pausieren/Fortsetzen, Hauptziel, Erreicht/Verfehlt (nach Datum), Wieder aktivieren; Sichtbarkeit = S6 | ✅ |
+
+**Engine-Nebenbefund mit großer Wirkung:** Store-/Garmin-Läufe tragen kein `sub`, und `Calc.goalEngine` zählt nur Tempo/Long Run/Intervalle als Quality — für Garmin-Nutzer war die Prognose deshalb **immer `nodata`** (Zielkarte, Plan-Kopf, Detail). Neu: `engine/run-classifier.js` leitet die Art aus Distanz/Pace/HF ab (Long Run ≥ 14 km; Tempo ≤ Schwelle × 1,05; Easy Z2 bei 65–78 % HFmax; Intervalle nur per Name), `_storeRunsByDay` setzt `sub` + `subDerived`. Damit rechnet die Goal-Engine erstmals mit Gians Daten.
+
+Tests: goal_detail 32 (neu A/B/D), goal_history 9, run_classifier 8. Vorschau der Seite per Playwright geprüft (Cloud).

@@ -1192,7 +1192,7 @@ function _storeRunSessions(){
       var el=s.elevation_gain_m!=null?s.elevation_gain_m:(s.elevationM!=null?s.elevationM:null);
       out.push({id:a.clientRecordId||a.sourceRecordId||a.id||null,day:k,
         distKm:Math.round(distKm*100)/100,durMin:Math.round(durMin),
-        hr:hr!=null?Math.round(hr):null,elevM:el!=null?Math.round(el):null,source:'sync'});
+        hr:hr!=null?Math.round(hr):null,elevM:el!=null?Math.round(el):null,source:'sync',name:a.name||a.title||a.label||(s.name||null)});
     });
     return out;
   }catch(e){return [];}
@@ -1211,10 +1211,23 @@ function _storeRunsByDay(){
     if(x.hr!=null){e._hrsum+=x.hr*x.durMin;e._hrw+=x.durMin;}
     if(x.elevM!=null)e.elev+=x.elevM;
   });
+  /* S1.5 (13.09.2026): Trainingsart ABLEITEN (engine/run-classifier) — Store-Laeufe tragen kein sub,
+     und goalEngine zaehlt nur Tempo/Long Run/Intervalle als Quality: fuer Garmin-Nutzer war die
+     Prognose deshalb immer nodata. Klassifiziert wird die groesste Einzelsession des Tages;
+     subDerived=true, damit Anzeigen die Ableitung benennen koennen. */
+  var _cls=null,_ctx=null;
+  try{_cls=window.ORVIA&&ORVIA.runClassifier;if(_cls){_ctx={hrMax:(typeof Calc!=='undefined'&&Calc._hrMax)?Calc._hrMax():null};
+    try{var _pr=ORVIA.performanceResolver&&ORVIA.performanceResolver.resolveAll?ORVIA.performanceResolver.resolveAll(typeof PROFILE!=='undefined'?PROFILE:null,{today:todayStr()}):null;
+      var _run=_pr&&_pr.sports&&_pr.sports.running;if(_run&&_run.ok&&_run.thresholdPaceSecPerKm>0)_ctx.thresholdPaceSec=_run.thresholdPaceSecPerKm;}catch(_){ }
+    if(_ctx.thresholdPaceSec==null){try{var _rb=ORVIA.runBests,_st=ORVIA.activityStore;var _m=(_rb&&_rb.measuredRunBests&&_st&&_st.listActivities)?_rb.measuredRunBests(_st.listActivities(),{isTombstoned:_st.isTombstoned||null}):null;
+      if(_m&&_m.k10&&_m.k10.sec>0)_ctx.best10kPaceSec=_m.k10.sec/10;}catch(_){ }}}}catch(_){_cls=null;}
   Object.keys(map).forEach(function(k){var e=map[k];
     e.dist=Math.round(e.dist*100)/100;e.dur=Math.round(e.dur);e.longestKm=Math.round(e.longestKm*100)/100;
     e.hr=e._hrw>0?Math.round(e._hrsum/e._hrw):null;e.elev=Math.round(e.elev);
-    delete e._hrsum;delete e._hrw;});
+    delete e._hrsum;delete e._hrw;
+    if(_cls){try{var big=e.sessions.reduce(function(a,b){return (b.distKm>(a?a.distKm:-1))?b:a;},null);
+      var r=_cls.classifyRun(big?{distKm:big.distKm,durMin:big.durMin,hr:big.hr,longestKm:e.longestKm,name:big.name}:null,_ctx);
+      e.sub=r&&r.sub?r.sub:'';e.subDerived=!!(r&&r.sub);e.subReason=r?r.reason:null;}catch(_){ }}});
   return map;
 }
 function runsWindow(days){const out=[];const ext=_storeRunsByDay();for(let i=days-1;i>=0;i--){const k=dkey(-i);const e=DB[k];const r=e&&e.sessions&&e.sessions.Laufen;if(r&&_validRun(r))out.push(Object.assign({date:k},r));else if(ext[k])out.push(Object.assign({date:k},ext[k]));}return out;}
