@@ -4064,3 +4064,31 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .pv-sheet .gm-field{margin-bottom:12px}.pv-sheet-note{margin:0 0 12px;font-size:12.5px}
 .pv-err{color:var(--crit);min-height:1em}.pv-impact{color:var(--activity);margin-bottom:8px}
 .pv-more-btn{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:12.5px;font-weight:700;text-decoration:underline;padding:8px 0;cursor:pointer}
+/* ===== S1-UI Korrektur (13.09.2026, Sichtpruefung v8-371) =====
+   .prow-Familie aus Prototyp v14 (Listenzeilen in Profil & Kontrolle, Zonen, Links, Erreicht/Verfehlt)
+   fehlte komplett; .kpi-Kacheln kollidierten mit dem alten Dashboard-Grid .kpi{display:grid};
+   Ring-Prozent kollidierte mit globalem .pv (Kartenstil). */
+.prow{display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid var(--hair);cursor:pointer}
+.prow:last-child{border-bottom:none}
+.prow .p-ic{width:34px;height:34px;border-radius:11px;background:var(--surface-2,rgba(255,255,255,.06));color:var(--gold-soft);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.prow .p-b{flex:1;min-width:0}
+.prow .p-t{font-size:13.5px;font-weight:750}
+.prow .p-d{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
+.prow .p-v{font-size:13px;color:var(--text);font-weight:800;text-align:right;flex:0 0 auto;max-width:42%;font-variant-numeric:tabular-nums}
+.prow .p-ch,.prow>.ic:last-child{color:var(--faint);flex:0 0 auto}
+.prow .pill-badge{flex:0 0 auto}
+.card.tight .prow{padding-left:0;padding-right:0}
+.card.tight .prow:first-child{padding-top:2px}
+.card.tight .prow:last-child{padding-bottom:2px}
+.kpi-row>.kpi{display:block;grid-template-columns:none;margin-bottom:0}
+.kpi-row>.kpi span{overflow-wrap:normal;hyphens:manual;word-break:normal;letter-spacing:.06em}
+.kpi-row>.kpi small{overflow-wrap:normal;hyphens:manual}
+.ps-ring .ps-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:850;font-variant-numeric:tabular-nums;background:none;border:none;padding:0}
+.sport-chips{flex-wrap:wrap;overflow:visible;row-gap:7px}
+.pv-btd{width:78px;text-align:center}
+.pv-btd small{display:block;font-size:10px;font-weight:700;color:var(--faint);margin-top:1px;line-height:1.2}
+.goal-line.none{opacity:.35}
+.datacell .ds{font-size:9.5px;color:var(--faint);margin-top:3px;line-height:1.3}
+.pv-alloc-note{display:flex;gap:6px;align-items:flex-start;margin:4px 18px 12px;font-size:11px;color:var(--faint);line-height:1.4}
+.pv-alloc-note .ic{flex-shrink:0;margin-top:2px}
+.goal-stack+.pv-alloc-note{margin-top:-6px}
