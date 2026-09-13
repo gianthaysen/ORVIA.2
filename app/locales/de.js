@@ -49,6 +49,8 @@
     'gd.l_long': 'Langen Lauf auf <b>≥ {need} km</b> ziehen (bisher {have} km)',
     'gd.l_key': 'Schlüsseleinheiten auf <b>{plan}/Woche</b> bringen (aktuell {have})',
     'gd.l_ctl': 'Fitness (CTL) über 4 Wochen wieder <b>steigend</b> halten — Umfang oder Intensität schrittweise anheben',
+    'gd.r_long_later': 'Längster Lauf in 28 Tagen <b>{have} km</b> — der Wettkampfbedarf (≥ {need} km) wird erst in der Spitzenphase zur Bedingung',
+    'gd.h_created_plain': '<b>Ziel angelegt</b>',
     'gd.r_long_ok': 'Längster Lauf in 28 Tagen <b>{have} km</b> — Bedarf ≥ {need} km erfüllt',
     'gd.r_long_short': 'Längster Lauf in 28 Tagen <b>{have} km</b> — für die Zieldistanz fehlen Läufe ab {need} km',
     'gd.r_key_ok': '<b>{have} Schlüsseleinheiten/Woche</b> (Tempo, Intervalle, langer Lauf) in den letzten 6 Wochen',

@@ -1390,7 +1390,11 @@ function buildGoal(){
   if(_goalCache&&Date.now()-_goalCacheT<5000)return _goalCache;
   const ld=allLoads();const ctlArr=Calc.loadSeries(ld.loads).ctl; // R1.4: eine Kurvenquelle
   const keys=Object.keys(DB).filter(isDay).sort();
-  const trackingWeeks=keys.length?Math.floor((new Date(todayStr())-new Date(keys[0]))/(7*864e5)):0;
+  /* S1.5 (13.09.2026): Tracking-Wochen = Datenverfuegbarkeit, nicht nur Legacy-Tagebuch. Ein Garmin-Nutzer
+     ohne Tagebucheintraege hatte trackingWeeks 0 ⇒ Goal-Engine dauerhaft nodata trotz 150 Laeufen. */
+  var _firstDay=keys.length?keys[0]:null;
+  try{var _sr=_storeRunSessions();_sr.forEach(function(x){if(x&&x.day&&(!_firstDay||x.day<_firstDay))_firstDay=x.day;});}catch(_){ }
+  const trackingWeeks=_firstDay?Math.floor((new Date(todayStr())-new Date(_firstDay))/(7*864e5)):0;
   // I2c: Missingness strukturiert bis zur Prognose propagieren — unbekannte Vorwochen NICHT zu 0
   // koalieren (das würde einen Trainingsmangel erfinden). avg4WeekKm = Mittel der BEKANNTEN
   // Vorwochen; <2 bekannte Wochen ⇒ null ⇒ goalEngine markiert Volumen als not_assessable und
