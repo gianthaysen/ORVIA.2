@@ -45,7 +45,8 @@
       targetText: null, dateText: deDate(g.targetDate), daysTo: pi ? pi.daysTo : null,
       phase: pi ? pi.phase : null, phaseLabel: pi && pi.phase ? (PHASES.indexOf(pi.phase) >= 0 ? T('goal.phase.' + pi.phase) : pi.phase) : null,
       progress: { kind: null, currentText: null, targetText: null, percent: null, note: null, state: null },
-      feasibilityText: null, feasibilityWarn: false, gaps: [], milestones: Array.isArray(g.milestones) ? g.milestones : [] };
+      feasibilityText: null, feasibilityWarn: false, gaps: [], milestones: Array.isArray(g.milestones) ? g.milestones : [],
+      status: g.status || 'active', race: raceModel(g, o.raceMatch || null) };
 
     if (t.targetMin != null) m.targetText = fmtTime(t.targetMin) + (t.pacePerKmSec ? ' · ' + fmtPace(t.pacePerKmSec) : '');
     else if (typeof g.targetValue === 'number') m.targetText = fmtGoalValue(g, g.targetValue);
@@ -77,6 +78,23 @@
     return m;
   }
 
+  /* S1/E2 (13.09.2026): Wettkampf am Ziel — bestaetigtes Ergebnis oder erkannte Aktivitaet. */
+  function fmtSec(sec) { if (sec == null) return '—'; sec = Math.round(Math.abs(sec)); var h = Math.floor(sec / 3600), mi = Math.floor((sec % 3600) / 60), x = sec % 60; return h ? h + ':' + String(mi).padStart(2, '0') + ':' + String(x).padStart(2, '0') : mi + ':' + String(x).padStart(2, '0'); }
+  function raceModel(g, match) {
+    var r = g && g.result && g.result.verdict ? g.result : null;
+    if (r) return { kind: 'result', verdict: r.verdict, timeText: fmtSec(r.timeSec), deltaText: r.deltaSec != null ? ((r.deltaSec <= 0 ? '−' : '+') + fmtSec(r.deltaSec)) : null, distanceKm: r.distanceKm, date: r.date, activityId: r.activityId };
+    if (match) return { kind: 'match', verdict: match.verdict, timeText: fmtSec(match.timeSec), deltaText: match.deltaSec != null ? ((match.deltaSec <= 0 ? '−' : '+') + fmtSec(match.deltaSec)) : null, distanceKm: match.distanceKm, date: match.date, activityId: match.activityId };
+    return null;
+  }
+  function raceHTML(m) {
+    var r = m.race; if (!r) return '';
+    var verdict = T('goal.race.' + r.verdict);
+    var line = esc(fmtNum(r.distanceKm) + ' km · ' + r.timeText + (r.deltaText ? ' · ' + r.deltaText : '') + (r.date ? ' · ' + (deDate(r.date) || r.date) : ''));
+    if (r.kind === 'result') return '<div class="gd-sec"><div class="gd-h">' + esc(T('goal.race.title')) + '</div><div class="gd-race gd-race-' + esc(r.verdict) + '"><b>' + esc(verdict) + '</b> · ' + line + '</div></div>';
+    return '<div class="gd-sec"><div class="gd-h">' + esc(T('goal.race.detected')) + '</div><div class="gd-race gd-race-match">' + line + (r.verdict !== 'finished' ? ' · ' + esc(verdict) : '') +
+      '<div class="gd-race-acts"><button type="button" class="btn" id="gd-race-ok">' + esc(T('goal.race.confirm')) + '</button><button type="button" class="btn sec" id="gd-race-no">' + esc(T('goal.race.dismiss')) + '</button></div></div></div>';
+  }
+  function fmtNum(n) { return (typeof n === 'number') ? String(Math.round(n * 100) / 100).replace('.', ',') : String(n == null ? '' : n); }
   function html(m) {
     if (!m) return '<p class="muted">' + esc(T('goal.detail.none')) + '</p>';
     var p = m.progress;
@@ -88,6 +106,7 @@
         '<div class="gd-cell"><span class="gd-k">' + esc(T('goal.detail.phase')) + '</span><span class="gd-v">' + esc(m.phaseLabel || '–') + '</span></div>' +
         (p.currentText ? '<div class="gd-cell"><span class="gd-k">' + esc(T(p.kind === 'time' ? 'goal.detail.forecast' : 'goal.detail.current')) + '</span><span class="gd-v">' + esc(p.currentText) + '</span></div>' : '') +
       '</div>' +
+      raceHTML(m) +
       '<div class="gd-sec"><div class="gd-h">' + esc(T('goal.detail.progress')) + '</div>' + bar + '<p class="gd-note">' + esc(p.note || '') + '</p></div>' +
       (m.feasibilityText ? '<div class="gd-sec"><div class="gd-h">' + esc(T('goal.detail.feasibility')) + '</div><p class="gd-note' + (m.feasibilityWarn ? ' gd-warn' : '') + '">' + esc(m.feasibilityText) + '</p></div>' : '') +
       (m.gaps.length ? '<div class="gd-sec"><div class="gd-h">' + esc(T('goal.detail.gaps')) + '</div>' + m.gaps.map(function (g) {
@@ -110,13 +129,17 @@
     try { if (isMain && typeof root.buildGoal === 'function') eng = root.buildGoal(); } catch (e) {}
     try { if (isMain) feas = O._lastFeasibility || null; } catch (e) {}
     try { if (isMain && O.profileCenter && O.profileCenter.buildStrength) str = O.profileCenter.buildStrength(root.PROFILE || null, new Date()); } catch (e) {}
-    var m = buildModel({ goal: goal, planInput: pi, engine: eng, feasibility: feas, strength: str, catLabel: root.goalCatLabel || null });
+    var rm = null;
+    try { if (O.raceResult && O.activityStore && O.activityStore.listActivities && !(goal.result && goal.result.verdict)) rm = O.raceResult.match(goal, O.activityStore.listActivities() || [], { isTombstoned: O.activityStore.isTombstoned || null }); } catch (e) {}
+    var m = buildModel({ goal: goal, planInput: pi, engine: eng, feasibility: feas, strength: str, catLabel: root.goalCatLabel || null, raceMatch: rm });
     if (typeof root.openSheet !== 'function') return false;
     root.openSheet({ id: '_goalDetail', title: esc(T('goal.detail.title')), size: 'full', body: html(m),
       actions: '<button type="button" class="btn" id="gd-edit">' + esc(T('goal.detail.edit')) + '</button>' });
     try {
       var close = function () { try { if (typeof root._closeM === 'function') root._closeM('_goalDetail'); } catch (e) {} };
       var eb = document.getElementById('gd-edit'); if (eb) eb.onclick = function () { close(); try { root.openGoalEditor(goal.id); } catch (e) {} };
+      var rok = document.getElementById('gd-race-ok'); if (rok && rm) rok.onclick = function () { close(); try { root.goalConfirmResult(goal.id, rm.activityId); } catch (e) {} setTimeout(function () { try { open(goal.id); } catch (e) {} }, 50); };
+      var rno = document.getElementById('gd-race-no'); if (rno && rm) rno.onclick = function () { close(); try { root.goalDismissRace(goal.id, rm.activityId); } catch (e) {} setTimeout(function () { try { open(goal.id); } catch (e) {} }, 50); };
       (m.gaps || []).forEach(function (g) {
         var el = document.getElementById('gd-gap-' + g.id); if (!el) return;
         el.onclick = function () {

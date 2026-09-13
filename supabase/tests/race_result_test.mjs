@@ -79,5 +79,21 @@ const HM = { id: 'g1', category: 'half_marathon', title: 'Halbmarathon unter 1:5
   ok('E3 nichts erkannt, Datum vorbei: Frage mit Erreicht/Verfehlt/Neu terminieren', /vor 6 Tagen/.test(h3) && /goalSetStatus\('g1','achieved'\)/.test(h3) && /goalSetStatus\('g1','missed'\)/.test(h3) && /openGoalEditor\('g1'\)/.test(h3), h3);
   ok('E4 vor dem Datum: kein Block', sb._raceResultBlockHTML(Object.assign({}, HM, { targetDate: '2026-10-18' })) === '');
 }
+/* F · Ziel-Detail: Wettkampf-Block (Modell + Markup) */
+{
+  const gd = readFileSync(new URL('js/goal-detail.js', APP), 'utf8');
+  const sb = { window: null, console, Date, Math, String, Number, Array, Object, JSON, document: { getElementById: () => null } };
+  sb.window = sb; sb.self = sb; sb.ORVIA = { i18n: tStub() }; vm.createContext(sb);
+  vm.runInContext(gd, sb, { filename: 'goal-detail.js' });
+  const GD = sb.ORVIA.goalDetail;
+  const m1 = GD.buildModel({ goal: HM, raceMatch: { activityId: 'hm', date: '2026-09-06', distanceKm: 21.18, timeSec: 6730, targetSec: 6600, deltaSec: 130, verdict: 'missed' } });
+  ok('F1 Modell: erkannte Aktivitaet ⇒ race.kind match, +2:10', m1.race && m1.race.kind === 'match' && m1.race.deltaText === '+2:10' && m1.race.timeText === '1:52:10');
+  const h1 = GD.html(m1);
+  ok('F2 Markup: „Wettkampf erkannt", Zeit, Buttons gd-race-ok/gd-race-no', /Wettkampf erkannt/.test(h1) && /1:52:10/.test(h1) && /id="gd-race-ok"/.test(h1) && /id="gd-race-no"/.test(h1));
+  const m2 = GD.buildModel({ goal: Object.assign({}, HM, { status: 'achieved', result: { verdict: 'achieved', timeSec: 6500, deltaSec: -100, distanceKm: 21.1, date: '2026-09-06', activityId: 'x' } }) });
+  const h2 = GD.html(m2);
+  ok('F3 bestaetigtes Ergebnis: „Wettkampfergebnis · Erreicht · −1:40", keine Buttons', m2.race.kind === 'result' && /Wettkampfergebnis/.test(h2) && /Erreicht/.test(h2) && /−1:40/.test(h2) && !/gd-race-ok/.test(h2));
+  ok('F4 ohne beides: kein Block', GD.buildModel({ goal: HM }).race === null && !/gd-race/.test(GD.html(GD.buildModel({ goal: HM }))));
+}
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

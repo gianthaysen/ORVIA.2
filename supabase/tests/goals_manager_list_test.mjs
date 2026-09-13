@@ -100,5 +100,28 @@ function installMainGoalOf(sb) { sb.mainGoalOf = () => (sb.listGoals() || []).fi
   ok('4c als erreicht markiert ⇒ kein Hinweis mehr (nur aktive Ziele)', !/Zieldatum überschritten/.test(els.goalsMgrBody.innerHTML));
 }
 
+/* ---------- 5) Lebenszyklus (13.09.): Erreicht/Verfehlt nach dem Datum, Wieder aktivieren ---------- */
+{
+  const { sb, els } = makeApp(); installMainGoalOf(sb);
+  sb.goalAdd({ category: 'half_marathon', title: 'HM', priority: 1, status: 'active', targetDate: '2020-09-06', targetValue: 6600, unit: 's', metricType: 'time' });
+  sb.goalAdd({ category: 'marathon', title: 'M', priority: 2, status: 'active', targetDate: '2099-01-01' });
+  sb.renderGoalsList(); let h = els.goalsMgrBody.innerHTML;
+  const id = sb.listGoals().filter(g => g.title === 'HM')[0].id;
+  ok('5a aktives Ziel nach dem Datum: Erreicht UND Verfehlt anklickbar', h.indexOf("goalSetStatus('" + id + "','achieved')") >= 0 && h.indexOf("goalSetStatus('" + id + "','missed')") >= 0);
+  const idM = sb.listGoals().filter(g => g.title === 'M')[0].id;
+  ok('5b aktives Ziel vor dem Datum: kein Verfehlt', h.indexOf("goalSetStatus('" + idM + "','missed')") < 0);
+  sb.goalSetStatus(id, 'achieved'); sb.renderGoalsList(); h = els.goalsMgrBody.innerHTML;
+  ok('5c erreichtes Ziel bietet „Wieder aktivieren" (versehentliches Erreicht ist rueckholbar)', h.indexOf("goalReactivate('" + id + "')") >= 0 && h.indexOf("goalSetStatus('" + id + "','achieved')") < 0);
+  sb.goalReactivate(id);
+  ok('5d goalReactivate setzt active', sb.listGoals().filter(g => g.id === id)[0].status === 'active');
+  sb.goalSetStatus(id, 'missed'); sb.renderGoalsList(); h = els.goalsMgrBody.innerHTML;
+  ok('5e verfehltes Ziel steht im Abschnitt „Verfehlt" und bietet Wieder aktivieren', /Verfehlt<\/div>/.test(h) && h.indexOf("goalReactivate('" + id + "')") >= 0);
+  /* Wettkampferkennung auch auf einem bereits als erreicht markierten Ziel (Befund 13.09.: Gian hatte vorher manuell „Erreicht" gesetzt) */
+  sb.goalSetStatus(id, 'achieved');
+  sb.ORVIA.raceResult = { match: (g) => g.id === id ? { activityId: 'hm', date: '2020-09-06', distanceKm: 21.18, timeSec: 6730, targetSec: 6600, deltaSec: 130, verdict: 'missed' } : null };
+  sb.ORVIA.activityStore = { listActivities: () => [], isTombstoned: null };
+  sb.renderGoalsList(); h = els.goalsMgrBody.innerHTML;
+  ok('5f erreichtes Ziel ohne gespeichertes Ergebnis zeigt „Wettkampf erkannt" mit Uebernehmen', /Wettkampf erkannt · 1:52:10 · Verfehlt/.test(h) && h.indexOf("goalConfirmResult('" + id + "','hm')") >= 0, h.match(/Wettkampf erkannt[^<]*/) && h.match(/Wettkampf erkannt[^<]*/)[0]);
+}
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

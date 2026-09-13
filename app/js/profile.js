@@ -364,6 +364,18 @@ function goalConfirmResult(goalId,activityId){
     try{if(document.getElementById('goalsMgrBody'))renderGoalsList();}catch(e){}
   }catch(e){}
 }
+/* 13.09.: Ziel wieder aktivieren — Status active, gespeichertes Ergebnis bleibt zur Nachvollziehbarkeit erhalten,
+   wird aber nicht mehr als Abschluss gewertet (verdict entfernt, activityId als dismissed-Hinweis behalten). */
+function goalReactivate(goalId){
+  try{var g=listGoals().filter(function(x){return x&&x.id===goalId;})[0];if(!g)return;
+    var patch={status:'active'};
+    if(g.result&&g.result.verdict)patch.result={dismissed:[],previous:g.result};
+    goalUpdate(goalId,patch,'reactivate');
+    if(typeof toast==='function')toast(T('pf.ziel_wieder_aktiv'));
+    try{if(typeof renderRaceHeader==='function')renderRaceHeader();}catch(e){}
+    try{if(document.getElementById('goalsMgrBody'))renderGoalsList();}catch(e){}
+  }catch(e){}
+}
 function goalDismissRace(goalId,activityId){
   try{
     var g=listGoals().filter(function(x){return x&&x.id===goalId;})[0];if(!g)return;
@@ -763,7 +775,7 @@ function renderGoalsList(){var box=document.getElementById('goalsMgrBody');if(!b
     var hint='';
     try{var O=window.ORVIA,rr=g.result&&g.result.verdict?g.result:null;
       if(rr){hint='<div class="gmc-meta gmc-rr gmc-rr-'+escH(rr.verdict)+'">'+escH((rr.verdict==='achieved'?T('pf.rr_erreicht'):rr.verdict==='missed'?T('pf.rr_verfehlt'):T('pf.rr_gefinisht'))+' · '+_fmtSecShort(rr.timeSec)+(rr.deltaSec!=null?' ('+(rr.deltaSec<=0?'−':'+')+_fmtSecShort(Math.abs(rr.deltaSec))+')':''))+'</div>';}
-      else if(g.status==='active'&&O&&O.raceResult&&O.activityStore&&O.activityStore.listActivities){
+      else if((g.status==='active'||g.status==='achieved'||g.status==='missed')&&O&&O.raceResult&&O.activityStore&&O.activityStore.listActivities){
         var mm=O.raceResult.match(g,O.activityStore.listActivities()||[],{isTombstoned:O.activityStore.isTombstoned||null});
         if(mm)hint='<div class="gmc-meta gmc-rr gmc-rr-match">'+escH(T('pf.rr_wettkampf_erkannt')+' · '+_fmtSecShort(mm.timeSec)+(mm.verdict==='achieved'?' · '+T('pf.rr_erreicht'):mm.verdict==='missed'?' · '+T('pf.rr_verfehlt'):''))+' <button class="gmc-b" onclick="goalConfirmResult(\''+g.id+'\',\''+escH(mm.activityId)+'\')">'+T('pf.rr_uebernehmen')+'</button></div>';
         else if(past)hint='<div class="gmc-meta gmc-warn">'+T('pf.zieldatum_ueberschritten')+'</div>';}
@@ -773,9 +785,13 @@ function renderGoalsList(){var box=document.getElementById('goalsMgrBody');if(!b
       '<button class="gmc-b" onclick="openGoalDetail(\''+g.id+'\')">Details</button>'+
       '<button class="gmc-b" onclick="openGoalEditor(\''+g.id+'\')">' + T('pf.bearbeiten') + '</button>'+
       (notMain?'<button class="gmc-b" onclick="goalMakeMain(\''+g.id+'\')">'+T('pf.zum_hauptziel_machen')+'</button>':'')+
+      /* 13.09.: Lebenszyklus vollstaendig — aktiv: Pausieren, Erreicht, Verfehlt (nach dem Datum); pausiert: Fortsetzen;
+         erreicht/verfehlt/archiviert: Wieder aktivieren (Befund: ein versehentliches „Erreicht" war nicht rueckholbar). */
       (g.status==='active'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'paused\')">Pausieren</button>':'')+
       (g.status==='paused'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'active\')">Fortsetzen</button>':'')+
-      (g.status!=='achieved'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'achieved\')">Erreicht</button>':'')+
+      (g.status==='active'||g.status==='paused'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'achieved\')">Erreicht</button>':'')+
+      ((g.status==='active'||g.status==='paused')&&past?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'missed\')">'+T('pf.rr_verfehlt')+'</button>':'')+
+      (g.status==='achieved'||g.status==='missed'||g.status==='archived'||g.status==='abandoned'?'<button class="gmc-b" onclick="goalReactivate(\''+g.id+'\')">'+T('pf.wieder_aktivieren')+'</button>':'')+
       (g.status!=='archived'?'<button class="gmc-b" onclick="goalSetStatus(\''+g.id+'\',\'archived\')">Archivieren</button>':'')+
       '<button class="gmc-b danger-btn" onclick="confirmDeleteGoal(\''+g.id+'\')">Löschen</button></div>';
     return '<div class="gmcard'+(notMain?' gmcard-notmain':'')+'"><div class="gmc-h">'+escH(g.title||'Ziel')+'</div><div class="gmc-meta">'+escH(role+' · '+goalCatLabel(g.category)+when)+'</div>'+hint+prog+acts+'</div>';}

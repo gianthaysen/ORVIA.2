@@ -930,6 +930,9 @@ html.orvia-gated .wrap, html.orvia-gated .tabbar, html.orvia-gated .splash{displ
 .gmcard-notmain{border-style:dashed}
 .gmc-rr{margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .gmc-rr-achieved{color:#43D693}.gmc-rr-missed{color:#EDB44E}.gmc-rr-match{color:#5AA0F0}
+.gd-race{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);font-size:13px;line-height:1.45}
+.gd-race-achieved{border-color:rgba(67,214,147,.45);background:rgba(67,214,147,.10)}.gd-race-missed{border-color:rgba(237,180,78,.45);background:rgba(237,180,78,.10)}.gd-race-match{border-color:rgba(90,160,240,.45);background:rgba(90,160,240,.10)}
+.gd-race-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.gd-race-acts .btn{padding:8px 12px;font-size:13px;margin:0}
 .gm-cacts{display:flex;flex-direction:column;gap:6px}
 /* Inkrement 3: Wizard, Detail, Profilbereiche */
 .gw-prog{display:flex;gap:6px;margin:6px 0 4px}
