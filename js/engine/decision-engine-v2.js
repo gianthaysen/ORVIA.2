@@ -60,7 +60,10 @@
       safeguards.push('Heute kein Training. Bei anhaltenden oder unklaren Symptomen ärztlich abklären.');
     }
     if (maxPain >= 8) {
-      escalate('RED'); limitAction('REPLACE_WITH_RECOVERY');
+      /* Gate A-12 (13.09.2026, Shadow-Divergenz 2026-09-13): Schmerz >= 8 ist ein Stoppsignal —
+         die Erklaerung sagt „kein belastendes Training", also keine Erholungseinheit planen.
+         v1 sagt REST; v2 darf nie nachsichtiger sein als v1 (Safety-Invariante S2). */
+      escalate('RED'); limitAction('REST');
       reasons.push(CT.reason('severe_pain', { intensity: maxPain }));
       safeguards.push('Starke Schmerzen sind ein Stoppsignal — keine Belastung der betroffenen Region.');
     }
@@ -134,6 +137,9 @@
         unknownUnits: load.unknownUnits != null ? load.unknownUnits : null,
         ambiguousUnits: load.ambiguousUnits != null ? load.ambiguousUnits : null
       }));
+      /* Gate A-12 (13.09.): BEWUSST kein YELLOW bei duenner Datenlage — Batch 2c/2d: eine Datenluecke
+         ist keine Warnung, die Unsicherheit traegt das Feld confidence. Die Shadow-Divergenz vom 21.08.
+         (v1 YELLOW, v2 GREEN, beide KEEP) wird im Auswerter als confidence-getragen eingestuft. */
       if (sessionIsHard(planned)) {
         escalate('YELLOW'); limitAction('REDUCE_INTENSITY');
         safeguards.push('Die Belastungshistorie ist aktuell nicht zuverlässig beurteilbar — heute keine volle Intensität auf unsicherer Basis.');

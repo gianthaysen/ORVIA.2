@@ -3290,7 +3290,7 @@ function renderWeekPlan(){
       const isAdapt=!!dayInstance&&!!it.adaptiveReplacement;
       /* B-01/B-09: Lesepfad-Anpassungen (Zielphase, Krankheit/Verletzung/verpasst) sichtbar
          machen — dieselbe Badge-Klasse, anderer Text; nichts davon ist gespeichert. */
-      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">' + _uiT('ui.renntag') + '</span> ':(it.absenceAdjusted?'<span class="pl-adapt">' + _uiT('ui.angepasst_ausfall') + '</span> ':(it.phaseAdjusted?'<span class="pl-adapt">' + _uiT('ui.angepasst_phase') + '</span> ':'')));
+      const adaptBadge=isAdapt?'<span class="pl-adapt">angepasst</span> ':(it.race?'<span class="pl-adapt pl-race">' + _uiT('ui.renntag') + '</span> ':(it.absenceAdjusted?'<span class="pl-adapt">' + (it.absenceReason==='injury'&&it.absenceLabel?_uiT('ui.angepasst_beschwerde',{label:it.absenceLabel}):_uiT('ui.angepasst_ausfall')) + '</span> ':(it.phaseAdjusted?'<span class="pl-adapt">' + _uiT('ui.angepasst_phase') + '</span> ':'')));
       // Anfänger: Titel + wichtigste vorhandene Angabe; Fortgeschritten/Profi: + Sportart + Prioritätsbadge.
       const sub=(mode==='anfaenger')?(det?esc(det):''):(esc(it.t)+(det?' · '+esc(det):''));
       return `<button type="button" class="sess5${isAdapt?' sess5-adapt':''}${_isDone?' done':''}" data-sid="${esc(it.id||'')}" data-done="${_isDone?'1':'0'}" onclick="try{_pqLastFocus=this}catch(e){};planEntryClick(${i},${idx},'${k}')"><span class="sess5-ico">${(TYPES[it.t]||TYPES.Mobilität).ic}</span><span class="sess5-main"><b>${adaptBadge}${esc(lbl)}</b>${sub?'<p>'+sub+'</p>':''}</span>${(pri&&mode!=='anfaenger')?'<span class="sess5-pri ppri-'+pri+'">'+pri+'</span>':''}<span class="sess5-state${_isDone?' done':''}">${_isDone?'' + _uiT('ui.erledigt') + '':'›'}</span></button>`;
@@ -7919,6 +7919,48 @@ function gmAdaptiveSection(){
   return '<div class="sectlabel" data-gm-slot="plan-adaptive">' + _uiT('ui.adaptive_einschaetzung') + '</div>'+
     '<div class="card">'+body+'</div>';
 }
+/* ---------- Stufe D · Beschwerde-Banner + Rueckkehr-Leiter im Plan-Tab ---------- */
+function gmPlanLadderPainDays(region){
+  /* Tages-Schmerzwerte der letzten 14 Tage: Morgen-Check-in fuehrt Knie als Zahl (morning.knee); fuer andere
+     Regionen gibt es kein Tagesfeld — dann leer (kein erfundener Verlauf). */
+  var out=[];if(region!=='knee')return out;
+  try{for(var i=0;i<14;i++){var k=dkey(-i);var e=DB[k];if(e&&e.morning&&e.morning.knee!=null)out.push({date:k,pain:+e.morning.knee});}}catch(_){ }
+  return out;
+}
+function gmPlanConstraintModel(){
+  var AR=window.ORVIA&&ORVIA.absenceReplanner,RL=window.ORVIA&&ORVIA.returnLadder;
+  if(!AR||!RL||typeof PROFILE==='undefined'||!PROFILE)return null;
+  var inj=AR.injuryFromConstraints(PROFILE.constraintsList);if(!inj||!inj.active)return null;
+  var c=(PROFILE.constraintsList||[]).filter(function(x){return x&&x.id===inj.id;})[0]||null;if(!c)return null;
+  var ev=RL.evaluate(c,{today:todayStr(),painDays:gmPlanLadderPainDays(c.bodyRegion)});
+  var last=null;try{last=ORVIA._lastAbsencePlan||null;}catch(_){ }
+  var replaced=(last&&last.injury&&last.injury.replaced!=null)?last.injury.replaced:0;
+  var flagOn=(typeof _absenceReplannerOn==='function')?_absenceReplannerOn():false;
+  return {constraint:c,label:inj.label||AR.constraintLabel(c)||'',ladder:ev,replaced:replaced,flagOn:flagOn,intensity:c.intensity!=null?+c.intensity:null};
+}
+function gmPlanConstraintHTML(){
+  var m=gmPlanConstraintModel();if(!m)return '';
+  try{activeWeekPlan();var last=ORVIA._lastAbsencePlan||null;m.replaced=(last&&last.injury&&last.injury.replaced!=null)?last.injury.replaced:m.replaced;}catch(_){ }
+  var ev=m.ladder,st=ev.stage,STAGE_T=function(k){return _uiT('ui.rl_stage_'+k);},STAGE_D=function(k){return _uiT('ui.rl_stage_'+k+'_d');};
+  var head=m.flagOn
+    ?(st>=5?_uiT('ui.rl_banner_free',{label:m.label}):_uiT('ui.rl_banner',{label:m.label,n:m.replaced}))
+    :_uiT('ui.rl_banner_flag_off',{label:m.label});
+  var h='<div class="card tight rl-card" data-gm-slot="plan-constraint"><div class="ctitle"><div class="l">'+icon('alert','sm')+' '+gmEsc(head)+'</div><span class="more" onclick="openProfileSection(\'constraints\')">' + _uiT('ui.rl_beschwerde') + ' '+icon('chev','xs')+'</span></div>';
+  /* Leiter */
+  var keys=['rest','walk','walkrun','easyshort','easy','free'];
+  h+='<div class="rl-steps">'+keys.map(function(k,i){return '<div class="rl-step'+(i<st?' done':'')+(i===st?' on':'')+'"><b>'+(i+1)+'</b><span>'+gmEsc(STAGE_T(k))+'</span></div>';}).join('')+'</div>';
+  h+='<div class="rl-now"><div class="rl-now-t">'+gmEsc(_uiT('ui.rl_stufe_x',{n:st+1,name:STAGE_T(keys[st])}))+'</div><div class="rl-now-d">'+gmEsc(STAGE_D(keys[st]))+'</div>';
+  if(st<5){
+    var crit=ev.minDays>0?_uiT('ui.rl_kriterium_tage',{n:ev.minDays,have:ev.daysInStage}):_uiT('ui.rl_kriterium_frei');
+    h+='<div class="rl-crit">'+icon('info','xs')+'<div>'+gmEsc(_uiT('ui.rl_naechste',{name:STAGE_T(keys[st+1])}))+' · '+gmEsc(crit)+(ev.setbackSuggested?' · <b style="color:var(--attention)">'+gmEsc(_uiT('ui.rl_schmerz_in_stufe',{p:ev.maxPainInStage}))+'</b>':'')+'</div></div>';
+    h+='<div class="rl-acts"><button type="button" class="btn'+(ev.canAdvance?'':' sec')+'" onclick="constraintLadderAdvance(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_geschafft'))+'</button>'+(st>0?'<button type="button" class="btn sec" onclick="constraintLadderSetback(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_rueckschlag'))+'</button>':'')+'</div>';
+    h+='<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.rl_quelle',{d:ev.estimatedDaysToFree}))+'</div>';
+  }else{
+    h+='<div class="rl-acts"><button type="button" class="btn sec" onclick="constraintLadderSetback(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_rueckschlag'))+'</button><button type="button" class="btn sec" onclick="constraintStatus(\''+gmEsc(m.constraint.id)+'\',\'resolved\');renderGMPlan()">'+gmEsc(_uiT('ui.rl_abschliessen'))+'</button></div>';
+  }
+  h+='</div></div>';
+  return h;
+}
 function renderGMPlan(){
   var host=document.getElementById('gmPlan');if(!host)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
@@ -7931,6 +7973,9 @@ function renderGMPlan(){
   h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase):'')+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
     '<button class="iconbtn" id="gmPlanConfBadge" style="color:var(--attention);'+(_confN>0?'':'display:none')+'" aria-label="' + _uiT('ui.plan_konflikte') + '" onclick="gmOpenPlanConflictsSheet()">'+icon('alert','sm')+'</button>'+
     '<button class="iconbtn" aria-label="Plan-Einstellungen" onclick="gmOpenPlanSettingsSheet()">'+icon('gear','sm')+'</button></div></div>';
+  /* Stufe D (14.09.2026): Beschwerde-Banner + Rueckkehr-Leiter — direkt unter dem Kopf, damit der Nutzer
+     zuerst sieht, WARUM der Plan anders aussieht. Rein aus dem Lesepfad (absence-replanner + return-ladder). */
+  try{h+=gmPlanConstraintHTML();}catch(_c){ }
   /* 2–4. Planvariante A/B/C — echte, waehlbare Teilmengen des realen Plans
      (Produktentscheidung 2026-08-04; ersetzt den frueheren Schein-Zustand
      „B on + Empfohlen" ohne Funktion, KF-007). Zahlen ausschliesslich aus dem

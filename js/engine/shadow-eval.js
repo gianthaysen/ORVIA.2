@@ -36,7 +36,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'shadow-eval-v1.0.0';
+  var VERSION = 'shadow-eval-v1.1.0';
 
   /* Reihenfolgen SPIEGELN decision-engine-v2.js (dort: escalate/limitAction).
      Index aufsteigend = strenger. Wird dort erweitert, muss es hier mitgezogen
@@ -49,6 +49,7 @@
 
   /* Eine Tages-Abweichung einordnen. Rückgabe null = keine Abweichung oder nicht
      beurteilbar (fehlende Seite ⇒ NICHT als sicher zählen, sondern als unknown). */
+  var DATA_QUALITY_CODES = ['low_data_confidence', 'insufficient_chronic_history', 'missing_checkin'];
   function classifyDivergence(e) {
     if (!e || !e.v1 || !e.v2) return null;
     var s1 = _rank(STATE_ORDER, e.v1.state), s2 = _rank(STATE_ORDER, e.v2.state);
@@ -58,6 +59,17 @@
     if (s1 === s2 && (a1 == null || a2 == null || a1 === a2)) return null;          // einig
     var laxerState = s2 < s1;
     var laxerAction = (a1 != null && a2 != null) ? a2 < a1 : false;
+    /* v1.1 (A-12, 13.09.2026): v1 stufte fehlende/duenne Daten als YELLOW ein; v2 traegt dieselbe
+       Unsicherheit bewusst im Feld confidence statt im Zustand (Batch 2c/2d: Datenluecke ≠ Warnung).
+       Ist NUR der Zustand lockerer, die Aktion identisch und nennt v2 ausschliesslich Info-Gruende
+       zur Datenqualitaet, ist das keine Sicherheitsluecke, sondern die vereinbarte Semantik. */
+    if (laxerState && !laxerAction && a1 != null && a2 != null && a1 === a2) {
+      var rs = Array.isArray(e.v2.reasons) ? e.v2.reasons : [];
+      var onlyData = rs.length > 0 && rs.every(function (r) { return r && r.severity === 'info' && DATA_QUALITY_CODES.indexOf(r.code) >= 0; });
+      if (onlyData) return { date: e.date || null, kind: 'v2_confidence_carried', safetyRelevant: false,
+        v1: e.v1.state || null, v2: e.v2.state || null, v1Action: e.v1.action || null, v2Action: e.v2.action || null,
+        v2reasons: rs.slice(0, 4), reason: 'v2_data_gap_in_confidence_not_state' };
+    }
     if (laxerState || laxerAction) {
       return { date: e.date || null, kind: 'v2_more_permissive', safetyRelevant: true,
         v1: e.v1.state || null, v2: e.v2.state || null,
@@ -95,12 +107,13 @@
         blockedReasons: _tally(blockedDays.map(function (x) { return x.v2.blocked; })) });
 
     /* ---- S2: Safety-Divergenzen ---- */
-    var divs = [], permissive = [], conservative = 0, unknown = 0;
+    var divs = [], permissive = [], conservative = 0, unknown = 0, explained = 0;
     comparable.forEach(function (e) {
       var d = classifyDivergence(e); if (!d) return;
       divs.push(d);
       if (d.safetyRelevant) permissive.push(d);
       else if (d.kind === 'unknown') unknown++;
+      else if (d.kind === 'v2_confidence_carried') explained++;
       else conservative++;
     });
     /* Ohne Vergleichstage ist die Aussage „0 Safety-Divergenzen" wertlos — dann
@@ -108,7 +121,7 @@
     var s2Status = comparable.length === 0 ? 'insufficient_data' : (permissive.length === 0 ? 'pass' : 'fail');
     var s2 = _crit('S2', 'Keine ungeklärten Safety-Divergenzen (v2 nachsichtiger als v1)',
       s2Status, permissive.length, 0,
-      { divergencesTotal: divs.length, conservativeDivergences: conservative,
+      { divergencesTotal: divs.length, conservativeDivergences: conservative, confidenceCarriedDivergences: explained,
         notComparable: unknown, agreementRate: comparable.length ? Math.round(((comparable.length - divs.length) / comparable.length) * 100) : null,
         safetyDivergences: permissive.slice(0, 10) });
 
