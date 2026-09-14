@@ -203,7 +203,9 @@
 
     /* Meilensteine (+ Renntag als letzter Punkt) */
     var ms = Array.isArray(g.milestones) ? g.milestones.slice() : [];
-    m.milestones = ms.map(function (x) { return { title: x.title || x.label || '', date: x.targetDate || null, status: x.status || 'planned', value: x.targetValue != null ? fmtGoalValue(x, x.targetValue) : null }; });
+    /* Stufe D: Meilensteine, deren Datum vor dem geschaetzten Ende der Rueckkehr-Leiter liegt, sind gefaehrdet (Anzeige, kein Statuswechsel) */
+    var riskUntil = o.returnFreeDate || null;
+    m.milestones = ms.map(function (x) { var st = x.status || 'planned', atRisk = !!(riskUntil && x.targetDate && st !== 'achieved' && x.targetDate <= riskUntil); return { title: x.title || x.label || '', date: x.targetDate || null, status: st, atRisk: atRisk, value: x.targetValue != null ? fmtGoalValue(x, x.targetValue) : null }; });
     if (g.targetDate && m.contract && m.contract.kind === 'race') m.milestones.push({ title: T('gd.ms_race', { cat: m.categoryLabel || '' }), date: g.targetDate, status: m.race && m.race.verdict ? 'achieved' : (m.daysTo != null && m.daysTo < 0 ? 'skipped' : 'planned'), value: null, race: true });
 
     /* Einzahlungen */
@@ -313,7 +315,7 @@
     if (m.milestones.length) {
       h += '<div class="card tight"><div class="gd-msl">' + m.milestones.map(function (x) {
         var cls = x.status === 'achieved' ? ' done' : (x.status === 'in_progress' ? ' now' : '');
-        return '<div class="gd-msrow' + cls + '"><div class="m-rail"><div class="m-dot">' + (x.status === 'achieved' ? ic('check', 'xs') : (x.status === 'in_progress' ? ic('target', 'xs') : '')) + '</div><div class="m-line"></div></div><div class="m-b"><div class="m-t">' + esc(x.title) + '</div><div class="m-d">' + esc(x.date ? (x.status === 'achieved' ? deDate(x.date) : T('gd.ms_planned', { d: deDate(x.date) })) : T('common.noDate')) + '</div>' + (x.value ? '<div class="m-v">' + esc(x.value) + '</div>' : '') + '</div></div>'; }).join('') + '</div></div>';
+        return '<div class="gd-msrow' + cls + (x.atRisk ? ' risk' : '') + '"><div class="m-rail"><div class="m-dot">' + (x.status === 'achieved' ? ic('check', 'xs') : (x.status === 'in_progress' ? ic('target', 'xs') : (x.atRisk ? ic('alert', 'xs') : ''))) + '</div><div class="m-line"></div></div><div class="m-b"><div class="m-t">' + esc(x.title) + '</div><div class="m-d">' + esc(x.date ? (x.status === 'achieved' ? deDate(x.date) : T('gd.ms_planned', { d: deDate(x.date) })) : T('common.noDate')) + (x.atRisk ? ' · <span class="m-risk">' + esc(T('gd.ms_at_risk')) + '</span>' : '') + '</div>' + (x.value ? '<div class="m-v">' + esc(x.value) + '</div>' : '') + '</div></div>'; }).join('') + '</div></div>';
     } else h += '<div class="card tight"><p class="muted" style="margin:0">' + esc(T('gd.ms_none')) + '</p></div>';
     /* Einzahlungen */
     if (m.keyWeeks.length) {
@@ -383,7 +385,9 @@
     try { if (isMain && pi && pi.target && pi.target.targetMin != null && runs) series = forecastSeries({ runs: runs, today: today, weeks: 12, raceDate: goal.targetDate || null, targetMin: pi.target.targetMin, distanceKm: pi.distanceKm || null }); } catch (e) { series = []; }
     var rm = null;
     try { if (O.raceResult && O.activityStore && O.activityStore.listActivities && !(goal.result && goal.result.verdict)) rm = O.raceResult.match(goal, O.activityStore.listActivities() || [], { isTombstoned: O.activityStore.isTombstoned || null }); } catch (e) {}
-    var m = buildModel({ goal: goal, planInput: pi, engine: eng, feasibility: feas, strength: str, catLabel: root.goalCatLabel || null, raceMatch: rm, isMain: isMain, today: today,
+    var returnFree = null;
+    try { var AR = O.absenceReplanner, RL = O.returnLadder; if (AR && RL && root.PROFILE) { var inj = AR.injuryFromConstraints(root.PROFILE.constraintsList); if (inj && inj.active && inj.id) { var cc = (root.PROFILE.constraintsList || []).filter(function (x) { return x && x.id === inj.id; })[0]; if (cc) { var ev = RL.evaluate(cc, { today: today, painDays: typeof root.gmPlanLadderPainDays === 'function' ? root.gmPlanLadderPainDays(cc.bodyRegion) : [] }); returnFree = isoAdd(today, ev.estimatedDaysToFree); } } } } catch (e) { returnFree = null; }
+    var m = buildModel({ goal: goal, planInput: pi, engine: eng, feasibility: feas, strength: str, catLabel: root.goalCatLabel || null, raceMatch: rm, isMain: isMain, today: today, returnFreeDate: returnFree,
       bests: bests, runs: runs, weekPlan: plan, plannedKeyPerWeek: plannedKey || null, avg4WeekKm: avg4, targetWeekKm: targetWeek, longestRun28: lr28, series: series, conflicts: conflicts, goals: allGoals });
     if (typeof root.openSheet !== 'function') return false;
     root.openSheet({ id: '_goalDetail', title: esc(m.title) + '<div class="gd-psub">' + esc([m.isMain ? T('pv.role_main') : (m.priority ? T('pv.prioritaet_n', { n: m.priority }) : ''), m.categoryLabel].filter(Boolean).join(' · ')) + '</div>', size: 'full', body: html(m), actions: '' });

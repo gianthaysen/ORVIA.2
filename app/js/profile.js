@@ -1428,6 +1428,17 @@ function saveConstraint(id){var M=pmModel();function v(i){var e=document.getElem
   if(id){list=list.map(function(x){return x.id===id?c:x;});}else list.push(c);
   PROFILE.constraintsList=list;_persistConstraints();_closeM('_cstrEd');openConstraintsEditor();if(typeof toast==='function')toast('' + T('pf.beschwerde_gespeichert') + '');}
 function constraintStatus(id,st){var M=pmModel();PROFILE.constraintsList=_constraintList().map(function(c){return c.id===id?M.normalizeConstraint(Object.assign({},c,{status:st})):c;});_persistConstraints();openConstraintsEditor();}
+/* Stufe D (14.09.2026): Rueckkehr-Leiter — Zustand an der Beschwerde, Schreiben nur hier, Logik im Engine-Modul. */
+function _constraintLadderApply(id,fn){var RL=window.ORVIA&&ORVIA.returnLadder;if(!RL)return;var today=(typeof todayStr==='function')?todayStr():new Date().toISOString().slice(0,10);
+  var hit=false;PROFILE.constraintsList=_constraintList().map(function(c){if(!c||c.id!==id)return c;hit=true;return fn(RL,c,today);});
+  if(!hit)return;_persistConstraints();try{if(typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }try{if(typeof renderProfileScreen==='function')renderProfileScreen();}catch(_){ }}
+function constraintLadderAdvance(id){var RL=window.ORVIA&&ORVIA.returnLadder;if(!RL)return;
+  var c=_constraintList().filter(function(x){return x&&x.id===id;})[0];if(!c)return;
+  var ev=RL.evaluate(c,{today:todayStr(),painDays:(typeof gmPlanLadderPainDays==='function')?gmPlanLadderPainDays(c.bodyRegion):[]});
+  if(!ev.canAdvance){if(typeof toast==='function')toast(ev.blockers.indexOf('pain_in_stage')>=0?T('pf.rl_block_schmerz'):T('pf.rl_block_tage',{n:ev.minDays-ev.daysInStage}));return;}
+  _constraintLadderApply(id,function(L,cc,today){return L.advance(cc,today,'user');});
+  if(typeof toast==='function')toast(T('pf.rl_stufe_hoch'));}
+function constraintLadderSetback(id){_constraintLadderApply(id,function(L,cc,today){return L.setback(cc,today,'user');});if(typeof toast==='function')toast(T('pf.rl_stufe_runter'));}
 function constraintRemove(id){PROFILE.constraintsList=_constraintList().filter(function(c){return c.id!==id;});_persistConstraints();openConstraintsEditor();}
 function _persistConstraints(){ // Beschwerden zentral speichern; issues[]-Projektion + Event über _profileSave
   _profileSave(['constraints']);
