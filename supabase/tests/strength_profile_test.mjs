@@ -99,6 +99,15 @@ sec('D · Screen (rein, HTML)');
   ok('D8 Ohne Krafteinheit: Leerzustand mit „Training starten"', /Noch keine Krafteinheit geloggt/.test(h5) && /data-a="kpstart"/.test(h5));
   const bad = (html + h2 + h3 + h4 + h5).match(/kp\.[a-z0-9_]+/g) || [];
   ok('D9 keine unaufgelösten kp.*-Schlüssel im HTML', bad.length === 0, bad.slice(0, 5).join(','));
+  /* Niveau-Vertrag */
+  SCR._state.grp = 'legs'; SCR._state.ex = byName('Kniebeuge').key; SCR._state.pt = null;
+  globalThis.gmLevel = () => 'a'; const ha = SCR.body(m);
+  ok('D10 Anfänger: kein e1RM/RIR/Korridor-Jargon, keine Historie/Muskelzeilen/Tonnage, Balance nur als Satz', !/e1RM|RIR|Korridor/.test(ha) && !/Letzte Einheiten/.test(ha) && !/strength-muscles/.test(ha) && !/strength-tonnage/.test(ha) && /strength-balance/.test(ha) && !/kp-duo/.test(ha) && /geschätztes Maximum/.test(ha) && /Beine unterversorgt/.test(ha));
+  globalThis.gmLevel = () => 'f'; const hf = SCR.body(m);
+  ok('D11 Fortgeschritten: alles außer relativer Kraft', /Letzte Einheiten/.test(hf) && /strength-muscles/.test(hf) && /kp-duo/.test(hf) && !/Körpergewicht/.test(hf));
+  globalThis.gmLevel = () => 'p'; const hp = SCR.body(m);
+  ok('D12 Profi: relative Kraft + Methode (RIR eingerechnet)', /× Körpergewicht/.test(hp) && /RIR eingerechnet/.test(hp));
+  delete globalThis.gmLevel;
 }
 
 sec('E · Verdrahtung');

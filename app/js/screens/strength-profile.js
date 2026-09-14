@@ -21,6 +21,14 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function ic(n, s) { try { if (typeof root.icon === 'function') return root.icon(n, s || 'sm'); } catch (e) {} return ''; }
   function lvl() { try { return typeof root.gmLevel === 'function' ? root.gmLevel() : 'f'; } catch (e) { return 'f'; } }
+  /* Niveau-Vertrag (S2b-1): dieselben Daten, drei Tiefen. Anfaenger sehen Maximum, Bestwerte,
+     Ziel und EINE Balance-Aussage in Worten — keine Muskelzeilen, keine Tonnage, keine Historie,
+     kein Fachjargon (e1RM/RIR/Korridor). Profi bekommt zusaetzlich Methode, relative Kraft,
+     Korridorzahlen. */
+  var DEPTH = { a: { jargon: false, history: false, muscles: false, tonnage: false, balanceBars: false, relative: false, meta: false },
+                f: { jargon: true, history: true, muscles: true, tonnage: true, balanceBars: true, relative: false, meta: true },
+                p: { jargon: true, history: true, muscles: true, tonnage: true, balanceBars: true, relative: true, meta: true } };
+  function depth() { return DEPTH[lvl()] || DEPTH.f; }
   function kg(n, d) { if (n == null || !isFinite(n)) return '—'; var s = (d != null ? (+n).toFixed(d) : String(Math.round(n * 10) / 10)); return s.replace('.', ','); }
   function kgInt(n) { if (n == null) return '—'; return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
   function deDate(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || '')); return m ? (m[3] + '.' + m[2] + '.') : '—'; }
@@ -64,7 +72,7 @@
     var months = []; pts.forEach(function (p) { var mo = p.date.slice(0, 7); if (months.indexOf(mo) < 0) months.push(mo); });
     var MO = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
     h += '<div class="kp-xlbl">' + months.slice(-4).map(function (mo) { return '<span>' + MO[+mo.slice(5, 7) - 1] + '</span>'; }).join('') + '</div>';
-    var sp = pts[sel]; var unit = em.mode === 'load' ? T('kp.unit_e1rm') : em.mode === 'reps' ? T('kp.unit_wdh') : '';
+    var sp = pts[sel]; var unit = em.mode === 'load' ? T(depth().jargon ? 'kp.unit_e1rm' : 'kp.unit_max') : em.mode === 'reps' ? T('kp.unit_wdh') : '';
     h += '<div class="kp-read"><div class="rv">' + esc(em.mode === 'time' ? mmss(sp.value) : kg(sp.value)) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div><div class="rm">' + esc(deDateY(sp.date)) + (sp.test ? ' · ' + esc(T('kp.test_markiert', { w: kg(sp.testWeight) })) : '') + '</div></div>';
     return h;
   }
@@ -73,7 +81,8 @@
   function exerciseCard(em, m) {
     var L = lvl();
     if (!em) return '<div class="card tight"><div class="kp-empty"><div class="e-ic">' + ic('dumbbell') + '</div><div class="t">' + esc(T('kp.keine_uebung')) + '</div></div></div>';
-    var title = esc(em.name) + (em.mode === 'load' ? ' · ' + esc(T('kp.geschaetztes_1rm')) : '');
+    var D = depth();
+    var title = esc(em.name) + (em.mode === 'load' ? ' · ' + esc(T(D.jargon ? 'kp.geschaetztes_1rm' : 'kp.geschaetztes_max')) : '');
     var h = '<div class="card tight" data-gm-slot="strength-exercise"><div class="ctitle"><div class="l">' + ic('dumbbell') + ' ' + title + '</div>' + (em.stagnant ? '<span class="pill-badge att">' + esc(T('kp.stagnation')) + '</span>' : '') + '</div>';
     if (!em.ready) {
       var n = em.count || 0;
@@ -85,16 +94,16 @@
     }
     if (em.mode === 'load') {
       var dtx = em.delta ? ((em.delta.kg >= 0 ? '+' : '−') + kg(Math.abs(em.delta.kg)) + ' kg ' + T('kp.in_n_wochen', { n: em.delta.weeks })) : '';
-      h += '<div class="kp-hero"><b>' + esc(kg(em.current)) + '</b><span>' + esc(T('kp.unit_e1rm')) + '</span>' + (dtx ? '<span class="kp-delta' + (em.delta.kg < 0 ? ' dn' : '') + '">' + esc(dtx) + '</span>' : '') + '</div>';
+      h += '<div class="kp-hero"><b>' + esc(kg(em.current)) + '</b><span>' + esc(T(D.jargon ? 'kp.unit_e1rm' : 'kp.unit_max')) + '</span>' + (dtx ? '<span class="kp-delta' + (em.delta.kg < 0 ? ' dn' : '') + '">' + esc(dtx) + '</span>' : '') + '</div>';
       var meta = [];
-      if (em.lastScheme) meta.push(T('kp.letzter_satz') + ': ' + em.lastScheme);
-      meta.push(em.lastTest ? T('kp.letzter_test') + ': ' + kg(em.lastTest.weight) + ' kg (' + deDateY(em.lastTest.date) + ')' : T('kp.kein_test'));
-      if (em.relative != null && L !== 'a') meta.push(T('kp.relativ', { v: kg(em.relative, 2) }));
+      if (em.lastScheme) meta.push(T('kp.letzter_satz') + ': ' + (D.jargon ? em.lastScheme : em.lastScheme.replace(/ · RIR \d+/, '')));
+      if (D.meta) meta.push(em.lastTest ? T('kp.letzter_test') + ': ' + kg(em.lastTest.weight) + ' kg (' + deDateY(em.lastTest.date) + ')' : T('kp.kein_test'));
+      if (em.relative != null && D.relative) meta.push(T('kp.relativ', { v: kg(em.relative, 2) }));
       h += '<div class="kp-meta">' + esc(meta.join(' · ')) + '</div>';
       h += chart(em, m);
-      if (L === 'a') h += '<div class="kp-note">' + ic('info', 'sm') + '<div><b>' + esc(T('kp.kurz_erklaert')) + '</b> ' + esc(T('kp.e1rm_erklaerung')) + '</div></div>';
-      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.stagnation_t')) + '</b> ' + esc(T('kp.stagnation_d')) + '</div></div>';
-      h += src(T(em.method === 'epley_rir' ? 'kp.src_epley_rir' : 'kp.src_epley'));
+      if (!D.jargon) h += '<div class="kp-note">' + ic('info', 'sm') + '<div><b>' + esc(T('kp.kurz_erklaert')) + '</b> ' + esc(T('kp.e1rm_erklaerung')) + '</div></div>';
+      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.stagnation_t')) + '</b> ' + esc(T(D.jargon ? 'kp.stagnation_d' : 'kp.stagnation_d_einfach')) + '</div></div>';
+      h += src(T(!D.jargon ? 'kp.src_einfach' : (em.method === 'epley_rir' ? 'kp.src_epley_rir' : 'kp.src_epley')));
     } else if (em.mode === 'reps') {
       h += '<div class="kp-hero"><b>' + esc(String(em.current)) + '</b><span>' + esc(T('kp.unit_wdh_max')) + '</span>' + (em.delta && em.delta.reps ? '<span class="kp-delta' + (em.delta.reps < 0 ? ' dn' : '') + '">' + (em.delta.reps > 0 ? '+' : '') + em.delta.reps + ' ' + esc(T('kp.in_n_wochen', { n: em.delta.weeks })) + '</span>' : '') + '</div>';
       if (em.lastScheme) h += '<div class="kp-meta">' + esc(T('kp.letzter_satz') + ': ' + em.lastScheme) + '</div>';
@@ -111,14 +120,14 @@
     if (!em || !em.ready || !em.prs.length) return '';
     var rows = em.prs.map(function (p) {
       var t = T('kp.pr_' + p.kind), sub = p.kind === 'volume_week' ? T('kp.kw', { w: String(p.week).replace(/^\d{4}-W/, '') }) : (p.date ? deDateY(p.date) + (p.detail ? ' · ' + p.detail : '') : (p.detail || ''));
-      var v = p.kind === 'max_hold' ? mmss(p.value) : (p.kind === 'max_reps' ? p.value + ' ' + T('kp.unit_wdh') : (p.kind === 'volume_week' ? kgInt(p.value) + ' kg' : (p.kind === 'best_set' ? T('kp.unit_e1rm_short') + ' ' + kg(p.value) : kg(p.value) + ' kg')));
+      var v = p.kind === 'max_hold' ? mmss(p.value) : (p.kind === 'max_reps' ? p.value + ' ' + T('kp.unit_wdh') : (p.kind === 'volume_week' ? kgInt(p.value) + ' kg' : (p.kind === 'best_set' ? (depth().jargon ? T('kp.unit_e1rm_short') + ' ' : '') + kg(p.value) + (depth().jargon ? '' : ' kg') : kg(p.value) + ' kg')));
       return '<div class="kp-pr"><div class="p-ic2">' + ic('sparkle') + '</div><div class="t">' + esc(t) + '<small>' + esc(sub) + '</small></div><div class="v">' + esc(v) + '</div></div>';
     }).join('');
     return '<div class="card tight"><div class="ctitle"><div class="l">' + ic('target') + ' ' + esc(T('kp.bestwerte')) + ' · ' + esc(em.name) + '</div></div>' + rows + '</div>';
   }
 
   function historyCard(em) {
-    if (!em || !em.ready || em.mode !== 'load' || !em.history.length || lvl() === 'a') return '';
+    if (!em || !em.ready || em.mode !== 'load' || !em.history.length || !depth().history) return '';
     var h = '<div class="card tight"><div class="ctitle"><div class="l">' + ic('calendar') + ' ' + esc(T('kp.letzte_einheiten')) + '</div></div><div class="kp-hist">' +
       '<div class="kp-hrow head"><span>' + esc(T('kp.datum')) + '</span><span>' + esc(T('kp.saetze')) + '</span><span class="e">e1RM</span><span class="dl">Δ</span></div>' +
       em.history.map(function (r) { var d = r.delta; var cls = d == null ? 'eq' : d > 0 ? 'up' : d < 0 ? 'dn' : 'eq'; var dt = d == null ? '—' : d === 0 ? '±0' : ((d > 0 ? '+' : '−') + kg(Math.abs(d)));
@@ -128,7 +137,7 @@
   }
 
   function muscleCard(m) {
-    var mr = m.muscles; if (!mr) return '';
+    var mr = m.muscles; if (!mr || !depth().muscles) return '';
     var rows = mr.rows.filter(function (r) { return r.group === st.grp; });
     if (!rows.length) return '';
     var SC = 24, under = rows.filter(function (r) { return r.status === 'under'; }), over = rows.filter(function (r) { return r.status === 'over'; });
@@ -161,6 +170,7 @@
   }
 
   function tonnageCard(m) {
+    if (!depth().tonnage) return '';
     var G = m.groups, keys = ['legs', 'push', 'pull', 'core'];
     var tmax = Math.max.apply(null, keys.map(function (k) { return Math.max(G[k].tonnageWeek, G[k].tonnageAvg4); }).concat([1]));
     var any = keys.some(function (k) { return G[k].tonnageWeek > 0 || G[k].tonnageAvg4 > 0; });
@@ -177,14 +187,15 @@
       var cls = r.status === 'ok' ? 'ok' : r.status === 'att' ? 'att' : '';
       return '<div class="kp-brow"><div class="head"><span>' + esc(label) + '</span><b class="' + cls + '">' + esc(kg(r.ratio, 2)) + ' : 1</b></div><div class="kp-duo"><i class="a" style="flex:' + Math.round(r.ratio * 100) + '"></i><i class="b" style="flex:100"></i></div><div class="kp-duolbl"><span>' + esc(la + ' ' + r.a + ' ' + T('kp.saetze_kurz')) + '</span><span>' + esc(lb + ' ' + r.b + ' ' + T('kp.saetze_kurz')) + '</span></div></div>';
     }
-    var h = '<div class="card tight" data-gm-slot="strength-balance"><div class="ctitle"><div class="l">' + ic('shield') + ' ' + esc(T('kp.balance')) + '</div><span class="more">' + esc(T('kp.28_tage')) + '</span></div><div class="kp-bal">' +
-      row(T('kp.druck_zug'), b.pushPull, grpLabel('push'), grpLabel('pull')) + row(T('kp.beine_oberkoerper'), b.legsUpper, grpLabel('legs'), T('kp.oberkoerper')) + '</div>';
+    var D = depth();
+    var h = '<div class="card tight" data-gm-slot="strength-balance"><div class="ctitle"><div class="l">' + ic('shield') + ' ' + esc(T('kp.balance')) + '</div><span class="more">' + esc(T('kp.28_tage')) + '</span></div>' +
+      (D.balanceBars ? '<div class="kp-bal">' + row(T('kp.druck_zug'), b.pushPull, grpLabel('push'), grpLabel('pull')) + row(T('kp.beine_oberkoerper'), b.legsUpper, grpLabel('legs'), T('kp.oberkoerper')) + '</div>' : '');
     var lu = b.legsUpper;
     if (lu.blocked) h += '<div class="kp-note">' + ic('knee', 'sm') + '<div><b>' + esc(T('kp.beine_ausgesetzt', { label: lu.injuryLabel || '', stage: (lu.injuryStage || 0) + 1 })) + '</b> ' + esc(T('kp.beine_ausgesetzt_d')) + '</div></div>';
     else if (lu.status === 'att') h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.beine_unter')) + '</b> ' + esc(T('kp.beine_unter_d')) + '</div></div>';
     else if (b.pushPull.status === 'att') h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T(b.pushPull.ratio > 1.2 ? 'kp.druck_dominant' : 'kp.zug_dominant')) + '</b> ' + esc(T('kp.druck_zug_d')) + '</div></div>';
     else if (lu.status === 'ok' && b.pushPull.status === 'ok') h += '<div class="kp-note">' + ic('check', 'sm') + '<div>' + esc(T('kp.balance_ok')) + '</div></div>';
-    return h + src(T('kp.src_balance')) + '</div>';
+    return h + (D.balanceBars ? src(T('kp.src_balance')) : '') + '</div>';
   }
 
   /* ---------- Seite ---------- */

@@ -146,7 +146,39 @@
     { p: 'breiter klimmzug', m: { lats: 'direct', biceps: 0.5, upper_back: 0.5 } }
   ];
   // Muskelzuordnung: exakter normalisierter Name → Präfix-Alias → ID-Slug → Movement-Pattern. Sonst null.
+  /* S2b-1 (v8-380): Katalog als Wahrheit. Muskelschluessel, die die Muskelkarte nicht kennt
+     (traps/adductors/abductors/hip_flexors), werden auf die naechste Karte-Gruppe gefaltet —
+     eine Naeherung, kein Messwert. */
+  var MUSCLE_FOLD = { traps: 'upper_back', adductors: 'quads', abductors: 'glutes', hip_flexors: 'abs' };
+  function fromCatalogMuscles(m) {
+    if (!m || typeof m !== 'object') return null;
+    var out = {}, any = false;
+    Object.keys(m).forEach(function (k) {
+      var v = m[k]; var key = MUSCLES.indexOf(k) >= 0 ? k : MUSCLE_FOLD[k]; if (!key) return;
+      var inv = (v && typeof v === 'object') ? v.involvement : (v === 'direct' ? 'direct' : 'indirect');
+      var w = (v && typeof v === 'object' && v.weight != null) ? +v.weight : (typeof v === 'number' ? v : null);
+      var coeff = inv === 'direct' ? (w != null && w > 0 ? Math.min(1, w) : 1) : (w != null && w > 0 ? Math.min(1, w) : INDIRECT);
+      if (out[key] == null || coeff > out[key]) out[key] = inv === 'direct' && coeff >= 1 ? 'direct' : coeff;
+      any = true;
+    });
+    return any ? out : null;
+  }
+  var _catalogById = {}, _catalogBySlug = {};
+  function setCatalog(list) {
+    (Array.isArray(list) ? list : []).forEach(function (e) { if (!e) return; if (e.id) _catalogById[e.id] = e; if (e.slug) _catalogBySlug[e.slug] = e; });
+  }
+  function catalogEntry(ex) {
+    if (!ex) return null;
+    var id = ex.exerciseId || ex.exercise_id; if (id && _catalogById[id]) return _catalogById[id];
+    var slug = ex.slug; if (slug && _catalogBySlug[slug]) return _catalogBySlug[slug];
+    return null;
+  }
   function musclesFor(ex, mapOverride) {
+    /* 1. Snapshot traegt die Katalogzuordnung (ab v8-380) · 2. Katalog-Cache per ID/Slug */
+    if (!mapOverride) {
+      var snap = fromCatalogMuscles(ex && ex.muscles); if (snap) return snap;
+      var ce = catalogEntry(ex); if (ce) { var cm = fromCatalogMuscles(ce.muscles); if (cm) return cm; }
+    }
     var nameMap = (mapOverride && mapOverride.names) || nameLookup();
     var idMap = (mapOverride && mapOverride.ids) || EXERCISE_MUSCLES;
     var patMap = (mapOverride && mapOverride.patterns) || PATTERN_MUSCLES;
@@ -822,7 +854,8 @@
     targetCorridor: targetCorridor, confidenceOf: confidenceOf, statusFor: statusFor,
     explainMuscleVolume: explainMuscleVolume, compareToLegacy: compareToLegacy, snapshotsFromStore: snapshotsFromStore,
     gymPipeline: gymPipeline, volumeAdvice: volumeAdvice, CORRIDORS: CORRIDORS,
-    invalidateGymPipelineCache: invalidateGymPipelineCache
+    invalidateGymPipelineCache: invalidateGymPipelineCache,
+    setCatalog: setCatalog, catalogEntry: catalogEntry, fromCatalogMuscles: fromCatalogMuscles, MUSCLE_FOLD: MUSCLE_FOLD
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.gymVolume = api;

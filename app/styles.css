@@ -4272,3 +4272,9 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 [data-theme="light"] .kp-note{background:rgba(0,0,0,.03)}
 [data-theme="light"] .kp-crow .track,[data-theme="light"] .kp-trow .bar,[data-theme="light"] .kp-empty .bar,[data-theme="light"] .kp-empty .e-ic{background:rgba(0,0,0,.06)}
 [data-theme="light"] .kp-trow .bar .avg,[data-theme="light"] .kp-legend i.b{background:rgba(0,0,0,.45)}
+/* S2b-1 · Picker nach Basisbewegung */
+.wo-pick-sect{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:#94a3b8;padding:12px 2px 4px}
+.wo-pickitem.wo-base{min-height:58px}.wo-pickitem.wo-base.on .wo-pi-main{color:var(--gold)}
+.wo-pi-chev{margin-left:auto;color:#94a3b8;font-size:14px;padding-right:6px}
+.wo-variants{border-left:2px solid rgba(201,174,124,.35);margin:0 0 6px 8px;padding-left:8px}
+.wo-variants .wo-pickitem{min-height:56px;padding:9px 2px}

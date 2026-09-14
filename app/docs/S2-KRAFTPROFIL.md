@@ -19,3 +19,11 @@
 ## Offen / Entscheidung
 - Analyse → Aktivität (Segment „Zentrale | Analyse") wie im Prototyp; Umbau zusammen mit S7 (Community-Tab), nicht als halber Umzug. Fünf Tests fixieren die Tabbar-Labels (gm1_shell, shell_v3_migration, dashboard_v5_phaseb, gm4_analysis_parity, liquid_glass_tabbar).
 - Zielkarte-Aktionen des Prototyps („Progression ab … anheben", „Richtwert setzen") brauchen die Plan-Engine (S3).
+
+## S2b-1 · Katalog als Basisbewegung × Variante + Niveau-Vertrag (Build v8-380, Migration 0047)
+- Migration `0047_exercise_catalog_variants.sql` (generiert aus `app/tools/catalog-gen.mjs`, lokal gegen Postgres 16 geprüft, idempotent): `exercises.base_slug`, `exercises.variant jsonb {equipment, grip, angle, execution}`; 224 Systemübungen in 46 Basisbewegungen (Gerät Langhantel/Kurzhantel/Kabel/Maschine/Smith/Körpergewicht/Band/SZ/Trap-Bar/T-Bar, Griffe breit/eng/neutral/Ober-/Untergriff/Seil/V, Winkel flach/schräg/negativ/von oben/unten, Ausführung ein-/beidseitig, sitzend/stehend/brustgestützt …); jede Übung mit Muskelzuordnung (529 Zeilen) und Gerät (289 Zeilen). Bestehende Slugs behalten ihren Namen (Historie bleibt lesbar).
+- Datenfluss: `exerciseRepository.list` liest Muskeln + Gerät per Embed (Fallback ohne Embed) und füllt `gymVolume.setCatalog`; `exerciseFromRow` liefert `baseSlug/variant/muscles/equipment`; der Workout-Snapshot friert `slug/baseSlug/movementPattern/muscles` ein; `gymVolume.musclesFor` liest zuerst Snapshot-Muskeln, dann den Katalog-Cache per ID/Slug, erst dann die alten Namens-/Slug-/Muster-Tabellen (nur noch Fallback für Alt-Daten). Unbekannte Muskelschlüssel werden auf die Muskelkarte gefaltet (traps→upper_back, adductors→quads, abductors→glutes, hip_flexors→abs) — Näherung, dokumentiert.
+- Picker (`workout-ui`): ohne Suchbegriff eine Zeile je Basisbewegung mit „n Varianten" (aufklappbar; genau eine Variante ⇒ direkt), „Zuletzt verwendet" oben, bei Suche flache Liste mit Variantenlabel.
+- Eigene Übungen: `createUserExercise` schreibt Muskeln + Gerät mit (UI folgt in S2b-2).
+- Niveau-Vertrag Kraftprofil (`DEPTH` in `screens/strength-profile.js`): Anfänger = Maximum + Bestwerte + Ziel + Balance als Satz, kein Jargon; Fortgeschritten = alles außer relativer Kraft; Profi = alles inkl. Methode/relative Kraft/Korridorzahlen.
+- Tests: `exercise_catalog_test` (16), `strength_profile_test` +3 (D10–D12 Niveau).
