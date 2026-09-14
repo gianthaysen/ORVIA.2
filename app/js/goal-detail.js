@@ -333,6 +333,7 @@
     if (m.gaps.length) h += sect(T('goal.detail.gaps')) + '<div class="setting-group">' + m.gaps.map(function (g) { return '<div class="prow" id="gd-gap-' + esc(g.id) + '"><div class="p-ic">' + ic('alert', 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(g.label) + '</div><div class="p-d">' + esc(g.hint || '') + '</div></div>' + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
     /* Verwalten */
     var rows = [['gear', T('goal.detail.edit'), T('gd.m_edit_sub'), 'gd-edit']];
+    if (/strength|lift|hypertroph|muscle/.test(String(m.family || m.category || ''))) rows.unshift(['dumbbell', T('kp.titel'), T('gd.m_strength_sub'), 'gd-strength']);
     if (m.status === 'active') rows.push(['info', T('gd.m_pause'), T('gd.m_pause_sub'), 'gd-pause']);
     if (m.status === 'paused') rows.push(['bolt', T('gd.m_resume'), T('gd.m_resume_sub'), 'gd-resume']);
     if (m.status === 'active' && !m.isMain) rows.push(['target', T('gd.m_main'), T('gd.m_main_sub'), 'gd-main']);
@@ -399,6 +400,7 @@
       on('gd-edit-2', function () { close(); try { root.openGoalEditor(goal.id); } catch (e) {} });
       on('gd-ms-add', function () { close(); try { root.openGoalEditor(goal.id); } catch (e) {} });
       on('gd-plan', function () { close(); try { root.showTab('plan'); } catch (e) {} });
+      on('gd-strength', function () { close(); try { if (typeof root.openStrengthProfile === 'function') root.openStrengthProfile({ goalTitle: goal.title || '' }); } catch (e) {} });
       on('gd-pause', function () { try { root.goalSetStatus(goal.id, 'paused'); } catch (e) {} reopen(); });
       on('gd-resume', function () { try { root.goalSetStatus(goal.id, 'active'); } catch (e) {} reopen(); });
       on('gd-main', function () { try { root.goalMakeMain(goal.id); } catch (e) {} reopen(); });
