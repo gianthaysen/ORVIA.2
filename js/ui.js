@@ -7578,13 +7578,32 @@ function gmMMReset(){try{localStorage.removeItem('orvia_gm_mods_'+gmLevel());}ca
    Altansicht, keine frühere Wochentagsleiste, keine Journal-Ansicht. Alle Werte read-only aus den bestehenden
    kanonischen Quellen (activeWeekPlan/Resolver, planQualityChecks, racePhases, weekRunKm/
    weekKmTarget/effectiveKmTarget); fehlende Verträge ⇒ strukturerhaltende „—"-Slots. ====== */
+/* Saisonmodell (engine/season-phases) fuer die Plan-Seite — dieselbe Quelle wie das Profil
+   (profile-v14 „Basisphase · Woche 1 von 6"). Vorher zeigte der Plan-Kopf Calc.racePhases
+   („Aufbau") und das Profil das Saisonmodell („Basis") — zwei Phasenmodelle nebeneinander.
+   Fallback bleibt Calc.racePhases, wenn kein Hauptziel mit Datum existiert. */
+function gmSeasonNow(){
+  try{
+    var SP=window.ORVIA&&ORVIA.seasonPhases;if(!SP||!SP.seasonPhases)return null;
+    var g=(typeof mainGoalOf==='function')?mainGoalOf():null;var rd=(g&&(g.targetDate||g.raceDate))||(RACE&&RACE.date)||null;if(!rd)return null;
+    var sp=SP.seasonPhases(String(rd).slice(0,10),todayStr(),{startDate:(g&&g.createdAt)?String(g.createdAt).slice(0,10):null});
+    if(!sp||!sp.current)return null;
+    var D={base:'ui.sp_d_base',build:'ui.sp_d_build',peak:'ui.sp_d_peak',taper:'ui.sp_d_taper'};
+    sp.phases.forEach(function(p){p.d=_uiT(D[p.key]||'ui.sp_d_build');});
+    return sp;
+  }catch(_){return null;}
+}
 function gmPlanWeekMeta(){
-  var wk=null,phase=null,range='';
-  try{if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&goalOf().raceDate)wk=Math.max(1,Math.min(25,Calc.runnaWeek(daysTo(RACE.date))));}catch(_){ }
-  try{var ph=Calc.racePhases(RACE.date,todayStr());(ph||[]).forEach(function(p){if(p.on)phase=p.n;});}catch(_){ }
+  var wk=null,phase=null,range='',phaseWeek=null,phaseWeeks=null,season=false;
+  var sp=gmSeasonNow();
+  if(sp){wk=sp.weekIndex||null;phase=sp.current.n;phaseWeek=sp.current.week;phaseWeeks=sp.current.weeks;season=true;}
+  else{
+    try{if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&goalOf().raceDate)wk=Math.max(1,Math.min(25,Calc.runnaWeek(daysTo(RACE.date))));}catch(_){ }
+    try{var ph=Calc.racePhases(RACE.date,todayStr());(ph||[]).forEach(function(p){if(p.on)phase=p.n;});}catch(_){ }
+  }
   try{var now=new Date();var d=(now.getDay()+6)%7;var mon=new Date(now);mon.setDate(now.getDate()-d);var sun=new Date(mon);sun.setDate(mon.getDate()+6);
     var f=function(x){return x.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});};range=f(mon)+'–'+f(sun);}catch(_){ }
-  return {wk:wk,phase:phase,range:range};
+  return {wk:wk,phase:phase,range:range,phaseWeek:phaseWeek,phaseWeeks:phaseWeeks,season:season};
 }
 /* ---------- Planvarianten A/B/C (Produktentscheidung 2026-08-04) ----------
    A = Optimal (der vollstaendige Plan), B = Reduziert (wenig Zeit), C = Minimal-
@@ -7952,8 +7971,10 @@ function gmPlanConstraintHTML(){
   h+='<div class="rl-now"><div class="rl-now-t">'+gmEsc(_uiT('ui.rl_stufe_x',{n:st+1,name:STAGE_T(keys[st])}))+'</div><div class="rl-now-d">'+gmEsc(STAGE_D(keys[st]))+'</div>';
   if(st<5){
     var crit=ev.minDays>0?_uiT('ui.rl_kriterium_tage',{n:ev.minDays,have:ev.daysInStage}):_uiT('ui.rl_kriterium_frei');
-    h+='<div class="rl-crit">'+icon('info','xs')+'<div>'+gmEsc(_uiT('ui.rl_naechste',{name:STAGE_T(keys[st+1])}))+' · '+gmEsc(crit)+(ev.setbackSuggested?' · <b style="color:var(--attention)">'+gmEsc(_uiT('ui.rl_schmerz_in_stufe',{p:ev.maxPainInStage}))+'</b>':'')+'</div></div>';
-    h+='<div class="rl-acts"><button type="button" class="btn'+(ev.canAdvance?'':' sec')+'" onclick="constraintLadderAdvance(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_geschafft'))+'</button>'+(st>0?'<button type="button" class="btn sec" onclick="constraintLadderSetback(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_rueckschlag'))+'</button>':'')+'</div>';
+    h+='<div class="rl-crit">'+icon('info','xs')+'<div>'+gmEsc(_uiT('ui.rl_naechste',{name:STAGE_T(keys[st+1])}))+' · '+gmEsc(crit)+(ev.setbackSuggested?' · <b style="color:var(--attention)">'+gmEsc(_uiT(st>0?'ui.rl_schmerz_in_stufe':'ui.rl_schmerz_in_stufe_rest',{p:ev.maxPainInStage}))+'</b>':'')+'</div></div>';
+    var _blk=[];if(!ev.canAdvance){if(ev.blockers.indexOf('pain_in_stage')>=0)_blk.push(_uiT('ui.rl_block_schmerz'));if(ev.blockers.indexOf('min_days')>=0)_blk.push(_uiT('ui.rl_block_tage',{n:Math.max(0,ev.minDays-ev.daysInStage)}));}
+    h+='<div class="rl-acts"><button type="button" class="btn'+(ev.canAdvance?'':' sec')+'"'+(ev.canAdvance?'':' disabled aria-disabled="true"')+' onclick="constraintLadderAdvance(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_geschafft'))+'</button>'+(st>0?'<button type="button" class="btn sec" onclick="constraintLadderSetback(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_rueckschlag'))+'</button>':'')+'</div>';
+    if(_blk.length)h+='<div class="rl-block">'+gmEsc(_blk.join(' · '))+'</div>';
     h+='<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.rl_quelle',{d:ev.estimatedDaysToFree}))+'</div>';
   }else{
     h+='<div class="rl-acts"><button type="button" class="btn sec" onclick="constraintLadderSetback(\''+gmEsc(m.constraint.id)+'\')">'+gmEsc(_uiT('ui.rl_rueckschlag'))+'</button><button type="button" class="btn sec" onclick="constraintStatus(\''+gmEsc(m.constraint.id)+'\',\'resolved\');renderGMPlan()">'+gmEsc(_uiT('ui.rl_abschliessen'))+'</button></div>';
@@ -7970,7 +7991,7 @@ function renderGMPlan(){
   var _confN=(typeof gmCanonPlanConflictCount==='function')?gmCanonPlanConflictCount():0;
   var h='';
   /* 1. Header (+ 5E-Konflikt-Badge, Entscheidung ②: Badge statt Unterbrechung) */
-  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase):'')+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
+  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase)+(meta.phaseWeek?' · '+gmEsc(_uiT('ui.woche_x_von_y',{x:meta.phaseWeek,y:meta.phaseWeeks})):''):'')+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
     '<button class="iconbtn" id="gmPlanConfBadge" style="color:var(--attention);'+(_confN>0?'':'display:none')+'" aria-label="' + _uiT('ui.plan_konflikte') + '" onclick="gmOpenPlanConflictsSheet()">'+icon('alert','sm')+'</button>'+
     '<button class="iconbtn" aria-label="Plan-Einstellungen" onclick="gmOpenPlanSettingsSheet()">'+icon('gear','sm')+'</button></div></div>';
   /* Stufe D (14.09.2026): Beschwerde-Banner + Rueckkehr-Leiter — direkt unter dem Kopf, damit der Nutzer
@@ -7992,7 +8013,7 @@ function renderGMPlan(){
   h+='<div class="card"><div class="ctitle"><div class="l">' + _uiT('ui.variante') + ''+pSel+' · '+gmEsc(pMeta.name)+'</div><span class="more" onclick="gmOpenVariantSheet()">Wechseln '+icon('chev','xs')+'</span></div>'+
     '<p class="prescription" style="margin-bottom:10px">'+gmEsc(pMeta.desc)+'</p>'+
     '<div class="week-progress">'+pCell(pd?pd.count:null,'EINHEITEN')+pCell(pd?pd.days:null,'TRAININGSTAGE')+pCell(pd?pd.core:null,'KERNREIZE')+pCell(pd?pd.rest:null,'RUHETAGE')+'</div>'+
-    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>' + _uiT('ui.auswirkung') + '</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'' + _uiT('ui.alle') + ''+pvm.total+'' + _uiT('ui.geplanten_einheiten_aktiv') + '':pd.count+' von '+pvm.total+'' + _uiT('ui.einheiten_aktiv') + ''+(pd.core||0)+'' + _uiT('ui.kernreize_bleiben_entfallende_sind_unten') + ''):GM_NA+'' + _uiT('ui.ohne_variantenmodell_keine_aussage') + '')+((pvm&&pvm.note)?' '+gmEsc(pvm.note):'')+'</div></div></div>';
+    '<div class="mini-note" style="margin:10px 0 0">'+icon('info','xs')+'<div><b>' + _uiT('ui.auswirkung') + '</b> '+((pd&&pd.count!=null&&pvm)?(pSel==='A'?'' + _uiT('ui.alle') + ''+pvm.total+'' + _uiT('ui.geplanten_einheiten_aktiv') + '':pd.count+' von '+pvm.total+'' + _uiT('ui.einheiten_aktiv') + ''+(pd.core||0)+'' + _uiT('ui.kernreize_bleiben_entfallende_sind_unten') + ''):GM_NA+'' + _uiT('ui.ohne_variantenmodell_keine_aussage') + '')+((pvm&&pvm.note)?' '+gmEsc(pvm.note):'')+(function(){try{var la=ORVIA._lastAbsencePlan;if(la&&la.injury&&la.injury.replaced>0)return ' <b>'+gmEsc(_uiT('ui.davon_ersetzt_beschwerde',{n:la.injury.replaced,label:la.injury.label,stage:(la.injury.stage||0)+1}))+'</b>';}catch(_){ }return '';})()+'</div></div></div>';
   /* 5–6. Woche (kanonische Wochenliste, E4-Datenpfad in GM-session-cards) */
   /* Kopfzeile der Wochenliste mit Blaetterung. Der Zeitraum wird ausgeschrieben,
      damit beim Blaettern nie unklar ist, welche Woche man sieht.
@@ -8204,8 +8225,8 @@ function renderGMPlan(){
        FAIL-SOFT bleibt: ohne Beobachtung liefert render() den leeren String,
        dann entfaellt der Abschnitt ersatzlos (keine halb gefuellte Karte). */
     h+=gmAdaptiveSection();
-    /* 9b. Phasen (Calc.racePhases read-only) */
-    var phases=[];try{phases=Calc.racePhases(RACE.date,todayStr())||[];}catch(_){ }
+    /* 9b. Phasen — Saisonmodell (wie Kopf + Profil), Fallback Calc.racePhases read-only */
+    var phases=[];try{var _spn=gmSeasonNow();phases=_spn?_spn.phases.slice():(Calc.racePhases(RACE.date,todayStr())||[]);}catch(_){ }
     var t0=todayStr();
     /* Redesign (2026-08-05, Nutzerentscheidung): Die frueheren 5 gleich breiten Text-Chips
        waren strukturell zu eng — jeder Phasenname musste in ~60 px passen, deshalb erst
@@ -8228,7 +8249,7 @@ function renderGMPlan(){
       segs+='<i class="ph-seg '+((_dtsOk&&_dts<0)?'done':'todo')+' ph-goal" aria-hidden="true"></i>';
       /* Aktuelle Phase gross — der eigentliche Bezugspunkt beim Planblick. */
       var _cur=null;for(var pi=0;pi<phases.length;pi++)if(phases[pi].on){_cur=phases[pi];break;}
-      var _curTxt=_cur?(_wkLbl(_cur)+(_cur.d?' · '+_cur.d:'')):(_dtsOk&&_dts<0?'' + _uiT('ui.wettkampf_liegt_hinter_dir') + '':GM_NA);
+      var _curTxt=_cur?((_cur.week?_uiT('ui.woche_x_von_y',{x:_cur.week,y:_cur.weeks}):_wkLbl(_cur))+(_cur.d?' · '+_cur.d:'')):(_dtsOk&&_dts<0?'' + _uiT('ui.wettkampf_liegt_hinter_dir') + '':GM_NA);
       h+='<div class="card">'+
         '<div class="ph-bar" role="img" aria-label="Phasenfortschritt">'+segs+'</div>'+
         '<div class="ph-now"><b>'+gmEsc(_cur?_cur.n:'—')+'</b><span>'+gmEsc(_curTxt)+'</span></div>'+
