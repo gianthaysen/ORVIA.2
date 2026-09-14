@@ -1,4 +1,4 @@
-const C = 'orvia-v8-377';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
+const C = 'orvia-v8-378';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
 
    Der Upload von v8-354 war unvollstaendig: js/ und sw.js kamen an,
    styles.css NICHT (live weiterhin `.toast{z-index:99}`). Der Cache-Name

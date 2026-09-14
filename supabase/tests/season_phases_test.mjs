@@ -22,5 +22,6 @@ ok('HM 18.10. ab 26.07.: Aufbau Woche 4 von 4 aktiv, Basis fertig, Spitze/Taperi
 ok('Planstart in der Zukunft wird auf heute gekappt; ohne Start = heute', S.seasonPhases('2026-12-01', '2026-09-13', { startDate: '2026-10-01' }).startDate === '2026-09-13' && S.seasonPhases('2026-12-01', '2026-09-13').startDate === '2026-09-13');
 ok('Vergangenes oder fehlendes Zieldatum ⇒ null', S.seasonPhases('2026-09-01', '2026-09-13') === null && S.seasonPhases(null, '2026-09-13') === null);
 ok('Renntag selbst: aktuelle Phase ist die letzte (Tapering), Woche = Dauer', (() => { const r = S.seasonPhases('2026-09-13', '2026-09-13', { startDate: '2026-06-01' }); return r.current.key === 'taper' && r.current.week === r.current.weeks; })());
+ok('weekIndex: Saisonwoche 1-basiert ueber alle Phasen (HM 18.10. ab 26.07. am 13.09. = Woche 8), gekappt auf totalWeeks', h.weekIndex === 8 && m.weekIndex === 1 && S.seasonPhases('2026-09-13', '2026-09-13', { startDate: '2026-06-01' }).weekIndex === 15);
 console.log('\nseason_phases: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

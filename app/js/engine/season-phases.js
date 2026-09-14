@@ -58,7 +58,7 @@
       phases.push(ph); cursor += p.weeks;
     });
     if (!current && phases.length) { current = phases[phases.length - 1]; current.on = true; current.done = false; current.week = current.weeks; }
-    return { version: VERSION, startDate: _iso(start), targetDate: _iso(race), totalWeeks: totalWeeks,
+    return { version: VERSION, startDate: _iso(start), targetDate: _iso(race), totalWeeks: totalWeeks, weekIndex: Math.min(totalWeeks, weekIdx + 1),
       weeksToRace: Math.max(0, Math.ceil((race - today) / DAY / 7)), daysToRace: Math.round((race - today) / DAY),
       phases: phases, current: current };
   }

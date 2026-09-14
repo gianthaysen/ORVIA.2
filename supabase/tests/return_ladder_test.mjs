@@ -67,6 +67,8 @@ const week = () => [[{ t: 'Gym', l: 'Beine', kind: 'gym_leg' }], [{ t: 'Laufen',
   ok('C4 Badge nennt die Beschwerde („angepasst · Knie links")', /ui\.angepasst_beschwerde/.test(ui));
   ok('C5 Skript in index.html (vor absence-replanner) + sw.js', idx.indexOf('js/engine/return-ladder.js') > 0 && idx.indexOf('js/engine/return-ladder.js') < idx.indexOf('js/engine/absence-replanner.js') && sw.includes("'./js/engine/return-ladder.js'"));
   ok('C6 Ziel-Detail markiert Meilensteine vor dem Rueckkehr-Ende als gefaehrdet', /returnFreeDate/.test(gd) && /gd\.ms_at_risk/.test(gd));
+  ok('C8 Aufstieg-Button gesperrt mit Grund inline; unterste Stufe ohne „Rueckschlag pruefen"; Variantenkarte nennt Ersetzungen', /disabled aria-disabled="true"/.test(ui) && /ui\.rl_block_schmerz/.test(ui) && /ui\.rl_schmerz_in_stufe_rest/.test(ui) && /ui\.davon_ersetzt_beschwerde/.test(ui));
+  ok('C9 Plan-Kopf und Phasen-Track nutzen das Saisonmodell (gmSeasonNow), Fallback racePhases', /function gmSeasonNow/.test(ui) && /var _spn=gmSeasonNow\(\)/.test(ui) && /ui\.woche_x_von_y/.test(ui));
   ok('C7 Migration 0046 setzt das Flag fuer alle Konten und im Trigger', (() => { const p = ['../supabase/migrations/0046_absence_replanner_default.sql', '../../supabase/migrations/0046_absence_replanner_default.sql'].map(x => new URL(x, APP)).find(u => existsSync(u)); if (!p) return false; const m = readFileSync(p, 'utf8'); return /'absence_replanner', true/.test(m) && /seed_default_feature_flags/.test(m) && /goal_plan_input', true/.test(m); })());
 }
 console.log('\nreturn_ladder: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
