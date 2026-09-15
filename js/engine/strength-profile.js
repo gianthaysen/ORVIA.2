@@ -110,10 +110,15 @@
 
   function sessionBest(s, bw) {
     var work = s.sets.filter(function (x) { return x.work; });
+    /* v8-385: Koerpergewichtsuebung (bw uebergeben) — e1RM nur, wenn die Mehrheit der Saetze
+       Zusatzlast traegt; sonst ist der Wiederholungsrekord die ehrliche Kurve. */
+    if (bw != null && bw > 0) { var loaded = work.filter(function (x) { return x.weight != null && x.weight > 0; }).length; if (loaded * 2 < work.length) bw = null; else bw = { bw: bw, weighted: true }; }
     var best = null, bestE = null, maxReps = null, maxDur = null, ton = 0;
     work.forEach(function (x) {
       if (x.weight != null && x.reps != null) ton += x.weight * x.reps;
-      var w = x.weight; if ((w == null || w === 0) && bw != null && bw > 0) w = bw + (x.weight || 0);
+      var w = x.weight;
+      if (bw && bw.weighted) w = bw.bw + (x.weight || 0);            /* Systemgewicht = Koerper + Zusatzlast */
+      else if (bw == null && E_BW_FLAG.on) w = null;                 /* Koerpergewicht ohne Zusatzlast: kein e1RM, Wdh.-Rekord */
       var e = e1rm(w, x.reps, x.rir);
       if (e.value != null && (bestE == null || e.value > bestE)) { bestE = e.value; best = { weight: x.weight, reps: x.reps, rir: x.rir, e1rm: e.value, method: e.method, bwBased: (x.weight == null || x.weight === 0) }; }
       if (x.reps != null && (maxReps == null || x.reps > maxReps)) maxReps = x.reps;
@@ -136,16 +141,21 @@
     return txt;
   }
 
+  var E_BW_FLAG = { on: false };
   function finishExercise(E, deps) {
     var bw = deps && num(deps.bodyweightKg);
     E.sessions.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-    E.sessions.forEach(function (s) { var b = sessionBest(s, E.bodyweight ? bw : null); s.best = b.best; s.e1rm = b.e1rm; s.maxReps = b.maxReps; s.maxDur = b.maxDur; s.tonnage = b.tonnage; s.workSets = b.work; s.test = b.test; s.scheme = schemeText(s.sets); });
+    E_BW_FLAG.on = !!E.bodyweight;
+    E.sessions.forEach(function (s) { var b = sessionBest(s, E.bodyweight ? (bw != null && bw > 0 ? bw : 0) : null); s.best = b.best; s.e1rm = b.e1rm; s.maxReps = b.maxReps; s.maxDur = b.maxDur; s.tonnage = b.tonnage; s.workSets = b.work; s.test = b.test; s.scheme = schemeText(s.sets); });
     var withE = E.sessions.filter(function (s) { return s.e1rm != null; });
     var withReps = E.sessions.filter(function (s) { return s.maxReps != null; });
     var withDur = E.sessions.filter(function (s) { return s.maxDur != null; });
-    E.mode = withE.length ? 'load' : (withDur.length && !withReps.length ? 'time' : (withReps.length ? 'reps' : 'none'));
+    /* Modus: load nur, wenn e1RM-Punkte fuer die Kurve reichen (>= 2) und (bei Koerpergewicht)
+       die Mehrheit der Einheiten Zusatzlast hat; sonst reps/time. Schwelle zaehlt Einheiten, nicht Punkte. */
+    E.mode = (withE.length >= 2 && withE.length * 2 >= E.sessions.length) ? 'load' : (withDur.length && !withReps.length ? 'time' : (withReps.length ? 'reps' : (withE.length ? 'load' : 'none')));
     E.count = E.sessions.filter(function (s) { return s.workSets > 0; }).length;
-    E.ready = E.count >= MIN_SESSIONS && (E.mode === 'load' ? withE.length >= MIN_SESSIONS : true);
+    E.ready = E.count >= MIN_SESSIONS;
+    E_BW_FLAG.on = false;
     E.tests = E.sessions.filter(function (s) { return s.test; }).map(function (s) { return { date: s.date, weight: s.test.weight }; });
     return E;
   }
@@ -181,7 +191,7 @@
       m.history = m.history.slice(-6).reverse();
       /* Stagnation: Satz 1 (Top-Satz) über STAG_SESSIONS Einheiten unverändert */
       try { var SP = o.strengthProgression; if (SP && SP.isStagnant) { var hist = hs.map(function (s) { return { sets: s.sets.filter(function (x) { return x.work; }).map(function (x, i) { return { setNumber: i + 1, weight: x.weight, reps: x.reps }; }) }; }); m.stagnant = E.ready && SP.isStagnant(hist, 1, STAG_SESSIONS); } } catch (e) {}
-      if (num(o.bodyweightKg) != null && o.bodyweightKg > 0 && m.current != null && !E.bodyweight) m.relative = Math.round(m.current / o.bodyweightKg * 100) / 100;
+      if (num(o.bodyweightKg) != null && o.bodyweightKg > 0 && m.current != null && !E.bodyweight && /kniebeuge|squat|kreuzheben|deadlift|bankdr|bench|schulterdr|overhead|ohp|military/i.test(E.name) && !/maschine|machine|kabel|cable|smith|kurzhantel|dumbbell/i.test(E.name)) m.relative = Math.round(m.current / o.bodyweightKg * 100) / 100;
     } else if (E.mode === 'reps') {
       m.series = E.sessions.filter(function (s) { return s.maxReps != null; }).map(function (s) { return { date: s.date, value: s.maxReps }; });
       var l2 = m.series[m.series.length - 1]; m.current = l2 ? l2.value : null; m.currentDate = l2 ? l2.date : null;
@@ -209,8 +219,11 @@
   /* ---------- Gruppen: harte Sätze + Tonnage (aktuelle Woche vs. 4-Wochen-Schnitt) ---------- */
   function groupStats(exercises, opts) {
     var today = _d(opts.today); var ws = weekStart(today); var prevFrom = ws - 28 * DAY;
-    var out = {}; GROUPS.forEach(function (g) { out[g[0]] = { key: g[0], label: g[1], setsWeek: 0, tonnageWeek: 0, tonnageAvg4: 0, sets28: 0 }; });
-    out.other = { key: 'other', label: 'Weitere', setsWeek: 0, tonnageWeek: 0, tonnageAvg4: 0, sets28: 0 };
+    var out = {}; GROUPS.forEach(function (g) { out[g[0]] = { key: g[0], label: g[1], setsWeek: 0, tonnageWeek: 0, tonnageAvg4: 0, sets28: 0, sets56: 0, tonnageLast: 0 }; });
+    out.other = { key: 'other', label: 'Weitere', setsWeek: 0, tonnageWeek: 0, tonnageAvg4: 0, sets28: 0, sets56: 0, tonnageLast: 0 };
+    /* v8-385: Einheiten je Fenster (Balance-Fenster) und letzte Trainingswoche (Tonnage-Fallback) */
+    var sess28 = {}, sess56 = {}, lastWeekStart = null;
+    exercises.forEach(function (E) { E.sessions.forEach(function (s) { var t = _d(s.date); if (t == null || t > today || !s.workSets) return; var k = s.workoutId || s.date; if (t >= today - 27 * DAY) sess28[k] = 1; if (t >= today - 55 * DAY) sess56[k] = 1; var wk = weekStart(t); if (wk < ws && (lastWeekStart == null || wk > lastWeekStart)) lastWeekStart = wk; }); });
     exercises.forEach(function (E) {
       var G = out[E.group] || out.other;
       E.sessions.forEach(function (s) {
@@ -218,9 +231,12 @@
         if (t >= ws) { G.setsWeek += s.workSets; G.tonnageWeek += s.tonnage || 0; }
         else if (t >= prevFrom) { G.tonnageAvg4 += (s.tonnage || 0) / 4; }
         if (t >= today - 27 * DAY) G.sets28 += s.workSets;
+        if (t >= today - 55 * DAY) G.sets56 += s.workSets;
+        if (lastWeekStart != null && t >= lastWeekStart && t < lastWeekStart + 7 * DAY) G.tonnageLast += s.tonnage || 0;
       });
     });
-    Object.keys(out).forEach(function (k) { out[k].tonnageWeek = Math.round(out[k].tonnageWeek); out[k].tonnageAvg4 = Math.round(out[k].tonnageAvg4); });
+    Object.keys(out).forEach(function (k) { out[k].tonnageWeek = Math.round(out[k].tonnageWeek); out[k].tonnageAvg4 = Math.round(out[k].tonnageAvg4); out[k].tonnageLast = Math.round(out[k].tonnageLast); });
+    out._meta = { sessions28: Object.keys(sess28).length, sessions56: Object.keys(sess56).length, lastWeekStart: lastWeekStart != null ? _iso(lastWeekStart) : null, weekHasSets: GROUPS.some(function (g) { return out[g[0]].setsWeek > 0; }) || out.other.setsWeek > 0 };
     return out;
   }
 
@@ -243,11 +259,14 @@
 
   /* ---------- Balance (28 Tage, harte Sätze) ---------- */
   function balance(groups, opts) {
-    var push = groups.push.sets28, pull = groups.pull.sets28, legs = groups.legs.sets28, upper = push + pull;
+    var meta = groups._meta || { sessions28: 0, sessions56: 0 };
+    var win = meta.sessions28 >= 3 ? 28 : 56, key = win === 28 ? 'sets28' : 'sets56';
+    var push = groups.push[key], pull = groups.pull[key], legs = groups.legs[key], upper = push + pull;
     function ratio(a, b) { return (a > 0 && b > 0) ? Math.round(a / b * 100) / 100 : null; }
     var pp = ratio(push, pull), lu = ratio(legs, upper);
     var inj = opts.injury || null; var legsBlocked = !!(inj && inj.active && inj.policy && inj.policy.legStrength === false);
     return {
+      windowDays: win, sessions: win === 28 ? meta.sessions28 : meta.sessions56,
       pushPull: { ratio: pp, a: push, b: pull, lo: 0.8, hi: 1.2, status: pp == null ? 'none' : (pp >= 0.8 && pp <= 1.2 ? 'ok' : 'att') },
       legsUpper: { ratio: lu, a: legs, b: upper, lo: 0.8, hi: 1.5, status: lu == null ? 'none' : (legsBlocked ? 'blocked' : (lu >= 0.8 ? 'ok' : 'att')), blocked: legsBlocked, injuryLabel: legsBlocked ? (inj.label || null) : null, injuryStage: legsBlocked ? inj.stage : null }
     };

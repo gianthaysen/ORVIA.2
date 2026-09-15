@@ -69,9 +69,12 @@
       '<path d="' + area + '" fill="url(#kpg)"/><path class="kp-line" d="' + line + '"/>' +
       pts.map(function (p, i) { return '<circle class="kp-pt' + (i === sel ? ' on' : '') + (p.test ? ' test' : '') + '" data-a="kppt" data-v="' + i + '" cx="' + x(p).toFixed(1) + '" cy="' + y(p.value).toFixed(1) + '" r="' + (i === sel ? 5.5 : 4) + '"/>'; }).join('') +
       '</svg></div>';
-    var months = []; pts.forEach(function (p) { var mo = p.date.slice(0, 7); if (months.indexOf(mo) < 0) months.push(mo); });
     var MO = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-    h += '<div class="kp-xlbl">' + months.slice(-4).map(function (mo) { return '<span>' + MO[+mo.slice(5, 7) - 1] + '</span>'; }).join('') + '</div>';
+    /* v8-385: Monatsmarken an ihrer echten x-Position (Monatsanfang), nicht gleichverteilt */
+    var lbl = []; var d0 = new Date(t0), dm = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1));
+    lbl.push({ x: 0, t: MO[d0.getUTCMonth()] });
+    for (var k = 0; k < 14; k++) { dm = new Date(Date.UTC(dm.getUTCFullYear(), dm.getUTCMonth() + 1, 1)); var tm = dm.getTime(); if (tm > t1) break; var px = (tm - t0) / span * 100; if (px > 6) lbl.push({ x: px, t: MO[dm.getUTCMonth()] }); }
+    h += '<div class="kp-xlbl kp-xlbl-abs">' + lbl.map(function (l) { return '<span style="left:' + l.x.toFixed(1) + '%">' + l.t + '</span>'; }).join('') + '</div>';
     var sp = pts[sel]; var unit = em.mode === 'load' ? T(depth().jargon ? 'kp.unit_e1rm' : 'kp.unit_max') : em.mode === 'reps' ? T('kp.unit_wdh') : '';
     h += '<div class="kp-read"><div class="rv">' + esc(em.mode === 'time' ? mmss(sp.value) : kg(sp.value)) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div><div class="rm">' + esc(deDateY(sp.date)) + (sp.test ? ' · ' + esc(T('kp.test_markiert', { w: kg(sp.testWeight) })) : '') + '</div></div>';
     return h;
@@ -93,7 +96,7 @@
       return h + src(T('kp.src_schwelle')) + '</div>';
     }
     if (em.mode === 'load') {
-      var dtx = em.delta ? ((em.delta.kg >= 0 ? '+' : '−') + kg(Math.abs(em.delta.kg)) + ' kg ' + T('kp.in_n_wochen', { n: em.delta.weeks })) : '';
+      var dtx = em.delta ? ((em.delta.kg === 0 ? '±' : em.delta.kg > 0 ? '+' : '−') + kg(Math.abs(em.delta.kg)) + ' kg ' + T('kp.in_n_wochen', { n: em.delta.weeks })) : '';
       h += '<div class="kp-hero"><b>' + esc(kg(em.current)) + '</b><span>' + esc(T(D.jargon ? 'kp.unit_e1rm' : 'kp.unit_max')) + '</span>' + (dtx ? '<span class="kp-delta' + (em.delta.kg < 0 ? ' dn' : '') + '">' + esc(dtx) + '</span>' : '') + '</div>';
       var meta = [];
       if (em.lastScheme) meta.push(T('kp.letzter_satz') + ': ' + (D.jargon ? em.lastScheme : em.lastScheme.replace(/ · RIR \d+/, '')));
@@ -141,6 +144,7 @@
     var rows = mr.rows.filter(function (r) { return r.group === st.grp; });
     if (!rows.length) return '';
     if (mr.corridor && mr.corridor.min == null) return '<div class="card tight" data-gm-slot="strength-muscles"><div class="ctitle"><div class="l">' + ic('gauge') + ' ' + esc(T('kp.saetze_je_muskel', { g: grpLabel(st.grp) })) + '</div><span class="more">' + esc(T('kp.7_tage')) + '</span></div><div class="kp-note">' + ic('info', 'sm') + '<div>' + esc(T('kp.korridor_fehlt')) + '</div></div>' + src(T('kp.src_korridor_leer')) + '</div>';
+    if (m.groups && m.groups._meta && !m.groups._meta.weekHasSets) return '<div class="card tight" data-gm-slot="strength-muscles"><div class="ctitle"><div class="l">' + ic('gauge') + ' ' + esc(T('kp.saetze_je_muskel', { g: grpLabel(st.grp) })) + '</div><span class="more">' + esc(T('kp.7_tage')) + '</span></div><div class="kp-note">' + ic('info', 'sm') + '<div>' + esc(T('kp.woche_ohne_einheit')) + '</div></div>' + src(T('kp.src_korridor', { lo: mr.corridor.min != null ? mr.corridor.min : '—', hi: mr.corridor.max != null ? mr.corridor.max : '—' })) + '</div>';
     var SC = 24, under = rows.filter(function (r) { return r.status === 'under'; }), over = rows.filter(function (r) { return r.status === 'over'; });
     var h = '<div class="card tight" data-gm-slot="strength-muscles"><div class="ctitle"><div class="l">' + ic('gauge') + ' ' + esc(T('kp.saetze_je_muskel', { g: grpLabel(st.grp) })) + '</div><span class="more">' + esc(T('kp.7_tage')) + '</span></div><div class="kp-corr">' +
       rows.map(function (r) { var lo = r.min, hi = r.max, n = r.effective; var cls = r.status === 'under' || r.status === 'over' ? ' att' : '';
@@ -172,31 +176,34 @@
 
   function tonnageCard(m) {
     if (!depth().tonnage) return '';
-    var G = m.groups, keys = ['legs', 'push', 'pull', 'core'];
-    var tmax = Math.max.apply(null, keys.map(function (k) { return Math.max(G[k].tonnageWeek, G[k].tonnageAvg4); }).concat([1]));
-    var any = keys.some(function (k) { return G[k].tonnageWeek > 0 || G[k].tonnageAvg4 > 0; });
+    var G = m.groups, keys = ['legs', 'push', 'pull', 'core'], meta = G._meta || {};
+    /* v8-385: laufende Woche ohne Einheit ⇒ letzte Trainingswoche zeigen, klar beschriftet */
+    var useLast = !meta.weekHasSets && meta.lastWeekStart, fld = useLast ? 'tonnageLast' : 'tonnageWeek';
+    var tmax = Math.max.apply(null, keys.map(function (k) { return Math.max(G[k][fld], G[k].tonnageAvg4); }).concat([1]));
+    var any = keys.some(function (k) { return G[k][fld] > 0 || G[k].tonnageAvg4 > 0; });
     if (!any) return '';
-    return '<div class="card tight" data-gm-slot="strength-tonnage"><div class="ctitle"><div class="l">' + ic('chart') + ' ' + esc(T('kp.tonnage_woche')) + '</div></div><div class="kp-ton">' +
-      keys.map(function (k) { var g = G[k]; return '<div class="kp-trow"><span class="n">' + esc(grpLabel(k)) + '</span><span class="bar"><i style="width:' + Math.round(g.tonnageWeek / tmax * 100) + '%"></i>' + (g.tonnageAvg4 > 0 ? '<span class="avg" style="left:' + Math.round(g.tonnageAvg4 / tmax * 100) + '%"></span>' : '') + '</span><span class="v">' + esc(kgInt(g.tonnageWeek)) + ' kg</span></div>'; }).join('') +
-      '</div><div class="kp-legend"><span><i class="a"></i>' + esc(T('kp.diese_woche')) + '</span><span><i class="b"></i>' + esc(T('kp.schnitt_4w')) + '</span></div>' + src(T('kp.src_tonnage')) + '</div>';
+    var title = useLast ? T('kp.tonnage_letzte_woche', { d: deDate(meta.lastWeekStart) + '–' + deDate(new Date(Date.parse(meta.lastWeekStart + 'T12:00:00Z') + 6 * 864e5).toISOString().slice(0, 10)) }) : T('kp.tonnage_woche');
+    return '<div class="card tight" data-gm-slot="strength-tonnage"><div class="ctitle"><div class="l">' + ic('chart') + ' ' + esc(title) + '</div></div><div class="kp-ton">' +
+      keys.map(function (k) { var g = G[k]; return '<div class="kp-trow"><span class="n">' + esc(grpLabel(k)) + '</span><span class="bar"><i style="width:' + Math.round(g[fld] / tmax * 100) + '%"></i>' + (g.tonnageAvg4 > 0 ? '<span class="avg" style="left:' + Math.round(g.tonnageAvg4 / tmax * 100) + '%"></span>' : '') + '</span><span class="v">' + esc(kgInt(g[fld])) + ' kg</span></div>'; }).join('') +
+      '</div><div class="kp-legend"><span><i class="a"></i>' + esc(useLast ? T('kp.letzte_trainingswoche') : T('kp.diese_woche')) + '</span><span><i class="b"></i>' + esc(T('kp.schnitt_4w')) + '</span></div>' + src(T('kp.src_tonnage')) + '</div>';
   }
 
   function balanceCard(m) {
     var b = m.balance; if (!b || (b.pushPull.ratio == null && b.legsUpper.ratio == null)) return '';
     function row(label, r, la, lb) {
-      if (r.ratio == null) return '<div class="kp-brow"><div class="head"><span>' + esc(label) + '</span><b>—</b></div><div class="kp-duolbl"><span>' + esc(T('kp.zu_wenig_daten')) + '</span></div></div>';
+      if (r.ratio == null) return '<div class="kp-brow"><div class="head"><span>' + esc(label) + '</span><b>—</b></div><div class="kp-duolbl"><span>' + esc(T('kp.zu_wenig_daten_d', { d: b.windowDays || 28 })) + '</span></div></div>';
       var cls = r.status === 'ok' ? 'ok' : r.status === 'att' ? 'att' : '';
       return '<div class="kp-brow"><div class="head"><span>' + esc(label) + '</span><b class="' + cls + '">' + esc(kg(r.ratio, 2)) + ' : 1</b></div><div class="kp-duo"><i class="a" style="flex:' + Math.round(r.ratio * 100) + '"></i><i class="b" style="flex:100"></i></div><div class="kp-duolbl"><span>' + esc(la + ' ' + r.a + ' ' + T('kp.saetze_kurz')) + '</span><span>' + esc(lb + ' ' + r.b + ' ' + T('kp.saetze_kurz')) + '</span></div></div>';
     }
     var D = depth();
-    var h = '<div class="card tight" data-gm-slot="strength-balance"><div class="ctitle"><div class="l">' + ic('shield') + ' ' + esc(T('kp.balance')) + '</div><span class="more">' + esc(T('kp.28_tage')) + '</span></div>' +
+    var h = '<div class="card tight" data-gm-slot="strength-balance"><div class="ctitle"><div class="l">' + ic('shield') + ' ' + esc(T('kp.balance')) + '</div><span class="more">' + esc(T('kp.n_tage_n_einheiten', { d: b.windowDays || 28, n: b.sessions != null ? b.sessions : '—' })) + '</span></div>' +
       (D.balanceBars ? '<div class="kp-bal">' + row(T('kp.druck_zug'), b.pushPull, grpLabel('push'), grpLabel('pull')) + row(T('kp.beine_oberkoerper'), b.legsUpper, grpLabel('legs'), T('kp.oberkoerper')) + '</div>' : '');
     var lu = b.legsUpper;
+    if (b.pushPull.status === 'att' && (D.balanceBars || !(lu.blocked || lu.status === 'att'))) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T(b.pushPull.ratio > 1.2 ? 'kp.druck_dominant' : 'kp.zug_dominant')) + '</b> ' + esc(T(D.jargon ? 'kp.druck_zug_d' : 'kp.druck_zug_d_einfach')) + '</div></div>';
     if (lu.blocked) h += '<div class="kp-note">' + ic('knee', 'sm') + '<div><b>' + esc(T('kp.beine_ausgesetzt', { label: lu.injuryLabel || '', stage: (lu.injuryStage || 0) + 1 })) + '</b> ' + esc(T('kp.beine_ausgesetzt_d')) + '</div></div>';
     else if (lu.status === 'att') h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.beine_unter')) + '</b> ' + esc(T('kp.beine_unter_d')) + '</div></div>';
-    else if (b.pushPull.status === 'att') h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T(b.pushPull.ratio > 1.2 ? 'kp.druck_dominant' : 'kp.zug_dominant')) + '</b> ' + esc(T('kp.druck_zug_d')) + '</div></div>';
-    else if (lu.status === 'ok' && b.pushPull.status === 'ok') h += '<div class="kp-note">' + ic('check', 'sm') + '<div>' + esc(T('kp.balance_ok')) + '</div></div>';
-    return h + (D.balanceBars ? src(T('kp.src_balance')) : '') + '</div>';
+    if (lu.status === 'ok' && b.pushPull.status === 'ok') h += '<div class="kp-note">' + ic('check', 'sm') + '<div>' + esc(T('kp.balance_ok')) + '</div></div>';
+    return h + (D.balanceBars ? src(T('kp.src_balance_d', { d: b.windowDays || 28 })) : '') + '</div>';
   }
 
   /* ---------- Seite ---------- */
@@ -265,8 +272,8 @@
       if (!fresh && !_loading) refreshAsync(function () { try { if (typeof root.renderGMAnalysis === 'function' && document.getElementById('gmAna')) root.renderGMAnalysis(); } catch (e) {} });
       var ctx = collect(); var m = buildModel(ctx); if (!m || !m.exercises.length) return { empty: true, sessions: 0, loading: _loading };
       var best = null; m.exercises.forEach(function (E) { if (!E.ready || E.mode !== 'load') return; var em = m.exerciseModel(E.key); if (em && em.current != null && (!best || (em.delta && best.delta && em.delta.kg > best.delta.kg) || !best.delta)) best = em; });
-      var under = (m.muscles && m.muscles.rows || []).filter(function (r) { return r.status === 'under'; }).length;
-      return { empty: false, loading: _loading, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, delta: best && best.delta ? best.delta : null, under: under, ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
+      var under = (m.groups && m.groups._meta && !m.groups._meta.weekHasSets) ? 0 : (m.muscles && m.muscles.rows || []).filter(function (r) { return r.status === 'under'; }).length;
+      return { empty: false, loading: _loading, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, delta: best && best.delta ? best.delta : null, under: under, weekIdle: !!(m.groups && m.groups._meta && !m.groups._meta.weekHasSets), ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
     } catch (e) { return { empty: true, sessions: 0 }; }
   }
 

@@ -10071,7 +10071,7 @@ function gmStrengthTeaserHTML(){
   else{
     line=t.exercise?_uiT('kp.teaser_line',{ex:t.exercise,v:String(Math.round(t.current*10)/10).replace('.',',')}):_uiT('kp.teaser_sessions',{n:t.sessions,r:t.ready,t:t.total});
     var parts=[];if(t.delta)parts.push(_uiT('kp.teaser_delta',{d:(t.delta.kg>=0?'+':'−')+String(Math.abs(t.delta.kg)).replace('.',','),w:t.delta.weeks}));
-    if(t.under>0)parts.push(_uiT('kp.teaser_under',{n:t.under}));
+    if(t.under>0)parts.push(_uiT('kp.teaser_under',{n:t.under}));else if(t.weekIdle)parts.push(_uiT('kp.woche_ohne_einheit_kurz'));
     if(!parts.length)parts.push(t.loading?_uiT('kp.laedt_server'):_uiT('kp.teaser_d'));
     sub=parts.join(' · ');
   }
