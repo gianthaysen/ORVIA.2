@@ -92,6 +92,8 @@
       var date = w && w.startedAt ? String(w.startedAt).slice(0, 10) : null; if (!date) return;
       (w.exercises || []).forEach(function (ex) {
         var name = exName(ex); if (!name) return;
+        /* v8-386: Platzhalter aus dem Legacy-Tagesspeicher (nur Satzanzahl, keine Uebung) ist keine Uebung */
+        if (/ohne übungsdetail|ohne uebungsdetail/i.test(name)) return;
         var key = normKey(exId(ex) || name);
         var E = map[key] || (map[key] = { id: exId(ex) || null, key: key, name: name, group: groupOf(ex, deps), sessions: [], bodyweight: BW_EXERCISE.test(name) });
         var sets = (ex.sets || []).filter(isDone).map(function (st, i) {

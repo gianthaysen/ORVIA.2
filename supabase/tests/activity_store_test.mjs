@@ -107,5 +107,21 @@ let delMan = S.deleteActivity(man.activity.clientRecordId);
 ok('lokale manuelle Löschung: kein Server-Delete nötig (synced)', delMan.ok && S.pendingDeletes().length === 0);
 ok('manuelle Activity weg aus Liste', S.listActivities().length === 0);
 
+/* ===== v8-386 · repairWorkoutSnapshot: Zuordnung ueber Session/Quelle + Snapshot-Rueckgabe ===== */
+reset();
+let rp = S.upsertActivityFromWorkout({ id: 'wr1', sport_key: 'gym', status: 'completed', duration_min: 60 }, [], { syncStatus: 'pending' });
+S.markSynced(rp.activity.clientRecordId, 'srv-wr1');
+let rA = S.repairWorkoutSnapshot('srv-wr1', snapshot);
+ok('repair per Server-id ok', rA.ok === true && rA.snapshot.length === 1);
+reset();
+rp = S.upsertActivityFromWorkout({ id: 'wr2', sport_key: 'gym', status: 'completed', duration_min: 60 }, [], { syncStatus: 'pending' });
+let rB = S.repairWorkoutSnapshot('unbekannte-server-id', snapshot, { id: 'unbekannte-server-id', workoutSessionId: 'wr2', source: 'orvia_workout', sourceRecordId: 'wr2' });
+ok('repair per ref.workoutSessionId ok (Server-Activity ohne lokale id)', rB.ok === true && rB.activity.clientRecordId === rp.activity.clientRecordId);
+ok('lokaler Snapshot danach lesbar', S.getWorkoutDetailsForActivity(rp.activity.clientRecordId).hasDetails === true);
+let rC = S.repairWorkoutSnapshot('gibt-es-nicht', snapshot, { workoutSessionId: 'xyz' });
+ok('kein lokaler Datensatz: ok=false, Snapshot trotzdem geliefert', rC.ok === false && Array.isArray(rC.snapshot) && rC.snapshot.length === 1 && rC.snapshot[0].sets.length === 3);
+let rD = S.repairWorkoutSnapshot('gibt-es-nicht', []);
+ok('leerer Baum: ok=false, snapshot []', rD.ok === false && rD.error === 'leer' && rD.snapshot.length === 0);
+
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

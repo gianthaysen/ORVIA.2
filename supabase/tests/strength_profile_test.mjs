@@ -89,6 +89,7 @@ sec('C2 · Pausenwoche, Fenster, relative Kraft (v8-385)');
   ok('C14 Screen in Pausenwoche: Muskelkarte nur Hinweis (kein „unter dem Korridor"), Tonnage zeigt letzte Trainingswoche, Balance nennt Fenster', /Diese Woche noch keine Krafteinheit/.test(hi) && !/unter dem Korridor/.test(hi) && /Tonnage · Woche 03\.08\.–09\.08\./.test(hi) && /56 Tage · 6 Einheiten/.test(hi));
   ok('C15 Monatsmarken an echter Position (absolute Labels)', /kp-xlbl-abs/.test(hi) && /style="left:0\.0%">Jun</.test(hi));
 }
+ok('C16 Platzhalter „Krafttraining (ohne Übungsdetail)" wird nicht als Übung geführt', S.build([{ workoutId: 'x', startedAt: '2026-07-01T10:00:00Z', exercises: [{ exerciseNameSnapshot: 'Krafttraining (ohne Übungsdetail)', sets: [{ completed: true, reps: null, weight: null }] }] }], OPTS).exercises.length === 0);
 sec('D · Screen (rein, HTML)');
 {
   SCR._state.grp = null; SCR._state.ex = null; SCR._state.pt = null;
