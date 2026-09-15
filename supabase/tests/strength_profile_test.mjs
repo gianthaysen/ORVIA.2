@@ -58,7 +58,7 @@ ok('B8 relative Kraft 104,5 / 75 = 1,39', sq.relative === 1.39);
 const bp = m.exerciseModel(byName('Bankdrücken').key);
 ok('B9 Stagnation über strength-progression: Bank 10× gleich ⇒ stagnant, Kniebeuge nicht', bp.stagnant === true && sq.stagnant === false);
 const pu = m.exerciseModel(byName('Klimmzüge').key);
-ok('B10 Körpergewichtsübung: Modus load mit Körpergewicht (75 kg), Schema „2×7–8", relative Kraft entfällt', pu.mode === 'load' && pu.bodyweight === true && /2×7–9|2×7–8/.test(pu.lastScheme) && pu.relative === null);
+ok('B10 Körpergewichtsübung ohne Zusatzlast: Modus reps (Wdh.-Rekord ist die Kurve), Schema „2×7–8", relative Kraft entfällt', pu.mode === 'reps' && pu.bodyweight === true && pu.current === 9 && /2×7–9|2×7–8/.test(pu.lastScheme) && pu.relative === null);
 const pl = m.exerciseModel(byName('Plank').key);
 ok('B11 Halteübung: Modus time, längste Haltezeit 105 s', pl.mode === 'time' && pl.current === 105 && pl.prs[0].kind === 'max_hold');
 const lp = m.exerciseModel(byName('Beinpresse').key);
@@ -78,6 +78,17 @@ ok('C8 Prognose: Regression ≈ +12,7 kg/4 Wo, Lücke 15,5 kg, ETA vor Richtwert
 ok('C9 Prognose ehrlich: Bank (flach) ⇒ reason flat; < 6 Punkte ⇒ insufficient', S.goalForecast(bp, { targetValue: 100 }, { today: TODAY }).reason === 'flat' && S.goalForecast(lp, { targetValue: 300 }, { today: TODAY }).reason === 'insufficient');
 ok('C10 erreicht: Ziel unter aktuellem e1RM ⇒ reached', S.goalForecast(sq, { targetValue: 100 }, { today: TODAY }).reached === true);
 
+sec('C2 · Pausenwoche, Fenster, relative Kraft (v8-385)');
+{
+  const mi2 = S.build(SNAPS, Object.assign({}, OPTS, { today: '2026-08-20' }));
+  ok('C11 laufende Woche ohne Einheit: weekHasSets false, letzte Trainingswoche 03.08. (Mo 03.08.–So 09.08.)', mi2.groups._meta.weekHasSets === false && mi2.groups._meta.lastWeekStart === '2026-08-03' && mi2.groups.legs.tonnageLast === 1980);
+  ok('C12 Balance-Fenster: nur 2 Einheiten in 28 Tagen ⇒ 56-Tage-Fenster mit 6 Einheiten', mi2.balance.windowDays === 56 && mi2.balance.sessions === 6 && m.balance.windowDays === 28);
+  ok('C13 relative Kraft nur an Langhantel-Grundbewegungen (Kniebeuge ja, Bankdrücken ja, Rudern LH nein)', sq.relative === 1.39 && bp.relative != null && m.exerciseModel(byName('Rudern LH').key).relative === null);
+  SCR._state.grp = 'legs'; SCR._state.ex = byName('Kniebeuge').key; SCR._state.pt = null;
+  const hi = SCR.body(mi2);
+  ok('C14 Screen in Pausenwoche: Muskelkarte nur Hinweis (kein „unter dem Korridor"), Tonnage zeigt letzte Trainingswoche, Balance nennt Fenster', /Diese Woche noch keine Krafteinheit/.test(hi) && !/unter dem Korridor/.test(hi) && /Tonnage · Woche 03\.08\.–09\.08\./.test(hi) && /56 Tage · 6 Einheiten/.test(hi));
+  ok('C15 Monatsmarken an echter Position (absolute Labels)', /kp-xlbl-abs/.test(hi) && /style="left:0\.0%">Jun</.test(hi));
+}
 sec('D · Screen (rein, HTML)');
 {
   SCR._state.grp = null; SCR._state.ex = null; SCR._state.pt = null;

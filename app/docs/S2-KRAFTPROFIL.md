@@ -50,3 +50,14 @@
 - `workoutRepository.loadWorkoutTree` nutzte den Embed `exercise:exercises(*)`. `workout_exercises` hat zwei FKs auf `exercises` (`exercise_id`, `replaced_by_exercise_id`) ⇒ PostgREST lehnt den mehrdeutigen Embed ab ⇒ **jeder** Baum-Abruf scheiterte still (Aktivitäts-Detail, Muskelkarte, Kraftprofil). Perf-Log zeigte „16 round-trips", Ergebnis leer.
 - Fix: Embed mit FK-Hinweis `exercises!workout_exercises_exercise_id_fkey(*)`; bei Fehler Fallback ohne Embed (Übungen + Sätze, Übungszeilen per `in('id', …)`). gym-volume: Einzelausfall eines Baums = `WORKOUT_DETAILS_PARTIAL` (Warnung), nur Totalausfall = Fehler.
 - Test gym_server_reload C1/C2.
+
+## Analyse mit echten Daten 15.09. (Build v8-385)
+Befunde aus Gians Kraftprofil (17 Einheiten / 10 Wochen, 34 Übungen) und Korrekturen:
+1. Pausenwoche: „0/8–16 unter dem Korridor" je Muskel ⇒ jetzt Hinweis „diese Woche noch keine Krafteinheit", keine Warnung (auch Teaser).
+2. Tonnage 0 kg in der laufenden Woche ⇒ Fallback auf die letzte Trainingswoche, beschriftet „Tonnage · Woche dd.mm.–dd.mm.".
+3. Balance aus einer Einheit (2 vs. 8 Sätze) ⇒ 28-Tage-Fenster nur ab 3 Einheiten, sonst 56 Tage; Fenster + Einheitenzahl in der Kopfzeile, beide Befunde (Druck:Zug und Beine) nebeneinander.
+4. Relative Kraft nur bei Langhantel-Grundbewegungen (Kniebeuge/Kreuzheben/Bankdrücken/Schulterdrücken), nicht an Maschine/Kabel/Smith/Kurzhantel.
+5. Körpergewichtsübungen (Klimmzüge): Wiederholungsrekord ist die Kurve; e1RM (Körper + Zusatzlast) nur, wenn die Mehrheit der Sätze Zusatzlast trägt. Schwelle zählt Einheiten (6/6 ⇒ Kurve).
+6. „+0 kg" ⇒ „±0 kg".
+7. Monatsmarken der Kurve an der echten x-Position (Monatsanfang).
+Tests strength_profile 48 (C11–C15).
