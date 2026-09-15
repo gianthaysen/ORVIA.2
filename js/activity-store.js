@@ -219,19 +219,35 @@
      wie gym-volume.js's gymPipelineAsync) und repariert hier den lokalen Snapshot — davon
      profitieren automatisch auch alle anderen lokalen Leser (z. B. gym-volume.js), ohne
      eigene Nachlade-Logik. */
-  function repairWorkoutSnapshot(activityId, exercises) {
+  /* v8-386: ref (optional) = das geoeffnete Activity-Objekt. Server-Aktivitaeten, die nur
+     in der Server-Liste (nicht im lokalen Store) liegen, tragen eine andere id als der
+     lokale Datensatz — deshalb wird zusaetzlich ueber workoutSessionId und
+     source+sourceRecordId gematcht. Findet sich kein lokaler Datensatz, ist das KEIN
+     Ladefehler: der Snapshot wird trotzdem zurueckgegeben, damit die Detailseite die
+     geladenen Saetze anzeigen kann. */
+  function repairWorkoutSnapshot(activityId, exercises, ref) {
     var snap = snapshotExercises(exercises);
-    if (!snap.length) return { ok: false, error: 'leer' };
+    if (!snap.length) return { ok: false, error: 'leer', snapshot: [] };
     var all = readAll();
-    for (var i = 0; i < all.length; i++) {
+    var hit = -1;
+    for (var i = 0; i < all.length && hit < 0; i++) {
       var a = all[i];
-      if (a.id === activityId || a.clientRecordId === activityId) {
-        a.workoutSnapshot = snap; a.updatedAt = now();
-        writeAll(all);
-        return { ok: true, activity: a };
+      if (a.id === activityId || a.clientRecordId === activityId) hit = i;
+    }
+    if (hit < 0 && ref) {
+      for (var j = 0; j < all.length && hit < 0; j++) {
+        var b = all[j];
+        if (ref.workoutSessionId && b.workoutSessionId === ref.workoutSessionId) hit = j;
+        else if (ref.source && ref.sourceRecordId && b.source === ref.source && b.sourceRecordId === ref.sourceRecordId) hit = j;
+        else if (ref.id && b.id === ref.id) hit = j;
       }
     }
-    return { ok: false, error: 'Aktivitaet nicht gefunden' };
+    if (hit >= 0) {
+      all[hit].workoutSnapshot = snap; all[hit].updatedAt = now();
+      writeAll(all);
+      return { ok: true, activity: all[hit], snapshot: snap };
+    }
+    return { ok: false, error: 'Aktivitaet nicht gefunden', snapshot: snap };
   }
 
   // Detailauflösung NUR über stabile IDs (nie Datum/Index). Liefert Snapshot + Activity.

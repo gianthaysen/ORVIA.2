@@ -8628,6 +8628,7 @@ function gmActGymAgg(a,vm,sess){
     else if(a&&a.workoutSnapshot&&a.workoutSnapshot.length)ex=a.workoutSnapshot;
     else if(a&&Array.isArray(a.exercises)&&a.exercises.length)ex=a.exercises;
     else if(a&&a.metrics&&Array.isArray(a.metrics.exercises)&&a.metrics.exercises.length)ex=a.metrics.exercises;
+    else if(typeof gmActFallbackSnapshot==='function')ex=gmActFallbackSnapshot(a,vm);
   }catch(_){ }
   if(ex){
     var list=[],sets=0,vol=0,volKnown=false;
@@ -8940,8 +8941,17 @@ function gmOpenActivityPage(aid){
 }
 var _gmActFallbackTried={};
 var _gmActFallbackState={};   /* aid -> loading | loaded | server_empty | error | no_session */
+var _gmActFallbackTree={};    /* v8-386: id/clientRecordId/aid -> Snapshot (Uebungen+Saetze) aus der Cloud */
+function gmActFallbackRemember(a,aid,snap){
+  [aid,a&&a.id,a&&a.clientRecordId].forEach(function(k){if(k)_gmActFallbackTree[String(k)]=snap;});
+}
+function gmActFallbackSnapshot(a,vm){
+  var ks=[vm&&vm.id,a&&a.clientRecordId,a&&a.id];
+  for(var i=0;i<ks.length;i++){var s=ks[i]&&_gmActFallbackTree[String(ks[i])];if(s&&s.length)return s;}
+  return null;
+}
 function gmActRetryGym(aid){
-  var k=String(aid);delete _gmActFallbackTried[k];delete _gmActFallbackState[k];
+  var k=String(aid);delete _gmActFallbackTried[k];delete _gmActFallbackState[k];delete _gmActFallbackTree[k];
   try{gmOpenActivityPage(aid);}catch(_){ }
 }
 function gmActLoadGymFallback(aid,a){
@@ -8958,10 +8968,18 @@ function gmActLoadGymFallback(aid,a){
       /* Server erreichbar, hat aber selbst keine Saetze — das ist eine ECHTE Aussage
          und keine Vermutung; sie unterscheidet Datenverlust von „nie erfasst". */
       _gmActFallbackState[key]='server_empty';redraw();return;}
+    /* v8-386: Das Laden ist hier bereits GELUNGEN. Ob der Snapshot in einen lokalen
+       Datensatz zurueckgeschrieben werden kann, ist eine zweite Frage — bisher wurde ein
+       fehlendes lokales Gegenstueck (Server-Aktivitaet ohne lokale Zeile) faelschlich als
+       „Verbindungsfehler" gemeldet. Jetzt: Snapshot im Seiten-Cache halten und anzeigen;
+       die Reparatur ist Bonus, ihr Scheitern kein Fehlerzustand. */
     var store=window.ORVIA&&ORVIA.activityStore;
-    if(!(store&&store.repairWorkoutSnapshot)){_gmActFallbackState[key]='error';redraw();return;}
-    var rr=store.repairWorkoutSnapshot(a.clientRecordId||a.id,r.data.exercises);
-    if(!rr||!rr.ok){_gmActFallbackState[key]='error';redraw();return;}
+    var rr=null;try{rr=store&&store.repairWorkoutSnapshot?store.repairWorkoutSnapshot(a.clientRecordId||a.id,r.data.exercises,a):null;}catch(_){ }
+    var snap=(rr&&rr.snapshot&&rr.snapshot.length)?rr.snapshot:null;
+    if(!snap){try{var _sn=store&&store.snapshotExercises?store.snapshotExercises(r.data.exercises):null;if(_sn&&_sn.length)snap=_sn;}catch(_){ }}
+    if(!snap){_gmActFallbackState[key]='error';redraw();return;}
+    gmActFallbackRemember(a,aid,snap);
+    if(!(rr&&rr.ok)){try{console.warn('[ORVIA] Satz-Snapshot geladen, lokaler Datensatz nicht zuordenbar:',rr&&rr.error);}catch(_){ }}
     _gmActFallbackState[key]='loaded';
     /* Nur neu rendern, wenn die Seite noch offen ist — der Nutzer koennte weitergeklickt
        haben. Die Reparatur selbst gilt trotzdem (auch fuer Koerperkarte/Volumen). */
@@ -9005,7 +9023,8 @@ function gmSetsDiagProbe(aid,sid){
     var exs=(r.data&&r.data.exercises)||[];var n=0;exs.forEach(function(e){n+=((e&&e.sets)||[]).length;});
     if(n>0){out.textContent='' + _uiT('ui.in_der_cloud_liegen') + ''+exs.length+'' + _uiT('ui.uebungen_mit') + ''+n+'' + _uiT('ui.saetzen_sie_werden_jetzt_auf') + '';
       try{var st=ORVIA.activityStore;var a=_resolveActivityAny(aid);
-        if(st&&st.repairWorkoutSnapshot&&a)st.repairWorkoutSnapshot(a.clientRecordId||a.id,exs);}catch(_){ }
+        if(st&&st.repairWorkoutSnapshot&&a){var rr=st.repairWorkoutSnapshot(a.clientRecordId||a.id,exs,a);
+          if(rr&&rr.snapshot&&rr.snapshot.length)gmActFallbackRemember(a,aid,rr.snapshot);}}catch(_){ }
       setTimeout(function(){try{gmCloseSheets();gmOpenActivityPage(aid);}catch(_){ }},1200);
     }else{out.textContent='' + _uiT('ui.auch_in_der_cloud_sind') + '';}
   }).catch(function(e){if(out)out.textContent='' + _uiT('ui.cloud_abfrage_fehlgeschlagen') + ''+String(e&&e.message||e);});
