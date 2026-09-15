@@ -274,8 +274,16 @@
       '<div class="gd-corrlbl"><span>' + esc(deShort(m.series[0].date) || '') + '</span><span>' + esc(T('gd.today')) + '</span></div>';
   }
 
+  /* Niveau-Vertrag (v8-382): a = Anfaenger (Zielzeit, Machbarkeit als Satz, Vertrag, Plan, EINE
+     Stellschraube, Meilensteine, Verwalten), f = Fortgeschritten (+ Gruende max. 3, Prognoseverlauf,
+     Einzahlungen, Historie), p = Profi (alles, Gruende vollstaendig). */
+  var DEPTH = { a: { reasons: 0, forecast: false, deposits: false, history: false, levers: 1, interactions: false },
+                f: { reasons: 99, forecast: true, deposits: true, history: true, levers: 2, interactions: true },
+                p: { reasons: 99, forecast: true, deposits: true, history: true, levers: 2, interactions: true } };
+  function depth() { var l = 'f'; try { l = typeof root.gmLevel === 'function' ? root.gmLevel() : 'f'; } catch (e) {} return DEPTH[l] || DEPTH.f; }
   function html(m) {
     if (!m) return '<p class="muted">' + esc(T('goal.detail.none')) + '</p>';
+    var D = depth();
     var p = m.progress, h = '<div class="gd gd2">';
     /* Hero */
     h += '<div class="gd-hero"><div class="gd-kick">' + esc(p.kind === 'time' ? T('gd.kick_time') : T('goal.detail.target')) + '</div>' +
@@ -285,14 +293,14 @@
     /* Machbarkeit */
     if (m.feas) {
       h += '<div class="gd-feas ' + esc(m.feas.cls) + '"><div class="f-top"><div class="f-ic">' + ic('gauge', 'sm') + '</div><div style="flex:1;min-width:0"><div class="f-t">' + esc(m.feas.title) + '</div><div class="f-d">' + m.feas.text + '</div></div></div>' +
-        (m.reasons.length ? '<div class="gd-reasons">' + m.reasons.map(function (r) { return '<div class="gd-reason ' + r.kind + '">' + ic(r.kind === 'plus' ? 'check' : r.kind === 'minus' ? 'x' : 'info', 'xs') + '<div>' + r.html + '</div></div>'; }).join('') + '</div>' : '') +
+        (m.reasons.length && D.reasons > 0 ? '<div class="gd-reasons">' + m.reasons.slice(0, D.reasons).map(function (r) { return '<div class="gd-reason ' + r.kind + '">' + ic(r.kind === 'plus' ? 'check' : r.kind === 'minus' ? 'x' : 'info', 'xs') + '<div>' + r.html + '</div></div>'; }).join('') + '</div>' : '') +
         (m.feasibilityText ? '<div class="gd-reason neutral" style="margin-top:10px">' + ic('info', 'xs') + '<div>' + esc(m.feasibilityText) + '</div></div>' : '') + '</div>';
     }
     /* Zielvertrag */
     if (m.contract) h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('shield', 'sm') + ' ' + esc(T('gd.contract')) + '</div><div class="more" id="gd-edit-2">' + esc(T('common.edit')) + '</div></div><div class="gd-contract">' +
       m.contract.lines.map(function (l) { return '<div class="gd-cond">' + ic(l.ic, 'xs') + '<div>' + l.html + '</div></div>'; }).join('') + '</div><div class="source">' + ic('info', 'xs') + ' ' + esc(T('gd.contract_src')) + '</div></div>';
     /* Prognoseverlauf */
-    if (p.kind === 'time') {
+    if (p.kind === 'time' && D.forecast) {
       var svg = seriesSVG(m);
       h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('bolt', 'sm') + ' ' + esc(T('gd.forecast')) + '</div></div>' +
         (svg ? svg + '<div class="gd-legend"><span><i style="background:#43D693"></i>' + esc(T('gd.leg_forecast')) + (m.feas && m.feas.predMin ? ' ' + esc(fmtTime(m.feas.predMin)) : '') + '</span><span><i style="background:rgba(201,174,124,.7)"></i>' + esc(T('gd.leg_target')) + '</span></div>' : '<p class="muted" style="margin:8px 0 0">' + esc(T('gd.forecast_none')) + '</p>') +
@@ -307,8 +315,9 @@
     } else h += '<div class="card tight"><p class="muted" style="margin:0">' + esc(T('gd.plan_none')) + '</p></div>';
     /* Stellschrauben */
     if (m.levers.length) {
-      h += sect(T(m.levers.length === 1 ? 'gd.levers_one' : 'gd.levers'));
-      h += m.levers.map(function (l) { return '<div class="card tight"><div style="display:flex;gap:12px;align-items:flex-start"><div class="sh-hic" style="background:var(--ready-t);color:var(--ready)">' + ic('bolt', 'sm') + '</div><div style="flex:1;min-width:0"><div class="gd-lv-t">' + l.html + '</div><div class="gd-lv-d">' + esc(l.effect) + '</div></div></div></div>'; }).join('');
+      var levers = m.levers.slice(0, D.levers);
+      h += sect(T(levers.length === 1 ? 'gd.levers_one' : 'gd.levers'));
+      h += levers.map(function (l) { return '<div class="card tight"><div style="display:flex;gap:12px;align-items:flex-start"><div class="sh-hic" style="background:var(--ready-t);color:var(--ready)">' + ic('bolt', 'sm') + '</div><div style="flex:1;min-width:0"><div class="gd-lv-t">' + l.html + '</div><div class="gd-lv-d">' + esc(l.effect) + '</div></div></div></div>'; }).join('');
     }
     /* Meilensteine */
     h += sect(T('goal.detail.milestones'), { id: 'gd-ms-add', label: ic('plus', 'xs') + ' ' + esc(T('gd.ms_add')) });
@@ -318,17 +327,17 @@
         return '<div class="gd-msrow' + cls + (x.atRisk ? ' risk' : '') + '"><div class="m-rail"><div class="m-dot">' + (x.status === 'achieved' ? ic('check', 'xs') : (x.status === 'in_progress' ? ic('target', 'xs') : (x.atRisk ? ic('alert', 'xs') : ''))) + '</div><div class="m-line"></div></div><div class="m-b"><div class="m-t">' + esc(x.title) + '</div><div class="m-d">' + esc(x.date ? (x.status === 'achieved' ? deDate(x.date) : T('gd.ms_planned', { d: deDate(x.date) })) : T('common.noDate')) + (x.atRisk ? ' · <span class="m-risk">' + esc(T('gd.ms_at_risk')) + '</span>' : '') + '</div>' + (x.value ? '<div class="m-v">' + esc(x.value) + '</div>' : '') + '</div></div>'; }).join('') + '</div></div>';
     } else h += '<div class="card tight"><p class="muted" style="margin:0">' + esc(T('gd.ms_none')) + '</p></div>';
     /* Einzahlungen */
-    if (m.keyWeeks.length) {
+    if (m.keyWeeks.length && D.deposits) {
       h += sect(T('gd.dep_title')) + '<div class="card tight"><div class="gd-dep-intro">' + T('gd.dep_intro') + '</div>' +
         m.keyWeeks.map(function (w) { var pl = w.planned != null ? Math.max(1, Math.round(w.planned)) : null, pct = pl ? Math.min(100, Math.round(w.done / pl * 100)) : (w.done ? 100 : 0), miss = pl != null && w.done < pl && !w.current; return '<div class="gd-dep' + (miss ? ' miss' : '') + '"><span class="w">' + esc(w.label) + '</span><span class="bar"><i style="width:' + pct + '%"></i></span><span class="v">' + w.done + (pl != null ? ' / ' + pl : '') + '</span></div>'; }).join('') +
         '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('gd.dep_src')) + '</div></div>';
     }
     /* Historie */
-    h += sect(T('gd.history')) + '<div class="card tight"><div class="gd-log">' + (m.history.length ? m.history.map(function (x) { return '<div class="gd-logrow"><span class="d">' + esc(x.date) + '</span><span class="t">' + x.html + '</span></div>'; }).join('') : '<p class="muted" style="margin:0">' + esc(T('gd.history_none')) + '</p>') + '</div><div class="source">' + ic('info', 'xs') + ' ' + esc(T('gd.history_src')) + '</div></div>';
+    if (D.history) h += sect(T('gd.history')) + '<div class="card tight"><div class="gd-log">' + (m.history.length ? m.history.map(function (x) { return '<div class="gd-logrow"><span class="d">' + esc(x.date) + '</span><span class="t">' + x.html + '</span></div>'; }).join('') : '<p class="muted" style="margin:0">' + esc(T('gd.history_none')) + '</p>') + '</div><div class="source">' + ic('info', 'xs') + ' ' + esc(T('gd.history_src')) + '</div></div>';
     /* Wechselwirkungen */
-    h += sect(T('gd.interactions'));
+    if (D.interactions || m.conflicts.length) h += sect(T('gd.interactions'));
     if (m.conflicts.length) h += m.conflicts.map(function (c) { return '<div class="gd-conf" style="margin:0 18px 10px">' + ic('alert', 'sm') + '<div><div class="c-t">' + esc(c.title) + '</div><div class="c-d">' + esc(c.text) + '</div></div></div>'; }).join('');
-    else h += '<div class="card tight"><p class="muted" style="margin:0">' + esc(T('gd.interactions_none')) + '</p></div>';
+    else if (D.interactions) h += '<div class="card tight"><p class="muted" style="margin:0">' + esc(T('gd.interactions_none')) + '</p></div>';
     /* Luecken */
     if (m.gaps.length) h += sect(T('goal.detail.gaps')) + '<div class="setting-group">' + m.gaps.map(function (g) { return '<div class="prow" id="gd-gap-' + esc(g.id) + '"><div class="p-ic">' + ic('alert', 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(g.label) + '</div><div class="p-d">' + esc(g.hint || '') + '</div></div>' + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
     /* Verwalten */

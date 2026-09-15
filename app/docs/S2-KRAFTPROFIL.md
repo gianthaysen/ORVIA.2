@@ -32,3 +32,9 @@
 - `js/workout-custom-exercise.js`: Sheet „Eigene Übung anlegen/bearbeiten" im Picker (Zeile oben, Stift an eigenen Übungen). Basisbewegung wählen ⇒ Muskeln (primär ●/sekundär ◐), Bewegungsmuster und Kategorie aus der Katalogvorlage; Gerät/Griff/Ausführung = Variante; Notiz. Validierung: Name ≥ 2 Zeichen, ≥ 1 Muskel. Nach Anlegen wird die Übung sofort gewählt (Workout/Callback) und ist in Muskelkarte + Kraftprofil klassifiziert.
 - Repository: `createUserExercise` schreibt `exercise_muscles`/`exercise_equipment` mit; `updateUserExercise` akzeptiert das Domain-Objekt (exerciseToRow) und ersetzt Muskeln/Gerät; Löschen nur eigene (RLS), Snapshots behalten den Namen.
 - Test `custom_exercise_test` (9).
+
+## Niveau-Pass Ziel-Detail + Profil (Build v8-382)
+- `goal-detail.js` `DEPTH`: Anfänger = Zielzeit, Machbarkeit als Satz (ohne Gründeliste), Vertrag, Plan, eine Stellschraube, Meilensteine, Verwalten; Fortgeschritten = + Gründe, Prognoseverlauf, Einzahlungen, Historie, Wechselwirkungen; Profi = alles.
+- `profile-v14.js` Leistung: Anfänger = Ausdauerwert / Fitness / Belastung (✓ ↑ ↓ mit Worten) statt VO₂max-Quelle / CTL / ACWR, keine Zonen & Schwellen; Fortgeschritten/Profi unverändert.
+- Tests: goal_detail_test +2 (B7/B8), profile_v14_test +1 (H6).
+- Offen (bewusst): Über-/Ziele-Reiter und Kennzahlen-Karten sind für alle Niveaus gleich — Texte dort sind bereits alltagssprachlich.

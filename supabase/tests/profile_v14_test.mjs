@@ -67,6 +67,8 @@ function baseData(over) {
   ok('C3 Rad 20 km 40:00 und Schwimmen 400 m 9:00', /40:00/.test(h) && /9:00/.test(h) && /Bestzeiten Rad &amp; Schwimmen/.test(h));
   ok('C4 Kraftwerte: Kniebeuge 116 kg (1RM), Klimmzuege 12 Wdh., zwei fehlend benannt', /116 kg/.test(h) && /12 Wdh\./.test(h) && /2 fehlende Werte/.test(h));
   ok('C5 HFmax geschaetzt (Tanaka) orange, Ruhepuls 46 Garmin, Schwellenpace 4:37 /km aus 10 km', /Aus dem Alter geschätzt/.test(h) && /pv-est/.test(h) && /<b|46/.test(h) && /4:37 \/km/.test(h) && /Aus 10 km-Referenz/.test(h));
+  const sbA = makeSb({ gmLevel: () => 'a' }); const hA = sbA.ORVIA.screens.profileV14.performanceHTML(baseData());
+  ok('H6 Anfaenger: Leistung ohne CTL/ACWR/Schwellen — Ausdauerwert, Fitness, Belastung in Worten', !/ACWR|CTL|Schwellenpace/.test(hA) && /Ausdauerwert/.test(hA) && /Belastung/.test(hA));
   const e = PV.performanceHTML(baseData({ vo2: null, load: null, bests: null, bestsAll: null, strengthRecords: [], hfMax: null, restingHr: null, threshold: null }));
   ok('C6 ohne Daten: „—" und ehrliche Hinweise, keine Zahlen', /keine Quelle/.test(e) && /Kein Leistungsbeleg/.test(e) && !/52,4|4:37/.test(e));
 }

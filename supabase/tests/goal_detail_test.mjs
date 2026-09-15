@@ -67,6 +67,12 @@ sec('B · HTML');
   ok('B3 Zielvertrag + Prognoseverlauf-Karte (ohne Serie: ehrlicher Hinweis) + Plan dieser Woche + Einzahlungen 4 Wochen', /Zielvertrag/.test(h) && /Noch kein Verlauf/.test(h) && /Diese Woche · 1 Einheiten/.test(h) && (h.match(/class="gd-dep( miss)?"/g) || []).length === 4 && (h.match(/<span class="v">1 \/ 2</g) || []).length === 2);
   ok('B4 Meilenstein + Renntag, Historie „angelegt" aus createdAt, Verwalten-Zeilen (pausieren, Sichtbarkeit), Luecke als Zeile', /15 km lang/.test(h) && /Wettkampf Halbmarathon/.test(h) && /id="gd-pause"/.test(h) && /id="gd-vis"/.test(h) && /id="gd-gap-performance_reference"/.test(h));
   ok('B5 html(null) ist ein Hinweis, kein Wurf', /Kein Ziel/.test(G.html(null)));
+  /* Niveau-Vertrag (v8-382) */
+  globalThis.gmLevel = () => 'a'; const ha = G.html(M(base));
+  ok('B7 Anfaenger: Machbarkeit ohne Gruendeliste, kein Prognoseverlauf, keine Einzahlungen/Historie, max. 1 Stellschraube', /gd-feas/.test(ha) && !/gd-reason /.test(ha) && !/gd-legend/.test(ha) && !/gd-dep-intro/.test(ha) && !/gd-log/.test(ha) && (ha.match(/sh-hic/g) || []).length <= 1);
+  globalThis.gmLevel = () => 'p'; const hp = G.html(M(base));
+  ok('B8 Profi: alle Gruende, Prognoseverlauf, Historie', (hp.match(/gd-reason /g) || []).length >= 4 && /gd-log/.test(hp));
+  delete globalThis.gmLevel;
   ok('B6 Escaping in Meilenstein-Titel', /&lt;b&gt;/.test(G.html(M({ goal: Object.assign({}, HM, { milestones: [{ title: '<b>x</b>' }] }) }))));
   const sv = G.html(M(Object.assign({}, base, { series: [{ date: '2026-08-01', tPred: 112 }, { date: '2026-08-15', tPred: 109 }, { date: '2026-09-11', tPred: 106.2 }] })));
   ok('B7 Prognoseverlauf als SVG mit Ziellinie', /<svg viewBox="0 0 320 110"/.test(sv) && /Ziel 1:50:00/.test(sv) && /stroke="#43D693"/.test(sv));
