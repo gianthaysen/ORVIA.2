@@ -140,6 +140,7 @@
     var mr = m.muscles; if (!mr || !depth().muscles) return '';
     var rows = mr.rows.filter(function (r) { return r.group === st.grp; });
     if (!rows.length) return '';
+    if (mr.corridor && mr.corridor.min == null) return '<div class="card tight" data-gm-slot="strength-muscles"><div class="ctitle"><div class="l">' + ic('gauge') + ' ' + esc(T('kp.saetze_je_muskel', { g: grpLabel(st.grp) })) + '</div><span class="more">' + esc(T('kp.7_tage')) + '</span></div><div class="kp-note">' + ic('info', 'sm') + '<div>' + esc(T('kp.korridor_fehlt')) + '</div></div>' + src(T('kp.src_korridor_leer')) + '</div>';
     var SC = 24, under = rows.filter(function (r) { return r.status === 'under'; }), over = rows.filter(function (r) { return r.status === 'over'; });
     var h = '<div class="card tight" data-gm-slot="strength-muscles"><div class="ctitle"><div class="l">' + ic('gauge') + ' ' + esc(T('kp.saetze_je_muskel', { g: grpLabel(st.grp) })) + '</div><span class="more">' + esc(T('kp.7_tage')) + '</span></div><div class="kp-corr">' +
       rows.map(function (r) { var lo = r.min, hi = r.max, n = r.effective; var cls = r.status === 'under' || r.status === 'over' ? ' att' : '';
@@ -221,7 +222,7 @@
   function render() {
     var w = root[SHEET]; if (!w || !w.querySelector) return;
     var host = w.querySelector('#kpBody'); if (!host) return;
-    host.innerHTML = body(_model);
+    host.innerHTML = (_loading ? '<div class="kp-loading">' + esc(T('kp.laedt_server')) + '</div>' : '') + body(_model);
   }
   function onClick(ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest('[data-a]') : null; if (!t) return;
@@ -231,9 +232,22 @@
     else if (a === 'kppt') { st.pt = +v; render(); }
     else if (a === 'kpstart') { try { root._closeM(SHEET); } catch (e) {} try { if (typeof root.gmOpenStartSheet === 'function') root.gmOpenStartSheet(); } catch (e) {} }
   }
+  /* v8-383: Server-Workouts nachladen (gymPipelineAsync refresh) — vorher nur lokale Snapshots,
+     wodurch auf einem zweiten Geraet fast alle Einheiten fehlten. Sheet zeigt bis dahin den
+     lokalen Stand mit Ladehinweis und rendert danach neu. */
+  var _loading = false, _loadedAt = 0;
+  function refreshAsync(after) {
+    var gv = O.gymVolume; if (!gv || !gv.gymPipelineAsync || _loading) return false;
+    _loading = true;
+    gv.gymPipelineAsync({ days: 365, refresh: true }).then(function () { _loading = false; _loadedAt = Date.now(); _ctx = collect(); _model = buildModel(_ctx); if (typeof after === 'function') after(); })
+      .catch(function () { _loading = false; if (typeof after === 'function') after(); });
+    return true;
+  }
   function open(opts) {
     var o = opts || {};
     _ctx = collect(); _model = buildModel(_ctx);
+    var fresh = (Date.now() - _loadedAt) < 60000;
+    if (!fresh) refreshAsync(function () { render(); });
     if (o.goalTitle && _model && O.strengthProfile.matchGoalExercise) { var EG = O.strengthProfile.matchGoalExercise({ title: o.goalTitle }, _model.exercises); if (EG) { st.grp = EG.group; st.ex = EG.key; st.pt = null; } }
     if (o.exercise && _model) { var E = _model.exercises.filter(function (e) { return e.key === o.exercise || e.name === o.exercise; })[0]; if (E) { st.grp = E.group; st.ex = E.key; st.pt = null; } }
     if (typeof root.openSheet !== 'function') return false;
@@ -247,10 +261,12 @@
   /* Teaser für Analyse · Körper / Profil · Leistung: bestes Ergebnis in einer Zeile */
   function teaser() {
     try {
-      var ctx = collect(); var m = buildModel(ctx); if (!m || !m.exercises.length) return { empty: true, sessions: 0 };
+      var fresh = (Date.now() - _loadedAt) < 60000;
+      if (!fresh && !_loading) refreshAsync(function () { try { if (typeof root.renderGMAnalysis === 'function' && document.getElementById('gmAna')) root.renderGMAnalysis(); } catch (e) {} });
+      var ctx = collect(); var m = buildModel(ctx); if (!m || !m.exercises.length) return { empty: true, sessions: 0, loading: _loading };
       var best = null; m.exercises.forEach(function (E) { if (!E.ready || E.mode !== 'load') return; var em = m.exerciseModel(E.key); if (em && em.current != null && (!best || (em.delta && best.delta && em.delta.kg > best.delta.kg) || !best.delta)) best = em; });
       var under = (m.muscles && m.muscles.rows || []).filter(function (r) { return r.status === 'under'; }).length;
-      return { empty: false, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, delta: best && best.delta ? best.delta : null, under: under, ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
+      return { empty: false, loading: _loading, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, delta: best && best.delta ? best.delta : null, under: under, ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
     } catch (e) { return { empty: true, sessions: 0 }; }
   }
 

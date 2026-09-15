@@ -10072,7 +10072,7 @@ function gmStrengthTeaserHTML(){
     line=t.exercise?_uiT('kp.teaser_line',{ex:t.exercise,v:String(Math.round(t.current*10)/10).replace('.',',')}):_uiT('kp.teaser_sessions',{n:t.sessions,r:t.ready,t:t.total});
     var parts=[];if(t.delta)parts.push(_uiT('kp.teaser_delta',{d:(t.delta.kg>=0?'+':'−')+String(Math.abs(t.delta.kg)).replace('.',','),w:t.delta.weeks}));
     if(t.under>0)parts.push(_uiT('kp.teaser_under',{n:t.under}));
-    if(!parts.length)parts.push(_uiT('kp.teaser_sessions',{n:t.sessions,r:t.ready,t:t.total}));
+    if(!parts.length)parts.push(t.loading?_uiT('kp.laedt_server'):_uiT('kp.teaser_d'));
     sub=parts.join(' · ');
   }
   return '<div class="card tap kp-teaser" role="button" tabindex="0" data-gm-slot="analysis-strength" onclick="openStrengthProfile()"><div class="ctitle"><div class="l">'+icon('dumbbell','sm')+' '+gmEsc(_uiT('kp.teaser_t'))+'</div><span class="more">'+gmEsc(_uiT('kp.teaser_open'))+' '+icon('chev','xs')+'</span></div>'+

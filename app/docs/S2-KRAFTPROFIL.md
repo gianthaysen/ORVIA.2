@@ -38,3 +38,10 @@
 - `profile-v14.js` Leistung: Anfänger = Ausdauerwert / Fitness / Belastung (✓ ↑ ↓ mit Worten) statt VO₂max-Quelle / CTL / ACWR, keine Zonen & Schwellen; Fortgeschritten/Profi unverändert.
 - Tests: goal_detail_test +2 (B7/B8), profile_v14_test +1 (H6).
 - Offen (bewusst): Über-/Ziele-Reiter und Kennzahlen-Karten sind für alle Niveaus gleich — Texte dort sind bereits alltagssprachlich.
+
+## Befund 15.09. · „Sätze weg" (Build v8-383)
+- Server (gianthaysen76@gmail.com): 13 abgeschlossene Sessions Jun–Aug mit 5–7 Übungen / 9–15 Sätzen — **die Sätze waren nie weg.** Die App las sie nicht zurück: (1) Kraftprofil/Kraftwerte nutzten nur den synchronen Pfad (lokale Snapshots), (2) der Nachlade-Pfad (`_gymPipelineFetch`, refresh) gab Baum-Übungen nur mit Namen weiter → ohne exakten Namenstreffer „unklassifiziert" (Muskelkarte 90 T zeigte 1–3 Sätze), (3) drei Juni-Sessions ohne `activities`-Zeile wurden nie nachgeladen.
+- Fix: `ensureCatalog()` vor dem Nachladen; Baum-Übungen tragen `exerciseId/slug/movementPattern/muscles`; `listSessions` ergänzt verwaiste abgeschlossene Gym-Sessions; `_lastTreeSessions` speist den synchronen Pfad; Kraftprofil und Teaser laden per `gymPipelineAsync({days:365, refresh:true})` nach und rendern danach neu (Ladehinweis); `gymPipelineAsync` exportiert.
+- Kosmetik: Teaser-Dopplung, Muskelkarte ohne Korridor zeigt nur den Hinweis.
+- Test `gym_server_reload_test` (9).
+- Offen: `activities`-Zeilen für die drei Juni-Sessions fehlen weiterhin (Aktivitätsliste); Backfill über `orvia_upsert_activity_from_session` als Folgeaufgabe.
