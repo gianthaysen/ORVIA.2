@@ -176,11 +176,25 @@
       try {
         const sres = await this.getSession(sessionId); if (!sres.success) return sres;
         if (!sres.data) return B.ok({ session: null, exercises: [] }, { source: 'empty' });
-        const { data, error } = await B.sb().from('workout_exercises')
-          .select('*, exercise:exercises(*), workout_sets(*)')
+        /* v8-384 (Befund 15.09.): workout_exercises hat ZWEI Fremdschluessel auf exercises
+           (exercise_id, replaced_by_exercise_id). Der Embed `exercises(*)` ist damit fuer
+           PostgREST mehrdeutig und wurde abgelehnt — jeder Baum-Abruf scheiterte still, die
+           Saetze schienen "weg". Jetzt: Embed mit FK-Hinweis; schlaegt auch der fehl,
+           Fallback ohne Embed (Uebungen + Saetze getrennt, Uebungszeilen per IN-Abfrage). */
+        let { data, error } = await B.sb().from('workout_exercises')
+          .select('*, exercise:exercises!workout_exercises_exercise_id_fkey(*), workout_sets(*)')
           .eq('user_id', B.currentUserId()).eq('workout_session_id', sessionId)
           .order('order_index', { ascending: true });
-        if (error) return B.fail('query_failed', error.message);
+        if (error) {
+          const r2 = await B.sb().from('workout_exercises').select('*, workout_sets(*)')
+            .eq('user_id', B.currentUserId()).eq('workout_session_id', sessionId).order('order_index', { ascending: true });
+          if (r2.error) return B.fail('query_failed', r2.error.message);
+          data = r2.data || [];
+          const ids = Array.from(new Set(data.map(we => we.exercise_id).filter(Boolean)));
+          let byId = {};
+          if (ids.length) { try { const r3 = await B.sb().from('exercises').select('*').in('id', ids); (r3.data || []).forEach(e => { byId[e.id] = e; }); } catch (e) {} }
+          data.forEach(we => { we.exercise = byId[we.exercise_id] || null; });
+        }
         const exercises = (data || []).map(we => ({
           workoutExercise: (function () { const c = Object.assign({}, we); delete c.exercise; delete c.workout_sets; return c; })(),
           exercise: we.exercise || null,
