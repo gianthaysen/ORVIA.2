@@ -4278,3 +4278,12 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .wo-pi-chev{margin-left:auto;color:#94a3b8;font-size:14px;padding-right:6px}
 .wo-variants{border-left:2px solid rgba(201,174,124,.35);margin:0 0 6px 8px;padding-left:8px}
 .wo-variants .wo-pickitem{min-height:56px;padding:9px 2px}
+/* S2b-2 · Eigene Uebungen */
+.wo-pickitem.wo-newex{min-height:58px;border:1px dashed rgba(201,174,124,.45);border-radius:12px;margin:6px 0 4px;padding:10px 12px;background:rgba(201,174,124,.05)}.wo-pickitem.wo-newex .wo-pi-main{color:var(--gold)}
+.wo-pickrow{display:flex;align-items:stretch;gap:6px}.wo-pickrow .wo-pickitem{flex:1;min-width:0}
+.wo-pi-edit{flex:0 0 40px;border:1px solid rgba(148,163,184,.25);background:#0f172a;color:#94a3b8;border-radius:10px;font-size:15px;cursor:pointer;margin:6px 0}
+.cx-mus-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--mut,#94a3b8);margin:8px 0 6px}.cx-mus-head small{font-size:10.5px}
+.cx-muscles{display:flex;flex-wrap:wrap;gap:6px}.cx-muscles .wo-fchip{padding:7px 11px;font-size:12px}.cx-muscles .wo-fchip.half{border-color:rgba(201,174,124,.5);color:var(--gold-soft)}
+.cx-legend{font-size:10.5px;color:var(--mut,#94a3b8);margin:8px 0 10px}
+.cx-err{font-size:12px;color:var(--attention);margin:6px 0}
+.wo-sheet .wo-inrow select{background:#0f172a;border:1px solid rgba(148,163,184,.25);border-radius:10px;padding:12px;color:#e2e8f0;font-size:15px}
