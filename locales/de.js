@@ -1797,6 +1797,8 @@
     'ui.rl_beschwerde': 'Beschwerde',
     /* ---- Kraftprofil (S2) ---- */
     'kp.titel': 'Kraftprofil',
+    'kp.laedt_server': 'Einheiten vom Server werden nachgeladen …',
+    'kp.src_korridor_leer': 'Korridor erscheint, sobald mindestens zwei Wochen Krafttraining vorliegen — Richtwert aus gym-volume, kein Gesetz',
     'kp.geschaetztes_max': 'dein geschätztes Maximum',
     'kp.unit_max': 'kg Maximum (geschätzt)',
     'kp.stagnation_d_einfach': 'Du hast drei Einheiten in Folge dasselbe Gewicht und dieselben Wiederholungen geschafft. Mach eine Einheit mit etwa 10 % weniger Gewicht und steigere danach wieder.',

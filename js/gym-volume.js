@@ -428,14 +428,17 @@
     var legacy = opts.legacyActivities || legacyGymCandidates();
     var diag = {
       rawLocalActivityCount: local.length, rawServerActivityCount: server.length,
-      rawWorkoutSessionCount: (opts.workoutSessions || []).length, rawLegacySessionCount: legacy.length,
+      rawWorkoutSessionCount: (opts.workoutSessions || _lastTreeSessions || []).length, rawLegacySessionCount: legacy.length,
       gymCandidatesBeforeDateFilter: 0, gymCandidatesAfterDateFilter: 0, completedCandidates: 0, snapshotCandidates: 0,
       rejectedByReason: { wrongSport: 0, wrongStatus: 0, outsidePeriod: 0, tombstoned: 0, missingSnapshot: 0, missingExercises: 0, malformed: 0 },
       detectedSchemas: []
     };
     function schema(src, arr) { if (!arr || !arr.length) return; var f = {}; arr.slice(0, 8).forEach(function (a) { Object.keys(a || {}).forEach(function (k) { f[k] = 1; }); }); diag.detectedSchemas.push({ source: src, count: arr.length, fields: Object.keys(f) }); }
     schema('activityStore', local); schema('serverActivities', server); schema('legacy_db', legacy); schema('workoutSessions', opts.workoutSessions || []);
-    var all = local.concat(server).concat(opts.workoutSessions || []).concat(legacy);
+    /* v8-383: Server-Workouts, die ein refresh-Lauf bereits nachgeladen hat, stehen auch dem
+       synchronen Pfad zur Verfuegung — sonst sahen Kraftwerte/Kraftprofil nur lokale Snapshots. */
+    var ws = opts.workoutSessions || _lastTreeSessions || [];
+    var all = local.concat(server).concat(ws).concat(legacy);
     var seen = {}, out = [];
     all.forEach(function (a) {
       if (!a || typeof a !== 'object') { diag.rejectedByReason.malformed++; return; }
@@ -494,6 +497,15 @@
      Pipeline-Ergebnis 60 s bzw. bis ein Workout gespeichert/geaendert wird
      (orvia:activity-updated → Invalidierung). Jeder Aufrufer erhaelt eine eigene
      diagnostics-Kopie (buildShadowReport mutiert sie nachtraeglich). */
+  var _lastTreeSessions = null;                   // v8-383: Ergebnis des letzten Baum-Nachladens (alle Fenster)
+  var _catalogPromise = null;
+  function ensureCatalog() {
+    if (Object.keys(_catalogById).length) return Promise.resolve(true);
+    if (_catalogPromise) return _catalogPromise;
+    if (!(O.repos && O.repos.exercise && O.repos.exercise.list)) return Promise.resolve(false);
+    _catalogPromise = O.repos.exercise.list().then(function (r) { if (r && r.success) setCatalog(r.data || []); return !!(r && r.success); }).catch(function () { return false; });
+    return _catalogPromise;
+  }
   var _gymPipeCache = null;                       // { key, at, promise }
   var GYM_PIPE_TTL_MS = 60000;
   function invalidateGymPipelineCache() { _gymPipeCache = null; }
@@ -541,10 +553,27 @@
     // Workout-Detail-Nachladen für Server-Gym-Activities mit workoutSessionId aber ohne lokalen Snapshot.
     var workoutSessions = [];
     if (opts.refresh && O.repos && O.repos.workout && O.repos.workout.loadWorkoutTree) {
+      try { await ensureCatalog(); } catch (e) {}
       var need = server.filter(function (a) { return isGymSport(a) && a.workoutSessionId && !exercisesOf(a); });
       var loadedIds = {}; var detailFails = 0;
       var uniqueIds = [];
       need.forEach(function (a) { var sid = a.workoutSessionId; if (!loadedIds[sid]) { loadedIds[sid] = true; uniqueIds.push(sid); } });
+      /* v8-383: abgeschlossene Sessions OHNE activities-Zeile (aeltere Abschluesse vor 0009 /
+         fehlgeschlagener Activity-Push) werden direkt aus workout_sessions geholt — sonst
+         fehlen sie in Muskelkarte und Kraftprofil, obwohl Saetze auf dem Server liegen. */
+      try {
+        if (O.repos.workout.listSessions) {
+          var fromIso = new Date(Date.now() - (days - 1) * 864e5).toISOString().slice(0, 10);
+          var ls = await O.repos.workout.listSessions(fromIso);
+          var known = {}; server.forEach(function (a) { if (a.workoutSessionId) known[a.workoutSessionId] = 1; }); local.forEach(function (a) { if (a.workoutSessionId) known[a.workoutSessionId] = 1; });
+          ((ls && ls.success && ls.data) || []).forEach(function (s) {
+            if (!s || !s.id || s.status !== 'completed' || known[s.id] || loadedIds[s.id]) return;
+            if (s.sport && !isGymSport({ sportId: s.sport_key || s.sport, source: 'orvia_workout' })) return;
+            loadedIds[s.id] = true; uniqueIds.push(s.id);
+          });
+          call('workoutRepository.listSessions', true, !!(ls && ls.success), ((ls && ls.data) || []).length, (ls && ls.success) ? null : 'SESSIONS_LIST_FAILED');
+        }
+      } catch (e) { call('workoutRepository.listSessions', true, false, 0, 'SESSIONS_LIST_FAILED'); }
       var _tLoop = P.now();
       /* Phase 4 (2026-08-05, Perf): vorher EINE sequentielle await-Round-Trip PRO fehlendem
          Snapshot — im Code selbst als Ursache der 5–10 s-Verzoegerung markiert. Jetzt
@@ -558,12 +587,24 @@
       loaded.forEach(function (r) {
         var tr = r.tr;
         if (tr && tr.success && tr.data && tr.data.session) {
-          var exs = (tr.data.exercises || []).map(function (ex) { return { exerciseNameSnapshot: (ex.exercise && ex.exercise.name) || null, sets: (ex.sets || []) }; });
+          /* v8-383: ID, Slug, Bewegungsmuster und Katalog-Muskeln mitgeben — vorher nur der Name,
+             wodurch jede Uebung ohne exakten Namenstreffer als „unklassifiziert" verschwand. */
+          var exs = (tr.data.exercises || []).map(function (ex) {
+            var e0 = ex.exercise || {}; var we = ex.workoutExercise || {};
+            var cat = catalogEntry({ exerciseId: we.exercise_id || e0.id, slug: e0.slug });
+            return { exerciseId: we.exercise_id || e0.id || null, slug: e0.slug || null, baseSlug: e0.base_slug || (cat && cat.baseSlug) || null,
+              exerciseNameSnapshot: e0.name || null, movementPattern: e0.movement_pattern || (cat && cat.movementPattern) || null,
+              muscles: (cat && cat.muscles && Object.keys(cat.muscles).length) ? cat.muscles : null, sets: (ex.sets || []) };
+          });
           workoutSessions.push({ source: 'workout_session', sportId: 'gym', status: 'completed', startedAt: tr.data.session.started_at || tr.data.session.local_date, workoutSessionId: r.sid, exercises: exs });
         } else detailFails++;
       });
       P.mark('gymPipelineAsync: parallel loadWorkoutTree (' + uniqueIds.length + ' round-trips via Promise.all)', _tLoop);
-      call('workoutRepository.loadWorkoutTree', need.length > 0, detailFails === 0, workoutSessions.length, detailFails ? 'WORKOUT_DETAILS_FAILED' : null);
+      call('workoutRepository.loadWorkoutTree', uniqueIds.length > 0, detailFails === 0, workoutSessions.length, detailFails ? 'WORKOUT_DETAILS_FAILED' : null);
+      /* Ergebnis fuer den synchronen Pfad merken (ueber Fenster hinweg zusammenfuehren). */
+      var merged = {}; (_lastTreeSessions || []).forEach(function (w) { if (w && w.workoutSessionId) merged[w.workoutSessionId] = w; });
+      workoutSessions.forEach(function (w) { if (w && w.workoutSessionId) merged[w.workoutSessionId] = w; });
+      _lastTreeSessions = Object.keys(merged).map(function (k) { return merged[k]; });
     }
     var pipe = gymPipeline({ days: days, serverActivities: server, legacyActivities: legacy, workoutSessions: workoutSessions });
     pipe.diagnostics.sourceCalls = calls;
@@ -855,7 +896,8 @@
     explainMuscleVolume: explainMuscleVolume, compareToLegacy: compareToLegacy, snapshotsFromStore: snapshotsFromStore,
     gymPipeline: gymPipeline, volumeAdvice: volumeAdvice, CORRIDORS: CORRIDORS,
     invalidateGymPipelineCache: invalidateGymPipelineCache,
-    setCatalog: setCatalog, catalogEntry: catalogEntry, fromCatalogMuscles: fromCatalogMuscles, MUSCLE_FOLD: MUSCLE_FOLD
+    setCatalog: setCatalog, catalogEntry: catalogEntry, fromCatalogMuscles: fromCatalogMuscles, MUSCLE_FOLD: MUSCLE_FOLD,
+    ensureCatalog: ensureCatalog, lastTreeSessions: function () { return _lastTreeSessions || []; }, gymPipelineAsync: gymPipelineAsync
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.gymVolume = api;
