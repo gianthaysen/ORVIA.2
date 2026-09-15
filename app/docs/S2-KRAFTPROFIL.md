@@ -27,3 +27,8 @@
 - Eigene Übungen: `createUserExercise` schreibt Muskeln + Gerät mit (UI folgt in S2b-2).
 - Niveau-Vertrag Kraftprofil (`DEPTH` in `screens/strength-profile.js`): Anfänger = Maximum + Bestwerte + Ziel + Balance als Satz, kein Jargon; Fortgeschritten = alles außer relativer Kraft; Profi = alles inkl. Methode/relative Kraft/Korridorzahlen.
 - Tests: `exercise_catalog_test` (16), `strength_profile_test` +3 (D10–D12 Niveau).
+
+## S2b-2 · Eigene Übungen (Build v8-381)
+- `js/workout-custom-exercise.js`: Sheet „Eigene Übung anlegen/bearbeiten" im Picker (Zeile oben, Stift an eigenen Übungen). Basisbewegung wählen ⇒ Muskeln (primär ●/sekundär ◐), Bewegungsmuster und Kategorie aus der Katalogvorlage; Gerät/Griff/Ausführung = Variante; Notiz. Validierung: Name ≥ 2 Zeichen, ≥ 1 Muskel. Nach Anlegen wird die Übung sofort gewählt (Workout/Callback) und ist in Muskelkarte + Kraftprofil klassifiziert.
+- Repository: `createUserExercise` schreibt `exercise_muscles`/`exercise_equipment` mit; `updateUserExercise` akzeptiert das Domain-Objekt (exerciseToRow) und ersetzt Muskeln/Gerät; Löschen nur eigene (RLS), Snapshots behalten den Namen.
+- Test `custom_exercise_test` (9).

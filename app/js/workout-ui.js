@@ -856,15 +856,19 @@
     /* S2b-1: ohne Suchbegriff nach Basisbewegung gruppieren (0047: baseSlug). Eine Zeile je
        Basisbewegung, Varianten ausklappbar; genau eine Variante ⇒ direkt waehlbar. „Zuletzt" oben. */
     const td = TD();
+    /* S2b-2: Eigene Uebung anlegen (immer erreichbar) + Stift an eigenen Uebungen */
+    const newRow = '<button class="wo-pickitem wo-newex" role="listitem" onclick="ORVIA.workoutUI.newCustomExercise()"><span class="wo-pi-txt"><span class="wo-pi-main">+ ' + T('cx.titel') + '</span><span class="wo-pi-meta">' + T('cx.picker_sub') + '</span></span></button>';
+    const own = e => (e.isSystem === false ? '<button type="button" class="wo-pi-edit" aria-label="' + T('cx.titel_bearbeiten') + '" onclick="ORVIA.workoutUI.editCustomExercise(\'' + e.id + '\')">✎</button>' : '');
+    const wrap = (e, inner) => (e.isSystem === false ? '<div class="wo-pickrow">' + inner + own(e) + '</div>' : inner);
     if (!q && shown.length && shown.some(e => e.baseSlug)) {
       const byBase = {}, order = [];
       shown.forEach(e => { const k = e.baseSlug || ('_' + e.id); if (!byBase[k]) { byBase[k] = []; order.push(k); } byBase[k].push(e); });
       order.sort((a, b) => { const la = a[0] === '_' ? byBase[a][0].name : (td && td.labelBase ? td.labelBase(a) : a), lb = b[0] === '_' ? byBase[b][0].name : (td && td.labelBase ? td.labelBase(b) : b); return String(la).localeCompare(String(lb), 'de'); });
       const openBase = O.workoutUI._openBase || '';
       const item = e => { const vl = td && td.labelVariant ? td.labelVariant(e.variant) : ''; const meta = [vl || moveLabel(e)].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '');
-        return '<button class="wo-pickitem wo-variant" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span></button>'; };
+        return wrap(e, '<button class="wo-pickitem wo-variant" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span></button>'); };
       const recentRows = recent.map(id => shown.find(e => e.id === id)).filter(Boolean).slice(0, 6);
-      let html = head;
+      let html = head + newRow;
       if (recentRows.length) html += '<div class="wo-pick-sect">' + T('wo.pick.recent') + '</div>' + recentRows.map(item).join('');
       html += '<div class="wo-pick-sect">' + T('wo.pick.bases', { n: order.length }) + '</div>';
       html += order.map(k => {
@@ -876,12 +880,12 @@
       }).join('');
       el.innerHTML = html; return;
     }
-    el.innerHTML = shown.length ? head + shown.map(e => {
+    el.innerHTML = shown.length ? head + newRow + shown.map(e => {
       const recentTag = recent.indexOf(e.id) >= 0 ? ' · zuletzt' : '';
       const vl = td && td.labelVariant ? td.labelVariant(e.variant) : '';
       const meta = [moveLabel(e), vl].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '') + recentTag;
-      return '<button class="wo-pickitem" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span><span class="pchev">›</span></button>';
-    }).join('') + (list.length > CAP ? '<p class="muted" style="padding:12px 2px">' + T('wo.pick.narrow') + '</p>' : '') : '<p class="muted" style="padding:16px">' + T('wo.pick.none') + '</p>';
+      return wrap(e, '<button class="wo-pickitem" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span><span class="pchev">›</span></button>');
+    }).join('') + (list.length > CAP ? '<p class="muted" style="padding:12px 2px">' + T('wo.pick.narrow') + '</p>' : '') : newRow + '<p class="muted" style="padding:16px">' + T('wo.pick.none') + '</p>';
   };
   O.workoutUI._toggleBase = function (k) { O.workoutUI._openBase = (O.workoutUI._openBase === k) ? '' : k; O.workoutUI._filter(); };
   O.workoutUI.choose = async function (exId) {

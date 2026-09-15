@@ -57,8 +57,24 @@
       const g = B.requireAuth(); if (g) return g;
       if (!B.online()) return B.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
       try {
-        const { data, error } = await B.sb().from('exercises').update(patch).eq('id', id).eq('user_id', B.currentUserId()).eq('is_system', false).select();
+        /* S2b-2: Domain-Objekt (camelCase) wird gemappt; Muskeln/Geraet werden ersetzt (nur eigene Uebungen, RLS). */
+        const isDomain = patch && (patch.movementPattern !== undefined || patch.baseSlug !== undefined || patch.muscles !== undefined);
+        const row = isDomain && M ? M.exerciseToRow(patch) : Object.assign({}, patch);
+        delete row.is_system; delete row.user_id;
+        const { data, error } = await B.sb().from('exercises').update(row).eq('id', id).eq('user_id', B.currentUserId()).eq('is_system', false).select();
         if (error) return B.fail('update_failed', error.message);
+        try {
+          if (patch && patch.muscles) {
+            await B.sb().from('exercise_muscles').delete().eq('exercise_id', id);
+            const mus = Object.keys(patch.muscles).map(k => ({ exercise_id: id, muscle_key: k, weight: +(patch.muscles[k].weight != null ? patch.muscles[k].weight : (patch.muscles[k].involvement === 'direct' ? 1 : 0.5)), involvement: patch.muscles[k].involvement || 'direct' }));
+            if (mus.length) await B.sb().from('exercise_muscles').upsert(mus, { onConflict: 'exercise_id,muscle_key' });
+          }
+          if (patch && Array.isArray(patch.equipment)) {
+            await B.sb().from('exercise_equipment').delete().eq('exercise_id', id);
+            const eq = patch.equipment.map(k => ({ exercise_id: id, equipment_key: k }));
+            if (eq.length) await B.sb().from('exercise_equipment').upsert(eq, { onConflict: 'exercise_id,equipment_key' });
+          }
+        } catch (e) {}
         return B.ok((data && data[0]) || null);
       } catch (e) { return B.fail('exception', String(e && e.message || e)); }
     },

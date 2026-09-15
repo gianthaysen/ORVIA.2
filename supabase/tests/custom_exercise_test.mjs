@@ -1,0 +1,30 @@
+/* ORVIA · custom_exercise — S2b-2: Eigene Übungen anlegen/bearbeiten/löschen (Verdrahtung + Modulvertrag)
+   node supabase/tests/custom_exercise_test.mjs */
+import { existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const _flat = join(HERE, '..', '..');
+const APP = ([_flat, join(_flat, 'app'), join(_flat, '..', 'app')].find(p => existsSync(join(p, 'js', 'workout-custom-exercise.js'))) || _flat);
+let pass = 0, fail = 0;
+const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
+globalThis.window = globalThis;
+require(join(APP, 'js/i18n.js')); require(join(APP, 'locales/de.js')); require(join(APP, 'js/training-domain.js'));
+const CX = require(join(APP, 'js/workout-custom-exercise.js'));
+ok('A1 Modul: 19 Muskelschlüssel (inkl. traps/adductors/abductors/hip_flexors), Gerätliste mit SZ/Trap/T-Bar, Griffe, Ausführungen', CX.MUSCLES.length === 19 && CX.EQUIPMENT.includes('ez_bar') && CX.EQUIPMENT.includes('t_bar') && CX.GRIPS.includes('v_bar') && CX.EXEC.includes('chest_supported'));
+ok('A2 ohne workoutUI beim Laden: Bindung nachholbar (_customExerciseBind)', typeof globalThis.ORVIA._customExerciseBind === 'function' || typeof (globalThis.ORVIA.workoutUI && globalThis.ORVIA.workoutUI.newCustomExercise) === 'function');
+const keys = ['cx.titel', 'cx.titel_bearbeiten', 'cx.picker_sub', 'cx.intro', 'cx.basis', 'cx.geraet', 'cx.griff', 'cx.ausfuehrung', 'cx.muskeln', 'cx.err_name', 'cx.err_muskeln', 'cx.err_speichern', 'cx.loeschen_q', 'cx.toast_angelegt'];
+const t = globalThis.ORVIA.i18n.t;
+ok('A3 alle cx.*-Texte im Katalog', keys.every(k => t(k) !== k), keys.filter(k => t(k) === k).join(','));
+const WU = readFileSync(join(APP, 'js/workout-ui.js'), 'utf8'), REPO = readFileSync(join(APP, 'js/repos/exerciseRepository.js'), 'utf8'), IDX = readFileSync(join(APP, 'index.html'), 'utf8'), SW = readFileSync(join(APP, 'sw.js'), 'utf8'), CSS = readFileSync(join(APP, 'styles.css'), 'utf8');
+ok('B1 Picker: Zeile „Eigene Übung anlegen" in Gruppen-, Flach- und Leer-Ansicht', (WU.match(/newRow/g) || []).length >= 4 && /ORVIA\.workoutUI\.newCustomExercise\(\)/.test(WU));
+ok('B2 Picker: Stift nur an eigenen Übungen (isSystem === false), beide Listenarten', /const own = e => \(e\.isSystem === false/.test(WU) && (WU.match(/wrap\(e, /g) || []).length >= 2 && /editCustomExercise/.test(WU));
+ok('B3 Repository: create schreibt Muskeln + Gerät; update mappt Domain-Objekt (exerciseToRow) und ersetzt Muskeln/Gerät; delete nur eigene', /exerciseToRow\(patch\)/.test(REPO) && /from\('exercise_muscles'\)\.delete\(\)\.eq\('exercise_id', id\)/.test(REPO) && /from\('exercise_equipment'\)\.delete\(\)/.test(REPO) && /\.eq\('is_system', false\)/.test(REPO));
+ok('B4 Skript nach workout-ui in index.html + sw.js', IDX.indexOf('js/workout-custom-exercise.js') > IDX.indexOf('js/workout-ui.js') && SW.includes('./js/workout-custom-exercise.js'));
+ok('B5 CSS: Anlegen-Zeile, Stift, Muskel-Chips (primär/sekundär), Fehlerzeile', /\.wo-newex/.test(CSS) && /\.wo-pi-edit/.test(CSS) && /\.cx-muscles \.wo-fchip\.half/.test(CSS) && /\.cx-err/.test(CSS));
+const SRC = readFileSync(join(APP, 'js/workout-custom-exercise.js'), 'utf8');
+ok('B6 Modul: Vorlage aus Basisbewegung (templateFor → Muskeln/Muster), Validierung Name + ≥ 1 Muskel, Schreibpfad nur über repos.exercise, nach Anlegen sofort wählen', /function templateFor/.test(SRC) && /err_muskeln/.test(SRC) && /O\.repos\.exercise\.(createUserExercise|updateUserExercise|deleteUserExercise)/.test(SRC) && !/from\('exercises'\)/.test(SRC) && /ui\.choose\(id\)/.test(SRC));
+console.log('\ncustom_exercise: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
+if (fail) process.exit(1);
