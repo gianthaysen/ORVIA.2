@@ -43,5 +43,8 @@ ok('A7 nach dem Nachladen: synchroner Pfad (Kraftwerte/Kraftprofil-Teaser) sieht
 const SP = readFileSync(join(APP, 'js/screens/strength-profile.js'), 'utf8'), UI = readFileSync(join(APP, 'js/ui.js'), 'utf8');
 ok('B1 Kraftprofil laedt beim Oeffnen und im Teaser per gymPipelineAsync(refresh) nach und rendert danach neu', /gymPipelineAsync\(\{ days: 365, refresh: true \}\)/.test(SP) && /refreshAsync\(function \(\) \{ render\(\); \}\)/.test(SP) && /root\.renderGMAnalysis\(\)/.test(SP));
 ok('B2 Teaser ohne doppelte Zeile; Muskelkarte ohne „——" bei fehlendem Korridor', !/if\(!parts\.length\)parts\.push\(_uiT\('kp\.teaser_sessions'/.test(UI) && /kp\.src_korridor_leer/.test(SP));
+const WR = readFileSync(join(APP, 'js/repos/workoutRepository.js'), 'utf8');
+ok('C1 loadWorkoutTree: Embed mit FK-Hinweis (zwei FKs auf exercises) + Fallback ohne Embed', /exercises!workout_exercises_exercise_id_fkey\(\*\)/.test(WR) && /select\('\*, workout_sets\(\*\)'\)/.test(WR) && /from\('exercises'\)\.select\('\*'\)\.in\('id', ids\)/.test(WR));
+ok('C2 gym-volume: Einzelausfall eines Baums ist partial, nur Totalausfall Fehler', /WORKOUT_DETAILS_PARTIAL/.test(readFileSync(join(APP, 'js/gym-volume.js'), 'utf8')));
 console.log('\ngym_server_reload: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 if (fail) process.exit(1);

@@ -45,3 +45,8 @@
 - Kosmetik: Teaser-Dopplung, Muskelkarte ohne Korridor zeigt nur den Hinweis.
 - Test `gym_server_reload_test` (9).
 - Offen: `activities`-Zeilen für die drei Juni-Sessions fehlen weiterhin (Aktivitätsliste); Backfill über `orvia_upsert_activity_from_session` als Folgeaufgabe.
+
+## Wurzelursache „Sätze weg" (Build v8-384)
+- `workoutRepository.loadWorkoutTree` nutzte den Embed `exercise:exercises(*)`. `workout_exercises` hat zwei FKs auf `exercises` (`exercise_id`, `replaced_by_exercise_id`) ⇒ PostgREST lehnt den mehrdeutigen Embed ab ⇒ **jeder** Baum-Abruf scheiterte still (Aktivitäts-Detail, Muskelkarte, Kraftprofil). Perf-Log zeigte „16 round-trips", Ergebnis leer.
+- Fix: Embed mit FK-Hinweis `exercises!workout_exercises_exercise_id_fkey(*)`; bei Fehler Fallback ohne Embed (Übungen + Sätze, Übungszeilen per `in('id', …)`). gym-volume: Einzelausfall eines Baums = `WORKOUT_DETAILS_PARTIAL` (Warnung), nur Totalausfall = Fehler.
+- Test gym_server_reload C1/C2.

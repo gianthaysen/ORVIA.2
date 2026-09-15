@@ -600,7 +600,9 @@
         } else detailFails++;
       });
       P.mark('gymPipelineAsync: parallel loadWorkoutTree (' + uniqueIds.length + ' round-trips via Promise.all)', _tLoop);
-      call('workoutRepository.loadWorkoutTree', uniqueIds.length > 0, detailFails === 0, workoutSessions.length, detailFails ? 'WORKOUT_DETAILS_FAILED' : null);
+      /* v8-384: Einzelausfall = Warnung (partial), nur Totalausfall = Fehler. */
+      var allFailed = uniqueIds.length > 0 && detailFails === uniqueIds.length;
+      call('workoutRepository.loadWorkoutTree', uniqueIds.length > 0, !allFailed, workoutSessions.length, allFailed ? 'WORKOUT_DETAILS_FAILED' : (detailFails ? 'WORKOUT_DETAILS_PARTIAL' : null));
       /* Ergebnis fuer den synchronen Pfad merken (ueber Fenster hinweg zusammenfuehren). */
       var merged = {}; (_lastTreeSessions || []).forEach(function (w) { if (w && w.workoutSessionId) merged[w.workoutSessionId] = w; });
       workoutSessions.forEach(function (w) { if (w && w.workoutSessionId) merged[w.workoutSessionId] = w; });
