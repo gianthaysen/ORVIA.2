@@ -853,12 +853,37 @@
     const el = document.getElementById('woPickList'); if (!el) return;
     const CAP = 200; const shown = list.slice(0, CAP);
     const head = '<div class="wo-pick-count">' + T('wo.pick.count', { count: list.length }) + '</div>';
+    /* S2b-1: ohne Suchbegriff nach Basisbewegung gruppieren (0047: baseSlug). Eine Zeile je
+       Basisbewegung, Varianten ausklappbar; genau eine Variante ⇒ direkt waehlbar. „Zuletzt" oben. */
+    const td = TD();
+    if (!q && shown.length && shown.some(e => e.baseSlug)) {
+      const byBase = {}, order = [];
+      shown.forEach(e => { const k = e.baseSlug || ('_' + e.id); if (!byBase[k]) { byBase[k] = []; order.push(k); } byBase[k].push(e); });
+      order.sort((a, b) => { const la = a[0] === '_' ? byBase[a][0].name : (td && td.labelBase ? td.labelBase(a) : a), lb = b[0] === '_' ? byBase[b][0].name : (td && td.labelBase ? td.labelBase(b) : b); return String(la).localeCompare(String(lb), 'de'); });
+      const openBase = O.workoutUI._openBase || '';
+      const item = e => { const vl = td && td.labelVariant ? td.labelVariant(e.variant) : ''; const meta = [vl || moveLabel(e)].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '');
+        return '<button class="wo-pickitem wo-variant" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span></button>'; };
+      const recentRows = recent.map(id => shown.find(e => e.id === id)).filter(Boolean).slice(0, 6);
+      let html = head;
+      if (recentRows.length) html += '<div class="wo-pick-sect">' + T('wo.pick.recent') + '</div>' + recentRows.map(item).join('');
+      html += '<div class="wo-pick-sect">' + T('wo.pick.bases', { n: order.length }) + '</div>';
+      html += order.map(k => {
+        const vs = byBase[k].slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+        if (vs.length === 1) return item(vs[0]);
+        const label = k[0] === '_' ? vs[0].name : (td && td.labelBase ? td.labelBase(k) : k);
+        const open = openBase === k;
+        return '<button class="wo-pickitem wo-base' + (open ? ' on' : '') + '" role="listitem" aria-expanded="' + open + '" onclick="ORVIA.workoutUI._toggleBase(\'' + esc(k) + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(label) + '</span><span class="wo-pi-meta">' + esc(T('wo.pick.variants', { count: vs.length, n: vs.length })) + '</span></span><span class="wo-pi-chev">' + (open ? '▾' : '▸') + '</span></button>' + (open ? '<div class="wo-variants">' + vs.map(item).join('') + '</div>' : '');
+      }).join('');
+      el.innerHTML = html; return;
+    }
     el.innerHTML = shown.length ? head + shown.map(e => {
       const recentTag = recent.indexOf(e.id) >= 0 ? ' · zuletzt' : '';
-      const meta = [moveLabel(e)].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '') + recentTag;
+      const vl = td && td.labelVariant ? td.labelVariant(e.variant) : '';
+      const meta = [moveLabel(e), vl].filter(Boolean).join(' · ') + (e.isSystem === false ? ' · eigen' : '') + recentTag;
       return '<button class="wo-pickitem" role="listitem" onclick="ORVIA.workoutUI.choose(\'' + e.id + '\')"><span class="wo-pi-txt"><span class="wo-pi-main">' + esc(e.name) + '</span><span class="wo-pi-meta">' + esc(meta) + '</span></span><span class="pchev">›</span></button>';
     }).join('') + (list.length > CAP ? '<p class="muted" style="padding:12px 2px">' + T('wo.pick.narrow') + '</p>' : '') : '<p class="muted" style="padding:16px">' + T('wo.pick.none') + '</p>';
   };
+  O.workoutUI._toggleBase = function (k) { O.workoutUI._openBase = (O.workoutUI._openBase === k) ? '' : k; O.workoutUI._filter(); };
   O.workoutUI.choose = async function (exId) {
     const ex = (O.workoutUI._all || []).find(e => e.id === exId) || null;
     pushRecentExercise(exId);

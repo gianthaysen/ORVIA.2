@@ -10061,6 +10061,23 @@ function gmMuscleTile(model,id){
   return '<button class="mtile" data-m="'+id+'" onclick="gmOpenMuscleSheet(\''+id+'\')"><div class="mtile-b"><div class="mtile-t">'+gmEsc(name)+' <span class="mstat" style="color:'+st.c+';background:'+st.t+'">'+st.sym+' '+st.l+'</span></div>'+
     '<div class="mtile-sub">'+gmEsc(sub)+'</div>'+bar+'</div>'+icon('chev','sm')+'</button>';
 }
+/* S2: Kraftprofil-Teaser (Analyse · Koerper). Eine Zeile aus strengthProfileScreen.teaser():
+   beste Kurve + Korridor-Luecken; oeffnet die Kraftprofil-Seite (Sheet). */
+function gmStrengthTeaserHTML(){
+  var S=window.ORVIA&&ORVIA.strengthProfileScreen;if(!S||!S.teaser)return '';
+  var t=S.teaser();
+  var line,sub;
+  if(t.empty){line=_uiT('kp.teaser_empty');sub=_uiT('kp.teaser_d');}
+  else{
+    line=t.exercise?_uiT('kp.teaser_line',{ex:t.exercise,v:String(Math.round(t.current*10)/10).replace('.',',')}):_uiT('kp.teaser_sessions',{n:t.sessions,r:t.ready,t:t.total});
+    var parts=[];if(t.delta)parts.push(_uiT('kp.teaser_delta',{d:(t.delta.kg>=0?'+':'−')+String(Math.abs(t.delta.kg)).replace('.',','),w:t.delta.weeks}));
+    if(t.under>0)parts.push(_uiT('kp.teaser_under',{n:t.under}));
+    if(!parts.length)parts.push(_uiT('kp.teaser_sessions',{n:t.sessions,r:t.ready,t:t.total}));
+    sub=parts.join(' · ');
+  }
+  return '<div class="card tap kp-teaser" role="button" tabindex="0" data-gm-slot="analysis-strength" onclick="openStrengthProfile()"><div class="ctitle"><div class="l">'+icon('dumbbell','sm')+' '+gmEsc(_uiT('kp.teaser_t'))+'</div><span class="more">'+gmEsc(_uiT('kp.teaser_open'))+' '+icon('chev','xs')+'</span></div>'+
+    '<div class="next-row"><div class="next-ic" style="background:rgba(201,174,124,.14);color:var(--gold-soft)">'+icon('dumbbell','sm')+'</div><div class="next-b"><div class="next-t">'+gmEsc(line)+'</div><div class="next-s">'+gmEsc(sub)+'</div></div></div></div>';
+}
 function gmAnaBody(){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var sub=lvl==='a'?'' + _uiT('ui.so_gut_deckst_du_deine') + '':lvl==='p'?'' + _uiT('ui.effektive_satzaequivalente_direkt_indirekt_vs') + '':'' + _uiT('ui.woechentliches_volumen_je_muskelgruppe_vs') + '';
@@ -10105,6 +10122,7 @@ function gmAnaBody(){
       (ago!=null?('' + _uiT('ui.letztes_krafttraining_vor') + ''+ago+'' + _uiT('ui.tagen') + ''):'')+
       '<span class="deeplink" role="button" tabindex="0" onclick="gmSetBodyRange(90)">' + _uiT('ui.zeitraum_auf_90_t_stellen') + '</span></div></div>';
   }
+  try{h+=gmStrengthTeaserHTML();}catch(_kp){ }
   h+='<div class="body-wrap">'+gmBodySVG(model,gmBodySide)+'</div>';
   /* Legende: vollständige GM-Struktur; „Warnung" neutral als nicht verfügbar */
   var legs=[GM_MV_META.below,GM_MV_META.in,GM_MV_META.above,{l:'' + _uiT('ui.warnung') + '',c:'var(--neutral)',sym:'!'},GM_MV_META.low_history,GM_MV_META.no_data];

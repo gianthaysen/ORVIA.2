@@ -149,6 +149,18 @@
   function labelMuscle(k) { return MUSCLE_LABELS[k] || (k ? String(k).replace(/_/g, ' ') : ''); }
   function labelEquipment(k) { return EQUIPMENT_LABELS[k] || (k ? String(k).replace(/_/g, ' ') : ''); }
   function groupOfMovement(k) { return MOVEMENT_GROUP[k] || null; }
+  /* S2b-1: Basisbewegungen (0047) + Kurzlabel einer Variante fuer den Picker */
+  const BASE_LABELS = {"bench_press":"Bankdrücken","incline_press":"Schrägbankdrücken","decline_press":"Negativbankdrücken","chest_press":"Brustpresse","chest_fly":"Flys / Butterfly","pushup":"Liegestütze","dip":"Dips","overhead_press":"Schulterdrücken","lateral_raise":"Seitheben","front_raise":"Frontheben","rear_delt":"Reverse Flys","face_pull":"Face Pulls","upright_row":"Aufrechtes Rudern","shrug":"Shrugs","pullup":"Klimmzüge","lat_pulldown":"Latzug","pullover":"Überzüge / Straight-Arm","row":"Rudern","squat":"Kniebeuge","leg_press":"Beinpresse","hack_squat":"Hackenschmidt","lunge":"Ausfallschritte","split_squat":"Split Squat","step_up":"Step-ups","deadlift":"Kreuzheben","rdl":"Rumänisches Kreuzheben","good_morning":"Good Mornings","hip_thrust":"Hip Thrust","back_extension":"Rückenstrecker","leg_curl":"Beinbeuger","leg_extension":"Beinstrecker","calf_raise":"Wadenheben","hip_adduction":"Adduktoren","hip_abduction":"Abduktoren","glute_kickback":"Kickbacks","biceps_curl":"Bizepscurls","hammer_curl":"Hammercurls","triceps_extension":"Trizeps","wrist":"Unterarme","crunch":"Crunches","leg_raise":"Beinheben","plank":"Plank","anti_rotation":"Anti-Rotation","rotation":"Rotation","carry":"Carries","plyo":"Sprünge"};
+  const VARIANT_LABELS = { grip: { overhand_wide: 'breit', overhand_close: 'eng', overhand_medium: 'mittel', overhand: 'Obergriff', underhand: 'Untergriff', neutral: 'neutral', neutral_close: 'V-Griff', rope: 'Seil', bar: 'Stange', v_bar: 'V-Griff', wide: 'breit', close: 'eng' },
+    angle: { flat: 'flach', incline: 'schräg', decline: 'negativ', high: 'hoch', mid: 'mittig', high_to_low: 'von oben', low_to_high: 'von unten', '45': '45°', horizontal: 'horizontal' },
+    execution: { single_arm: 'einarmig', single_leg: 'einbeinig', seated: 'sitzend', standing: 'stehend', lying: 'liegend', chest_supported: 'brustgestützt', overhead: 'über Kopf', weighted: 'mit Zusatzlast', assisted: 'assistiert', walking: 'gehend', reverse: 'rückwärts', forward: 'vorwärts', lateral: 'seitlich', bilateral: 'beidseitig', alternating: 'wechselnd', kickback: 'Kickback', preacher: 'Preacher', landmine: 'Landmine', rear_foot_elevated: 'hinterer Fuß erhöht' } };
+  function labelBase(k) { return BASE_LABELS[k] || (k ? String(k).replace(/_/g, ' ') : ''); }
+  function labelVariant(v) {
+    v = v || {}; const parts = [];
+    if (v.equipment) parts.push(labelEquipment(v.equipment));
+    ['grip', 'angle', 'execution'].forEach(k => { if (v[k]) parts.push((VARIANT_LABELS[k] && VARIANT_LABELS[k][v[k]]) || String(v[k]).replace(/_/g, ' ')); });
+    return parts.join(' · ');
+  }
 
   function inList(list, v) { return list.indexOf(v) >= 0; }
   const valid = {
@@ -170,7 +182,11 @@
         category: r.category || null, movementPattern: r.movement_pattern || null, difficulty: r.difficulty || null,
         stability: r.stability || null, complexity: r.complexity || null, fatigueCost: r.fatigue_cost != null ? r.fatigue_cost : null,
         jointStress: r.joint_stress || {}, unilateral: !!r.unilateral, bodyweight: !!r.bodyweight,
-        isSystem: r.is_system !== false, userId: r.user_id || null, active: r.active !== false
+        isSystem: r.is_system !== false, userId: r.user_id || null, active: r.active !== false,
+        /* S2b-1: Basisbewegung x Variante + Zuordnungen aus dem Katalog (0047) */
+        baseSlug: r.base_slug || null, variant: (r.variant && typeof r.variant === 'object') ? r.variant : {},
+        muscles: (function () { var out = {}; (Array.isArray(r.exercise_muscles) ? r.exercise_muscles : []).forEach(function (m) { if (m && m.muscle_key) out[m.muscle_key] = { weight: m.weight != null ? +m.weight : null, involvement: m.involvement || 'direct' }; }); return out; })(),
+        equipment: (Array.isArray(r.exercise_equipment) ? r.exercise_equipment : []).map(function (x) { return x && x.equipment_key; }).filter(Boolean)
       };
     },
     exerciseToRow(e) {
@@ -180,6 +196,7 @@
         movement_pattern: e.movementPattern || null, difficulty: e.difficulty || null, stability: e.stability || null,
         complexity: e.complexity || null, fatigue_cost: e.fatigueCost != null ? e.fatigueCost : null,
         joint_stress: e.jointStress || {}, unilateral: !!e.unilateral, bodyweight: !!e.bodyweight,
+        base_slug: e.baseSlug || null, variant: (e.variant && typeof e.variant === 'object') ? e.variant : {},
         is_system: false   // nutzerdefinierte Übungen sind NIE system
       };
     },
@@ -201,6 +218,6 @@
     valid: valid, map: map, inList: inList, normSport: normSport, normSportStrict: normSportStrict, ACTIVITY_SPORTS: ACTIVITY_SPORTS,
     MOVEMENT_LABELS: MOVEMENT_LABELS, MUSCLE_LABELS: MUSCLE_LABELS, EQUIPMENT_LABELS: EQUIPMENT_LABELS,
     MUSCLE_GROUPS_DE: MUSCLE_GROUPS_DE, labelMovement: labelMovement, labelMuscle: labelMuscle,
-    labelEquipment: labelEquipment, groupOfMovement: groupOfMovement
+    labelEquipment: labelEquipment, groupOfMovement: groupOfMovement, BASE_LABELS: BASE_LABELS, labelBase: labelBase, labelVariant: labelVariant
   });
 })();

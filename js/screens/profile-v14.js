@@ -292,7 +292,7 @@
     }
     /* Kraftwerte */
     var lifts = bestLifts(d.strengthRecords), missing = lifts.filter(function (l) { return l.value == null && l.reps == null; }).length;
-    h += sectlabel(T('pv.kraftwerte'), { label: esc(T('pv.pflegen')), onclick: "gmOpenProfPage('performance')" });
+    h += sectlabel(T('pv.kraftwerte'), { label: esc(T('kp.titel')), onclick: "openStrengthProfile()" });
     h += '<div class="card tight"><div class="datarow" style="margin-top:0">' + lifts.map(function (l) { var v = l.reps != null ? l.reps + ' ' + T('pv.wdh') : (l.value != null ? fmtDe(l.value) + ' kg' : null); var src = v ? (l.derived ? T(l.reps != null ? 'pv.lift_aus_training_wdh' : 'pv.lift_aus_training') : T('pv.lift_eingetragen')) + (l.date ? ' · ' + deDate(l.date) : '') : T('pv.lift_fehlt'); return '<div class="datacell"><div class="dl">' + esc(l.label) + '</div><div class="dn' + (v ? '' : ' muted') + '">' + esc(v || '—') + '</div><div class="ds">' + esc(src) + '</div></div>'; }).join('') + '</div>' +
       (missing ? '<div class="gapnote" style="margin:12px 0 0">' + ic('alert', 'sm') + '<div>' + esc(T('pv.kraft_fehlend', { n: missing })) + '</div></div>' : '') + '</div>';
     /* Zonen & Schwellen */

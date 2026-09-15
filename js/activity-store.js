@@ -33,6 +33,11 @@
         order: we.order_index != null ? we.order_index : i,
         exerciseId: we.exercise_id || null,
         exerciseNameSnapshot: (e && e.exercise && e.exercise.name) || we.exercise_name || null,
+        /* S2b-1: Katalogzuordnung im Snapshot einfrieren — gym-volume/Kraftprofil lesen sie zuerst. */
+        slug: (e && e.exercise && e.exercise.slug) || null,
+        baseSlug: (e && e.exercise && e.exercise.baseSlug) || null,
+        movementPattern: (e && e.exercise && e.exercise.movementPattern) || null,
+        muscles: (e && e.exercise && e.exercise.muscles && Object.keys(e.exercise.muscles).length) ? e.exercise.muscles : null,
         /* B-05: Superset-Gruppe mitfuehren, damit die Historie die Gruppierung zeigt (null = keine). */
         supersetGroup: we.superset_group != null ? we.superset_group : null,
         sets: sets.map(function (s, j) {
