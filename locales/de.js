@@ -3621,6 +3621,8 @@
     'pv.src_device': 'Gerät',
     'pv.src_auto': 'automatisch',
     'pv.phase_woche_von': '{phase} · Woche {week} von {of}',
+    'pv.ausdauerwert': 'Ausdauerwert', 'pv.vo2_einfach': 'je höher, desto besser', 'pv.fitness_einfach': 'Trainingsstand der letzten Wochen',
+    'pv.belastung': 'Belastung', 'pv.last_niedrig': 'zuletzt eher wenig', 'pv.last_passt': 'passt zu den Vorwochen', 'pv.last_hoch': 'deutlich mehr als sonst',
     'pv.phase_base': 'Basisphase',
     'pv.phase_build': 'Aufbauphase',
     'pv.phase_peak': 'Spitzenphase',

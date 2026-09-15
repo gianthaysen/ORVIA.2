@@ -268,11 +268,24 @@
     return out;
   }
   function srcLabel(s) { var map = { manual: T('pv.src_manual'), garmin: 'Garmin', strava: 'Strava', apple_health: 'Apple Health', import: T('pv.src_import'), calculated: T('pv.src_calculated'), activity: T('pv.src_activity'), derived_estimate: T('pv.src_estimate'), device: T('pv.src_device'), device_sync: T('pv.src_device'), provider_sync: T('pv.src_device'), automatic: T('pv.src_auto'), auto: T('pv.src_auto'), garmin_unofficial: 'Garmin', garmin_connect: 'Garmin' }; return map[s] || (s ? String(s) : ''); }
+  /* Niveau (v8-382): Anfaenger sehen Ausdauerwert/Fitness/Belastung in Worten (kein CTL/ACWR),
+     keine Zonen & Schwellen; Fortgeschritten/Profi wie bisher. */
+  function lvl() { try { return typeof root.gmLevel === 'function' ? root.gmLevel() : 'f'; } catch (e) { return 'f'; } }
   function performanceHTML(d) {
-    var h = '<div class="kpi-row">' +
+    var L = lvl(), h;
+    if (L === 'a') {
+      var acwr = d.load && d.load.acwr != null ? d.load.acwr : null;
+      var lastTxt = acwr == null ? T('pv.zu_wenig_daten') : (acwr < 0.8 ? T('pv.last_niedrig') : (acwr <= 1.3 ? T('pv.last_passt') : T('pv.last_hoch')));
+      h = '<div class="kpi-row">' +
+        '<div class="kpi"><b>' + esc(d.vo2 ? fmtDe(d.vo2.value) : '—') + '</b><span>' + esc(T('pv.ausdauerwert')) + '</span><small>' + esc(d.vo2 ? T('pv.vo2_einfach') : T('pv.keine_quelle')) + '</small></div>' +
+        '<div class="kpi"><b>' + esc(d.load && d.load.ctl != null ? d.load.ctl : '—') + '</b><span>' + esc(T('pv.fitness')) + '</span><small>' + esc(d.load && d.load.ctl != null ? T('pv.fitness_einfach') : T('pv.zu_wenig_daten')) + '</small></div>' +
+        '<div class="kpi"><b>' + esc(acwr == null ? '—' : (acwr < 0.8 ? '↓' : (acwr <= 1.3 ? '✓' : '↑'))) + '</b><span>' + esc(T('pv.belastung')) + '</span><small>' + esc(lastTxt) + '</small></div></div>';
+    } else {
+    h = '<div class="kpi-row">' +
       '<div class="kpi"><b>' + esc(d.vo2 ? fmtDe(d.vo2.value) : '—') + '</b><span>VO₂max</span><small>' + esc(d.vo2 ? (srcLabel(d.vo2.source) || T('pv.gemessen')) : T('pv.keine_quelle')) + '</small></div>' +
       '<div class="kpi"><b>' + esc(d.load && d.load.ctl != null ? d.load.ctl : '—') + '</b><span>' + esc(T('pv.fitness')) + '</span><small>' + esc(d.load && d.load.suppressed ? T('pv.last_unsicher') : 'CTL') + '</small></div>' +
       '<div class="kpi"><b>' + esc(d.load && d.load.acwr != null ? fmtDe(d.load.acwr, 2) : '—') + '</b><span>ACWR</span><small>' + esc(d.load && d.load.acwr != null ? (d.load.acwr >= 0.8 && d.load.acwr <= 1.3 ? T('pv.im_korridor') : T('pv.ausserhalb')) : T('pv.zu_wenig_daten')) + '</small></div></div>';
+    }
     /* Bestzeiten Laufen */
     var b = d.bests, keys = [['5 km', 't5', 'k5'], ['10 km', 't10', 'k10'], ['HM', 't21', 'k21'], ['M', 't42', 'k42']];
     h += sectlabel(T('pv.bestzeiten_laufen'), { label: esc(T('pv.alle')), onclick: "gmOpenProfPage('bestTimes')" });
@@ -298,11 +311,13 @@
     /* Zonen & Schwellen */
     var hf = d.hfMax, rh = d.restingHr, th = d.threshold;
     var hfSub = hf ? (hf.source === 'derived_estimate' ? T('pv.hf_geschaetzt_alter') : (T('pv.gemessen') + (hf.updatedAt ? ' · ' + deDate(hf.updatedAt) : ''))) : T('pv.hf_fehlt');
+    if (L !== 'a') {
     h += sectlabel(T('pv.zonen_schwellen'), { label: esc(T('pv.leistungsdaten')), onclick: "gmOpenProfPage('performance')" });
     h += '<div class="card tight">' +
       '<div class="prow pv-row"><div class="p-b"><div class="p-t">' + esc(T('pv.hfmax')) + '</div><div class="p-d">' + esc(hfSub) + '</div></div><div class="p-v' + (hf && hf.source === 'derived_estimate' ? ' pv-est' : '') + '">' + esc(hf ? hf.value + (hf.source === 'derived_estimate' ? ' · ' + T('pv.geschaetzt') : '') : '—') + '</div></div>' +
       '<div class="prow pv-row"><div class="p-b"><div class="p-t">' + esc(T('pv.ruhepuls')) + '</div><div class="p-d">' + esc(rh ? (srcLabel(rh.source) || T('pv.gemessen')) + (rh.updatedAt ? ' · ' + deDate(rh.updatedAt) : '') : T('pv.ruhepuls_fehlt')) + '</div></div><div class="p-v">' + esc(rh ? rh.value : '—') + '</div></div>' +
       '<div class="prow pv-row" style="border-bottom:none"><div class="p-b"><div class="p-t">' + esc(T('pv.schwellenpace')) + '</div><div class="p-d">' + esc(th && th.ref ? T('pv.schwelle_aus', { km: fmtDe(th.ref.distanceKm), date: th.ref.date ? deDate(th.ref.date) : '' }) : T('pv.schwelle_fehlt')) + '</div></div><div class="p-v">' + esc(th && th.paceSec ? fmtPace(th.paceSec) + ' /km' : '—') + '</div></div></div>';
+    }
     h += '<div class="setting-group pv-links">' + [['bolt', T('pv.medaillen'), "gmOpenProfPage('medals')"], ['target', T('pv.meilensteine'), "gmOpenProfPage('milestones')"], ['gauge', T('pv.pace_rechner'), "gmOpenProfPage('paceCalc')"]].map(function (r) { return '<div class="prow" onclick="' + r[2] + '"><div class="p-ic">' + ic(r[0], 'sm') + '</div><div class="p-b"><div class="p-t">' + esc(r[1]) + '</div></div>' + ic('chev', 'sm') + '</div>'; }).join('') + '</div>';
     return h;
   }
