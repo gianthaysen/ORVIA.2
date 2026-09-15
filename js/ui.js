@@ -8368,6 +8368,13 @@ function renderPlan(){
    Fehlende Handler ⇒ sichtbar deaktivierte Slots mit ehrlichem NA. ====== */
 var gmActScope='week';
 var gmActFilter='Alle';
+/* v8-387: Die Liste war hart auf 40 Karten begrenzt — mit Garmin-Import reichte das nur
+   ~12 Wochen zurueck, aeltere Einheiten (z. B. die nachgetragenen Juni-Krafteinheiten)
+   waren unerreichbar. Jetzt: Filter VOR dem Zuschnitt, Seitengroesse 40, „Mehr laden". */
+var GM_ACT_PAGE=40;
+var gmActLimit=GM_ACT_PAGE;
+function gmActLoadMore(){gmActLimit+=GM_ACT_PAGE;renderGMActivity();
+  try{var el=document.querySelector('.activity-list article:nth-child('+(gmActLimit-GM_ACT_PAGE+1)+')');if(el)el.scrollIntoView({block:'start',behavior:'smooth'});}catch(_){ }}
 var GM_ACT_SPORT={running:'Laufen',gym:'Kraft',cycling:'Radfahren',swimming:'Schwimmen'};
 var GM_ACT_FILTER={Laufen:'running',Kraft:'gym',Radfahren:'cycling',Schwimmen:'swimming'};
 function gmActSrcLabel(src){
@@ -8560,8 +8567,10 @@ function renderGMActivity(){
   h+='<div class="filter-row">'+['Alle','Laufen','Kraft','Radfahren','Schwimmen'].map(function(f){return '<button class="filter-pill '+(gmActFilter===f?'on':'')+'" onclick="gmSetActivityFilter(\''+f+'\')">'+f+'</button>';}).join('')+'</div>';
   /* 8. Aktivitätsliste: kanonische vereinheitlichte Liste (IDs + Reihenfolge unverändert),
      Karten exakt im GM-Markup, Werte aus dem kanonischen Detail-View-Model. */
-  var acts=[];try{acts=listActivitiesUnified(40)||[];}catch(_){ }
-  var list=(gmActFilter==='Alle')?acts:acts.filter(function(a){return a&&a.sportId===GM_ACT_FILTER[gmActFilter];});
+  var acts=[];try{acts=listActivitiesUnified(2000)||[];}catch(_){ }
+  var listAll=(gmActFilter==='Alle')?acts:acts.filter(function(a){return a&&a.sportId===GM_ACT_FILTER[gmActFilter];});
+  var list=listAll.slice(0,gmActLimit);
+  var restN=listAll.length-list.length;
   var cards=list.map(function(a){
     var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
     vm=vm||{};
@@ -8578,12 +8587,14 @@ function renderGMActivity(){
       '<div class="activity-metrics"><div><b>'+gmEsc(um)+'</b><span>' + _uiT('ui.umfang') + '</span></div><div><b>'+gmEsc(vm.durationLabel||'—')+'</b><span>DAUER</span></div><div><b>'+gmEsc(tempo)+'</b><span>TEMPO</span></div><div><b>'+(vm.avgHr!=null?gmEsc(vm.avgHr)+' bpm':'—')+'</b><span>' + _uiT('ui.hf_') + '</span></div></div></div></article>';
   }).join('');
   h+='<div class="activity-list">'+(list.length?cards:'<div class="empty"><div class="e-ic">'+icon('activity')+'</div><div class="et">' + _uiT('ui.keine_aktivitaet_in_diesem_filter') + '</div></div>')+'</div>';
+  if(restN>0)h+='<button class="btn sec act-more" onclick="gmActLoadMore()">'+_uiT('ui.act_mehr_laden',{count:restN})+'</button>';
+  else if(listAll.length>GM_ACT_PAGE)h+='<p class="note act-more-end">'+_uiT('ui.act_alle_geladen',{count:listAll.length})+'</p>';
   /* 9. Abschluss */
   h+='<div class="tabspacer"></div>';
   host.innerHTML=h;
 }
 function gmSetActScope(s){gmActScope=(s==='month')?'month':'week';renderGMActivity();}
-function gmSetActivityFilter(f){gmActFilter=f;renderGMActivity();}
+function gmSetActivityFilter(f){gmActFilter=f;gmActLimit=GM_ACT_PAGE;renderGMActivity();}
 /* ---------- Aktivitätsdetail (GM-Vollseite; Route/Chart/Splits NUR aus echten Daten) ---------- */
 /* GM7.7: sportgerechte Stream-Definitionen. „Tempo"/„Geschwindigkeit" sind reine
    Einheitenumrechnungen DERSELBEN gemessenen Geschwindigkeit (m/s) — keine neue Groesse,
