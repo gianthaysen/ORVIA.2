@@ -207,7 +207,8 @@
       sportId: sportId, source: r.source || 'manual', sourceRecordId: r.source_record_id || null,
       workoutSessionId: r.workout_session_id || null, startedAt: r.started_at || null, endedAt: r.ended_at || null,
       durationSeconds: r.duration_seconds != null ? r.duration_seconds : null, status: r.status || 'completed',
-      summary: summary, metrics: r.metrics || {}, workoutSnapshot: null, syncStatus: 'synced', _server: true
+      summary: summary, metrics: r.metrics || {}, workoutSnapshot: null, syncStatus: 'synced', _server: true,
+      linkedActivityId: r.linked_activity_id || null, linkKind: r.link_kind || null
     };
   }
   // Dedup-Schlüssel einer Activity (mehrere stabile Identitäten).
@@ -264,7 +265,32 @@
     var nonEmptyDay = {};
     out.forEach(function (a) { if (!isEmptyActivity(a)) { var k = normSport(a.sportId) + '|' + dayOfAct(a); nonEmptyDay[k] = true; } });
     out = out.filter(function (a) { if (!isEmptyActivity(a)) return true; return !nonEmptyDay[normSport(a.sportId) + '|' + dayOfAct(a)]; });
+    out = attachRecordings(out);
     out.sort(function (a, b) { return String(b.startedAt || b.createdAt || '').localeCompare(String(a.startedAt || a.createdAt || '')); });
+    return out;
+  }
+  /* S2c (v8-388): Gekoppelte Geraeteaufzeichnungen (linkedActivityId) sind keine
+     eigenstaendigen Einheiten mehr. Sie werden aus der Liste genommen und dem
+     Primaerdatensatz als a.recording angehaengt (HF, Kalorien, Uhr-Dauer). Ist der
+     Primaerdatensatz nicht in der Liste (nicht geladen, getombstoned), bleibt die
+     Aufzeichnung sichtbar — nichts verschwindet stillschweigend. Pure Funktion. */
+  function attachRecordings(list) {
+    list = Array.isArray(list) ? list : [];
+    var byId = {};
+    list.forEach(function (a) { if (a && a.id) byId[a.id] = a; });
+    var out = [];
+    list.forEach(function (a) {
+      if (!a) return;
+      var lid = a.linkedActivityId || null;
+      if (lid && byId[lid] && byId[lid] !== a) {
+        var p = byId[lid];
+        /* Nur wer WIRKLICH angehaengt wurde, verschwindet aus der Liste. Traegt der
+           Primaerdatensatz schon eine Aufzeichnung (Datenfehler, zwei Uhren), bleibt
+           die zweite sichtbar — lieber eine Zeile zu viel als eine verschluckte. */
+        if (!p.recording) { p.recording = a; return; }
+      }
+      out.push(a);
+    });
     return out;
   }
 
@@ -814,7 +840,7 @@
   var api = {
     ACTIVITY_FORM_SCHEMAS: ACTIVITY_FORM_SCHEMAS, formSchemaForSport: formSchemaForSport, allowedFieldKeys: allowedFieldKeys,
     ENUM_LABELS: ENUM_LABELS, enumLabel: enumLabel, activityTitle: activityTitle, moreActivityGroups: moreActivityGroups,
-    normalizeServerActivity: normalizeServerActivity, mergeAllActivities: mergeAllActivities, activityKeys: activityKeys,
+    normalizeServerActivity: normalizeServerActivity, mergeAllActivities: mergeAllActivities, attachRecordings: attachRecordings, activityKeys: activityKeys,
     stripForeignFields: stripForeignFields, sportLabel: sportLabel, sportIcon: sportIcon, userSportTiles: userSportTiles, activeSportTilesFromProfile: activeSportTilesFromProfile,
     legacySessionToActivity: legacySessionToActivity, legacySessionKey: legacySessionKey, mergeActivities: mergeActivities, summaryLine: summaryLine,
     dayOfAct: dayOfAct, dayOfActLocal: dayOfActLocal, dailyLoadUnits: dailyLoadUnits, dailyLoadSeries: dailyLoadSeries, weeklyActivityTotals: weeklyActivityTotals, groupActivitySessions: groupActivitySessions,

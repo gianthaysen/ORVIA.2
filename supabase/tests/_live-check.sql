@@ -1,6 +1,6 @@
 -- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
--- Quelle: supabase/migrations/ (46 Dateien)
+-- Quelle: supabase/migrations/ (47 Dateien)
 -- Neu erzeugen: node app/tools/gen-live-check.mjs
 -- ============================================================
 -- Diese Abfrage beantwortet die eine Frage, die `public.schema_migrations`
@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 51 Tabellen + 68 Spalten + 64 Indizes + 20 RLS = 203 Prüfungen.
+-- Umfang: 51 Tabellen + 70 Spalten + 65 Indizes + 20 RLS = 206 Prüfungen.
 -- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
 -- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
@@ -68,6 +68,8 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0003','tabelle','workout_template_days',''),
   ('0003','tabelle','workout_template_exercises',''),
   ('0003','tabelle','workout_templates',''),
+  ('0048','spalte','activities','link_kind'),
+  ('0048','spalte','activities','linked_activity_id'),
   ('0021','spalte','daily_checkins','auto_sources'),
   ('0015','spalte','daily_checkins','energy'),
   ('0015','spalte','daily_checkins','note'),
@@ -137,6 +139,7 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0035','spalte','workout_sets','source'),
   ('0035','spalte','workout_sets','wkt_step_index'),
   ('0009','index','activities_client_uniq',''),
+  ('0048','index','activities_linked_idx',''),
   ('0009','index','activities_source_uniq',''),
   ('0009','index','activities_user_started_idx',''),
   ('0009','index','activities_workout_uniq',''),

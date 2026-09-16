@@ -266,6 +266,10 @@
       source: raw.source || null,
       sourceRecordId: raw.sourceRecordId || raw.source_record_id || null,
       workoutSessionId: raw.workoutSessionId || raw.workout_session_id || null,
+      /* S2c (v8-388): Kopplung Geraeteaufzeichnung ↔ Workout. Fehlende Spalten
+         (Migration 0048 noch nicht angewendet) ⇒ null ⇒ Verhalten wie zuvor. */
+      linkedActivityId: raw.linkedActivityId || raw.linked_activity_id || null,
+      linkKind: raw.linkKind || raw.link_kind || null,
       startedAt: iso(raw.startedAt || raw.started_at),
       endedAt: iso(raw.endedAt || raw.ended_at),
       durationSeconds: plaus.state === 'unknown' ? null : plaus.seconds,

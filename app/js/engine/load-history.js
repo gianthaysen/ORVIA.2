@@ -48,7 +48,12 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'load-history@3';
+  /* @4 (v8-388, S2c): asUnit liest zusaetzlich die kanonische durationSeconds und
+     bevorzugt die Dauer einer gekoppelten Geraeteaufzeichnung (a.recording) — eine
+     manuelle Dauerkorrektur schlaegt beides. Dadurch aendern sich Lastwerte fuer
+     Einheiten mit Uhr-Aufzeichnung, also MUSS die Version steigen: sonst waere im
+     Entscheidungs-Log nicht unterscheidbar, ob sich Code oder Daten geaendert haben. */
+  var VERSION = 'load-history@4';
 
   /* POLICY-VERSION der Schwellenwerte. Getrennt von der Modulversion, weil eine
      geaenderte Schwelle RUECKWIRKEND andere Entscheidungen erzeugt haette: Was
@@ -124,8 +129,15 @@
        Sekunden und Millisekunden kommen aus verschiedenen Quellen. */
     var min = a.durationMin != null ? a.durationMin
       : (a.durationSec > 0 ? a.durationSec / 60
-        : (a.movingTimeSec > 0 ? a.movingTimeSec / 60
-          : (a.elapsedMs > 0 ? a.elapsedMs / 60000 : null)));
+        : (a.durationSeconds > 0 ? a.durationSeconds / 60          /* kanonische Form (activity-normalize) */
+          : (a.movingTimeSec > 0 ? a.movingTimeSec / 60
+            : (a.elapsedMs > 0 ? a.elapsedMs / 60000 : null))));
+    /* S2c (v8-388): Haengt eine gekoppelte Geraeteaufzeichnung an (a.recording),
+       ist deren Dauer die verlaesslichere (Uhr statt App-Start/Stopp) — AUSSER der
+       Nutzer hat die Dauer manuell korrigiert (metrics.durationCorrection): die
+       Korrektur gewinnt vor der Uhr, die Uhr vor dem Workout. */
+    var corrected = !!(a.metrics && a.metrics.durationCorrection);
+    if (!corrected && a.recording && a.recording.durationSeconds > 0) min = a.recording.durationSeconds / 60;
     /* IDENTITAET. Eine echte ID ist eindeutig; ein Ersatzschluessel ist es
        NICHT. Zwei ehrliche 30-Minuten-Laeufe am selben Tag sind moeglich —
        sie stillschweigend zu einer Einheit zusammenzuziehen waere schlimmer
@@ -147,7 +159,7 @@
       /* Tagesschluessel: lokale Datumsangaben gewinnen vor Zeitstempeln. Ein
          UTC-Zeitstempel um 23:30 Ortszeit landet sonst auf dem Folgetag und
          verschiebt die ganze Tagesbilanz. */
-      dayKey: _dayKey(a.localDate || a.date || a.startDateLocal || a.startDate)
+      dayKey: _dayKey(a.localDate || a.date || a.startDateLocal || a.startDate || a.startedAt)
     };
   }
   /* Liefert Schluessel UND Sicherheit. `certain` heisst: Es gibt ein Merkmal,
