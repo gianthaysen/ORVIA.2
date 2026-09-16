@@ -259,10 +259,39 @@
   }
 
   // Liste, neueste zuerst. filters: { sportId, source, status, limit }.
+  /* S2c (v8-388): Gekoppelte Geraeteaufzeichnungen sind KEINE eigenstaendigen
+     Einheiten — sie haengen als a.recording am Primaerdatensatz (activityConfig.
+     attachRecordings). Alle Konsumenten (Last, Prognose, Zaehler) lesen ueber diese
+     Funktion und sehen damit genau EINE Einheit. filters.includeLinked = true liefert
+     die Rohliste (Diagnose). Faellt activityConfig aus, bleibt die Rohliste. */
+  function attachRec(list) {
+    try { var AC = O.activityConfig; if (AC && typeof AC.attachRecordings === 'function') return AC.attachRecordings(list); } catch (e) {}
+    return list;
+  }
+  /* S2c: Aufzeichnung zu einem Primaerdatensatz (fuer Einzelaufloesung, z. B. Detailseite). */
+  function recordingFor(a) {
+    if (!a || !a.id) return null;
+    var all = readAll();
+    for (var i = 0; i < all.length; i++) if (all[i].linkedActivityId === a.id && all[i].id !== a.id) return all[i];
+    return null;
+  }
+  /* S2c: Lokale Kopplung nach erfolgreicher Server-RPC nachziehen (Server bleibt Quelle). */
+  function setActivityLink(recordingId, primaryIdOrNull) {
+    var all = readAll();
+    for (var i = 0; i < all.length; i++) {
+      var a = all[i];
+      if (a.id === recordingId || a.clientRecordId === recordingId) {
+        a.linkedActivityId = primaryIdOrNull || null; a.linkKind = primaryIdOrNull ? 'device_recording' : null; a.updatedAt = now();
+        writeAll(all); return { ok: true, activity: a };
+      }
+    }
+    return { ok: false, error: 'Aktivitaet nicht gefunden' };
+  }
   function listActivities(filters) {
     filters = filters || {};
     var all = readAll().slice();
     all.sort(function (a, b) { return String(b.startedAt || b.createdAt || '').localeCompare(String(a.startedAt || a.createdAt || '')); });
+    if (!filters.includeLinked) all = attachRec(all);
     var out = all.filter(function (a) {
       if (filters.sportId && a.sportId !== filters.sportId) return false;
       if (filters.source && a.source !== filters.source) return false;
@@ -348,6 +377,7 @@
         if (ex.syncStatus === 'pending') { skipped++; continue; }   // Outbox-Vorrang
         ex.id = n.id; ex.sportId = n.sportId || ex.sportId; ex.startedAt = n.startedAt || ex.startedAt;
         ex.endedAt = n.endedAt || ex.endedAt;
+        ex.linkedActivityId = n.linkedActivityId || null; ex.linkKind = n.linkKind || null;   // S2c: Server ist Quelle der Kopplung
         if (n.durationSeconds != null) ex.durationSeconds = n.durationSeconds;
         if (n.summary && Object.keys(n.summary).length) ex.summary = n.summary;
         /* Batch 2b/2c: Server-metrics erhalten. AUTORITÄTSREGEL (Batch 2c):
@@ -363,6 +393,7 @@
           id: n.id, clientRecordId: cid(), userId: uid(),
           sportId: n.sportId || 'other', source: n.source || 'server', sourceRecordId: n.sourceRecordId || null,
           workoutSessionId: n.workoutSessionId || null,
+          linkedActivityId: n.linkedActivityId || null, linkKind: n.linkKind || null,
           startedAt: n.startedAt, endedAt: n.endedAt, durationSeconds: n.durationSeconds,
           status: n.status || 'completed', summary: n.summary || {},
           metrics: n.metrics || {},   // Batch 2b: Server-metrics erhalten (vorher hart {})
@@ -383,6 +414,7 @@
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
     planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan,
     correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
+    recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,
     mergeServerActivities: mergeServerActivities,

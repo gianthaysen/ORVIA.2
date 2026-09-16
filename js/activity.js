@@ -345,12 +345,20 @@ function renderAktLegacy() {
 function _resolveActivity(aid) {
   var store = window.ORVIA && ORVIA.activityStore;
   var a = store ? store.getActivityById(aid) : null;             // lokal: id ODER clientRecordId
-  if (a) return a;
-  if (_serverActivities && _serverActivities.length) {
-    a = _serverActivities.find(function (x) { return x.id === aid || x.clientRecordId === aid; });
-    if (a) return a;
+  if (!a && _serverActivities && _serverActivities.length) {
+    a = _serverActivities.find(function (x) { return x.id === aid || x.clientRecordId === aid; }) || null;
   }
-  return null;
+  /* S2c (v8-388): Einzelaufloesung haengt die gekoppelte Aufzeichnung genauso an
+     wie die Liste (activityConfig.attachRecordings) — sonst zeigte die Detailseite
+     HF/Uhr-Dauer nicht, obwohl die Liste sie kennt. */
+  if (a && !a.recording && a.id) {
+    try {
+      var rec = (store && store.recordingFor) ? store.recordingFor(a) : null;
+      if (!rec && _serverActivities && _serverActivities.length) rec = _serverActivities.find(function (x) { return x.linkedActivityId === a.id && x.id !== a.id; }) || null;
+      if (rec) a.recording = rec;
+    } catch (e) {}
+  }
+  return a;
 }
 // Zentraler Detail-Einstieg (beide Verläufe). Auflösung NUR über stabile ID.
 function openActivityDetails(idOrEl) {
@@ -428,6 +436,36 @@ function activityDetailViewModel(a) {
       return (out && out.length >= 2) ? out : null;
     })()
   };
+  /* S2c (v8-388): Gekoppelte Geraeteaufzeichnung (a.recording, vgl. activityConfig.
+     attachRecordings). Sie ergaenzt NUR, was das Workout nicht hat — HF, Kalorien,
+     Streams — und liefert die Uhr-Dauer als eigenen Wert. Nichts wird ueberschrieben,
+     nichts erfunden: fehlt ein Feld in beiden Quellen, bleibt es „—". */
+  vm.recording = null;
+  try {
+    var rec = a.recording || null;
+    if (rec) {
+      var rs = rec.summary || {};
+      var rdm = (an && typeof an.activityDetailModel === 'function') ? an.activityDetailModel(rec.sportId || sportId, rs, rec.durationSeconds, rec.metrics || {}) : null;
+      var rAvg = rdm ? rdm.avgHr : (rs.avgHr != null ? rs.avgHr : null);
+      var rMax = rdm ? rdm.maxHr : (rs.maxHr != null ? rs.maxHr : null);
+      var rKcal = rdm ? rdm.caloriesKcal : (rs.caloriesKcal != null ? rs.caloriesKcal : null);
+      if (vm.avgHr == null && rAvg != null) vm.avgHr = rAvg;
+      if (vm.maxHr == null && rMax != null) vm.maxHr = rMax;
+      if (vm.caloriesKcal == null && rKcal != null) vm.caloriesKcal = rKcal;
+      if (!vm.canonicalStreams && rec.metrics && rec.metrics.streams && typeof rec.metrics.streams === 'object') {
+        vm.canonicalStreams = rec.metrics.streams;
+        vm.canonicalStreamUnits = (rec.metrics.stream_units && typeof rec.metrics.stream_units === 'object') ? rec.metrics.stream_units : null;
+      }
+      vm.recording = {
+        id: rec.id || null, source: rec.source || null,
+        startedAt: rec.startedAt || null,
+        time: (rec.startedAt && rec.startedAt.length >= 16) ? rec.startedAt.slice(11, 16) : null,
+        durationSeconds: rec.durationSeconds != null ? rec.durationSeconds : null,
+        durationLabel: (an && rec.durationSeconds != null) ? an.fmtDurationSeconds(rec.durationSeconds) : null,
+        avgHr: rAvg, maxHr: rMax, caloriesKcal: rKcal
+      };
+    }
+  } catch (e) {}
   ['title', 'distanceLabel', 'paceLabel', 'elevationM', 'avgHr', 'maxHr', 'caloriesKcal'].forEach(function (k) { vm.missing[k] = (vm[k] == null || vm[k] === ''); });
   try {
     var store = window.ORVIA && ORVIA.activityStore;

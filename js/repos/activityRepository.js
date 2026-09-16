@@ -67,6 +67,40 @@
     } catch (e) { return b.fail('exception', String(e && e.message || e)); }
   }
 
+  /* S2c (v8-388): Kopplung Geraeteaufzeichnung ↔ Workout ueber RPC (security invoker, RLS). */
+  async function linkRecording(primaryId, recordingId) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!primaryId || !recordingId) return b.fail('invalid_id', 'IDs fehlen.', { source: 'empty' });
+    if (!b.online()) return b.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().rpc('orvia_link_activities', { p_primary: primaryId, p_recording: recordingId });
+      if (error) return b.fail('rpc_failed', error.message);
+      return b.ok(Array.isArray(data) ? data[0] : data);
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+  async function unlinkRecording(recordingId) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!recordingId) return b.fail('invalid_id', 'ID fehlt.', { source: 'empty' });
+    if (!b.online()) return b.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().rpc('orvia_unlink_activity', { p_recording: recordingId });
+      if (error) return b.fail('rpc_failed', error.message);
+      return b.ok(Array.isArray(data) ? data[0] : data);
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+  async function linkCandidate(recordingId) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!b.online()) return b.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().rpc('orvia_link_candidate', { p_recording: recordingId, p_tolerance_min: 20 });
+      if (error) return b.fail('rpc_failed', error.message);
+      return b.ok(data || null);
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+
   O.repos = O.repos || {};
-  O.repos.activity = { upsertFromSession, upsertManual, list, getById, deleteActivity, deleteWorkout };
+  O.repos.activity = { upsertFromSession, upsertManual, list, getById, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
 })();

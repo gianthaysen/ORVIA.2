@@ -8582,7 +8582,7 @@ function renderGMActivity(){
     var tempo=vm.paceLabel||((a.sportId==='gym'&&a.summary&&a.summary.rpe!=null)?'' + _uiT('ui.rpe') + ''+a.summary.rpe:null)||'—';
     return '<article class="activity-card" role="button" tabindex="0" data-aid="'+gmEsc(aid)+'" onclick="gmOpenActivityPage(\''+gmEsc(aid)+'\')" onkeydown="if(event.key===\'Enter\')gmOpenActivityPage(\''+gmEsc(aid)+'\')">'+
       '<div class="activity-visual" data-sport="'+(gsp||'')+'">'+gmActGlyph(gsp||'Laufen')+'</div>'+
-      '<div class="activity-body"><div class="activity-row"><div><h3>'+gmEsc(title)+'</h3><p>'+gmEsc(dl)+' · '+gmEsc(gmActSrcLabel(vm.source))+'</p></div>'+
+      '<div class="activity-body"><div class="activity-row"><div><h3>'+gmEsc(title)+'</h3><p>'+gmEsc(dl)+' · '+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+'</p></div>'+
       (a.status==='completed'?'<span class="session-state done">' + _uiT('ui.abgeschlossen') + '</span>':'<span class="session-state">—</span>')+'</div>'+
       '<div class="activity-metrics"><div><b>'+gmEsc(um)+'</b><span>' + _uiT('ui.umfang') + '</span></div><div><b>'+gmEsc(vm.durationLabel||'—')+'</b><span>DAUER</span></div><div><b>'+gmEsc(tempo)+'</b><span>TEMPO</span></div><div><b>'+(vm.avgHr!=null?gmEsc(vm.avgHr)+' bpm':'—')+'</b><span>' + _uiT('ui.hf_') + '</span></div></div></div></article>';
   }).join('');
@@ -8748,7 +8748,7 @@ function gmOpenActivityPage(aid){
   if(run||route){
     h+='<div class="route-map">'+(route?((typeof routeSVG==='function')?routeSVG(route):''):'<div class="route-empty">'+icon('activity')+'<div>' + _uiT('ui.keine_gps_route_fuer_diese') + '</div></div>')+'</div>';
   }
-  h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
+  h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
   /* GM7.5e: Schrittfrequenz war ein hartkodiertes „—", obwohl die kanonische
      Kadenz-Messreihe (canonicalStreams.cadence, echte Garmin-Werte, dieselbe Quelle
      wie die Kadenz-Kurve weiter unten) bereits vorliegt. Reiner arithmetischer
@@ -8819,6 +8819,22 @@ function gmOpenActivityPage(aid){
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ORVIA-Workouts ist
      nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze. Eine
      vorhandene Korrektur bleibt sichtbar (vorher → nachher, manuell). */
+  /* S2c (v8-388): Gekoppelte Geraeteaufzeichnung — eigene Karte mit Uhr-Dauer, HF,
+     Kalorien und dem Weg, die Kopplung zu loesen (Server-RPC, kein stilles Loeschen).
+     Umgekehrt: ist DIESE Aktivitaet eine gekoppelte Aufzeichnung, wird das gesagt. */
+  if(vm.recording){
+    var _r=vm.recording;var _rid=String(_r.id||'');
+    h+='<div class="card"><div class="ctitle"><div class="l">'+icon('link')+_uiT('ui.rec_karte_titel',{src:gmActSrcLabel(_r.source)})+'</div></div>'+
+      '<div class="rec-grid">'+
+        '<div><b>'+gmEsc(_r.durationLabel||'—')+'</b><span>'+_uiT('ui.rec_uhr_dauer')+'</span></div>'+
+        '<div><b>'+(_r.avgHr!=null?gmEsc(String(Math.round(_r.avgHr)))+' bpm':'—')+'</b><span>'+_uiT('ui.hf_')+'</span></div>'+
+        '<div><b>'+(_r.maxHr!=null?gmEsc(String(Math.round(_r.maxHr)))+' bpm':'—')+'</b><span>'+_uiT('ui.rec_max_hf')+'</span></div>'+
+        '<div><b>'+(_r.caloriesKcal!=null?gmEsc(String(Math.round(_r.caloriesKcal)))+' kcal':'—')+'</b><span>'+_uiT('ui.rec_kalorien')+'</span></div>'+
+      '</div>'+
+      '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>'+_uiT('ui.rec_erklaerung',{time:_r.time||'—'})+' <a href="#" onclick="event.preventDefault();gmUnlinkRecording(\''+gmEsc(_rid)+'\',\''+gmEsc(String(aid))+'\')" style="font-weight:700">'+_uiT('ui.rec_loesen')+'</a></div></div></div>';
+  }else if(a&&a.linkedActivityId){
+    h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('info','xs')+'<div>'+_uiT('ui.rec_ist_gekoppelt')+' <a href="#" onclick="event.preventDefault();gmOpenActivityPage(\''+gmEsc(String(a.linkedActivityId))+'\')" style="font-weight:700">'+_uiT('ui.rec_zum_workout')+'</a></div></div>';
+  }
   if((vm.source==='orvia_workout'||vm.source==='live')&&vm.status!=='active'&&a.durationSeconds!=null){
     var _dc=a.metrics&&a.metrics.durationCorrection;
     h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('pen','xs')+'<div>'+
@@ -9041,6 +9057,19 @@ function gmSetsDiagProbe(aid,sid){
   }).catch(function(e){if(out)out.textContent='' + _uiT('ui.cloud_abfrage_fehlgeschlagen') + ''+String(e&&e.message||e);});
 }
 function gmCloseActivityPage(){var pg=document.getElementById('gmActPage');if(pg)pg.classList.remove('on');}
+/* S2c (v8-388): Kopplung loesen — Server zuerst (RPC), dann lokal nachziehen, dann neu
+   rendern. Bei Fehler bleibt alles wie es war und der Grund wird gezeigt. */
+function gmUnlinkRecording(recId,aid){
+  var repos=window.ORVIA&&ORVIA.repos&&ORVIA.repos.activity;
+  if(!repos||!repos.unlinkRecording){try{toast(_uiT('ui.cloud_modul_nicht_geladen'));}catch(_){ }return;}
+  repos.unlinkRecording(recId).then(function(r){
+    if(!(r&&r.success)){try{toast(_uiT('ui.rec_loesen_fehler')+(r&&r.error&&r.error.message?': '+r.error.message:''));}catch(_){ }return;}
+    try{var st=ORVIA.activityStore;if(st&&st.setActivityLink)st.setActivityLink(recId,null);}catch(_){ }
+    try{if(typeof _fetchServerActivities==='function')_fetchServerActivities(true);}catch(_){ }
+    try{toast(_uiT('ui.rec_geloest'));}catch(_){ }
+    try{gmOpenActivityPage(aid);}catch(_){ }
+  }).catch(function(e){try{toast(_uiT('ui.rec_loesen_fehler')+': '+String(e&&e.message||e));}catch(_){ }});
+}
 /* P0-Nachtrag 2026-08-05: Dauer-Korrektur-Sheet. Schreibt ueber den Store
    (Activity + Server-Session + Trainingslast) — das UI rechnet nichts selbst. */
 function gmOpenDurationCorrectSheet(aid,curMin){
