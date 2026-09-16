@@ -1,11 +1,11 @@
 {
-  "frozenAt": "2026-08-08",
-  "appVersion": "v8-299",
-  "key": "023ee59b",
+  "frozenAt": "2026-09-16",
+  "appVersion": "v8-388",
+  "key": "2f5a3112",
   "versions": {
     "shadow": "shadow-adaptive@12",
     "shadowPolicy": "shadow-policy@2",
-    "history": "load-history@3",
+    "history": "load-history@4",
     "historyPolicy": "lh-policy@2",
     "debrief": "session-debrief@3",
     "evidence": "evidence@2",

@@ -98,3 +98,15 @@ join me on me.id = w.user_id
 where w.source = 'orvia_workout' and w.sport_id = 'gym'
 order by w.started_at;
 ```
+
+## Nachtrag (v8-388) · Zweitbefund: load-history las kanonische Aktivitäten nicht
+
+Beim Hochzählen von `load-history@3` auf `@4` schlug der Kohorten-Pin an und zwang zur Prüfung, ob der Versionswechsel gerechtfertigt ist. Dabei kam ein schwererer Fehler heraus als die Doppelzählung selbst.
+
+`asUnit` las die Dauer nur aus `durationMin`, `durationSec`, `movingTimeSec` oder `elapsedMs` und den Tagesschlüssel nur aus `localDate`, `date`, `startDateLocal` oder `startDate`. Die kanonischen Aktivitäten aus `activityStore.listActivities()` — genau die, die `ui.js` in den Shadow-Snapshot legt — tragen aber `durationSeconds` und `startedAt`. Gemessen an der Produktivform ergab `@3`: `durationMin = null`, `dayKey = ""`, `loadOf → no_duration`, null Tage mit Last. Jede echte Einheit fiel stillschweigend aus der Lastreihe.
+
+Wirkung: Die Shadow-Belegsammlung seit dem 08.08.2026 (Pin `023ee59b`, v8-299) lief auf einer leeren Lastreihe. Die Belege sind nicht verwertbar; der Kohorten-Reset durch `@4` kostet deshalb nichts, er macht den Zustand nur sichtbar. Die Kohorte ist am 16.09.2026 als `2f5a3112` (v8-388) neu eingefroren.
+
+Warum es unentdeckt blieb: Alle Fälle in `load_history_test` benutzten die Testform (`durationMin`, `date`), nie die kanonische. `H10` schließt diese Lücke und prüft zusätzlich, dass die bisherige Rangfolge erhalten bleibt (explizite Minuten schlagen Sekunden, lokales Datum schlägt Zeitstempel).
+
+Dieselbe Fehlerklasse ist im `capacity-adapter` bereits als P0 dokumentiert (kanonisch `sportId` gegen Legacy `sport`). Offene Konsequenz für später: die übrigen Engine-Eingänge einmal systematisch gegen die kanonische Activity-Form prüfen, statt sie einzeln beim Auffallen zu reparieren.

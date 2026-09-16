@@ -467,6 +467,35 @@ sec('H9 · Purität und Robustheit');
   ok('Modul ist im Cache-Manifest', /load-history\.js/.test(readFileSync(join(APP, 'sw.js'), 'utf8')));
 }
 
+sec('H10 · Kanonische Aktivitäten werden GELESEN (Regressionsschutz)');
+{
+  /* BEFUND v8-388: asUnit las Dauer nur als durationMin/durationSec/movingTimeSec/
+     elapsedMs und den Tagesschlüssel nur aus localDate/date/startDate. Die
+     KANONISCHEN Datensätze aus activityStore.listActivities() — genau die, die
+     ui.js in den Shadow-Snapshot legt — heißen aber durationSeconds und startedAt.
+     Folge im Produktivpfad: durationMin=null, dayKey="", jede echte Einheit fiel
+     stillschweigend aus der Lastreihe. Unentdeckt blieb das, weil KEIN Test je
+     eine kanonische Aktivität hier hineingab; alle Fälle nutzten die Testform.
+     Dieselbe Klasse Fehler wie der P0 im capacity-adapter (sportId vs. sport). */
+  const kanonisch = { id: 'srv-1', sportId: 'running', source: 'garmin',
+    startedAt: '2026-06-23T14:03:00.000Z', endedAt: '2026-06-23T15:00:00.000Z',
+    durationSeconds: 3420, status: 'completed', summary: { distanceKm: 10 } };
+  const u = LH.asUnit(kanonisch);
+  ok('Dauer aus durationSeconds (kanonisch)', u.durationMin === 57, 'durationMin=' + u.durationMin);
+  ok('Tagesschlüssel aus startedAt (kanonisch)', u.dayKey === '2026-06-23', 'dayKey="' + u.dayKey + '"');
+  const l = LH.loadOf(kanonisch);
+  ok('… und die Einheit erzeugt echte Last (nicht no_duration)', l.ok === true && l.systemic > 0,
+    l.ok ? 'systemic=' + l.systemic : 'reason=' + l.reason);
+  const h = LH.buildHistory({ today: '2026-06-25', activities: [kanonisch], days: 28 });
+  ok('… und landet in der Lastreihe des richtigen Tages',
+    !!h.byDay['2026-06-23'] && h.byDay['2026-06-23'].systemic > 0);
+  /* Vorrang bleibt: explizite Minuten schlagen Sekunden, lokales Datum schlägt Zeitstempel. */
+  ok('durationMin behält Vorrang vor durationSeconds',
+    LH.asUnit(Object.assign({ durationMin: 30 }, kanonisch)).durationMin === 30);
+  ok('localDate behält Vorrang vor startedAt',
+    LH.asUnit(Object.assign({}, kanonisch, { localDate: '2026-06-22' })).dayKey === '2026-06-22');
+}
+
 console.log('\n' + '═'.repeat(62));
 console.log(`Ergebnis: ${pass} bestanden, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);
