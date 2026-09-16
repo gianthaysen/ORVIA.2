@@ -27,7 +27,12 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'strength-profile@1';
+  /* @2 (v8-389): Delta ist die Regressionssteigung je 4 Wochen statt des Abstands zum
+     Fensterrand; Fenster haengt am letzten Datenpunkt; Stagnation an der Steigung;
+     Ausbelastung (RIR) wird je Punkt ausgewiesen; Koerpergewicht tagesgenau aus dem
+     Morgenbericht; Wdh.-Reihen tragen ihre Zusatzlast; Test-Satz nur als 1RM-Test, wenn
+     er den besten Arbeitssatz uebertrifft; Gruppe folgt dem direkt belasteten Muskel. */
+  var VERSION = 'strength-profile@2';
   var DAY = 864e5, MIN_SESSIONS = 6, REP_CAP = 12, WINDOW_WEEKS = 12, STAG_SESSIONS = 3;
   var GROUPS = [['legs', 'Beine'], ['push', 'Druck'], ['pull', 'Zug'], ['core', 'Rumpf']];
   var MUSCLE_GROUP = { quads: 'legs', hamstrings: 'legs', glutes: 'legs', calves: 'legs',
@@ -73,8 +78,23 @@
       if (gv && gv.musclesFor) {
         var mus = gv.musclesFor(ex);
         if (mus) {
-          var score = {}, best = null;
-          Object.keys(mus).forEach(function (mk) { var g = MUSCLE_GROUP[mk]; if (!g) return; var c = gv.coeffOf ? gv.coeffOf(mus[mk]) : 1; score[g] = (score[g] || 0) + c; });
+          /* v8-389 (S2-B6): Die Gruppe folgt dem DIREKT belasteten Muskel. Vorher wurden
+             nur Koeffizienten summiert — damit konnten mehrere indirekte Anteile einen
+             direkten Muskel ueberstimmen: der Rueckenstrecker traegt lower_back direkt
+             (1,0 → core) gegen glutes 0,6 + hamstrings 0,5 (1,1 → legs) und stand
+             deshalb unter „Beine". Folge an echten Daten: die Balance-Zeile
+             „Beine : Oberkoerper" stuetzte sich ausschliesslich auf Rueckenstrecker-Saetze,
+             obwohl es in neun Wochen null Beinsaetze gab — die Warnung war richtig, ihre
+             Zahl nicht. Nur wenn KEIN Muskel direkt belastet wird, entscheidet die Summe. */
+          var score = {}, direct = {}, best = null, bestDirect = null;
+          Object.keys(mus).forEach(function (mk) {
+            var g = MUSCLE_GROUP[mk]; if (!g) return;
+            var raw = mus[mk], c = gv.coeffOf ? gv.coeffOf(raw) : 1;
+            score[g] = (score[g] || 0) + c;
+            if (raw === 'direct') direct[g] = (direct[g] || 0) + c;
+          });
+          Object.keys(direct).forEach(function (g) { if (!bestDirect || direct[g] > direct[bestDirect]) bestDirect = g; });
+          if (bestDirect) return bestDirect;
           Object.keys(score).forEach(function (g) { if (!best || score[g] > score[best]) best = g; });
           if (best) return best;
         }
@@ -86,6 +106,22 @@
   }
 
   /* ---------- Übungen aus Snapshots: Einheiten → bester Satz → Serie ---------- */
+  /* v8-389: Koerpergewicht ist tagesabhaengig. deps.bodyweightSeries kommt aus
+     profileModel.weightSeries (Morgenbericht + Profilverlauf); fehlt sie, bleibt
+     der Einzelwert deps.bodyweightKg die Quelle. Nie interpoliert. */
+  function bwAt(deps, date) {
+    var d = deps || {};
+    try {
+      var PM = O.profileModel;
+      if (PM && PM.bodyweightAt && d.bodyweightSeries && d.bodyweightSeries.length) {
+        var hit = PM.bodyweightAt(date, d.bodyweightSeries);
+        if (hit && hit.kg > 0) return hit.kg;
+      }
+    } catch (e) {}
+    var w = num(d.bodyweightKg);
+    return (w != null && w > 0) ? w : null;
+  }
+
   function collectExercises(snapshots, deps) {
     var map = {};
     (snapshots || []).forEach(function (w) {
@@ -114,7 +150,8 @@
     var work = s.sets.filter(function (x) { return x.work; });
     /* v8-385: Koerpergewichtsuebung (bw uebergeben) — e1RM nur, wenn die Mehrheit der Saetze
        Zusatzlast traegt; sonst ist der Wiederholungsrekord die ehrliche Kurve. */
-    if (bw != null && bw > 0) { var loaded = work.filter(function (x) { return x.weight != null && x.weight > 0; }).length; if (loaded * 2 < work.length) bw = null; else bw = { bw: bw, weighted: true }; }
+    if (bw != null && bw > 0) { var loaded = work.filter(function (x) { return x.weight != null && x.weight > 0; }).length;
+      if (loaded * 2 < work.length) bw = null; else bw = { bw: bw, weighted: true }; }
     var best = null, bestE = null, maxReps = null, maxDur = null, ton = 0;
     work.forEach(function (x) {
       if (x.weight != null && x.reps != null) ton += x.weight * x.reps;
@@ -127,7 +164,12 @@
       if (x.durationS != null && (maxDur == null || x.durationS > maxDur)) maxDur = x.durationS;
     });
     var test = null; s.sets.filter(function (x) { return x.test && x.weight != null; }).forEach(function (x) { if (!test || x.weight > test.weight) test = { weight: x.weight, reps: x.reps }; });
-    return { best: best, e1rm: bestE, maxReps: maxReps, maxDur: maxDur, tonnage: Math.round(ton), work: work.length, test: test };
+    /* v8-389 (S2-B4): Zusatzlast der Einheit — die Last des Satzes mit den meisten
+       Wiederholungen (0 = reines Koerpergewicht). Ohne sie ist eine Wdh.-Reihe nicht
+       lesbar: 14 Wdh. ohne Zusatz und 9 Wdh. mit +10 kg sind kein Rueckschritt. */
+    var addedKg = null;
+    work.forEach(function (x) { if (x.reps != null && x.reps === maxReps && addedKg == null) addedKg = (x.weight != null && x.weight > 0) ? x.weight : 0; });
+    return { best: best, e1rm: bestE, maxReps: maxReps, maxDur: maxDur, tonnage: Math.round(ton), work: work.length, test: test, addedKg: addedKg };
   }
 
   function schemeText(sets) {
@@ -143,32 +185,102 @@
     return txt;
   }
 
-  var E_BW_FLAG = { on: false };
+  var E_BW_FLAG = { on: false, anyLoaded: false };
   function finishExercise(E, deps) {
     var bw = deps && num(deps.bodyweightKg);
     E.sessions.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     E_BW_FLAG.on = !!E.bodyweight;
-    E.sessions.forEach(function (s) { var b = sessionBest(s, E.bodyweight ? (bw != null && bw > 0 ? bw : 0) : null); s.best = b.best; s.e1rm = b.e1rm; s.maxReps = b.maxReps; s.maxDur = b.maxDur; s.tonnage = b.tonnage; s.workSets = b.work; s.test = b.test; s.scheme = schemeText(s.sets); });
+    /* Traegt IRGENDEIN Arbeitssatz der Uebung Zusatzlast? Entscheidet ueber Systemlast (s. sessionBest). */
+    E_BW_FLAG.anyLoaded = !!E.bodyweight && E.sessions.some(function (s) {
+      return s.sets.some(function (x) { return x.work && x.weight != null && x.weight > 0; });
+    });
+    E.sessions.forEach(function (s) { var bwDay = E.bodyweight ? (bwAt(deps, s.date) || 0) : null; var b = sessionBest(s, bwDay); s.best = b.best; s.e1rm = b.e1rm; s.maxReps = b.maxReps; s.addedKg = b.addedKg; s.maxDur = b.maxDur; s.tonnage = b.tonnage; s.workSets = b.work; s.test = b.test; s.scheme = schemeText(s.sets); });
     var withE = E.sessions.filter(function (s) { return s.e1rm != null; });
     var withReps = E.sessions.filter(function (s) { return s.maxReps != null; });
     var withDur = E.sessions.filter(function (s) { return s.maxDur != null; });
     /* Modus: load nur, wenn e1RM-Punkte fuer die Kurve reichen (>= 2) und (bei Koerpergewicht)
        die Mehrheit der Einheiten Zusatzlast hat; sonst reps/time. Schwelle zaehlt Einheiten, nicht Punkte. */
-    E.mode = (withE.length >= 2 && withE.length * 2 >= E.sessions.length) ? 'load' : (withDur.length && !withReps.length ? 'time' : (withReps.length ? 'reps' : (withE.length ? 'load' : 'none')));
+    /* v8-389 (S2-B4): Bei einer Koerpergewichtsuebung mit GEMISCHTER Zusatzlast bleibt die
+       Wiederholungsachse die ehrliche Darstellung. Eine e1RM-Kurve wuerde dort nur die
+       belasteten Einheiten zeigen und die uebrigen stillschweigend weglassen — bei
+       Klimmzuegen mit 12/14 Wdh. ohne Zusatz und 7/9 Wdh. mit +10 kg waeren das die
+       Haelfte der Einheiten. Erst wenn jede Einheit Zusatzlast traegt, ist die Last die
+       gemeinsame Achse. */
+    var loadedSess = E.sessions.filter(function (s) { return s.workSets > 0 && s.sets.some(function (x) { return x.work && x.weight != null && x.weight > 0; }); }).length;
+    var workSess = E.sessions.filter(function (s) { return s.workSets > 0; }).length;
+    var bwMixed = !!E.bodyweight && loadedSess > 0 && loadedSess < workSess;
+    E.mode = (!bwMixed && withE.length >= 2 && withE.length * 2 >= E.sessions.length) ? 'load'
+      : (withDur.length && !withReps.length ? 'time' : (withReps.length ? 'reps' : (withE.length && !bwMixed ? 'load' : 'none')));
     E.count = E.sessions.filter(function (s) { return s.workSets > 0; }).length;
     E.ready = E.count >= MIN_SESSIONS;
-    E_BW_FLAG.on = false;
+    E_BW_FLAG.on = false; E_BW_FLAG.anyLoaded = false;
+    /* v8-389 (S2-B5): Schwerster Arbeitssatz der Uebung — Massstab dafuer, ob ein als
+       „test" markierter Satz wirklich ein Maximalversuch war (s. exerciseModel). */
+    E.heaviestWork = null;
+    E.sessions.forEach(function (s) { s.sets.forEach(function (x) { if (x.work && x.weight != null && (E.heaviestWork == null || x.weight > E.heaviestWork)) E.heaviestWork = x.weight; }); });
+    E.sessions.forEach(function (s) { s.testIsReal = !!(s.test && s.test.weight != null && (E.heaviestWork == null || s.test.weight > E.heaviestWork)); });
     E.tests = E.sessions.filter(function (s) { return s.test; }).map(function (s) { return { date: s.date, weight: s.test.weight }; });
     return E;
   }
 
   /* ---------- Übungsmodell (Serie, Δ, PRs, Historie, Stagnation) ---------- */
+  /* ============================================================
+     S2-B2/B3 (v8-389) · Trend statt Fensterrand.
+     Bisher war Δ = aktueller Wert − ERSTER Punkt im 12-Wochen-Fenster. Das ist
+     keine Entwicklung, sondern ein Abstand zu einem zufaelligen Randpunkt: liegt
+     dort ein Ausreisser nach unten, meldet die Seite Fortschritt, den es nicht
+     gibt (belegt an der Brustpresse: Rohdifferenz +5,4 kg, Regression +0,75 kg je
+     4 Wochen ueber 9 Wochen — also Rauschen). Und weil das Fenster mitwandert,
+     springt die Aussage ohne neues Training.
+     trendOf() legt eine Ausgleichsgerade durch die Punkte im Fenster und gibt die
+     Steigung je 4 Wochen zurueck — mit Anzahl Punkte und Spanne, damit die Seite
+     sagen kann, worauf die Zahl beruht. Unter 3 Punkten oder 21 Tagen: kein Trend,
+     sondern der Grund dafuer.
+     ============================================================ */
+  var TREND_MIN_POINTS = 3, TREND_MIN_DAYS = 21, STAG_MIN_POINTS = 4, STAG_MIN_DAYS = 28;
+  function trendOf(points) {
+    var pts = (points || []).filter(function (p) { return p && p.value != null && _d(p.date) != null; });
+    if (pts.length < TREND_MIN_POINTS) return { ok: false, reason: 'few_points', points: pts.length };
+    var t0 = _d(pts[0].date), spanDays = Math.round((_d(pts[pts.length - 1].date) - t0) / DAY);
+    if (spanDays < TREND_MIN_DAYS) return { ok: false, reason: 'short_span', points: pts.length, spanDays: spanDays };
+    var xs = pts.map(function (p) { return (_d(p.date) - t0) / DAY; }), ys = pts.map(function (p) { return p.value; });
+    var n = xs.length, mx = xs.reduce(function (a, b) { return a + b; }, 0) / n, my = ys.reduce(function (a, b) { return a + b; }, 0) / n;
+    var sxy = 0, sxx = 0;
+    for (var i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) * (xs[i] - mx); }
+    if (!(sxx > 0)) return { ok: false, reason: 'no_span', points: n, spanDays: spanDays };
+    var perDay = sxy / sxx;
+    var known = pts.filter(function (p) { return p.effort === true; }).length;
+    var per4 = r1(perDay * 28), levelRef = Math.abs(ys[ys.length - 1]) || 1;
+    /* v8-389: Eine Kurve, die sich je 4 Wochen um mehr als 15 % des Niveaus bewegt, bildet
+       keine Kraftanpassung ab — so schnell veraendert sich Maximalkraft nicht. Real steckt
+       dahinter fast immer ein Geraetewechsel (andere Steckgewichte, anderer Hebel) oder
+       stark unterschiedliche Ausbelastung. Die Zahl wird nicht unterdrueckt, aber als
+       unplausibel ausgewiesen, damit die Seite sie nicht als Fortschritt verkauft. */
+    var implausible = Math.abs(per4) > 0.15 * levelRef;
+    return { ok: true, perDay: perDay, per4Weeks: per4, points: n, spanDays: spanDays,
+      effortKnown: known, effortUnknown: n - known, implausible: implausible };
+  }
+
   function exerciseModel(E, opts) {
-    var o = opts || {}, today = _d(o.today), from = today != null ? today - WINDOW_WEEKS * 7 * DAY : null;
+    var o = opts || {}, today = _d(o.today);
+    /* v8-389 (S2-B2): Das Auswertungsfenster haengt am LETZTEN Datenpunkt, nicht am
+       Kalendertag. Sonst schneidet eine Trainingspause die aeltere Haelfte der Reihe
+       weg und die Steigung kippt: an den echten Daten meldete das kalendergebundene
+       Fenster fuer die Brustpresse +6 kg je 4 Wochen (6 Punkte ab 20.07.), waehrend
+       ueber die vollen 9 Wochen +0,75 kg je 4 Wochen stehen — Rauschen. Die Pause
+       selbst ist eine eigene Aussage (staleDays), keine Trendaenderung. */
+    var lastDate = null;
+    E.sessions.forEach(function (s) { if (s.workSets > 0 && (lastDate == null || _d(s.date) > lastDate)) lastDate = _d(s.date); });
+    var anchor = (lastDate != null && today != null) ? Math.min(today, lastDate) : today;
+    var from = anchor != null ? anchor - WINDOW_WEEKS * 7 * DAY : null;
     var m = { id: E.id, key: E.key, name: E.name, group: E.group, mode: E.mode, count: E.count, ready: E.ready, minSessions: MIN_SESSIONS, bodyweight: E.bodyweight,
       series: [], current: null, currentDate: null, delta: null, prs: [], history: [], stagnant: false, lastScheme: null, lastTest: null, relative: null, method: null };
     if (E.mode === 'load') {
-      m.series = E.sessions.filter(function (s) { return s.e1rm != null; }).map(function (s) { return { date: s.date, value: s.e1rm, test: !!s.test, testWeight: s.test ? s.test.weight : null }; });
+      /* v8-389 (S2-B1): effort = der Satz, aus dem der Wert stammt, trug eine
+         RIR/RPE-Angabe. Epley setzt Ausbelastung voraus; ohne die Angabe misst der
+         Punkt die Anstrengungswahl, nicht die Kraft. Das gehoert an den Punkt, nicht
+         in eine Fussnote. */
+      m.series = E.sessions.filter(function (s) { return s.e1rm != null; }).map(function (s) { return { date: s.date, value: s.e1rm, test: !!(s.test && s.testIsReal), testWeight: s.test ? s.test.weight : null, effort: !!(s.best && (s.best.rir != null || s.best.rpe != null)) }; });
       var last = m.series[m.series.length - 1];
       m.current = last ? last.value : null; m.currentDate = last ? last.date : null;
       var lastS = E.sessions.filter(function (s) { return s.e1rm != null; }).slice(-1)[0];
@@ -176,11 +288,28 @@
       m.lastScheme = lastS ? lastS.scheme : null;
       var inWin = from != null ? m.series.filter(function (p) { return _d(p.date) >= from; }) : m.series;
       if (inWin.length >= 2) { var first = inWin[0]; m.delta = { kg: r1(m.current - first.value), weeks: Math.max(1, Math.round((_d(last.date) - _d(first.date)) / DAY / 7)), from: first.date }; }
+      m.trend = trendOf(inWin);
+      m.effortKnown = m.series.filter(function (p) { return p.effort; }).length;
+      m.effortUnknown = m.series.length - m.effortKnown;
+      /* v8-389 (S2-B1): Vertrauensgrad der Steigung. Epley setzt Ausbelastung voraus.
+         Tragen weniger als die Haelfte der Punkte eine RIR/RPE-Angabe, misst die Kurve
+         ueberwiegend die Anstrengungswahl — die Zahl bleibt sichtbar, aber sie wird
+         als das ausgewiesen, was sie ist. Unterdruecken waere ebenso unehrlich wie
+         sie als Kraftzuwachs zu verkaufen. */
+      if (m.trend && m.trend.ok) m.trend.confidence = (m.trend.effortKnown * 2 >= m.trend.points && m.trend.effortKnown >= 2) ? 'ok' : 'low';
+      if (lastDate != null && today != null) m.staleDays = Math.max(0, Math.round((today - lastDate) / DAY));
       /* PRs */
       var bestS = null; E.sessions.forEach(function (s) { if (s.e1rm != null && (!bestS || s.e1rm > bestS.e1rm)) bestS = s; });
-      var lastT = E.tests[E.tests.length - 1]; m.lastTest = lastT || null;
+      var lastT = E.tests[E.tests.length - 1];
       var bestT = null; E.tests.forEach(function (t) { if (!bestT || t.weight > bestT.weight) bestT = t; });
-      if (bestT) m.prs.push({ kind: 'test', date: bestT.date, value: bestT.weight, unit: 'kg' });
+      /* v8-389 (S2-B5): Ein als „test" markierter Satz ist nur dann ein 1RM-Test, wenn er
+         schwerer war als der beste Arbeitssatz. An den echten Daten stand sonst
+         „1RM-Test 7,5 kg" unter den Bestwerten des Seithebens — die LEICHTESTE je
+         geloggte Last dieser Uebung (Arbeitssaetze 12,5 kg). Ein Aufwaerm- oder
+         Technikversuch ist kein Rekord. */
+      var testIsReal = !!(bestT && (E.heaviestWork == null || bestT.weight > E.heaviestWork));
+      m.lastTest = (lastT && testIsReal) ? lastT : null;
+      if (testIsReal) m.prs.push({ kind: 'test', date: bestT.date, value: bestT.weight, unit: 'kg' });
       if (bestS) m.prs.push({ kind: 'best_set', date: bestS.date, value: bestS.e1rm, unit: 'kg e1RM', detail: bestS.best ? (bestS.best.reps + ' × ' + String(bestS.best.weight).replace('.', ',') + ' kg') : null });
       var heavy = null; E.sessions.forEach(function (s) { s.sets.forEach(function (x) { if (x.work && x.weight != null && x.reps != null && (!heavy || x.weight > heavy.weight || (x.weight === heavy.weight && x.reps > heavy.reps))) heavy = { weight: x.weight, reps: x.reps, date: s.date }; }); });
       if (heavy) m.prs.push({ kind: 'heaviest', date: heavy.date, value: heavy.weight, unit: 'kg', detail: heavy.reps + ' Wdh.' });
@@ -191,16 +320,43 @@
       var hs = E.sessions.filter(function (s) { return s.workSets > 0; });
       hs.forEach(function (s, i) { var prev = i > 0 ? hs[i - 1] : null; var d = (s.e1rm != null && prev && prev.e1rm != null) ? r1(s.e1rm - prev.e1rm) : null; m.history.push({ date: s.date, scheme: s.scheme, e1rm: s.e1rm, delta: d, tonnage: s.tonnage }); });
       m.history = m.history.slice(-6).reverse();
-      /* Stagnation: Satz 1 (Top-Satz) über STAG_SESSIONS Einheiten unverändert */
-      try { var SP = o.strengthProgression; if (SP && SP.isStagnant) { var hist = hs.map(function (s) { return { sets: s.sets.filter(function (x) { return x.work; }).map(function (x, i) { return { setNumber: i + 1, weight: x.weight, reps: x.reps }; }) }; }); m.stagnant = E.ready && SP.isStagnant(hist, 1, STAG_SESSIONS); } } catch (e) {}
+      /* v8-389 (S2-B3): Stagnation an der STEIGUNG, nicht an Gleichheit. Die alte
+         Regel verlangte Gewicht UND Wiederholungen des ersten Satzes ueber drei
+         Einheiten unveraendert — reale Saetze streuen, also feuerte sie nie (an den
+         echten Daten: 0 von 6 Uebungen, obwohl die Brustpresse seit 9 Wochen auf
+         80 kg steht). Jetzt: flache Ausgleichsgerade ueber mindestens 4 Punkte und
+         4 Wochen gilt als Plateau. Schwelle relativ zum Niveau (1 %, mind. 0,5 kg),
+         damit sie bei 40 kg und bei 140 kg dasselbe bedeutet. */
+      if (m.trend && m.trend.ok && m.trend.points >= STAG_MIN_POINTS && m.trend.spanDays >= STAG_MIN_DAYS && m.current != null) {
+        var flat = Math.max(0.5, Math.abs(m.current) * 0.01);
+        if (Math.abs(m.trend.per4Weeks) < flat) { m.stagnant = true; m.stagnantBy = 'trend'; }
+      }
+      try { var SP = o.strengthProgression; if (SP && SP.isStagnant) { var hist = hs.map(function (s) { return { sets: s.sets.filter(function (x) { return x.work; }).map(function (x, i) { return { setNumber: i + 1, weight: x.weight, reps: x.reps }; }) }; }); var legacy = E.ready && SP.isStagnant(hist, 1, STAG_SESSIONS); if (legacy && !m.stagnant) { m.stagnant = true; m.stagnantBy = m.stagnantBy || 'top_set'; } } } catch (e) {}
       if (num(o.bodyweightKg) != null && o.bodyweightKg > 0 && m.current != null && !E.bodyweight && /kniebeuge|squat|kreuzheben|deadlift|bankdr|bench|schulterdr|overhead|ohp|military/i.test(E.name) && !/maschine|machine|kabel|cable|smith|kurzhantel|dumbbell/i.test(E.name)) m.relative = Math.round(m.current / o.bodyweightKg * 100) / 100;
     } else if (E.mode === 'reps') {
-      m.series = E.sessions.filter(function (s) { return s.maxReps != null; }).map(function (s) { return { date: s.date, value: s.maxReps }; });
+      m.series = E.sessions.filter(function (s) { return s.maxReps != null; }).map(function (s) { return { date: s.date, value: s.maxReps, addedKg: s.addedKg != null ? s.addedKg : 0 }; });
       var l2 = m.series[m.series.length - 1]; m.current = l2 ? l2.value : null; m.currentDate = l2 ? l2.date : null;
-      var bestR = null; m.series.forEach(function (p) { if (!bestR || p.value > bestR.value) bestR = p; });
-      if (bestR) m.prs.push({ kind: 'max_reps', date: bestR.date, value: bestR.value, unit: 'Wdh.' });
+      m.currentLoadKg = l2 ? l2.addedKg : null;
+      m.loadLevels = m.series.reduce(function (a, p) { if (a.indexOf(p.addedKg) < 0) a.push(p.addedKg); return a; }, []).sort(function (a, b) { return a - b; });
+      /* Bestwert je Lastniveau — ein Rekord ohne Last ist keine Aussage. */
+      var bestByLoad = {};
+      m.series.forEach(function (p) { var k = String(p.addedKg); if (!bestByLoad[k] || p.value > bestByLoad[k].value) bestByLoad[k] = p; });
+      Object.keys(bestByLoad).sort(function (a, b) { return +b - +a; }).forEach(function (k) {
+        var p = bestByLoad[k];
+        m.prs.push({ kind: 'max_reps', date: p.date, value: p.value, unit: 'Wdh.', addedKg: +k });
+      });
+      /* v8-389 (S2-B4): Delta NUR zwischen Punkten gleicher Zusatzlast. Vorher verglich die
+         Seite 9 Wdh. mit +10 kg gegen 14 Wdh. ohne Zusatz und meldete „−5 Wdh." als
+         Rueckschritt — die Last war um 10 kg gestiegen. Gibt es keinen frueheren Punkt
+         derselben Last, ist die ehrliche Antwort kein Delta, sondern der Grund dafuer. */
       var inW2 = from != null ? m.series.filter(function (p) { return _d(p.date) >= from; }) : m.series;
-      if (inW2.length >= 2) m.delta = { reps: m.current - inW2[0].value, weeks: Math.max(1, Math.round((_d(l2.date) - _d(inW2[0].date)) / DAY / 7)) };
+      var sameLoad = inW2.filter(function (p) { return p.addedKg === (l2 ? l2.addedKg : 0); });
+      if (sameLoad.length >= 2) {
+        m.delta = { reps: m.current - sameLoad[0].value, weeks: Math.max(1, Math.round((_d(l2.date) - _d(sameLoad[0].date)) / DAY / 7)), addedKg: l2.addedKg };
+      } else if (inW2.length >= 2) {
+        m.deltaBlocked = 'load_changed';
+        m.deltaLoadFrom = inW2[0].addedKg; m.deltaLoadTo = l2 ? l2.addedKg : null;
+      }
       m.lastScheme = E.sessions.slice(-1)[0].scheme;
     } else if (E.mode === 'time') {
       m.series = E.sessions.filter(function (s) { return s.maxDur != null; }).map(function (s) { return { date: s.date, value: s.maxDur }; });
@@ -266,11 +422,19 @@
     var push = groups.push[key], pull = groups.pull[key], legs = groups.legs[key], upper = push + pull;
     function ratio(a, b) { return (a > 0 && b > 0) ? Math.round(a / b * 100) / 100 : null; }
     var pp = ratio(push, pull), lu = ratio(legs, upper);
+    /* v8-389 (S2-B6b): „keine Beinsaetze" ist eine AUSSAGE, kein fehlender Wert. Solange
+       die Zuordnung den Rueckenstrecker zu den Beinen zaehlte, kam nie eine Null zustande;
+       seit die Gruppe dem direkt belasteten Muskel folgt, schon — und dann meldete die
+       Zeile „zu wenig Daten", obwohl acht Einheiten mit 84 Oberkoerpersaetzen vorliegen.
+       Bei belegter Oberkoerperarbeit und null Beinsaetzen ist das Verhaeltnis 0, nicht
+       unbekannt. */
+    var legsZero = (legs === 0 && upper > 0);
+    if (legsZero) lu = 0;
     var inj = opts.injury || null; var legsBlocked = !!(inj && inj.active && inj.policy && inj.policy.legStrength === false);
     return {
       windowDays: win, sessions: win === 28 ? meta.sessions28 : meta.sessions56,
       pushPull: { ratio: pp, a: push, b: pull, lo: 0.8, hi: 1.2, status: pp == null ? 'none' : (pp >= 0.8 && pp <= 1.2 ? 'ok' : 'att') },
-      legsUpper: { ratio: lu, a: legs, b: upper, lo: 0.8, hi: 1.5, status: lu == null ? 'none' : (legsBlocked ? 'blocked' : (lu >= 0.8 ? 'ok' : 'att')), blocked: legsBlocked, injuryLabel: legsBlocked ? (inj.label || null) : null, injuryStage: legsBlocked ? inj.stage : null }
+      legsUpper: { ratio: lu, a: legs, b: upper, lo: 0.8, hi: 1.5, zero: legsZero, status: lu == null ? 'none' : (legsBlocked ? 'blocked' : (lu >= 0.8 ? 'ok' : 'att')), blocked: legsBlocked, injuryLabel: legsBlocked ? (inj.label || null) : null, injuryStage: legsBlocked ? inj.stage : null }
     };
   }
 
@@ -310,7 +474,9 @@
   /* ---------- Gesamtmodell ---------- */
   function build(snapshots, opts) {
     var o = opts || {}; var today = o.today || _iso(Date.now());
-    var deps = { gymVolume: o.gymVolume, bodyweightKg: num(o.bodyweightKg) };
+    var deps = { gymVolume: o.gymVolume, bodyweightKg: num(o.bodyweightKg), bodyweightSeries: o.bodyweightSeries || null };
+    /* Heutiges Gewicht kanonisch aufloesen (Reihe schlaegt Einzelwert) — relative Kraft liest es. */
+    deps.bodyweightKg = bwAt(deps, today);
     var exercises = collectExercises(snapshots, deps);
     var dates = []; (snapshots || []).forEach(function (w) { var t = _d(w && w.startedAt); if (t != null) dates.push(t); });
     var dataWeeks = dates.length ? Math.max(0, Math.round((Math.max.apply(null, dates) - Math.min.apply(null, dates)) / DAY / 7)) : 0;
@@ -328,6 +494,9 @@
       var em = exerciseModel(E, { today: today, strengthProgression: o.strengthProgression, bodyweightKg: deps.bodyweightKg });
       m.strengthGoals.push({ goalId: g.id, title: g.title, exercise: E.key, exerciseName: E.name, forecast: goalForecast(em, g, { today: today }) });
     });
+    m.bodyweight = deps.bodyweightSeries && deps.bodyweightSeries.length
+      ? (function () { try { var h = O.profileModel && O.profileModel.bodyweightAt ? O.profileModel.bodyweightAt(today, deps.bodyweightSeries) : null; return h || null; } catch (e) { return null; } })()
+      : (deps.bodyweightKg != null ? { kg: deps.bodyweightKg, date: null, source: 'profile', ageDays: null } : null);
     m.exerciseModel = function (key) { var E = exercises.filter(function (x) { return x.key === key; })[0]; return E ? exerciseModel(E, { today: today, strengthProgression: o.strengthProgression, bodyweightKg: deps.bodyweightKg }) : null; };
     return m;
   }

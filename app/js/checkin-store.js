@@ -198,8 +198,26 @@
     return persistCheckin(date, 'morning', DB[date].morning);
   }
 
+  /* S2-B1b (v8-389): Morgengewichte als Reihe. EINE Leseregel fuer alle
+     Verbraucher (Ernaehrung, Kraftprofil, relative Kraft) — vorher las jeder
+     Verbraucher DB selbst, mit eigener Fensterlaenge. Reines Lesen. */
+  function morningWeightSeries(days) {
+    var n = (days != null && days > 0) ? Math.floor(days) : 365;
+    var out = [];
+    try {
+      var DBx = (typeof DB !== 'undefined') ? DB : null; if (!DBx) return out;
+      var dk = (typeof dkey === 'function') ? dkey : null; if (!dk) return out;
+      for (var i = n - 1; i >= 0; i--) {
+        var k = dk(-i), e = DBx[k];
+        var w = e && e.morning && e.morning.weight;
+        if (typeof w === 'number' && isFinite(w) && w > 0) out.push({ date: k, kg: w });
+      }
+    } catch (e) {}
+    return out;
+  }
+
   O.checkinStore = {
-    persistCheckin, hydrateRecentTypes, rowToCheckin,
+    persistCheckin, hydrateRecentTypes, rowToCheckin, morningWeightSeries,
     persistMorning, hydrateRecent, rowToMorning,
     VALID_TYPES, BLOCK_TYPES, TYPE_KEY
   };

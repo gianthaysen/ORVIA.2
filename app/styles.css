@@ -4300,3 +4300,5 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rec-grid b{display:block;font-size:11.5px}
 .rec-grid span{font-size:7.5px;color:var(--muted)}
 @media (max-width:360px){.rec-grid{grid-template-columns:repeat(2,1fr)}}
+
+.kp-delta.unsure{color:var(--muted);font-weight:700}

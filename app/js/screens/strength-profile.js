@@ -39,10 +39,25 @@
 
   /* ---------- Datensammlung (nur hier wird die App berührt) ---------- */
   function collect() {
-    var ctx = { today: null, snapshots: [], bodyweight: null, experience: 'beginner', goals: [], injury: null, ready: false, error: null };
+    var ctx = { today: null, snapshots: [], bodyweight: null, bodyweightSeries: null, experience: 'beginner', goals: [], injury: null, ready: false, error: null };
     try { ctx.today = typeof root.todayStr === 'function' ? root.todayStr() : new Date().toISOString().slice(0, 10); } catch (e) { ctx.today = new Date().toISOString().slice(0, 10); }
     try { var gv = O.gymVolume; if (gv && gv.gymPipeline) { var pipe = gv.gymPipeline({ days: 365 }); ctx.snapshots = (pipe && pipe.snapshots) || []; ctx.ready = true; } } catch (e) { ctx.error = e; }
-    try { var P = root.PROFILE || null; if (P) { var w = null; try { w = O.profileModel && O.profileModel.currentWeightKg ? O.profileModel.currentWeightKg(P.performance) : null; } catch (e) {} if (w == null && P.personal) w = P.personal.weightKg; ctx.bodyweight = (typeof w === 'number' && w > 0) ? w : null; } } catch (e) {}
+    /* v8-389 (S2-B1b): Koerpergewicht kommt aus dem MORGENBERICHT (nuechtern, taeglich
+       gepflegt) und wird als Reihe uebergeben — jede Einheit rechnet mit dem Gewicht
+       IHRES Tages. Vorher stand hier nur der Profilwert: eine Klimmzugreihe ueber drei
+       Monate nahm das heutige Gewicht auch fuer Einheiten im Juni, und relative Kraft
+       rechnete gegen einen Wert, der Wochen alt sein konnte. Der Profilverlauf bleibt
+       Rueckfall, wenn kein Morgenwert vorliegt. */
+    try {
+      var P = root.PROFILE || null, PM = O.profileModel;
+      var morning = null;
+      try { morning = (O.checkinStore && O.checkinStore.morningWeightSeries) ? O.checkinStore.morningWeightSeries(365) : null; } catch (e) {}
+      if (PM && PM.weightSeries) ctx.bodyweightSeries = PM.weightSeries(P ? P.performance : null, morning);
+      var w = null;
+      try { w = (PM && PM.currentWeightKg) ? PM.currentWeightKg(P ? P.performance : null, ctx.bodyweightSeries) : null; } catch (e) {}
+      if (w == null && P && P.personal) w = P.personal.weightKg;
+      ctx.bodyweight = (typeof w === 'number' && w > 0) ? w : null;
+    } catch (e) {}
     try { if (typeof root.mvExperience === 'function') ctx.experience = root.mvExperience() || 'beginner'; } catch (e) {}
     try { ctx.goals = typeof root.listGoals === 'function' ? (root.listGoals() || []) : []; } catch (e) {}
     try { var AR = O.absenceReplanner; if (AR && AR.injuryFromConstraints && root.PROFILE) { var inj = AR.injuryFromConstraints(root.PROFILE.constraintsList, { ladder: O.returnLadder || null }); if (inj && inj.active) ctx.injury = inj; } } catch (e) {}
@@ -50,7 +65,7 @@
   }
   function buildModel(ctx) {
     var SP = O.strengthProfile; if (!SP) return null;
-    return SP.build(ctx.snapshots, { today: ctx.today, gymVolume: O.gymVolume, strengthProgression: O.strengthProgression, bodyweightKg: ctx.bodyweight, experience: ctx.experience, goals: ctx.goals, injury: ctx.injury });
+    return SP.build(ctx.snapshots, { today: ctx.today, gymVolume: O.gymVolume, strengthProgression: O.strengthProgression, bodyweightKg: ctx.bodyweight, bodyweightSeries: ctx.bodyweightSeries, experience: ctx.experience, goals: ctx.goals, injury: ctx.injury });
   }
 
   /* ---------- Kurve ---------- */
@@ -96,8 +111,12 @@
       return h + src(T('kp.src_schwelle')) + '</div>';
     }
     if (em.mode === 'load') {
-      var dtx = em.delta ? ((em.delta.kg === 0 ? '±' : em.delta.kg > 0 ? '+' : '−') + kg(Math.abs(em.delta.kg)) + ' kg ' + T('kp.in_n_wochen', { n: em.delta.weeks })) : '';
-      h += '<div class="kp-hero"><b>' + esc(kg(em.current)) + '</b><span>' + esc(T(D.jargon ? 'kp.unit_e1rm' : 'kp.unit_max')) + '</span>' + (dtx ? '<span class="kp-delta' + (em.delta.kg < 0 ? ' dn' : '') + '">' + esc(dtx) + '</span>' : '') + '</div>';
+      /* v8-389 (S2-B2): Die Kopfzahl ist die STEIGUNG je 4 Wochen, nicht der Abstand zum
+         ersten Punkt eines wandernden Fensters. Fehlt die Steigung, steht dort nichts —
+         eine Rohdifferenz waere eine Aussage, die die Daten nicht tragen. */
+      var tr = em.trend && em.trend.ok ? em.trend : null;
+      var dtx = tr ? ((tr.per4Weeks === 0 ? '±' : tr.per4Weeks > 0 ? '+' : '−') + kg(Math.abs(tr.per4Weeks)) + ' ' + T('kp.kg_je_4w')) : '';
+      h += '<div class="kp-hero"><b>' + esc(kg(em.current)) + '</b><span>' + esc(T(D.jargon ? 'kp.unit_e1rm' : 'kp.unit_max')) + '</span>' + (dtx ? '<span class="kp-delta' + (tr.per4Weeks < 0 ? ' dn' : '') + (tr.confidence === 'low' || tr.implausible ? ' unsure' : '') + '">' + esc(dtx) + '</span>' : '') + '</div>';
       var meta = [];
       if (em.lastScheme) meta.push(T('kp.letzter_satz') + ': ' + (D.jargon ? em.lastScheme : em.lastScheme.replace(/ · RIR \d+/, '')));
       if (D.meta) meta.push(em.lastTest ? T('kp.letzter_test') + ': ' + kg(em.lastTest.weight) + ' kg (' + deDateY(em.lastTest.date) + ')' : T('kp.kein_test'));
@@ -105,12 +124,23 @@
       h += '<div class="kp-meta">' + esc(meta.join(' · ')) + '</div>';
       h += chart(em, m);
       if (!D.jargon) h += '<div class="kp-note">' + ic('info', 'sm') + '<div><b>' + esc(T('kp.kurz_erklaert')) + '</b> ' + esc(T('kp.e1rm_erklaerung')) + '</div></div>';
-      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.stagnation_t')) + '</b> ' + esc(T(D.jargon ? 'kp.stagnation_d' : 'kp.stagnation_d_einfach')) + '</div></div>';
+      /* v8-389 (S2-B1/B2): Worauf die Zahl beruht — Punkte, Spanne, Ausbelastung. Ohne das
+         liest sich eine Steigung wie eine Messung, obwohl sie eine Schaetzung aus wenigen
+         Punkten ist. */
+      if (tr && D.meta) h += '<div class="kp-meta">' + esc(T('kp.trend_basis', { n: tr.points, d: tr.spanDays })) + '</div>';
+      if (em.trend && !em.trend.ok && em.series.length >= 2) h += '<div class="kp-note">' + ic('info', 'sm') + '<div>' + esc(T(em.trend.reason === 'short_span' ? 'kp.trend_kurz' : 'kp.trend_wenig')) + '</div></div>';
+      if (tr && tr.implausible) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.trend_unplausibel_t')) + '</b> ' + esc(T('kp.trend_unplausibel_d')) + '</div></div>';
+      else if (tr && tr.confidence === 'low') h += '<div class="kp-note">' + ic('info', 'sm') + '<div><b>' + esc(T('kp.effort_t')) + '</b> ' + esc(T('kp.effort_d', { k: em.effortKnown, n: em.effortKnown + em.effortUnknown })) + '</div></div>';
+      if (em.staleDays != null && em.staleDays >= 14) h += '<div class="kp-note">' + ic('calendar', 'sm') + '<div>' + esc(T('kp.stale_d', { d: em.staleDays })) + '</div></div>';
+      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.stagnation_t')) + '</b> ' + esc(T(em.stagnantBy === 'trend' ? 'kp.stagnation_trend_d' : (D.jargon ? 'kp.stagnation_d' : 'kp.stagnation_d_einfach'))) + '</div></div>';
       h += src(T(!D.jargon ? 'kp.src_einfach' : (em.method === 'epley_rir' ? 'kp.src_epley_rir' : 'kp.src_epley')));
     } else if (em.mode === 'reps') {
       h += '<div class="kp-hero"><b>' + esc(String(em.current)) + '</b><span>' + esc(T('kp.unit_wdh_max')) + '</span>' + (em.delta && em.delta.reps ? '<span class="kp-delta' + (em.delta.reps < 0 ? ' dn' : '') + '">' + (em.delta.reps > 0 ? '+' : '') + em.delta.reps + ' ' + esc(T('kp.in_n_wochen', { n: em.delta.weeks })) + '</span>' : '') + '</div>';
       if (em.lastScheme) h += '<div class="kp-meta">' + esc(T('kp.letzter_satz') + ': ' + em.lastScheme) + '</div>';
       h += chart(em, m);
+      /* v8-389 (S2-B4): Eine Wdh.-Zahl ohne ihre Zusatzlast ist nicht lesbar. */
+      if (em.currentLoadKg != null) h += '<div class="kp-meta">' + esc(em.currentLoadKg > 0 ? T('kp.reps_mit_last', { v: kg(em.currentLoadKg) }) : T('kp.reps_ohne_last')) + '</div>';
+      if (em.deltaBlocked === 'load_changed') h += '<div class="kp-note">' + ic('info', 'sm') + '<div>' + esc(T('kp.reps_last_gewechselt', { a: kg(em.deltaLoadFrom), b: kg(em.deltaLoadTo) })) + '</div></div>';
       h += src(T('kp.src_reps'));
     } else if (em.mode === 'time') {
       h += '<div class="kp-empty"><div class="e-ic">' + ic('calendar') + '</div><div class="t">' + esc(T('kp.zeit_statt_gewicht')) + '</div><div class="d">' + esc(T('kp.halte_d', { v: mmss(em.current) })) + '</div></div>';
@@ -122,7 +152,10 @@
   function prCard(em) {
     if (!em || !em.ready || !em.prs.length) return '';
     var rows = em.prs.map(function (p) {
-      var t = T('kp.pr_' + p.kind), sub = p.kind === 'volume_week' ? T('kp.kw', { w: String(p.week).replace(/^\d{4}-W/, '') }) : (p.date ? deDateY(p.date) + (p.detail ? ' · ' + p.detail : '') : (p.detail || ''));
+      var t = T('kp.pr_' + p.kind);
+      /* v8-389 (S2-B4): Zwei Wdh.-Rekorde unterscheiden sich nur durch ihre Last. */
+      if (p.kind === 'max_reps' && p.addedKg != null) t += p.addedKg > 0 ? ' (+' + kg(p.addedKg) + ' kg)' : ' (' + T('kp.ohne_zusatz') + ')';
+      var sub = p.kind === 'volume_week' ? T('kp.kw', { w: String(p.week).replace(/^\d{4}-W/, '') }) : (p.date ? deDateY(p.date) + (p.detail ? ' · ' + p.detail : '') : (p.detail || ''));
       var v = p.kind === 'max_hold' ? mmss(p.value) : (p.kind === 'max_reps' ? p.value + ' ' + T('kp.unit_wdh') : (p.kind === 'volume_week' ? kgInt(p.value) + ' kg' : (p.kind === 'best_set' ? (depth().jargon ? T('kp.unit_e1rm_short') + ' ' : '') + kg(p.value) + (depth().jargon ? '' : ' kg') : kg(p.value) + ' kg')));
       return '<div class="kp-pr"><div class="p-ic2">' + ic('sparkle') + '</div><div class="t">' + esc(t) + '<small>' + esc(sub) + '</small></div><div class="v">' + esc(v) + '</div></div>';
     }).join('');
