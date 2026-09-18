@@ -484,6 +484,32 @@
     if (rem <= 0) { tm.running = false; tm.endAt = null; try { if (navigator.vibrate) navigator.vibrate(200); } catch (e) {} renderOverlay(); }
   }
 
+  /* v8-395 · ehrlicher Leerzustand des Kraft-Players.
+     Vorher stand dort immer nur „Noch keine Uebung." — auch dann, wenn die
+     Einheit als GEPLANT gestartet wurde. Der Player sagte also „Geplant" und
+     „0/0 Uebungen" und bot keinerlei Erklaerung; das wirkt wie ein Defekt,
+     obwohl der Plan schlicht keine strukturierte Vorgabe traegt (nur Text in
+     item.d). Die Unterscheidung kommt ausschliesslich aus den Daten der
+     Session — nichts wird geraten. */
+  function emptyState(session) {
+    const s = session || {};
+    const snap = s.planned_session_snapshot || s.plannedSessionSnapshot || null;
+    const planned = !!(s.planned_session_id || s.plannedSessionId || snap);
+    const pex = (snap && Array.isArray(snap.plannedExercises)) ? snap.plannedExercises : [];
+    if (!planned) return { kind: 'free', text: T('wo.empty'), plan: null };
+    if (pex.length) return { kind: 'planned_failed', text: T('wo.empty.plannedFailed', { count: pex.length }), plan: null, count: pex.length };
+    return { kind: 'planned_text', text: T('wo.empty.plannedText'), plan: planTextOf(session) };
+  }
+  /* Der Plantext ueberlebt einen Reload nur im Snapshot: _planNote wird beim
+     Schliessen geleert. Beide Quellen, Laufzeit zuerst. */
+  function planTextOf(session) {
+    if (O.workoutUI._planNote) return null;   // steht bereits im wo-plan-Block
+    const snap = (session && (session.planned_session_snapshot || session.plannedSessionSnapshot)) || null;
+    const t = snap && (snap.d || snap.l);
+    return t ? String(t) : null;
+  }
+  O.workoutUI._emptyState = emptyState;
+
   function renderOverlay() {
     const ov = document.getElementById('workoutOverlay'); if (!ov || ov.classList.contains('hide')) return;
     const S = st(); const session = S.session;
@@ -531,7 +557,10 @@
     // ---- Gym: Satz-/Übungsmodus ----
     if (exs.length) html += '<div class="wo-exnav">' + exs.map((e, i) => '<button class="wo-exchip ' + (i === idx ? 'on' : '') + '" onclick="ORVIA.workoutUI.goEx(' + i + ')">' + (i + 1) + gy('chipBadge', exs, i) + '</button>').join('') + '</div>';
     if (!cur) {
-      html += '<div class="wo-empty"><p>' + T('wo.empty') + '</p><button class="btn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.addExercise') + '</button></div>';
+      const es = emptyState(session);
+      html += '<div class="wo-empty ' + es.kind + '"><p>' + esc(es.text) + '</p>' +
+        (es.plan ? '<p class="wo-empty-plan">' + esc(es.plan) + '</p>' : '') +
+        '<button class="btn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.addExercise') + '</button></div>';
     } else {
       const exName = (cur.exercise && cur.exercise.name) || 'Übung';
       const we = cur.workoutExercise;

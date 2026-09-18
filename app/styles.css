@@ -1810,9 +1810,19 @@ html,body{overflow-x:hidden;max-width:100%}
 .wo-exchip{width:34px;height:34px;border-radius:9px;border:1px solid rgba(148,163,184,.25);background:transparent;color:#cbd5e1;font-weight:700}
 .wo-exchip.on{background:#2563eb;border-color:#2563eb;color:#fff}
 .wo-cur{background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:10px}
-.wo-cur-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.wo-exname{font-size:17px;font-weight:800}
-.wo-exact{display:flex;gap:10px}
+/* v8-395 (Nutzerbefund 18.09.): Die Kopfzeile war ein starres flex mit space-between und
+   ohne Umbruch. Auf dem Telefon brach ein langer Uebungsname ("Bankdruecken Smith Machine")
+   auf drei Zeilen um, und die vier Aktionen daneben (Alternative · Superset · Ersetzen ·
+   Entfernen) liefen rechts aus der Karte — "Entfernen" war nicht mehr erreichbar.
+   Jetzt: Name und Aktionen duerfen umbrechen; unter 430 px bekommt der Name eine eigene
+   Zeile und die Aktionen stehen vollstaendig darunter. */
+.wo-cur-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.wo-exname{font-size:17px;font-weight:800;min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+.wo-exact{display:flex;gap:10px;flex-wrap:wrap;row-gap:6px}
+@media (max-width:430px){
+  .wo-exname{flex:1 1 100%}
+  .wo-exact{flex:1 1 100%;justify-content:flex-start}
+}
 .wo-link{background:none;border:0;color:#60a5fa;font-weight:700;font-size:13px;padding:0}
 .wo-link.danger{color:#fb7185}
 .wo-last{font-size:13px;line-height:1.5}
@@ -1884,6 +1894,11 @@ html,body{overflow-x:hidden;max-width:100%}
 .wo-savebtn{margin-top:2px}
 .wo-timer{display:flex;align-items:center;gap:10px;font-size:14px}
 .wo-empty{text-align:center;padding:30px 0;display:flex;flex-direction:column;gap:14px;align-items:center}
+/* v8-395: der Leerzustand erklaert sich jetzt; laengerer Text braucht Zeilenlaenge
+   und Lesbarkeit statt einer einzelnen zentrierten Zeile. */
+.wo-empty p{max-width:34ch;margin:0;color:var(--muted);line-height:1.45}
+.wo-empty.planned_text p:first-child,.wo-empty.planned_failed p:first-child{color:var(--txt)}
+.wo-empty-plan{font-size:13px;border-left:2px solid var(--line);padding-left:10px;text-align:left}
 .wo-foot{position:fixed;left:0;right:0;bottom:0;z-index:9001;display:flex;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:rgba(11,18,32,.96);backdrop-filter:blur(6px);border-top:1px solid rgba(148,163,184,.16);max-width:680px;margin:0 auto}
 .wo-fbtn{flex:1;background:#1e293b;color:#e2e8f0;border:0;border-radius:11px;padding:13px 6px;font-weight:700;font-size:14px}
 .wo-fbtn.primary{background:#16a34a}
@@ -2404,10 +2419,19 @@ details.acc .acc-body{margin-top:14px}
 .ci-compact{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
 .ci-compact:focus-visible{outline:2px solid var(--accent,#C9AE7C);outline-offset:2px}
 
-/* ---- v5-Farbsprache: dunkler Text auf Goldflächen (Prototyp-Treue + Kontrast) ---- */
+/* ---- v5-Farbsprache: dunkler Text auf Goldflächen (Prototyp-Treue + Kontrast) ----
+   v8-395 (Nutzerbefund 18.09.): Die pauschale Regel .btn:not(.sec):not(.gline){color:#20180a}
+   stammt aus der Zeit, als .btn eine GEFÜLLTE Goldfläche war — dort ist fast schwarze Schrift
+   richtig. Eine spätere Überarbeitung machte .btn zum durchscheinenden Gold auf dunklem Grund
+   (linear-gradient rgba(201,174,124,.15) → .055) mit hellem Label (#E9DCBE). Die Farbregel
+   stand aber weiter unten in der Datei und gewann: fast schwarze Schrift auf fast schwarzem
+   Grund — gemessen #20180a auf rgba(201,174,124,.055). Betroffen waren alle großen Buttons
+   der App, u. a. „Übung hinzufügen" im leeren Live-Workout.
+   Die wirklich goldgefüllten Flächen setzen ihre dunkle Schrift selbst (.cta.prim,
+   .sheet-cta .prim, .gm-story .wst-cta button.prim, .fab, .segs button.on) — die pauschale
+   Regel wird deshalb ersatzlos entfernt, statt sie mit einer weiteren Ausnahme zu flicken. */
 .segs button.on{color:#20180a}
-.btn:not(.sec):not(.gline){color:#20180a}
-.btn:not(.sec):not(.gline) .cta-sub{color:rgba(32,24,10,.65)}
+.cta-sub{color:var(--muted)}
 .oc2{position:relative;margin-top:6px}
 .oc2 svg{width:100%;height:auto;display:block;touch-action:none;outline:none}
 .oc2 svg:focus-visible{outline:2px solid var(--gold-soft);outline-offset:2px;border-radius:8px}
