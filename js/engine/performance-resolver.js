@@ -31,7 +31,12 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'performance-resolver@2';
+  /* @3 (v8-390): runningInput liest Distanz, Dauer und Datum jetzt auch in der
+     kanonischen Activity-Form (summary.distanceKm, durationSeconds, startedAt). Vorher
+     verwarf der Guard jede echte Aktivitaet und der Beleg 'harte Laeufe' war im
+     Produktivpfad immer leer — die Leistungszonen stuetzten sich nur auf Tests und
+     Zielzeit. Verhaltensaenderung, also neue Version. */
+  var VERSION = 'performance-resolver@3';
 
   /* Distanzangaben aus dem Profil sind Freitext („10 km", „half_marathon",
      „400m"). Sie werden hier EINMAL gedeutet, statt an jeder Auswertungsstelle
@@ -120,18 +125,35 @@
       }
     });
 
-    /* Harte Läufe aus den Aktivitäten — abgeleitet, nie gemessen. */
+    /* Harte Läufe aus den Aktivitäten — abgeleitet, nie gemessen.
+
+       v8-390 (P0): Dieser Block las Distanz, Dauer und Datum AUSSCHLIESSLICH in der
+       Legacy-/Testform (a.distanceKm, a.durationMin/durationSec, a.date/localDate). Die
+       KANONISCHEN Aktivitäten aus activityStore.listActivities() — genau die, die ui.js
+       hier hereinreicht - tragen Distanz unter summary.distanceKm, die Dauer als
+       durationSeconds und das Datum als startedAt. Folge: km und min blieben null, der
+       Guard verwarf JEDE echte Aktivität, und workouts war im Produktivpfad immer leer.
+       Die Leistungszonen stützten sich damit nur auf Tests und die Zielzeit; die
+       „harten Läufe" waren eine Rubrik ohne Inhalt.
+       Dieselbe Fehlerklasse wie im capacity-adapter (sportId vs. sport, P0 2026-08-06)
+       und in load-history (durationSeconds/startedAt, v8-389). Kanonisch zuerst,
+       Legacy-/Testform als Rückfall — nichts erfunden, nur beide Namen gelesen. */
     (Array.isArray(o.activities) ? o.activities : []).forEach(function (a) {
       if (!a) return;
       var sid = String(a.sportId || a.sport || '').toLowerCase();
       if (sid && sid.indexOf('run') < 0 && sid !== 'running' && sid !== 'laufen') return;
-      var km = a.distanceKm != null ? a.distanceKm : (a.distanceM > 0 ? a.distanceM / 1000 : null);
-      var min = a.durationMin != null ? a.durationMin : (a.durationSec > 0 ? a.durationSec / 60 : null);
+      var sum = (a.summary && typeof a.summary === 'object') ? a.summary : {};
+      var km = sum.distanceKm != null ? sum.distanceKm
+        : (sum.distanceM > 0 ? sum.distanceM / 1000
+          : (a.distanceKm != null ? a.distanceKm : (a.distanceM > 0 ? a.distanceM / 1000 : null)));
+      var min = a.durationSeconds > 0 ? a.durationSeconds / 60
+        : (a.durationMin != null ? a.durationMin : (a.durationSec > 0 ? a.durationSec / 60 : null));
       if (!(km > 0) || !(min > 0)) return;
-      var lbl = String(a.subType || a.label || a.name || '').toLowerCase();
+      var lbl = String(a.subType || a.label || a.name || sum.name || (a.metrics && a.metrics.name) || '').toLowerCase();
       var type = /interval/.test(lbl) ? 'interval' : /tempo|schwelle/.test(lbl) ? 'tempo'
         : /long/.test(lbl) ? 'long' : 'easy';
-      workouts.push({ distanceKm: km, durationMin: min, date: a.date || a.localDate || null, type: type });
+      workouts.push({ distanceKm: km, durationMin: min,
+        date: (a.startedAt ? String(a.startedAt).slice(0, 10) : (a.date || a.localDate || null)), type: type });
     });
 
     /* Zielzeit — der schwächste Beleg, aber besser als gar keiner. */

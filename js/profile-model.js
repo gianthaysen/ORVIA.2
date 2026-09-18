@@ -759,7 +759,62 @@
     return out;
   }
   // Aktuelles Gewicht: jüngster Verlaufseintrag, sonst body.weight.
-  function currentWeightKg(perf) { perf = perf || {}; var wh = perf.weightHistory || []; if (wh.length) return wh[0].valueKg; return (perf.body && perf.body.weight && perf.body.weight.value) || null; }
+  /* ============================================================
+     S2-B1b (v8-389) · EINE Gewichtsquelle, tagesgenau.
+     Bisher las currentWeightKg nur das Profilfeld (weightHistory[0] bzw.
+     body.weight) — der NUECHTERNWERT aus dem Morgenbericht, den der Nutzer
+     taeglich pflegt, wurde nie gelesen. Folge: relative Kraft und die
+     Systemlast bei Koerpergewichtsuebungen rechneten mit einem Wert, der
+     Wochen alt sein konnte, und eine Klimmzugserie ueber drei Monate nahm
+     das HEUTIGE Gewicht auch fuer Einheiten im Juni.
+     weightSeries() fuehrt Morgenwerte und Profilverlauf zu EINER nach Datum
+     sortierten Reihe zusammen (Morgenwert gewinnt am selben Tag: nuechtern,
+     standardisiert). bodyweightAt() loest den am Stichtag GUELTIGEN Wert auf
+     — naechster Eintrag davor; nur wenn es davor keinen gibt, der naechste
+     danach. Nie interpoliert, nie erfunden; ohne Datenlage null.
+     Beide Funktionen sind pur (kein DOM, kein Store).
+     ============================================================ */
+  function weightSeries(perf, morningWeights) {
+    perf = perf || {};
+    var byDate = {};
+    (perf.weightHistory || []).forEach(function (e) {
+      var d = e && e.measuredAt ? String(e.measuredAt).slice(0, 10) : null;
+      if (!d || e.valueKg == null) return;
+      if (!byDate[d]) byDate[d] = { date: d, kg: e.valueKg, source: 'profile' };
+    });
+    (Array.isArray(morningWeights) ? morningWeights : []).forEach(function (e) {
+      var d = e && (e.date || e.day); var kg = e && (e.kg != null ? e.kg : e.weight);
+      if (!d || kg == null || !(kg > 0)) return;
+      byDate[d] = { date: String(d).slice(0, 10), kg: +kg, source: 'morning' };   // Morgenwert gewinnt
+    });
+    var out = Object.keys(byDate).map(function (k) { return byDate[k]; });
+    out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return out;
+  }
+  function bodyweightAt(dateIso, series, opts) {
+    var o = opts || {}, maxAhead = o.maxAheadDays != null ? o.maxAheadDays : 14;
+    series = Array.isArray(series) ? series : [];
+    if (!series.length) return null;
+    var d = String(dateIso || '').slice(0, 10); if (!d) return null;
+    var before = null, after = null;
+    for (var i = 0; i < series.length; i++) {
+      if (series[i].date <= d) before = series[i];
+      else { after = series[i]; break; }
+    }
+    var hit = before || null;
+    if (!hit && after) {
+      var gap = Math.round((Date.parse(after.date + 'T12:00:00Z') - Date.parse(d + 'T12:00:00Z')) / 864e5);
+      if (gap <= maxAhead) hit = after; else return null;
+    }
+    if (!hit) return null;
+    var age = Math.round(Math.abs(Date.parse(d + 'T12:00:00Z') - Date.parse(hit.date + 'T12:00:00Z')) / 864e5);
+    return { kg: hit.kg, date: hit.date, source: hit.source, ageDays: age };
+  }
+  /* perf-Signatur unveraendert; zweiter Parameter (Reihe) ist optional und
+     gewinnt, wenn er einen Wert hat — Aufrufer ohne Reihe verhalten sich wie bisher. */
+  function currentWeightKg(perf, series) {
+    if (Array.isArray(series) && series.length) { var last = series[series.length - 1]; if (last && last.kg != null) return last.kg; }
+    perf = perf || {}; var wh = perf.weightHistory || []; if (wh.length) return wh[0].valueKg; return (perf.body && perf.body.weight && perf.body.weight.value) || null; }
 
   // ---- Geräte vs. Datenintegrationen (getrennt; KEINE Integration ohne echte Verbindung) ----
   var INTEGRATION_IDS = ['strava', 'garmin', 'appleHealth'];
@@ -1629,7 +1684,7 @@
     PROFILE_SECTIONS: PROFILE_SECTIONS, CONSTRAINT_STATUSES: CONSTRAINT_STATUSES, BODY_REGIONS: BODY_REGIONS, BODY_SIDES: BODY_SIDES, normalizeConstraint: normalizeConstraint, normalizeRecovery: normalizeRecovery, normalizePreferences: normalizePreferences, normalizeAvailability: normalizeAvailability, availabilitySummary: availabilitySummary, WEEKDAYS: WEEKDAYS,
     normalizeSport: normalizeSport, normalizeSports: normalizeSports, normalizeDoubleSession: normalizeDoubleSession, normalizeSlot: normalizeSlot, normalizeFixedCommitment: normalizeFixedCommitment, FIXED_TYPES: FIXED_TYPES, INTENSITY_VALUES: INTENSITY_VALUES,
     normalizePerformance: normalizePerformance, normalizePersonalBest: normalizePersonalBest, normalizeStrengthRecord: normalizeStrengthRecord, normalizeWeightEntry: normalizeWeightEntry, normalizePerfMetric: normalizePerfMetric,
-    currentWeightKg: currentWeightKg, estimate1RM: estimate1RM, parseDuration: parseDuration, formatDuration: formatDuration, parsePace: parsePace, formatPace: formatPace, formatGoalValue: formatGoalValue, PERF_SOURCES: PERF_SOURCES, SET_TYPES: SET_TYPES,
+    currentWeightKg: currentWeightKg, weightSeries: weightSeries, bodyweightAt: bodyweightAt, estimate1RM: estimate1RM, parseDuration: parseDuration, formatDuration: formatDuration, parsePace: parsePace, formatPace: formatPace, formatGoalValue: formatGoalValue, PERF_SOURCES: PERF_SOURCES, SET_TYPES: SET_TYPES,
     normalizeDevices: normalizeDevices, INTEGRATION_IDS: INTEGRATION_IDS, INTEGRATION_STATUSES: INTEGRATION_STATUSES, INTEGRATION_DEFAULTS: INTEGRATION_DEFAULTS, normalizeIntegration: normalizeIntegration, normalizeEquipment: normalizeEquipment, normalizeTrainingLocation: normalizeTrainingLocation, normalizeManualSource: normalizeManualSource,
     EQUIPMENT_CATALOG: EQUIPMENT_CATALOG, equipmentCatalogFor: equipmentCatalogFor, migrateGearToEquipment: migrateGearToEquipment,
     SPORT_PROFILE_SCHEMAS: SPORT_PROFILE_SCHEMAS, sportProfileSchema: sportProfileSchema, rolesForPosition: rolesForPosition,
