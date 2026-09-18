@@ -51,11 +51,28 @@ Empfehlung: Ein Test-Satz gilt nur als 1RM-Test, wenn sein Gewicht über dem bes
 
 Empfehlung: Bei Gleichstand die Gruppe des **direkten** Muskels bevorzugen; `back_extension` gehört zu core (Hüftstreckung ist hier Nebenarbeit).
 
-## B7 · Doppelte und leere Übungszeilen (mittel, Datenintegrität)
+## B7 · Doppelte und leere Übungszeilen (mittel, Datenintegrität) — KORRIGIERT 18.09.
 
-Einheit 20.06. hat fünf `workout_exercises`-Zeilen, davon **drei mit `order_index = 0`** (Brustpresse Kabel, Adduktorenmaschine, Ab Wheel) und vier ganz ohne Sätze. Der Unique-Index `workout_exercises_uniq (workout_session_id, order_index)` aus Migration 0003 ist in der Produktionsdatenbank also **nicht wirksam** — genau die Zusage, die Doppelklick und Retry abfangen soll.
+Einheit 20.06. hat fünf `workout_exercises`-Zeilen, davon **drei mit `order_index = 0`** (Brustpresse Kabel, Adduktorenmaschine, Ab Wheel) und vier ganz ohne Sätze.
 
-Empfehlung: Index-Existenz prüfen (`\d workout_exercises` bzw. `pg_indexes`); falls er fehlt, Duplikate bereinigen und den Index nachziehen. Übungszeilen ohne Sätze beim Abschluss verwerfen.
+**Meine erste Erklärung war falsch.** Ich hatte geschrieben, der Unique-Index `workout_exercises_uniq (workout_session_id, order_index)` aus Migration 0003 sei in der Produktionsdatenbank nicht wirksam. Tatsächlich wurde er in **Migration 0004 bewusst entfernt**, mit dokumentierter Begründung: beim Umsortieren erzeugte er falsche Upserts. An seine Stelle trat `workout_exercises_client_uniq (user_id, client_exercise_id)`.
+
+Die echte Ursache liegt darin, dass dieser Ersatz **partiell** ist (`where client_exercise_id is not null`). `workoutRepository.addExercise` schrieb `client_exercise_id: ex.clientExerciseId || null` und setzte das Konfliktziel nur, wenn eine ID vorlag — ohne ID lief der Aufruf als reines INSERT, auf das kein Index greift. Jeder Doppelklick, Retry oder Offline-Nachlauf legte dann eine weitere Zeile an. `addSet` hatte dieselbe Lücke, dort mit direkter Wirkung auf Volumen, Tonnage und Sätze je Muskel.
+
+`workout-store` vergibt die Client-ID heute immer (`cid('we')`, `cid('set')`); die Zeilen vom 20.06. stammen aus einem älteren Build. Behoben in v8-391: beide Repository-Funktionen weisen einen Aufruf ohne Client-ID jetzt ab (`client_exercise_id_required` / `client_set_id_required`), statt eine Zeile anzulegen, die sich nie wieder deduplizieren lässt. Test in `workout_repo_norow_phase42_test`.
+
+Offen bleibt der Altbestand: die vier satzlosen Zeilen vom 20.06. stören keine Auswertung (ohne Sätze zählt nichts), sind aber Datenmüll. Prüf-SQL:
+
+```sql
+select s.local_date, we.order_index, we.client_exercise_id, count(st.id) as saetze
+from public.workout_exercises we
+join public.workout_sessions s on s.id = we.workout_session_id
+left join public.workout_sets st on st.workout_exercise_id = we.id
+where s.user_id = auth.uid()
+group by s.local_date, we.id, we.order_index, we.client_exercise_id
+having count(st.id) = 0
+order by s.local_date;
+```
 
 ## B8 · Trainingsbefund (unabhängig von der Software)
 

@@ -96,8 +96,25 @@
         if (error) return B.fail('query_failed', error.message); return B.ok(data || []);
       } catch (e) { return B.fail('exception', String(e && e.message || e)); }
     },
-    // Dedupe über (user_id, client_exercise_id) → reorder-sicher.
+    /* Dedupe über (user_id, client_exercise_id) → reorder-sicher.
+
+       v8-391 (Befund 18.09.): Ohne clientExerciseId lief der Aufruf als reines INSERT
+       ohne Konfliktziel — und der Unique-Index ist PARTIELL (where client_exercise_id
+       is not null), greift dort also gar nicht. Jeder Doppelklick oder Retry legte
+       damit eine weitere Übungszeile an, die sich nie wieder deduplizieren liess.
+       Belegt an der Einheit vom 20.06.2026: drei Zeilen mit order_index 0, vier von
+       fünf ohne einen einzigen Satz. (Der frühere Index über (session, order_index)
+       wurde in Migration 0004 bewusst entfernt, weil er beim Umsortieren falsche
+       Upserts erzeugte — der Ersatz greift aber nur mit gesetzter Client-ID.)
+       workout-store vergibt die ID heute immer; das hier ist der Riegel dagegen,
+       dass ein anderer Aufrufer sie wieder weglässt. Fail closed statt stiller
+       Dublette. */
     async addExercise(sessionId, ex) {
+      if (!(ex && ex.clientExerciseId)) {
+        return B.fail('client_exercise_id_required',
+          'Übungszeile ohne clientExerciseId — ohne sie greift der Dedupe-Index nicht und jeder Retry erzeugt eine Dublette.',
+          { source: 'empty' });
+      }
       return B.upsert('workout_exercises', {
         workout_session_id: sessionId, client_exercise_id: ex.clientExerciseId || null, exercise_id: ex.exerciseId || null,
         order_index: ex.order != null ? ex.order : 0, planned_sets: ex.plannedSets != null ? ex.plannedSets : null,
@@ -107,7 +124,7 @@
         completed: !!ex.completed, replaced_by_exercise_id: ex.replacedBy || null,
         /* v8-322: Zielgewicht — Referenz fuer den spaeteren Soll-Ist-Vergleich (K7). */
         target_weight_kg: ex.targetWeightKg != null ? ex.targetWeightKg : null
-      }, ex.clientExerciseId ? 'user_id,client_exercise_id' : undefined);
+      }, 'user_id,client_exercise_id');
     },
     async updateExercise(id, patch) {
       const g = B.requireAuth(); if (g) return g; if (!B.online()) return offline();
@@ -138,12 +155,22 @@
         if (error) return B.fail('query_failed', error.message); return B.ok(data || []);
       } catch (e) { return B.fail('exception', String(e && e.message || e)); }
     },
-    // Dedupe über (user_id, client_set_id) → idempotent bei Doppelklick/Retry/Offline/Reload.
+    /* Dedupe über (user_id, client_set_id) → idempotent bei Doppelklick/Retry/Offline/Reload.
+
+       v8-391: Gleiche Lücke wie bei addExercise, hier mit direkter Wirkung auf die Zahlen —
+       ein doppelt geschriebener Satz erhöht Volumen, Tonnage und die Sätze je Muskel
+       sofort. Ohne clientSetId lief der Aufruf als reines INSERT, und der partielle
+       Unique-Index (where client_set_id is not null) greift dort nicht. */
     async addSet(workoutExerciseId, set) {
+      if (!(set && set.clientSetId)) {
+        return B.fail('client_set_id_required',
+          'Satz ohne clientSetId — ohne sie greift der Dedupe-Index nicht und ein Retry zählt den Satz doppelt.',
+          { source: 'empty' });
+      }
       const row = M ? M.setToRow(set) : Object.assign({}, set);
       row.workout_exercise_id = workoutExerciseId;
-      row.client_set_id = set.clientSetId || null;
-      return B.upsert('workout_sets', row, set.clientSetId ? 'user_id,client_set_id' : undefined);
+      row.client_set_id = set.clientSetId;
+      return B.upsert('workout_sets', row, 'user_id,client_set_id');
     },
     async updateSet(id, patch) {
       const g = B.requireAuth(); if (g) return g; if (!B.online()) return offline();

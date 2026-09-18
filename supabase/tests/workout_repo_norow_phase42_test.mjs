@@ -16,7 +16,7 @@ Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, config
 let RESULT = { data: [], error: null };
 let RPC_RESULT = { data: null, error: null };
 function makeSb() {
-  const chain = { update() { return chain; }, delete() { return chain; }, select() { return chain; }, eq() { return chain; }, then(res) { return Promise.resolve(RESULT).then(res); } };
+  const chain = { update() { return chain; }, delete() { return chain; }, upsert() { return chain; }, insert() { return chain; }, select() { return chain; }, eq() { return chain; }, then(res) { return Promise.resolve(RESULT).then(res); } };
   return { from() { return chain; }, rpc() { return Promise.resolve(RPC_RESULT); } };
 }
 const load = f => (0, eval)(fs.readFileSync(new URL(_APPREL + '' + f, import.meta.url), 'utf8'));
@@ -70,6 +70,31 @@ const run = async () => {
   RPC_RESULT = { data: null, error: { message: 'active_workout_not_found' } };
   r = await repo.closeActiveSession('x', 'completed', {});
   ok('closeActiveSession RPC-Fehler → workout_close_failed', !r.success && r.error.code === 'workout_close_failed');
+
+  /* ---- v8-391 · Dedupe-Schluessel ist Pflicht (Befund 18.09.2026) ----
+     Der Unique-Index auf workout_exercises/workout_sets ist PARTIELL
+     (where client_exercise_id / client_set_id is not null). Fehlte die Client-ID,
+     lief der Aufruf als reines INSERT ohne Konfliktziel: jeder Doppelklick, Retry
+     oder Offline-Nachlauf legte eine weitere Zeile an, die sich nie wieder
+     deduplizieren liess. Belegt an der Einheit vom 20.06.2026 (drei Uebungszeilen
+     mit order_index 0, vier von fuenf ohne einen einzigen Satz). Bei Saetzen wirkt
+     das direkt auf Volumen, Tonnage und Saetze je Muskel.
+     Der frueher strengere Index ueber (session, order_index) wurde in Migration 0004
+     bewusst entfernt (Umsortieren erzeugte falsche Upserts) — der Ersatz greift aber
+     nur mit gesetzter Client-ID. Deshalb: fail closed statt stiller Dublette. */
+  RESULT = { data: [{ id: 'we1' }], error: null };
+  r = await repo.addExercise('sess1', { exerciseId: 'ex1', order: 0 });
+  ok('addExercise ohne clientExerciseId → Fehler statt nicht-deduplizierbarer Zeile',
+    !r.success && r.error.code === 'client_exercise_id_required', JSON.stringify(r.error));
+  r = await repo.addExercise('sess1', { clientExerciseId: 'we:1', exerciseId: 'ex1', order: 0 });
+  ok('addExercise mit clientExerciseId → Erfolg', r.success === true, JSON.stringify(r.error));
+
+  RESULT = { data: [{ id: 's1' }], error: null };
+  r = await repo.addSet('we1', { setNumber: 1, weight: 80, reps: 10 });
+  ok('addSet ohne clientSetId → Fehler statt doppelt gezaehltem Satz',
+    !r.success && r.error.code === 'client_set_id_required', JSON.stringify(r.error));
+  r = await repo.addSet('we1', { clientSetId: 'set:1', setNumber: 1, weight: 80, reps: 10 });
+  ok('addSet mit clientSetId → Erfolg', r.success === true, JSON.stringify(r.error));
 
   console.log(`\nErgebnis: ${pass} bestanden, ${fail} fehlgeschlagen.`);
   process.exit(fail ? 1 : 0);
