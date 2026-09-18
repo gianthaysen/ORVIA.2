@@ -1902,6 +1902,7 @@
     'kp.teaser_t': 'Kraftprofil',
     'kp.teaser_open': 'öffnen',
     'kp.teaser_line': '{ex} e1RM {v} kg',
+    'kp.teaser_trend': '{d} kg je 4 Wochen',
     'kp.teaser_delta': '{d} kg in {w} Wochen',
     'kp.teaser_under': '{n} Muskel(n) diese Woche unter Korridor',
     'kp.teaser_sessions': '{n} Krafteinheiten · {r} von {t} Übungen mit Kurve',

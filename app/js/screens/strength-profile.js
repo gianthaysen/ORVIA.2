@@ -324,9 +324,22 @@
       var fresh = (Date.now() - _loadedAt) < 60000;
       if (!fresh && !_loading) refreshAsync(function () { try { if (typeof root.renderGMAnalysis === 'function' && document.getElementById('gmAna')) root.renderGMAnalysis(); } catch (e) {} });
       var ctx = collect(); var m = buildModel(ctx); if (!m || !m.exercises.length) return { empty: true, sessions: 0, loading: _loading };
-      var best = null; m.exercises.forEach(function (E) { if (!E.ready || E.mode !== 'load') return; var em = m.exerciseModel(E.key); if (em && em.current != null && (!best || (em.delta && best.delta && em.delta.kg > best.delta.kg) || !best.delta)) best = em; });
+      /* v8-393: Der Teaser waehlt die Uebung nach der STEIGUNG, nicht nach der
+         Rohdifferenz, und gibt sie auch so weiter. Sonst stuende in der Analyse
+         weiterhin „+5,4 kg in 5 Wochen", waehrend die Detailseite derselben Uebung
+         „+0,8 kg je 4 Wochen" zeigt — zwei Aussagen zu denselben Daten. */
+      var best = null, bestEm = null;
+      m.exercises.forEach(function (E) {
+        if (!E.ready || E.mode !== 'load') return;
+        var em = m.exerciseModel(E.key); if (!em || em.current == null) return;
+        var tr = em.trend && em.trend.ok && !em.trend.implausible ? em.trend : null;
+        var score = tr ? tr.per4Weeks : -Infinity;
+        var bScore = (bestEm && bestEm.trend && bestEm.trend.ok && !bestEm.trend.implausible) ? bestEm.trend.per4Weeks : -Infinity;
+        if (!best || score > bScore) { best = E; bestEm = em; }
+      });
+      if (bestEm) { best = { name: bestEm.name, current: bestEm.current, trend: bestEm.trend && bestEm.trend.ok ? bestEm.trend : null }; }
       var under = (m.groups && m.groups._meta && !m.groups._meta.weekHasSets) ? 0 : (m.muscles && m.muscles.rows || []).filter(function (r) { return r.status === 'under'; }).length;
-      return { empty: false, loading: _loading, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, delta: best && best.delta ? best.delta : null, under: under, weekIdle: !!(m.groups && m.groups._meta && !m.groups._meta.weekHasSets), ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
+      return { empty: false, loading: _loading, sessions: m.sessions, exercise: best ? best.name : null, current: best ? best.current : null, trend: best ? best.trend : null, under: under, weekIdle: !!(m.groups && m.groups._meta && !m.groups._meta.weekHasSets), ready: m.exercises.filter(function (E) { return E.ready; }).length, total: m.exercises.length };
     } catch (e) { return { empty: true, sessions: 0 }; }
   }
 

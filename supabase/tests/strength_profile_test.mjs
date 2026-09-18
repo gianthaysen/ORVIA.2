@@ -247,5 +247,15 @@ sec('G · v8-392 — Kurve behauptet keine Vergleichbarkeit über Lastwechsel');
   ok('G6 Wochenangabe pluralisiert über count', /kp\.in_n_wochen', \{ count:/.test(scr));
 }
 
+sec('H · v8-393 — Analyse-Teaser sagt dasselbe wie die Detailseite');
+{
+  const scr = readFileSync(join(APP, 'js/screens/strength-profile.js'), 'utf8');
+  const ui2 = readFileSync(join(APP, 'js/ui.js'), 'utf8');
+  ok('H1 Teaser waehlt die Uebung nach der Steigung', /tr \? tr\.per4Weeks : -Infinity/.test(scr));
+  ok('H2 Teaser gibt trend statt delta weiter', /trend: best \? best\.trend : null/.test(scr));
+  ok('H3 Analyse zeigt die Steigung, nicht die Rohdifferenz', /kp\.teaser_trend/.test(ui2) && !/kp\.teaser_delta/.test(ui2));
+  ok('H4 unsichere Steigung wird als solche markiert', /confidence==='low'\?'≈'/.test(ui2.replace(/\s/g, '')));
+}
+
 console.log('\nstrength_profile: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 if (fail) process.exit(1);
