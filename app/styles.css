@@ -4204,7 +4204,14 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .kp-delta{font-size:11px;font-weight:780;color:var(--ready)}.kp-delta.dn{color:var(--attention)}
 .kp-meta{font-size:11px;color:var(--faint);margin-bottom:8px;line-height:1.45}
 .kp-sub{font-size:11.5px;color:var(--muted);text-align:center;margin-top:-8px;margin-bottom:8px}
-.kp-chart{margin:4px 0 0}.kp-chart svg{width:100%;height:128px;display:block}
+.kp-chart{margin:4px 0 0}
+/* v8-394: Die SVG-Flaeche MUSS dasselbe Seitenverhaeltnis haben wie die viewBox.
+   Vorher stand dort height:128px bei width:100% — auf einer 390 px breiten Karte wurde
+   die 320er viewBox um Faktor 1,22 in die Breite gezogen, die Hoehe aber nicht. Damit
+   verzerrte sich ALLES: Punkte wurden zu Ellipsen, die Linienstaerke haengte von der
+   Richtung ab, steile Abschnitte wirkten gezogen. Gleiches Verhaeltnis = gleichmaessige
+   Skalierung, keine Verzerrung. */
+.kp-chart svg{width:100%;height:auto;aspect-ratio:320 / 128;display:block}
 .kp-line{fill:none;stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
 .kp-pt{fill:var(--gold);stroke:var(--card);stroke-width:1.5;cursor:pointer}.kp-pt.on{fill:#fff}.kp-pt.test{fill:var(--card);stroke:var(--gold);stroke-width:2}
 .kp-xlbl{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);font-weight:700;padding:4px 2px 0}

@@ -96,7 +96,7 @@
       ? line + ' L' + x(pts[pts.length - 1]).toFixed(1) + ' ' + (H - P.b) + ' L' + P.l + ' ' + (H - P.b) + ' Z'
       : '';
     var sel = st.pt != null && st.pt < pts.length ? st.pt : pts.length - 1;
-    var h = '<div class="kp-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+    var h = '<div class="kp-chart"><svg viewBox="0 0 ' + W + ' ' + H + '">' +
       '<defs><linearGradient id="kpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9AE7C" stop-opacity=".22"/><stop offset="1" stop-color="#C9AE7C" stop-opacity="0"/></linearGradient></defs>' +
       (area ? '<path d="' + area + '" fill="url(#kpg)"/>' : '') + '<path class="kp-line" d="' + line + '"/>' +
       pts.map(function (p, i) { return '<circle class="kp-pt' + (i === sel ? ' on' : '') + (p.test ? ' test' : '') + (p.addedKg > 0 ? ' loaded' : '') + '" data-a="kppt" data-v="' + i + '" cx="' + x(p).toFixed(1) + '" cy="' + y(p.value).toFixed(1) + '" r="' + (i === sel ? 5.5 : 4) + '"/>'; }).join('') +

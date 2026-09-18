@@ -257,5 +257,13 @@ sec('H · v8-393 — Analyse-Teaser sagt dasselbe wie die Detailseite');
   ok('H4 unsichere Steigung wird als solche markiert', /confidence==='low'\?'≈'/.test(ui2.replace(/\s/g, '')));
 }
 
+sec('I · v8-394 — Kurve wird nicht verzerrt');
+{
+  const scr = readFileSync(join(APP, 'js/screens/strength-profile.js'), 'utf8');
+  const css2 = readFileSync(join(APP, 'styles.css'), 'utf8');
+  ok('I1 kein preserveAspectRatio=none (verzerrt Punkte und Linienstaerke)', !/preserveAspectRatio="none"/.test(scr));
+  ok('I2 Flaeche hat dasselbe Seitenverhaeltnis wie die viewBox', /aspect-ratio:\s*320 \/ 128/.test(css2) && /\.kp-chart svg\{[^}]*height:auto/.test(css2));
+}
+
 console.log('\nstrength_profile: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 if (fail) process.exit(1);
