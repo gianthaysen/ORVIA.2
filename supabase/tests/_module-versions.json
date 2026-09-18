@@ -32,8 +32,8 @@
     "contentHash": "5aa39adb"
   },
   "resolver": {
-    "version": "performance-resolver@2",
-    "contentHash": "296c1ee6"
+    "version": "performance-resolver@3",
+    "contentHash": "1f899988"
   },
   "perfInput": {
     "version": "performance-input@1",
