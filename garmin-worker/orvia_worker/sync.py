@@ -1,8 +1,9 @@
 """Sync-Orchestrator (Design §6): ein Lauf pro Nutzer.
 
-Pipeline: Tokens laden -> Provider -> Geräte -> Tagesmetriken (heute +
-Backfill beim Erstsync) -> normalisieren -> validieren -> idempotent upserten
--> Aktivitäten -> Capabilities -> data_providers-Status.
+Pipeline: Tokens laden -> Provider -> Geräte -> Tagesmetriken (Zeitfenster
+laut _target_dates: seit dem letzten Erfolg, beim Erstsync Backfill) ->
+normalisieren -> validieren -> idempotent upserten -> Aktivitäten ->
+Capabilities -> data_providers-Status.
 
 Fehler je Teilschritt sind isoliert: ein fehlgeschlagener Abruf bricht nicht
 den ganzen Sync; am Ende steht ein ehrlicher Status (last_error_code gesetzt,
@@ -40,12 +41,59 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _zone(tz_name: str, fallback_tz: str):
+    for name in (tz_name, fallback_tz, "UTC"):
+        try:
+            return ZoneInfo(name)
+        except Exception:
+            continue
+    return timezone.utc
+
+
 def _user_today(tz_name: str, fallback_tz: str) -> Any:
+    return datetime.now(_zone(tz_name, fallback_tz)).date()
+
+
+def _local_date(value: Any, tz_name: str, fallback_tz: str):
+    """ISO-Zeitstempel -> Kalendertag in der Nutzer-Zeitzone. None, wenn unparsebar."""
     try:
-        tz = ZoneInfo(tz_name)
-    except Exception:
-        tz = ZoneInfo(fallback_tz)
-    return datetime.now(tz).date()
+        ts = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(_zone(tz_name, fallback_tz)).date()
+
+
+def _target_dates(today, last_successful_sync_at, *, tz_name: str,
+                  fallback_tz: str, backfill_days: int) -> list:
+    """Zieltage eines Laufs, aeltester zuerst.
+
+    Erstsync (noch kein Erfolg): heute plus `backfill_days` zurueck.
+
+    Folge-Sync: von einem Tag VOR dem letzten Erfolg bis heute. Das vorher feste
+    Fenster "heute + gestern" war ein stiller Datenverlust: stand der Worker
+    laenger still (abgelaufener Hoster-Trial am 18.08.2026, von Garmin verworfenes
+    Token, kaputter Deploy), holte KEIN spaeterer Lauf die dazwischenliegenden
+    Tage nach — die Metriken fehlten dauerhaft, und genau darauf rechnet die
+    Engine. Im Normalbetrieb aendert sich nichts: laeuft der Sync regelmaessig,
+    liegt der letzte Erfolg am heutigen Tag, das Fenster ist weiterhin genau
+    [gestern, heute] = 2 Abfragetage, also keine zusaetzliche Garmin-Last. Der
+    eine Tag Vorlauf deckt spaet ankommende Schlaf- und Waagendaten.
+
+    Gedeckelt auf `backfill_days`, damit ein monatelanger Ausfall nicht in einen
+    unbegrenzten Abruf laeuft (Rate-Limits).
+    """
+    cap = max(1, int(backfill_days or 0))
+    if not last_successful_sync_at:
+        return [today - timedelta(days=i) for i in range(cap, -1, -1)]
+    last_date = _local_date(last_successful_sync_at, tz_name, fallback_tz)
+    if last_date is None:
+        span = 1                                    # unparsebar: wie bisher konservativ
+    else:
+        span = (today - last_date).days + 1         # ein Tag Vorlauf
+    span = min(max(span, 1), cap)
+    return [today - timedelta(days=i) for i in range(span, -1, -1)]
 
 
 def _ended_at_from(activity: NormalizedActivity) -> str | None:
@@ -143,14 +191,16 @@ async def sync_user(
         result["errors"].append("timezone_lookup_failed")
 
     today = today or _user_today(tz_name, settings.default_timezone)
-    if prov_row.get("last_successful_sync_at"):
-        # Folge-Sync: heute + gestern (spät ankommende Schlaf-/Waagen-Daten).
-        dates = [today - timedelta(days=1), today]
-    else:
-        # Erstsync: Backfill.
-        n = max(0, int(settings.sync_backfill_days))
-        dates = [today - timedelta(days=i) for i in range(n, -1, -1)]
+    dates = _target_dates(
+        today,
+        prov_row.get("last_successful_sync_at"),
+        tz_name=tz_name,
+        fallback_tz=settings.default_timezone,
+        backfill_days=settings.sync_backfill_days,
+    )
     date_strs = [d.isoformat() for d in dates]
+    logger.info("Zieltage: %s (letzter Erfolg: %s)", date_strs,
+                prov_row.get("last_successful_sync_at"))
 
     # -- 3) Geräte ------------------------------------------------------------
     devices: list[NormalizedDevice] = []

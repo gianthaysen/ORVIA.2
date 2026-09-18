@@ -1,0 +1,11 @@
+# Nicht mit hochladen: lokale Login-Umgebung, Tests, Git, Caches.
+# Das Image braucht nur requirements.txt und orvia_worker/ (siehe Dockerfile).
+.venv/
+.venv-login/
+.git/
+.github/
+tests/
+scripts/
+__pycache__/
+.pytest_cache/
+.DS_Store

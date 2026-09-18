@@ -7,19 +7,29 @@ bei Garmin ein und schickt nur das resultierende Session-Token per HTTPS an
 den Worker-Endpunkt /connect/token-import. Passwort und Token werden nie
 angezeigt, nie gespeichert und landen nicht in der Shell-History.
 
-Aufruf (aus garmin-worker/, venv aktiv):
+Aufruf (empfohlen über den Wrapper, der die Umgebung mitbaut):
+    bash scripts/reauth.sh
+Direkt (venv aktiv):
     python scripts/local_login.py
+
+Reihenfolge (geändert 2026-08-18): Worker-Erreichbarkeit und JWT werden VOR
+dem Garmin-Login geprüft. Grund: der Garmin-Login ist der einzige Schritt, der
+bei Wiederholung eine 429-Sperre riskiert — er darf nicht an einem toten
+Worker oder einem abgelaufenen JWT verbrannt werden.
 """
 
 from __future__ import annotations
 
 import getpass
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
 
-WORKER_DEFAULT = "https://orvia-garmin-worker-production.up.railway.app"
+WORKER_DEFAULT = os.environ.get("ORVIA_WORKER_URL") or (
+    "https://orvia-garmin-worker-production.up.railway.app"
+)
 
 
 def _fail(msg: str) -> None:
@@ -27,17 +37,100 @@ def _fail(msg: str) -> None:
     sys.exit(1)
 
 
+def _request(url: str, jwt: str | None = None, data: bytes | None = None,
+             timeout: int = 30) -> tuple[int, str]:
+    """GET/POST ohne Exceptions nach oben: (HTTP-Status, Body).
+
+    Status 0 bedeutet: Verbindung gar nicht zustande gekommen (Body = Grund).
+    """
+    headers = {}
+    if jwt:
+        headers["Authorization"] = f"Bearer {jwt}"
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers,
+                                 method="POST" if data is not None else "GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", errors="replace")
+    except urllib.error.URLError as e:
+        return 0, str(e.reason)
+
+
+def _preflight_worker(worker: str) -> None:
+    """Läuft der Worker? Muss vor dem Garmin-Login geklärt sein."""
+    code, body = _request(worker + "/healthz", timeout=30)
+    if code == 200:
+        print("Vorprüfung 1/2: Worker erreichbar.")
+        return
+    if code == 0:
+        _fail(f"Worker nicht erreichbar: {body}\n"
+              "  Internetverbindung und Worker-URL prüfen.")
+    if code == 404 and "Application not found" in body:
+        _fail(
+            "Der Worker existiert unter dieser Adresse nicht (Railway-Edge "
+            "antwortet mit 404 'Application not found').\n"
+            "  Das ist KEIN Token- und kein Garmin-Problem: Domain, Service "
+            "oder Projekt bei Railway sind weg, umbenannt oder pausiert.\n"
+            "  Prüfen: Railway-Dashboard -> Service -> Settings -> Networking "
+            "(aktuelle Public Domain), Deployment-Status, Zahlungsstatus.\n"
+            "  Neue Domain danach so übergeben:\n"
+            "    ORVIA_WORKER_URL='https://<neue-domain>' bash scripts/reauth.sh"
+        )
+    _fail(f"Worker antwortet auf /healthz mit HTTP {code}: {body[:200]}")
+
+
+def _ask_jwt() -> str:
+    print()
+    print("Supabase-JWT aus der Browser-Konsole einfügen "
+          "(Eingabe bleibt unsichtbar, mit Enter bestätigen).")
+    print("  ORVIA im Browser öffnen, eingeloggt, Konsole:")
+    print("  ORVIA.sb.auth.getSession().then(r => "
+          "console.log(r.data.session.access_token))")
+    jwt = getpass.getpass("Supabase-JWT: ").strip()
+    if jwt.startswith("[Log] "):  # Safari-Konsolen-Präfix automatisch entfernen
+        jwt = jwt[len("[Log] "):]
+    jwt = jwt.strip().strip('"').strip("'")
+    if not jwt.startswith("eyJ"):
+        _fail("Das sieht nicht nach einem JWT aus (muss mit 'eyJ' beginnen).")
+    return jwt
+
+
+def _preflight_status(worker: str, jwt: str) -> None:
+    """JWT gültig? Und den bisherigen Fehlercode sichern, bevor er überschrieben wird."""
+    code, body = _request(worker + "/status", jwt=jwt, timeout=30)
+    if code == 401:
+        _fail("Der Worker lehnt das JWT ab (HTTP 401). Es ist abgelaufen "
+              "(Laufzeit ca. 1 Stunde) oder unvollständig kopiert. "
+              "Neu aus der Browser-Konsole holen und Skript erneut starten.")
+    if code != 200:
+        _fail(f"/status antwortet mit HTTP {code}: {body[:200]}")
+    print("Vorprüfung 2/2: JWT akzeptiert.")
+    try:
+        st = json.loads(body)
+    except Exception:
+        return
+    print("  Bisheriger Zustand — connectionStatus: "
+          f"{st.get('connectionStatus')} · lastErrorCode: "
+          f"{st.get('lastErrorCode')} · lastSuccessfulSyncAt: "
+          f"{st.get('lastSuccessfulSyncAt')}")
+    print("  (Dieser Fehlercode ist die einzige Spur zur Ursache — "
+          "notieren, er wird beim Import überschrieben.)")
+
+
 def main() -> None:
     try:
         from garminconnect import Garmin
     except ImportError:
-        _fail("garminconnect fehlt. Erst venv aktivieren: source .venv/bin/activate")
+        _fail("garminconnect fehlt. Einfacher Weg: bash scripts/reauth.sh")
 
-    worker = input(f"Worker-URL [{WORKER_DEFAULT}]: ").strip() or WORKER_DEFAULT
-    email = input("Garmin-E-Mail: ").strip()
-    password = getpass.getpass("Garmin-Passwort (Eingabe bleibt unsichtbar): ")
-    if not email or not password:
-        _fail("E-Mail und Passwort sind erforderlich.")
+    worker = (input(f"Worker-URL [{WORKER_DEFAULT}]: ").strip()
+              or WORKER_DEFAULT).rstrip("/")
+
+    # -- Vorprüfung 1: Worker erreichbar? ------------------------------------
+    _preflight_worker(worker)
 
     # Versionskontrolle (gelockert 2026-08-03).
     #
@@ -66,9 +159,21 @@ def main() -> None:
               f"Getestet: {' oder '.join(SUPPORTED)}. Installieren mit:\n"
               "  pip install 'garminconnect==0.3.6'")
     if ver != "0.3.2":
-        print(f"Hinweis: Anmeldung laeuft mit garminconnect {ver}, "
-              "der Worker nutzt 0.3.2. Sollte der Worker den Token ablehnen, "
-              "dort ebenfalls auf {ver} heben und neu deployen.")
+        print(f"Hinweis: Anmeldung laeuft mit garminconnect {ver}. Ist der "
+              f"Worker noch auf 0.3.2 gepinnt und lehnt den Token mit "
+              f"TOKEN_INVALID ab, dort in requirements.txt ebenfalls auf {ver} "
+              f"heben und neu deployen.")
+
+    # -- Vorprüfung 2: JWT gueltig? (vor dem teuren Garmin-Login) ------------
+    jwt = _ask_jwt()
+    _preflight_status(worker, jwt)
+
+    # -- Garmin-Login: der einzige Schritt mit 429-Risiko --------------------
+    print()
+    email = input("Garmin-E-Mail: ").strip()
+    password = getpass.getpass("Garmin-Passwort (Eingabe bleibt unsichtbar): ")
+    if not email or not password:
+        _fail("E-Mail und Passwort sind erforderlich.")
 
     print("Melde bei Garmin an … (kann 15–60 s dauern)")
     try:
@@ -102,35 +207,22 @@ def main() -> None:
     del password
     print("Garmin-Login erfolgreich. Token erzeugt (wird nicht angezeigt).")
 
-    print("Jetzt das Supabase-JWT aus der Browser-Konsole einfügen "
-          "(Eingabe bleibt unsichtbar, mit Enter bestätigen).")
-    jwt = getpass.getpass("Supabase-JWT: ").strip()
-    if jwt.startswith("[Log] "):  # Safari-Konsolen-Präfix automatisch entfernen
-        jwt = jwt[len("[Log] "):]
-    if not jwt.startswith("eyJ"):
-        _fail("Das sieht nicht nach einem JWT aus (muss mit 'eyJ' beginnen).")
-
-    req = urllib.request.Request(
-        worker.rstrip("/") + "/connect/token-import",
-        data=json.dumps({"token_data": tokens}).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {jwt}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    # -- Import in den Worker ------------------------------------------------
     print("Sende Token an den Worker …")
-    try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            print("Worker-Antwort:", r.read().decode("utf-8"))
-            print("Fertig. Erstsync läuft im Hintergrund; Status in 1–2 Minuten "
-                  "über GET /status oder Supabase Table Editor prüfen.")
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        print(f"Worker antwortete mit HTTP {e.code}: {body}")
-        sys.exit(1)
-    except urllib.error.URLError as e:
-        _fail(f"Worker nicht erreichbar: {e.reason}")
+    code, body = _request(worker + "/connect/token-import", jwt=jwt,
+                          data=json.dumps({"token_data": tokens}).encode("utf-8"),
+                          timeout=180)
+    if code == 200:
+        print("Worker-Antwort:", body)
+        print("Fertig. Erstsync läuft im Hintergrund; Status in 1–2 Minuten "
+              "über GET /status oder Supabase Table Editor prüfen.")
+        return
+    if code == 0:
+        _fail(f"Worker nicht erreichbar: {body}")
+    print(f"Worker antwortete mit HTTP {code}: {body}")
+    if code == 401:
+        print("→ Das JWT ist zwischenzeitlich abgelaufen. Skript erneut starten.")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
