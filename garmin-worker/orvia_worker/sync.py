@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .activity_link import LINKABLE_SPORTS, autolink_recording
 from .capabilities import derive_capability
 from .providers.base import (
     AuthError,
@@ -414,6 +415,7 @@ async def sync_user(
             provider.get_activities, date_strs[0], date_strs[-1]
         )
         new_count = 0
+        linked_count = 0
         for act in acts:
             # Kein verlässlicher Unique-Index auf activities (0009 nicht Teil
             # dieses Vertrags) -> deterministisches select-then-insert-Dedupe.
@@ -435,7 +437,7 @@ async def sync_user(
             duration_int = (
                 round(act.duration_seconds) if act.duration_seconds is not None else None
             )
-            await db.insert("activities", [{
+            inserted = await db.insert("activities", [{
                 "user_id": user_id,
                 "sport_id": act.sport_id,
                 "source": "garmin",
@@ -450,9 +452,18 @@ async def sync_user(
                 "status": "completed",
                 "summary": act.summary,
                 "metrics": act.metrics,
-            }])
+            }], returning=True)
             new_count += 1
-        result["steps"]["activities"] = f"ok:{new_count}/{len(acts)}"
+            # S2c (0048): Kraft-Aufzeichnung an ein zeitgleiches ORVIA-Workout
+            # koppeln, damit die Einheit nur einmal zaehlt. Bonus-Schritt: wirft
+            # nie, bricht den Sync nie ab (activity_link.autolink_recording).
+            if act.sport_id in LINKABLE_SPORTS and inserted:
+                row = dict(inserted[0]) if isinstance(inserted, list) and inserted else {}
+                row.setdefault("user_id", user_id)
+                linked_to = await autolink_recording(db, user_id, row)
+                if linked_to:
+                    linked_count += 1
+        result["steps"]["activities"] = f"ok:{new_count}/{len(acts)}" + (f" linked:{linked_count}" if linked_count else "")
     except ProviderError as e:
         result["errors"].append(f"activities:{e.code}")
         result["steps"]["activities"] = "failed"

@@ -46,16 +46,54 @@ class FakeDb:
         return self.tables.setdefault(name, [])
 
     @staticmethod
+    def _cmp_pair(value, other):
+        """Vergleichswerte wie PostgREST/Postgres: Zeitstempel ZEITLICH, sonst Text.
+
+        Ohne das verglich die Attrappe '2026-06-23 14:03:00' und
+        '2026-06-23T08:02:00+00:00' als Zeichenketten (Leerzeichen < 'T') und
+        lieferte fuer einen gueltigen Zeitraumfilter das Gegenteil des echten
+        Servers — ein Test haette damit einen Fehler behauptet, den es in der
+        Datenbank nicht gibt (und umgekehrt).
+        """
+        from datetime import datetime, timezone
+
+        def _ts(x):
+            if isinstance(x, datetime):
+                return x if x.tzinfo else x.replace(tzinfo=timezone.utc)
+            t = str(x).strip().replace(" ", "T")
+            if t.endswith("Z"):
+                t = t[:-1] + "+00:00"
+            try:
+                d = datetime.fromisoformat(t)
+            except ValueError:
+                return None
+            return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+        a, b = _ts(value), _ts(other)
+        if a is not None and b is not None:
+            return a, b
+        return str(value), str(other)
+
+    @staticmethod
     def _matches(row: dict, filters: dict | None) -> bool:
         for field, cond in (filters or {}).items():
             value = row.get(field)
             if isinstance(cond, tuple):
                 op, v = cond
-                if op == "lt":
-                    if not (value is not None and str(value) < str(v)):
+                if op in ("lt", "gt", "gte", "lte"):
+                    if value is None:
                         return False
-                elif op == "gt":
-                    if not (value is not None and str(value) > str(v)):
+                    a, b = FakeDb._cmp_pair(value, v)
+                    if op == "lt" and not (a < b):
+                        return False
+                    if op == "gt" and not (a > b):
+                        return False
+                    if op == "gte" and not (a >= b):
+                        return False
+                    if op == "lte" and not (a <= b):
+                        return False
+                elif op == "not.is" and v == "null":
+                    if value is None:
                         return False
                 else:
                     raise AssertionError(f"FakeDb: Operator {op} nicht unterstützt")
