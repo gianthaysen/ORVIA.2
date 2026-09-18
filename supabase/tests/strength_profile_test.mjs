@@ -236,5 +236,16 @@ sec('F · v8-389 — Trend statt Fensterrand, Ausbelastung, Zusatzlast, Gruppen'
     /morningWeightSeries/.test(scr) && /bodyweightSeries/.test(scr));
 }
 
+sec('G · v8-392 — Kurve behauptet keine Vergleichbarkeit über Lastwechsel');
+{
+  const scr = readFileSync(join(APP, 'js/screens/strength-profile.js'), 'utf8');
+  ok('G1 Linie wird an Lastwechseln in Segmente getrennt', /segs\.push\(cur\)/.test(scr) && /p\.addedKg !== pts\[i - 1\]\.addedKg/.test(scr));
+  ok('G2 Füllfläche entfällt bei mehreren Segmenten', /segs\.length === 1/.test(scr));
+  ok('G3 Punkte mit Zusatzlast sind markiert', /p\.addedKg > 0 \? ' loaded'/.test(scr) && /\.kp-pt\.loaded/.test(readFileSync(join(APP, 'styles.css'), 'utf8')));
+  ok('G4 Ablesezeile nennt die Zusatzlast des Punktes', /spLoad/.test(scr));
+  ok('G5 Stagnation aus der Steigung hat eine eigene Überschrift', /kp\.stagnation_trend_t/.test(scr));
+  ok('G6 Wochenangabe pluralisiert über count', /kp\.in_n_wochen', \{ count:/.test(scr));
+}
+
 console.log('\nstrength_profile: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 if (fail) process.exit(1);

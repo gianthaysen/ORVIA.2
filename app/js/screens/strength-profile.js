@@ -76,13 +76,30 @@
     var vals = pts.map(function (p) { return p.value; }), min = Math.min.apply(null, vals), max = Math.max.apply(null, vals), vs = (max - min) || 1;
     var x = function (p) { return P.l + (Date.parse(p.date + 'T12:00:00Z') - t0) / span * (W - P.l - P.r); };
     var y = function (v) { return H - P.b - ((v - min) / vs) * (H - P.t - P.b) * 0.86 - ((H - P.t - P.b) * 0.07); };
-    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p).toFixed(1) + ' ' + y(p.value).toFixed(1); }).join(' ');
-    var area = line + ' L' + x(pts[pts.length - 1]).toFixed(1) + ' ' + (H - P.b) + ' L' + P.l + ' ' + (H - P.b) + ' Z';
+    /* v8-392 (S2-B4b): Die Linie wird an jedem LASTWECHSEL unterbrochen. Zahlen und
+       Rekorde waren seit v8-389 nach Zusatzlast getrennt, die Kurve aber nicht: sie
+       verband 13 Wiederholungen ohne Zusatz mit 7 Wiederholungen unter +10 kg zu einem
+       steilen Absturz und behauptete damit genau die Vergleichbarkeit, die die Zahlen
+       darunter bestreiten. Eine Lücke in der Linie sagt: hier ist kein Vergleich. */
+    var segs = [], cur = [];
+    pts.forEach(function (p, i) {
+      if (i > 0 && p.addedKg != null && pts[i - 1].addedKg != null && p.addedKg !== pts[i - 1].addedKg) { if (cur.length) segs.push(cur); cur = []; }
+      cur.push(p);
+    });
+    if (cur.length) segs.push(cur);
+    var line = segs.map(function (seg) {
+      return seg.map(function (p, i) { return (i ? 'L' : 'M') + x(p).toFixed(1) + ' ' + y(p.value).toFixed(1); }).join(' ');
+    }).join(' ');
+    /* Die Füllfläche folgt nur einer durchgehenden Reihe — bei Lastwechseln entfällt sie,
+       weil eine Fläche über eine Lücke hinweg wieder Vergleichbarkeit suggerieren würde. */
+    var area = segs.length === 1
+      ? line + ' L' + x(pts[pts.length - 1]).toFixed(1) + ' ' + (H - P.b) + ' L' + P.l + ' ' + (H - P.b) + ' Z'
+      : '';
     var sel = st.pt != null && st.pt < pts.length ? st.pt : pts.length - 1;
     var h = '<div class="kp-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
       '<defs><linearGradient id="kpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9AE7C" stop-opacity=".22"/><stop offset="1" stop-color="#C9AE7C" stop-opacity="0"/></linearGradient></defs>' +
-      '<path d="' + area + '" fill="url(#kpg)"/><path class="kp-line" d="' + line + '"/>' +
-      pts.map(function (p, i) { return '<circle class="kp-pt' + (i === sel ? ' on' : '') + (p.test ? ' test' : '') + '" data-a="kppt" data-v="' + i + '" cx="' + x(p).toFixed(1) + '" cy="' + y(p.value).toFixed(1) + '" r="' + (i === sel ? 5.5 : 4) + '"/>'; }).join('') +
+      (area ? '<path d="' + area + '" fill="url(#kpg)"/>' : '') + '<path class="kp-line" d="' + line + '"/>' +
+      pts.map(function (p, i) { return '<circle class="kp-pt' + (i === sel ? ' on' : '') + (p.test ? ' test' : '') + (p.addedKg > 0 ? ' loaded' : '') + '" data-a="kppt" data-v="' + i + '" cx="' + x(p).toFixed(1) + '" cy="' + y(p.value).toFixed(1) + '" r="' + (i === sel ? 5.5 : 4) + '"/>'; }).join('') +
       '</svg></div>';
     var MO = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
     /* v8-385: Monatsmarken an ihrer echten x-Position (Monatsanfang), nicht gleichverteilt */
@@ -90,8 +107,11 @@
     lbl.push({ x: 0, t: MO[d0.getUTCMonth()] });
     for (var k = 0; k < 14; k++) { dm = new Date(Date.UTC(dm.getUTCFullYear(), dm.getUTCMonth() + 1, 1)); var tm = dm.getTime(); if (tm > t1) break; var px = (tm - t0) / span * 100; if (px > 6) lbl.push({ x: px, t: MO[dm.getUTCMonth()] }); }
     h += '<div class="kp-xlbl kp-xlbl-abs">' + lbl.map(function (l) { return '<span style="left:' + l.x.toFixed(1) + '%">' + l.t + '</span>'; }).join('') + '</div>';
-    var sp = pts[sel]; var unit = em.mode === 'load' ? T(depth().jargon ? 'kp.unit_e1rm' : 'kp.unit_max') : em.mode === 'reps' ? T('kp.unit_wdh') : '';
-    h += '<div class="kp-read"><div class="rv">' + esc(em.mode === 'time' ? mmss(sp.value) : kg(sp.value)) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div><div class="rm">' + esc(deDateY(sp.date)) + (sp.test ? ' · ' + esc(T('kp.test_markiert', { w: kg(sp.testWeight) })) : '') + '</div></div>';
+    var sp = pts[sel];
+    var spLoad = (em.mode === 'reps' && sp && sp.addedKg != null)
+      ? (sp.addedKg > 0 ? ' · +' + kg(sp.addedKg) + ' kg' : ' · ' + T('kp.ohne_zusatz')) : '';
+    var unit = em.mode === 'load' ? T(depth().jargon ? 'kp.unit_e1rm' : 'kp.unit_max') : em.mode === 'reps' ? T('kp.unit_wdh') : '';
+    h += '<div class="kp-read"><div class="rv">' + esc(em.mode === 'time' ? mmss(sp.value) : kg(sp.value)) + (unit ? '<small>' + esc(unit) + '</small>' : '') + '</div><div class="rm">' + esc(deDateY(sp.date) + spLoad) + (sp.test ? ' · ' + esc(T('kp.test_markiert', { w: kg(sp.testWeight) })) : '') + '</div></div>';
     return h;
   }
 
@@ -132,10 +152,10 @@
       if (tr && tr.implausible) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.trend_unplausibel_t')) + '</b> ' + esc(T('kp.trend_unplausibel_d')) + '</div></div>';
       else if (tr && tr.confidence === 'low') h += '<div class="kp-note">' + ic('info', 'sm') + '<div><b>' + esc(T('kp.effort_t')) + '</b> ' + esc(T('kp.effort_d', { k: em.effortKnown, n: em.effortKnown + em.effortUnknown })) + '</div></div>';
       if (em.staleDays != null && em.staleDays >= 14) h += '<div class="kp-note">' + ic('calendar', 'sm') + '<div>' + esc(T('kp.stale_d', { d: em.staleDays })) + '</div></div>';
-      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T('kp.stagnation_t')) + '</b> ' + esc(T(em.stagnantBy === 'trend' ? 'kp.stagnation_trend_d' : (D.jargon ? 'kp.stagnation_d' : 'kp.stagnation_d_einfach'))) + '</div></div>';
+      if (em.stagnant) h += '<div class="kp-note att">' + ic('alert', 'sm') + '<div><b>' + esc(T(em.stagnantBy === 'trend' ? 'kp.stagnation_trend_t' : 'kp.stagnation_t')) + '</b> ' + esc(T(em.stagnantBy === 'trend' ? 'kp.stagnation_trend_d' : (D.jargon ? 'kp.stagnation_d' : 'kp.stagnation_d_einfach'))) + '</div></div>';
       h += src(T(!D.jargon ? 'kp.src_einfach' : (em.method === 'epley_rir' ? 'kp.src_epley_rir' : 'kp.src_epley')));
     } else if (em.mode === 'reps') {
-      h += '<div class="kp-hero"><b>' + esc(String(em.current)) + '</b><span>' + esc(T('kp.unit_wdh_max')) + '</span>' + (em.delta && em.delta.reps ? '<span class="kp-delta' + (em.delta.reps < 0 ? ' dn' : '') + '">' + (em.delta.reps > 0 ? '+' : '') + em.delta.reps + ' ' + esc(T('kp.in_n_wochen', { n: em.delta.weeks })) + '</span>' : '') + '</div>';
+      h += '<div class="kp-hero"><b>' + esc(String(em.current)) + '</b><span>' + esc(T('kp.unit_wdh_max')) + '</span>' + (em.delta && em.delta.reps ? '<span class="kp-delta' + (em.delta.reps < 0 ? ' dn' : '') + '">' + (em.delta.reps > 0 ? '+' : '') + em.delta.reps + ' ' + esc(T('kp.in_n_wochen', { count: em.delta.weeks })) + '</span>' : '') + '</div>';
       if (em.lastScheme) h += '<div class="kp-meta">' + esc(T('kp.letzter_satz') + ': ' + em.lastScheme) + '</div>';
       h += chart(em, m);
       /* v8-389 (S2-B4): Eine Wdh.-Zahl ohne ihre Zusatzlast ist nicht lesbar. */
