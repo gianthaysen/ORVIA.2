@@ -1,0 +1,18 @@
+B-01 Vorarbeit: goalEngine nimmt die Zieldistanz (additiv, v8-365)
+
+Befund: Calc.goalEngine prognostizierte IMMER eine Halbmarathon-Zeit
+(riegelHM/HM_KM, Long-Run-Bedarf 14/17 km) und hielt sie gegen die Zielzeit
+jeder Laufdistanz — 10-km-Ziel 50 min bei 48-min-Form: dauerhaft 'risk';
+Marathon 4:00 bei 3:41-Form: 'ontrack' mit 16-km-Long-Run.
+
+Jetzt: opts.distanceKm steuert Riegel, EF-Korridor und Long-Run-Bedarf
+(relativ zur Distanz: 10 km 7/8, HM 14/17, M 28/34). OHNE die Angabe bleibt
+alles byteweise wie bisher (Test A3) — kein Aufrufer uebergibt sie heute;
+buildGoal() tut es in B-01 hinter dem Flag. Der 110-Default bleibt bis dahin.
+
+goal_engine_distance 18/18, 3 Proben; alle Tests mit calc/goalEngine gruen;
+module_version_drift 26/26. v8-365: Deploy nicht dringend (kein
+Verhaltensunterschied), faehrt mit dem naechsten Stand mit.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

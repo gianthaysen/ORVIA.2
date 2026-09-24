@@ -1,0 +1,4 @@
+Doku: Phase-B-Gesamtbild 11.09. (B-01/02/03/09, offene Handgriffe)
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

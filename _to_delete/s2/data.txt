@@ -1,0 +1,72 @@
+2026-06-20|dc079312|cable_chest_press|Brustpresse Kabel|
+2026-06-20|dc079312|adductor_machine|Adduktorenmaschine|
+2026-06-20|dc079312|ab_wheel|Ab Wheel|12x8
+2026-06-20|dc079312|adductor_machine|Adduktorenmaschine|
+2026-06-20|dc079312|cable_chest_press|Brustpresse Kabel|
+2026-06-23|39e5ce88|chest_press_machine|Brustpresse Maschine|80x10 80x9
+2026-06-23|39e5ce88|cable_lateral_raise|Seitheben Kabel|11.825x9 11.825x10
+2026-06-23|39e5ce88|pullup|Klimmzüge|-x12 -x12
+2026-06-23|39e5ce88|face_pull|Face Pulls|26.25x13 28.75x10
+2026-06-23|39e5ce88|overhead_triceps|Überkopf-Trizeps Kabel|18.75x11 18.75x10
+2026-06-23|39e5ce88|biceps_curl|Bizepscurls|33.25x8 33.25x7
+2026-06-23|39e5ce88|back_extension|Rückenstrecker|25x10 25x8
+2026-06-25|4c6f9c58|incline_bench_press|Schrägbankdrücken|60x10 60x8@1
+2026-06-25|4c6f9c58|row|Rudern|35x10@1 35x9@1
+2026-06-25|4c6f9c58|cable_lateral_raise|Seitheben Kabel|12.5x10 12.5x9@1
+2026-06-25|4c6f9c58|biceps_curl|Bizepscurls|32.5x10 32.5x10
+2026-06-25|4c6f9c58|triceps_pushdown|Trizepsdrücken|23.75x10 23.75x10
+2026-06-27|aa23ccc8|bench_press|Bankdrücken|80x10 80x8
+2026-06-27|aa23ccc8|row|Rudern|35x10 35x10@1
+2026-06-27|aa23ccc8|cable_lateral_raise|Seitheben Kabel|7.5x8#test 12.5x10 12.5x10@1
+2026-06-27|aa23ccc8|biceps_curl|Bizepscurls|36.25x8 36.25x7@1
+2026-06-27|aa23ccc8|overhead_triceps|Überkopf-Trizeps Kabel|25x8 25x8
+2026-06-27|aa23ccc8|pec_deck|Butterfly / Pec Deck|74x8@2 74x8@1
+2026-07-20|c3d8065e|incline_bench_press|Schrägbankdrücken|60x8@1 60x7
+2026-07-20|c3d8065e|lat_pulldown_single|Latzug einarmig|100x10 100x7
+2026-07-20|c3d8065e|chest_press_machine|Brustpresse Maschine|80x8 80x8
+2026-07-20|c3d8065e|machine_lateral_raise|Seitheben Maschine|35x8 35x7 35x7
+2026-07-20|c3d8065e|biceps_curl|Bizepscurls|36.25x8 36.25x8
+2026-07-20|c3d8065e|row_machine|Rudermaschine|60x8 60x8
+2026-07-20|c3d8065e|rope_pushdown|Trizepsdrücken Seil|35x8 35x8
+2026-07-31|1f6cfd1f|chest_press_machine|Brustpresse Maschine|80x8 80x8
+2026-07-31|1f6cfd1f|pullup|Klimmzüge|14x-
+2026-07-31|1f6cfd1f|pec_deck|Butterfly / Pec Deck|68x9
+2026-07-31|1f6cfd1f|cable_lateral_raise|Seitheben Kabel|12.5x8 12.5x8
+2026-07-31|1f6cfd1f|rope_pushdown|Trizepsdrücken Seil|18.75x9 18.75x10
+2026-07-31|1f6cfd1f|cable_curl|Kabelcurls|26.25x8 26.25x8
+2026-08-03|c3abf6ad|incline_bench_press|Schrägbankdrücken|60x8 60x8
+2026-08-03|c3abf6ad|lat_pulldown_neutral|Latzug neutral|40x9 40x8
+2026-08-03|c3abf6ad|face_pull|Face Pulls|18.75x12 18.75x13
+2026-08-03|c3abf6ad|rope_pushdown|Trizepsdrücken Seil|18.75x12 18.75x12
+2026-08-03|c3abf6ad|hammer_curl|Hammercurls|21.75x8 21.75x8
+2026-08-04|d8f92a4c|incline_bench_press|Schrägbankdrücken|60x8 60x8
+2026-08-04|d8f92a4c|pullup|Klimmzüge|-x14 -x13
+2026-08-04|d8f92a4c|pec_deck|Butterfly / Pec Deck|75x7 68x8
+2026-08-04|d8f92a4c|cable_lateral_raise|Seitheben Kabel|12.5x9 12.5x8
+2026-08-04|d8f92a4c|rope_pushdown|Trizepsdrücken Seil|21.5x8 17.5x12 17.5x11
+2026-08-04|d8f92a4c|cable_curl|Kabelcurls|32.5x8 32.5x7
+2026-08-06|e4935850|chest_press_machine|Brustpresse Maschine|80x9 80x8
+2026-08-06|e4935850|lat_pulldown_neutral|Latzug neutral|35x9 35x8
+2026-08-06|e4935850|face_pull|Face Pulls|20x16 27.5x9 27.5x9
+2026-08-06|e4935850|rope_pushdown|Trizepsdrücken Seil|17.5x8 17.5x9 17.5x9
+2026-08-06|e4935850|biceps_curl|Bizepscurls|28.5x9 28.5x8
+2026-08-10|d459097f|incline_bench_press|Schrägbankdrücken|60x13 65x8
+2026-08-10|d459097f|pullup|Klimmzüge|-x13 -x13
+2026-08-10|d459097f|pec_deck|Butterfly / Pec Deck|75x6 75x5
+2026-08-10|d459097f|cable_lateral_raise|Seitheben Kabel|12.5x8 12.5x7
+2026-08-10|d459097f|rope_pushdown|Trizepsdrücken Seil|20x8 20x7
+2026-08-12|aa5b2eeb|lat_pulldown_neutral|Latzug neutral|35x9 35x8
+2026-08-12|aa5b2eeb|chest_press_machine|Brustpresse Maschine|80x9 80x8
+2026-08-12|aa5b2eeb|face_pull|Face Pulls|28.75x12 28.75x12 28.75x10
+2026-08-12|aa5b2eeb|biceps_curl|Bizepscurls|28.5x10 28.5x9
+2026-08-16|f84e9e78|chest_press_machine|Brustpresse Maschine|80x11 80x8
+2026-08-16|f84e9e78|lat_pulldown_neutral|Latzug neutral|40x7 40x6
+2026-08-16|f84e9e78|pullup|Klimmzüge|10x7 10x7
+2026-08-16|f84e9e78|face_pull|Face Pulls|28.75x13 28.75x12
+2026-08-16|f84e9e78|biceps_curl|Bizepscurls|33.25x8 33.25x7
+2026-08-16|f84e9e78|back_extension|Rückenstrecker|25x12 25x11
+2026-08-23|b92f8683|chest_press_machine|Brustpresse Maschine|80x10 80x10
+2026-08-23|b92f8683|pullup|Klimmzüge|10x9 10x8
+2026-08-23|b92f8683|lat_pulldown_neutral|Latzug neutral|35x10 35x9
+2026-08-23|b92f8683|face_pull|Face Pulls|28.75x12 28.75x12
+2026-08-23|b92f8683|biceps_curl|Bizepscurls|33.25x8 33.25x7

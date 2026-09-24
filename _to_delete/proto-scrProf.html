@@ -1,0 +1,260 @@
+<div class="screen" id="scrProf">
+  <div class="profile-cover"></div>
+  <div class="ig-profile">
+    <div class="ig-top">
+      <div class="ig-avatar"><span>GT</span></div>
+      <div class="ig-actions">
+        <button class="mini-btn primary" onclick="openSheet('shEdit')"><svg class="ic xs"><use href="#i-pen"/></svg> Profil bearbeiten</button>
+        <button class="mini-btn" onclick="openPage('pgSettings')" aria-label="Einstellungen"><svg class="ic sm"><use href="#i-gear"/></svg></button>
+      </div>
+    </div>
+    <div class="ig-name">Gian Thaysen <span class="verified" title="Leistungsdaten verifiziert"><svg class="ic"><use href="#i-check"/></svg></span></div>
+    <div class="ig-handle">@gianthaysen</div>
+    <div class="ig-bio">Halbmarathon unter 1:50 · langfristig Ironman. Ausdauer + Kraft, datengetrieben.</div>
+    <div class="ig-meta">
+      <span><svg class="ic xs"><use href="#i-map"/></svg> Flensburg</span>
+      <span><svg class="ic xs"><use href="#i-cal"/></svg> Dabei seit Mai 2026</span>
+      <span><svg class="ic xs"><use href="#i-fire"/></svg> 23 Wochen Serie</span>
+    </div>
+    <div class="ig-stats">
+      <div class="ig-stat" onclick="toast('Einheitenverlauf')"><b>412</b><span>Einheiten</span></div>
+      <div class="ig-stat" onclick="openPage('pgFollowers')"><b>184</b><span>Follower</span></div>
+      <div class="ig-stat" onclick="openPage('pgFollowers')"><b>97</b><span>Folgt</span></div>
+      <div class="ig-stat" onclick="toast('Fitness = CTL aus sRPE-Verlauf')"><b>68</b><span>Fitness</span></div>
+    </div>
+  </div>
+
+  <!-- Profilstaerke: der neue Kernbaustein -->
+  <div class="ps-card tap" onclick="openPage('pgStrength')">
+    <div class="ps-top">
+      <div class="ps-ring">
+        <svg width="54" height="54" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="6"/>
+          <circle cx="27" cy="27" r="23" fill="none" stroke="url(#psg)" stroke-width="6" stroke-linecap="round"
+                  stroke-dasharray="144.5" stroke-dashoffset="39"/>
+          <defs><linearGradient id="psg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#DCC79A"/><stop offset="1" stop-color="#8E7647"/></linearGradient></defs>
+        </svg>
+        <div class="pv">73%</div>
+      </div>
+      <div class="ps-b">
+        <div class="ps-t">Profilstärke</div>
+        <div class="ps-d">Der Planer nutzt <b style="color:var(--text)">22 von 30</b> Eingaben. Drei Lücken kosten dich gerade Genauigkeit.</div>
+      </div>
+      <svg class="ic sm" style="color:var(--faint)"><use href="#i-chev"/></svg>
+    </div>
+    <div class="ps-gaps">
+      <div class="ps-gap" onclick="event.stopPropagation();openSheet('shGap')">
+        <div class="g-ic"><svg class="ic xs"><use href="#i-heart"/></svg></div>
+        <div class="g-b"><div class="g-t">Maximale Herzfrequenz fehlt</div><div class="g-d">Zonen werden aus dem Alter geschätzt — bis zu 12 % Abweichung</div></div>
+        <div class="g-w">Hoch</div>
+      </div>
+      <div class="ps-gap" onclick="event.stopPropagation();toast('Öffnet Leistungsdaten')">
+        <div class="g-ic"><svg class="ic xs"><use href="#i-gauge"/></svg></div>
+        <div class="g-b"><div class="g-t">Aktueller 5-km-Testwert fehlt</div><div class="g-d">Zielprognose Halbmarathon stützt sich auf Trainingsdaten statt Test</div></div>
+        <div class="g-w mid">Mittel</div>
+      </div>
+      <div class="ps-gap" onclick="event.stopPropagation();toast('Öffnet Kraftwerte')">
+        <div class="g-ic"><svg class="ic xs"><use href="#i-dumbbell"/></svg></div>
+        <div class="g-b"><div class="g-t">Kraftwerte für 3 Übungen fehlen</div><div class="g-d">Gewichtsvorgaben im Krafttraining bleiben ohne Zahl</div></div>
+        <div class="g-w mid">Mittel</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reiter -->
+  <div class="seg-nav">
+    <button class="seg-btn on" data-tab="ueber" onclick="profTab('ueber',this)">Übersicht</button>
+    <button class="seg-btn" data-tab="ziele" onclick="profTab('ziele',this)">Ziele</button>
+    <button class="seg-btn" data-tab="leistung" onclick="profTab('leistung',this)">Leistung</button>
+    <button class="seg-btn" data-tab="komm" onclick="profTab('komm',this)">Community</button>
+  </div>
+
+  <!-- ---- Reiter: Übersicht ---- -->
+  <div id="ptUeber">
+    <div class="sectlabel">Sportarten <span class="edit" onclick="toast('Sportarten bearbeiten')">Bearbeiten</span></div>
+    <div class="sport-chips">
+      <span class="sport-chip on"><svg class="ic xs"><use href="#i-run"/></svg> Laufen · Haupt</span>
+      <span class="sport-chip on"><svg class="ic xs"><use href="#i-dumbbell"/></svg> Kraft</span>
+      <span class="sport-chip on"><svg class="ic xs"><use href="#i-bike"/></svg> Rad</span>
+      <span class="sport-chip"><svg class="ic xs"><use href="#i-swim"/></svg> Schwimmen · geplant</span>
+    </div>
+
+    <div class="sectlabel">Saison im Überblick</div>
+    <div class="card tight">
+      <div class="ctitle"><div class="l"><svg class="ic"><use href="#i-flag"/></svg> Aufbauphase · Woche 7 von 14</div><div class="more">Plan <svg class="ic xs"><use href="#i-chev"/></svg></div></div>
+      <div style="display:flex;gap:4px;margin:2px 0 4px">
+        <div style="flex:1;padding:9px 6px;text-align:center;border-radius:8px;background:var(--surface);border:1px solid var(--border);opacity:.6"><b style="display:block;font-size:10.5px;font-weight:800">Basis</b><span style="display:block;font-size:8.5px;color:var(--muted);margin-top:2px">6 Wo · fertig</span></div>
+        <div style="flex:1;padding:9px 6px;text-align:center;border-radius:8px;background:linear-gradient(160deg,rgba(201,174,124,.22),transparent);border:1px solid var(--gold)"><b style="display:block;font-size:10.5px;font-weight:800">Aufbau</b><span style="display:block;font-size:8.5px;color:var(--muted);margin-top:2px">Woche 7/14</span></div>
+        <div style="flex:1;padding:9px 6px;text-align:center;border-radius:8px;background:var(--surface);border:1px solid var(--border)"><b style="display:block;font-size:10.5px;font-weight:800">Spitze</b><span style="display:block;font-size:8.5px;color:var(--muted);margin-top:2px">4 Wo</span></div>
+        <div style="flex:1;padding:9px 6px;text-align:center;border-radius:8px;background:var(--surface);border:1px solid var(--border)"><b style="display:block;font-size:10.5px;font-weight:800">Tapering</b><span style="display:block;font-size:8.5px;color:var(--muted);margin-top:2px">2 Wo</span></div>
+      </div>
+      <div class="statgrid3">
+        <div><div class="n">47</div><div class="l">km / Woche</div></div>
+        <div><div class="n">4,8</div><div class="l">Einheiten Ø</div></div>
+        <div><div class="n">1,08</div><div class="l">Belastung ACWR</div></div>
+      </div>
+      <div class="source"><svg class="ic xs"><use href="#i-info"/></svg> Quelle: Wochenplan v2 · zuletzt neu berechnet heute 06:14</div>
+    </div>
+
+    <div class="sectlabel">Zielreise <span class="edit" onclick="profTab('ziele',document.querySelector('[data-tab=ziele]'))">Alle Ziele</span></div>
+    <div class="goal-stack">
+      <div class="goal-card tap" onclick="openPage('pgGoal')">
+        <div class="goal-top">
+          <div style="min-width:0"><h4>Halbmarathon unter 1:50</h4><p>Flensburger Herbstlauf · 18. Oktober 2026</p></div>
+          <span class="goal-badge">Hauptziel</span>
+        </div>
+        <div class="goal-line"><i style="width:64%"></i></div>
+        <div class="goalmeta"><span>Prognose <b>1:51:20</b></span><span><b>66</b> Tage</span></div>
+      </div>
+      <div class="goal-card sec tap" onclick="toast('Ziel-Detail: Kraftaufbau')">
+        <div class="goal-top">
+          <div style="min-width:0"><h4>Kniebeuge 1×100 kg</h4><p>Kraftziel · offen, Richtwert Dezember 2026</p></div>
+          <span class="goal-badge" style="color:var(--activity);background:var(--activity-t)">Nebenziel</span>
+        </div>
+        <div class="goal-line"><i style="width:82%;background:linear-gradient(90deg,var(--activity),var(--ready))"></i></div>
+        <div class="goalmeta"><span>Aktuell <b>82,5 kg</b></span><span>+17,5 kg offen</span></div>
+      </div>
+      <div class="goal-card sec tap" onclick="toast('Ziel-Detail: Körperfett')">
+        <div class="goal-top">
+          <div style="min-width:0"><h4>Körperfett 10–12 %</h4><p>Körperzusammensetzung · langfristig</p></div>
+          <span class="goal-badge" style="color:var(--sleep);background:var(--sleep-t)">Langfristig</span>
+        </div>
+        <div class="goal-line"><i style="width:45%;background:linear-gradient(90deg,var(--sleep),var(--activity))"></i></div>
+        <div class="goalmeta"><span>Aktuell <b>15,4 %</b></span><span>Ziel ≤ 12 %</span></div>
+      </div>
+    </div>
+
+    <div class="sectlabel">Profil &amp; Kontrolle</div>
+    <div class="setting-group">
+      <div class="prow" onclick="openPage('pgGoal')"><div class="p-ic"><svg class="ic sm"><use href="#i-target"/></svg></div><div class="p-b"><div class="p-t">Ziele &amp; Sportarten</div><div class="p-d">Prioritäten, Zieldaten, Rollen</div></div><div class="p-v">3 aktiv</div><svg class="ic sm p-ch"><use href="#i-chev"/></svg></div>
+      <div class="prow" onclick="toast('Geräte & Daten')"><div class="p-ic"><svg class="ic sm"><use href="#i-link"/></svg></div><div class="p-b"><div class="p-t">Geräte &amp; Daten</div><div class="p-d">Garmin, Strava, manuelle Eingabe</div></div><div class="p-v">Garmin · 06:14</div><svg class="ic sm p-ch"><use href="#i-chev"/></svg></div>
+      <div class="prow" onclick="openPage('pgVis')"><div class="p-ic"><svg class="ic sm"><use href="#i-lock"/></svg></div><div class="p-b"><div class="p-t">Sichtbarkeit &amp; Datenschutz</div><div class="p-d">Wer sieht welches Feld</div></div><div class="p-v">Gemischt</div><svg class="ic sm p-ch"><use href="#i-chev"/></svg></div>
+      <div class="prow" onclick="openPage('pgSettings')"><div class="p-ic"><svg class="ic sm"><use href="#i-gear"/></svg></div><div class="p-b"><div class="p-t">Einstellungen</div><div class="p-d">Ansicht, Training, Konto</div></div><svg class="ic sm p-ch"><use href="#i-chev"/></svg></div>
+    </div>
+    <div class="tabspacer"></div>
+  </div>
+
+  <!-- ---- Reiter: Ziele ---- -->
+  <div id="ptZiele" class="hide">
+    <div class="eduhint"><svg class="ic sm"><use href="#i-info"/></svg><div>Jedes Ziel zeigt hier, <b>was der Plan konkret daraus macht</b> — welche Einheiten darauf einzahlen und wie viel Wochenvolumen es bekommt.</div></div>
+    <div class="kpi-row">
+      <div class="kpi"><b>3</b><span>Aktiv</span></div>
+      <div class="kpi"><b>1</b><span>Erreicht</span></div>
+      <div class="kpi"><b>2</b><span>Konflikte</span></div>
+    </div>
+    <div class="sectlabel">Aktive Ziele <span class="edit" onclick="openSheet('shNewGoal')"><svg class="ic xs"><use href="#i-plus"/></svg> Neues Ziel</span></div>
+    <div class="goal-stack">
+      <div class="goal-card tap" onclick="openPage('pgGoal')">
+        <div class="goal-top">
+          <div style="min-width:0"><h4>Halbmarathon unter 1:50</h4><p>Laufen · Priorität 1 · 18.10.2026</p></div>
+          <span class="pill-badge att">Knapp</span>
+        </div>
+        <div class="goal-line"><i style="width:64%"></i></div>
+        <div class="goalmeta"><span>Prognose <b>1:51:20</b> · Ziel 1:50:00</span><span><b>66</b> Tage</span></div>
+        <div class="gd-alloc" style="margin-top:11px"><i style="width:58%;background:var(--gold)"></i><i style="width:18%;background:var(--activity)"></i><i style="width:24%;background:rgba(255,255,255,.12)"></i></div>
+        <div class="gd-alloclbl"><span><i style="background:var(--gold)"></i>58 % Wochenvolumen</span><span><i style="background:var(--activity)"></i>18 % geteilt</span></div>
+      </div>
+      <div class="goal-card sec tap" onclick="toast('Ziel-Detail')">
+        <div class="goal-top"><div style="min-width:0"><h4>Kniebeuge 1×100 kg</h4><p>Kraft · Priorität 2 · offen</p></div><span class="pill-badge att">Prüfen</span></div>
+        <div class="goal-line"><i style="width:82%;background:linear-gradient(90deg,var(--activity),var(--ready))"></i></div>
+        <div class="goalmeta"><span>82,5 kg → 100 kg</span><span>+2,1 kg / 4 Wochen</span></div>
+        <div class="gd-alloc" style="margin-top:11px"><i style="width:22%;background:var(--activity)"></i><i style="width:78%;background:rgba(255,255,255,.12)"></i></div>
+        <div class="gd-alloclbl"><span><i style="background:var(--activity)"></i>22 % Wochenvolumen</span></div>
+      </div>
+      <div class="goal-card sec tap" onclick="toast('Ziel-Detail')">
+        <div class="goal-top"><div style="min-width:0"><h4>Körperfett 10–12 %</h4><p>Körperzusammensetzung · Priorität 3</p></div><span class="pill-badge crit">Konflikt</span></div>
+        <div class="goal-line"><i style="width:45%;background:linear-gradient(90deg,var(--sleep),var(--activity))"></i></div>
+        <div class="goalmeta"><span>15,4 % → ≤ 12 %</span><span>−0,3 %/Monat</span></div>
+      </div>
+    </div>
+    <div class="sectlabel">Zielkonflikte</div>
+    <div class="gd-conf" style="margin:0 18px 10px">
+      <svg class="ic sm"><use href="#i-warn"/></svg>
+      <div><div class="c-t">Kalorienzufuhr vs. Halbmarathon-Aufbau</div><div class="c-d">Ein Defizit von 400 kcal/Tag verlangsamt die Erholung nach den Schlüsseleinheiten. Der Planer hält das Defizit ab Woche 11 automatisch bei 200 kcal, bis der Wettkampf vorbei ist.</div></div>
+    </div>
+    <div class="gd-conf" style="margin:0 18px 10px">
+      <svg class="ic sm"><use href="#i-warn"/></svg>
+      <div><div class="c-t">Beinkraft vs. Laufumfang</div><div class="c-d">Schwere Kniebeugen im Umfang von 3×/Woche kollidieren mit dem langen Lauf am Sonntag. Aktuell werden schwere Beinsätze auf Dienstag gelegt — 48 h Abstand zur Schlüsseleinheit.</div></div>
+    </div>
+    <div class="sectlabel">Erreicht</div>
+    <div class="setting-group">
+      <div class="prow"><div class="p-ic" style="background:var(--ready-t);color:var(--ready)"><svg class="ic sm"><use href="#i-medal"/></svg></div><div class="p-b"><div class="p-t">10 km unter 50 Minuten</div><div class="p-d">Erreicht am 21.06.2026 · 48:37</div></div><span class="pill-badge ready">Erreicht</span></div>
+    </div>
+    <div class="tabspacer"></div>
+  </div>
+
+  <!-- ---- Reiter: Leistung ---- -->
+  <div id="ptLeistung" class="hide">
+    <div class="kpi-row">
+      <div class="kpi"><b>52,4</b><span>VO₂max</span><small>geschätzt</small></div>
+      <div class="kpi"><b>68</b><span>Fitness</span><small>CTL</small></div>
+      <div class="kpi"><b>1,08</b><span>ACWR</span><small>im Korridor</small></div>
+    </div>
+    <div class="sectlabel">Bestzeiten Laufen</div>
+    <div class="card tight">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--hair)"><div style="width:52px;text-align:center"><b style="font-size:15px;font-weight:840">5 km</b></div><div style="flex:1"><div style="font-size:17px;font-weight:820">22:41</div><div style="font-size:11px;color:var(--muted);margin-top:2px">14.06.2026 · Wettkampf</div></div><span style="font-size:11px;font-weight:750;color:var(--ready)">−0:38</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--hair)"><div style="width:52px;text-align:center"><b style="font-size:15px;font-weight:840">10 km</b></div><div style="flex:1"><div style="font-size:17px;font-weight:820">48:37</div><div style="font-size:11px;color:var(--muted);margin-top:2px">21.06.2026 · Wettkampf</div></div><span style="font-size:11px;font-weight:750;color:var(--ready)">−1:12</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0"><div style="width:52px;text-align:center"><b style="font-size:15px;font-weight:840">HM</b></div><div style="flex:1"><div style="font-size:17px;font-weight:820;color:var(--faint)">—</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Noch kein Wettkampf absolviert</div></div></div>
+      </div>
+    </div>
+    <div class="sectlabel">Kraftwerte</div>
+    <div class="card tight">
+      <div class="datarow" style="margin-top:0">
+        <div class="datacell"><div class="dl">Kniebeuge 1RM</div><div class="dn">82,5 kg</div></div>
+        <div class="datacell"><div class="dl">Kreuzheben 1RM</div><div class="dn">115 kg</div></div>
+        <div class="datacell"><div class="dl">Bankdrücken 1RM</div><div class="dn" style="color:var(--faint)">—</div></div>
+        <div class="datacell"><div class="dl">Klimmzüge max.</div><div class="dn" style="color:var(--faint)">—</div></div>
+      </div>
+      <div class="gapnote" style="margin:12px 0 0"><svg class="ic sm"><use href="#i-warn"/></svg><div>Zwei fehlende Werte: der Planer schreibt für Bankdrücken und Klimmzüge <b>keine Gewichte</b> vor, nur Wiederholungsbereiche.</div></div>
+    </div>
+    <div class="sectlabel">Zonen &amp; Schwellen</div>
+    <div class="card tight">
+      <div class="prow" style="padding:11px 0;cursor:default"><div class="p-b"><div class="p-t">Maximale Herzfrequenz</div><div class="p-d">Aus Alter geschätzt (220 − 22)</div></div><div class="p-v" style="color:var(--attention)">198 · geschätzt</div></div>
+      <div class="prow" style="padding:11px 0;cursor:default"><div class="p-b"><div class="p-t">Ruhepuls</div><div class="p-d">Ø der letzten 14 Nächte, Garmin</div></div><div class="p-v">46</div></div>
+      <div class="prow" style="padding:11px 0;border-bottom:none;cursor:default"><div class="p-b"><div class="p-t">Schwellenpace</div><div class="p-d">Aus 10-km-Wettkampf abgeleitet</div></div><div class="p-v">4:37 /km</div></div>
+    </div>
+    <div class="tabspacer"></div>
+  </div>
+
+  <!-- ---- Reiter: Community ---- -->
+  <div id="ptKomm" class="hide">
+    <div class="soc-mutual">
+      <div class="mm"><div class="soc-ava"><span>LM</span></div><div class="soc-ava"><span>JK</span></div><div class="soc-ava"><span>TN</span></div></div>
+      <div><b>184 Follower</b> · 12 neue diese Woche</div>
+    </div>
+    <div class="sectlabel">Wochen-Bestenliste <span class="edit" onclick="toast('Alle Bestenlisten')">Alle</span></div>
+    <div class="card tight">
+      <div class="ctitle"><div class="l"><svg class="ic"><use href="#i-run"/></svg> Laufkilometer · diese Woche</div></div>
+      <div class="soc-lb">
+        <div class="soc-lbrow"><div class="r">1</div><div class="soc-ava sm"><span>JK</span></div><div class="n">Jonas Krüger</div><div class="v">61,2 km</div></div>
+        <div class="soc-lbrow me"><div class="r">2</div><div class="soc-ava sm"><span>GT</span></div><div class="n">Du</div><div class="v">47,4 km</div></div>
+        <div class="soc-lbrow"><div class="r">3</div><div class="soc-ava sm"><span>LM</span></div><div class="n">Lena Mattsen</div><div class="v">44,8 km</div></div>
+        <div class="soc-lbrow"><div class="r">4</div><div class="soc-ava sm"><span>TN</span></div><div class="n">Tim Norden</div><div class="v">38,1 km</div></div>
+      </div>
+      <div class="source"><svg class="ic xs"><use href="#i-lock"/></svg> Nur Athleten, die ihre Wochenwerte für Follower freigegeben haben</div>
+    </div>
+    <div class="sectlabel">Athleten mit demselben Ziel</div>
+    <div class="soc-sugg">
+      <div class="soc-sc" onclick="openPage('pgOther')"><div class="soc-ava"><span>LM</span></div><div class="n">Lena Mattsen</div><div class="h">@lenam</div><div class="why">HM-Ziel 1:48 · Flensburg</div><button class="soc-follow" onclick="event.stopPropagation();toggleFollow(this)"><svg class="ic xs"><use href="#i-plus"/></svg> Folgen</button></div>
+      <div class="soc-sc" onclick="openPage('pgOther')"><div class="soc-ava"><span>JK</span></div><div class="n">Jonas Krüger</div><div class="h">@jkrueger</div><div class="why">HM-Ziel 1:52 · gleicher Wettkampf</div><button class="soc-follow" onclick="event.stopPropagation();toggleFollow(this)"><svg class="ic xs"><use href="#i-plus"/></svg> Folgen</button></div>
+      <div class="soc-sc" onclick="openPage('pgOther')"><div class="soc-ava"><span>TN</span></div><div class="n">Tim Norden</div><div class="h">@timn</div><div class="why">Ironman 2027 · Triathlon</div><button class="soc-follow" onclick="event.stopPropagation();toggleFollow(this)"><svg class="ic xs"><use href="#i-plus"/></svg> Folgen</button></div>
+    </div>
+    <div class="sectlabel">Deine letzten Beiträge</div>
+    <div class="soc-post">
+      <div class="soc-phead"><div class="soc-ava sm"><span>GT</span></div><div class="p-b"><div class="p-n">Gian Thaysen</div><div class="p-m">Gestern 18:24 · Flensburg</div></div><button class="p-more"><svg class="ic sm"><use href="#i-more"/></svg></button></div>
+      <div class="soc-ptitle"><h3>Langer Lauf · 21,4 km</h3><p>Erste 21 km über 5:15er Schnitt ohne Einbruch. Letzte 5 km bewusst schneller.</p></div>
+      <div class="soc-map"><div class="route"></div><div class="privacy"><svg class="ic xs"><use href="#i-lock"/></svg> Start- und Zielbereich um 500 m unkenntlich gemacht</div></div>
+      <div class="soc-pmetrics"><div><b>21,4</b><span>km</span></div><div><b>5:15</b><span>/km</span></div><div><b>152</b><span>Ø HF</span></div><div><b>168</b><span>hm</span></div></div>
+      <div class="soc-goaltag"><svg class="ic"><use href="#i-target"/></svg><div>Zahlt ein auf <b>Halbmarathon unter 1:50</b> · Schlüsseleinheit Woche 7</div></div>
+      <div class="soc-pfoot">
+        <button class="soc-act on" onclick="toggleAct(this)"><svg class="ic"><use href="#i-bolt"/></svg> 24</button>
+        <button class="soc-act" onclick="toast('Kommentare')"><svg class="ic"><use href="#i-msg"/></svg> 6</button>
+        <button class="soc-act" onclick="toast('Teilen')"><svg class="ic"><use href="#i-share"/></svg></button>
+      </div>
+    </div>
+    <div class="tabspacer"></div>
+  </div>
+</div>
+<!-- ==================== ZIEL-DETAIL ==================== -->
+<div class="gm-page" 

@@ -1,0 +1,12 @@
+B-13 Schritt 3: Workout-Player (workout-ui.js) vollstaendig unter t() — 105 Keys
+
+Datengetriebene Extraktion (Text → Key, laengste zuerst, nur innerhalb von
+Literalen); zusammengesetzte Meldungen als Platzhalter-Keys (wo.planned.partial
+{applied}/{planned}/{failed}, wo.resume.pausedMin {min}, Plural
+wo.pick.count.one/.other). Inventur workout-ui: 96 → 0 (Selektoren aus der
+Heuristik genommen). Katalog de: 187 Keys. Quelltextvertrag in
+strength_plan_ui_e2e prueft jetzt Key + Katalogtext. Render-Check: Player
+zeigt Katalogtexte, kein Key sichtbar. Suite 269 gruen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

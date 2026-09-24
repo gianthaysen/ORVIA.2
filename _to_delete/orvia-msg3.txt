@@ -1,0 +1,40 @@
+Kraftprofil sagt, was die Daten hergeben: Trend statt Fensterrand, Gewicht aus dem Morgenbericht (Build v8-389)
+
+Befunde aus der Pruefung an echten Daten (13 Einheiten, 139 Saetze, app/docs/S2-BEFUND-ECHTDATEN.md).
+Die Engine rechnete korrekt, aber sie behauptete mehr, als die Daten tragen.
+
+B1 Ausbelastung: 10 von 139 Saetzen tragen RIR (7 %). Epley setzt Ausbelastung voraus;
+   ohne sie misst die Kurve die Anstrengungswahl. Jeder Punkt fuehrt jetzt mit, ob eine
+   RIR/RPE-Angabe vorlag; die Steigung bekommt daraus einen Vertrauensgrad und die Seite
+   benennt ihn, statt die Zahl als Kraftzuwachs zu zeigen.
+B1b Koerpergewicht kommt aus dem MORGENBERICHT statt aus dem Profilfeld, und zwar
+   tagesgenau: jede Einheit rechnet mit dem Gewicht ihres Tages (profileModel.weightSeries
+   + bodyweightAt, checkinStore.morningWeightSeries). Vorher nahm eine Klimmzugreihe ueber
+   drei Monate das heutige Gewicht auch fuer Einheiten im Juni.
+B2 Delta war aktueller Wert minus ERSTER Punkt im rollierenden 12-Wochen-Fenster. An den
+   echten Daten meldete das fuer die Brustpresse +5,4 kg in 5 Wochen, waehrend die
+   Regression ueber alle sieben Punkte +0,75 kg je 4 Wochen ergibt - Rauschen. Jetzt:
+   Ausgleichsgerade je 4 Wochen, Fenster am letzten Datenpunkt verankert (eine Pause
+   schneidet die Reihe nicht mehr an), Basis (Punkte/Spanne) wird genannt. Sprungt die
+   Kurve um mehr als 15 % je 4 Wochen, wird das als unplausibel ausgewiesen (Geraetewechsel
+   oder Ausbelastung) statt als Fortschritt.
+B3 Stagnation an der Steigung statt an Gleichheit des ersten Satzes. Die alte Regel feuerte
+   an den echten Daten bei 0 von 6 Uebungen, obwohl die Brustpresse seit neun Wochen auf
+   80 kg steht.
+B4 Koerpergewichtsuebungen: jeder Punkt traegt seine Zusatzlast, Delta nur zwischen Punkten
+   GLEICHER Last, Wdh.-Rekorde getrennt je Last. Vorher stand "-5 Wdh." als Rueckschritt,
+   obwohl die Last um 10 kg gestiegen war. Bei gemischter Last bleibt die Wdh.-Achse.
+B5 Ein als "test" markierter Satz gilt nur als 1RM-Test, wenn er den besten Arbeitssatz
+   uebertrifft ("1RM-Test 7,5 kg" bei Seitheben mit 12,5-kg-Arbeitssaetzen).
+B6 Gruppe folgt dem DIREKT belasteten Muskel; mehrere indirekte Anteile ueberstimmen ihn
+   nicht mehr (Rueckenstrecker stand unter "Beine" und trug allein die Balance-Zahl).
+   Null Beinsaetze bei belegter Oberkoerperarbeit sind jetzt eine Aussage (Verhaeltnis 0),
+   nicht "zu wenig Daten".
+
+- strength-profile@2, load-history-Marker aktualisiert
+- strength_profile_test 71 (F1-F22 neu), gm62_input_guard A7-Pin bewusst um
+  morningWeightSeries erweitert (reine Lesefunktion, kein neuer Abruf)
+- Suite 314 Dateien gruen
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

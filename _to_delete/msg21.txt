@@ -1,0 +1,11 @@
+B-04: Leistungsreferenz im Koerperdaten-Schritt (optional, Lauf/Triathlon)
+
+Block „Letzte Laufzeit (optional)": Distanz-Chips, Zeit, Wettkampf/Training,
+Datum — im Draft roh gehalten, beim Abschluss EIN personalBests-Eintrag
+(bestehende bleiben; ohne Zeit/Distanz nichts; unlesbare Zeit blockt Weiter).
+Kein neuer Schritt, keine Draft-Version, STEP_CONFIG unveraendert. Schliesst
+die Luecke 'performance_reference' aus B-03 bereits in der Einrichtung.
+onboarding_log +6 (Patch-Mapping); alle Onboarding-Tests gruen; Suite 268.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

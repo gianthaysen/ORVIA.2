@@ -1,0 +1,16 @@
+Kraftprofil-Kurve wird nicht mehr verzerrt (Build v8-394)
+
+Nutzerbefund: "die kurve im kraftprofil ist bisschen verzogen und so hochgezogen".
+
+Ursache: Die Kurve stand in einer SVG mit viewBox 320x128 und preserveAspectRatio="none",
+die CSS gab width:100% bei fester height:128px. Auf einer 390 px breiten Karte wurde die
+viewBox damit um Faktor 1,22 in die Breite gezogen, die Hoehe aber nicht - eine nicht
+gleichmaessige Skalierung. Folge: Punkte wurden zu Ellipsen, die Linienstaerke haengte von
+der Richtung des Abschnitts ab, und steile Abschnitte wirkten gezogen.
+
+- preserveAspectRatio entfernt; .kp-chart svg bekommt aspect-ratio 320/128 und height:auto,
+  damit die gerenderte Flaeche dasselbe Verhaeltnis hat wie die viewBox
+- strength_profile_test +2 (83)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

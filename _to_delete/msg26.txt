@@ -1,0 +1,12 @@
+B-13 Schritt 2: Onboarding v2 vollstaendig unter t() — 214 Keys, Extraktionswerkzeug
+
+tools/i18n-extract.mjs: datengetrieben, nur innerhalb von Literalen, Wortgrenzen,
+Markup-Text/Attribute (placeholder/aria-label/title), kuratierte Einzelwoerter,
+Markenname nie. onboarding-ui.js: 211 Texte → 0 Literale (Slug-Keys ob.*),
+drei Satzfragmente um dynamische Teile von Hand. Katalog de: 401 Keys.
+Tests: sieben DOM-Tests laden i18n + Katalog; zwei Quelltextvertraege pruefen
+Key + Katalogtext; onboarding_log injiziert T in den Slice. Alle 17 Onboarding-
+Tests gruen (dom 132/132), Suite 269 gruen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

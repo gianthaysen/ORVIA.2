@@ -1,0 +1,8 @@
+B-01 Schritt 4a: buildGoal uebergibt die Zieldistanz an goalEngine (hinter Flag)
+
+Luecke 5 damit komplett (Engine 3ff0b7a + Aufrufer): mit Flag rechnet die
+Prognose auf 10 km/HM/Marathon des Hauptziels, ohne Flag null ⇒ wie bisher.
+goal_plan_switch 24/24, Probe GS2. Suite 263 gruen / 29 uebersprungen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

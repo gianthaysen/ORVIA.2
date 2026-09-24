@@ -1,0 +1,28 @@
+Dedupe-Schluessel ist Pflicht: keine nicht-deduplizierbaren Uebungs- und Satzzeilen mehr (Build v8-391)
+
+Korrektur eines eigenen Fehlbefunds und der echten Ursache dahinter.
+
+Falsch war meine erste Erklaerung zu den drei Uebungszeilen mit order_index 0 in der
+Einheit vom 20.06.2026: der Unique-Index (workout_session_id, order_index) fehlt nicht
+versehentlich, er wurde in Migration 0004 BEWUSST entfernt, weil er beim Umsortieren
+falsche Upserts erzeugte. Ersatz ist workout_exercises_client_uniq (user_id,
+client_exercise_id).
+
+Die echte Luecke: dieser Ersatz ist PARTIELL (where client_exercise_id is not null).
+addExercise schrieb client_exercise_id: ex.clientExerciseId || null und setzte das
+Konfliktziel nur bei vorhandener ID — ohne ID lief der Aufruf als reines INSERT, auf das
+kein Index greift. Jeder Doppelklick, Retry oder Offline-Nachlauf legte eine weitere Zeile
+an. addSet hatte dieselbe Luecke, dort mit direkter Wirkung auf Volumen, Tonnage und
+Saetze je Muskel.
+
+- addExercise/addSet weisen Aufrufe ohne Client-ID ab (client_exercise_id_required /
+  client_set_id_required) statt eine nicht-deduplizierbare Zeile zu schreiben;
+  Konfliktziel ist jetzt immer gesetzt
+- workout-store vergibt die IDs bereits immer (cid('we'), cid('set')) — die Zeilen vom
+  20.06. stammen aus einem aelteren Build; der Riegel gilt kuenftigen Aufrufern
+- workout_repo_norow_phase42_test +4 (13); das Test-Double kann jetzt upsert/insert
+- app/docs/S2-BEFUND-ECHTDATEN.md: B7 korrigiert, mit Pruef-SQL fuer den Altbestand
+- Suite gruen
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

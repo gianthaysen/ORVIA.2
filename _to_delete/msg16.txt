@@ -1,0 +1,16 @@
+B-02: Ziel-Detailseite — Ziel, Fortschritt, Phase, Machbarkeit, Luecken (v8-367)
+
+js/goal-detail.js: buildModel() rein (Ziel, Plan-Eingabe aus B-01, Goal-Engine,
+A-08-Machbarkeit, B-03-Luecken injiziert), html(), open() ueber das bestehende
+openSheet. Fortschritt nur, wenn zwei Zahlen derselben Dimension vorliegen:
+Zeitziele Prognose gegen Zielzeit (mit Ampelzustand), Wertziele aktueller Wert
+gegen Zielwert (Richtung aus der Kategorie); sonst steht da, was fehlt — mit
+Link. Bearbeiten ausschliesslich ueber openGoalEditor(id), kein zweiter
+Schreibpfad; ohne Ziel oeffnet sich der Wizard statt einer leeren Seite.
+Einstieg: Zieltitel im Plan-Kopf (Lauf- und Nicht-Lauf-Zweig).
+
+DoD-Rest „Aenderung am Ziel aendert den naechsten Wochenplan": mit Flag
+goal_plan_input erfuellt (B-01), ohne Flag Bestand. goal_detail 21/21.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

@@ -1,0 +1,17 @@
+B-04 Teil 3: Onboarding-Schrittlogging (Beobachter, Migration 0041, v8-368)
+
+DoD „Schritt-Logging liefert Daten": engine/onboarding-log.js (Muster
+goal-shadow — Beobachter, Senke lazy, ohne Sitzung kein Schreibversuch,
+Senkenergebnis wird gezaehlt statt verworfen) + Tabelle onboarding_step_log
+(append-only, RLS, anon entzogen). Ereignisse open/enter/complete/skip/back/
+finish mit Verweildauer je Schritt, Quelle (registration/profile) und
+resumed-Flag. Schrittwechsel werden ZENTRAL in render() erkannt — die sieben
+advance*-Pfade bleiben unangetastet. Auswertung: _onboarding-funnel.sql
+(Trichter je Schritt, Haengenbleiber ohne finish, Abschlussquote,
+Wiederaufnahmen). onboarding_log 14/14; Suite 268 gruen / 29 uebersprungen.
+
+Offen in B-04: die acht inaktiven Personalisierungs-/Advanced-Schritte
+(Formulare, Produktentscheidung) — Vorschlag folgt in B-04-PLAN.md.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

@@ -1,0 +1,15 @@
+Analyse-Teaser sagt dasselbe wie die Detailseite (Build v8-393)
+
+Nach v8-389 zeigte die Detailseite die Regressionssteigung, der Teaser in der Analyse aber
+weiter die Rohdifferenz - zwei Aussagen zu denselben Daten in derselben App. An den echten
+Daten: Teaser "+14,0 kg in 3 Wochen" (Face Pulls) gegen Detailseite "+1,0 kg je 4 Wochen".
+
+- teaser() waehlt die Uebung nach der Steigung und gibt sie weiter; unplausible Kurven
+  (>15 % je 4 Wochen) kommen als Aufmacher nicht in Frage
+- ui.gmStrengthTeaserHTML zeigt "{d} kg je 4 Wochen"; bei niedrigem Vertrauen
+  (Ausbelastung ueberwiegend nicht erfasst) mit vorangestelltem ≈
+- An den echten Daten jetzt: "≈+1 kg je 4 Wochen"
+- strength_profile_test +4 (81)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

@@ -1,0 +1,16 @@
+B-13: i18n-Laufzeit, Referenzkatalog DE, Pseudo-Locale, Inventur, t()-Regime (v8-368)
+
+js/i18n.js: t(key, params), Platzhalter, Plural (Intl.PluralRules), Kette
+aktiv → de → Key, setLocale (localStorage > Geraetesprache), parity() fuer CI,
+Pseudo-Locale xx (⟦…⟧). locales/de.js als Skript statt JSON-fetch (kein Lade-
+rennen, offline ueber SW-Liste). Erste Module unter t(): goal-detail.js und
+workout-gym.js (82 Keys, 0 deutsche Literale — vom Test erzwungen).
+tools/i18n-inventory.mjs: ~2600 nutzersichtbare Literale (ui.js 1061) — Band 6
+e.2/6 greift: Kernflows zuerst. locales/ im Upload-Satz (deploy-verify, Doku).
+Befund fuer die Restextraktion (B-13-I18N-STAND.md): Plan-Labels sind
+Klassifikationsschluessel (unitKind liest „Long Run") — vor der Extraktion
+braucht jedes Plan-Item ein kind-Feld.
+i18n_guard 21/21; Suite 269 gruen / 29 uebersprungen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

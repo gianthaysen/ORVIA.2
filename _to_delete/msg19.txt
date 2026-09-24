@@ -1,0 +1,4 @@
+Doku: B-04-Plan — zwei DoD-Teile erfuellt, acht inaktive Schritte bewertet (Empfehlung: 1+Chips, 6 streichen)
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

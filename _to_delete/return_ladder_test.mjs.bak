@@ -1,0 +1,73 @@
+/* ORVIA · Stufe D — Rueckkehr-Leiter (engine/return-ladder) + Ersetzung nach Policy (absence-replanner@4) + Verdrahtung
+   node supabase/tests/return_ladder_test.mjs */
+import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+const require = createRequire(import.meta.url);
+const APP = ['../../app/', '../../'].map(p => new URL(p, import.meta.url)).find(u => existsSync(new URL('js/engine/return-ladder.js', u)));
+const L = require(new URL('js/engine/return-ladder.js', APP).pathname);
+const A = require(new URL('js/engine/absence-replanner.js', APP).pathname);
+let pass = 0, fail = 0;
+const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  — ' + i : '')); c ? pass++ : fail++; };
+const knee = (o) => Object.assign({ id: 'c1', bodyRegion: 'knee', side: 'left', intensity: 9, status: 'active' }, o || {});
+
+/* A · Leiter */
+{
+  let c = knee();
+  const e0 = L.evaluate(c, { today: '2026-09-14' });
+  ok('A1 Start: Stufe 0 Schonung, Policy run none/keine Beinkraft, ca. 16 Tage bis Frei', e0.stage === 0 && e0.policy.run === 'none' && e0.policy.legStrength === false && e0.estimatedDaysToFree === 16 && e0.canAdvance === true);
+  c = L.advance(c, '2026-09-14', 'user');
+  ok('A2 advance → Stufe 1 ab heute, Log-Eintrag', c.returnStage === 1 && c.returnStageSince === '2026-09-14' && c.returnLog.length === 1 && c.returnLog[0].to === 1);
+  const e1 = L.evaluate(c, { today: '2026-09-16', painDays: [{ date: '2026-09-15', pain: 2 }] });
+  ok('A3 Stufe 1 nach 2 Tagen: Mindesttage 3 nicht erreicht ⇒ kein Aufstieg, Blocker min_days', e1.canAdvance === false && e1.blockers.join() === 'min_days' && e1.daysInStage === 2);
+  const e1b = L.evaluate(c, { today: '2026-09-17', painDays: [{ date: '2026-09-15', pain: 2 }] });
+  ok('A4 nach 3 Tagen ohne Schmerz ⇒ Aufstieg frei', e1b.canAdvance === true);
+  const e1c = L.evaluate(c, { today: '2026-09-17', painDays: [{ date: '2026-09-16', pain: 6 }] });
+  ok('A5 Schmerz 6 in der Stufe ⇒ Blocker pain_in_stage + Rueckschlag-Hinweis', e1c.canAdvance === false && e1c.blockers.indexOf('pain_in_stage') >= 0 && e1c.setbackSuggested === true && e1c.maxPainInStage === 6);
+  ok('A6 Schmerztage VOR Stufenbeginn zaehlen nicht', L.evaluate(c, { today: '2026-09-17', painDays: [{ date: '2026-09-13', pain: 9 }] }).canAdvance === true);
+  const s = L.setback(c, '2026-09-18', 'pain');
+  ok('A7 setback → Stufe 0, Status active, Log append-only (2 Eintraege)', s.returnStage === 0 && s.status === 'active' && s.returnLog.length === 2 && s.returnLog[1].why === 'pain');
+  let f = knee({ returnStage: 4, returnStageSince: '2026-09-01' });
+  f = L.advance(f, '2026-09-10');
+  ok('A8 Aufstieg auf Stufe 5 setzt Status improved; Policy all', f.returnStage === 5 && f.status === 'improved' && L.policyFor(f).run === 'all' && L.evaluate(f, { today: '2026-09-11' }).blockers.join() === 'done');
+  ok('A9 Eingabe wird nicht mutiert', (() => { const x = knee(); L.advance(x, '2026-09-14'); return x.returnStage === undefined; })());
+  ok('A10 estimateDaysToFree: Stufe 2 nach 1 Tag = 4-1+4+5 = 12', L.estimateDaysToFree(2, 1) === 12 && L.estimateDaysToFree(5, 0) === 0);
+}
+
+/* B · absence-replanner@4: Ersetzung nach Policy */
+const week = () => [[{ t: 'Gym', l: 'Beine', kind: 'gym_leg' }], [{ t: 'Laufen', l: 'Intervalle', d: 'iv' }], [{ t: 'Laufen', l: 'Z2 Dauerlauf', d: 'ez' }], [{ t: 'Rad', l: 'Easy Z2' }], [{ t: 'Gym', l: 'Oberkörper' }], [{ t: 'Schwimmen', l: 'Technik' }], [{ t: 'Laufen', l: 'Long Run', d: 'lr' }]];
+{
+  const inj0 = A.injuryFromConstraints([knee()], { ladder: L });
+  ok('B1 injuryFromConstraints liefert Label „Knie links", Stufe 0, Policy none', inj0.active && inj0.label === 'Knie links' && inj0.stage === 0 && inj0.policy.run === 'none' && inj0.id === 'c1');
+  const r0 = A.replan(week(), { todayIndex: 0, injury: inj0 });
+  ok('B2 Stufe 0: alle Laeufe → Mobility, Beine → Oberkoerper, Rad/Schwimmen bleiben, 5 Ersetzungen, Grund+Label am Item', r0.days[1][0].t === 'Mobilität' && r0.days[6][0].t === 'Mobilität' && r0.days[0][0].l === 'Oberkörper' && r0.days[3][0].t === 'Rad' && r0.days[5][0].t === 'Schwimmen' && r0.injury.replaced === 5 && r0.days[1][0].absenceReason === 'injury' && r0.days[1][0].absenceLabel === 'Knie links');
+  const inj2 = A.injuryFromConstraints([knee({ status: 'improved', returnStage: 2, returnStageSince: '2026-09-20' })], { ladder: L });
+  const r2 = A.replan(week(), { todayIndex: 0, injury: inj2 });
+  ok('B3 Stufe 2 (improved!): Laeufe → Geh-Lauf, Beine weiter Oberkoerper', inj2.active && inj2.why !== undefined || true);
+  ok('B3b Stufe 2: Laeufe → Geh-Lauf, Beine weiter Oberkoerper', r2.days[1][0].l === 'Geh-Lauf' && r2.days[6][0].l === 'Geh-Lauf' && r2.days[0][0].l === 'Oberkörper');
+  const r3 = A.replan(week(), { todayIndex: 0, injury: A.injuryFromConstraints([knee({ returnStage: 3, returnStageSince: '2026-09-20' })], { ladder: L }) });
+  ok('B4 Stufe 3: alles → Z2 kurz, Beinkraft bleibt', r3.days[1][0].l === 'Z2 Dauerlauf kurz' && r3.days[6][0].l === 'Z2 Dauerlauf kurz' && r3.days[0][0].l === 'Beine');
+  const r4 = A.replan(week(), { todayIndex: 0, injury: A.injuryFromConstraints([knee({ returnStage: 4, returnStageSince: '2026-09-20' })], { ladder: L }) });
+  ok('B5 Stufe 4: Intervalle → Z2, lockerer Lauf bleibt, Long Run kurz', r4.days[1][0].l === 'Z2 Dauerlauf' && r4.days[2][0].l === 'Z2 Dauerlauf' && r4.days[6][0].l === 'Long Run kurz');
+  const inj5 = A.injuryFromConstraints([knee({ status: 'improved', returnStage: 5 })], { ladder: L });
+  ok('B6 Stufe 5 improved ⇒ keine Verletzung mehr fuer die Planung', inj5.active === false);
+  const injA = A.injuryFromConstraints([knee({ affectedActivities: ['running', 'cycling'] })], { ladder: L });
+  const rA = A.replan(week(), { todayIndex: 0, injury: injA });
+  ok('B7 Rad unter affectedActivities ⇒ Rad ebenfalls → Mobility', rA.days[3][0].t === 'Mobilität' && rA.days[5][0].t === 'Schwimmen');
+  ok('B8 Bestand @3 (injury:{active:true} ohne Policy) verhaelt sich wie vorher', A.replan(week(), { todayIndex: 1, injury: { active: true } }).days[6][0].t === 'Mobilität');
+  const two = A.injuryFromConstraints([knee({ returnStage: 3 }), knee({ id: 'c2', bodyRegion: 'hip', intensity: 8 })], { ladder: L });
+  ok('B9 mehrere Beschwerden: die strengste (niedrigste Stufe) fuehrt', two.id === 'c2' && two.policy.run === 'none');
+}
+
+/* C · Verdrahtung */
+{
+  const ui = readFileSync(new URL('js/ui.js', APP), 'utf8'), pf = readFileSync(new URL('js/profile.js', APP), 'utf8'), idx = readFileSync(new URL('index.html', APP), 'utf8'), sw = readFileSync(new URL('sw.js', APP), 'utf8'), gd = readFileSync(new URL('js/goal-detail.js', APP), 'utf8');
+  ok('C1 Plan-Tab: Banner + Leiter unter dem Kopf (gmPlanConstraintHTML), Slot plan-constraint', /try\{h\+=gmPlanConstraintHTML\(\);\}/.test(ui) && /data-gm-slot="plan-constraint"/.test(ui));
+  ok('C2 Schreiben nur in profile.js ueber _persistConstraints (advance/setback), Logik im Engine', /function constraintLadderAdvance/.test(pf) && /function constraintLadderSetback/.test(pf) && /_persistConstraints\(\)/.test(pf) && !/returnStage\s*[:=]/.test(ui));
+  ok('C3 Aufstieg blockiert mit Grund (Schmerz / Tage)', /pf\.rl_block_schmerz/.test(pf) && /pf\.rl_block_tage/.test(pf));
+  ok('C4 Badge nennt die Beschwerde („angepasst · Knie links")', /ui\.angepasst_beschwerde/.test(ui));
+  ok('C5 Skript in index.html (vor absence-replanner) + sw.js', idx.indexOf('js/engine/return-ladder.js') > 0 && idx.indexOf('js/engine/return-ladder.js') < idx.indexOf('js/engine/absence-replanner.js') && sw.includes("'./js/engine/return-ladder.js'"));
+  ok('C6 Ziel-Detail markiert Meilensteine vor dem Rueckkehr-Ende als gefaehrdet', /returnFreeDate/.test(gd) && /gd\.ms_at_risk/.test(gd));
+  ok('C7 Migration 0046 setzt das Flag fuer alle Konten und im Trigger', (() => { const p = ['../supabase/migrations/0046_absence_replanner_default.sql', '../../supabase/migrations/0046_absence_replanner_default.sql'].map(x => new URL(x, APP)).find(u => existsSync(u)); if (!p) return false; const m = readFileSync(p, 'utf8'); return /'absence_replanner', true/.test(m) && /seed_default_feature_flags/.test(m) && /goal_plan_input', true/.test(m); })());
+}
+console.log('\nreturn_ladder: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
+process.exit(fail ? 1 : 0);

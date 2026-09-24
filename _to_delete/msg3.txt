@@ -1,0 +1,9 @@
+Aktivitaetsliste: Nachladen statt harter 40er-Grenze (Build v8-387)
+
+Die Liste zeigte maximal 40 Karten und brach mit Garmin-Import bei ~12 Wochen ab;
+aeltere Einheiten (u. a. die nachgetragenen Juni-Krafteinheiten) waren unerreichbar,
+der Sport-Filter wirkte nur auf diese 40. Jetzt: Filter vor dem Zuschnitt, Seiten zu 40,
+Button "n weitere Aktivitaeten laden" (Plural ueber i18n), Filterwechsel setzt zurueck.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

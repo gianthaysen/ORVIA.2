@@ -1,0 +1,10 @@
+B-01 Schritt 6: Machbarkeit (A-08) im Plan-Kopf anzeigen (hinter Flag)
+
+_feasibilityLineHTML() liest ORVIA._lastFeasibility, zeigt Korridor/ausserhalb/
+nicht bewertbar unter der Phase — anzeigen, nicht steuern; Wortlaut ohne
+„machbar". Schritt 7 (Regressionswaechter) braucht keinen Code: der A-06-
+Beobachter vergleicht weiter, mit Flag muss die Widerspruchszahl 0 sein.
+goal_plan_switch 39/39. B-01 ist damit code-seitig fertig; Rest ist Betrieb.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

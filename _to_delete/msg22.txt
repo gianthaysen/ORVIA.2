@@ -1,0 +1,8 @@
+B-09: Verletzung aus Profil-Beschwerden ableiten (absence-replanner@2)
+
+constraintsList (status active): currentlyTrainable=false ODER Laufen betroffen
+ODER untere Extremitaet mit Intensitaet >= 7/10 ⇒ kein Aufprall im Restwochenplan.
+Keine neue UI — der Beschwerden-Editor ist die Meldung. +7 Tests.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

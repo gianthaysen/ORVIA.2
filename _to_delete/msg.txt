@@ -1,0 +1,19 @@
+Aktivitaets-Detail zeigt Cloud-Saetze auch ohne lokalen Datensatz; Kraftprofil ohne Platzhalter-Uebung (Build v8-386)
+
+Befund (Aktivitaet 23.08.): loadWorkoutTree lieferte 5 Uebungen / 10 Saetze, die
+Detailseite meldete trotzdem "Verbindungsfehler". Ursache: repairWorkoutSnapshot
+fand keinen lokalen Datensatz (Server-Aktivitaet mit anderer id) und das Scheitern
+der Rueckschreibung wurde als Ladefehler behandelt.
+
+- activity-store.repairWorkoutSnapshot(activityId, exercises, ref): matcht zusaetzlich
+  ueber workoutSessionId, source+sourceRecordId, id; liefert den Snapshot immer mit
+  (ok=false nur fuer die Zuordnung, nicht fuer die Daten)
+- ui.gmActLoadGymFallback: geladener Snapshot wird im Seiten-Cache (_gmActFallbackTree)
+  gehalten und ueber gmActGymAgg gerendert; 'error' nur bei echtem Ladefehler;
+  Retry leert den Cache; Diagnose-Probe nutzt denselben Pfad
+- strength-profile: Platzhalter "Krafttraining (ohne Uebungsdetail)" aus der Gruppe
+  "Weitere" ausgeschlossen (Test C16)
+- Tests: activity_store_test +5 (44), strength_profile_test 49; Suite 313 Dateien gruen
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

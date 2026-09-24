@@ -1,0 +1,26 @@
+performance-resolver liest kanonische Aktivitaeten; Paritaetsvertrag gegen stillen Datenverlust (Build v8-390)
+
+Systematische Pruefung aller Engine-Eingaenge gegen die kanonische Activity-Form, nachdem
+dieselbe Fehlerklasse dreimal zufaellig aufgefallen war (capacity-adapter P0 2026-08-06,
+load-history v8-389).
+
+Neuer Befund: performance-resolver.runningInput las Distanz, Dauer und Datum
+AUSSCHLIESSLICH in der Legacy-/Testform (a.distanceKm, a.durationMin/durationSec,
+a.date/localDate). Die kanonischen Aktivitaeten aus activityStore.listActivities() - genau
+die, die ui.js hereinreicht - tragen summary.distanceKm, durationSeconds und startedAt.
+Folge: der Guard verwarf JEDE echte Aktivitaet, workouts war im Produktivpfad immer leer,
+und die Leistungszonen stuetzten sich nur auf Tests und Zielzeit. Belegt: dieselbe Einheit
+liefert in der Testform einen Beleg, in der Produktionsform null.
+
+- performance-resolver@3: kanonisch zuerst, Legacy als Rueckfall; Uebungstyp wird
+  zusaetzlich aus summary.name erkannt (Tempolauf -> tempo)
+- engine_canonical_activity_test.mjs (neu, 16 Punkte): einseitiger Vertrag — die
+  kanonische Form MUSS an jedem Eingang ankommen (load-history, capacity-adapter,
+  performance-resolver, activity-config). Beide Formen werden gegeneinander geprueft,
+  nicht nur Zahlen. Genau das fehlte: alle bisherigen Fixtures benutzten die Testform,
+  ein Modul konnte die Produktionsform vollstaendig ignorieren und blieb gruen.
+- observer-input geprueft: liest Ziele und Check-ins, keine Aktivitaeten — kein Befund.
+- Suite 315 Dateien gruen
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

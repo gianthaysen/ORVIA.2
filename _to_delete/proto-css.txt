@@ -1,0 +1,23 @@
+.seg-nav{display:flex;gap:5px;margin:2px 18px 12px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;padding:5px}
+.seg-btn{flex:1;font-size:12.5px;font-weight:750;color:var(--muted);background:none;border:none;padding:9px 4px;border-radius:10px;cursor:pointer;transition:.16s}
+.seg-btn.on{background:linear-gradient(160deg,rgba(201,174,124,.9),#b6975f);color:#20180a;box-shadow:0 4px 12px rgba(201,174,124,.3)}
+.pill-badge{display:inline-block;font-size:9px;font-weight:820;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--activity-t);color:var(--activity)}
+.pill-badge.ready{background:var(--ready-t);color:var(--ready)}
+.pill-badge.att{background:var(--attention-t);color:var(--attention)}
+.pill-badge.crit{background:var(--crit-t);color:var(--crit)}
+.pill-badge.gold{background:rgba(201,174,124,.14);color:var(--gold-soft)}
+/* ---- Kennzahlen ---- */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin:0 18px 12px}
+.kpi{background:linear-gradient(180deg,var(--card-1),var(--card-2));border:1px solid var(--border);border-radius:14px;padding:12px 10px;text-align:center;min-width:0}
+.kpi b{display:block;font-size:17px;font-weight:820;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi span{display:block;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-top:3px;overflow-wrap:anywhere;line-height:1.2}
+.kpi small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.sport-chip{white-space:nowrap;padding:8px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:11px;font-weight:750;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.sport-chip.on{color:var(--text);border-color:rgba(90,160,240,.45);background:var(--activity-t)}
+.goal-card{padding:15px;border-radius:18px;background:linear-gradient(140deg,rgba(201,174,124,.15),rgba(90,160,240,.08),var(--card-2));border:1px solid rgba(201,174,124,.21);cursor:pointer}
+.goal-card.sec{background:linear-gradient(140deg,rgba(90,160,240,.10),var(--card-2));border-color:rgba(90,160,240,.18)}
+.goal-card .goal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.goal-card h4{font-size:14px;font-weight:800}
+.goal-card p{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+.goalmeta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:650;margin-top:8px}
+.goalmeta b{color:var(--text);font-variant-numeric:tabular-nums}

@@ -1,0 +1,17 @@
+B-13 Schritt 1: kind-Feld auf Plan-Items — Klassifikation liest Code statt Label
+
+gpR/gpB/gpG/gpS/gpM setzen kind (interval/long/tempo/easy, bike/bike_long/
+bike_hard/bike_recovery, gym/gym_leg, swim, mob; Rennwoche: race). unitKind()
+und isHardUnit() in ui.js sowie goal-phase-plan@2 / absence-replanner@3 lesen
+kind zuerst; das Label-Raten bleibt Rueckfall fuer gespeicherte Plaene ohne
+kind. Damit koennen Labels uebersetzt werden, ohne dass Intervalle zu
+'easy' werden.
+
+BEWUSST NICHT angefasst: week-plan-designer / week-plan-policy — ein Bump
+dort loest die Kohortensperre des Engine-Shadows aus (shadow_adaptive:
+„Belegsammlung beginnt neu"), das wuerde Gate A #5 zuruecksetzen. Bis B-14
+bleiben die DE-Schluesselwoerter in den Labels, dann Kohorte bewusst neu
+pinnen. i18n_guard 27/27; Suite 269 gruen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

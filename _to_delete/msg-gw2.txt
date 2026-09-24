@@ -1,0 +1,25 @@
+Garmin-Worker koppelt neue Kraft-Aufzeichnungen an das zeitgleiche ORVIA-Workout (S2c)
+
+Ergaenzt die Client-Seite aus v8-388: der Bestand wurde per orvia_autolink_recordings
+gekoppelt, kuenftige Importe koppelt jetzt der Worker direkt beim Anlegen. Ohne das
+entstuende bei jeder Krafteinheit mit laufender Uhr wieder ein Paar aus zwei Aktivitaeten
+und die Wochenlast zaehlte sie doppelt.
+
+- activity_link.find_link_candidate(): reine Funktion, spiegelt die Regel der Migration
+  0048 (gleicher Nutzer, Sportart gym, Zeitfenster ueberlappen, |Delta Start| <= 20 min,
+  Primaerdatensatz noch ohne Aufzeichnung; bei mehreren Kandidaten der naechste)
+- activity_link.autolink_recording(): duenner DB-Schritt nach dem Insert; faengt jede
+  Ausnahme ab - die Kopplung ist ein Bonus und darf den Sync nie abbrechen
+- sync.py: Insert liefert die Zeile zurueck (returning=True) und meldet linked:n im
+  Schrittprotokoll
+- tests/test_activity_link.py (7 Faelle): Treffer, Delta 25 min kein Treffer, keine
+  Ueberlappung kein Treffer, naechster Kandidat gewinnt, Sportart/fremder Nutzer/belegter
+  Primaer werden ignoriert, autolink wirft nie
+- tests/conftest.py: die Attrappe verglich Zeitstempel als TEXT ('2026-06-23 14:03' vs
+  '2026-06-23T08:02+00:00' - Leerzeichen sortiert vor 'T'). Damit lieferte sie fuer einen
+  gueltigen Zeitraumfilter das Gegenteil des echten Servers. Jetzt zeitlicher Vergleich
+  wie Postgres; gte/lte/not.is ergaenzt.
+- Worker-Tests: 104 bestanden
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

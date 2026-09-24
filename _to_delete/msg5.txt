@@ -1,0 +1,22 @@
+Stufe D: Beschwerden wirken auf den Plan — Rueckkehr-Leiter, absence-replanner@4 nach Policy, Plan-Banner, Meilensteine gefaehrdet, Flag-Standard (0046, Build v8-377)
+
+Befund 13.09.: Knie 9/10 im Profil, Tag RED — der Wochenplan zeigte weiter Intervalle
+und Long Run. Die B-09-Logik existierte, lief aber hinter dem nie gesetzten Flag
+absence_replanner und kannte keinen Weg zurueck.
+
+- engine/return-ladder.js (neu, rein): 6 Stufen mit Mindesttagen, Schmerz >= 5 in der
+  Stufe blockiert den Aufstieg, Rueckschlag = Stufe -1, append-only returnLog; Zustand
+  an der Beschwerde (constraintsList, jsonb).
+- absence-replanner@4: Ersetzung nach Leiter-Policy (none/walkrun/easy_short/easy/all),
+  Items tragen absenceReason + absenceLabel („Knie links"), affectedActivities
+  cycling/swimming fallen mit, improved+Stufe<5 bleibt wirksam, strengste Beschwerde fuehrt.
+- Plan-Tab: Banner + Leiterkarte (Stufe, Kriterium, Buttons, Restdauer), Badge nennt
+  die Beschwerde. profile.js: constraintLadderAdvance/Setback als einziger Schreibpfad.
+- Ziel-Detail: Meilensteine vor dem geschaetzten Rueckkehrende „gefaehrdet".
+- 0046: absence_replanner fuer alle Konten (CHECK idempotent), Trigger seedet beide
+  Standardflags.
+- Tests: return_ladder 27; absence_replanner 38, goal_detail 36 gruen.
+  Doku docs/D-BESCHWERDEN-PLAN.md.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

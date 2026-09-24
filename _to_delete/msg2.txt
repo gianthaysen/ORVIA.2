@@ -1,0 +1,9 @@
+Backfill-Skript: activities-Zeilen fuer abgeschlossene Sessions ohne Activity (RPC-Pfad, idempotent)
+
+supabase/scripts/backfill_activities_from_sessions.sql: Vorschau + Schreiben ueber
+orvia_upsert_activity_from_session mit gesetzten JWT-Claims und Rolle authenticated
+(RLS/Identitaetsschutz greifen wie im Client). Lokal gegen 0002-0009 geprueft:
+nur unverknuepfte Sessions, zweiter Lauf 0 rows. Kein Build-Bump (nicht im Upload-Satz).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

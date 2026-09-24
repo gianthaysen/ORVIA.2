@@ -1,0 +1,21 @@
+Garmin-Sync: Zeitfenster waechst nach einem Ausfall nach (Arbeitsstand 19.08. nachgetragen)
+
+Diese Arbeit lag seit dem 19.08.2026 unversioniert im Arbeitsbaum und war damit nie
+auf Railway. Nachgetragen wie vorgefunden, ohne inhaltliche Aenderung.
+
+Befund (19.08.2026): Folge-Syncs holten fest "heute" und "gestern". Stand der Worker
+laenger still - an dem Tag gleichzeitig durch einen von Garmin verworfenen Token
+(AUTH_FAILED) und einen abgelaufenen Railway-Trial -, holte kein spaeterer Lauf die
+dazwischenliegenden Tage nach. Die Metriken fehlten dauerhaft, obwohl die Engine genau
+darauf rechnet.
+
+- _target_dates(): Erstsync heute + backfill_days; Folge-Sync von einem Tag VOR dem
+  letzten Erfolg bis heute
+- _zone()/_local_date(): Zeitstempel -> Kalendertag in der Nutzer-Zeitzone
+- tests/test_sync_window.py: sichert beide Richtungen - das Fenster waechst nach einem
+  Ausfall, und im Normalbetrieb waechst es NICHT (sonst waere die Korrektur eine stille
+  Verdopplung der Garmin-Last)
+- garminconnect 0.3.2 -> 0.3.6, scripts/local_login.py ueberarbeitet, .gitignore
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

@@ -1,0 +1,23 @@
+B-01 Schritt 3: goalOf() liest das kanonische Hauptziel — hinter Flag goal_plan_input (0039)
+
+Quelle tauschen, Form behalten: Ist das serverseitige Flag an UND liegt ein
+kanonisches Hauptziel vor, liefert goalOf() dessen Legacy-Form aus
+engine/goal-plan-input (legacyForm). Die 46 Aufrufer merken nichts, sehen aber
+das richtige Ziel — ein Kraft-/Tri-/Koerperziel mit Prioritaet 1 statt des
+nachrangigen Laufziels (Luecke 1). Ohne Hauptziel bleibt die Rueckfallkette
+(Legacy-Spiegel, Profil) byteweise unveraendert; ohne Flag ist der Block
+wirkungslos; fehlt das Modul oder wirft es, wie AUS.
+
+Migration 0039 erweitert den CHECK von user_feature_flags (Muster 0034);
+feature-flags @2→@3 (KNOWN), goal-plan-input @1→@2 (legacyForm); Skript-Tag +
+sw.js-Eintrag; _live-check regeneriert.
+
+goal_plan_switch 21/21 (Flag aus = Bestand fuer 6 Profile, golden; Kraft Prio 1
+gewinnt; Rueckfall unveraendert; fail-closed), goal_plan_input 41/41 (+H1–H5),
+Proben GS1 + GP6. prediction_wiring: Versions-Pin @2 → >=2 (kollidierte mit dem
+Drift-Waechter, der den Bump verlangt). Suite 263 gruen / 29 uebersprungen.
+
+Einschalten: nur nach Gate A, je Konto per SQL (siehe Kopf von 0039).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

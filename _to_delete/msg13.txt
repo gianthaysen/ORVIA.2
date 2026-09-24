@@ -1,0 +1,19 @@
+B-09: Ausfall-/Krankheitslogik im gelesenen Wochenplan (Flag absence_replanner, 0040, v8-366)
+
+engine/absence-replanner.js (rein): krank heute → heute frei, Restwoche ohne
+harten Reiz (Intervalle/Tempo → Z2, Long Run/Ride weg, Kraft → Mobility),
+raceAtRisk bei Rennen in der Woche; Rueckkehrfenster nach Krankheit
+min(max(D,1),7) Tage weich; Verletzung → kein Aufprall, keine Beinkraft;
+verpasster Kernreiz in build hoechstens einmal nachgeholt (freier Tag, >=1 Tag
+Abstand zu harten Tagen, nie Vortag/nach dem Rennen), in Taper/Rennwoche nie.
+Garantien: Eingabe nie mutiert, immer 7 Tage, nie null/Wurf, nie zwei harte
+Tage hintereinander erzeugt. Angewendet im Lesepfad (activeWeekPlan, drei
+Zweige) hinter serverseitigem Flag; Krankheit aus 14 Tagen Check-in (m.ill),
+verpasst aus dem Plan-Ist-Resolver mit Re-Entrancy-Guard (der Resolver liest
+activeWeekPlan selbst). feature-flags @3→@4. Offen (B-09-STAND.md): Verletzungs-
+Meldung in der UI, Strecken auf die Folgewoche, Badge im Wochenplan.
+
+absence_replanner 30/30; Suite 265 gruen / 29 uebersprungen.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

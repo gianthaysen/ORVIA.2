@@ -1,0 +1,4 @@
+B-01 Plan: Luecke 5 — goalEngine HM-hartkodiert + zweiter 110-Default (Ist-Nachweis in Node)
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

@@ -1,0 +1,22 @@
+B-01 Schritte 4+5: kein 110-Default, Zielphase im gelesenen Plan (hinter Flag)
+
+4b — keine Zielzeit ist keine Zielzeit: goalTargetMin() → null (Flag),
+goalEngine({strictTarget}) → state 'no_target' (Prognose bleibt, kein Band,
+delta/target null). Leser: Zielkarte eigener Zweig („Zielzeit fehlt" + Link,
+keine Ampel), Coach-Text, Pace-Seite (Hinweis statt NaN, Hero ohne Zielpace),
+Wochenplan-Paces (Cues statt erfundener HM-Paces). Ohne Flag 110 wie bisher.
+
+5 — engine/goal-phase-plan.js (rein): Taper = harte Einheiten kurz, Kraft
+leicht, nichts geloescht; Rennwoche = Long Run/Tempo weg, eine Intervall-
+einheit → Anschwitzen, Kraft → Mobility, Wettkampftag mit Zielpace, Vortag
+und Folgetage frei; nur run/tri/bike; build/past unveraendert. Angewendet im
+LESEPFAD (activeWeekPlan, alle drei Zweige) via applyGoalPhaseToPlan — nicht
+persistierend, wie alignPlanToAvailability; der Generator laeuft nur ohne
+gespeicherten Plan und waere die falsche Stelle.
+
+Flag-Leser typeof-gesichert (Harness-Slices ohne _goalPlanInputOn).
+goal_phase_plan 25/25, goal_plan_switch 34/34, goal_engine_distance 22/22.
+Suite 264 gruen / 29 uebersprungen. Sichtpruefung: Plan §11.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

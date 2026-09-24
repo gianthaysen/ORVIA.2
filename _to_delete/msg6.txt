@@ -1,0 +1,15 @@
+B-01 Vorarbeit: Umsetzungsplan + reiner Kern goal-plan-input (nicht verdrahtet)
+
+Ist-Stand gelesen: goalOf() (46 Aufrufer, Laufdistanz-Filter, drei Rueckfaelle)
+vs. mainGoalOf(); goalTargetMin() erfindet ohne Zielzeit 110 min; A-08/A-09
+werden nur beobachtet. Vier konkrete Luecken benannt, Umstellung hinter
+Feature-Flag mit „Form behalten, Quelle tauschen" empfohlen (Rest ~16 h).
+
+engine/goal-plan-input.js: kanonisches Hauptziel → Plan-Eingabe (Kategorie,
+Familie, Zielzeit mit Einheitenregel, Distanz, Pace, Datum, Phase via A-09,
+benannte Luecken), planKey() als DoD-Nachweis, compareLegacy() fuer den
+Schattenbetrieb. Kein 110-Default. 36/36, 5 Mutationsproben. Kein Skript-Tag,
+kein sw.js-Eintrag — Verdrahtung ist B-01 selbst und bleibt hinter Gate A.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

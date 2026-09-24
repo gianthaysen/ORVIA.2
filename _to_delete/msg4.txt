@@ -1,0 +1,21 @@
+S1.5b nach Sichtpruefung v8-374: Goal-Engine sieht Garmin-Historie (trackingWeeks), Profilstaerke ohne Plan-Render, Long-Run-Bedarf ausserhalb der Saison neutral, Pace-Vorgaben im Ziel-Detail (Build v8-375)
+
+Befunde am Geraet:
+- „Noch keine Prognose" trotz Verlaufskurve: buildGoal() zaehlte trackingWeeks nur aus
+  Tagebuch-Tagen (DB) — fuer einen Garmin-Nutzer 0 ⇒ Gate „>= 3 Wochen" nie erfuellt.
+  Jetzt aus dem fruehesten Store-Lauf. (Der Verlauf rechnete mit Laufdaten und fand deshalb
+  Werte, die Karte nicht.)
+- Profilstaerke 80 % „Leistungsreferenz fehlt": _lastPlanPerf entsteht erst beim Rendern des
+  Plan-Tabs; buildStrength loest jetzt selbst auf, wenn es fehlt.
+- „Laengster Lauf 21,2 km — fehlen Laeufe ab 28 km" 51 Wochen vor dem Marathon: die
+  Long-Run-Regel der Goal-Engine ist eine Saisonregel; > 16 Wochen vor dem Rennen neutral,
+  kein Veto, keine Stellschraube.
+- Plan-Einheiten zeigten das Engine-Kuerzel („Laufen · iv"); jetzt Sportart + Pace-Vorgabe
+  wie auf der Plan-Karte (performanceZones.targetForUnit).
+- Ziellinie im Prognoseverlauf auch ohne aktuelle Prognose; „Ziel angelegt" ohne erfundene
+  Prioritaet, wenn nur created_at bekannt ist.
+
+Tests: goal_detail 35 (A19–A21).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

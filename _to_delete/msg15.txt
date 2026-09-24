@@ -1,0 +1,18 @@
+B-03: Profilstaerke — Score + verlinkte Nachfragen in der Profilzentrale (v8-367)
+
+Vollstaendigkeit gab es (computeProfileCompleteness, Ring, Smart Prompts);
+ein Profil konnte „100 %" sein und die Planung lief trotzdem ohne Zielzeit,
+ohne Leistungsreferenz und mit 0 Trainingstagen. engine/profile-strength.js
+(rein) beantwortet „wie gut kann ORVIA fuer dich planen?": Pflichtbereiche 40,
+Ziel 25 (Kategorie/Wert/Datum aus goal-plan-input), Leistungsreferenz 20
+(nur bei Ausdauerzielen anwendbar — sonst aus der Gewichtung genommen, nicht
+0), Verfuegbarkeit 15; veraltete Pflichtbereiche −5 (max −15). Baender
+stark/solide/lueckenhaft/schwach.
+
+Jede Luecke traegt ihr Ziel: sectionId → openProfileSection, Ziel-Luecken →
+openGoalEditor(goalId). Profilzentrale zeigt Score, Band und die drei
+wichtigsten Luecken als Buttons unter dem Kopf (kein Flag: reine Anzeige,
+keine Planwirkung). profile_strength 18/18; profile_center_m10 33/33.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

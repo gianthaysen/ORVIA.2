@@ -1,0 +1,356 @@
+✅   1/313 absence_replanner                         ✅ absence_replanner: 38 bestanden, 0 fehlgeschlagen
+✅   2/313 access_gate_grants                        Ergebnis: 15 bestanden, 0 fehlgeschlagen
+✅   3/313 account_flows_h4                          Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅   4/313 action_result_contract                    [ORVIA quick-actions] Aktion nicht ausgefuehrt: gibt_es_nicht · invalid_acti
+✅   5/313 activity_ad1c                             AD1c: GRÜN — Plan-Link real persistiert (E2E/Reload/Cloud), Cloud-Workoutdet
+✅   6/313 activity_config                           [ORVIA activity] kein Label für Sport-ID quidditch
+✅   7/313 activity_correction_310b                  Ergebnis: 27 bestanden, 0 fehlgeschlagen.
+✅   8/313 activity_dedup_phase42                    Ergebnis: 8 bestanden, 0 fehlgeschlagen.
+✅   9/313 activity_detail_ad1_contract              AD1-SELBSTPRÜFUNG: GRÜN — kanonischer Activity-Detail-Vertrag erfüllt (ein E
+✅  10/313 activity_dom_phase4                       Ergebnis: 6 bestanden, 0 fehlgeschlagen.
+✅  11/313 activity_edit_phase4                      Ergebnis: 41 bestanden, 0 fehlgeschlagen.
+✅  12/313 activity_normalize                        Ergebnis: 38 bestanden, 0 fehlgeschlagen.
+✅  13/313 activity_store                            Ergebnis: 39 bestanden, 0 fehlgeschlagen.
+✅  14/313 activity_sync                             Ergebnis: 26 bestanden, 0 fehlgeschlagen.
+✅  15/313 activity_week_truth_dt1                   DT1/DT1b: GRÜN — ein kanonischer Wochen-Vertrag; Nutzerzeitzone injiziert, M
+✅  16/313 adaptive_card                             Ergebnis: 50 bestanden, 0 fehlgeschlagen
+✅  17/313 adaptive_visibility                       adaptive_visibility: ALL PASSED (20 ok)
+✅  18/313 age_boundary_issue6                       Ergebnis: 23 bestanden, 0 fehlgeschlagen.
+✅  19/313 analysis_endurance_v5                     analysis_endurance_v5: ALL PASSED (23 ok)
+✅  20/313 analysis_recovery_v5                      analysis_recovery_v5: ALL PASSED (23 ok)
+✅  21/313 athlete_profile_sync_0016                 [ORVIA profile-store] Ziel-Duplikat(e) dedupliziert — Cloud wird bereinigt.
+✅  22/313 auth_dom                                  [ORVIA auth] role_display_failed {"code":"ACCESS_PROFILE_MISSING","at":"2026
+✅  23/313 auth_logic                                Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+✅  24/313 availability_4e1                          Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅  25/313 batch0_safety_pipeline                    Ergebnis: 26 bestanden, 0 fehlgeschlagen.
+✅  26/313 batch2a_canonical_load                    Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅  27/313 batch2b_dedupe_grouping                   Ergebnis: 24 bestanden, 0 fehlgeschlagen.
+✅  28/313 batch2c_load_quality                      Ergebnis: 25 bestanden, 0 fehlgeschlagen.
+✅  29/313 batch2d_ratio_occurrence                  Ergebnis: 21 bestanden, 0 fehlgeschlagen.
+✅  30/313 batch2e_integration                       Ergebnis: 17 bestanden, 0 fehlgeschlagen.
+✅  31/313 batch2f_correctness                       Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+⏭️   32/313 batch2f_offline_queue_live                ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW
+✅  33/313 batch3a_goal_portfolio                    Ergebnis: 68 bestanden, 0 fehlgeschlagen.
+✅  34/313 batch3b0_knowledge                        Ergebnis: 116 bestanden, 0 fehlgeschlagen.
+✅  35/313 batch3b1_running_capacity                 Ergebnis: 131 bestanden, 0 fehlgeschlagen.
+✅  36/313 batch3b1b_activity_summary                Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+⏭️   37/313 batch_2026_08_04                          ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅  38/313 bests_multisport                          Ergebnis: 16 bestanden, 0 fehlgeschlagen.
+✅  39/313 blob_hardening_h3                         Ergebnis: 27 bestanden, 0 fehlgeschlagen.
+✅  40/313 body_fields_p2                            Ergebnis: 26 bestanden, 0 fehlgeschlagen.
+✅  41/313 bodymap_mapping                           bodymap_mapping_test: 70/70 bestanden
+✅  42/313 calc_phase42                              Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅  43/313 calc_riegel_general                       calc_riegel_general: ALL PASSED (11 ok)
+✅  44/313 checkin_compact                           checkin_compact: ALL PASSED (16 ok)
+✅  45/313 checkin_decision_integration              Ergebnis: 18 bestanden, 0 fehlgeschlagen.
+✅  46/313 checkin_extra_ui                              at run (file:///sessions/rcw-01yazqcyhmo3sbsxf7rl7rgh/mnt/Strava/supabas
+✅  47/313 checkin_field_resolver_p6                 Ergebnis: 42 bestanden, 0 fehlgeschlagen.
+✅  48/313 checkin_p6_preconditions                  Ergebnis: 18 bestanden, 0 fehlgeschlagen.
+✅  49/313 checkin_phase2                            Ergebnis: 33 bestanden, 0 fehlgeschlagen.
+✅  50/313 checkin_phase2_types                      Ergebnis: 27 bestanden, 0 fehlgeschlagen.
+✅  51/313 cloud_sync_p9                             Ergebnis: 31 bestanden, 0 fehlgeschlagen.
+✅  52/313 coachmarks_m9                             Ergebnis: 13 bestanden, 0 fehlgeschlagen.
+✅  53/313 custom_exercise                           custom_exercise: 9 bestanden, 0 fehlgeschlagen
+✅  54/313 daily_score_continuity                    daily_score_continuity: ALL PASSED (103 ok)
+✅  55/313 dashboard_v5_phaseb                       dashboard_v5_phaseb: ALL PASSED (8 ok)
+✅  56/313 decision_log                              Ergebnis: 64 bestanden, 0 fehlgeschlagen
+✅  57/313 decision_reentrancy_incident              9 bestanden, 0 fehlgeschlagen
+✅  58/313 decision_sink_health                      decision_sink_health: 11 bestanden, 0 fehlgeschlagen
+✅  59/313 decision_sink_registration                decision_sink_registration: 14 bestanden, 0 fehlgeschlagen
+✅  60/313 decision_sink                             Ergebnis: 24 bestanden, 0 fehlgeschlagen
+✅  61/313 deploy_marker                             deploy_marker: 20 bestanden, 0 fehlgeschlagen
+✅  62/313 devices_4h                                Ergebnis: 17 bestanden, 0 fehlgeschlagen.
+✅  63/313 endurance_profiles_4c1b                   Ergebnis: 18 bestanden, 0 fehlgeschlagen.
+✅  64/313 energy_resolver_p7                        Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+✅  65/313 engine_i2_runkm_canon                     I2: GRÜN — Running-km liest den kanonischen Wochenvertrag (dedupliziert, Meh
+✅  66/313 engine_i2b_missingness                    I2b: GRÜN — weekRunKm/​_storeRunsByDay: kein falsches 0, Session-Identität e
+✅  67/313 engine_i2c_capacity_truth                 I2c: GRÜN — Missingness bis zur Prognose, distanzbasierte Long-Run-Erkennung
+✅  68/313 engine_i3a1_safety                        I3a.1: GRÜN — autoritative vs. geschätzte Last getrennt; Decision-Pfad block
+✅  69/313 engine_i3a2_load_wording                  I3a.2: GRÜN — CTL/ATL aus measured+estimated korrekt als Schätzwert (nicht U
+✅  70/313 engine_i3a3_confidence_review             I3a.3: GRÜN — CTL-Trend-Veto und Coach-ACWR-Report respektieren die bestehen
+✅  71/313 engine_i3a4_failclosed                    I3a.4: GRÜN — fehlende/ungueltige Last-Confidence loest fail-closed KEIN har
+✅  72/313 engine_i3a5_estimated_semantics           I3a.5: GRÜN — acwrStatus.estimated ist jetzt genau dann true, wenn Confidenc
+✅  73/313 engine_i3a6_confidence_normalize          I3a.6: GRÜN — fehlende/leere/null/ungültige Last-Confidence wird in buildAIR
+✅  74/313 engine_i3a_load_truth                     I3a: GRÜN — kanonische Lastserie mit Provenienz, Missingness, Wochen-Complet
+✅  75/313 engine_i3b1_failclosed_aggregation        I3b.1: ROT — 3 offen (erwartet vor dem Fix).
+✅  76/313 engine_i3b_adapter                        I3 Part B Adapter: GRÜN — Adapter baut korrekte Resolver-Eingaben; Chip/Plan
+✅  77/313 engine_i3b_plan_actual                    I3 Part B: GRÜN — kanonischer Plan-Ist-Resolver: explizite ID zuerst, belegt
+✅  78/313 engine_input_b4_profile_keys              Ergebnis: 9 bestanden, 0 fehlgeschlagen
+✅  79/313 engine_input_snapshot_b1                  Ergebnis: 22 bestanden, 0 fehlgeschlagen.
+✅  80/313 engine_program_e                          Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+✅  81/313 engine_s1_scheduler_skeleton              S1-Skelett: GRÜN — SchedulerInput-Factory + deterministisches Sieben-Tage-Sk
+✅  82/313 engine_s2_goal_allocation                 S2-Goal-Allocation: GRÜN — deterministischer Reuse-Adapter über buildPortfol
+✅  83/313 engine_shadow_compare                     engine_shadow_compare: 13 bestanden, 0 fehlgeschlagen
+✅  84/313 engine_v2                                 Ergebnis: 133 bestanden, 0 fehlgeschlagen.
+✅  85/313 engine_week_consumers_3c                  I1: GRÜN — weekRunKm/runsWindow deterministisch an injizierte Referenzwoche 
+✅  86/313 equipment_p6                              Ergebnis: 27 bestanden, 0 fehlgeschlagen.
+✅  87/313 evidence                                  Ergebnis: 112 bestanden, 0 fehlgeschlagen
+✅  88/313 exercise_alternatives                     exercise_alternatives: 24 bestanden, 0 fehlgeschlagen
+✅  89/313 exercise_catalog                          exercise_catalog: 16 bestanden, 0 fehlgeschlagen
+✅  90/313 exercise_library_phase42                  Ergebnis: 14 bestanden, 0 fehlgeschlagen.
+⏭️   91/313 feedback_2026_08_05b                      ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅  92/313 format_utils                              format_utils_test: 48/48 bestanden
+✅  93/313 garmin_exercise_map                       Ergebnis: 99 bestanden, 0 fehlgeschlagen
+✅  94/313 garmin_workout_export                     Ergebnis: 102 bestanden, 0 fehlgeschlagen
+✅  95/313 gate_test_trigger                         Ergebnis: 50 bestanden, 0 fehlgeschlagen
+✅  96/313 gm1_shell                                 gm1_shell: ALL PASSED (22 ok)
+✅  97/313 gm2_plan_parity                           gm2_plan_parity: ALL PASSED (29 ok)
+✅  98/313 gm3_activity_parity                       gm3_activity_parity: ALL PASSED (60 ok)
+✅  99/313 gm4_analysis_parity                       gm4_analysis_parity: ALL PASSED (52 ok)
+✅ 100/313 gm5_profile_parity                        gm5_profile_parity: ALL PASSED (74 ok)
+⏭️  101/313 gm61_contract                             ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 102/313 gm61_hydration_contract                   ✅ gm61_hydration_contract: 43 bestanden, 0 fehlgeschlagen.
+✅ 103/313 gm62_input_guard                          ✅ gm62_input_guard: 48 bestanden, 0 fehlgeschlagen.
+⏭️  104/313 gm6_state_contract                        ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 105/313 gm7_contracts                             gm7_contracts_test: 17/17 bestanden
+⏭️  106/313 gm_structure_contract                     ⏭️  ÜBERSPRUNGEN — playwright ohne Browser-Binary (`npx playwright install c
+✅ 107/313 goal_detail                               ✅ goal_detail: 38 bestanden, 0 fehlgeschlagen
+✅ 108/313 goal_editor_g0                            Ergebnis: 24 bestanden, 0 fehlgeschlagen.
+✅ 109/313 goal_engine_distance                      ✅ goal_engine_distance: 22 bestanden, 0 fehlgeschlagen
+✅ 110/313 goal_feasibility_adapter                  Ergebnis: 20 bestanden, 0 fehlgeschlagen
+✅ 111/313 goal_feasibility                          Ergebnis: 152 bestanden, 0 fehlgeschlagen
+✅ 112/313 goal_fields_audit                         Ergebnis: 6 bestanden, 0 fehlgeschlagen.
+✅ 113/313 goal_forecast_wiring                      goal_forecast_wiring: ALL PASSED (31 ok)
+✅ 114/313 goal_g1_contract                          Status: GRÜN — Ziel-Detailfelder werden cloud-persistiert und auf dem Zweitg
+✅ 115/313 goal_history                              goal_history: 9 bestanden, 0 fehlgeschlagen
+✅ 116/313 goal_phase_plan                           ✅ goal_phase_plan: 25 bestanden, 0 fehlgeschlagen
+✅ 117/313 goal_plan_input                           ✅ goal_plan_input: 41 bestanden, 0 fehlgeschlagen
+✅ 118/313 goal_plan_switch                          ✅ goal_plan_switch: 39 bestanden, 0 fehlgeschlagen
+✅ 119/313 goal_shadow                               Ergebnis: 57 bestanden, 0 fehlgeschlagen
+✅ 120/313 goal_ssot_p6                              Ergebnis: 28 bestanden, 0 fehlgeschlagen.
+✅ 121/313 goal_taper_resolver                       Ergebnis: 23 bestanden, 0 fehlgeschlagen
+✅ 122/313 goal_unify_h2                             Ergebnis: 12 bestanden, 0 fehlgeschlagen.
+✅ 123/313 goal_value_format                         Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅ 124/313 goals_manager_list                        Ergebnis: 22 bestanden, 0 fehlgeschlagen.
+✅ 125/313 goals_p5                                  Ergebnis: 23 bestanden, 0 fehlgeschlagen.
+✅ 126/313 gym_adapters                              ✅ gym_adapters: 29 bestanden, 0 fehlgeschlagen
+✅ 127/313 gym_server_reload                         gym_server_reload: 11 bestanden, 0 fehlgeschlagen
+✅ 128/313 gym_shadow_report                         Ergebnis: 67 bestanden, 0 fehlgeschlagen.
+✅ 129/313 gym_volume                                Ergebnis: 53 bestanden, 0 fehlgeschlagen.
+✅ 130/313 heute_single_training_block               Ergebnis: 8 bestanden, 0 fehlgeschlagen.
+✅ 131/313 hidden_legacy_hosts                       hidden_legacy_hosts: ALL PASSED (35 ok)
+✅ 132/313 i18n_guard                                ✅ i18n_guard: 40 bestanden, 0 fehlgeschlagen
+✅ 133/313 import_route_persistence                  import_route_persistence_test: 9/9 bestanden
+✅ 134/313 intervals_phase42                         Ergebnis: 10 bestanden, 0 fehlgeschlagen.
+⏭️  135/313 kf021_best_times                          ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 136/313 knowledge_application                     Ergebnis: 53 bestanden, 0 fehlgeschlagen
+✅ 137/313 knowledge_consumer                        Ergebnis: 30 bestanden, 0 fehlgeschlagen
+✅ 138/313 knowledge_hinweise                        Ergebnis: 64 bestanden, 0 fehlgeschlagen
+✅ 139/313 knowledge_ingest                          Ergebnis: 60 bestanden, 0 fehlgeschlagen
+✅ 140/313 knowledge_targets                         Ergebnis: 24 bestanden, 0 fehlgeschlagen
+✅ 141/313 knowledge_v7                              Ergebnis: 32 bestanden, 0 fehlgeschlagen
+⏭️  142/313 liquid_glass_tabbar                       ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 143/313 live_schema_parity                        Ergebnis: 17 bestanden, 0 fehlgeschlagen
+✅ 144/313 live_workout_active_race_phase42          Ergebnis: 4 bestanden, 0 fehlgeschlagen.
+✅ 145/313 live_workout_flush_phase42                Ergebnis: 12 bestanden, 0 fehlgeschlagen.
+✅ 146/313 live_workout_load_phase42                 Ergebnis: 8 bestanden, 0 fehlgeschlagen.
+✅ 147/313 live_workout_offline_phase42              Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅ 148/313 live_workout_pause_phase42                Ergebnis: 10 bestanden, 0 fehlgeschlagen.
+✅ 149/313 live_workout_phase42                      Ergebnis: 19 bestanden, 0 fehlgeschlagen.
+✅ 150/313 live_workout_restore_phase42              Ergebnis: 9 bestanden, 0 fehlgeschlagen.
+⏭️  151/313 live_workout_rls_phase42                  ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW, B_EMAIL, B_PW
+⏭️  152/313 live_workout_rpc_smoke_phase42            ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW
+✅ 153/313 load_history                              Ergebnis: 111 bestanden, 0 fehlgeschlagen
+✅ 154/313 load_profile                              load_profile: ALL PASSED (36 ok)
+✅ 155/313 load_read_model_5b                        load_read_model_5b: ALL PASSED (19 ok)
+✅ 156/313 login_chain_shape                         Ergebnis: 8 bestanden, 0 fehlgeschlagen
+✅ 157/313 metric_registry                           OK 14 Tests
+✅ 158/313 metric_resolver                           OK 33 Tests
+✅ 159/313 migrate_blob                              Ergebnis: 49 bestanden, 0 fehlgeschlagen.
+✅ 160/313 migrations_chain_contract                 Ergebnis: 7 bestanden, 0 fehlgeschlagen
+✅ 161/313 module_version_drift                      Ergebnis: 26 bestanden, 0 fehlgeschlagen
+✅ 162/313 muscle_map_pilot                          muscle_map_pilot: ALL PASSED (22 ok)
+✅ 163/313 muscle_volume_phase43                     Ergebnis: 22 bestanden, 0 fehlgeschlagen.
+✅ 164/313 muscle_volume_repo_phase43                Ergebnis: 6 bestanden, 0 fehlgeschlagen.
+⏭️  165/313 muscle_volume_sql_phase43                 ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW, B_EMAIL, B_PW
+✅ 166/313 observer_input                            Ergebnis: 58 bestanden, 0 fehlgeschlagen
+✅ 167/313 observer_source                           Ergebnis: 21 bestanden, 0 fehlgeschlagen
+✅ 168/313 onboarding_completion_m4                  [ORVIA onboarding] Abschluss unerwartet fehlgeschlagen. boom
+✅ 169/313 onboarding_dom                            [ORVIA onboarding] onboardingSportsLogic fehlt oder ist unvollständig — Spor
+✅ 170/313 onboarding_goal_value                     Ergebnis: 16 bestanden, 0 fehlgeschlagen
+✅ 171/313 onboarding_log                            ✅ onboarding_log: 20 bestanden, 0 fehlgeschlagen
+✅ 172/313 onboarding_logic                          Ergebnis: 86 bestanden, 0 fehlgeschlagen.
+✅ 173/313 onboarding_m5a_first_run                  [ORVIA onboarding] onboardingProfileLogic fehlt oder ist unvollständig — Pro
+✅ 174/313 onboarding_m5b_training                   Ergebnis: 73 bestanden, 0 fehlgeschlagen.
+✅ 175/313 onboarding_m6_goals                       Ergebnis: 38 bestanden, 0 fehlgeschlagen.
+✅ 176/313 onboarding_m7_availability_safety         Ergebnis: 59 bestanden, 0 fehlgeschlagen.
+✅ 177/313 onboarding_m8_review                      Ergebnis: 16 bestanden, 0 fehlgeschlagen.
+✅ 178/313 onboarding_profile_logic                  Ergebnis: 51 bestanden, 0 fehlgeschlagen.
+✅ 179/313 onboarding_routing                        Ergebnis: 19 bestanden, 0 fehlgeschlagen.
+✅ 180/313 onboarding_sports_logic                   Ergebnis: 71 bestanden, 0 fehlgeschlagen.
+✅ 181/313 onboarding_state_v3                       Ergebnis: 63 bestanden, 0 fehlgeschlagen.
+✅ 182/313 onboarding_steps_4i1                      Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅ 183/313 onboarding_store                          Ergebnis: 17 bestanden, 0 fehlgeschlagen.
+✅ 184/313 orvia_charts                              orvia_charts: ALL PASSED (14 ok)
+✅ 185/313 orvia_score_v9                            ALLE 46 ZUSICHERUNGEN GRUEN
+⏭️  186/313 p0_workout_persistence                    ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 187/313 pb_sync                                   Ergebnis: 17 bestanden, 0 fehlgeschlagen.
+✅ 188/313 performance_4f                            Ergebnis: 23 bestanden, 0 fehlgeschlagen.
+✅ 189/313 performance_input                         Ergebnis: 116 bestanden, 0 fehlgeschlagen
+✅ 190/313 performance_resolver                      performance_resolver: ALL PASSED (36 ok)
+✅ 191/313 performance_zones                         performance_zones: ALL PASSED (70 ok)
+⏭️  192/313 phase1a_rest                              ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 193/313 phase1a_trust                             Ergebnis: 26 bestanden, 0 fehlgeschlagen.
+✅ 194/313 phase1b_attrappen                         phase1b_attrappen: ALL PASSED (20 ok)
+⏭️  195/313 phase2_envelope                           ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 196/313 phase3_hydration                          Ergebnis: 8 bestanden, 0 fehlgeschlagen.
+✅ 197/313 phase3_offline                            Ergebnis: 10 bestanden, 0 fehlgeschlagen.
+⏭️  198/313 phase3_reactivation                       ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 199/313 phase4_consolidation_4i                   Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅ 200/313 phase4_quality                            phase4_quality: ALL PASSED (52 ok)
+⏭️  201/313 phase5de                                  ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 202/313 phase6_contracts                          phase6_contracts: ALL PASSED (28 ok)
+✅ 203/313 phase6_e18_language                       phase6_e18_language: ALL PASSED (12 ok)
+⏭️  204/313 phase6_export_delete                      ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+⏭️  205/313 phase6_module_load                        ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 206/313 phase7_s3_capacity_adapter                phase7_s3_capacity_adapter: ALL PASSED (21 ok)
+✅ 207/313 phase7_s4_constraint_solver               phase7_s4_constraint_solver: ALL PASSED (18 ok)
+✅ 208/313 phase7_s5_prescription                    phase7_s5_prescription: ALL PASSED (47 ok)
+✅ 209/313 phase7_scheduler_v2                       phase7_scheduler_v2: ALL PASSED (18 ok)
+⏭️  210/313 phase8_activation_live                    ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+⏭️  211/313 phase8_capacity_pipeline                  ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 212/313 phase8_feature_flags                      phase8_feature_flags: ALL PASSED (46 ok)
+⏭️  213/313 phase8_gate_live                          ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 214/313 phase8_plan_activation                    phase8_plan_activation: ALL PASSED (111 ok)
+✅ 215/313 phase8_shadow_eval                        phase8_shadow_eval: ALL PASSED (41 ok)
+⏭️  216/313 phase8_week_projection                    ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+⏭️  217/313 phase8_week_shadow                        ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 218/313 plan_calendar_identity                    Ergebnis: 31 bestanden, 0 fehlgeschlagen
+✅ 219/313 plan_domain_5c                            plan_domain_5c: ALL PASSED (40 ok)
+✅ 220/313 plan_fulfillment_phase42                  Ergebnis: 10 bestanden, 0 fehlgeschlagen.
+✅ 221/313 plan_phases_v5                            plan_phases_v5: ALL PASSED (19 ok)
+✅ 222/313 plan_quality_scores                       plan_quality_scores: ALL PASSED (39 ok)
+✅ 223/313 plan_quality_v5                           plan_quality_v5: ALL PASSED (23 ok)
+✅ 224/313 plan_ssot_p4                              Ergebnis: 26 bestanden, 0 fehlgeschlagen.
+✅ 225/313 plan_translator                           Ergebnis: 102 bestanden, 0 fehlgeschlagen
+✅ 226/313 plan_variants                             plan_variants: ALL PASSED (27 ok)
+✅ 227/313 plan_week_nav                             plan_week_nav: ALL PASSED (20 ok)
+✅ 228/313 plan_weeklist_v5                          plan_weeklist_v5: ALL PASSED (27 ok)
+✅ 229/313 plan_weekvolume_v5                        plan_weekvolume_v5: ALL PASSED (22 ok)
+✅ 230/313 planned_volume                            Ergebnis: 22 bestanden, 0 fehlgeschlagen
+✅ 231/313 plate_calculator                          plate_calculator: 22 bestanden, 0 fehlgeschlagen
+⏭️  232/313 prediction_observer_live                  ⏭️  ÜBERSPRUNGEN — Umgebungsvariablen fehlen: SUPABASE_URL, SUPABASE_ANON_KE
+✅ 233/313 prediction_observer                       Ergebnis: 161 bestanden, 0 fehlgeschlagen
+✅ 234/313 prediction_wiring                         Ergebnis: 121 bestanden, 0 fehlgeschlagen
+✅ 235/313 prescription_format                       Ergebnis: 42 bestanden, 0 fehlgeschlagen
+✅ 236/313 profile_center_m10                        Ergebnis: 33 bestanden, 0 fehlgeschlagen.
+✅ 237/313 profile_completion_fix                    Ergebnis: 41 bestanden, 0 fehlgeschlagen.
+✅ 238/313 profile_editor_bugfix                     Ergebnis: 18 bestanden, 0 fehlgeschlagen.
+✅ 239/313 profile_interpretation_2026_07_16         Ergebnis: 16 bestanden, 0 fehlgeschlagen.
+✅ 240/313 profile_meta_completeness                 Ergebnis: 54 bestanden, 0 fehlgeschlagen.
+✅ 241/313 profile_metric_resolver_p5                Ergebnis: 53 bestanden, 0 fehlgeschlagen.
+✅ 242/313 profile_modal_infra                       Ergebnis: 17 bestanden, 0 fehlgeschlagen.
+✅ 243/313 profile_model                             Ergebnis: 119 bestanden, 0 fehlgeschlagen.
+✅ 244/313 profile_phase1                            Ergebnis: 23 bestanden, 0 fehlgeschlagen.
+✅ 245/313 profile_save_wiring_a0                    12/12 bestanden
+✅ 246/313 profile_strength                          ✅ profile_strength: 18 bestanden, 0 fehlgeschlagen
+✅ 247/313 profile_ui_kit                            Ergebnis: 56 bestanden, 0 fehlgeschlagen.
+✅ 248/313 profile_ui                                Ergebnis: 57 bestanden, 0 fehlgeschlagen.
+✅ 249/313 profile_v14                               Ergebnis: 45 bestanden, 0 fehlgeschlagen.
+✅ 250/313 progression                               Ergebnis: 217 bestanden, 0 fehlgeschlagen
+✅ 251/313 provider_metrics_0019                     OK 19 Tests
+✅ 252/313 quick_actions_b                           Ergebnis: 21 bestanden, 0 fehlgeschlagen.
+✅ 253/313 quick_add_p8                              Ergebnis: 21 bestanden, 0 fehlgeschlagen.
+✅ 254/313 quickadd_v8                               quickadd_v8: ALL PASSED (21 ok)
+✅ 255/313 r1_data_integrity                         Ergebnis: 82 bestanden, 0 fehlgeschlagen.
+✅ 256/313 race_phases_phase42                       Ergebnis: 11 bestanden, 0 fehlgeschlagen.
+✅ 257/313 race_result                               Ergebnis: 31 bestanden, 0 fehlgeschlagen.
+✅ 258/313 racket_golf_4c1d                          Ergebnis: 19 bestanden, 0 fehlgeschlagen.
+✅ 259/313 readiness_phase3                          Ergebnis: 34 bestanden, 0 fehlgeschlagen.
+✅ 260/313 recovery_prefs_4g                         Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅ 261/313 register_with_invite                      Ergebnis: 30 bestanden, 0 fehlgeschlagen.
+✅ 262/313 return_ladder                             return_ladder: 29 bestanden, 0 fehlgeschlagen
+⏭️  263/313 rls                                       ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW, B_EMAIL, B_PW
+✅ 264/313 role_display_access_profile               Ergebnis: 19 bestanden, 0 fehlgeschlagen.
+✅ 265/313 run_all_reporting                         Ergebnis: 12 bestanden, 0 fehlgeschlagen
+✅ 266/313 run_classifier                            run_classifier: 9 bestanden, 0 fehlgeschlagen
+⏭️  267/313 rx_preview_ui                             ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 268/313 season_phases                             season_phases: 11 bestanden, 0 fehlgeschlagen
+✅ 269/313 series_e2e                                series_e2e_test: 77/77 bestanden
+✅ 270/313 session_debrief                           Ergebnis: 111 bestanden, 0 fehlgeschlagen
+⏭️  271/313 sets_survive_reload                       ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 272/313 shadow_adaptive                           Ergebnis: 194 bestanden, 0 fehlgeschlagen
+✅ 273/313 sheet_4j1                                 🟢 Phase 4j.1 Sheet-Tests: 39 passed, 0 failed
+✅ 274/313 shell_v3_migration                        shell_v3_migration: ALL PASSED (27 ok)
+✅ 275/313 sport_complete_4c1e                       Ergebnis: 27 bestanden, 0 fehlgeschlagen.
+✅ 276/313 sport_coverage_4c1a                       Ergebnis: 16 bestanden, 0 fehlgeschlagen.
+✅ 277/313 sport_editor_4c2                          Ergebnis: 16 bestanden, 0 fehlgeschlagen.
+✅ 278/313 sport_icon_whitelist                      sport_icon_whitelist: ALL PASSED (6 ok)
+✅ 279/313 sport_model_h1                            Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅ 280/313 sport_tiles_4d                            Ergebnis: 18 bestanden, 0 fehlgeschlagen.
+✅ 281/313 sports_sync_2b1                           Ergebnis: 40 bestanden, 0 fehlgeschlagen.
+✅ 282/313 strength_plan_contract                    Ergebnis: 101 bestanden, 0 fehlgeschlagen
+✅ 283/313 strength_plan_ui_e2e                      Ergebnis: 80 bestanden, 0 fehlgeschlagen
+✅ 284/313 strength_profile                          strength_profile: 48 bestanden, 0 fehlgeschlagen
+✅ 285/313 strength_progression                      strength_progression: 31 bestanden, 0 fehlgeschlagen
+✅ 286/313 strength_target_wiring                    Ergebnis: 50 bestanden, 0 fehlgeschlagen
+✅ 287/313 superset_model                            superset_model: 26 bestanden, 0 fehlgeschlagen
+✅ 288/313 swim_pace_phase42                         Ergebnis: 5 bestanden, 0 fehlgeschlagen.
+✅ 289/313 sync_incident_fix                         Ergebnis: 14 bestanden, 0 fehlgeschlagen.
+✅ 290/313 team_profiles_4c1c                        Ergebnis: 38 bestanden, 0 fehlgeschlagen.
+✅ 291/313 toast_zindex_contract                     Ergebnis: 4 bestanden, 0 fehlgeschlagen.
+✅ 292/313 today_decision_p3                         Ergebnis: 15 bestanden, 0 fehlgeschlagen.
+✅ 293/313 today_nav_p7                              Ergebnis: 13 bestanden, 0 fehlgeschlagen.
+✅ 294/313 training_domain_phase41                   Ergebnis: 38 bestanden, 0 fehlgeschlagen.
+✅ 295/313 training_input_p8                         Ergebnis: 43 bestanden, 0 fehlgeschlagen.
+✅ 296/313 training_labels_phase42                   Ergebnis: 10 bestanden, 0 fehlgeschlagen.
+✅ 297/313 training_load_phase3                      Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅ 298/313 training_migration_phase41                Ergebnis: 9 bestanden, 0 fehlgeschlagen.
+⏭️  299/313 training_rls_phase41                      ENV fehlt: SUPABASE_URL, SUPABASE_ANON_KEY, A_EMAIL, A_PW, B_EMAIL, B_PW
+✅ 300/313 ui_detail_mode                            ui_detail_mode_test: ALL PASSED
+✅ 301/313 ui_refresh_p1                             Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅ 302/313 upsert_conflict_contract                  Ergebnis: 20 bestanden, 0 fehlgeschlagen.
+✅ 303/313 week_addressable_plan                     week_addressable_plan: ALL PASSED (36 ok)
+✅ 304/313 week_decision_dedup                       week_decision_dedup: 13 bestanden, 0 fehlgeschlagen
+✅ 305/313 week_plan_designer                        week_plan_designer: ALL PASSED (34 ok)
+✅ 306/313 week_plan_policy                          week_plan_policy: ALL PASSED (38 ok)
+⏭️  307/313 workout_chain_phase1                      ⏭️  ÜBERSPRUNGEN — playwright ist installiert, aber kein Browser-Binary vorh
+✅ 308/313 workout_gym_wiring                        ✅ workout_gym_wiring: 35 bestanden, 0 fehlgeschlagen
+✅ 309/313 workout_hub_hydration_phase42             Ergebnis: 8 bestanden, 0 fehlgeschlagen.
+✅ 310/313 workout_lifecycle_phase42                 Ergebnis: 14 bestanden, 0 fehlgeschlagen.
+✅ 311/313 workout_repo_norow_phase42                Ergebnis: 9 bestanden, 0 fehlgeschlagen.
+✅ 312/313 workout_ssot_phase42                      [finish] { code: 'workout_close_failed' }
+✅ 313/313 workout_stuck_session_recovery            Ergebnis: 13 bestanden, 0 fehlgeschlagen.
+
+────────────────────────────────────────────────────────────────────────
+Bestanden      : 284
+Fehlgeschlagen : 0
+Übersprungen   : 29  (NICHT geprüft — kein Defekt, aber auch kein Beleg)
+Abgestürzt     : 0
+Gesamt         : 313 Dateien in 43.3 s
+
+Übersprungen — brauchen eine echte Supabase-Instanz (Zugangsdaten fehlen)  (7)
+  ⏭️  batch2f_offline_queue_live_test.mjs
+  ⏭️  live_workout_rls_phase42_test.mjs
+  ⏭️  live_workout_rpc_smoke_phase42_test.mjs
+  ⏭️  muscle_volume_sql_phase43_test.mjs
+  ⏭️  prediction_observer_live_test.mjs
+  ⏭️  rls_test.mjs
+  ⏭️  training_rls_phase41_test.mjs
+
+Übersprungen — kein Browser-Binary — `npx playwright install chromium` holt es nach  (22)
+  ⏭️  batch_2026_08_04_test.mjs
+  ⏭️  feedback_2026_08_05b_test.mjs
+  ⏭️  gm61_contract_test.mjs
+  ⏭️  gm6_state_contract_test.mjs
+  ⏭️  gm_structure_contract_test.mjs
+  ⏭️  kf021_best_times_test.mjs
+  ⏭️  liquid_glass_tabbar_test.mjs
+  ⏭️  p0_workout_persistence_test.mjs
+  ⏭️  phase1a_rest_test.mjs
+  ⏭️  phase2_envelope_test.mjs
+  ⏭️  phase3_reactivation_test.mjs
+  ⏭️  phase5de_test.mjs
+  ⏭️  phase6_export_delete_test.mjs
+  ⏭️  phase6_module_load_test.mjs
+  ⏭️  phase8_activation_live_test.mjs
+  ⏭️  phase8_capacity_pipeline_test.mjs
+  ⏭️  phase8_gate_live_test.mjs
+  ⏭️  phase8_week_projection_test.mjs
+  ⏭️  phase8_week_shadow_test.mjs
+  ⏭️  rx_preview_ui_test.mjs
+  ⏭️  sets_survive_reload_test.mjs
+  ⏭️  workout_chain_phase1_test.mjs
+
+✅ GRÜN, aber UNVOLLSTÄNDIG — 284 geprüft, 29 nicht gelaufen.
+   22 davon nur wegen des fehlenden Browsers — die laufen mit `npx playwright install chromium` sofort mit.

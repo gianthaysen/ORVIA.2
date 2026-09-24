@@ -1,0 +1,9 @@
+B-15: 16 Mutationsproben fuer goal-phase-plan, absence-replanner, profile-strength, goal-detail, onboarding-log
+
+Zwei Proben deckten Testluecken auf und wurden durch staerkere Tests
+geschlossen: Taper-Loeschung crashte statt zu melden (Loch-Pruefung in B1),
+Nachbar-Schutz beim Nachholen war ungeprueft (E2b mit hartem Nachbarn).
+Alle 16 schlagen an; 43 Kataloge gesamt.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH

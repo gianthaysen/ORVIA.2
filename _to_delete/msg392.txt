@@ -1,0 +1,19 @@
+Kurve behauptet keine Vergleichbarkeit ueber Lastwechsel hinweg (Build v8-392)
+
+Gefunden beim Ansehen der gerenderten Seite mit den echten Daten — bis dahin hatte ich die
+Oberflaeche nur per Textsuche geprueft, was diese Fehler nicht zeigen konnte.
+
+- Die Klimmzug-Kurve verband weiterhin 13 Wiederholungen OHNE Zusatzlast mit 7
+  Wiederholungen unter +10 kg zu einem steilen Absturz. Zahlen und Rekorde waren seit
+  v8-389 nach Last getrennt, die Linie nicht — sie behauptete genau die Vergleichbarkeit,
+  die die Zahlen darunter bestreiten. Jetzt: Linie an jedem Lastwechsel unterbrochen,
+  Fuellflaeche nur bei durchgehender Reihe, Punkte mit Zusatzlast hohl markiert,
+  Ablesezeile nennt die Last des gewaehlten Punktes.
+- Die Stagnationskarte trug die alte Ueberschrift "Drei Einheiten ohne Fortschritt",
+  waehrend der Text darunter von vier Einheiten und der Ausgleichsgeraden sprach. Eigene
+  Ueberschrift fuer die trendbasierte Stagnation: "Plateau - die Kurve steigt nicht."
+- "+2 in 1 Wochen": kp.in_n_wochen jetzt mit Pluralformen, Aufruf ueber count.
+- strength_profile_test +6 (77), Suite gruen
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YAzQcyhmo3SbsXf7RL7rgH
