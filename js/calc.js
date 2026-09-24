@@ -1044,11 +1044,35 @@ function recentRunStats(history){
   var dists=runs.map(function(r){return r.dist;});
   return {n:runs.length, typical:median(dists)||0, longest:dists.length?Math.max.apply(null,dists):0};
 }
+/* v8-396: Leistungsstand aus dem KANONISCHEN Profil lesen.
+   Vorher wurde nur p.level mit dem Legacy-Vokabular (anfaenger/wiedereinstieg/
+   profi/leistung) geprueft. Das Onboarding v2 schreibt den Stand aber nach
+   sports[role=primary].level als beginner|intermediate|advanced|competitive —
+   ein v2-Einsteiger fiel damit still auf den Mittelwert-Seed (12 km/5 km/3 Laeufe
+   statt 6 km/3 km/2). Genau die Gruppe mit dem hoechsten Ueberlastungsrisiko
+   bekam den doppelten Startumfang. Alias-Tabelle deckungsgleich mit
+   profile-model.LEVEL_ALIASES (calc darf nicht von profile-model abhaengen). */
+var RUN_LEVEL_ALIASES={
+  beginner:'beginner',anfaenger:'beginner','anf\u00e4nger':'beginner',wiedereinstieg:'beginner',
+  intermediate:'intermediate',
+  advanced:'advanced',fortgeschritten:'advanced',experienced:'advanced',
+  competitive:'competitive',profi:'competitive',leistung:'competitive',performance:'competitive',pro:'competitive'
+};
+function runLevelOf(p){
+  var raw=null;
+  try{
+    var sp=Array.isArray(p.sports)?p.sports:[];
+    for(var i=0;i<sp.length;i++){if(sp[i]&&sp[i].role==='primary'){raw=sp[i].level;break;}}
+  }catch(e){}
+  if(raw==null||raw==='')raw=p.level;
+  if(raw==null||raw==='')return null;
+  return RUN_LEVEL_ALIASES[String(raw).trim().toLowerCase()]||null;
+}
 function calculateRecommendedWeeklyRunVolume(userProfile, trainingHistory, readinessData){
   var p=userProfile||{}, rd=readinessData||{};
-  var level=p.level||'fortgeschritten';
-  var beginner=(level==='anfaenger'||level==='wiedereinstieg');
-  var elite=(level==='profi'||level==='leistung');
+  var level=runLevelOf(p)||'intermediate';
+  var beginner=(level==='beginner');
+  var elite=(level==='competitive');
   var risk=p.riskTolerance||p.riskPreference||'balanced';
   var st=recentRunStats(trainingHistory);
   var knee=rd.painScore!=null?rd.painScore:(rd.knee!=null?rd.knee:0);
@@ -1881,7 +1905,7 @@ function nutritionTargets(p){
 const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,paceZones,bmr,nutritionTargets,ewma,sessionLoad,acwr,
   loadModel,loadSeries,loadConfidenceContract,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,resolvePlanActual,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegel,riegelHM,goalEngine,
   easyShare,easyShareDetail,weeklyJump,lrTarget,hrSpread,easyTooHard,efSeries,nextRunRec,heavyLegs,sleepDebt,weightHint,
-  recentRunStats,calculateRecommendedWeeklyRunVolume,
+  recentRunStats,calculateRecommendedWeeklyRunVolume,runLevelOf,RUN_LEVEL_ALIASES,
   dayStateEngine,adaptSessionPlan,adaptWeekPlan,
   classifyTrainingType,SPORT_PROFILES,sportProfileFor,safetyCheck,detectDeficits,buildTrainingDecision,
   evaluateExtraState,escalateWithExtras,loadSpikeInfo,
