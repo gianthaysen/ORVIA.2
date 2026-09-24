@@ -3423,7 +3423,10 @@ body.profile-open #tab-mehr{padding:var(--sat) 0 calc(env(safe-area-inset-bottom
 .hub-act[disabled] b,.hub-act[disabled] span{color:var(--faint)}
 .hub-act[disabled] .ha-ic{color:var(--faint)}
 .cta[disabled],.subtabs button[disabled]{cursor:default;color:var(--faint)}
-.cta.prim[disabled]{opacity:.55}
+/* v8-399: ein gesperrter Gold-CTA war Gold mit 55 % Deckung und #8A93A1-Schrift —
+   unlesbar und sah tippbar aus. Gesperrt = neutrale Flaeche, volle Lesbarkeit. */
+.cta.prim[disabled]{opacity:1;background:var(--surface);color:var(--muted);border:1px solid var(--border);box-shadow:none}
+.cta .cta-row{display:inline-flex;align-items:center;gap:8px}
 .gm-page{position:fixed;inset:0;z-index:55;overflow-y:auto;background:radial-gradient(760px 620px at 50% -12%,#0b1320 0%,#091019 46%,#070C14 76%);max-width:430px;margin:0 auto;padding:0 0 40px;display:none}
 .gm-page.on{display:block}
 .page-head h2{margin:0;font-size:22px;line-height:normal}

@@ -1,4 +1,4 @@
-const C = 'orvia-v8-398';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
+const C = 'orvia-v8-399';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
 
    Der Upload von v8-354 war unvollstaendig: js/ und sw.js kamen an,
    styles.css NICHT (live weiterhin `.toast{z-index:99}`). Der Cache-Name
@@ -4329,9 +4329,17 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
 // Ausfalltolerantes Pre-Caching: EINE fehlende/umbenannte Datei darf NICHT das gesamte
 // SW-Update blockieren (sonst bleibt der alte Worker aktiv und liefert die alte App aus).
 // Nicht vorab gecachte Assets werden beim ersten Zugriff per fetch nachgeladen (cache-first unten).
+/* v8-399 (Nutzerbefund 25.09.): cache.add(url) holt ueber den HTTP-Cache des Browsers.
+   Liegt dort eine styles.css der VORHERIGEN Auslieferung (GitHub Pages: max-age=600,
+   iOS-Heuristik laenger), wird sie unter dem NEUEN Cache-Namen einbetoniert — genau
+   der Fall vom 17.08. (v8-354), diesmal ohne Teildeploy: js neu, styles.css alt,
+   Goldbuttons wieder schwarz auf schwarz. cache:'reload' umgeht den HTTP-Cache
+   beim Vorbefuellen; die Versionsnummer allein reicht dafuer nicht. */
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(C).then(c => Promise.all(ASSETS.map(a => c.add(a).catch(() => null)))).then(() => self.skipWaiting())
+    caches.open(C).then(c => Promise.all(ASSETS.map(a =>
+      c.add(new Request(a, { cache: 'reload' })).catch(() => c.add(a).catch(() => null))
+    ))).then(() => self.skipWaiting())
   );
 });
 self.addEventListener('activate', e => {

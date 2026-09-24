@@ -9207,7 +9207,8 @@ function gmStartSport(sport){
     preRows+
     '<div class="mode-hint '+hintKind+'">'+icon(hintKind==='reco'?'shield':'info','sm')+'<div>'+gmEsc(hint)+'</div></div>'+
     (canStart
-      ?'<button class="cta prim" style="width:100%;margin-top:12px" onclick="gmStartFromPreStart()">'+icon('play','sm')+' '+gmEsc(sport)+' starten</button>'
+      /* v8-399: .cta.prim ist column-flex (fuer .cta-sub); Icon und Label gehoeren in EINE Zeile. */
+      ?'<button class="cta prim" style="width:100%;margin-top:12px" onclick="gmStartFromPreStart()"><span class="cta-row">'+icon('play','sm')+gmEsc(sport)+' starten</span></button>'
       :'<button class="cta prim" disabled aria-disabled="true" style="width:100%;margin-top:12px">'+gmEsc(sport)+' starten — '+GM_NA+'</button>')+
     /* Phase 1b: „Nur an Uhr uebergeben" war ein Knopf ohne jeden Endzustand.
        Entfernt; kommt zurueck, wenn die Uhr-Uebergabe existiert. */
