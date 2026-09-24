@@ -317,5 +317,37 @@ function seedDraft(draft) { const s = {}; s[Store.key(null)] = JSON.stringify(dr
   ok('D4c kitFull prüft SegmentedControl (Vertrag erweitert)', /createSegmentedControl/.test(String(src.match(/function kitFull[\s\S]{0,400}/))));
 }
 
+{ // P3 (v8-398): Risikopraeferenz im Trainingsstand-Schritt — optional, kanonisch, ohne Vorauswahl
+  let segOpts = []; const realSC = KIT.createSegmentedControl;
+  KIT.createSegmentedControl = function (o) { segOpts.push(o); return realSC(o); };
+  let h = await fresh(seedDraft(draftAt('training_level', ['welcome', 'profile', 'sports'], { sports: selWithPrimary() })));
+  globalThis.ORVIA.onboardingV2.open({ fresh: false });
+  await wait();
+  const risk = segOpts.filter(o => o.name === 'risk-band')[0];
+  ok('P3a Risikopraeferenz als SegmentedControl mit 3 kanonischen Werten, allowEmpty, KEIN Default',
+    !!risk && risk.allowEmpty === true && risk.value === null && JSON.stringify(risk.options.map(o => o.value)) === JSON.stringify(['conservative', 'balanced', 'ambitious']));
+  ok('P3b Labels aus dem Katalog, kein roher Key', !!risk && risk.options.every(o => /^(Konservativ|Ausgewogen|Ambitioniert)$/.test(o.label)));
+  const B = globalThis.ORVIA.onboardingV2._m4.buildCompletionPatch;
+  const dd0 = JSON.parse(JSON.stringify(ST().draft.draftData));
+  const p0 = B(dd0, PM, NOW, { preferences: { coachingStyle: 'direct' } });
+  ok('P3c unbeantwortet ⇒ Patch traegt WEDER preferences.riskTolerance NOCH riskTolerance (nichts erfunden)',
+    !('riskTolerance' in p0) && !(p0.preferences && 'riskTolerance' in p0.preferences));
+  risk.onChange('conservative');
+  await wait();
+  ok('P3d Wahl schreibt draftData.preferences.riskTolerance', ST().draft.draftData.preferences && ST().draft.draftData.preferences.riskTolerance === 'conservative');
+  ok('P3e Draft persistiert die Wahl', (JSON.parse(h.mem[Store.key(null)]).draftData.preferences || {}).riskTolerance === 'conservative');
+  const p1 = B(JSON.parse(JSON.stringify(ST().draft.draftData)), PM, NOW, { preferences: { coachingStyle: 'direct' } });
+  ok('P3f Patch: preferences.riskTolerance (SSoT) + Top-Level-Spiegel, bestehende Praeferenzen bleiben',
+    p1.riskTolerance === 'conservative' && p1.preferences && p1.preferences.riskTolerance === 'conservative' && p1.preferences.coachingStyle === 'direct');
+  ok('P3g normalizePreferences akzeptiert den Wert (kanonisches Vokabular)', PM.normalizePreferences(p1.preferences).riskTolerance === 'conservative');
+  risk.onChange(null);
+  await wait();
+  ok('P3h Abwahl entfernt den Wert wieder', !(ST().draft.draftData.preferences || {}).riskTolerance);
+  const ddBad = JSON.parse(JSON.stringify(ST().draft.draftData)); ddBad.preferences = { riskTolerance: 'konservativ' };
+  const p2 = B(ddBad, PM, NOW, {});
+  ok('P3i Fremdvokabular (konservativ) wird NICHT durchgereicht', !('riskTolerance' in p2) && !(p2.preferences && p2.preferences.riskTolerance));
+  ok('P3j Schritt bleibt ohne Risiko-Antwort abschliessbar (optional)', (function () { const sel = selComplete(); return SL.validateTrainingLevel(sel).valid !== false && L.advanceTrainingLevel(draftAt('training_level', ['welcome', 'profile', 'sports'], { sports: sel }), NOW).ok === true; })());
+  KIT.createSegmentedControl = realSC;
+}
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

@@ -471,7 +471,7 @@ var OB_STEPS=[
   {t:'choice',key:'sessionMinutes',title:'' + T('pf.wie_viel_zeit_hast_du') + '',
    opts:[['30','~30 min'],['45','~45 min'],['60','~60 min'],['90','90 min+']]},
   {t:'choice',key:'riskTolerance',title:'' + T('pf.wie_willst_du_starten') + '',sub:'' + T('pf.steuert_wie_schnell_orvia_umfang') + '',
-   opts:[['konservativ','Konservativ'],['ausgewogen','Ausgewogen'],['ambitioniert','Ambitioniert']]},
+   opts:[['conservative','Konservativ'],['balanced','Ausgewogen'],['ambitious','Ambitioniert']]},   /* v8-398: kanonische Werte — die deutschen liess profile-model.normalizePreferences stillschweigend fallen */
   {t:'fields',title:'' + T('pf.lauf_erfahrung_optional') + '',sub:'' + T('pf.hilft_orvia_einen_realistischen_startumfang') + '',
    fields:[['typicalRunKm','' + T('pf.wie_weit_laeufst_du_aktuell') + '','number'],
     ['recentRunsPerWeek','' + T('pf.laeufe_pro_woche_in_den') + '','number'],
