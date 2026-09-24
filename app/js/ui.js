@@ -9136,7 +9136,7 @@ function gmSportTileIcon(n,c){if(GM_SPORT_ICON_EXTRA[n])return '<svg class="ic '
 /* ---------- Training-Start-Sheet (GM-Einstieg; nur bestehende produktive Start-Handler) ---------- */
 var _gmStartCtx={mode:null,sport:null};
 function gmOpenStartSheet(mode){
-  _gmStartCtx={mode:mode||null,sport:null};
+  _gmStartCtx={mode:mode||null,sport:null,explicit:false};
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var title=mode==='planned'?'' + _uiT('ui.geplante_einheit_starten') + '':mode==='repeat'?'' + _uiT('ui.letztes_training_wiederholen') + '':mode==='free'?'' + _uiT('ui.freies_training') + '':'' + _uiT('ui.training_starten') + '';
@@ -9151,38 +9151,51 @@ function gmStartSport(sport){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var plannedMode=(_gmStartCtx.mode==='planned');
   var _sel=plannedMode?gmPlannedStartSelection(sport):{status:'none'};
+  /* v8-397: Wird das Sheet im Modus „Geplant" geoeffnet (Kachel „Geplante
+     Einheit"), obwohl fuer diese Sportart heute keine Planeinheit existiert,
+     stand der Nutzer vor sechs Strichen und einem toten Startknopf. Jetzt wird
+     „Frei" vorgewaehlt und der Hinweis sagt es. Nur beim automatischen Einstieg —
+     tippt der Nutzer den Reiter „Geplant" selbst an, bleibt der ehrliche
+     Leerzustand (Reiter muss bedienbar bleiben). */
+  var autoFree=false;
+  if(plannedMode&&_sel.status==='none'&&!_gmStartCtx.explicit){plannedMode=false;_gmStartCtx.mode='free';autoFree=true;}
   var planned=plannedMode&&_sel.status==='unique';
   var tItem=planned?_sel.item:null;
-  /* Readiness-/Safety-Hinweis NUR aus bestehender kanonischer Ausgabe — nie ausgeblendet. */
-  var hint='';try{var d=(typeof getDecision==='function')?getDecision():null;if(d)hint=String(d.reco||d.title||'');}catch(_){ }
+  /* Readiness-/Safety-Hinweis NUR aus bestehender kanonischer Ausgabe — nie ausgeblendet.
+     v8-397: hintKind unterscheidet echte Empfehlung (gruen) von einer Leerstelle (neutral). */
+  var hint='',hintKind='note';
+  try{var d=(typeof getDecision==='function')?getDecision():null;if(d){hint=String(d.reco||d.title||'');if(hint)hintKind='reco';}}catch(_){ }
   if(!hint)hint='' + _uiT('ui.keine_kanonische_readiness_bewertung_verfuegbar') + '';
-  if(plannedMode&&!planned)hint=(_sel.status==='ambiguous')
+  if(autoFree){hint='' + _uiT('ui.keine_planeinheit_frei_vorgewaehlt') + '';hintKind='note';}
+  else if(plannedMode&&!planned){hintKind='note';hint=(_sel.status==='ambiguous')
     ?'' + _uiT('ui.mehrere_passende_planeinheiten_heute_oeffne') + ''
-    :'' + _uiT('ui.fuer_diese_sportart_ist_heute') + '';
+    :'' + _uiT('ui.fuer_diese_sportart_ist_heute') + '';}
   var canStart=plannedMode?planned:!!(window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.startSport);
-  var rows=[
-    ['' + _uiT('ui.ziel_der_einheit') + '',planned?gmEsc(tItem.l):'—'],
-    ['Dauer','—'],
-    [sport==='Krafttraining'?'Volumen':'' + _uiT('ui.distanz_') + '','—'],
-    ['' + _uiT('ui.intensitaet') + '','—'],
-    ['Ausrüstung','—'],
-    ['Wearable','—']
-  ];
-  /* Phase 3 · E-21: Vor-Start-Werte aus GARMIN-Messungen statt manueller Abfrage —
-     die App stellt keine Fragen, deren Antwort bereits gemessen vorliegt.
-     Nur echte heutige Werte (gmMetric = Heute-Guard); fehlend ⇒ ehrlich „—". */
-  var preRows='';
-  /* typeof-Guard: die GM3-Blockauswertung der Paritaetstests laedt den Flag-Helfer
-     (Legacy-Region) nicht mit — Standard ist AN. */
-  if(typeof gmFeatureFlag!=='function'||gmFeatureFlag('preWorkoutGarmin')){
-    var _bb=null,_st5=null;
+  /* Vor-Start-Messwerte zuerst aufloesen — die Wearable-Zeile leitet sich daraus ab. */
+  var _bb=null,_st5=null,_os5=null,_showPre=(typeof gmFeatureFlag!=='function'||gmFeatureFlag('preWorkoutGarmin'));
+  if(_showPre){
     try{_bb=(typeof gmMetric==='function')?gmMetric('body_battery'):null;
       _st5=(typeof gmMetric==='function')?gmMetric('stress_avg'):null;}catch(_){ }
-    var _os5=null;try{_os5=(typeof orviaScore==='function')?orviaScore():null;}catch(_){ }
+    try{_os5=(typeof orviaScore==='function')?orviaScore():null;}catch(_){ }
+  }
+  /* v8-397: Die Basiskarte trug sechs Zeilen, von denen vier (Dauer, Volumen,
+     Intensitaet, Ausruestung) seit Phase 3 IMMER „—" zeigten — Anzeigeslots
+     ohne Datenquelle. Und „Wearable —" stand direkt ueber Messwerten, die aus
+     dem Wearable kamen. Jetzt: nur Zeilen mit Wert; die Wearable-Zeile
+     entsteht aus der tatsaechlichen Herkunft der heutigen Messwerte
+     (sourceType device_measurement/provider_calculation), ohne Markenname —
+     die Quelle wird nicht geraten. Die Slots kommen zurueck, sobald es Daten gibt. */
+  var rows=[];
+  if(planned)rows.push(['' + _uiT('ui.ziel_der_einheit') + '',gmEsc(tItem.l)]);
+  var _wear=gmWearableRow([_bb,_st5]);
+  if(_wear)rows.push(['Wearable',gmEsc(_wear)]);
+  var preRows='';
+  if(_showPre){
     var pr=[
       ['Body Battery',(_bb&&_bb.value!=null)?fmtDe(_bb.value):'—'],
       ['' + _uiT('ui.stress_heute') + '',(_st5&&_st5.value!=null)?fmtDe(_st5.value):'—'],
-      ['Readiness',(_os5&&_os5.score!=null)?_os5.score+' · '+gmEsc(_os5.statusText||''):'—']
+      /* v8-397: „83 ·" mit leerem Statustext — der Trenner haengt nur an, wenn Text folgt. */
+      ['Readiness',(_os5&&_os5.score!=null)?(_os5.score+(_os5.statusText?' · '+gmEsc(_os5.statusText):'')):'—']
     ];
     preRows='<div class="sh-block" style="margin:0 0 6px"><div class="bh">' + _uiT('ui.vor_start_werte_gemessen') + '</div>'+
       '<div class="card prestart" style="margin:6px 0 0">'+pr.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+gmEsc(r[1])+'</b></div>';}).join('')+'</div>'+
@@ -9190,9 +9203,9 @@ function gmStartSport(sport){
   }
   sh.innerHTML='<div class="grab"></div><h3>'+gmEsc(sport)+'</h3><div class="sh-sub">' + _uiT('ui.vor_dem_start') + '</div>'+
     '<div class="subtabs" style="margin:6px 0 12px"><button class="'+(plannedMode?'on':'')+'" onclick="gmStartSetMode(\'planned\')">Geplant</button><button class="'+(plannedMode?'':'on')+'" onclick="gmStartSetMode(\'free\')">Frei</button></div>'+   /* Phase 1b: Subtab „Vorlage" entfernt — kein Endzustand vorhanden. */
-    '<div class="card prestart" style="margin:0 0 6px">'+rows.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div>'+
+    (rows.length?'<div class="card prestart" style="margin:0 0 6px">'+rows.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div>':'')+
     preRows+
-    '<div class="mode-hint">'+icon('shield','sm')+'<div>'+gmEsc(hint)+'</div></div>'+
+    '<div class="mode-hint '+hintKind+'">'+icon(hintKind==='reco'?'shield':'info','sm')+'<div>'+gmEsc(hint)+'</div></div>'+
     (canStart
       ?'<button class="cta prim" style="width:100%;margin-top:12px" onclick="gmStartFromPreStart()">'+icon('play','sm')+' '+gmEsc(sport)+' starten</button>'
       :'<button class="cta prim" disabled aria-disabled="true" style="width:100%;margin-top:12px">'+gmEsc(sport)+' starten — '+GM_NA+'</button>')+
@@ -9201,7 +9214,22 @@ function gmStartSport(sport){
     '';
   gmOpenSheet('detailSheet');
 }
-function gmStartSetMode(m){_gmStartCtx.mode=(m==='planned')?'planned':'free';if(_gmStartCtx.sport)gmStartSport(_gmStartCtx.sport);}
+function gmStartSetMode(m){_gmStartCtx.mode=(m==='planned')?'planned':'free';_gmStartCtx.explicit=true;if(_gmStartCtx.sport)gmStartSport(_gmStartCtx.sport);}
+/* v8-397: Wearable-Zeile aus der Herkunft der aufgeloesten Messwerte. Rein, ohne DOM.
+   Liefert null, wenn kein Wert automatisch gemessen wurde (dann keine Zeile — kein „—"). */
+function gmWearableRow(metrics){
+  var best=null;
+  (metrics||[]).forEach(function(m){
+    if(!m||(m.value==null&&m.valueText==null))return;
+    var auto=(m.sourceType==='device_measurement'||m.sourceType==='provider_calculation'||m.source==='automatic');
+    if(!auto)return;
+    if(!best||(m.metricDate||'')>(best.metricDate||''))best=m;
+  });
+  if(!best)return null;
+  if(best.metricDate===todayStr())return '' + _uiT('ui.wearable_messwerte_heute') + '';
+  var lbl=null;try{lbl=(typeof gmStandLbl==='function')?gmStandLbl(best):null;}catch(_){ }
+  return '' + _uiT('ui.wearable_verbunden') + ''+(lbl?' · '+lbl:'');
+}
 function gmStartFromPreStart(){
   var sport=_gmStartCtx.sport;
   var sel=(_gmStartCtx.mode==='planned')?gmPlannedStartSelection(sport):null;

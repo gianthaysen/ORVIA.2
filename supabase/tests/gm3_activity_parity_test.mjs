@@ -237,12 +237,35 @@ if(blk){
        Readiness aus Garmin-/Check-in-Daten) — die App stellt keine Fragen,
        deren Antwort bereits gemessen vorliegt. 6 Basiszeilen + 3 Messzeilen = 9;
        fehlende Messwerte bleiben ehrlich „—" (Zeile 199 prueft das weiter). */
-    ok('Pre-Start: Segmente + prestart-Karte + 9 ps-rows (6 Basis + 3 Vor-Start-Messwerte) + Hinweis + Start-CTA',
-       /subtabs/.test(P)&&/prestart/.test(P)&&(P.match(/ps-row/g)||[]).length===9&&/Vor-Start-Werte \(gemessen\)/.test(P)&&/mode-hint/.test(P)&&/Laufen starten/.test(P)&&/Wearable/.test(P));
-    ok('Pre-Start Missingness bleibt — (keine erfundene Ausrüstung/Readiness/kein Wearable-Fake)', !/Uhr \+ Brustgurt|Garmin verbunden|Readiness 82/.test(P)&&(P.match(/>—</g)||[]).length>=3);
-    ok('Safety-/Readiness-Hinweis aus kanonischer Ausgabe, nie ausgeblendet', /mode-hint/.test(P)&&/Heute wie geplant trainieren\.|Keine kanonische/.test(P));
-    ok('Wearable-Uebergabe ohne Endzustand ist entfernt, die Zeile bleibt (Phase 1b)',
-       !/Nur an Uhr übergeben/.test(P)&&/Wearable/.test(P));
+    /* AKTUALISIERT (v8-397): Die sechs Basiszeilen sind weg — vier davon (Dauer,
+       Volumen, Intensitaet, Ausruestung) zeigten seit Phase 3 IMMER „—" (Slots ohne
+       Datenquelle), und „Wearable —" stand direkt ueber Messwerten, die aus dem
+       Wearable kamen. Jetzt: nur Zeilen mit Wert. In dieser Sandbox gibt es keine
+       aufgeloesten Metriken ⇒ keine Basiskarte; die drei Vor-Start-Messzeilen
+       bleiben ehrlich „—". Die Wearable-Zeile darf NUR aus einer automatischen
+       Messung entstehen (gmWearableRow) — nie geraten. */
+    ok('Pre-Start: Segmente + 3 Vor-Start-Messzeilen (ehrlich „—") + Hinweis + Start-CTA; keine leeren Basiszeilen',
+       /subtabs/.test(P)&&/prestart/.test(P)&&(P.match(/ps-row/g)||[]).length===3&&/Vor-Start-Werte \(gemessen\)/.test(P)&&/mode-hint/.test(P)&&/Laufen starten/.test(P)&&!/Ausrüstung|Intensität|>Dauer</.test(P));
+    ok('Pre-Start Missingness bleibt — (keine erfundene Ausrüstung/Readiness/kein Wearable-Fake)', !/Uhr \+ Brustgurt|Garmin verbunden|Readiness 82|Wearable/.test(P)&&(P.match(/>—</g)||[]).length===3);
+    ok('Safety-/Readiness-Hinweis aus kanonischer Ausgabe, nie ausgeblendet — Empfehlung traegt .reco', /mode-hint reco/.test(P)&&/Heute wie geplant trainieren\./.test(P));
+    ok('Wearable-Uebergabe ohne Endzustand ist entfernt (Phase 1b)', !/Nur an Uhr übergeben/.test(P));
+    /* v8-397: Wearable-Zeile nur aus automatischer Messung; Readiness-Trenner nur mit Text. */
+    ok('gmWearableRow: automatische Messung von heute ⇒ Zeile, manuell ⇒ keine',
+       typeof gmWearableRow==='function'&&gmWearableRow([{value:80,sourceType:'device_measurement',metricDate:todayStr()}])==='verbunden · Messwerte von heute'
+       &&gmWearableRow([{value:80,sourceType:'manual_entry',metricDate:todayStr()}])===null&&gmWearableRow([null,{value:null}])===null);
+    ok('gmWearableRow: aeltere automatische Messung ⇒ „verbunden" mit Stand, nie „heute"',
+       (function(){var r=gmWearableRow([{value:70,sourceType:'provider_calculation',metricDate:'2020-01-01'}]);return typeof r==='string'&&/^verbunden/.test(r)&&!/heute/.test(r);})());
+    ok('Readiness-Zeile: kein haengender Trenner bei leerem Statustext',
+       (function(){var _o=globalThis.orviaScore;globalThis.orviaScore=()=>({score:83,statusText:''});gmStartSport('Laufen');var Q=els['detailSheet'].innerHTML;globalThis.orviaScore=_o;gmStartSport('Laufen');return /<b>83<\/b>/.test(Q)&&!/83 ·/.test(Q);})());
+    /* v8-397: automatischer Einstieg „Geplant" ohne Planeinheit ⇒ Frei vorgewaehlt + neutraler Hinweis;
+       expliziter Reiter-Tipp ⇒ ehrlicher Leerzustand bleibt. Eigene Sportart ohne Planeinheit. */
+    ok('Geplant-Einstieg ohne Planeinheit: Frei vorgewaehlt, Hinweis neutral, Start moeglich',
+       (function(){gmOpenStartSheet('planned');gmStartSport('Mobility');var Q=els['detailSheet'].innerHTML;
+         return /freies Training vorgewählt/.test(Q)&&/mode-hint note/.test(Q)&&/onclick="gmStartFromPreStart\(\)"/.test(Q)&&/<button class="on" onclick="gmStartSetMode\('free'\)"/.test(Q);})());
+    ok('Reiter „Geplant" explizit getippt ohne Planeinheit: Leerzustand bleibt, Start gesperrt',
+       (function(){gmStartSetMode('planned');var Q=els['detailSheet'].innerHTML;
+         return /keine Planeinheit vorhanden\. Wähle/.test(Q)&&/mode-hint note/.test(Q)&&/disabled/.test(Q);})());
+    gmOpenStartSheet();gmStartSport('Laufen');
     /* Start-CTA nutzt bestehenden produktiven Handler, kein Plan-/Fixture-Mutieren */
     gmStartFromPreStart&&gmStartFromPreStart();
     ok('Start nutzt produktiven Handler (workoutUI.startSport/startPlannedUnit), Plan unverändert',

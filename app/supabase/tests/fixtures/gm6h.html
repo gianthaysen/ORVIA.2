@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="ORVIA">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08090B">
-<meta name="orvia-build" content="orvia-v8-394">
+<meta name="orvia-build" content="orvia-v8-395">
 <!-- ============ ORVIA BRAND · icons & meta ============ -->
 <title>ORVIA · Performance OS</title>
 <meta name="description" content="ORVIA — Know your state. Move with precision. Training, recovery and body data translated into clear daily decisions.">
@@ -371,6 +371,8 @@ window.__gm6.resetCalls();
     'wo.duration.mode': 'Dauer-Modus',
     'wo.durationMissing': 'Dauer nicht erfasst',
     'wo.empty': 'Noch keine Übung.',
+    'wo.empty.plannedText': 'Dein Plan beschreibt diese Einheit nur als Text — er enthält keine hinterlegten Übungen. ORVIA erfindet keine: trag die Übungen ein, die du machst.',
+    'wo.empty.plannedFailed': 'Der Plan enthält {count} Übungen, aber keine davon konnte übernommen werden. Bitte füge sie manuell hinzu.',
     'wo.err.activeExists': 'Es läuft bereits ein Workout. Es wurde geöffnet.',
     'wo.err.auth': 'Zugriff nicht möglich. Bitte melde dich erneut an.',
     'wo.err.fk': 'Die Einheit konnte nicht vollständig geladen werden.',
@@ -2770,7 +2772,7 @@ window.__gm6.resetCalls();
     'ui.keine_gps_route_fuer_diese': 'Keine GPS-Route für diese Einheit vorhanden.',
     'ui.keine_kanonische_analyse': ' — keine kanonische Analyse.',
     'ui.keine_kanonische_geraeteliste': 'Keine kanonische Geräteliste',
-    'ui.keine_kanonische_readiness_bewertung_verfuegbar': 'Keine kanonische Readiness-Bewertung verfügbar — ORVIA erfindet keinen Zustand.',
+    'ui.keine_kanonische_readiness_bewertung_verfuegbar': 'Für heute liegt keine Trainingsempfehlung vor — ORVIA leitet aus dem Readiness-Wert allein keine ab.',
     'ui.keine_kanonische_zusammenhangsanalyse_orvia_erfindet': ' — keine kanonische Zusammenhangsanalyse. ORVIA erfindet keine Korrelation und keine Kausalität — es zählt nur der echte, kanonische Vertrag.',
     'ui.keine_neue_zonenregel_im_ui': 'Keine neue Zonenregel im UI',
     'ui.keine_offenen_plan_konflikte': 'Keine offenen Plan-Konflikte.',
@@ -5732,9 +5734,19 @@ html,body{overflow-x:hidden;max-width:100%}
 .wo-exchip{width:34px;height:34px;border-radius:9px;border:1px solid rgba(148,163,184,.25);background:transparent;color:#cbd5e1;font-weight:700}
 .wo-exchip.on{background:#2563eb;border-color:#2563eb;color:#fff}
 .wo-cur{background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:10px}
-.wo-cur-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.wo-exname{font-size:17px;font-weight:800}
-.wo-exact{display:flex;gap:10px}
+/* v8-395 (Nutzerbefund 18.09.): Die Kopfzeile war ein starres flex mit space-between und
+   ohne Umbruch. Auf dem Telefon brach ein langer Uebungsname ("Bankdruecken Smith Machine")
+   auf drei Zeilen um, und die vier Aktionen daneben (Alternative · Superset · Ersetzen ·
+   Entfernen) liefen rechts aus der Karte — "Entfernen" war nicht mehr erreichbar.
+   Jetzt: Name und Aktionen duerfen umbrechen; unter 430 px bekommt der Name eine eigene
+   Zeile und die Aktionen stehen vollstaendig darunter. */
+.wo-cur-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.wo-exname{font-size:17px;font-weight:800;min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+.wo-exact{display:flex;gap:10px;flex-wrap:wrap;row-gap:6px}
+@media (max-width:430px){
+  .wo-exname{flex:1 1 100%}
+  .wo-exact{flex:1 1 100%;justify-content:flex-start}
+}
 .wo-link{background:none;border:0;color:#60a5fa;font-weight:700;font-size:13px;padding:0}
 .wo-link.danger{color:#fb7185}
 .wo-last{font-size:13px;line-height:1.5}
@@ -5806,6 +5818,11 @@ html,body{overflow-x:hidden;max-width:100%}
 .wo-savebtn{margin-top:2px}
 .wo-timer{display:flex;align-items:center;gap:10px;font-size:14px}
 .wo-empty{text-align:center;padding:30px 0;display:flex;flex-direction:column;gap:14px;align-items:center}
+/* v8-395: der Leerzustand erklaert sich jetzt; laengerer Text braucht Zeilenlaenge
+   und Lesbarkeit statt einer einzelnen zentrierten Zeile. */
+.wo-empty p{max-width:34ch;margin:0;color:var(--muted);line-height:1.45}
+.wo-empty.planned_text p:first-child,.wo-empty.planned_failed p:first-child{color:var(--txt)}
+.wo-empty-plan{font-size:13px;border-left:2px solid var(--line);padding-left:10px;text-align:left}
 .wo-foot{position:fixed;left:0;right:0;bottom:0;z-index:9001;display:flex;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:rgba(11,18,32,.96);backdrop-filter:blur(6px);border-top:1px solid rgba(148,163,184,.16);max-width:680px;margin:0 auto}
 .wo-fbtn{flex:1;background:#1e293b;color:#e2e8f0;border:0;border-radius:11px;padding:13px 6px;font-weight:700;font-size:14px}
 .wo-fbtn.primary{background:#16a34a}
@@ -6326,10 +6343,19 @@ details.acc .acc-body{margin-top:14px}
 .ci-compact{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
 .ci-compact:focus-visible{outline:2px solid var(--accent,#C9AE7C);outline-offset:2px}
 
-/* ---- v5-Farbsprache: dunkler Text auf Goldflächen (Prototyp-Treue + Kontrast) ---- */
+/* ---- v5-Farbsprache: dunkler Text auf Goldflächen (Prototyp-Treue + Kontrast) ----
+   v8-395 (Nutzerbefund 18.09.): Die pauschale Regel .btn:not(.sec):not(.gline){color:#20180a}
+   stammt aus der Zeit, als .btn eine GEFÜLLTE Goldfläche war — dort ist fast schwarze Schrift
+   richtig. Eine spätere Überarbeitung machte .btn zum durchscheinenden Gold auf dunklem Grund
+   (linear-gradient rgba(201,174,124,.15) → .055) mit hellem Label (#E9DCBE). Die Farbregel
+   stand aber weiter unten in der Datei und gewann: fast schwarze Schrift auf fast schwarzem
+   Grund — gemessen #20180a auf rgba(201,174,124,.055). Betroffen waren alle großen Buttons
+   der App, u. a. „Übung hinzufügen" im leeren Live-Workout.
+   Die wirklich goldgefüllten Flächen setzen ihre dunkle Schrift selbst (.cta.prim,
+   .sheet-cta .prim, .gm-story .wst-cta button.prim, .fab, .segs button.on) — die pauschale
+   Regel wird deshalb ersatzlos entfernt, statt sie mit einer weiteren Ausnahme zu flicken. */
 .segs button.on{color:#20180a}
-.btn:not(.sec):not(.gline){color:#20180a}
-.btn:not(.sec):not(.gline) .cta-sub{color:rgba(32,24,10,.65)}
+.cta-sub{color:var(--muted)}
 .oc2{position:relative;margin-top:6px}
 .oc2 svg{width:100%;height:auto;display:block;touch-action:none;outline:none}
 .oc2 svg:focus-visible{outline:2px solid var(--gold-soft);outline-offset:2px;border-radius:8px}
@@ -47514,6 +47540,32 @@ window.renderAccountCard = function () {
     if (rem <= 0) { tm.running = false; tm.endAt = null; try { if (navigator.vibrate) navigator.vibrate(200); } catch (e) {} renderOverlay(); }
   }
 
+  /* v8-395 · ehrlicher Leerzustand des Kraft-Players.
+     Vorher stand dort immer nur „Noch keine Uebung." — auch dann, wenn die
+     Einheit als GEPLANT gestartet wurde. Der Player sagte also „Geplant" und
+     „0/0 Uebungen" und bot keinerlei Erklaerung; das wirkt wie ein Defekt,
+     obwohl der Plan schlicht keine strukturierte Vorgabe traegt (nur Text in
+     item.d). Die Unterscheidung kommt ausschliesslich aus den Daten der
+     Session — nichts wird geraten. */
+  function emptyState(session) {
+    const s = session || {};
+    const snap = s.planned_session_snapshot || s.plannedSessionSnapshot || null;
+    const planned = !!(s.planned_session_id || s.plannedSessionId || snap);
+    const pex = (snap && Array.isArray(snap.plannedExercises)) ? snap.plannedExercises : [];
+    if (!planned) return { kind: 'free', text: T('wo.empty'), plan: null };
+    if (pex.length) return { kind: 'planned_failed', text: T('wo.empty.plannedFailed', { count: pex.length }), plan: null, count: pex.length };
+    return { kind: 'planned_text', text: T('wo.empty.plannedText'), plan: planTextOf(session) };
+  }
+  /* Der Plantext ueberlebt einen Reload nur im Snapshot: _planNote wird beim
+     Schliessen geleert. Beide Quellen, Laufzeit zuerst. */
+  function planTextOf(session) {
+    if (O.workoutUI._planNote) return null;   // steht bereits im wo-plan-Block
+    const snap = (session && (session.planned_session_snapshot || session.plannedSessionSnapshot)) || null;
+    const t = snap && (snap.d || snap.l);
+    return t ? String(t) : null;
+  }
+  O.workoutUI._emptyState = emptyState;
+
   function renderOverlay() {
     const ov = document.getElementById('workoutOverlay'); if (!ov || ov.classList.contains('hide')) return;
     const S = st(); const session = S.session;
@@ -47561,7 +47613,10 @@ window.renderAccountCard = function () {
     // ---- Gym: Satz-/Übungsmodus ----
     if (exs.length) html += '<div class="wo-exnav">' + exs.map((e, i) => '<button class="wo-exchip ' + (i === idx ? 'on' : '') + '" onclick="ORVIA.workoutUI.goEx(' + i + ')">' + (i + 1) + gy('chipBadge', exs, i) + '</button>').join('') + '</div>';
     if (!cur) {
-      html += '<div class="wo-empty"><p>' + T('wo.empty') + '</p><button class="btn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.addExercise') + '</button></div>';
+      const es = emptyState(session);
+      html += '<div class="wo-empty ' + es.kind + '"><p>' + esc(es.text) + '</p>' +
+        (es.plan ? '<p class="wo-empty-plan">' + esc(es.plan) + '</p>' : '') +
+        '<button class="btn" onclick="ORVIA.workoutUI.pickExercise()">' + T('wo.addExercise') + '</button></div>';
     } else {
       const exName = (cur.exercise && cur.exercise.name) || 'Übung';
       const we = cur.workoutExercise;

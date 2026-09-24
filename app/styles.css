@@ -3187,6 +3187,10 @@ body{font-family:var(--font);color:var(--text);min-height:100vh;background:radia
 .sport-tile b{font-size:12px;font-weight:740}
 .prestart .ps-row{display:flex;justify-content:space-between;font-size:12.5px;padding:10px 2px;border-bottom:1px solid var(--hair)}.prestart .ps-row:last-child{border-bottom:none}.prestart .ps-row span{color:var(--muted)}.prestart .ps-row b{font-weight:750}
 .mode-hint{display:flex;gap:8px;align-items:flex-start;background:var(--ready-t);border:1px solid rgba(67,214,147,.28);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--text);margin-top:10px}.mode-hint .ic{color:var(--ready);flex:0 0 auto;width:16px;height:16px;margin-top:1px}
+/* v8-397: Gruen ist die Farbe einer Empfehlung (.reco). Eine Leerstelle — „keine
+   Planeinheit", „keine Empfehlung" — ist kein Erfolg und bekommt die neutrale Flaeche. */
+.mode-hint.note{background:var(--surface);border-color:var(--border);color:var(--muted)}
+.mode-hint.note .ic{color:var(--muted)}
 
 /* Planvarianten */
 .pvar-row{display:flex;gap:8px;margin:2px 18px 12px}
