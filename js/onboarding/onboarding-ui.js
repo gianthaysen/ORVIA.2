@@ -883,7 +883,8 @@
       ]) +
       _rvCard('rv-training', 'training_level', '' + T('ob.trainingsstand') + '', [
         esc(prim && prim.level ? _rvLevelLabel(prim.level) : '—'),
-        esc(prim && prim.sessionsPerWeek != null ? 'ca. ' + prim.sessionsPerWeek + '' + T('ob.pro_woche') + '' : '')
+        esc(prim && prim.sessionsPerWeek != null ? 'ca. ' + prim.sessionsPerWeek + '' + T('ob.pro_woche') + '' : ''),
+        esc((function () { var v = draftRiskTolerance(); var o = v && RISK_OPTIONS.filter(function (r) { return r[0] === v; })[0]; return o ? '' + T('ob.start') + '' + o[1] : ''; })())
       ]) +
       _rvCard('rv-goal', 'goals', '' + T('ob.dein_ziel') + '', [
         esc(primary ? primary.title : '—'),
@@ -951,6 +952,15 @@
     if (lvl) patch.sports = patch.sports.map(function (s) { return (s.role === 'primary' && s.level == null) ? Object.assign({}, s, { level: lvl }) : s; });
     patch.goals = M.normalizeGoals((dd.goals || []).filter(function (g) { return g.title && g.title.trim(); }));
     patch.availability = M.normalizeAvailability(dd.availability);
+    /* v8-398 (S3/P3): Risikopraeferenz nur, wenn beantwortet — kanonisch in preferences
+       (SSoT, profile-model.normalizePreferences) UND als Top-Level-Spiegel, weil calc.js
+       und ui.setRiskTol PROFILE.riskTolerance lesen (dieselbe Spiegelung wie der Profil-Editor). */
+    var rt = dd.preferences && dd.preferences.riskTolerance;
+    if (['conservative', 'balanced', 'ambitious'].indexOf(rt) >= 0) {
+      var exPrefs = (existing && existing.preferences && typeof existing.preferences === 'object') ? existing.preferences : {};
+      patch.preferences = Object.assign({}, exPrefs, { riskTolerance: rt });
+      patch.riskTolerance = rt;
+    }
     /* M7 (A6): Sicherheitscheck → kanonische Constraints. Acknowledge NUR bei beantworteter
        Frage (nichts erfinden); bei Ja zusätzlich EIN normalisierter Constraint (status active).
        issues[]-Projektion läuft zentral über _profileSave (kein direkter issues-Write hier). */
@@ -985,7 +995,7 @@
     _completing = true;
     return Promise.resolve().then(function () {
       var P = ctx.profileApi;
-      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability'].concat(ctx.patch && ctx.patch.performance ? ['performance'] : [])); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
+      if (P) { if (P.load) P.load(); if (P.updateSection) P.updateSection('onboarding', ctx.patch, ['personal', 'sports', 'goals', 'availability'].concat(ctx.patch && ctx.patch.performance ? ['performance'] : []).concat(ctx.patch && ctx.patch.preferences ? ['preferences'] : [])); if (P.markOnboardingComplete) P.markOnboardingComplete(); }
       if (!ctx.profileStore || typeof ctx.profileStore.persist !== 'function') return { success: false, error: { message: '' + T('ob.keine_aktive_sitzung') + '' } };
       return ctx.profileStore.persist();
     }).then(function (r) {
@@ -1470,6 +1480,19 @@
     var l = doc.getElementById('err-level'); if (l) l.textContent = errors._level || '';
     var s = doc.getElementById('err-sessions'); if (s) s.textContent = errors._sessions || '';
   }
+  var RISK_OPTIONS = [['conservative', '' + T('ob.risk_konservativ') + ''], ['balanced', '' + T('ob.risk_ausgewogen') + ''], ['ambitious', '' + T('ob.risk_ambitioniert') + '']];
+  var RISK_VALUES = RISK_OPTIONS.map(function (r) { return r[0]; });
+  function draftRiskTolerance() {
+    var pr = S.draft && S.draft.draftData && S.draft.draftData.preferences;
+    var v = pr && pr.riskTolerance;
+    return RISK_VALUES.indexOf(v) >= 0 ? v : null;
+  }
+  function setDraftRiskTolerance(v) {
+    S.draft.draftData = S.draft.draftData || {};
+    var pr = Object.assign({}, S.draft.draftData.preferences || {});
+    if (RISK_VALUES.indexOf(v) >= 0) pr.riskTolerance = v; else delete pr.riskTolerance;
+    S.draft.draftData.preferences = pr;
+  }
   function renderTrainingLevelStep() {
     mountShell();
     var sl = SL(); var kit = K(); var sel = ensureSportsDraft();
@@ -1490,6 +1513,13 @@
       '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-sessions">' + T('ob.wie_oft_trainierst_du_pro') + '</span>' +
         '<span class="ob2-err" id="err-sessions" role="alert">' + esc(sesErr) + '</span>' +
         '<div id="ob3-sessionband"></div></div>' +
+      /* v8-398 (S3/P3): Risikopraeferenz. Wirkt in Calc.calculateRecommendedWeeklyRunVolume
+         als Faktor 0,9/1,0/1,1, wurde aber nur im Legacy-Wizard und im Profil-Editor
+         gefragt — ein Nutzer des Onboardings v2 sah die Frage nie. Optional, OHNE
+         Vorauswahl: unbeantwortet heisst keine Modulation, nicht eine getroffene Wahl. */
+      '<div class="ob2-field"><span class="ob3-grouplabel" id="lbl-risk">' + T('ob.wie_willst_du_starten') + '</span>' +
+        '<span id="ob3-risk-help"></span>' +
+        '<div id="ob3-riskband"></div></div>' +
       '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
       '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
     mountProgressHeader(card, '' + T('ob.dein_trainingsstand') + '', '' + T('ob.bezieht_sich_auf_deinen_hauptsport') + '');
@@ -1528,6 +1558,19 @@
       }
     });
     card.querySelector('#ob3-sessionband').appendChild(band.el);
+    // Frage 3: Risikopraeferenz — kanonische Werte (profile-model.normalizePreferences), kein Default.
+    var riskHelp = kit.createInlineHelp({
+      label: '' + T('ob.warum_fragen_wir_das') + '', title: '' + T('ob.wie_willst_du_starten') + '',
+      content: '' + T('ob.risiko_hilfe') + ''
+    });
+    card.querySelector('#ob3-risk-help').appendChild(riskHelp.el);
+    var riskBand = kit.createSegmentedControl({
+      name: 'risk-band', label: '' + T('ob.wie_willst_du_starten') + '', allowEmpty: true,
+      options: RISK_OPTIONS.map(function (r) { return { value: r[0], label: r[1], id: 'risk-' + r[0] }; }),
+      value: draftRiskTolerance(),
+      onChange: function (v) { setDraftRiskTolerance(v); persist(); }
+    });
+    card.querySelector('#ob3-riskband').appendChild(riskBand.el);
     card.querySelector('#ob2-back').onclick = goBack;
     card.querySelector('#ob2-next').onclick = submitTrainingLevel;
     card.querySelector('#ob2-later').onclick = later;
