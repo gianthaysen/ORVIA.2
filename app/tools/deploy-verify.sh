@@ -107,6 +107,28 @@ mv=$(git show origin/main:index.html 2>/dev/null | grep -o 'orvia-build" content
 [ "$lv" = "$fv" ] && ok "sw.js: lokal und oben $fv" || rot "sw.js: lokal $lv, oben $fv"
 [ "$fv" = "$mv" ] && ok "index.html Build-Marker: $mv" || rot "Build-Marker $mv passt nicht zu sw.js $fv"
 
+echo "══ 5 · Fremddateien in der Wurzel (Hinweis) ══"
+# 24.09.: origin/main trug 1.692 Dateien unter _to_delete/, 749 unter node_modules/,
+# __pycache__-.pyc des Garmin-Workers, sechs .DS_Store und den Test-Marker
+# supabase/tests/.suite-green. Ursache: die Wurzel hat keine .gitignore; was auf
+# main IGNORIERT ist (und darum vom stash -u nicht weggeraeumt wird), erfasst ein
+# `git add -A` auf dem deploy-Zweig — und bleibt dort, weil checkout -B es bei
+# jedem Deploy wieder materialisiert. Der getrackte Marker ueberschrieb dabei den
+# lokalen und wurde beim Rueckwechsel auf main entfernt (Block 0 rot, zweimal).
+# Dieser Block ZAEHLT nur; Entfernen ist eine Entscheidung (Verbot 3.3/3.4).
+ERLAUBT='^(index\.html|styles\.css|sw\.js|env\.js|manifest\.webmanifest|README\.md|package\.json|package-lock\.json|real_app_smoke\.mjs|js|assets|locales)$'
+FREMD=$(git ls-tree --name-only origin/main | grep -v -E "$ERLAUBT" || true)
+if [ -z "$FREMD" ]; then ok "nur der Upload-Satz und die bekannten Begleitdateien liegen oben"; else
+  FREMD_N=0
+  while IFS= read -r e; do
+    n=$(git ls-tree -r --name-only origin/main -- "$e" | wc -l | tr -d ' ')
+    FREMD_N=$((FREMD_N+n))
+    printf '   %6s  %s\n' "$n" "$e"
+  done <<< "$FREMD"
+  hinw "$FREMD_N Datei(en) ausserhalb des Upload-Satzes liegen oeffentlich auf Pages — Aufraeumen nur nach Freigabe (Verbot 3.3/3.4)."
+  echo "$FREMD" | grep -qx "supabase" && hinw "supabase/tests/.suite-green ist oben GETRACKT — genau das loescht beim Deploy den lokalen Test-Marker (Block 0)."
+fi
+
 echo "══════════════════════════════════════════"
 if [ $fehler -eq 0 ]; then
   printf "%sABNAHME BESTANDEN%s — %s ist vollständig oben.\n" "$GRUEN" "$AUS" "$fv"

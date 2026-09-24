@@ -62,7 +62,8 @@ Kein `git push --force`, kein `--force-with-lease`, kein `+`-Präfix in der Refs
 git fetch origin
 git checkout -B deploy origin/main      # auf dem AKTUELLEN Fernstand aufsetzen
 # … Dateien ersetzen …
-git add -A && git commit -m "Deploy ORVIA v8-XXX (Stand <lokaler-commit>)"
+git add -A -- index.html styles.css sw.js manifest.webmanifest js assets locales   # NUR der Upload-Satz (3.5)
+git commit -m "Deploy ORVIA v8-XXX (Stand <lokaler-commit>)"
 git push origin deploy:main             # normaler, vorspulender Push
 ```
 
@@ -75,6 +76,8 @@ Wird der Push mit **`push declined due to repository rule violations`** abgelehn
 **3.4 Kein Umbenennen, kein Umsortieren, keine „Aufräumarbeiten".** Es wird ausschließlich ersetzt und hinzugefügt.
 
 **3.5 `git add -A` nur nach Sichtprüfung.** Die Wurzel von `main` hat **keine `.gitignore`**. Ein `git add -A` erfasst dort alles, was herumliegt — genau so entstand am 16.08. ein Commit über 3.441 Dateien inklusive `garmin-worker/.venv/`. Vorher zwingend `git status --short | head -30` lesen.
+
+**Nachtrag 24.09. — warum ein nacktes `git add -A` hier strukturell falsch ist, nicht nur riskant.** `git stash -u` räumt vor dem Zweigwechsel nur *untracked* Dateien weg. Was auf `main` **ignoriert** ist (`node_modules/`, `.DS_Store`, `__pycache__/`, `_to_delete/`, `supabase/tests/.suite-green`), bleibt im Arbeitsbaum liegen — und die Wurzel von `origin/main` hat keine `.gitignore`, also erfasst `git add -A` es dort als normale Datei. Beim nächsten `checkout -B deploy origin/main` wird es wieder materialisiert, bleibt also **für immer** oben: Stand 24.09. lagen 2.451 Fremddateien öffentlich auf Pages (1.692 unter `_to_delete/`, 749 unter `node_modules/`, `.pyc` des Garmin-Workers, sechs `.DS_Store`, der Test-Marker). Der getrackte Test-Marker war zudem der Grund für zweimal Block 0 rot: der veraltete Marker von `origin/main` überschrieb beim Deploy den lokalen, und der Rückwechsel auf `main` entfernte ihn. Darum: **immer explizit `git add -A -- <Upload-Satz>`**, nie das nackte `-A`. `deploy-verify.sh` Block 5 zählt die Fremddateien; das Entfernen bleibt eine Entscheidung nach 3.3/3.4.
 
 ---
 
@@ -106,6 +109,29 @@ Das Skript vergleicht **jede der 159 Dateien byteweise** über den Git-Blob-Hash
 | fehlende Dateien | Teildeploy (Vorfall 16.08.) |
 | abweichende Dateien | alter Stand oben, obwohl „hochgeladen" |
 | `sw.js` ↔ `index.html`-Marker ↔ lokal | Versionsanzeige, die lügt |
+
+**Standard-Block (seit 24.09.2026, ersetzt frühere Fassungen mit `git add -A`):**
+
+```bash
+cd ~/Claude/Projects/Strava && \
+git stash -u -q && git fetch origin -q && \
+rm -rf /tmp/orvia-upload && mkdir -p /tmp/orvia-upload && \
+git archive main app | tar -x -C /tmp/orvia-upload --strip-components=1 && \
+{ cp supabase/tests/.suite-green /tmp/orvia-suite-green 2>/dev/null || true; } && \
+git checkout -B deploy origin/main -q && \
+rsync -a --delete /tmp/orvia-upload/js/ js/ && \
+rsync -a --delete /tmp/orvia-upload/assets/ assets/ && \
+rsync -a --delete /tmp/orvia-upload/locales/ locales/ && \
+cp /tmp/orvia-upload/index.html /tmp/orvia-upload/styles.css /tmp/orvia-upload/sw.js /tmp/orvia-upload/manifest.webmanifest . && \
+git add -A -- index.html styles.css sw.js manifest.webmanifest js assets locales && \
+git commit -q -m "Deploy v8-XXX" && \
+git push origin deploy:main && \
+git checkout main -q && git stash pop -q && \
+{ [ -f /tmp/orvia-suite-green ] && cp /tmp/orvia-suite-green supabase/tests/.suite-green || true; } && \
+bash app/tools/deploy-verify.sh
+```
+
+Die beiden `cp`-Zeilen um den Test-Marker sind die Absicherung, solange `supabase/tests/.suite-green` oben noch getrackt ist (Block 5); danach sind sie harmlos.
 
 **Block 0 (A-05, seit 21.08.2026): Test-Marker.** Vor allen Datei-Prüfungen verlangt das
 Skript einen frischen `supabase/tests/.suite-green` — den `run-all.mjs` bei grünem Lauf mit dem
