@@ -4389,3 +4389,18 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .kp-delta.unsure{color:var(--muted);font-weight:700}
 
 .kp-pt.loaded{stroke:var(--gold);stroke-width:2.4;fill:var(--card)}
+
+/* S4a (v14): Tagesentscheidung als GM-Karte (#adaptBox). Prototyp dashAdp: Kopf mit
+   Zustand, Heute/Vermeiden-Bloecke, Wahl-Knoepfe, Erledigt-Zeile. */
+.card.adx-decision{margin-bottom:14px}
+.card.adx-decision .adp-head{margin-bottom:8px}
+.card.adx-decision .adp-block .adp-val b{font-size:14.5px;color:var(--text)}
+.card.adx-decision .adp-block .adp-val b.adp-muted{font-weight:720;color:var(--muted)}
+.card.adx-decision .adp-btns{flex-direction:row;flex-wrap:wrap;gap:8px;margin-top:12px}
+.card.adx-decision .adp-btns button{flex:1 1 140px;min-height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:720;font-size:12.5px;padding:9px 12px;cursor:pointer}
+.card.adx-decision .adp-btns button.pri{background:var(--gold);border-color:var(--gold);color:#20180a}
+.card.adx-decision .adp-done{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ready);background:var(--ready-t);border-radius:11px;padding:9px 11px}
+.card.adx-decision .adp-done.adp-done-hint{color:var(--muted);background:var(--surface)}
+.card.adx-decision .adp-done .lk{margin-left:auto;font-weight:700;color:var(--muted);text-decoration:underline;cursor:pointer}
+.card.adx-decision .adp-interf{margin-top:9px;display:flex;gap:7px;align-items:flex-start}
+.card.adx-decision .adp-interf .ic{flex:0 0 auto;margin-top:2px}

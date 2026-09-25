@@ -1792,45 +1792,25 @@ var STATE_LABELS={GREEN:'GRÜN',YELLOW:'GELB',ORANGE:'ORANGE',RED:'ROT'};
 var DECISION_WORD={GREEN:'Trainieren',YELLOW:'Reduzieren',ORANGE:'Ersetzen',RED:'Pausieren'};
 /* Daily Decision Card (Phase 7) — rendert die zentrale Entscheidung. */
 function renderAdaptCard(){
+  /* S4a (v14): Die Darstellung lebt jetzt in gmDecisionCard()/gmRenderDecisionCard()
+     (GM1-Block). Hier bleiben NUR die Automatik-Nebenwirkungen des Legacy-Pfads:
+     Automatikmodus uebernimmt die Tagesanpassung und wendet Wochenverschiebungen
+     einmal an (mit Undo-Snapshot) — Persistenz unveraendert (entry.adaptChoice,
+     PROFILE._planUndo). Danach rendert die GM-Karte aus denselben Quellen. */
   var el=document.getElementById('adaptBox');if(!el)return;
   var d=(window.Calc&&Calc.buildTrainingDecision)?currentDecision():null;
-  if(!d){el.innerHTML='';el.style.display='none';return;}
-  el.style.display='';
-  var state=d.dayState,hasChange=(d.todayAction!=='KEEP');
-  var mode=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.adaptationMode)||'assisted';
-  var e=DB[todayStr()];
-  var ch=(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)?e.adaptChoice.choice:null;
-  if(mode==='automatic'&&hasChange&&!ch){var ea=entry(todayStr());ea.adaptChoice={action:d.todayAction,choice:'accepted'};if(typeof save==='function')save();ch='accepted';}
-  var head='<div class="adp-head">'+ic('pulse')+'<span>Tagesentscheidung</span>'+
-    '<span class="adp-state adp-state-'+state.toLowerCase()+'">'+STATE_LABELS[state]+' · '+DECISION_WORD[state]+'</span></div>';
-  var safety=(d.safety&&d.safety.triggered)?'<div class="adp-caution">'+esc(d.safety.advice)+'</div>':'';
-  var rec='<div class="adp-block"><span class="adp-lab">Heute</span><div class="adp-val"><b>'+esc(d.recommendedSession.label)+'</b>'+(d.recommendedSession.detail?'<span>'+esc(d.recommendedSession.detail)+'</span>':'')+'</div></div>';
-  var avoid=d.avoidedSession?'<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val">'+esc(d.avoidedSession.label)+'</div></div>':'';
-  /* H5 (2026-07-11): Der „Warum?"-Block lebt EINMAL — in der Command-Karte darüber.
-     Diese Karte zeigt nur noch das Plan-Delta (Heute/Vermeiden/Verschiebungen);
-     identische Trigger-Listen doppelt auf einem Screen waren Audit-Befund 3a. */
-  var why='';
-  var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
-  var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
-  var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
-  // Automatikmodus: Wochenplan einmal automatisch anwenden (mit Undo-Snapshot)
-  if(mode==='automatic'&&moves.length&&!applied){applyWeekAdjustments(false);return;}
-  var week='';
-  if(applied){
-    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_angepasst_') + '</b>' + _uiT('ui.aenderungen_gespeichert_siehe_plan') + '<button class="linklike" onclick="revertWeekAdjustments()">' + _uiT('ui.rueckgaengig') + '</button></div>';
-  }else if(moves.length){
-    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_vorschlag') + '</b> '+moves.map(function(c){return c.action==='MOVE_SESSION'?('' + _uiT('ui.harte_einheit') + ''+DN[c.day]+'' + _uiT('ui.48_h_abstand_kein_konflikt') + ''):esc(c.reason);}).join(' ')+
-      '<div class="adp-btns" style="margin-top:8px"><button class="btn sec" onclick="applyWeekAdjustments(true)">' + _uiT('ui.wochenplan_anpassen') + '</button></div></div>';
+  if(d){
+    var hasChange=(d.todayAction!=='KEEP');
+    var mode=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.adaptationMode)||'assisted';
+    var e=DB[todayStr()];
+    var ch=(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)?e.adaptChoice.choice:null;
+    if(mode==='automatic'&&hasChange&&!ch){var ea=entry(todayStr());ea.adaptChoice={action:d.todayAction,choice:'accepted',at:new Date().toISOString(),auto:true};if(typeof save==='function')save();}
+    var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
+    var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
+    if(mode==='automatic'&&moves.length&&!applied){applyWeekAdjustments(false);return;}
   }
-  var actions='';
-  if(hasChange){
-    if(ch==='accepted')actions='<div class="adp-accepted">✓ '+(mode==='automatic'?'' + _uiT('ui.automatisch_angepasst') + '':'Übernommen')+'. <button class="linklike" onclick="adaptReopen()">'+(mode==='automatic'?'' + _uiT('ui.rueckgaengig') + '':'ändern')+'</button></div>';
-    else if(ch==='original')actions='<div class="adp-folded">' + _uiT('ui.nur_als_hinweis_angezeigt') + '<button class="linklike" onclick="adaptReopen()">doch anpassen</button></div>';
-    else actions='<div class="adp-btns"><button class="btn" onclick="adaptChoose(\'accepted\')">Änderung übernehmen</button>'+
-      '<button class="btn sec" onclick="adaptChoose(\'original\')">Nur als Hinweis</button></div>';
-  }
-  var feel='<button class="linklike adp-feel" onclick="adaptFeelDifferent()">' + _uiT('ui.ich_fuehle_mich_anders_check') + '</button>';
-  el.innerHTML='<div class="adapt-card adp-'+state.toLowerCase()+'">'+head+safety+rec+avoid+why+week+actions+feel+'</div>';
+  if(typeof gmRenderDecisionCard==='function'){gmRenderDecisionCard();return;}
+  el.innerHTML='';el.style.display='none';
 }
 function adaptChoose(choice){var d=currentDecision();if(!d)return;var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice};if(typeof save==='function')save();renderAdaptCard();if(typeof toast==='function')toast(choice==='original'?'' + _uiT('ui.als_hinweis_angezeigt') + '':'' + _uiT('ui.anpassung_uebernommen') + '');}
 function adaptReopen(){var e=entry(todayStr());if(e.adaptChoice){delete e.adaptChoice;if(typeof save==='function')save();}renderAdaptCard();}
@@ -3046,7 +3026,9 @@ function renderDay(){if(typeof invalidateDecision==='function')invalidateDecisio
   if(typeof renderPauseBanner==='function')renderPauseBanner();
   /* GM7: renderAdaptCard/renderConfidence/renderTipEngine sind GM-fremde Legacy-Karten —
      Inhalte leben jetzt im Hero (changelog) bzw. im Readiness-&-Konfidenz-Modul. */
-  (function(){try{['adaptBox','confBox','insights'].forEach(function(id){var el=document.getElementById(id);if(el){el.innerHTML='';el.style.display='none';}});}catch(_){ }})();
+  (function(){try{['confBox','insights'].forEach(function(id){var el=document.getElementById(id);if(el){el.innerHTML='';el.style.display='none';}});}catch(_){ }})();
+  /* S4a (v14): #adaptBox traegt jetzt die GM-Tagesentscheidung (gmDecisionCard). */
+  try{if(typeof gmRenderDecisionCard==='function')gmRenderDecisionCard();}catch(_){ }
   if(typeof renderModules==='function')renderModules();
   if(typeof renderExtraCheckin==='function')renderExtraCheckin();
   if(window.ORVIA&&window.ORVIA.workoutUI&&window.ORVIA.workoutUI.renderEntry)window.ORVIA.workoutUI.renderEntry();
@@ -6556,6 +6538,114 @@ function gmHero(d){
     '<div class="deltas">'+d.deltas.map(function(x){return '<span class="delta '+x[0]+'">'+arrow(x[0])+' '+gmEsc(x[1])+'</span>';}).join('')+'</div></div></div>'+
     reco+gmCtaRow(d)+gmBatt(d)+'</div>';
 }
+/* ============ S4a (v14): Tagesentscheidung als GM-Karte ============
+   Prototyp v14 dashAdp: Kopf (Zustand), „Heute" (empfohlene Einheit + Grund),
+   „Vermeiden" (vermiedene Einheit bzw. Abstand zum naechsten Kernreiz) und eine
+   protokollierte Wahl. Die Legacy-Karte renderAdaptCard() blieb seit GM7 leer
+   (#adaptBox wurde geloescht) — ihre Persistenz (entry.adaptChoice) bleibt die
+   EINZIGE Quelle der Wahl; neu ist nur, dass jede Wahl zusaetzlich append-only
+   ins Entscheidungs-Log geht (decisionType user_override, wie das Debrief).
+   Ehrlichkeit: ein „Tauschen" ohne echten Verschiebe-Mechanismus gibt es NICHT —
+   bei KEEP steht nur „Wie geplant" (Bestaetigung) plus der Weg ueber den
+   Check-in („Ich fuehle mich anders"). Keine toten Knoepfe. */
+function gmNextKeyUnit(){
+  try{
+    var wp=(typeof activeWeekPlan==='function')?activeWeekPlan():null;if(!wp||wp.length!==7)return null;
+    var ti=(new Date(todayStr()+'T12:00').getDay()+6)%7;
+    var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
+    for(var di=ti+1;di<7;di++){var units=wp[di]||[];
+      for(var i=0;i<units.length;i++){if(gmPlanIsKeyUnit(units[i]))return {day:di,dayLbl:DN[di],label:units[i].l||'',gapDays:di-ti};}}
+  }catch(_){ }
+  return null;
+}
+function gmAdpChoice(d){
+  try{var e=DB[todayStr()];if(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)return e.adaptChoice;}catch(_){ }
+  return null;
+}
+function gmAdpLog(d,choice){
+  try{
+    if(!(window.ORVIA&&ORVIA.decisionLog&&ORVIA.decisionLog.logDecision))return;
+    var ts=new Date().toISOString();
+    ORVIA.decisionLog.logDecision({
+      timestamp:ts,decisionType:'user_override',
+      decisionId:'adp:'+todayStr()+'@'+ts,
+      weekId:null,planId:null,registry:ORVIA,
+      inputs:{todayAction:d.todayAction,dayState:d.dayState,score:d.score,recommended:(d.recommendedSession&&d.recommendedSession.label)||null,avoided:(d.avoidedSession&&d.avoidedSession.label)||null},
+      selected:{choice:choice}
+    });
+  }catch(_){ }
+}
+function gmAdpChoose(choice){
+  var d=(typeof getDecision==='function')?getDecision():null;if(!d)return;
+  var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice,at:new Date().toISOString()};
+  if(typeof save==='function')save();
+  gmAdpLog(d,choice);
+  gmRenderDecisionCard();
+  try{if(typeof toast==='function')toast(choice==='original'?'' + _uiT('ui.als_hinweis_angezeigt') + '':choice==='planned'?'' + _uiT('ui.adp_toast_planned') + '':'' + _uiT('ui.anpassung_uebernommen') + '');}catch(_){ }
+}
+function gmAdpReopen(){var e=entry(todayStr());if(e.adaptChoice){delete e.adaptChoice;if(typeof save==='function')save();}gmRenderDecisionCard();}
+function gmAdpTime(iso){try{if(!iso)return '';var t=new Date(iso);if(isNaN(t))return '';return t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr';}catch(_){return '';}}
+function gmDecisionCard(d){
+  if(!d||!d.dayState||!d.recommendedSession)return '';
+  var lvl=gmLevel();var st=String(d.dayState);
+  var hasChange=(d.todayAction!=='KEEP');
+  var ch=gmAdpChoice(d);
+  var head='<div class="adp-head">'+icon('pulse','sm')+'<span>' + _uiT('ui.tagesentscheidung') + '</span>'+
+    '<span class="adp-state adp-state-'+st.toLowerCase()+'">'+gmEsc((STATE_LABELS[st]||st)+' · '+(DECISION_WORD[st]||''))+'</span></div>';
+  var safety=(d.safety&&d.safety.triggered&&d.safety.advice)?'<div class="adp-caution">'+gmEsc(d.safety.advice)+'</div>':'';
+  var reason='';try{reason=(d.readinessReasons&&d.readinessReasons[0])||'';}catch(_){ }
+  var rec='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.adp_heute') + '</span><div class="adp-val"><b>'+gmEsc(d.recommendedSession.label)+'</b>'+
+    ((d.recommendedSession.detail||reason)?'<span>'+gmEsc([d.recommendedSession.detail||'',reason].filter(Boolean).join(' — '))+'</span>':'')+'</div></div>';
+  var avoid='';
+  if(d.avoidedSession&&d.avoidedSession.label){
+    avoid='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val"><b class="adp-muted">'+gmEsc(d.avoidedSession.label)+'</b>'+(d.avoidedSession.detail?'<span>'+gmEsc(d.avoidedSession.detail)+'</span>':'')+'</div></div>';
+  }else if(lvl!=='a'){
+    var nk=gmNextKeyUnit();
+    if(nk)avoid='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val"><b class="adp-muted">' + _uiT('ui.adp_avoid_default') + '</b><span>'+gmEsc(_uiT('ui.adp_next_key',{day:nk.dayLbl,label:nk.label}))+'</span></div></div>';
+  }
+  /* Wochenverschiebungen (Engine MOVE_SESSION/REBUILD_WEEK): der EINZIGE echte
+     „Tauschen"-Mechanismus — mit Undo-Snapshot (PROFILE._planUndo). */
+  var week='';
+  try{
+    var DN2=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
+    var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
+    var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
+    if(applied){
+      week='<div class="adp-done adp-done-hint">'+icon('calendar','sm')+' <b>' + _uiT('ui.wochenplan_angepasst_') + '</b>' + _uiT('ui.aenderungen_gespeichert_siehe_plan') + '<span class="lk" role="button" tabindex="0" onclick="revertWeekAdjustments()">' + _uiT('ui.rueckgaengig') + '</span></div>';
+    }else if(moves.length){
+      week='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.adp_woche') + '</span><div class="adp-val"><b class="adp-muted">' + _uiT('ui.wochenplan_vorschlag') + '</b><span>'+moves.map(function(c){return c.action==='MOVE_SESSION'?gmEsc('' + _uiT('ui.harte_einheit') + ''+(DN2[c.day]||'')+'' + _uiT('ui.48_h_abstand_kein_konflikt') + ''):gmEsc(c.reason||'');}).join(' ')+'</span>'+
+        '<div class="adp-btns" style="margin-top:8px"><button onclick="applyWeekAdjustments(true)">' + _uiT('ui.wochenplan_anpassen') + '</button></div></div></div>';
+    }
+  }catch(_){week='';}
+  var body;
+  if(ch&&ch.choice==='accepted'){
+    body='<div class="adp-done">'+icon('check','sm')+' '+gmEsc(_uiT('ui.adp_done_accepted',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(ch&&ch.choice==='planned'){
+    body='<div class="adp-done">'+icon('check','sm')+' '+gmEsc(_uiT('ui.adp_done_planned',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(ch&&ch.choice==='original'){
+    body='<div class="adp-done adp-done-hint">'+icon('info','sm')+' '+gmEsc(_uiT('ui.adp_done_hint',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(hasChange){
+    body='<div class="adp-btns"><button class="pri" onclick="gmAdpChoose(\'accepted\')">' + _uiT('ui.adp_change_accept') + '</button>'+
+      '<button onclick="gmAdpChoose(\'original\')">' + _uiT('ui.adp_hint_only') + '</button></div>'+
+      '<div class="interf adp-interf">'+icon('info','xs')+' <div>' + _uiT('ui.adp_protocol_change') + '</div></div>';
+  }else{
+    body='<div class="adp-btns"><button class="pri" onclick="gmAdpChoose(\'planned\')">' + _uiT('ui.adp_wie_geplant') + '</button>'+
+      '<button onclick="adaptFeelDifferent()">' + _uiT('ui.ich_fuehle_mich_anders_check') + '</button></div>'+
+      '<div class="interf adp-interf">'+icon('info','xs')+' <div>' + _uiT('ui.adp_protocol_keep') + '</div></div>';
+  }
+  return '<div class="card adx-decision adp-'+st.toLowerCase()+'" id="gmAdp">'+head+safety+rec+avoid+week+body+'</div>';
+}
+function gmRenderDecisionCard(){
+  var el=document.getElementById('adaptBox');if(!el)return;
+  var html='';
+  try{
+    if(typeof cur==='undefined'||cur===todayStr()){
+      var state=(typeof window!=='undefined'&&window._gmStateOverride)||((typeof gmDashState==='function')?gmDashState():'normal');
+      if(state==='normal'||state==='offline'){var d=(typeof getDecision==='function')?getDecision():null;if(d)html=gmDecisionCard(d);}
+    }
+  }catch(_){html='';}
+  el.innerHTML=html;el.style.display=html?'':'none';
+}
 /* Check-in-Karte (GM): steuert NUR das bestehende Formular (#checkinCard) — nie neu erzeugen. */
 function renderCheckinCompact(){try{
   var box=document.getElementById('checkinCompact');if(!box)return;
@@ -7078,6 +7168,12 @@ function openScore(){
        (gmConfVM: dataConfidence()+Baseline-Status), identisch zu gmModReadinessPro. */
     (d.conf&&d.conf.levelLabel?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+gmEsc(d.conf.levelLabel)+'</b></span>'+(d.conf.complete?'<span class="confchip">'+icon('db','xs')+' Daten <b>'+gmEsc(d.conf.complete)+'</b></span>':'')+'<span class="confchip">'+icon('pulse','xs')+' HRV-Abw. <b>'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</b></span></div>'+(d.conf.note?'<p style="margin-top:10px;color:var(--muted);font-size:11.5px">'+gmEsc(d.conf.note)+'</p>':'')+'</div>':'')+
     (gmLevel()==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.berechnung') + '</div><p>' + _uiT('ui.zentrale_entscheidung_der_orvia_engine') + '</p></div>':'')+
+    /* S4b (v14): Basis-Zeile (Prototyp scoreRender „Basis … · Baselines 28 T. · Konfidenz")
+       aus echten Werten: gewichtete Teilwerte (scoreParts), recoveryCtx = 28-Tage-Fenster,
+       Konfidenz = dataConfidence(). Danach „Was der Score NICHT ist" mit den REALEN
+       Schwellen aus calc.dayStateEngine (70/55/40) und Peak (>= 85, calc peakOK). */
+    '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.score_basis',{conf:(d.conf&&d.conf.levelLabel)||GM_NA}))+'</div>'+
+    '<div class="sh-block score-not"><div class="bh">' + _uiT('ui.score_not_title') + '</div><p style="margin:0;color:var(--muted);font-size:12px;line-height:1.6">' + _uiT('ui.score_not_body') + '</p></div>'+
     '<div class="source">'+icon('db','xs')+' ORVIA-Engine · Anzeige ohne Neuberechnung</div>';
   gmOpenSheet('detailSheet');
 }

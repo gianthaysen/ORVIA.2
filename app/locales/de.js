@@ -3774,6 +3774,26 @@
     'pv.ziel_angelegt': 'Ziel angelegt.',
     'pv.impact_keine': 'Auswirkung dieser Änderung: keine Umplanung nötig.',
     'pv.impact_neu': 'Auswirkung dieser Änderung: der Wochenplan wird neu ausgerichtet.',
-    'pv.impact_nebenziel': 'Auswirkung: Nebenziele ändern die Wochenstruktur nicht.'
+    'pv.impact_nebenziel': 'Auswirkung: Nebenziele ändern die Wochenstruktur nicht.',
+    /* S4a (v14): Tagesentscheidung */
+    'ui.tagesentscheidung': 'Tagesentscheidung',
+    'ui.adp_heute': 'Heute',
+    'ui.adp_avoid_default': 'Zusätzliche härtere Reize',
+    'ui.adp_next_key': 'Nächster geplanter Kernreiz: {day} · {label}',
+    'ui.adp_wie_geplant': 'Wie geplant',
+    'ui.adp_change_accept': 'Änderung übernehmen',
+    'ui.adp_hint_only': 'Nur als Hinweis',
+    'ui.adp_done_planned': 'Wie geplant bestätigt · {time}',
+    'ui.adp_done_accepted': 'Änderung übernommen · {time}',
+    'ui.adp_done_hint': 'Nur als Hinweis · Plan bleibt · {time}',
+    'ui.adp_change': 'ändern',
+    'ui.adp_toast_planned': 'Wie geplant bestätigt',
+    'ui.adp_woche': 'Woche',
+    'ui.adp_protocol_change': 'Beides wird im Entscheidungs-Log protokolliert. Die Anpassung gilt nur für heute — der Wochenplan ändert sich nur über „Wochenplan anpassen“.',
+    'ui.adp_protocol_keep': 'Deine Bestätigung wird im Entscheidungs-Log protokolliert. Fühlst du dich anders als die Werte sagen, passe den Check-in an — die Entscheidung wird dann neu berechnet.',
+    /* S4b (v14): Score-Sheet */
+    'ui.score_basis': 'Gewichteter Gesamtwert · Baselines aus deinen letzten 28 Tagen · Konfidenz: {conf}',
+    'ui.score_not_title': 'Was der Score NICHT ist',
+    'ui.score_not_body': 'Keine Verbotsampel. Die Zahl ist ein gewichteter Gesamtwert aus Erholung, Kontrolle und Umsetzung. Die Ampel hängt am Erholungswert und an Warnzeichen: unter 70 wird es Gelb, unter 55 Orange, unter 40 Rot — ab 85 ohne Warnzeichen Peak. Die Tagesentscheidung auf dem Dashboard zieht daraus die konkrete Konsequenz.'
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
