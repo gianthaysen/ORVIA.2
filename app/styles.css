@@ -3439,6 +3439,14 @@ body.profile-open #tab-mehr{padding:var(--sat) 0 calc(env(safe-area-inset-bottom
    Umbruch). Neue Struktur: textfreie Segmentleiste + grosse aktuelle Phase + Vollbreiten-
    Liste. Die alten .phase-Regeln bleiben unangetastet, weil sie noch andere Hosts bedienen. */
 .ph-bar{display:flex;gap:4px;margin:2px 0 14px}
+/* S3a (v14): Kernreiz-Marker und Pace-Zonen-Zeilen */
+.session-card.key .session-ico{background:rgba(201,174,124,.13);border:1px solid rgba(201,174,124,.35);color:var(--gold-soft)}
+.session-card.key.done .session-ico{color:var(--ready);background:var(--ready-t);border-color:transparent}
+.pz-row{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px}
+.pz-row+.pz-row{border-top:1px solid var(--hair)}
+.pz-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.pz-l{color:var(--muted);flex:1}
+.pz-v{font-variant-numeric:tabular-nums}
 .ph-seg{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10)}
 .ph-seg.done{background:rgba(255,255,255,.28)}
 .ph-seg.now{background:var(--gold,#c9ae7c)}

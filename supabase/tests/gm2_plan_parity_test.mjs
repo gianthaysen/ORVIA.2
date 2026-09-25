@@ -111,7 +111,9 @@ if(blk){
     const out={};
     for(const m of ['anfaenger','fortgeschritten','profi']){MODE=m;el('gmPlan').innerHTML='';globalThis.renderGMPlan();out[m]=el('gmPlan').innerHTML;}
     const seq=h=>[...h.matchAll(/<div class="(hdr|sectlabel|pvar-row|card[^"]*|plan-list|daily-goals|tabspacer)"/g)].map(x=>x[1].split(' ')[0]);
-    const F=['hdr','sectlabel','pvar-row','card','sectlabel','plan-list','sectlabel','card','sectlabel','card','sectlabel','card','sectlabel','card','sectlabel','daily-goals','tabspacer'];
+    /* S3a (v14, 25.09.2026): nach den Phasen kommt die Pace-Zonen-Sektion (sectlabel + card)
+       aus dem kanonischen Leistungsbild — ohne Referenz als Leerzustand, Struktur bleibt. */
+    const F=['hdr','sectlabel','pvar-row','card','sectlabel','plan-list','sectlabel','card','sectlabel','card','sectlabel','card','sectlabel','card','sectlabel','card','sectlabel','daily-goals','tabspacer'];
     const A=['hdr','sectlabel','pvar-row','card','sectlabel','plan-list','sectlabel','card','sectlabel','daily-goals','tabspacer'];
     ok('F: exakte GM-Sektionsfolge', seq(out.fortgeschritten).join('|')===F.join('|'), seq(out.fortgeschritten).join('|'));
     ok('P: identisch zu F', seq(out.profi).join('|')===F.join('|'));
