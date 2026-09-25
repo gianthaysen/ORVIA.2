@@ -66,5 +66,15 @@ sec('E · Prognose gross (v8-407)');
   ok('E2 ohne Ziel: nur Prognose, ohne Prognose: kein Kopf', /if\(v\.realistic>0\)\{/.test(card) && /v\.target>0\?' · '/.test(card));
   ok('E3 Abstand farbig: ueber dem Ziel att, darunter ready', /\.fc-head i\.over\{color:var\(--attention\)\}\.fc-head i\.under\{color:var\(--ready\)\}/.test(rd('styles.css')));
 }
+sec('F · Engpass aus der Planqualitaet (v8-408)');
+{
+  const ui = rd('js/ui.js');
+  const src = ui.match(/var GM_BOTTLENECK_KEY=\{[^;]*\};/)[0] + '\n' + (ui.match(/\n(function gmGoalBottleneckText\([^)]*\)\{[\s\S]*?\n\})\n/) || [])[1];
+  globalThis._uiT = tStub().t;
+  const f = new Function('_uiT', src + '\nreturn gmGoalBottleneckText;')(globalThis._uiT);
+  ok('F1 Zielabdeckung-Limits werden benannt (kein Long Run · keine Qualitaetseinheit)', f({ subscores: { goalCoverage: { limiting: ['no_long_run', 'no_quality_session'] } } }) === 'kein Long Run · keine Qualitätseinheit');
+  ok('F2 unbekannte Codes werden nicht angezeigt; ohne Limit null', f({ subscores: { goalCoverage: { limiting: ['goal_model'] } } }) === null && f(null) === null && f({ subscores: {} }) === null);
+  ok('F3 Karte bekommt _pqEval (Renderer-Aufruf)', /h\+=gmGoalForecastCard\(lvl,_perfBySport,_pqEval\);/.test(ui) && /fc-bottleneck/.test(ui));
+}
 console.log('\n' + (fail ? '❌' : '✅') + ' ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

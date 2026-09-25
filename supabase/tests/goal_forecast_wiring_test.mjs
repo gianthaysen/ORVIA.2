@@ -161,7 +161,9 @@ sec('Z5 · Der Renderer zeigt Zahlen statt Vertroestung');
     sliceBalanced(uiRaw, 'function gmGoalForecastCard(') + '\n' +
     /* S3b (v8-402): Realismus-Helfer gehoeren zur Karte */
     sliceBalanced(uiRaw, 'function gmGoalRealismNow(') + '\n' + sliceBalanced(uiRaw, 'function gmFmtSecHMS(') + '\n' +
-    sliceBalanced(uiRaw, 'function gmGoalVerdictText(') + '\n' + sliceBalanced(uiRaw, 'function gmGoalVerdictHTML(');
+    sliceBalanced(uiRaw, 'function gmGoalVerdictText(') + '\n' + sliceBalanced(uiRaw, 'function gmGoalVerdictHTML(') + '\n' +
+    /* v8-408: Engpass aus der Planqualitaet */
+    'var GM_BOTTLENECK_KEY=' + /var GM_BOTTLENECK_KEY=(\{[^;]*\});/.exec(uiRaw)[1] + ';\n' + sliceBalanced(uiRaw, 'function gmGoalBottleneckText(');
   const perf = perfOf('race');
   const mkCard = goalObj => new Function('window', 'ORVIA', 'goalOf', 'gmEsc', 'icon', 'GM_NA',
     cardSrc + '\nreturn gmGoalForecastCard;')(globalThis, globalThis.ORVIA, () => goalObj,
@@ -188,7 +190,7 @@ sec('Z5 · Der Renderer zeigt Zahlen statt Vertroestung');
 
   /* Quelltext-Vertrag: der produktive Renderer nutzt die Funktion wirklich. */
   ok('renderGMPlan ruft gmGoalForecastCard auf (kein toter Zweig)',
-    /h\+=gmGoalForecastCard\(lvl,_perfBySport\);/.test(uiRaw));
+    /h\+=gmGoalForecastCard\(lvl,_perfBySport(,_pqEval)?\);/.test(uiRaw));
   ok('die alten Literale sind aus dem Plan-Renderer entfernt',
     (uiRaw.match(/der Prognosekorridor erscheint mit der externen Trainingsengine/g) || []).length === 0);
 }

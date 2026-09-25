@@ -3217,6 +3217,7 @@ body{font-family:var(--font);color:var(--text);min-height:100vh;background:radia
 .fc-head span{font-size:11.5px;color:var(--muted)}
 .fc-head i{font-style:normal;font-weight:800;font-variant-numeric:tabular-nums}
 .fc-head i.over{color:var(--attention)}.fc-head i.under{color:var(--ready)}
+.fc-bottleneck{margin:6px 2px 0}.fc-bottleneck span:last-child{color:var(--attention);font-weight:700}
 .phase-track{display:flex;gap:4px;margin:10px 2px}
 .phase{flex:1;border-radius:8px;padding:9px 6px;text-align:center;font-family:var(--font);background:var(--surface);border:1px solid var(--border);position:relative}
 .phase.done{opacity:.6}.phase.now{border-color:var(--gold);background:linear-gradient(160deg,rgba(201,174,124,.22),transparent)}

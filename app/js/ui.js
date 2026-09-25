@@ -7844,7 +7844,18 @@ var GM_FEAS_TEXT={within_modeled_corridor:'' + _uiT('ui.im_rahmen_dessen_was_das
 var GM_MISSING_TEXT={current_performance:'' + _uiT('ui.ein_gemessener_leistungswert') + '',
   current_performance_not_decision_eligible:'' + _uiT('ui.ein_leistungswert_mit_datum_undatiert') + '',
   goal:'' + _uiT('ui.eine_bezifferte_zielzeit') + ''};
-function gmGoalForecastCard(lvl,perfBySport){
+/* S3b (v14 „Engpass"): der strukturelle Engpass der angezeigten Woche gegenueber dem Ziel —
+   aus der Zielabdeckung der Planqualitaet (plan-quality.goalScore.limiting), keine neue Rechnung. */
+var GM_BOTTLENECK_KEY={no_long_run:'ui.engpass_kein_long_run',too_few_run_days:'ui.engpass_zu_wenige_lauftage',no_quality_session:'ui.engpass_keine_qualitaetseinheit'};
+function gmGoalBottleneckText(pqEval){
+  try{
+    var gc=pqEval&&pqEval.subscores&&pqEval.subscores.goalCoverage;
+    var lim=(gc&&Array.isArray(gc.limiting))?gc.limiting.filter(function(k){return !!GM_BOTTLENECK_KEY[k];}):[];
+    if(!lim.length)return null;
+    return lim.map(function(k){return _uiT(GM_BOTTLENECK_KEY[k]);}).join(' · ');
+  }catch(_){return null;}
+}
+function gmGoalForecastCard(lvl,perfBySport,pqEval){
   var runPerf=(perfBySport&&perfBySport.running)||null;
   var goal=null;try{goal=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
   var feas=null;
@@ -7896,6 +7907,7 @@ function gmGoalForecastCard(lvl,perfBySport){
       '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
     '<div class="fc-corridor"><div class="fc-band" style="left:'+inset+'%;right:'+inset+'%"></div></div>'+
     verdict+
+    (function(){var b=gmGoalBottleneckText(pqEval);return b?'<div class="goalmeta fc-bottleneck"><span>' + _uiT('ui.engpass_diese_woche') + '</span><span>'+gmEsc(b)+'</span></div>':'';})()+
     '<div class="mini-note">'+icon('info','xs')+'<div>'+statusTxt+tgtTxt+weeksTxt+basisTxt+
       ' Modellwert aus deiner gemessenen Referenz — keine Garantie.</div></div></div>';
 }
@@ -8345,7 +8357,7 @@ function renderGMPlan(){
     var _gLbl='';try{var _g=goalOf();var _rl=(typeof raceLabel==='function')?raceLabel(_g&&_g.type):null;var _tm=(typeof goalTargetMinOrNull==='function')?goalTargetMinOrNull():null;
       if(_rl)_gLbl=' · '+_rl+(_tm!=null?' '+Math.floor(_tm/60)+':'+String(_tm%60).padStart(2,'0'):'');}catch(_){ }
     h+='<div class="sectlabel" data-gm-slot="plan-goal-forecast">Zielprognose'+gmEsc(_gLbl)+'</div>';
-    h+=gmGoalForecastCard(lvl,_perfBySport);
+    h+=gmGoalForecastCard(lvl,_perfBySport,_pqEval);
     /* v8-314: ADAPTIVE EINSCHAETZUNG im SICHTBAREN Plan-Tab.
        Der Renderer (js/adaptive-card.js) existiert seit v8-283, ist String->String
        und als Verhalten getestet — er schrieb aber ausschliesslich in
