@@ -3451,6 +3451,13 @@ body.profile-open #tab-mehr{padding:var(--sat) 0 calc(env(safe-area-inset-bottom
 .fc-verdict .ic{flex:0 0 auto;width:14px;height:14px;margin-top:2px}
 .fc-verdict.att .ic{color:var(--attention)}.fc-verdict.crit .ic{color:var(--crit)}
 .fc-verdict .edit{margin-left:4px;color:var(--gold-soft);font-weight:700;cursor:pointer}
+/* S3c (v14): Schnellstart-Kacheln im Schnellzugriff */
+.qk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.qk{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 4px;border-radius:14px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-family:var(--font);color:var(--text);min-height:44px}
+.qk:active{transform:scale(.97)}
+.qk .k-ic{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--muted)}
+.qk .k-ic .ic{width:18px;height:18px}
+.qk b{font-size:10.5px;font-weight:760;text-align:center}
 /* S3a (v14): Kernreiz-Marker und Pace-Zonen-Zeilen */
 .session-card.key .session-ico{background:rgba(201,174,124,.13);border:1px solid rgba(201,174,124,.35);color:var(--gold-soft)}
 .session-card.key.done .session-ico{color:var(--ready);background:var(--ready-t);border-color:transparent}

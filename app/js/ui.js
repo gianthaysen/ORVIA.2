@@ -9237,13 +9237,39 @@ var GM_SPORT_ICON_EXTRA={
 function gmSportTileIcon(n,c){if(GM_SPORT_ICON_EXTRA[n])return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24">'+GM_SPORT_ICON_EXTRA[n]+'</svg>';return icon(n,c);}
 /* ---------- Training-Start-Sheet (GM-Einstieg; nur bestehende produktive Start-Handler) ---------- */
 var _gmStartCtx={mode:null,sport:null};
+/* S3c (v14 Schnellstart): die Sport-Kacheln des Start-Sheets als EINE Liste — auch der
+   Schnellzugriff (quick-actions.js) liest sie, damit Reihenfolge, Icon und Farbe je
+   Sportart nur an einer Stelle stehen. */
+var GM_START_SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
+var GM_SPORT_ID_TO_START={running:'Laufen',gym:'Krafttraining',strength:'Krafttraining',cycling:'Radfahren',swimming:'Schwimmen',football:'Fußball',mobility:'Mobility'};
+/* Kacheln fuer den Schnellzugriff: die AKTIVEN Sportarten des Profils (Hauptsport zuerst),
+   hoechstens `max`, nur solche, die das Start-Sheet kennt. Rein, ohne DOM. */
+function gmQuickStartTiles(profile,max){
+  var lim=(max>0)?max:3,out=[],seen={};
+  try{
+    var sp=(profile&&Array.isArray(profile.sports))?profile.sports.slice():[];
+    sp.sort(function(a,b){var ra=(a&&a.role==='primary')?0:1,rb=(b&&b.role==='primary')?0:1;return ra-rb;});
+    sp.forEach(function(e){
+      if(out.length>=lim||!e||e.activeInApp===false)return;
+      var id=typeof e==='string'?e:e.sportId;var label=GM_SPORT_ID_TO_START[id];if(!label||seen[label])return;
+      var row=null;GM_START_SPORTS.forEach(function(r){if(r[0]===label)row=r;});if(!row)return;
+      seen[label]=1;out.push({sport:row[0],icon:row[1],color:row[2],sportId:id});
+    });
+  }catch(_){ }
+  return out;
+}
+/* Einstieg aus dem Schnellzugriff: Start-Sheet oeffnen und die Sportart direkt vorwaehlen. */
+function gmQuickStart(sport){
+  try{if(typeof gmOpenStartSheet==='function')gmOpenStartSheet();}catch(_){ }
+  try{if(sport&&typeof gmStartSport==='function')gmStartSport(sport);}catch(_){ }
+}
 function gmOpenStartSheet(mode){
   _gmStartCtx={mode:mode||null,sport:null,explicit:false};
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var title=mode==='planned'?'' + _uiT('ui.geplante_einheit_starten') + '':mode==='repeat'?'' + _uiT('ui.letztes_training_wiederholen') + '':mode==='free'?'' + _uiT('ui.freies_training') + '':'' + _uiT('ui.training_starten') + '';
   var sub=lvl==='a'?'' + _uiT('ui.waehle_deine_sportart') + '':lvl==='p'?'' + _uiT('ui.sportart_geplant_frei_pre_start') + '':'' + _uiT('ui.sportart_waehlen_dann_geplant_oder') + '';
-  var SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
+  var SPORTS=GM_START_SPORTS;
   sh.innerHTML='<div class="grab"></div><h3>'+title+'</h3><div class="sh-sub">'+sub+'</div>'+
     '<div class="sport-grid">'+SPORTS.map(function(s){return '<button class="sport-tile" onclick="gmStartSport(\''+s[0]+'\')"><span class="st-ic" style="background:'+s[2]+';color:#0c1017">'+gmSportTileIcon(s[1],'sm')+'</span><b>'+s[0]+'</b></button>';}).join('')+'</div>';
   gmOpenSheet('detailSheet');

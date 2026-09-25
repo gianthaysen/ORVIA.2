@@ -297,6 +297,23 @@
       '<span class="qa-desc">' + esc(a.description) + '</span></span>' +
       '<span class="qa-arrow" aria-hidden="true">›</span></button>';
   }
+  /* ---- S3c (Prototyp v14 „Schnellstart"): Sport-Kacheln zuerst ----
+     v14 zeigt oben „Einheit starten" mit Laufen/Kraft/Rad/Mehr — hart verdrahtet.
+     Hier kommen die Kacheln aus den AKTIVEN Sportarten des Profils
+     (ui.gmQuickStartTiles), „Mehr" oeffnet das Start-Sheet mit allen. Ohne Helfer
+     oder ohne Sportarten entfaellt der Block (kein toter Knopf). */
+  function quickStartGridHTML() {
+    try {
+      if (typeof root.gmQuickStartTiles !== 'function' || typeof root.gmQuickStart !== 'function') return '';
+      var tiles = root.gmQuickStartTiles(root.PROFILE || null, 3);
+      if (!tiles.length) return '';
+      var ic = function (n) { return (typeof root.icon === 'function') ? root.icon(n, 'sm') : ''; };
+      var short = { Krafttraining: 'Kraft', Radfahren: 'Rad' };
+      return '<div class="qa-group-label">Einheit starten</div><div class="qk-grid">' +
+        tiles.map(function (tl) { return '<button type="button" class="qk" data-qk="' + esc(tl.sport) + '"><span class="k-ic" style="background:' + esc(tl.color) + ';color:#0c1017">' + ic(tl.icon) + '</span><b>' + esc(short[tl.sport] || tl.sport) + '</b></button>'; }).join('') +
+        '<button type="button" class="qk" data-qk=""><span class="k-ic">' + ic('plus') + '</span><b>Mehr</b></button></div>';
+    } catch (e) { return ''; }
+  }
   function openQuickActions() {
     if (typeof root.openSheet !== 'function') return false;
     // P8: Kontext-Overlay + Nutzer-Favoriten + vollständiger Katalog („Alle Aktionen").
@@ -305,6 +322,7 @@
     if (!menu.context.length && !menu.favorites.length && !menu.all.length) return false;
     var body =
       '<div class="qa-root">' +
+        quickStartGridHTML() +
         (menu.context.length ? '<div class="qa-group-label">Jetzt sinnvoll</div><div class="qa-sec">' + menu.context.map(function (a) { return actionRow(a, true); }).join('') + '</div>' : '') +
         (menu.favorites.length ? '<div class="qa-group-label">Deine Favoriten</div><div class="qa-sec">' + menu.favorites.map(function (a) { return actionRow(a, !menu.context.length); }).join('') + '</div>' : '') +
         (menu.all.length ? '<details class="qa-more"><summary class="qa-group-label qa-more-sum">Alle Aktionen (' + menu.all.length + ')</summary><div class="qa-sec">' + menu.all.map(function (a) { return actionRow(a, false); }).join('') + '</div></details>' : '') +
@@ -318,6 +336,16 @@
     });
     var mg = doc && doc.getElementById('qa-manage');
     if (mg) mg.onclick = openFavoritesManager;
+    try {
+      var qks = (doc && doc.querySelectorAll) ? doc.querySelectorAll('.qa-root .qk') : [];
+      Array.prototype.forEach.call(qks || [], function (b) {
+        b.onclick = function () {
+          var sport = b.getAttribute('data-qk') || '';
+          try { if (typeof root._closeM === 'function') root._closeM('_quickActions'); } catch (e) {}
+          root.gmQuickStart(sport || null);
+        };
+      });
+    } catch (e) {}
     return true;
   }
 
@@ -371,6 +399,7 @@
   }
 
   O.quickActions = {
+    quickStartGridHTML: quickStartGridHTML,
     ACTIONS: ACTIONS,
     resolveEntryPoint: resolveEntryPoint,
     buildContext: buildContext,

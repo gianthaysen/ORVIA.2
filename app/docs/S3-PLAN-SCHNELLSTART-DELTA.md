@@ -25,7 +25,7 @@ in S3a umgesetzt; der Rest ist eine Reihenfolge-Entscheidung und der Schnellstar
 | 7 | Reihenfolge: Kontext (Variante → Adaptive → Prognose → Phasen → Zonen) **vor** „Diese Woche" | Variante → Woche → Qualität → Prognose → Adaptive → Phasen → km → Tagesziele | — | **Empfehlung: nicht übernehmen.** Die Wochenliste ist das täglich genutzte Element; sie unter fünf Kontextkarten zu schieben kostet jeden Tag Scrollen. Beibehalten: Woche oben. Adaptive vor Planqualität ziehen (Statement vor Diagnose). | Entscheidung Gian |
 | 8 | Keine Sektionen Planqualität / Wochenkilometer / Tagesziele im Plan | vorhanden, echte Quellen | E3, E2, daily goals | **behalten** — echte Engine-Ausgaben nicht wegen eines Prototyps entfernen; Planqualität ggf. in die Adaptive-Karte einklappen (S3b) | Entscheidung Gian |
 | 9 | Zustands-Badges „Nächster Reiz / Geplant / Abgeschlossen / Entfällt in B" | „Erledigt / — / Entfällt (B)" | Resolver | **v8-403:** „Geplant" statt „—"; genau eine „Nächster Reiz"-Einheit (offen, Kernreiz, laufende Woche, ab heute) | **v8-403** |
-| 10 | Schnellstart: Sport-Kacheln (Laufen/Kraft/Rad/Mehr) oben, darunter „Schnell eintragen" (Check-in, Gewicht, Neues Ziel, Beitrag teilen) | Quick-Actions: kontextgerankt + Favoriten (mächtiger als v14) | quick-actions | Sport-Kacheln **aus den aktiven Sportarten des Profils** (nicht hart Laufen/Kraft/Rad) als ersten Block übernehmen; Ranking/Favoriten behalten; „Beitrag teilen" erst S7 | S3c |
+| 10 | Schnellstart: Sport-Kacheln (Laufen/Kraft/Rad/Mehr) oben, darunter „Schnell eintragen" (Check-in, Gewicht, Neues Ziel, Beitrag teilen) | Quick-Actions: kontextgerankt + Favoriten (mächtiger als v14) | quick-actions | **v8-404:** Block „Einheit starten" zuerst im Schnellzugriff — Kacheln aus den aktiven Sportarten (Hauptsport zuerst, max 3) + „Mehr" → Start-Sheet; Ranking/Favoriten unverändert; „Beitrag teilen" erst S7 | **v8-404** |
 
 ## S3a — umgesetzt (v8-401)
 
@@ -36,5 +36,5 @@ in S3a umgesetzt; der Rest ist eine Reihenfolge-Entscheidung und der Schnellstar
 
 ## Offen
 
-- S3b (Adaptive-Statement, Prognose-Karte, Badges) und S3c (Schnellstart-Kacheln) — je ein Build.
+- S3b (v8-402/403) und S3c (v8-404) sind umgesetzt. Offen aus S3: Prognose-Balken/Engpass/„erwarteter Effekt" (Engine-Erweiterung).
 - Entscheidungen 7 und 8 von Gian; ohne Rückmeldung bleibt die App-Reihenfolge, Adaptive rückt vor Planqualität.
