@@ -166,6 +166,26 @@ var _adcT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; i
     no_progression_result: '' + _adcT('adc.keine_progressionsentscheidung') + ''
   };
 
+  /* ---- S3b (Prototyp v14, 25.09.2026): EIN Statement statt vier Zeilen ----
+     Der Prototyp zeigt die adaptive Einschaetzung als einen Satz mit Pill
+     („Plan passt"), die Einzelheiten darunter. statement() ist rein und liest
+     nur den View — dieselben Felder, die render() ohnehin zeigt. Reihenfolge
+     der Faelle = Reihenfolge der Ehrlichkeit: veraltet und fehlgeschlagen
+     schlagen jede Empfehlung. */
+  function statement(v) {
+    if (!v || v.available !== true) return null;
+    if (v.stale) return { kind: 'stale', pill: 'att', pillText: _adcT('adc.stmt_pill_veraltet'), text: _adcT('adc.stmt_veraltet') };
+    if (v.observationStatus === 'failed') return { kind: 'failed', pill: 'muted', pillText: _adcT('adc.stmt_pill_keine_aussage'), text: _adcT('adc.stmt_fehlgeschlagen') };
+    var r = v.recommendation || null;
+    if (!r || !r.direction || r.direction === 'unknown') return { kind: 'none', pill: 'muted', pillText: _adcT('adc.stmt_pill_keine_aussage'), text: _adcT('adc.stmt_keine_richtung') };
+    var blocked = !!(r.blocked && r.blocked.length) || r.provisional === true;
+    if (r.direction === 'hold') return { kind: 'hold', pill: 'ready', pillText: _adcT('adc.stmt_pill_plan_passt'), text: _adcT('adc.stmt_halten') + (blocked ? ' ' + _adcT('adc.stmt_nicht_angewendet') : '') };
+    var delta = r.deltaPct != null ? ' (' + (r.deltaPct > 0 ? '+' : '') + _esc(r.deltaPct) + ' %)' : '';
+    var t = (r.direction === 'increase' ? _adcT('adc.stmt_mehr') : _adcT('adc.stmt_weniger')) + delta + '.';
+    if (blocked) t += ' ' + _adcT('adc.stmt_nicht_angewendet');
+    return { kind: r.direction, pill: blocked ? 'att' : 'ready', pillText: blocked ? _adcT('adc.stmt_pill_vorschlag') : _adcT('adc.stmt_pill_empfehlung'), text: t };
+  }
+
   function render(view) {
     var v = view || null;
     /* FAIL-SOFT: keine Erklaerung ⇒ LEER. Eine halb gefuellte Karte suggeriert
@@ -174,6 +194,12 @@ var _adcT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; i
 
     var h = [];
     h.push('<div class="adx-card" data-adx="1">');
+    /* S3b: das eine Statement zuerst; alles Weitere bleibt darunter, einklappbar. */
+    var st = statement(v);
+    if (st) {
+      h.push('<div class="adx-statement" data-kind="' + _esc(st.kind) + '"><span class="pill-badge ' + _esc(st.pill) + '">' + _esc(st.pillText) + '</span><p>' + _esc(st.text) + '</p></div>');
+      h.push('<details class="adx-details"><summary>' + _adcT('adc.stmt_details') + '</summary>');
+    }
 
     /* Kopf mit Zustand: stale / partial / vollstaendig — drei sichtbar
        verschiedene Zustaende, nicht eine Farbe fuer alles. */
@@ -261,11 +287,12 @@ var _adcT = function (k, p) { try { var I = window.ORVIA && window.ORVIA.i18n; i
        Schattenbetrieb — ein Anwenden-Knopf existiert erst, wenn die acht
        Abnahmekriterien erfuellt sind, und dann als eigener, gepruefter Pfad. */
     h.push('<p class="adx-foot">' + _adcT('adc.beobachtung_aus_dem_schattenbetrieb_dein') + '</p>');
+    if (st) h.push('</details>');
     h.push('</div>');
     return h.join('');
   }
 
-  var api = { VERSION: VERSION, buildView: buildView, render: render, esc: _esc,
+  var api = { VERSION: VERSION, buildView: buildView, render: render, statement: statement, esc: _esc,
     FEAS_TEXT: FEAS_TEXT, BLOCK_TEXT: BLOCK_TEXT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.adaptiveCard = api;

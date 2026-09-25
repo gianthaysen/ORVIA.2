@@ -8177,6 +8177,7 @@ function renderGMPlan(){
   try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
   var cards='';
   var _keyDays=[];   /* S3a: Tage mit Kernreiz (fuer die Notiz unter der Liste) */
+  var _nextKeyMarked=false;   /* S3b: genau EINE Einheit traegt „Naechster Reiz" */
   for(var di=0;di<7;di++){
     var items=week[di]||[];var k=(typeof dayKeys!=='undefined'&&dayKeys[di])||'';
     /* Bugfix (2026-08-05, Nutzer-Feedback): zeigte bisher NUR "Tag.Monat" (z. B. "3.8"),
@@ -8241,7 +8242,13 @@ function renderGMPlan(){
            Ohne Vorgaben liefert der Helfer '' — Altbestand sieht unveraendert
            aus, kein leerer Kasten. */
         gmPlannedLinesHTML(it)+gmRxLinesHTML(it)+'</span>'+
-        '<span class="session-state'+(done?' done':'')+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':'—'))+'</span></div>';
+        /* S3b (v14): Zustands-Badge sagt, was die Einheit IST — „Geplant" statt „—";
+           die naechste offene Kernreiz-Einheit dieser Woche (ab heute) heisst „Naechster Reiz". */
+        (function(){
+          var _isNext=false;
+          try{if(!done&&!pSkip&&isKeyU&&_wOff===0&&!_nextKeyMarked&&dayKeys[di]>=todayStr()){_isNext=true;_nextKeyMarked=true;}}catch(_n){ }
+          return '<span class="session-state'+(done?' done':(_isNext?' today':''))+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':(_isNext?'' + _uiT('ui.naechster_reiz') + '':'' + _uiT('ui.geplant_badge') + '')))+'</span></div>';
+        })();
       /* IST-Werte einer absolvierten Einheit — der eigentliche Zweck des
          Zurueckblaetterns. Quelle ist ausschliesslich der Resolver (`actual`);
          fehlt dort ein Wert, wird er weggelassen statt geschaetzt. */
@@ -8280,6 +8287,9 @@ function renderGMPlan(){
     var _kd=[];_keyDays.forEach(function(d){if(_kd.indexOf(d)<0)_kd.push(d);});
     h+='<div class="mini-note" style="margin:-6px 18px 16px">'+icon('info','xs')+'<div><b>' + _uiT('ui.kernreize') + '</b> '+gmEsc(_uiT('ui.kernreize_note',{days:_kd.join('/')}))+'</div></div>';
   }
+  /* S3b (v14): EIN Statement der adaptiven Einschaetzung vor der Planqualitaet —
+     erst das Urteil, dann die Diagnose. Nur ab Stufe Fortgeschritten (wie zuvor). */
+  if(lvl!=='a')h+=gmAdaptiveSection();
   /* 7–8. Planqualität (E3-Quelle read-only; 6 strukturelle Zellen mit —) */
   var pq=null;try{pq=planQualityChecks();}catch(_){ }
   var _pqEval=gmPlanQualityEval(week,_perfBySport);
@@ -8311,7 +8321,7 @@ function renderGMPlan(){
        View-Vertrag benutzt: keine zweite Darstellung, keine eigene Rechnung.
        FAIL-SOFT bleibt: ohne Beobachtung liefert render() den leeren String,
        dann entfaellt der Abschnitt ersatzlos (keine halb gefuellte Karte). */
-    h+=gmAdaptiveSection();
+    /* S3b: Adaptive Einschaetzung steht jetzt VOR der Planqualitaet (Statement vor Diagnose) — siehe unten. */
     /* 9b. Phasen — Saisonmodell (wie Kopf + Profil), Fallback Calc.racePhases read-only */
     var phases=[];try{var _spn=gmSeasonNow();phases=_spn?_spn.phases.slice():(Calc.racePhases(RACE.date,todayStr())||[]);}catch(_){ }
     var t0=todayStr();
