@@ -58,5 +58,13 @@ sec('C/D · Plan-Tab Quelltextvertrag');
   ok('D4 Katalogtexte vorhanden', /'ui\.naechster_reiz': 'Nächster Reiz'/.test(de) && /'ui\.geplant_badge': 'Geplant'/.test(de) && /'adc\.stmt_pill_plan_passt'/.test(de));
 }
 
+sec('E · Prognose gross (v8-407)');
+{
+  const ui = rd('js/ui.js');
+  const card = ui.slice(ui.indexOf('function gmGoalForecastCard('), ui.indexOf('/* S3b: Realismus-Block'));
+  ok('E1 Kopf: realistischer Wert gross, Ziel und Abstand in % aus denselben Zahlen (keine neue Rechnung)', /class="fc-head"/.test(card) && /\(v\.realistic-v\.target\)\/v\.target\*1000\)\/10/.test(card) && /ui\.prognose_heute/.test(card));
+  ok('E2 ohne Ziel: nur Prognose, ohne Prognose: kein Kopf', /if\(v\.realistic>0\)\{/.test(card) && /v\.target>0\?' · '/.test(card));
+  ok('E3 Abstand farbig: ueber dem Ziel att, darunter ready', /\.fc-head i\.over\{color:var\(--attention\)\}\.fc-head i\.under\{color:var\(--ready\)\}/.test(rd('styles.css')));
+}
 console.log('\n' + (fail ? '❌' : '✅') + ' ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

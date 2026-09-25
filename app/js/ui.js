@@ -7883,7 +7883,15 @@ function gmGoalForecastCard(lvl,perfBySport){
     ?('' + _uiT('ui.geschaetzter_zeitraum_etwa') + ''+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+'' + _uiT('ui.wochen') + '':'' + _uiT('ui.wochen_oder_deutlich_mehr') + '')+'' + _uiT('ui.spanne_keine_terminzusage') + ''):'';
   var basisTxt=(lvl==='p'&&v.confidence)
     ?('' + _uiT('ui.grundlage_beleglage') + ''+gmEsc(String(v.confidence))+'' + _uiT('ui.bandbreite') + ''+gmEsc(String(v.bandPct))+' %.'):'';
-  return '<div class="card"><div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
+  /* S3b (v14): Prognosezeit gross, daneben Ziel und Abstand — keine neue Rechnung,
+     nur die drei Zahlen, die die Karte ohnehin traegt (realistischer Wert, Ziel). */
+  var head='';
+  if(v.realistic>0){
+    var dPct=(v.target>0)?Math.round((v.realistic-v.target)/v.target*1000)/10:null;
+    head='<div class="fc-head"><b>'+gmEsc(gmGoalForecastMin(v.realistic))+'</b><span>' + _uiT('ui.prognose_heute') + ''+
+      (v.target>0?' · ' + _uiT('ui.prognose_ziel') + ' '+gmEsc(gmGoalForecastMin(v.target))+(dPct!=null?' <i class="'+(dPct>0?'over':'under')+'">'+(dPct>0?'+':'')+gmEsc(String(dPct).replace('.',','))+' %</i>':''):'')+'</span></div>';
+  }
+  return '<div class="card">'+head+'<div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
       '</span><span>realistisch '+gmEsc(gmGoalForecastMin(v.realistic))+
       '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
     '<div class="fc-corridor"><div class="fc-band" style="left:'+inset+'%;right:'+inset+'%"></div></div>'+

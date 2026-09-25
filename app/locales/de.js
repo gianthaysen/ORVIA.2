@@ -3035,6 +3035,8 @@
     'ui.bis_zum_datum_sind_es': 'Bis zum Datum sind es {weeks} Wochen.',
     'ui.sicher_im_rahmen_bis': 'Sicher im Rahmen wäre eine Zielzeit ab {time}.',
     'ui.ziel_anpassen': 'Ziel anpassen',
+    'ui.prognose_heute': 'Prognose heute',
+    'ui.prognose_ziel': 'Ziel',
     'ui.zonen_quelle_race': 'aus Wettkampf',
     'ui.zonen_quelle_test': 'aus Leistungstest',
     'ui.zonen_quelle_hard_workout': 'aus hartem Lauf',
