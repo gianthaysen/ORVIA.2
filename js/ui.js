@@ -7982,6 +7982,48 @@ function gmPlanConstraintHTML(){
   h+='</div></div>';
   return h;
 }
+/* S3a (v14): Kernreiz-Einstufung — nur mit Engine (loadProfile), sonst null. */
+function gmPlanIsKeyUnit(it){
+  try{
+    if(!(window.ORVIA&&ORVIA.planVariants&&typeof ORVIA.planVariants.isKey==='function'))return false;
+    if(!(ORVIA.loadProfile&&typeof ORVIA.loadProfile.profileOf==='function'))return false;   /* Regex-Rueckfall = Heuristik = kein Marker */
+    return ORVIA.planVariants.isKey(it)===true;
+  }catch(_){return false;}
+}
+/* S3a (v14): Pace-Zonen-Karte. rows = 5 Zonen wie im Prototyp, Werte aus
+   perf.running.zones (sec/km). Fehlt die Referenz: ehrlicher Leerzustand mit Grund. */
+var GM_PACE_ROWS=[['recovery','Z1 · Regeneration','rgba(255,255,255,.25)'],['easy','Z2 · Locker / Long','var(--ready)'],['half','Z3 · Tempodauerlauf','var(--cyan)'],['threshold','Z4 · Schwelle','var(--attention)'],['vo2','Z5 · Intervall','var(--crit)']];
+function gmPaceZonesModel(perfBySport){
+  var r=perfBySport&&perfBySport.running;
+  if(!r||!r.ok||!r.zones)return {ok:false,reason:(r&&r.reason)||'no_reference'};
+  var fp=function(sec){sec=Math.round(sec);return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');};
+  var rows=GM_PACE_ROWS.map(function(z){var v=r.zones[z[0]];if(!v)return null;
+    return {key:z[0],label:z[1],color:z[2],lo:v.loSecPerKm,hi:v.hiSecPerKm,text:(z[0]==='recovery'?'> '+fp(v.loSecPerKm):fp(v.loSecPerKm)+'–'+fp(v.hiSecPerKm))};}).filter(Boolean);
+  var src=(r.reference&&r.reference.source)||null;
+  return {ok:rows.length>0,rows:rows,confidence:r.confidence||null,ageDays:r.ageDays!=null?r.ageDays:null,freshness:r.freshness||null,source:src,refDate:(r.reference&&r.reference.date)||null};
+}
+function gmPaceZonesSection(perfBySport){
+  var m=gmPaceZonesModel(perfBySport);
+  var h='<div class="sectlabel" data-gm-slot="plan-pace-zones">' + _uiT('ui.deine_pace_zonen') + '<span class="edit">'+(m.ok?gmEsc(_uiT('ui.zonen_quelle_'+(m.source||'unknown')))||'':'—')+'</span></div>';
+  if(!m.ok){
+    h+='<div class="card"><div class="ph-now"><b>—</b><span>' + _uiT('ui.keine_zonen_ohne_referenz') + '</span></div>'+
+      '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>' + _uiT('ui.zonen_entstehen_aus_wettkampf') + '</div></div></div>';
+    return h;
+  }
+  var cf='';try{cf=(window.ORVIA&&ORVIA.evidence&&ORVIA.evidence.marker)?(ORVIA.evidence.marker(m.confidence)||''):'';}catch(_){ }
+  h+='<div class="card tight">'+m.rows.map(function(z){
+    return '<div class="pz-row"><i class="pz-dot" style="background:'+z.color+'"></i><span class="pz-l">'+gmEsc(z.label)+'</span><b class="pz-v">'+gmEsc(z.text)+' /km'+(cf?' '+cf:'')+'</b></div>';}).join('')+
+    '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.zonen_folgen_der_referenz',{age:(m.ageDays!=null?m.ageDays:'—')}))+'</div></div>';
+  return h;
+}
+/* S3a (v14): „· Halbmarathon in 61 Tagen" in der Kopfzeile — nur mit echtem Zieldatum. */
+function gmPlanRaceCountdown(){
+  try{
+    var d=daysToSafe();if(d==null||!isFinite(d)||d<0)return '';
+    var g=goalOf();var rl=(typeof raceLabel==='function')?raceLabel(g&&g.type):null;if(!rl)return '';
+    return ' · '+gmEsc(rl)+' '+gmEsc(_uiT('ui.in_n_tagen',{count:Math.round(d)}));
+  }catch(_){return '';}
+}
 function renderGMPlan(){
   var host=document.getElementById('gmPlan');if(!host)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
@@ -7991,7 +8033,7 @@ function renderGMPlan(){
   var _confN=(typeof gmCanonPlanConflictCount==='function')?gmCanonPlanConflictCount():0;
   var h='';
   /* 1. Header (+ 5E-Konflikt-Badge, Entscheidung ②: Badge statt Unterbrechung) */
-  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase)+(meta.phaseWeek?' · '+gmEsc(_uiT('ui.woche_x_von_y',{x:meta.phaseWeek,y:meta.phaseWeeks})):''):'')+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
+  h+='<div class="hdr"><div><div class="greet">'+(meta.wk!=null?'' + _uiT('ui.trainingswoche') + ''+meta.wk:'Wochenplan')+(meta.phase?' · '+gmEsc(meta.phase)+'phase':'')+'</div><h1>' + _uiT('ui.dein_plan') + '</h1><div class="date">'+gmEsc(meta.range)+(meta.phase?' · '+gmEsc(meta.phase)+(meta.phaseWeek?' · '+gmEsc(_uiT('ui.woche_x_von_y',{x:meta.phaseWeek,y:meta.phaseWeeks})):''):'')+gmPlanRaceCountdown()+(lvl==='p'?'' + _uiT('ui.struktur_varianten_prognose') + '':'')+'</div></div><div class="hdr-actions">'+
     '<button class="iconbtn" id="gmPlanConfBadge" style="color:var(--attention);'+(_confN>0?'':'display:none')+'" aria-label="' + _uiT('ui.plan_konflikte') + '" onclick="gmOpenPlanConflictsSheet()">'+icon('alert','sm')+'</button>'+
     '<button class="iconbtn" aria-label="Plan-Einstellungen" onclick="gmOpenPlanSettingsSheet()">'+icon('gear','sm')+'</button></div></div>';
   /* Stufe D (14.09.2026): Beschwerde-Banner + Rueckkehr-Leiter — direkt unter dem Kopf, damit der Nutzer
@@ -8100,6 +8142,7 @@ function renderGMPlan(){
   var _dayCfg=null;
   try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
   var cards='';
+  var _keyDays=[];   /* S3a: Tage mit Kernreiz (fuer die Notiz unter der Liste) */
   for(var di=0;di<7;di++){
     var items=week[di]||[];var k=(typeof dayKeys!=='undefined'&&dayKeys[di])||'';
     /* Bugfix (2026-08-05, Nutzer-Feedback): zeigte bisher NUR "Tag.Monat" (z. B. "3.8"),
@@ -8153,7 +8196,12 @@ function renderGMPlan(){
          als „Entfaellt" markiert. Erledigte Einheiten gewinnen immer. */
       var pKeep=true;try{if(pvm)pKeep=pvm.keep(di,ii)!==false;}catch(_){ }
       var pSkip=!pKeep&&!done;
-      cards+='<div class="session-card'+(done?' done':'')+(pSkip?' pvar-skip':'')+'" data-sid="'+gmEsc(it.id||'')+'" role="button" tabindex="0" onclick="planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')" onkeydown="if(event.key===\'Enter\')planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')">'+
+      /* S3a (v14): Kernreiz-Marker. KEINE Label-Heuristik (die wurde in GM7.5g zu Recht
+         entfernt), sondern dieselbe Engine-Einstufung, die die Variantenkarte oben
+         als „Kernreize" ZAEHLT (plan-variants.isKey ueber loadProfile.systemic).
+         Ohne Engine (Regex-Rueckfall) gibt es keinen Marker — nichts erfinden. */
+      var isKeyU=gmPlanIsKeyUnit(it);if(isKeyU)_keyDays.push(dLbl);
+      cards+='<div class="session-card'+(done?' done':'')+(pSkip?' pvar-skip':'')+(isKeyU?' key':'')+'" data-sid="'+gmEsc(it.id||'')+'" role="button" tabindex="0" onclick="planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')" onkeydown="if(event.key===\'Enter\')planEntryClick('+di+','+ii+',\''+gmEsc(k)+'\')">'+
         '<span class="session-ico">'+icon(ic2)+'</span><span class="session-main"><b>'+gmEsc(dLbl)+' · '+gmEsc(it.l)+prioBadge+'</b><p>'+subP+'</p>'+
         /* v8-323 (K2): die geplanten Kraftuebungen stehen jetzt AUF der Karte.
            Ohne Vorgaben liefert der Helfer '' — Altbestand sieht unveraendert
@@ -8193,6 +8241,11 @@ function renderGMPlan(){
     }
   }
   h+='<div class="plan-list">'+cards+'</div>';
+  /* S3a (v14): Kernreiz-Notiz — nur mit echter Einstufung und nur mit echten Tagen. */
+  if(_keyDays.length){
+    var _kd=[];_keyDays.forEach(function(d){if(_kd.indexOf(d)<0)_kd.push(d);});
+    h+='<div class="mini-note" style="margin:-6px 18px 16px">'+icon('info','xs')+'<div><b>' + _uiT('ui.kernreize') + '</b> '+gmEsc(_uiT('ui.kernreize_note',{days:_kd.join('/')}))+'</div></div>';
+  }
   /* 7–8. Planqualität (E3-Quelle read-only; 6 strukturelle Zellen mit —) */
   var pq=null;try{pq=planQualityChecks();}catch(_){ }
   var _pqEval=gmPlanQualityEval(week,_perfBySport);
@@ -8263,6 +8316,11 @@ function renderGMPlan(){
         '</div>'+
         '<div class="mini-note" style="margin-top:10px">'+icon('info','xs')+'<div>' + _uiT('ui.phasen_aus_dem_kanonischen_phasenmodell') + '</div></div></div>';
     }
+    /* S3a (v14): Pace-Zonen — ausschliesslich aus dem kanonischen Leistungsbild
+       (performance-resolver -> performance-zones), das dieser Render oben schon
+       aufgeloest hat. Keine zweite Rechnung aus der Zielzeit: die Zielzeit ist
+       Aspiration, die Zonen folgen der gemessenen Referenz. */
+    h+=gmPaceZonesSection(_perfBySport);
     /* 9c. Wochenkilometer (E2-Quellen; 6 Spalten) */
     var dRace=daysToSafe();
     var cols=[['−2',2],['−1',1],['akt.',0],['+1',-1],['+2',-2],['+3',-3]];
