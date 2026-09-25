@@ -207,5 +207,65 @@
     return h;
   }
 
-  O.reviewV14 = { VERSION: 'review-v14@1', weekDates: weekDates, weekRaw: weekRaw, model: model, html: html, _ring: ring };
+  /* ---- Monat: 12-Wochen-Serie + Aktivitaetskalender + Serie erfuellter Wochen ---- */
+  var MONTH_WEEKS = 12;
+  function weekFulfilled(w) { return !!(w.planAvailable && !w.ongoing && w.planned > 0 && w.done >= w.planned); }
+  function monthModel(opts) {
+    var o = opts || {}; var sport = o.sport || 'running';
+    var weeks = [];
+    for (var off = -(MONTH_WEEKS - 1); off <= 0; off++) {
+      var w = weekRaw(off); var b = w.bySport && w.bySport[sport];
+      weeks.push({ off: off, from: w.from, to: w.to, ongoing: w.ongoing,
+        km: b ? (b.distanceKm != null ? b.distanceKm : (b.knownDistanceKm > 0 ? b.knownDistanceKm : null)) : null,
+        sessions: b ? b.sessionCount : 0, minutes: b ? (b.durationMin != null ? b.durationMin : (b.knownDurationMin > 0 ? b.knownDurationMin : null)) : null,
+        fulfilled: weekFulfilled(w), planAvailable: w.planAvailable, done: w.done, planned: w.planned, hasData: !!(w.acts.length) });
+    }
+    /* Serie: aufeinanderfolgende erfuellte Wochen, rueckwaerts ab der letzten abgeschlossenen Woche */
+    var streak = 0;
+    for (var i = weeks.length - 1; i >= 0; i--) { var wk = weeks[i]; if (wk.ongoing) continue; if (wk.fulfilled) streak++; else break; }
+    var withData = weeks.filter(function (x) { return !x.ongoing && x.hasData; }).length;
+    /* Kalender des aktuellen Monats */
+    var tod = today(); var y = Number(tod.slice(0, 4)), mo = Number(tod.slice(5, 7)) - 1;
+    var first = new Date(Date.UTC(y, mo, 1)), last = new Date(Date.UTC(y, mo + 1, 0));
+    var lead = (first.getUTCDay() + 6) % 7;
+    var actByDay = {};
+    try {
+      var st = O.activityStore, cfg = O.activityConfig;
+      var acts = (st && st.listActivities) ? (st.listActivities() || []) : [];
+      var tomb = (st && st.isTombstoned) ? st.isTombstoned : null;
+      var tz = (O.profileStore && O.profileStore.effectiveTimezone) ? O.profileStore.effectiveTimezone() : 'UTC';
+      acts.forEach(function (a) { if (!a || (tomb && tomb(a))) return; var ld = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10); (actByDay[ld] = actByDay[ld] || []).push(a.sportId || 'other'); });
+    } catch (e) {}
+    var cells = []; for (var k = 0; k < lead; k++) cells.push(null);
+    for (var d = 1; d <= last.getUTCDate(); d++) { var key = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); cells.push({ day: d, key: key, sports: actByDay[key] || [], today: key === tod, future: key > tod }); }
+    while (cells.length % 7) cells.push(null);
+    var monthSessions = Object.keys(actByDay).filter(function (k2) { return k2.slice(0, 7) === tod.slice(0, 7); }).reduce(function (n, k2) { return n + actByDay[k2].length; }, 0);
+    return { sport: sport, weeks: weeks, streak: streak, weeksWithData: withData, enough: withData >= 2, month: { year: y, month: mo + 1, cells: cells, sessions: monthSessions, label: first.toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' }) } };
+  }
+  var SPORT_ICON = { running: 'run', cycling: 'activity', gym: 'dumbbell', swimming: 'activity' };
+  function monthHtml(m) {
+    if (!m) return '';
+    var h = '<div class="card tight"><div class="rev-serie"><div class="s"><b>' + m.streak + '</b><span>' + esc(T('rev.serie', { count: m.streak })) + '</span></div><div class="s"><b>' + m.month.sessions + '</b><span>' + esc(T('rev.einheiten_im', { month: m.month.label })) + '</span></div></div>' +
+      '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('rev.serie_quelle')) + '</div></div>';
+    var SP = [['running', T('rev.sp_running')], ['cycling', T('rev.sp_cycling')], ['gym', T('rev.sp_gym')]];
+    h += '<div class="rev-seg rev-sports">' + SP.map(function (s) { return '<button type="button"' + (m.sport === s[0] ? ' class="on"' : '') + ' onclick="gmReviewSetSport(\'' + s[0] + '\')">' + esc(s[1]) + '</button>'; }).join('') + '</div>';
+    if (!m.enough) {
+      h += '<div class="card"><div class="kp-empty"><div class="t">' + esc(T('rev.monat_leer_t')) + '</div><div class="d">' + esc(T('rev.monat_leer_d', { n: m.weeksWithData })) + '</div></div></div>';
+    } else {
+      var useKm = m.sport !== 'gym';
+      var vals = m.weeks.map(function (w) { return useKm ? (w.km != null ? w.km : 0) : w.sessions; });
+      var mx = Math.max.apply(null, vals.concat([1]));
+      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('trend') + ' ' + esc(T('rev.zwoelf_wochen', { sport: (SP.filter(function (s) { return s[0] === m.sport; })[0] || SP[0])[1] })) + '</div></div>' +
+        '<div class="rev-bars">' + m.weeks.map(function (w, i) { var v = vals[i]; var pct = Math.round(v / mx * 100); return '<div class="rev-bar' + (w.ongoing ? ' now' : '') + (w.fulfilled ? ' ok' : '') + '" title="' + esc(w.from) + '"><i style="height:' + pct + '%"></i><span>' + (v ? (useKm ? Math.round(v) : v) : '') + '</span></div>'; }).join('') + '</div>' +
+        '<div class="rev-bandlbl" style="height:auto;position:static;display:flex;justify-content:space-between"><span style="position:static;transform:none">' + esc(T('rev.vor_wochen', { n: MONTH_WEEKS - 1 })) + '</span><span style="position:static;transform:none">' + esc(T('rev.diese_woche')) + '</span></div>' +
+        '<div class="source">' + ic('info', 'xs') + ' ' + esc(useKm ? T('rev.balken_km') : T('rev.balken_einheiten')) + '</div></div>';
+    }
+    h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('calendar') + ' ' + esc(m.month.label) + '</div></div><div class="rev-cal">' +
+      ['M', 'D', 'M', 'D', 'F', 'S', 'S'].map(function (d) { return '<span class="rev-dow">' + d + '</span>'; }).join('') +
+      m.month.cells.map(function (c) { if (!c) return '<span class="rev-day out"></span>'; var sp = c.sports[0]; return '<span class="rev-day' + (sp ? ' act' : '') + (c.today ? ' today' : '') + (c.future ? ' fut' : '') + '">' + (sp ? ic(SPORT_ICON[sp] || 'activity', 'xs') + (c.sports.length > 1 ? '<span class="dbl"></span>' : '') : c.day) + '</span>'; }).join('') + '</div>' +
+      '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('rev.kalender_quelle')) + '</div></div>';
+    return h;
+  }
+
+  O.reviewV14 = { VERSION: 'review-v14@2', weekDates: weekDates, weekRaw: weekRaw, model: model, html: html, monthModel: monthModel, monthHtml: monthHtml, weekFulfilled: weekFulfilled, _ring: ring };
 })(typeof window !== 'undefined' ? window : globalThis);

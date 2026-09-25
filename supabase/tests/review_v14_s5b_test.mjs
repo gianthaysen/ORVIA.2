@@ -97,5 +97,27 @@ sec('D · Verdrahtung');
   ok('D4 CSS: rev-hero/ring/kpis/band/reco/seg + eff-row', ['.rev-hero{', '.rev-ring{', '.rev-kpis{', '.rev-band{', '.rev-reco{', '.rev-seg{', '.eff-row{'].every(c => css.indexOf(c) >= 0));
 }
 
+sec('E · Monat (S5d)');
+{
+  const mm = RV.monthModel({ sport: 'running' });
+  ok('E1 12 Wochen, letzte = laufende Woche', mm.weeks.length === 12 && mm.weeks[11].ongoing === true && mm.weeks[11].from === '2026-09-21');
+  ok('E2 Wochenwerte: diese Woche 17 km / 2 Einheiten, Vorwoche 5 km', mm.weeks[11].km === 17 && mm.weeks[11].sessions === 2 && mm.weeks[10].km === 5);
+  ok('E3 Serie: Vorwoche (1 geplant, 0 erledigt) nicht erfuellt ⇒ 0; laufende Woche zaehlt nicht', mm.streak === 0 && mm.weeks[10].fulfilled === false && mm.weeks[11].fulfilled === false);
+  ok('E4 Kalender September 2026: 30 Tage, Mo-Vorlauf 1, Aktivitaetstage 15/21/24, heute 24', mm.month.cells.filter(Boolean).length === 30 && mm.month.cells[0] === null && mm.month.cells[1].day === 1 && mm.month.cells.filter(c => c && c.sports.length).map(c => c.day).join() === '15,21,24' && mm.month.cells.find(c => c && c.today).day === 24);
+  ok('E5 Einheiten im Monat = 3', mm.month.sessions === 3);
+  ok('E6 zu wenige Wochen (nur 1 abgeschlossene mit Daten) ⇒ enough=false', mm.weeksWithData === 1 && mm.enough === false);
+  const h = RV.monthHtml(mm);
+  ok('E7 Markup: Serie-Karte, Sportfilter, Leerhinweis statt Balken, Kalender mit 30 Tagen + heute', /rev-serie/.test(h) && /gmReviewSetSport\('gym'\)/.test(h) && /Ein Monat braucht Wochen/.test(h) && !/rev-bars/.test(h) && (h.match(/class="rev-day(?! out)/g) || []).length === 30 && /rev-day act today/.test(h));
+  /* genug Wochen: Balken erscheinen, erfuellte Woche gruen */
+  g.planActualResolveForDates = dates => { const o = {}; o['po:' + dates[0] + ':p'] = { state: 'completed' }; o['po:' + dates[0] + ':a'] = { state: 'completed' }; o['po:' + dates[3] + ':c'] = { state: 'completed' }; return { byOcc: o }; };
+  acts.push({ id: 'x4', sportId: 'running', startedAt: '2026-09-08T07:00:00Z', durationSeconds: 1800, summary: { distanceKm: 6 } });
+  const m2 = RV.monthModel({ sport: 'running' });
+  ok('E8 Vorwochen erfuellt (1/1) ⇒ Serie 11 (alle abgeschlossenen Wochen mit gespeichertem Plan)', m2.streak === 11 && m2.weeks[10].fulfilled === true);
+  const h2 = RV.monthHtml(m2);
+  ok('E9 Balken: 12, laufende Woche markiert, erfuellte gruen', (h2.match(/class="rev-bar[ "]/g) || []).length === 12 && /rev-bar now/.test(h2) && /rev-bar ok/.test(h2));
+  ok('E10 Sheet: Monat-Umschalter + monthHtml(monthModel({sport}))', /gmReviewSetOff\(\\'m\\'\)/.test(rd('js/ui.js')) && /RV\.monthHtml\(RV\.monthModel\(\{sport:_gmRevSport\}\)\)/.test(rd('js/ui.js')));
+  ok('E11 Katalog + CSS Monat', ['rev.monat', 'rev.serie.one', 'rev.serie.other', 'rev.monat_leer_t', 'rev.balken_km'].every(k => rd('locales/de.js').indexOf("'" + k + "'") >= 0) && /\.rev-bars\{/.test(rd('styles.css')) && /\.rev-cal\{/.test(rd('styles.css')));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' review_v14_s5b: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

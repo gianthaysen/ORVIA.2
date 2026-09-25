@@ -4492,3 +4492,21 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rc-half{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:9px 11px;text-align:center}
 .rc-half b{display:block;font-size:15px;font-weight:820;font-variant-numeric:tabular-nums}
 .rc-half span{font-size:10px;color:var(--faint);font-weight:700}
+
+/* S5d (v14): Monatsrueckblick */
+.rev-serie{display:flex;align-items:center;gap:14px}.rev-serie .s{flex:1}.rev-serie .s b{display:block;font-size:22px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.rev-serie .s span{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.35}
+.rev-seg.rev-sports{margin:0 0 12px}
+.rev-bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;height:96px;align-items:end;margin-top:4px}
+.rev-bar{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.rev-bar i{display:block;width:100%;min-height:2px;border-radius:4px 4px 2px 2px;background:rgba(201,174,124,.45)}
+.rev-bar.ok i{background:var(--ready)}.rev-bar.now i{background:repeating-linear-gradient(135deg,rgba(201,174,124,.6) 0 3px,rgba(201,174,124,.25) 3px 6px)}
+.rev-bar span{position:absolute;top:-2px;font-size:8.5px;color:var(--faint);font-weight:700;font-variant-numeric:tabular-nums;transform:translateY(-100%)}
+.rev-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.rev-dow{font-size:9.5px;color:var(--faint);font-weight:800;text-align:center;padding:2px 0 4px}
+.rev-day{position:relative;aspect-ratio:1;border-radius:9px;display:grid;place-items:center;font-size:11px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border)}
+.rev-day.out{background:transparent;border-color:transparent}
+.rev-day.fut{opacity:.45}
+.rev-day.act{background:rgba(201,174,124,.16);border-color:rgba(201,174,124,.35);color:var(--gold-soft)}
+.rev-day.act .ic{width:14px;height:14px}
+.rev-day.today{box-shadow:0 0 0 2px var(--gold)}
+.rev-day .dbl{position:absolute;right:4px;top:4px;width:5px;height:5px;border-radius:50%;background:var(--gold)}

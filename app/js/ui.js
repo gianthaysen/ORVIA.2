@@ -7847,8 +7847,9 @@ function gmOpenPlanSettingsSheet(){
    orvia-pro.js: Wochenvertrag + Readiness/Schlaf/Beschwerde-Mittel), plus der
    bestehende Coach-Briefing-Export (copyAIReview: vollstaendiges Datenpaket als
    Prompt in die Zwischenablage). Kein zweiter Rechenweg. */
-var _gmRevOff=0;
-function gmReviewSetOff(off){_gmRevOff=(off===-1)?-1:0;gmOpenWeekReviewSheet();}
+var _gmRevOff=0,_gmRevSport='running';
+function gmReviewSetOff(off){_gmRevOff=(off==='m')?'m':(off===-1)?-1:0;gmOpenWeekReviewSheet();}
+function gmReviewSetSport(sp){_gmRevSport=sp||'running';gmOpenWeekReviewSheet();}
 function gmOpenWeekReviewSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var body='';
@@ -7858,7 +7859,9 @@ function gmOpenWeekReviewSheet(){
   try{
     var RV=window.ORVIA&&ORVIA.reviewV14;
     if(RV&&RV.model){
-      body='<div class="rev-seg"><button type="button"'+(_gmRevOff===0?' class="on"':'')+' onclick="gmReviewSetOff(0)">' + _uiT('rev.diese_woche') + '</button><button type="button"'+(_gmRevOff===-1?' class="on"':'')+' onclick="gmReviewSetOff(-1)">' + _uiT('rev.vorwoche') + '</button></div>'+RV.html(RV.model(_gmRevOff));
+      body='<div class="rev-seg"><button type="button"'+(_gmRevOff===0?' class="on"':'')+' onclick="gmReviewSetOff(0)">' + _uiT('rev.diese_woche') + '</button><button type="button"'+(_gmRevOff===-1?' class="on"':'')+' onclick="gmReviewSetOff(-1)">' + _uiT('rev.vorwoche') + '</button>'+
+        (RV.monthModel?'<button type="button"'+(_gmRevOff==='m'?' class="on"':'')+' onclick="gmReviewSetOff(\'m\')">' + _uiT('rev.monat') + '</button>':'')+'</div>'+
+        ((_gmRevOff==='m'&&RV.monthModel)?RV.monthHtml(RV.monthModel({sport:_gmRevSport})):RV.html(RV.model(_gmRevOff)));
     }else body=(typeof weeklyReviewHTML==='function')?weeklyReviewHTML():'<p class="muted">'+GM_NA+'</p>';
   }catch(_){body='<p class="muted">'+GM_NA+'</p>';}
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('chart')+'</div><div><h3>' + _uiT('ui.wochenreview') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.kanonischer_wochenvertrag_mo_so') + '</div></div></div>'+
