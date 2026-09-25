@@ -4479,3 +4479,16 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .eff-row .l{color:var(--muted)}.eff-row .l small{display:block;color:var(--faint);font-size:10.5px;margin-top:1px}
 .eff-row .v{font-weight:790;font-variant-numeric:tabular-nums;white-space:nowrap}.eff-row .v.up{color:var(--ready)}
 .rev-seg{display:flex;gap:6px;margin:0 0 12px}.rev-seg button{flex:1;min-height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:720;font-size:12px;cursor:pointer}.rev-seg button.on{background:var(--gold);border-color:var(--gold);color:#20180a}
+
+/* S5c (v14): Pacing-Plan im Rechner (engine/pacing-plan.js) */
+.rc-splits{margin-top:6px}
+.rc-srow{display:grid;grid-template-columns:64px minmax(0,1fr) 70px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--hair);font-size:12px}
+.rc-srow:first-child{border-top:none}
+.rc-srow .km{color:var(--muted);font-weight:750;font-variant-numeric:tabular-nums}
+.rc-srow .pace{color:var(--faint);font-variant-numeric:tabular-nums}.rc-srow .pace b{color:var(--text);font-weight:790}
+.rc-srow .cum{text-align:right;font-weight:790;font-variant-numeric:tabular-nums}
+.rc-srow.fin .cum{color:var(--gold-soft)}
+.rc-halves{display:flex;gap:8px;margin-top:12px}
+.rc-half{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:9px 11px;text-align:center}
+.rc-half b{display:block;font-size:15px;font-weight:820;font-variant-numeric:tabular-nums}
+.rc-half span{font-size:10px;color:var(--faint);font-weight:700}

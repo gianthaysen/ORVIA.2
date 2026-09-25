@@ -3906,6 +3906,17 @@
     'rev.empty_d': 'Für diese Woche gibt es weder Plan noch Aktivitäten noch Check-ins. Der Rückblick entsteht aus deinen echten Daten — nichts wird hochgerechnet.',
     'rev.diese_woche': 'Diese Woche',
     'rev.vorwoche': 'Vorwoche',
+    /* S5c (v14): Pacing-Plan im Rechner */
+    'ui.pacing_plan': 'Pacing-Plan',
+    'ui.pacing_intro': 'Negativer Split: verhalten anlaufen, im Rhythmus bleiben, am Ende freigeben. Ø {avg} /km.',
+    'ui.pacing_seg_start': 'Position finden, nicht mitziehen lassen',
+    'ui.pacing_seg_rhythm': 'Rhythmus halten, Verpflegung nicht vergessen',
+    'ui.pacing_seg_release': 'freigeben, wenn die Beine es hergeben',
+    'ui.pacing_ziel': 'Ziel',
+    'ui.pacing_h1': '1. Hälfte',
+    'ui.pacing_h2': '2. Hälfte',
+    'ui.pacing_quelle': 'Splits aus Distanz und Zeit berechnet (Anlaufen +{off} s/km) · negative Splits sind auf ebenen Kursen die robustere Strategie.',
+    'ui.pacing_leer': 'Erscheint, sobald Distanz und Zeit (ab 3 km) eingegeben sind.',
     'ui.score_not_body': 'Keine Verbotsampel. Die Zahl ist ein gewichteter Gesamtwert aus Erholung, Kontrolle und Umsetzung. Die Ampel hängt am Erholungswert und an Warnzeichen: unter 70 wird es Gelb, unter 55 Orange, unter 40 Rot — ab 85 ohne Warnzeichen Peak. Die Tagesentscheidung auf dem Dashboard zieht daraus die konkrete Konsequenz.'
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

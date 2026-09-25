@@ -11748,6 +11748,8 @@ function gmPcCompute(){
     try{if(sp==='run'&&dKm!=null&&tMin!=null&&window.Calc&&typeof Calc.riegel==='function')v=Calc.riegel(dKm,tMin,P[id]);}catch(_){ }
     el.textContent=(v!=null)?gmPcFmtHms(v):'—';
   });
+  /* S5c: Pacing-Plan nur beim Laufen aus einem vollstaendigen Paar; sonst Leerhinweis. */
+  try{var pe=document.getElementById('pcPlan');if(pe&&window.ORVIA&&ORVIA.pacingPlan){var pl=(sp==='run'&&dKm!=null&&tMin!=null)?ORVIA.pacingPlan.plan(dKm,tMin*60):null;pe.innerHTML=gmPcPlanHTML(pl);}}catch(_){ }
 }
 function gmProfPaceCalc(){
   var sp=_gmPcSport,tgt=_gmPcTarget;
@@ -11770,9 +11772,20 @@ function gmProfPaceCalc(){
     h+='<div class="sectlabel">' + _uiT('ui.wettkampfprognosen') + '</div><div class="card"><div class="link-row">'+
       [['5 km','pcP5'],['10 km','pcP10'],['Halbmarathon','pcPHM']].map(function(r){return '<div class="calc-field" style="margin-bottom:8px"><label>'+r[0]+'</label><b id="'+r[1]+'" style="font-size:16px">—</b></div>';}).join('')+
       '</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.riegel_schaetzung_aus_deiner_eingabe') + '</div></div></div>';
+    /* S5c (v14): Pacing-Plan aus Distanz + Zeit (engine/pacing-plan.js), gefuellt in gmPcCompute. */
+    if(window.ORVIA&&ORVIA.pacingPlan)h+='<div class="sectlabel">' + _uiT('ui.pacing_plan') + '</div><div class="card" id="pcPlan">'+gmPcPlanHTML(null)+'</div>';
   }
   h+='</div><div class="tabspacer"></div>';
   return h;
+}
+function gmPcPlanHTML(pl){
+  if(!pl)return '<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.pacing_leer') + '</div></div>';
+  var SEG=[_uiT('ui.pacing_seg_start'),_uiT('ui.pacing_seg_rhythm'),_uiT('ui.pacing_seg_release')];
+  return '<div class="rev-text">'+gmEsc(_uiT('ui.pacing_intro',{avg:pl.fmt.avg}))+'</div><div class="rc-splits">'+
+    pl.fmt.segments.map(function(sg,i){return '<div class="rc-srow"><span class="km">km '+gmEsc(sg[0])+'</span><span class="pace"><b>'+gmEsc(sg[1])+' /km</b> · '+gmEsc(SEG[i])+'</span><span class="cum">'+gmEsc(sg[2])+'</span></div>';}).join('')+
+    '<div class="rc-srow fin"><span class="km">' + _uiT('ui.pacing_ziel') + '</span><span class="pace">'+gmEsc(fmtDe(Math.round(pl.distanceKm*10)/10))+' km</span><span class="cum">'+gmEsc(pl.fmt.total)+'</span></div></div>'+
+    '<div class="rc-halves"><div class="rc-half"><b>'+gmEsc(pl.fmt.h1)+'</b><span>' + _uiT('ui.pacing_h1') + '</span></div><div class="rc-half"><b>'+gmEsc(pl.fmt.h2)+'</b><span>' + _uiT('ui.pacing_h2') + '</span></div></div>'+
+    '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.pacing_quelle',{off:pl.offsetSec}))+'</div>';
 }
 var GM_PROF_ROUTES={
   settings:function(){return gmProfSettings();},appearance:function(){return gmProfAppearance();},
