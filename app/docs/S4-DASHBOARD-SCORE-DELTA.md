@@ -18,6 +18,7 @@ gegen den GM1-Block der App (`js/ui.js`: `renderCommand`, `gmHero`, `renderModul
 | 9 | Score-Sheet: Basis-Zeile „Basis 100 · Baselines 28 T. · Konfidenz" | Basis-Zeile aus echten Werten (gewichteter Gesamtwert, recoveryCtx 28 T., `dataConfidence`) | **umgesetzt** | v8-409 |
 | 10 | Score-Sheet: „Was der Score NICHT ist" | Block mit den REALEN Schwellen aus `calc.dayStateEngine` (70/55/40) und Peak ≥ 85 | **umgesetzt** | v8-409 |
 
+| 11 | Spotlight-Tour (`spot*`, 20 Schritte, Autostart nach Onboarding) | `js/tour.js`: 11 Schritte an ECHTEN Elementen, fehlende werden übersprungen; **kein Autostart** (M9-Entscheidung: ein Orientierungs-Spotlight, kein Mehrschritt-Rundgang) — Einstieg Profil → Hilfe & über ORVIA → „Rundgang durch die App“ (ersetzt die tote „Dokumentation folgt“-Zeile) | **umgesetzt** | v8-410 |
 ## Entscheidungen
 
 - **Wahl-Persistenz** bleibt `entry.adaptChoice` (Legacy, seit GM6) — jetzt zusätzlich mit
@@ -40,4 +41,4 @@ gegen den GM1-Block der App (`js/ui.js`: `renderCommand`, `gmHero`, `renderModul
 - Lernschicht aus den protokollierten Wahlen (v14 „der Planer lernt") — Bauplan Stufe 3,
   nicht in der UI versprochen.
 
-Tests: `supabase/tests/dash_v14_s4a_test.mjs` (36).
+Tests: `supabase/tests/dash_v14_s4a_test.mjs` (36), `supabase/tests/tour_v14_test.mjs` (21).

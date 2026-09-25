@@ -11459,7 +11459,16 @@ function gmProfAbout(){
     '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
     gmPRow('info','ORVIA','' + _uiT('ui.progressive_web_app') + '',gmOrviaBuildLabel(),'',false)+
     gmPRow('shield','' + _uiT('ui.medizinischer_hinweis') + '','' + _uiT('ui.kein_ersatz_fuer_medizinische_diagnose') + '','','',false)+
-    gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true)+'</div>';
+    /* S4c (v14): der Rundgang ersetzt die tote „Dokumentation folgt"-Zeile — echter
+       Einstieg (Profil → Hilfe), nie automatisch (M9). Ohne Modul bleibt die Zeile inaktiv. */
+    ((window.ORVIA&&ORVIA.tour&&ORVIA.tour.start)
+      ?gmPRow('book','' + _uiT('ui.rundgang_starten') + '','' + _uiT('ui.rundgang_sub') + '','','gmStartTour()')
+      :gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true))+'</div>';
+}
+function gmStartTour(){
+  try{if(typeof closeProfile==='function')closeProfile();}catch(_){ }
+  try{if(typeof gmCloseProfPage==='function')gmCloseProfPage();}catch(_){ }
+  try{if(window.ORVIA&&ORVIA.tour)ORVIA.tour.start();}catch(_){ }
 }
 /* ---------- GM5.3: Zeilenregister der Profil-Unterseiten ----------
    Die beiden Register halten ausschliesslich die Werte, die die jeweilige Zeile
