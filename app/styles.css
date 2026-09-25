@@ -4422,3 +4422,32 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .spot-btns{display:flex;gap:7px}
 .spot-btns button{padding:8px 13px;border-radius:10px;font:780 11.5px var(--font);cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
 .spot-btns button.pri{background:var(--gold-grad);color:#20180a;border-color:transparent}
+
+/* S5a (v14): Debrief als Zustand (Aktivitaetsseite) */
+.db-card .db-verdict{display:flex;gap:13px;align-items:center;padding:2px 0 4px}
+.db-card .db-verdict .v-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex-shrink:0}
+.db-card .db-verdict .v-ic .ic{width:22px;height:22px}
+.db-card .db-verdict.full .v-ic{background:var(--ready-t);color:var(--ready)}
+.db-card .db-verdict.part .v-ic{background:var(--attention-t);color:var(--attention)}
+.db-card .db-verdict.info .v-ic{background:var(--activity-t);color:var(--activity)}
+.db-card .db-verdict h3{font-size:16.5px;font-weight:820;letter-spacing:-.02em;margin:0 0 2px}
+.db-card .db-verdict p{font-size:11.5px;color:var(--muted);margin:0;line-height:1.45}
+.db-card .db-cmp{margin-top:14px;display:grid;gap:0}
+.db-card .db-cmp-head{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr) minmax(0,1fr) 18px;gap:8px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding-bottom:4px}
+.db-card .db-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr) minmax(0,1fr) 18px;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--hair);font-size:12px}
+.db-card .db-row .l{color:var(--muted);font-weight:650;min-width:0}
+.db-card .db-row .soll{color:var(--faint);font-variant-numeric:tabular-nums}
+.db-card .db-row .ist{font-weight:780;font-variant-numeric:tabular-nums}
+.db-card .db-row .ist small{font-weight:650;color:var(--faint);font-size:10.5px;margin-left:4px}
+.db-card .db-row .st{display:grid;place-items:center}
+.db-card .db-row .st .ic{width:14px;height:14px}
+.db-card .db-row .st.ok{color:var(--ready)}
+.db-card .db-row .st.off{color:var(--attention)}
+.db-card .db-take{display:grid;gap:7px;margin-top:12px}
+.db-card .db-take .tk{display:grid;grid-template-columns:104px minmax(0,1fr);gap:9px;font-size:11.5px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--border)}
+.db-card .db-take .tk .k{color:var(--faint);font-weight:750}
+.db-card .db-take .tk .v{color:var(--muted);line-height:1.4}
+.db-card .gapnote{margin:12px 0 0}
+.db-card .adp-btns button{min-height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:720;font-size:12.5px;padding:8px 12px;cursor:pointer;width:100%}
+.db-card .pill-badge.attention{background:var(--attention-t);color:var(--attention)}
+.session-card .db-tag{font-weight:720;color:var(--muted)}.session-card .db-tag.full{color:var(--ready)}.session-card .db-tag.part{color:var(--attention)}

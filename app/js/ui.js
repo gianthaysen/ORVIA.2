@@ -8366,6 +8366,9 @@ function renderGMPlan(){
           }
         }
       }catch(_){ }
+      /* S5a (v14): Debrief-Urteil auf der Karte (Prototyp „Debrief: zaehlt voll") —
+         nur aus dem gespeicherten Record derselben Occurrence, nichts nachgerechnet. */
+      try{if(done){var _dbr=gmDbRecordFor(occ,k,it);if(_dbr&&_dbr.judged){var _dbv=gmDebriefVerdict(_dbr,{planLink:occ});subP+=' · <span class="db-tag '+_dbv.cls+'">'+_uiT('ui.dbv_prefix')+' '+gmEsc(_dbv.title)+'</span>';}}}catch(_dbx){ }
       /* GM7.5g (Audit-Revert): Kern/Flexibel-Badges kamen aus derselben unitPriority-
          Label-Heuristik — keine Engine-Klassifikation, daher entfernt (kein erfundener
          Prioritaetsstatus; Erledigt/— kommt weiterhin aus dem echten Resolver). */
@@ -9098,9 +9101,19 @@ function gmOpenActivityPage(aid){
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen). */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
     h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
-  /* Debrief NUR aus bestehender produktiver Bewertung; sonst ehrliche Missingness. */
-  h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p>'+
-    '<div class="coach-tags"><span>'+(rate?'' + _uiT('ui.beibehalten') + ''+gmEsc(rate.badge):'' + _uiT('ui.das_beibehalten') + '')+'</span><span>'+(rate&&rate.next?gmEsc(rate.next):'' + _uiT('ui.naechstes_mal') + '')+'</span><span>'+(rate?'' + _uiT('ui.planwirkung') + '':'' + _uiT('ui.auswirkung_auf_die_planung') + '')+'</span></div></div>';
+  /* S5a (v14): Debrief als Zustand aus dem kanonischen Record (gmDebriefModel) —
+     Soll/Ist-Zeilen + Mitnahmen nur aus Record-Feldern; freie Einheit behaelt den
+     bisherigen Bewertungstext (rateActivity) als Einordnung. */
+  try{
+    var _dbRec=gmDbRecordFor(vm.planLink||null,vm.date||null,null);
+    var _dbAct={distanceKm:(a.summary&&a.summary.distanceKm!=null)?a.summary.distanceKm:null,durationMin:(a.durationSeconds!=null)?a.durationSeconds/60:null,paceSecPerKm:null};
+    if(_dbAct.distanceKm>0&&_dbAct.durationMin>0)_dbAct.paceSecPerKm=Math.round(_dbAct.durationMin*60/_dbAct.distanceKm);
+    var _dbM=gmDebriefModel(_dbRec,_dbAct,{fam:_fam,planLink:vm.planLink||null});
+    h+='<div style="margin:0 18px 14px">'+gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null})+'</div>';
+  }catch(_dbE){
+    /* Rueckfall (z. B. Debrief-Helfer nicht geladen): bisherige Karte aus der bestehenden Bewertung. */
+    h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p></div>';
+  }
   /* GM7.9: Krafttraining — Uebungs- & Satzliste aus den ECHTEN gespeicherten Saetzen
      (Snapshot/Legacy-Log). Reine Wiedergabe + Summen; ohne Details ehrlicher Leerzustand. */
   if(_fam==='gym'){
@@ -12866,6 +12879,85 @@ function gmDbFind(key,unit,dateIso){
   return null;
 }
 
+/* ============ S5a (v14): Einheiten-Debrief als Zustand ============
+   Prototyp scrDebrief: fuenf Faelle (zaehlt voll / teilweise / frei / ohne
+   Referenz / Kraft) mit Soll-Ist-Zeilen und drei Mitnahmen. Quelle ist AUSSCHLIESSLICH
+   der kanonische Debrief-Record (PROFILE.performance.debriefs, debrief-record@5,
+   Urteil aus session-debrief C3 gegen die DAMALS eingefrorene Vorgabe) — nichts
+   wird nachgerechnet, ohne Record gibt es einen ehrlichen Wartezustand. */
+function gmDbRecordFor(planLink,dateIso,unit){
+  try{
+    var st=gmDbStore();if(!st)return null;
+    if(planLink){var id='db:'+String(planLink).replace(/^(po:|occ:)/,'');
+      for(var i=0;i<st.length;i++)if(st[i]&&(st[i].id===id||st[i].sessionId===planLink))return st[i];}
+    if(dateIso&&unit)return gmDbFind(gmDbKey(dateIso,unit),unit,dateIso);
+  }catch(_){ }
+  return null;
+}
+function gmDbReasonLabel(r){for(var i=0;i<GM_DB_REASONS.length;i++)if(GM_DB_REASONS[i][0]===r)return GM_DB_REASONS[i][1];return r?String(r):'';}
+function gmDbFmtPace(s){if(s==null||!isFinite(s)||s<=0)return null;var m=Math.floor(s/60),r=Math.round(s%60);return m+':'+(r<10?'0':'')+r;}
+function gmDbFmtDelta(v,unit){if(v==null||!isFinite(v))return '';var r=Math.round(v);if(r===0)return '';return (r>0?'+':'')+r+(unit?' '+unit:'');}
+/* state: full | part | aborted | free | noref | gym | pending */
+function gmDebriefVerdict(rec,opts){
+  var o=opts||{};
+  if(o.fam==='gym')return {state:'gym',cls:'info',ic:'dumbbell',title:_uiT('ui.dbv_gym_t'),text:_uiT('ui.dbv_gym_d')};
+  if(!o.planLink&&!rec)return {state:'free',cls:'info',ic:'run',title:_uiT('ui.dbv_free_t'),text:_uiT('ui.dbv_free_d')};
+  if(!rec)return {state:'pending',cls:'info',ic:'pen',title:_uiT('ui.dbv_pending_t'),text:_uiT('ui.dbv_pending_d')};
+  if(!rec.judged){
+    var isFree=(rec.adherence==='nicht vergleichbar'&&!o.planLink);
+    return isFree?{state:'free',cls:'info',ic:'run',title:_uiT('ui.dbv_free_t'),text:_uiT('ui.dbv_free_d')}
+      :{state:'noref',cls:'info',ic:'info',title:_uiT('ui.dbv_noref_t'),text:rec.note||_uiT('ui.dbv_noref_d')};
+  }
+  if(rec.adherence==='abgebrochen')return {state:'aborted',cls:'part',ic:'alert',title:_uiT('ui.dbv_aborted_t'),text:_uiT('ui.dbv_aborted_d',{pct:rec.completionPct!=null?Math.round(rec.completionPct*100):'—'})+(rec.reason?' · '+gmDbReasonLabel(rec.reason):'')};
+  if(rec.adherence==='nicht vergleichbar')return {state:'noref',cls:'info',ic:'info',title:_uiT('ui.dbv_noref_t'),text:rec.note||_uiT('ui.dbv_noref_d')};
+  if(rec.adherence==='im Ziel'&&rec.completed!==false)return {state:'full',cls:'full',ic:'check',title:_uiT('ui.dbv_full_t'),text:rec.note||_uiT('ui.dbv_full_d')};
+  return {state:'part',cls:'part',ic:'alert',title:_uiT('ui.dbv_part_t'),text:(rec.note||'')+(rec.reason?' · '+gmDbReasonLabel(rec.reason):'')};
+}
+function gmDebriefModel(rec,actual,opts){
+  var v=gmDebriefVerdict(rec,opts);
+  var rows=[],take=[];
+  if(rec&&rec.judged){
+    var sn=rec.snapshot||{};var a=actual||{};
+    var pMin=sn.plannedDurationMin,aMin=a.durationMin;
+    if(pMin!=null||aMin!=null)rows.push({l:_uiT('ui.dbv_row_dauer'),soll:pMin!=null?Math.round(pMin)+' min':'—',ist:aMin!=null?Math.round(aMin)+' min':'—',extra:(pMin!=null&&aMin!=null)?gmDbFmtDelta(aMin-pMin,'min'):'',ok:(pMin==null||aMin==null)?null:(aMin>=pMin*0.85)});
+    var pKm=sn.plannedDistanceKm,aKm=a.distanceKm;
+    if(pKm!=null||aKm!=null)rows.push({l:_uiT('ui.dbv_row_distanz'),soll:pKm!=null?fmtDe(Math.round(pKm*10)/10)+' km':'—',ist:aKm!=null?fmtDe(Math.round(aKm*100)/100)+' km':'—',extra:'',ok:(pKm==null||aKm==null)?null:(aKm>=pKm*0.85)});
+    var lo=gmDbFmtPace(sn.targetLoSecPerKm),hi=gmDbFmtPace(sn.targetHiSecPerKm),ap=gmDbFmtPace(a.paceSecPerKm);
+    if(lo&&hi)rows.push({l:_uiT('ui.dbv_row_pace'),soll:lo+'–'+hi+' /km',ist:ap?ap+' /km':'—',extra:gmDbFmtDelta(rec.deltaPace,'s'),ok:rec.zoneHit==null?null:rec.zoneHit>=0.95});
+    if(rec.expectedRpe!=null||rec.rpe!=null)rows.push({l:_uiT('ui.dbv_row_rpe'),soll:rec.expectedRpe!=null?fmtDe(rec.expectedRpe)+(rec.expectedRpeEvidence==='table'||rec.expectedRpeEvidence==='weak'?' ('+_uiT('ui.dbv_tabelle')+')':''):'—',ist:rec.rpe!=null?String(rec.rpe):'—',extra:gmDbFmtDelta(rec.deltaRpe,''),ok:rec.deltaRpe==null?null:rec.deltaRpe<2});
+    /* Mitnahmen: nur aus Feldern des Records — keine Erzaehlung. */
+    if(rec.zoneHit!=null)take.push([_uiT('ui.dbv_take_keep'),rec.zoneHit>=0.95?_uiT('ui.dbv_keep_pace'):_uiT('ui.dbv_keep_done',{pct:rec.completionPct!=null?Math.round(Math.min(1,rec.completionPct)*100):'—'})]);
+    else if(rec.completionPct!=null)take.push([_uiT('ui.dbv_take_keep'),_uiT('ui.dbv_keep_done',{pct:Math.round(Math.min(1,rec.completionPct)*100)})]);
+    var nx=null;
+    if(rec.adherence==='zu schnell')nx=_uiT('ui.dbv_next_fast',{s:Math.abs(Math.round(rec.deltaPace||0))});
+    else if(rec.adherence==='zu langsam')nx=_uiT('ui.dbv_next_slow',{s:Math.abs(Math.round(rec.deltaPace||0))});
+    else if(rec.adherence==='abgebrochen')nx=rec.reason?_uiT('ui.dbv_next_reason',{reason:gmDbReasonLabel(rec.reason)}):_uiT('ui.dbv_next_reason_missing');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe>=2)nx=_uiT('ui.dbv_next_hard');
+    if(nx)take.push([_uiT('ui.dbv_take_next'),nx]);
+    var imp;
+    if(rec.pain)imp=_uiT('ui.dbv_impact_pain');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe>=2)imp=_uiT('ui.dbv_impact_over');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe<=-1)imp=_uiT('ui.dbv_impact_headroom');
+    else imp=_uiT('ui.dbv_impact_none');
+    take.push([_uiT('ui.dbv_take_impact'),imp]);
+  }
+  var src=rec?_uiT('ui.dbv_source',{at:(rec.debriefedAt?gmAdpTime(rec.debriefedAt):'—')}):'';
+  return {verdict:v,rows:rows,take:take,source:src,rec:rec||null};
+}
+function gmDebriefCardHTML(m,opts){
+  var o=opts||{};var v=m.verdict;
+  var h='<div class="card db-card"><div class="ctitle"><div class="l">'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</div>'+(m.rec&&m.rec.judged?'<span class="pill-badge '+(v.cls==='full'?'ready':v.cls==='part'?'attention':'')+'">' + _uiT('ui.dbv_soll_ist') + '</span>':'')+'</div>'+
+    '<div class="db-verdict '+v.cls+'"><div class="v-ic">'+icon(v.ic)+'</div><div><h3>'+gmEsc(v.title)+'</h3><p>'+gmEsc(v.text)+'</p></div></div>';
+  if(m.rows.length){
+    h+='<div class="db-cmp"><div class="db-cmp-head"><span>' + _uiT('ui.dbv_vorgabe') + '</span><span>' + _uiT('ui.dbv_soll') + '</span><span>' + _uiT('ui.dbv_ist') + '</span><span></span></div>'+
+      m.rows.map(function(r){return '<div class="db-row"><span class="l">'+gmEsc(r.l)+'</span><span class="soll">'+gmEsc(r.soll)+'</span><span class="ist">'+gmEsc(r.ist)+(r.extra?'<small>'+gmEsc(r.extra)+'</small>':'')+'</span><span class="st '+(r.ok===null?'':(r.ok?'ok':'off'))+'">'+(r.ok===null?'':icon(r.ok?'check':'alert'))+'</span></div>';}).join('')+'</div>';
+  }
+  if(m.take.length)h+='<div class="db-take">'+m.take.map(function(t){return '<div class="tk"><span class="k">'+gmEsc(t[0])+'</span><span class="v">'+gmEsc(t[1])+'</span></div>';}).join('')+'</div>';
+  if(v.state==='pending'&&o.planCta)h+='<div class="adp-btns" style="margin-top:12px"><button onclick="showTab(\'plan\')">' + _uiT('ui.dbv_zum_plan') + '</button></div>';
+  if(v.state==='free'&&o.freeText)h+='<div class="gapnote" style="margin-top:12px">'+icon('info','sm')+'<div>'+gmEsc(o.freeText)+'</div></div>';
+  if(m.source)h+='<div class="source">'+icon('info','xs')+' '+gmEsc(m.source)+'</div>';
+  return h+'</div>';
+}
 /* Oeffnet die Erfassung fuer eine absolvierte Einheit. */
 function gmOpenDebrief(dateIso,unit,planned,actual){
   var key=gmDbKey(dateIso,unit);
