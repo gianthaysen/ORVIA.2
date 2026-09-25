@@ -3230,10 +3230,38 @@ function recommendedRunVolume(){
   try{var rs=[];for(var i=0;i<7;i++){var s=(typeof readinessOf==='function')?readinessOf(dkey(-i)):null;if(s!=null)rs.push(s);}rd.avgReady=Calc.avg(rs);}catch(e){}
   return Calc.calculateRecommendedWeeklyRunVolume(prof,hist,rd);
 }
+/* S3 · P2 (SHADOW, 25.09.2026): neben der festen Tabelle den datengetriebenen
+   Kandidaten rechnen und protokollieren — ANGEZEIGT wird weiter die Tabelle.
+   Das Protokoll (localStorage orvia_shadow_lr_v1, je Datum+Woche ein Eintrag,
+   max 60) ist die Grundlage fuer die Umschalt-Entscheidung. Wirft nie. */
+var _lrShadowSeen={};
+function lrShadowRecord(wk,legacy){
+  try{
+    var LRP=(window.ORVIA&&ORVIA.longRunProgression)||null;if(!LRP)return null;
+    var g=goalOf();var dts=daysToSafe();
+    var lvlKey=null;try{var pm=window.ORVIA&&ORVIA.profileModel;lvlKey=(pm&&pm.primarySportLevel)?pm.primarySportLevel(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
+    var longest=null;try{longest=(typeof _longestRunKm==='function')?_longestRunKm(28):null;if(!(longest>0))longest=null;}catch(_){ }
+    var c=LRP.candidate({level:lvlKey,longest28Km:longest,raceKm:g&&g.distanceKm,weeksToRace:(dts!=null&&isFinite(dts))?dts/7:null});
+    var key=todayStr()+':'+wk;if(_lrShadowSeen[key])return c;_lrShadowSeen[key]=1;
+    var e={date:todayStr(),wk:wk,legacy:legacy,candidate:c.km,basis:c.basis,cap:c.cap,longest28:longest,level:lvlKey,peak:c.peakKm};
+    try{var raw=localStorage.getItem('orvia_shadow_lr_v1');var arr=raw?JSON.parse(raw):[];if(!Array.isArray(arr))arr=[];
+      arr=arr.filter(function(x){return !(x&&x.date===e.date&&x.wk===e.wk);});arr.push(e);if(arr.length>60)arr=arr.slice(-60);
+      localStorage.setItem('orvia_shadow_lr_v1',JSON.stringify(arr));}catch(_){ }
+    return c;
+  }catch(_){return null;}
+}
+function lrShadowReport(){
+  try{var raw=localStorage.getItem('orvia_shadow_lr_v1');var arr=raw?JSON.parse(raw):[];if(!Array.isArray(arr))arr=[];
+    var n=arr.length,diff=0,over=0,under=0;arr.forEach(function(x){if(x&&x.candidate!=null&&x.legacy!=null){var d=x.candidate-x.legacy;diff+=d;if(d>0)over++;else if(d<0)under++;}});
+    return {entries:n,meanDelta:n?Math.round(diff/n*10)/10:null,candidateHigher:over,candidateLower:under,rows:arr};
+  }catch(_){return {entries:0,meanDelta:null,candidateHigher:0,candidateLower:0,rows:[]};}
+}
 function lrKm(wk){
   // Nur echtes Lauf-Distanzziel mit Renndatum → Runna-Long-Run-Progression.
   if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&goalOf().raceDate){
-    if(wk>=25)return null; if(wk>=22)return [12,10,8][wk-22]; return Math.max(7,Math.min(20,wk-2));
+    var _legacy=(wk>=25)?null:(wk>=22?[12,10,8][wk-22]:Math.max(7,Math.min(20,wk-2)));
+    try{lrShadowRecord(wk,_legacy);}catch(_){ }   /* SHADOW: nur protokollieren */
+    return _legacy;
   }
   // Sonst: profil-/historienbasiertes Long-Run-Limit (Anfänger konservativ).
   try{var v=recommendedRunVolume();return v.longRunKm||null;}catch(e){return null;}
