@@ -55,6 +55,7 @@ Summe S1–S6 ≈ 42–56 h autonom + je Schnitt 5–10 min Sichtprüfung von di
 
 1. **Ziel-Editor:** v14-Sheet (ein Bildschirm) ersetzt den 7-Schritt-Wizard — oder Wizard bleibt für Spezialkategorien (Fußball, Custom)? Empfehlung: Sheet als Standard, Wizard nur über „Mehr Optionen".
 2. **„% Wochenvolumen" je Ziel** (v14 zeigt es auf jeder Zielkarte): Engine liefert heute keine Zielanteile. Leerzustand („wird berechnet, sobald der Planer Anteile ausweist") oder Engine-Erweiterung in S3?
+   → **v8-406:** aus dem Zielportfolio (Batch 3a, `goalPortfolio.buildPortfolio`) als relative Spanne „Anteil am Trainingsbudget 40–60 % · Fokus" mit Herkunftsnotiz (Rollenheuristik, kein Kapazitätsmodell). Kein Kilometerwert — der käme erst mit dem Capacity-Modell.
 3. **Community-Umfang** (S7): jetzt mitplanen oder nach S6 neu bewerten? Berührt Gesundheitsdaten Dritter, Standort (Flyby), Moderation. Empfehlung: nach S6 entscheiden, dann eigener Plan.
 4. **Referenzstand:** v14 vom 22.08. — gibt es eine neuere Fassung?
 

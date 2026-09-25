@@ -58,6 +58,20 @@
       if (mg && O.goalPlanInput) d.planInput = O.goalPlanInput.resolve({ goal: mg, today: d.today, canon: (O.profileModel && O.profileModel.canonGoalCategory) || null, taper: O.goalTaperResolver || null }); } catch (e) {}
     try { if (typeof root.buildGoal === 'function') d.engine = root.buildGoal(); } catch (e) {}
     try { d.feasibility = O._lastFeasibility || null; } catch (e) {}
+    /* v8-406 (Schnittplan, offene Entscheidung 2): Zielanteil am Wochenvolumen aus dem
+       Zielportfolio (Batch 3a, rein). Relative Anteile nach Rollenheuristik — so wird es
+       auch beschriftet. Ohne Modul/Ziele bleibt der Leerzustand. */
+    d.portfolio = null;
+    try {
+      if (O.goalPortfolio && typeof O.goalPortfolio.buildPortfolio === 'function' && d.goals.length) {
+        var cfg = null; try { cfg = (O.profileModel && O.profileModel.effectiveTrainingConfig) ? O.profileModel.effectiveTrainingConfig(P) : null; } catch (e) {}
+        var nowMs = Date.parse(d.today + 'T12:00:00Z');
+        d.portfolio = O.goalPortfolio.buildPortfolio({ schemaVersion: 1, now: nowMs, today: d.today, timezone: 'Europe/Berlin',
+          goals: d.goals, sports: (P && Array.isArray(P.sports)) ? P.sports : [],
+          availability: cfg ? { availableDayIdx: cfg.availableDayIdx || [], targetDays: cfg.targetDays != null ? cfg.targetDays : null, source: cfg.daysSource || 'none' } : null,
+          dataQuality: { missing: [] } }, {});
+      }
+    } catch (e) { d.portfolio = null; }
     try { if (O.profileCenter && O.profileCenter.buildStrength) d.strength = O.profileCenter.buildStrength(P, new Date()); } catch (e) {}
     try { if (d.planInput && d.planInput.targetDate) {
       var SP = O.seasonPhases, sp = null;
@@ -153,6 +167,17 @@
     if (m) return '<div class="pv-race pv-race-match">' + esc(T('goal.race.detected')) + ' · ' + esc(fmtSec(m.timeSec)) + (m.verdict !== 'finished' ? ' · ' + esc(T('goal.race.' + m.verdict)) : '') + ' <button type="button" class="gmc-b" onclick="event.stopPropagation();goalConfirmResult(\'' + esc(g.id) + '\',\'' + esc(m.activityId) + '\')">' + esc(T('pf.rr_uebernehmen')) + '</button></div>';
     return '';
   }
+  /* Anteil eines Ziels am verfuegbaren Trainingsbudget — aus dem Portfolio, als Spanne in %.
+     null, wenn kein Portfolio oder keine Zuteilung fuer dieses Ziel. */
+  function goalShare(g, d) {
+    try {
+      var pf = d && d.portfolio; if (!pf || !Array.isArray(pf.allocations)) return null;
+      var a = pf.allocations.filter(function (x) { return x && x.goalId === g.id; })[0];
+      if (!a || !a.weeklyBudgetRange || !(a.weeklyBudgetRange.max > 0)) return null;
+      var mn = Math.round(a.weeklyBudgetRange.min * 100), mx = Math.round(a.weeklyBudgetRange.max * 100);
+      return { min: mn, max: mx, mode: a.mode || null, text: (mn === mx ? mx + ' %' : mn + '–' + mx + ' %') + (a.mode === 'focus' ? ' · ' + T('pv.share_fokus') : '') };
+    } catch (e) { return null; }
+  }
   function goalCard(g, d, opts) {
     var o = opts || {}, role = roleOf(g), isMain = g.id === d.mainGoalId, p = goalProgress(g, d);
     var badge;
@@ -168,6 +193,7 @@
     var sub = o.pill ? (catLabel(g.category) + ' · ' + T('pv.prioritaet_n', { n: g.priority }) + ' · ' + (g.targetDate ? deDate(g.targetDate) : T('pv.offen'))) : goalSub(g, d);
     var bar = p.pct != null ? '<div class="goal-line"><i style="width:' + p.pct + '%' + (role !== 'main' ? ';background:linear-gradient(90deg,var(--activity),var(--ready))' : '') + '"></i></div>' : '<div class="goal-line none"></div>';
     var alloc = '';
+    if (o.pill) { var sh = goalShare(g, d); if (sh) alloc = '<div class="goalmeta pv-share"><span>' + esc(T('pv.zielanteil')) + '</span><span>' + esc(sh.text) + '</span></div>'; }
     return '<div class="goal-card tap' + (role !== 'main' ? ' sec' : '') + '" onclick="openGoalDetail(\'' + esc(g.id) + '\')">' +
       '<div class="goal-top"><div style="min-width:0"><h4>' + esc(goalTitle(g)) + '</h4><p>' + esc(sub) + '</p></div>' + badge + '</div>' +
       bar + '<div class="goalmeta"><span>' + p.left + '</span><span>' + goalRight(g, d) + '</span></div>' + raceLine(g, d) + alloc + '</div>';
@@ -223,7 +249,7 @@
     h += '<div class="kpi-row"><div class="kpi"><b>' + active.length + '</b><span>' + esc(T('pv.aktiv')) + '</span></div><div class="kpi"><b>' + done.filter(function (g) { return g.status === 'achieved'; }).length + '</b><span>' + esc(T('pv.erreicht')) + '</span></div><div class="kpi"><b>' + d.conflicts.length + '</b><span>' + esc(T('pv.konflikte')) + '</span></div></div>';
     h += sectlabel(T('pv.aktive_ziele'), { label: ic('plus', 'xs') + ' ' + esc(T('pv.neues_ziel')), onclick: 'ORVIA.screens.profileV14.openGoalSheet()' });
     h += '<div class="goal-stack">' + (active.length ? active.map(function (g) { return goalCard(g, d, { pill: true }); }).join('') : '<div class="goal-card tap" onclick="ORVIA.screens.profileV14.openGoalSheet()"><div class="goal-top"><div><h4>' + esc(T('pv.kein_ziel')) + '</h4><p>' + esc(T('pv.kein_ziel_text')) + '</p></div></div></div>') + '</div>' +
-      (active.length ? '<div class="pv-alloc-note">' + ic('info', 'xs') + ' ' + esc(T('pv.zielanteil_leer')) + '</div>' : '');
+      (active.length ? '<div class="pv-alloc-note">' + ic('info', 'xs') + ' ' + esc(active.some(function (g) { return !!goalShare(g, d); }) ? T('pv.zielanteil_quelle') : T('pv.zielanteil_leer')) + '</div>' : '');
     if (paused.length) h += sectlabel(T('pv.pausiert')) + '<div class="setting-group">' + paused.map(function (g) { return '<div class="prow" onclick="openGoalDetail(\'' + esc(g.id) + '\')"><div class="p-b"><div class="p-t">' + esc(goalTitle(g)) + '</div><div class="p-d">' + esc(goalSub(g, d)) + '</div></div><button type="button" class="gmc-b" onclick="event.stopPropagation();goalSetStatus(\'' + esc(g.id) + '\',\'active\')">' + esc(T('pv.fortsetzen')) + '</button></div>'; }).join('') + '</div>';
     if (d.conflicts.length) {
       h += sectlabel(T('pv.zielkonflikte'));
@@ -504,7 +530,7 @@
   var api = { VERSION: VERSION, collect: collect, overviewHTML: overviewHTML, goalsHTML: goalsHTML, performanceHTML: performanceHTML,
     strengthCardHTML: strengthCardHTML, strengthNeedsCard: strengthNeedsCard, navHTML: navHTML, render: render, setTab: setTab, activeTab: activeTab, goalCard: goalCard, bestLifts: bestLifts,
     openGoalSheet: openGoalSheet, sheetPick: sheetPick, sheetSave: sheetSave, sheetMore: sheetMore, sheetModel: sheetModel, sheetHTML: sheetHTML, sheetValidate: sheetValidate, sheetImpact: sheetImpact,
-    realismOf: realismOf, draftRealism: draftRealism, realismHTML: realismHTML, sheetRealism: sheetRealism, sheetTakeSafe: sheetTakeSafe, sheetTakeDate: sheetTakeDate };
+    goalShare: goalShare, realismOf: realismOf, draftRealism: draftRealism, realismHTML: realismHTML, sheetRealism: sheetRealism, sheetTakeSafe: sheetTakeSafe, sheetTakeDate: sheetTakeDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.screens.profileV14 = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
