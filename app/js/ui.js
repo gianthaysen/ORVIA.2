@@ -7846,7 +7846,11 @@ function gmGoalForecastCard(lvl,perfBySport){
       beyond:'' + _uiT('ui.deine_zielzeit') + ''+gmGoalForecastMin(v.target)+'' + _uiT('ui.liegt_unter_dem_was_der') + ''}[v.reachable];
     if(tw)tgtTxt=' '+gmEsc(tw);
   }
-  var statusTxt=v.status?('<b>'+gmEsc(GM_FEAS_TEXT[v.status]||v.status)+'.</b>'):'';
+  /* S3b (Gian, 25.09.): Realismus-Urteil. „ok" schweigt — ein realistisches Ziel
+     braucht keinen Stempel. „knapp" und „unrealistisch" werden sichtbar, mit
+     dem Vorschlag, den der Bewerter hergibt (sichere Zielzeit / fruehestes Datum). */
+  var verdict=gmGoalVerdictHTML(goal);
+  var statusTxt=(v.status==='insufficient_data')?('<b>'+gmEsc(GM_FEAS_TEXT[v.status])+'.</b>'):'';
   var weeksTxt=(v.weeks&&v.weeks.min!=null)
     ?('' + _uiT('ui.geschaetzter_zeitraum_etwa') + ''+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+'' + _uiT('ui.wochen') + '':'' + _uiT('ui.wochen_oder_deutlich_mehr') + '')+'' + _uiT('ui.spanne_keine_terminzusage') + ''):'';
   var basisTxt=(lvl==='p'&&v.confidence)
@@ -7855,8 +7859,38 @@ function gmGoalForecastCard(lvl,perfBySport){
       '</span><span>realistisch '+gmEsc(gmGoalForecastMin(v.realistic))+
       '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
     '<div class="fc-corridor"><div class="fc-band" style="left:'+inset+'%;right:'+inset+'%"></div></div>'+
+    verdict+
     '<div class="mini-note">'+icon('info','xs')+'<div>'+statusTxt+tgtTxt+weeksTxt+basisTxt+
       ' Modellwert aus deiner gemessenen Referenz — keine Garantie.</div></div></div>';
+}
+/* S3b: Realismus-Block fuer die Prognosekarte — nur bei tight/unrealistic. */
+function gmGoalRealismNow(goal){
+  try{
+    var GR=(window.ORVIA&&ORVIA.goalRealism)||null;if(!GR)return null;
+    var obs=(window.ORVIA&&ORVIA._lastFeasibility)||null;
+    return GR.grade(obs,(typeof todayStr==='function')?todayStr():null);
+  }catch(_){return null;}
+}
+function gmFmtSecHMS(sec){sec=Math.round(sec);var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),x=sec%60;return h?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0');}
+function gmGoalVerdictText(r){
+  if(!r||(r.grade!=='tight'&&r.grade!=='unrealistic'))return null;
+  var isTime=(r.metric==='race_time');
+  var parts=[];
+  parts.push(r.grade==='unrealistic'?_uiT('ui.ziel_unrealistisch_im_zeitraum'):_uiT('ui.ziel_knapp'));
+  if(r.weeksNeeded&&r.weeksNeeded.min!=null){
+    var wMin=String(Math.round(r.weeksNeeded.min)),wMax=r.weeksNeeded.max!=null?String(Math.round(r.weeksNeeded.max)):null;
+    parts.push(wMax!=null?_uiT('ui.laut_modell_braucht_es_spanne',{min:wMin,max:wMax}):_uiT('ui.laut_modell_braucht_es_min',{min:wMin}));
+    if(r.weeksAvailable!=null)parts.push(_uiT('ui.bis_zum_datum_sind_es',{weeks:String(Math.round(r.weeksAvailable))}));
+  }
+  if(isTime&&r.safeTarget>0)parts.push(_uiT('ui.sicher_im_rahmen_bis',{time:gmFmtSecHMS(r.safeTarget)}));
+  return parts.join(' ');
+}
+function gmGoalVerdictHTML(goal){
+  var r=gmGoalRealismNow(goal);var txt=gmGoalVerdictText(r);if(!txt)return '';
+  var gid='';try{gid=(goal&&goal._canonicalId)||(typeof mainGoalOf==='function'&&mainGoalOf()&&mainGoalOf().id)||'';}catch(_){ }
+  var open=gid?"ORVIA.screens.profileV14.openGoalSheet('"+gmEsc(gid)+"')":"ORVIA.screens.profileV14.openGoalSheet()";
+  return '<div class="fc-verdict '+(r.grade==='unrealistic'?'crit':'att')+'" data-grade="'+r.grade+'">'+icon(r.grade==='unrealistic'?'alert':'info','xs')+
+    '<div>'+gmEsc(txt)+' <span class="edit" role="button" tabindex="0" onclick="'+open+'" onkeydown="if(event.key===\'Enter\')'+open+'">' + _uiT('ui.ziel_anpassen') + '</span></div></div>';
 }
 /* ============================================================
    v8-316 · PLANQUALITÄT — die sechs Kacheln bekommen Werte.

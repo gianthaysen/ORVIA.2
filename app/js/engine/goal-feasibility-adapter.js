@@ -25,7 +25,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'goal-feasibility-adapter@1';
+  var VERSION = 'goal-feasibility-adapter@2';
 
   /* Welche messbare Groesse steckt hinter Ziel bzw. Leistung? Zwei Eingaben sind
      nur vergleichbar, wenn sie dieselbe DIMENSION treffen. Absichtlich klein:
@@ -85,6 +85,45 @@
     return null;
   }
 
+  /* ---- @2 (25.09.2026): ZIELZEIT-Ziele bewerten.
+     Bis @1 war ein Laufziel mit Zielzeit (race_time) gegen die Schwellenpace
+     (threshold_pace) „nicht vergleichbar" — und damit wurde das haeufigste
+     Ziel der App (Halbmarathon 1:50) NIE bewertet: observe() kam mit
+     metric_not_commensurable zurueck, die Karte zeigte nur den Korridor von
+     heute, ohne das Datum. Gians Beispiel: 5 km in 40 min, Marathon unter
+     2:30 in zwei Monaten — die App sagte nichts.
+     Die Umrechnung Zeit→Schwelle bleibt bewusst aussen vor. Stattdessen wird
+     die LEISTUNG in die Zieldimension gebracht — mit genau dem Riegel-Modell,
+     das die Prognosekarte ohnehin zeigt (performanceZones.forecast): heutige
+     realistische Zeit fuer die Zieldistanz als Wert, optimistisch/vorsichtig
+     als Band, modelBasis 'riegel_extrapolation' (der Bewerter stuft die
+     Evidenz dafuer bereits herab). Alles in Sekunden. */
+  var RUN_DIST_KM = { run5k: 5, '5k': 5, run10k: 10, '10k': 10, halfmarathon: 21.0975, hm: 21.0975, marathon: 42.195 };
+  function goalDistanceKm(g) {
+    if (g && g.distanceKm > 0) return g.distanceKm;
+    return RUN_DIST_KM[_mkey(g && (g.category || g.type))] || null;
+  }
+  function goalTargetSeconds(g) {
+    var v = g && g.targetValue;
+    if (!(v > 0)) return null;
+    if (g.unit === 'min') return v * 60;
+    return v;   /* 's' oder metricType 'time' ⇒ Sekunden (goal-plan-input, dieselbe Regel) */
+  }
+  function raceTimePerf(resolved, goal) {
+    var s = resolved && resolved.sports && resolved.sports.running;
+    if (!s || !s.ok) return null;
+    var PZ = O.performanceZones;
+    if (!PZ || typeof PZ.forecast !== 'function') return null;
+    var dist = goalDistanceKm(goal);
+    if (!(dist > 0)) return null;
+    var fc = null; try { fc = PZ.forecast(s, dist); } catch (e) { return null; }
+    if (!fc || fc.ok !== true || !(fc.realisticMin > 0)) return null;
+    return { metric: 'race_time', value: Math.round(fc.realisticMin * 60),
+      band: { min: Math.round(fc.optimisticMin * 60), max: Math.round(fc.cautiousMin * 60) },
+      evidence: fc.confidence || s.confidence || null, ageRatio: s.ageRatio == null ? null : s.ageRatio,
+      modelBasis: 'riegel_extrapolation', distanceKm: dist };
+  }
+
   /* ---- Eingabe bauen (rein) ----
      opts: { goal, resolvedPerformance, allowableProgression, today }
      Rueckgabe: { input } ODER { skip:true, reason } — nie beides, nie ein Wurf. */
@@ -95,17 +134,25 @@
     if (!(g.targetValue > 0)) return { skip: true, reason: 'no_target_value' };
 
     var sport = sportOfGoal(g);
-    var perf = perfFromResolved(opts.resolvedPerformance, sport);
+    var zielDim = goalDimensionOf(g);
+    var perf = null, targetValue = g.targetValue;
+    if (zielDim === 'race_time' && sport === 'running') {
+      perf = raceTimePerf(opts.resolvedPerformance, g);
+      if (!perf) return { skip: true, reason: 'no_usable_performance:running_race_time' };
+      targetValue = goalTargetSeconds(g);
+      if (!(targetValue > 0)) return { skip: true, reason: 'no_target_value' };
+    } else {
+      perf = perfFromResolved(opts.resolvedPerformance, sport);
+    }
     if (!perf) return { skip: true, reason: 'no_usable_performance:' + sport };
 
-    var zielDim = goalDimensionOf(g);
     var perfDim = dimensionOf(perf.metric);
     if (!zielDim || !perfDim) return { skip: true, reason: 'dimension_unknown' };
     if (zielDim !== perfDim)
       return { skip: true, reason: 'metric_not_commensurable:' + zielDim + '_vs_' + perfDim };
 
     return { input: {
-      goal: { targetValue: g.targetValue, metricType: g.metricType || perf.metric },
+      goal: { targetValue: targetValue, metricType: g.metricType || perf.metric },
       currentPerformance: perf,
       allowableProgression: opts.allowableProgression || null,
       level: opts.level || (g.level || null),
@@ -132,7 +179,8 @@
   var api = {
     VERSION: VERSION, DIMENSION: DIMENSION,
     dimensionOf: dimensionOf, goalDimensionOf: goalDimensionOf, sportOfGoal: sportOfGoal,
-    perfFromResolved: perfFromResolved, buildInput: buildInput, observe: observe
+    perfFromResolved: perfFromResolved, raceTimePerf: raceTimePerf, goalDistanceKm: goalDistanceKm, goalTargetSeconds: goalTargetSeconds,
+    buildInput: buildInput, observe: observe
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.goalFeasibilityAdapter = api;

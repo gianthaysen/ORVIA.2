@@ -3439,6 +3439,18 @@ body.profile-open #tab-mehr{padding:var(--sat) 0 calc(env(safe-area-inset-bottom
    Umbruch). Neue Struktur: textfreie Segmentleiste + grosse aktuelle Phase + Vollbreiten-
    Liste. Die alten .phase-Regeln bleiben unangetastet, weil sie noch andere Hosts bedienen. */
 .ph-bar{display:flex;gap:4px;margin:2px 0 14px}
+.pv-realism{border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.5;margin:4px 0 10px;color:var(--text)}
+.pv-realism.att{background:var(--attention-t);border:1px solid rgba(237,180,78,.32)}
+.pv-realism.crit{background:var(--crit-t);border:1px solid rgba(240,99,122,.32)}
+.pv-realism-cta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pv-realism-btn{font-family:var(--font);font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+/* S3b: Realismus-Urteil in der Prognosekarte — nur knapp/unrealistisch, ok schweigt */
+.fc-verdict{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.5;margin:10px 0 8px;color:var(--text)}
+.fc-verdict.att{background:var(--attention-t);border:1px solid rgba(237,180,78,.32)}
+.fc-verdict.crit{background:var(--crit-t);border:1px solid rgba(240,99,122,.32)}
+.fc-verdict .ic{flex:0 0 auto;width:14px;height:14px;margin-top:2px}
+.fc-verdict.att .ic{color:var(--attention)}.fc-verdict.crit .ic{color:var(--crit)}
+.fc-verdict .edit{margin-left:4px;color:var(--gold-soft);font-weight:700;cursor:pointer}
 /* S3a (v14): Kernreiz-Marker und Pace-Zonen-Zeilen */
 .session-card.key .session-ico{background:rgba(201,174,124,.13);border:1px solid rgba(201,174,124,.35);color:var(--gold-soft)}
 .session-card.key.done .session-ico{color:var(--ready);background:var(--ready-t);border-color:transparent}

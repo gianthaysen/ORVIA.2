@@ -157,8 +157,11 @@
     var o = opts || {}, role = roleOf(g), isMain = g.id === d.mainGoalId, p = goalProgress(g, d);
     var badge;
     if (o.pill) {
+      /* S3b (Gian, 25.09.): ein realistisches Ziel bekommt KEINEN Stempel; „knapp" und
+         „unrealistisch" kommen aus goal-realism (Bewerter-Urteil in drei Stufen). */
       var f = isMain ? d.feasibility : null, cls = '', txt = null;
-      if (f && f.evaluated === true) { if (f.status === 'within_modeled_corridor') { cls = 'ready'; txt = T('pv.im_korridor'); } else if (f.status === 'outside_modeled_corridor') { cls = 'att'; txt = T('pv.knapp'); } }
+      var rg = realismOf(f);
+      if (rg === 'tight') { cls = 'att'; txt = T('pv.knapp'); } else if (rg === 'unrealistic') { cls = 'crit'; txt = T('pv.unrealistisch'); }
       if (!txt && d.conflicts.some(function (c) { return c.goalIds.indexOf(g.id) >= 0; })) { cls = 'crit'; txt = T('pv.konflikt'); }
       badge = txt ? '<span class="pill-badge ' + cls + '">' + esc(txt) + '</span>' : '';
     } else badge = '<span class="goal-badge' + (role !== 'main' ? ' pv-badge-' + esc(role) : '') + '">' + esc(T(ROLE_KEY[role] || 'pv.role_longterm')) + '</span>';
@@ -354,6 +357,58 @@
   /* ---------- Ziel-Sheet (Neues Ziel / Ziel bearbeiten) ---------- */
   var SHEET_GROUPS = ['endurance', 'strength', 'body_composition', 'health', 'team_sport', 'sport_performance', 'general'];
   var _sheet = null;
+  /* ---- S3b: Realismus (goal-realism ueber goal-feasibility) ---- */
+  function realismOf(obs) {
+    try {
+      if (!obs) return 'unknown';
+      if (O.goalRealism) return O.goalRealism.grade(obs, today()).grade;
+      /* ohne Einstufungsmodul: nur der Status — ausserhalb ⇒ „knapp", nie „unrealistisch" ohne Zahl */
+      return obs.status === 'outside_modeled_corridor' ? 'tight' : 'unknown';
+    } catch (e) { return 'unknown'; }
+  }
+  function resolvedPerfNow() {
+    try { if (O._lastPlanPerf) return O._lastPlanPerf; } catch (e) {}
+    try {
+      if (!O.performanceResolver) return null;
+      var acts = []; try { if (O.activityStore && O.activityStore.listActivities) acts = O.activityStore.listActivities(); } catch (e) {}
+      return O.performanceResolver.resolveAll(root.PROFILE || null, { today: today(), activities: acts });
+    } catch (e) { return null; }
+  }
+  function fmtHMS(sec) { return fmtSec(sec); }
+  /* Entwurf bewerten — dieselbe Kette wie im Plan (Adapter -> Bewerter -> Einstufung), ohne Nebenwirkung. */
+  function draftRealism(m) {
+    try {
+      if (!O.goalFeasibilityAdapter || !O.goalRealism) return null;
+      if (!(typeof m.targetValue === 'number' && m.targetValue > 0)) return null;
+      var g = { category: m.category, targetValue: m.targetValue, unit: m.unit || (m.metricType === 'time' ? 's' : null), metricType: m.metricType || null, targetDate: m.targetDate || null };
+      var lvl = null; try { lvl = (typeof root.userLevel === 'function') ? root.userLevel() : null; } catch (e) {}
+      var obs = O.goalFeasibilityAdapter.observe({ goal: g, resolvedPerformance: resolvedPerfNow(), today: today(), level: lvl });
+      return O.goalRealism.grade(obs, today());
+    } catch (e) { return null; }
+  }
+  function realismHTML(r) {
+    if (!r || (r.grade !== 'tight' && r.grade !== 'unrealistic')) return '';
+    var parts = [r.grade === 'unrealistic' ? T('pv.realism_unrealistisch') : T('pv.realism_knapp')];
+    if (r.weeksNeeded && r.weeksNeeded.min != null) {
+      var mn = String(Math.round(r.weeksNeeded.min)), mx = r.weeksNeeded.max != null ? String(Math.round(r.weeksNeeded.max)) : null;
+      parts.push(mx != null ? T('pv.realism_wochen_spanne', { min: mn, max: mx }) : T('pv.realism_wochen_min', { min: mn }));
+      if (r.weeksAvailable != null) parts.push(T('pv.realism_wochen_da', { weeks: String(Math.round(r.weeksAvailable)) }));
+    }
+    var cta = '';
+    if (r.metric === 'race_time' && r.safeTarget > 0) {
+      parts.push(T('pv.realism_sicher_ab', { time: fmtHMS(r.safeTarget) }));
+      cta += '<button type="button" class="pv-realism-btn" onclick="ORVIA.screens.profileV14.sheetTakeSafe(' + Math.round(r.safeTarget) + ')">' + esc(T('pv.realism_zeit_uebernehmen', { time: fmtHMS(r.safeTarget) })) + '</button>';
+    }
+    if (r.earliestDate) cta += '<button type="button" class="pv-realism-btn" onclick="ORVIA.screens.profileV14.sheetTakeDate(\'' + esc(r.earliestDate) + '\')">' + esc(T('pv.realism_datum_uebernehmen', { date: deDate(r.earliestDate) })) + '</button>';
+    return '<div class="pv-realism ' + (r.grade === 'unrealistic' ? 'crit' : 'att') + '" data-grade="' + r.grade + '">' + esc(parts.join(' ')) + (cta ? '<div class="pv-realism-cta">' + cta + '</div>' : '') + '</div>';
+  }
+  function sheetRealism() {
+    var m = sheetCollect(); if (!m) return;
+    var el = root.document.getElementById('pvg_realism'); if (!el) return;
+    el.innerHTML = realismHTML(draftRealism(m));
+  }
+  function sheetTakeSafe(sec) { var tm = root.document.getElementById('pvg_time'); if (tm) { tm.value = fmtSec(sec); } sheetRealism(); }
+  function sheetTakeDate(iso) { var dt = root.document.getElementById('pvg_date'); if (dt) { dt.value = iso; } sheetRealism(); }
   function sheetModel(goal) {
     var M = O.profileModel, g = goal || null;
     var cat = g ? g.category : 'half_marathon', group = 'endurance';
@@ -369,14 +424,15 @@
     var cats = (M && M.GOAL_CATEGORIES && M.GOAL_CATEGORIES[m.group]) || [];
     var mt = metricTypeFor(m.category);
     var valField = mt === 'time'
-      ? '<div class="gm-field"><label>' + esc(T('pv.zielzeit')) + '</label><input id="pvg_time" inputmode="numeric" placeholder="1:50:00" value="' + esc(m.targetValue != null && m.metricType === 'time' ? fmtSec(m.targetValue) : '') + '"></div>'
+      ? '<div class="gm-field"><label>' + esc(T('pv.zielzeit')) + '</label><input id="pvg_time" inputmode="numeric" placeholder="1:50:00" value="' + esc(m.targetValue != null && m.metricType === 'time' ? fmtSec(m.targetValue) : '') + '" onchange="ORVIA.screens.profileV14.sheetRealism()"></div>'
       : (mt ? '<div class="gm-field"><label>' + esc(T('pv.zielwert')) + (m.unit ? ' (' + esc(m.unit) + ')' : '') + '</label><input id="pvg_val" inputmode="decimal" value="' + esc(m.targetValue != null ? m.targetValue : '') + '"></div>' : '<p class="muted pv-sheet-note">' + esc(T('pv.kein_zielwert_noetig')) + '</p>');
     return '<div class="pv-sheet">' +
       '<p class="muted pv-sheet-note">' + esc(T('pv.sheet_intro')) + '</p>' +
       '<div class="gm-field"><label>' + esc(T('pv.kategorie')) + '</label><div class="gm-chips">' + groups.map(function (k) { return '<button type="button" class="gm-chip' + (k === m.group ? ' on' : '') + '" onclick="ORVIA.screens.profileV14.sheetPick(\'group\',\'' + k + '\')">' + esc(groupLabel(k)) + '</button>'; }).join('') + '</div></div>' +
       '<div class="gm-field"><label>' + esc(T('pv.ziel')) + '</label><div class="gm-chips">' + cats.map(function (c) { return '<button type="button" class="gm-chip' + (c === m.category ? ' on' : '') + '" onclick="ORVIA.screens.profileV14.sheetPick(\'category\',\'' + c + '\')">' + esc(catLabel(c)) + '</button>'; }).join('') + '</div></div>' +
       '<div class="gm-field"><label>' + esc(T('pv.titel_optional')) + '</label><input id="pvg_title" value="' + esc(m.title) + '" placeholder="' + esc(catLabel(m.category)) + '"></div>' +
-      '<div class="row2">' + valField + '<div class="gm-field"><label>' + esc(T('pv.datum')) + '</label><input id="pvg_date" type="date" value="' + esc(m.targetDate) + '"></div></div>' +
+      '<div class="row2">' + valField + '<div class="gm-field"><label>' + esc(T('pv.datum')) + '</label><input id="pvg_date" type="date" value="' + esc(m.targetDate) + '" onchange="ORVIA.screens.profileV14.sheetRealism()"></div></div>' +
+      '<div id="pvg_realism"></div>' +
       '<div class="gm-field"><label>' + esc(T('pv.prioritaet')) + '</label><div class="gm-chips">' + [[1, T('pv.role_main'), T('pv.prio1_hint')], [2, T('pv.role_secondary'), T('pv.prio2_hint')], [4, T('pv.role_longterm'), T('pv.prio4_hint')]].map(function (p) { return '<button type="button" class="gm-chip' + (p[0] === m.priority ? ' on' : '') + '" onclick="ORVIA.screens.profileV14.sheetPick(\'priority\',' + p[0] + ')" title="' + esc(p[2]) + '">' + esc(p[1]) + '</button>'; }).join('') + '</div><div class="gmc-meta">' + esc(m.priority === 1 ? T('pv.prio1_hint') : m.priority === 2 ? T('pv.prio2_hint') : T('pv.prio4_hint')) + '</div></div>' +
       (m.id ? '<div class="gmc-meta pv-impact" id="pvg_impact"></div>' : '') +
       '<div class="gmc-meta pv-err" id="pvg_err"></div>' +
@@ -414,6 +470,7 @@
     var m = _sheet; if (!m) return;
     var body = root.document.getElementById('pvg_body'); if (body) body.innerHTML = sheetHTML(m);
     var imp = root.document.getElementById('pvg_impact'); if (imp) imp.textContent = sheetImpact(m);
+    try { sheetRealism(); } catch (e) {}
   }
   function openGoalSheet(id) {
     if (typeof root.openSheet !== 'function') { try { root.openGoalEditor(id); } catch (e) {} return; }
@@ -446,7 +503,8 @@
 
   var api = { VERSION: VERSION, collect: collect, overviewHTML: overviewHTML, goalsHTML: goalsHTML, performanceHTML: performanceHTML,
     strengthCardHTML: strengthCardHTML, strengthNeedsCard: strengthNeedsCard, navHTML: navHTML, render: render, setTab: setTab, activeTab: activeTab, goalCard: goalCard, bestLifts: bestLifts,
-    openGoalSheet: openGoalSheet, sheetPick: sheetPick, sheetSave: sheetSave, sheetMore: sheetMore, sheetModel: sheetModel, sheetHTML: sheetHTML, sheetValidate: sheetValidate, sheetImpact: sheetImpact };
+    openGoalSheet: openGoalSheet, sheetPick: sheetPick, sheetSave: sheetSave, sheetMore: sheetMore, sheetModel: sheetModel, sheetHTML: sheetHTML, sheetValidate: sheetValidate, sheetImpact: sheetImpact,
+    realismOf: realismOf, draftRealism: draftRealism, realismHTML: realismHTML, sheetRealism: sheetRealism, sheetTakeSafe: sheetTakeSafe, sheetTakeDate: sheetTakeDate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.screens.profileV14 = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
