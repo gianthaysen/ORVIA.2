@@ -28,6 +28,7 @@ const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  �
 
 /* Bewerter zuerst laden, damit der Adapter O.goalFeasibility findet. */
 require(join(REPO, 'app/js/engine/evidence.js'));
+require(join(REPO, 'app/js/engine/performance-zones.js'));   /* @2: Riegel-Prognose fuer Zielzeit-Ziele */
 const F = require(join(REPO, 'app/js/engine/goal-feasibility.js'));
 const A = require(join(REPO, 'app/js/engine/goal-feasibility-adapter.js'));
 
@@ -47,8 +48,18 @@ console.log('\nA · Kommensurabilität');
      „lower", aber verschiedene Groessen. Muss abgelehnt werden. */
   const r = A.buildInput({ goal: { category: 'half_marathon', metricType: 'time', targetValue: 6600, targetDate: '2026-11-06' },
                            resolvedPerformance: RESOLVED(), today: '2026-08-20' });
-  ok('A1 Zielzeit vs. Schwellenpace wird NICHT gebaut', r.skip === true, JSON.stringify(r).slice(0, 80));
-  ok('A2 … und nennt den Grund beim Namen', /metric_not_commensurable/.test(r.reason || ''), r.reason);
+  /* @2 (25.09.2026): Zeit→Schwelle wird weiterhin NICHT umgerechnet. Aber eine
+     Zielzeit wird jetzt gegen die heutige Zeit fuer die Zieldistanz bewertet —
+     aus derselben Riegel-Prognose, die die Karte zeigt. Ohne prognosefaehige
+     Referenz (hier: nur Schwellenpace, keine reference) bleibt der Skip, mit
+     dem neuen, praeziseren Grund. */
+  ok('A1 Zielzeit ohne prognosefaehige Referenz wird NICHT gebaut', r.skip === true, JSON.stringify(r).slice(0, 80));
+  ok('A2 … und nennt den Grund beim Namen', /no_usable_performance:running_race_time/.test(r.reason || ''), r.reason);
+  const rr = A.buildInput({ goal: { category: 'half_marathon', metricType: 'time', targetValue: 6600, targetDate: '2026-11-06' },
+                            resolvedPerformance: RESOLVED({ running: { ok: true, reference: { distanceKm: 10, durationMin: 49.2 }, confidence: 'strong', ageRatio: 0.2, agreement: { spreadMin: 0 } } }), today: '2026-08-20' });
+  ok('A2b mit Referenz: Zielzeit wird als race_time gegen die Riegel-Zeit fuer 21,1 km gebaut (Sekunden, Band, riegel_extrapolation)',
+    !rr.skip && rr.input.currentPerformance.metric === 'race_time' && rr.input.currentPerformance.value > 6000 && rr.input.currentPerformance.value < 7200
+    && rr.input.currentPerformance.band.max > rr.input.currentPerformance.value && rr.input.currentPerformance.modelBasis === 'riegel_extrapolation' && rr.input.goal.targetValue === 6600, JSON.stringify(rr).slice(0, 160));
 
   /* FTP-Ziel gegen gemessene FTP — dieselbe Groesse, muss gebaut werden. */
   const ftp = A.buildInput({ goal: { category: 'ftp', metricType: 'power', targetValue: 280, targetDate: '2026-11-06' },

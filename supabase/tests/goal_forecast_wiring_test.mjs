@@ -158,7 +158,10 @@ sec('Z5 · Der Renderer zeigt Zahlen statt Vertroestung');
   const cardSrc = viewSrc + '\n' +
     'var GM_FEAS_TEXT=' + /var GM_FEAS_TEXT=\{[^;]*\};/.exec(uiRaw)[0].replace('var GM_FEAS_TEXT=', '') + '\n' +
     'var GM_MISSING_TEXT=' + /var GM_MISSING_TEXT=\{[^;]*\};/.exec(uiRaw)[0].replace('var GM_MISSING_TEXT=', '') + '\n' +
-    sliceBalanced(uiRaw, 'function gmGoalForecastCard(');
+    sliceBalanced(uiRaw, 'function gmGoalForecastCard(') + '\n' +
+    /* S3b (v8-402): Realismus-Helfer gehoeren zur Karte */
+    sliceBalanced(uiRaw, 'function gmGoalRealismNow(') + '\n' + sliceBalanced(uiRaw, 'function gmFmtSecHMS(') + '\n' +
+    sliceBalanced(uiRaw, 'function gmGoalVerdictText(') + '\n' + sliceBalanced(uiRaw, 'function gmGoalVerdictHTML(');
   const perf = perfOf('race');
   const mkCard = goalObj => new Function('window', 'ORVIA', 'goalOf', 'gmEsc', 'icon', 'GM_NA',
     cardSrc + '\nreturn gmGoalForecastCard;')(globalThis, globalThis.ORVIA, () => goalObj,
