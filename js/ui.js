@@ -3219,11 +3219,11 @@ function _wkEsc(x){return (typeof escH==='function')?escH(x):String(x==null?'':x
 function recommendedRunVolume(){
   var prof=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
   var hist=(typeof runsWindow==='function')?runsWindow(28):[];
-  // Wenig echte Historie → Onboarding-Angaben (typische Distanz × Läufe/Woche) als Seed nutzen.
-  if(hist.filter(function(r){return r&&r.dist>0;}).length<3 && prof.typicalRunKm){
-    var n=Math.max(1,Math.round((prof.recentRunsPerWeek||1)*4));
-    hist=[];for(var s=0;s<n;s++)hist.push({dist:prof.typicalRunKm,sub:'Easy Z2'});
-    if(prof.longestRunKm&&prof.longestRunKm>prof.typicalRunKm)hist.push({dist:prof.longestRunKm,sub:'Long Run'});
+  /* v8-400 (S3/P1): wenig echte Historie → Selbstauskunft als Seed, EIN Leser
+     (Calc.runSeedHistory: Sport-Kit vor Legacy-Wizard). Messdaten verdraengen. */
+  if(hist.filter(function(r){return r&&r.dist>0;}).length<3){
+    var _seed=(Calc&&typeof Calc.runSeedHistory==='function')?Calc.runSeedHistory(prof):{hist:[]};
+    if(_seed.hist.length)hist=_seed.hist;
   }
   var m=((typeof DB!=='undefined'&&DB[todayStr()])||{}).morning||{};
   var rd={knee:(m.knee!=null?m.knee:0)};
