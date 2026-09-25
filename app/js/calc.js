@@ -1068,6 +1068,35 @@ function runLevelOf(p){
   if(raw==null||raw==='')return null;
   return RUN_LEVEL_ALIASES[String(raw).trim().toLowerCase()]||null;
 }
+/* v8-400 (S3/P1): Seed-Historie aus der SELBSTAUSKUNFT — nur fuer den Fall, dass
+   keine belastbare Lauf-Historie vorliegt (< 3 Laeufe in 28 Tagen). Vorher gab es
+   zwei Feldsaetze fuer dieselbe Groesse: das Sport-Kit (sports[running].fields:
+   weeklyKm/longestRun/runDays) las NIEMAND, der Legacy-Satz (typicalRunKm/
+   recentRunsPerWeek/longestRunKm) wirkte still als Seed. Jetzt EIN Leser mit
+   klarer Reihenfolge: Kit (wird im Profil gepflegt) vor Legacy (Alt-Wizard).
+   Jeder Eintrag traegt seed:true — der Umfangsrechner kennzeichnet das Ergebnis
+   dann als Selbstauskunft mit niedriger Konfidenz; Messdaten verdraengen es. */
+function runSeedHistory(profile){
+  var p=profile||{};
+  var num=function(v){var n=typeof v==='number'?v:parseFloat(String(v==null?'':v).replace(',','.'));return (isFinite(n)&&n>0)?n:null;};
+  var kit=null;
+  try{(Array.isArray(p.sports)?p.sports:[]).forEach(function(sp){if(!kit&&sp&&sp.sportId==='running'&&sp.fields)kit=sp.fields;});}catch(e){}
+  var weekly=kit?num(kit.weeklyKm):null, longest=kit?num(kit.longestRun):null;
+  var days=kit?num(kit.runDays):null; if(days!=null)days=Math.max(1,Math.min(7,Math.round(days)));
+  var typical=null,runs=null,source=null;
+  if(weekly!=null){
+    runs=days||Math.max(1,Math.round(num(p.recentRunsPerWeek)||3));
+    typical=weekly/runs; source='kit';
+  }else if(num(p.typicalRunKm)!=null){
+    typical=num(p.typicalRunKm); runs=Math.max(1,Math.round(num(p.recentRunsPerWeek)||1)); source='legacy';
+    if(longest==null)longest=num(p.longestRunKm);
+  }
+  if(typical==null)return {hist:[],source:null,typicalKm:null,runsPerWeek:null,longestKm:null};
+  var hist=[];
+  for(var i=0;i<runs*4;i++)hist.push({dist:Math.round(typical*10)/10,sub:'Easy Z2',seed:true});
+  if(longest!=null&&longest>typical)hist.push({dist:longest,sub:'Long Run',seed:true});
+  return {hist:hist,source:source,typicalKm:Math.round(typical*10)/10,runsPerWeek:runs,longestKm:(longest!=null&&longest>typical)?longest:null};
+}
 function calculateRecommendedWeeklyRunVolume(userProfile, trainingHistory, readinessData){
   var p=userProfile||{}, rd=readinessData||{};
   var level=runLevelOf(p)||'intermediate';
@@ -1099,6 +1128,11 @@ function calculateRecommendedWeeklyRunVolume(userProfile, trainingHistory, readi
     conf='mittel';
     note='Basis aus typischer Distanz (Median '+typical.toFixed(1)+' km) × '+runSessions+' Läufen.';
   }
+  /* v8-400: Seed-Eintraege sind Selbstauskunft, keine Messung — das darf das Ergebnis nie verschweigen. */
+  var _runsIn=(trainingHistory||[]).filter(function(r){return r&&r.dist>0;});
+  var seeded=hasHistory&&_runsIn.length>0&&_runsIn.every(function(r){return r.seed===true;});
+  if(seeded){conf='niedrig';note='Selbstauskunft aus dem Profil ('+typical.toFixed(1)+' km × '+runSessions+' Läufe) — gilt bis Messdaten vorliegen.';}
+  var basis=!hasHistory?'default':(seeded?'self_report':'measured');
 
   // Risiko-Präferenz moduliert leicht (nur außerhalb des Schmerz-Falls)
   var riskF=(risk==='konservativ'||risk==='conservative')?0.9:(risk==='ambitioniert'||risk==='ambitious'?1.1:1.0);
@@ -1124,7 +1158,7 @@ function calculateRecommendedWeeklyRunVolume(userProfile, trainingHistory, readi
 
   return {weeklyKm:weeklyKm, runSessions:runSessions, longRunKm:longRunKm,
           typicalKm:+typical.toFixed(1), longestKm:st.longest, historyRuns:st.n,
-          confidence:conf, note:note, warnings:warnings};
+          confidence:conf, note:note, warnings:warnings, basis:basis};
 }
 
 /* ============================================================
@@ -1905,7 +1939,7 @@ function nutritionTargets(p){
 const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,paceZones,bmr,nutritionTargets,ewma,sessionLoad,acwr,
   loadModel,loadSeries,loadConfidenceContract,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,resolvePlanActual,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegel,riegelHM,goalEngine,
   easyShare,easyShareDetail,weeklyJump,lrTarget,hrSpread,easyTooHard,efSeries,nextRunRec,heavyLegs,sleepDebt,weightHint,
-  recentRunStats,calculateRecommendedWeeklyRunVolume,runLevelOf,RUN_LEVEL_ALIASES,
+  recentRunStats,calculateRecommendedWeeklyRunVolume,runLevelOf,RUN_LEVEL_ALIASES,runSeedHistory,
   dayStateEngine,adaptSessionPlan,adaptWeekPlan,
   classifyTrainingType,SPORT_PROFILES,sportProfileFor,safetyCheck,detectDeficits,buildTrainingDecision,
   evaluateExtraState,escalateWithExtras,loadSpikeInfo,

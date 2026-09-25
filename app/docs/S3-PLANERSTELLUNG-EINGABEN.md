@@ -97,7 +97,7 @@ Alter/Gewicht/HFmax (Profil bzw. Garmin); RHR/HRV/Schlaf (Morgenbericht).
 | P | Maßnahme | Aufwand | Risiko | Status |
 |---|---|---|---|---|
 | P0 | Level-Normalisierung in `calc` (B1) | klein | gering, nur Seeds ohne Historie, Richtung konservativ | **v8-396** |
-| P1 | Kit-Felder `weeklyKm`/`desiredWeeklyKm`/`longestRun` entfernen oder auf den Legacy-Seed mappen; ein Feldsatz (B2) | klein–mittel | Migration der Profilblobs, Auswirkungsdialog `PLAN_IMPACT_FIELDS` | offen |
+| P1 | Ein Leser `Calc.runSeedHistory` (Kit vor Legacy), Seed-Ergebnis als Selbstauskunft gekennzeichnet (`basis`), `desiredWeeklyKm` entfernt (B2) | klein | keine Migration: Kit-Felder bleiben, Legacy-Felder bleiben als Rückfall | **v8-400** |
 | P2 | `lrKm` Renn-Pfad: Startpunkt aus gemessenem längsten Lauf und Level, Progression ≤ +10 %/Woche, statt fester Tabelle (B3) | mittel | ändert Long-Run-Vorgaben aktiver Rennpläne → Umsetzungsplan + Shadow-Vergleich nötig | offen, braucht dein OK |
 | P3 | Risikopräferenz ins Onboarding v2 / Plan-Anlegen holen (5.) | klein | gering | offen |
 | P4 | Plan-Anlegen-Dialog als eigener Flow (1.–6.) statt verstreut über Profil/Onboarding | mittel–groß | UI-Umbau, i18n | S3-Umsetzungsplan |
