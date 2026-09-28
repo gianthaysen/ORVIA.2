@@ -4533,3 +4533,12 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* v8-418: manuelle Plan-Verknuepfung (Einheiten-Seite + Aktivitaetsseite) */
 .link-cands{margin:0 18px 14px}.link-cands .sectlabel{padding-left:0}.link-cands .mini-note{margin-bottom:10px}
 .link-cands .cta.link-cand{width:100%;margin:0 0 8px;flex-direction:column;gap:1px;text-align:center}
+
+/* v8-420: Plan-Zuordnung als Zeile (Aktivitaetsseite) + Auswahl-Sheet */
+.plan-link .pl-row{display:flex;align-items:center;gap:12px}
+.plan-link .pl-ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--surface-2,rgba(255,255,255,.06));color:var(--muted);flex:0 0 auto}
+.plan-link .pl-ic.on{background:var(--ready-t);color:var(--ready)}
+.plan-link .pl-b{flex:1;min-width:0}.plan-link .pl-t{font-size:13.5px;font-weight:750}.plan-link .pl-s{font-size:11px;color:var(--muted);margin-top:2px}
+.plan-link .pl-btn{flex:0 0 auto;min-height:34px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:720;font-size:12px;cursor:pointer}
+.plan-link .pl-btn.pri{background:var(--gold);border-color:var(--gold);color:#20180a}
+.sheet .prow.on{background:rgba(67,214,147,.06)}

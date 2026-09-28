@@ -9007,6 +9007,44 @@ function gmActPersonalBest(a,vm,fam){
   return {cur:cur,bestOther:bestOther};
 }
 var _gmActCharts=[];
+/* v8-420: Plan-Zuordnung auf der Aktivitaetsseite — eine Zeile statt Knopfliste. */
+function gmActPlanLinkCard(a,vm,aid){
+  var occ=vm&&vm.planLink||null;
+  var corr=(a&&a.metrics&&a.metrics.planLinkCorrection)||null;
+  var auto=!!(occ&&corr&&corr.method==='auto'&&corr.toOccurrenceId===occ);
+  var inner;
+  if(occ){
+    var L=(typeof planUnitLabelFor==='function')?planUnitLabelFor(occ):null;
+    inner='<div class="pl-b"><div class="pl-t">'+gmEsc(L?L.label:occ)+'</div><div class="pl-s">'+gmEsc(L?L.dayLabel:'')+(auto?' · ' + _uiT('ui.pl_auto') + '':'')+'</div></div><button type="button" class="pl-btn" onclick="gmOpenPlanLinkSheet(\''+gmEsc(String(aid))+'\')">' + _uiT('ui.pl_aendern') + '</button>';
+  }else{
+    var n=0;try{n=(typeof planLinkCandidatesFor==='function')?planLinkCandidatesFor(a).length:0;}catch(_){ }
+    if(!n)return '';
+    inner='<div class="pl-b"><div class="pl-t">' + _uiT('ui.pl_keine') + '</div><div class="pl-s">' + _uiT('ui.pl_keine_sub') + '</div></div><button type="button" class="pl-btn pri" onclick="gmOpenPlanLinkSheet(\''+gmEsc(String(aid))+'\')">' + _uiT('ui.pl_zuordnen') + '</button>';
+  }
+  return '<div class="card tight plan-link" style="margin:0 18px 14px"><div class="pl-row"><span class="pl-ic'+(occ?' on':'')+'">'+icon('link','sm')+'</span>'+inner+'</div></div>';
+}
+function gmOpenPlanLinkSheet(aid){
+  var sh=document.getElementById('detailSheet');if(!sh)return;
+  var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_){ }
+  if(!a)return;
+  var st=window.ORVIA&&ORVIA.activityStore;var occ=(st&&st.planLinkOf)?st.planLinkOf(a):null;
+  var cands=[];try{cands=(typeof planLinkCandidatesFor==='function')?planLinkCandidatesFor(a):[];}catch(_){ }
+  var same=cands.filter(function(c){return c.sameSport;}),other=cands.filter(function(c){return !c.sameSport;});
+  var row=function(c){var cur=(c.occurrenceId===occ);
+    return '<div class="prow'+(cur?' on':'')+'" role="button" tabindex="0" onclick="gmPlanLinkPick(\''+gmEsc(String(aid))+'\',\''+gmEsc(c.occurrenceId)+'\')"><div class="p-ic">'+icon(c.sportId==='gym'?'dumbbell':c.sportId==='running'?'run':'activity','sm')+'</div><div class="p-b"><div class="p-t">'+gmEsc(c.label)+'</div><div class="p-d">'+gmEsc(c.dayLabel+' '+c.localDate.slice(8,10)+'.'+String(Number(c.localDate.slice(5,7)))+'.')+(c.sameDay?' · ' + _uiT('ui.pl_gleicher_tag') + '':'')+'</div></div>'+(cur?'<span class="pill-badge ready">' + _uiT('ui.pl_aktuell') + '</span>':icon('chev','sm'))+'</div>';};
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('link')+'</div><div><h3>' + _uiT('ui.pl_sheet_title') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.pl_sheet_sub') + '</div></div></div>'+
+    (same.length?'<div class="sh-block"><div class="bh">' + _uiT('ui.pl_gleiche_sportart') + '</div><div class="setting-group" style="margin:0">'+same.map(row).join('')+'</div></div>':'')+
+    (other.length?'<div class="sh-block"><div class="bh">' + _uiT('ui.pl_andere_sportart') + '</div><div class="setting-group" style="margin:0">'+other.map(row).join('')+'</div></div>':'')+
+    (!cands.length?'<div class="sh-block"><p class="muted">' + _uiT('ui.pl_keine_kandidaten') + '</p></div>':'')+
+    (occ?'<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets();unlinkActivityPlanCanonical(\''+gmEsc(String(aid))+'\',\''+gmEsc(occ)+'\')">' + _uiT('ui.pl_loesen') + '</button></div>':'')+
+    '<div class="source">'+icon('info','xs')+' ' + _uiT('ui.pl_sheet_source') + '</div>';
+  gmOpenSheet('detailSheet');
+}
+function gmPlanLinkPick(aid,occ){
+  try{gmCloseSheets();}catch(_){ }
+  var r=null;try{r=(typeof linkActivityPlanCanonical==='function')?linkActivityPlanCanonical(aid,occ):null;}catch(_){ }
+  try{if(r&&r.ok&&typeof gmOpenActivityPage==='function')gmOpenActivityPage(aid);}catch(_){ }
+}
 function gmOpenActivityPage(aid){
   var pg=document.getElementById('gmActPage');if(!pg)return;
   _gmActCharts=[];
@@ -9147,14 +9185,9 @@ function gmOpenActivityPage(aid){
     if(_dbAct.distanceKm>0&&_dbAct.durationMin>0)_dbAct.paceSecPerKm=Math.round(_dbAct.durationMin*60/_dbAct.distanceKm);
     var _dbM=gmDebriefModel(_dbRec,_dbAct,{fam:_fam,planLink:vm.planLink||null});
     h+='<div style="margin:0 18px 14px">'+gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null})+'</div>';
-    /* v8-418: ohne Plan-Verknuepfung, aber mit offener geplanter Einheit am selben Tag —
-       manuelle Zuordnung anbieten (gleiche Sportart zuerst). */
-    if(!vm.planLink&&typeof planLinkCandidatesFor==='function'){
-      var _pc=planLinkCandidatesFor(a)||[];
-      if(_pc.length)h+='<div class="link-cands" style="margin:0 18px 14px"><div class="sectlabel" style="padding-left:0">' + _uiT('ui.link_act_title') + '</div>'+_pc.map(function(c){
-        var _subs=[c.sameDay?null:(c.dayLabel+' '+c.localDate.slice(8,10)+'.'+String(Number(c.localDate.slice(5,7)))+'.'),c.sameSport?null:_uiT('ui.link_andere_sportart')].filter(Boolean).join(' · ');
-        return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(c.occurrenceId)+'\');gmCloseActivityPage();">'+icon('link','sm')+' '+gmEsc(c.label)+(_subs?'<span class="ct-sub">'+gmEsc(_subs)+'</span>':'')+'</button>';}).join('')+'</div>';
-    }
+    /* v8-420 (Gians Entscheidung): Zuordnung passiert automatisch (plan-auto-link) und ist
+       hier als EINE kompakte Zeile sichtbar — „aendern" oeffnet die Auswahl als Sheet. */
+    try{h+=gmActPlanLinkCard(a,vm,_aidCorr);}catch(_pl){ }
   }catch(_dbE){
     /* Rueckfall (z. B. Debrief-Helfer nicht geladen): bisherige Karte aus der bestehenden Bewertung. */
     h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p></div>';
