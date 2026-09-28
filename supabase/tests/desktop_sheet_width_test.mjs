@@ -1,0 +1,21 @@
+/* ORVIA · desktop_sheet_width — Bottom-Sheets folgen ab 431 px der 430-px-App-Spalte; Profilstaerke-Einstieg; Verfuegbarkeits-Fokus (2026-09-28) */
+import fs from 'fs';
+import { existsSync as _ex } from 'node:fs';
+const _APPREL = _ex(new URL('../../js/', import.meta.url)) ? '../../' : '../../app/';
+const rd = f => fs.readFileSync(new URL(_APPREL + f, import.meta.url), 'utf8');
+const css = rd('styles.css'), ui = rd('js/ui.js'), pc = rd('js/profile-center.js'), pf = rd('js/profile.js'), pi = rd('js/engine/profile-inputs.js'), ic = rd('js/gm-icons.js');
+let pass = 0, fail = 0;
+const ok = (n, c) => { console.log((c ? '✅' : '❌') + ' ' + n); c ? pass++ : fail++; };
+const blk = css.slice(css.lastIndexOf('@media(min-width:431px){\n  .sheet{left:50%'));
+ok('A1 .sheet ab 431 px: zentriert, 430 px breit, Transform mit -50 %', /\.sheet\{left:50%;right:auto;width:430px;max-width:430px;transform:translate\(-50%,102%\)\}/.test(blk) && /\.sheet\.on\{transform:translate\(-50%,0\)\}/.test(blk));
+ok('A2 Supplements-Sheet und Workout-Sheet folgen', /#suppModal\.show \.sheet\{transform:translate\(-50%,0\)\}/.test(blk) && /\.wo-sheet\{max-width:430px\}/.test(blk));
+ok('A3 Profil-Sheet (orvia-sheet) ab 640 px auf 430 px', /\.orvia-sheet,\.orvia-sheet--large\{max-width:430px\}/.test(blk));
+ok('A4 Regel steht NACH der mobilen .sheet-Definition (Kaskade)', css.lastIndexOf('.sheet.on{transform:translateY(0)}') < css.lastIndexOf('.sheet.on{transform:translate(-50%,0)}'));
+ok('B1 „Alle Eingaben ansehen" schliesst das Profil-Sheet und oeffnet die Seite im Profil-Tab', /_closeM\('_profileCenter'\)[\s\S]{0,300}root\.openProfile\(\); root\._gmProfDirectEntry = true[\s\S]{0,200}gmOpenProfPage\('strength'\)/.test(pc));
+const icons = new Set([...ic.matchAll(/(?:^|,|\{|\n)\s*([a-zA-Z0-9_]+):\s*[`'"]/g)].map(m => m[1]));
+const used = [...pi.matchAll(/icon: '([a-z]+)'/g)].map(m => m[1]);
+ok('B2 jede Profilstaerke-Zeile hat ein existierendes Icon', used.length === 12 && used.every(n => icons.has(n)));
+ok('C1 Plan & Wochenstruktur: drei Zeilen, drei Fokus-Ziele', /openAvailabilityEditor\('rest'\)/.test(ui) && /openAvailabilityEditor\('days'\)/.test(ui) && /openAvailabilityEditor\('double'\)/.test(ui));
+ok('C2 openAvailabilityEditor(focus) scrollt zum Feld (prefRest / mo_dbl / mo_av)', /function openAvailabilityEditor\(focus\)/.test(pf) && /'av_prefRest'/.test(pf) && /'av_mo_dbl'/.test(pf) && /'av_mo_av'/.test(pf) && /scrollIntoView/.test(pf.slice(pf.indexOf('function openAvailabilityEditor(focus)'), pf.indexOf('function openAvailabilityEditor(focus)') + 1500)));
+console.log('\n' + (fail ? '❌' : '✅') + ' desktop_sheet_width: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
+process.exit(fail ? 1 : 0);

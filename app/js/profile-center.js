@@ -362,7 +362,11 @@
     });
     var p = P();
     /* S6a: Profilstaerke-Seite */
-    try { var sa = doc.getElementById('pc-strength-all'); if (sa) sa.onclick = function (ev) { try { ev.preventDefault(); } catch (e) {} try { root.gmOpenProfPage('strength'); } catch (e) {} }; } catch (e) {}
+    try { var sa = doc.getElementById('pc-strength-all'); if (sa) sa.onclick = function (ev) { try { ev.preventDefault(); } catch (e) {}
+      /* Gians Befund 28.09.: die Seite (z 55) lag UNTER dem Profil-Sheet (z 640) — Sheet zuerst schliessen. */
+      try { if (typeof root._closeM === 'function') root._closeM('_profileCenter'); } catch (e) {}
+      try { if (typeof root.openProfile === 'function' && !doc.body.classList.contains('profile-open')) { root.openProfile(); root._gmProfDirectEntry = true; } } catch (e) {}
+      try { root.gmOpenProfPage('strength'); } catch (e) {} }; } catch (e) {}
     /* B-03: jede Luecke verlinkt auf den erhebenden Schritt */
     try {
       var st = buildStrength(p, now);
