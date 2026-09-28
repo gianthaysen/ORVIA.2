@@ -235,6 +235,14 @@
   }
 
   /* ---------- B-03 Profilstärke (pur bis auf die Lesequellen) ---------- */
+  /* S1.5: _lastPlanPerf entsteht erst beim Rendern des Plan-Tabs — davor stand die Profilstaerke faelschlich
+     auf „Leistungsreferenz fehlt" (80 % statt 100 %). Ohne Plan-Render selbst aufloesen.
+     S6a: EINE Stelle fuer Profilstaerke-Karte und -Seite (ui.js ruft den Resolver nur im Plan-Render). */
+  function resolvePerformance(p) {
+    var perf = null; try { perf = (O._lastPlanPerf !== undefined) ? O._lastPlanPerf : null; } catch (e) {}
+    if (perf == null) { try { if (O.performanceResolver && O.performanceResolver.resolveAll) perf = O.performanceResolver.resolveAll(p, { today: (typeof root.todayStr === 'function') ? root.todayStr() : null }); } catch (e) { perf = null; } }
+    return perf;
+  }
   function buildStrength(p, now) {
     var S = O.profileStrength; if (!S || typeof S.compute !== 'function') return null;
     var M = PM();
@@ -245,10 +253,7 @@
       if (O.goalPlanInput) pi = O.goalPlanInput.resolve({ goal: mg, today: (typeof root.todayStr === 'function') ? root.todayStr() : null,
         canon: (M && M.canonGoalCategory) || null, taper: O.goalTaperResolver || null });
     } catch (e) { pi = null; }
-    var perf = null; try { perf = (O._lastPlanPerf !== undefined) ? O._lastPlanPerf : null; } catch (e) {}
-    /* S1.5: _lastPlanPerf entsteht erst beim Rendern des Plan-Tabs — davor stand die Profilstaerke faelschlich
-       auf „Leistungsreferenz fehlt" (80 % statt 100 %). Ohne Plan-Render selbst aufloesen. */
-    if (perf == null) { try { if (O.performanceResolver && O.performanceResolver.resolveAll) perf = O.performanceResolver.resolveAll(p, { today: (typeof root.todayStr === 'function') ? root.todayStr() : null }); } catch (e) { perf = null; } }
+    var perf = resolvePerformance(p);
     var days = null; try { var cfg = M.effectiveTrainingConfig(p); days = cfg && Array.isArray(cfg.availableDayIdx) ? cfg.availableDayIdx.length : null; } catch (e) {}
     var stale = [];
     try { ESSENTIAL_IDS.forEach(function (id) { if (M.getSectionFreshness(p, id, now) === 'stale') stale.push(id); }); } catch (e) {}
@@ -259,7 +264,9 @@
     if (!st) return '';
     var top = (st.gaps || []).slice(0, 3);
     return '<div class="pc-strength pc-strength-' + esc(st.band) + '">' +
-      '<div class="pc-strength-head"><span class="pc-strength-score">' + st.score + '</span><span class="pc-strength-lab">' + esc(T('pc.profilstaerke_band', { band: BAND_DE[st.band] || st.band })) + '</span></div>' +
+      '<div class="pc-strength-head"><span class="pc-strength-score">' + st.score + '</span><span class="pc-strength-lab">' + esc(T('pc.profilstaerke_band', { band: BAND_DE[st.band] || st.band })) + '</span>' +
+        /* S6a (v14): Weg zur Profilstaerke-Seite (alle Eingaben mit Leser) — nur mit Route. */
+        ((typeof root.gmOpenProfPage === 'function' && O.profileInputs) ? '<button type="button" class="pc-strength-all" id="pc-strength-all">' + esc(T('pc.alle_eingaben')) + ' ›</button>' : '') + '</div>' +
       (top.length ? '<div class="pc-strength-gaps">' + top.map(function (g) {
         return '<button type="button" class="pc-gap" id="pc-gap-' + esc(g.id) + '" data-section="' + esc(g.sectionId || '') + '" data-goal="' + esc(g.goalId || '') + '" data-action="' + esc(g.action || '') + '">' +
           '<span class="pc-gap-t">' + esc(g.label) + '</span><span class="pc-gap-h">' + esc(g.hint || '') + '</span></button>';
@@ -354,6 +361,8 @@
       };
     });
     var p = P();
+    /* S6a: Profilstaerke-Seite */
+    try { var sa = doc.getElementById('pc-strength-all'); if (sa) sa.onclick = function (ev) { try { ev.preventDefault(); } catch (e) {} try { root.gmOpenProfPage('strength'); } catch (e) {} }; } catch (e) {}
     /* B-03: jede Luecke verlinkt auf den erhebenden Schritt */
     try {
       var st = buildStrength(p, now);
@@ -416,7 +425,7 @@
     buildHeaderModel: buildHeaderModel,
     sectionSummary: sectionSummary,
     sectionStatus: sectionStatus,
-    buildSmartPrompts: buildSmartPrompts, buildStrength: buildStrength, strengthHTML: strengthHTML,
+    buildSmartPrompts: buildSmartPrompts, buildStrength: buildStrength, strengthHTML: strengthHTML, resolvePerformance: resolvePerformance,
     GROUPS: GROUPS,
     SECTION_LABELS: SECTION_LABELS,
     _buildBodyHTML: buildBodyHTML,

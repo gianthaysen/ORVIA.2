@@ -11790,6 +11790,47 @@ function gmPcPlanHTML(pl){
     '<div class="rc-halves"><div class="rc-half"><b>'+gmEsc(pl.fmt.h1)+'</b><span>' + _uiT('ui.pacing_h1') + '</span></div><div class="rc-half"><b>'+gmEsc(pl.fmt.h2)+'</b><span>' + _uiT('ui.pacing_h2') + '</span></div></div>'+
     '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.pacing_quelle',{off:pl.offsetSec}))+'</div>';
 }
+/* ============ S6a (v14 pgStrength): Profilstaerke als eigene Seite ============
+   Jede Eingabe, die der Planer liest (engine/profile-inputs, nur belegte Leser),
+   mit Zustand vorhanden / geschaetzt / fehlt, Wirkung und Weg zum Editor. Der
+   Score oben ist der bestehende B-03-Wert (profileCenter.buildStrength). */
+function gmProfInputsCtx(){
+  var p=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
+  var O=window.ORVIA||{};var M=O.profileModel||null;
+  var c={p:p,planInput:null,perf:null,primary:null,availableDays:null,sections:{},hasCheckinRhr:false};
+  try{var mg=(typeof mainGoalOf==='function')?mainGoalOf():null;if(O.goalPlanInput)c.planInput=O.goalPlanInput.resolve({goal:mg,today:todayStr(),canon:(M&&M.canonGoalCategory)||null,taper:O.goalTaperResolver||null});}catch(_){ }
+  try{c.perf=(O.profileCenter&&O.profileCenter.resolvePerformance)?O.profileCenter.resolvePerformance(p):((O._lastPlanPerf!=null)?O._lastPlanPerf:null);}catch(_){ }
+  try{if(M&&M.normalizeSports)c.primary=M.normalizeSports(p.sports).filter(function(s){return s.role==='primary';})[0]||null;}catch(_){ }
+  try{var cfg=M&&M.effectiveTrainingConfig?M.effectiveTrainingConfig(p):null;c.availableDays=cfg&&Array.isArray(cfg.availableDayIdx)?cfg.availableDayIdx.length:null;}catch(_){ }
+  try{var cc=M&&M.computeSectionCompleteness?M.computeSectionCompleteness(p,'constraints'):null;if(cc)c.sections.constraints={complete:!!cc.complete,count:(Array.isArray(p.constraints)?p.constraints.length:(p.constraints&&Array.isArray(p.constraints.items)?p.constraints.items.length:null))};}catch(_){ }
+  try{if(typeof DB!=='undefined'&&DB){for(var i=0;i<28&&!c.hasCheckinRhr;i++){var e=DB[dkey(-i)];if(e&&e.morning&&e.morning.rhr!=null)c.hasCheckinRhr=true;}}}catch(_){ }
+  return c;
+}
+var GM_INPUT_STATE={present:['ready','check',null],estimated:['attention','info',null],missing:['crit','alert',null]};
+function gmProfStrengthPage(){
+  var PI=window.ORVIA&&ORVIA.profileInputs;
+  var st=null;try{st=(window.ORVIA&&ORVIA.profileCenter&&ORVIA.profileCenter.buildStrength)?ORVIA.profileCenter.buildStrength(typeof PROFILE!=='undefined'?PROFILE:{},new Date()):null;}catch(_){ }
+  var ev=null;try{ev=PI?PI.evaluate(gmProfInputsCtx()):null;}catch(_){ }
+  var sub=ev?_uiT('ui.ps_sub',{n:ev.counts.present,total:ev.total,pct:ev.pct}):GM_NA;
+  var h=gmPPageHead('' + _uiT('ui.profilstaerke') + '',sub)+'<div class="ps-page">';
+  h+='<div class="page-intro">' + _uiT('ui.ps_intro') + '</div>';
+  if(st)h+='<div class="ps-score"><b>'+gmEsc(String(st.score))+'</b><span>'+gmEsc(_uiT('pc.profilstaerke_band',{band:_uiT('pc.band_'+st.band)}))+'</span></div>';
+  if(!ev){h+='<div class="mini-note">'+icon('info','xs')+'<div>'+GM_NA+'</div></div></div><div class="tabspacer"></div>';return h;}
+  h+='<div class="kpi-row ps-kpis"><div class="kpi"><b>'+ev.counts.present+'</b><span>' + _uiT('ui.ps_vorhanden') + '</span></div><div class="kpi"><b>'+ev.counts.estimated+'</b><span>' + _uiT('ui.ps_geschaetzt') + '</span></div><div class="kpi"><b>'+ev.counts.missing+'</b><span>' + _uiT('ui.ps_fehlt') + '</span></div></div>';
+  var row=function(r){var S=GM_INPUT_STATE[r.state]||GM_INPUT_STATE.missing;
+    var val=r.state==='missing'?_uiT('ui.ps_fehlt'):(r.value||'—');
+    return '<div class="prow" role="button" tabindex="0" onclick="gmProfInputOpen(\''+gmEsc(r.sectionId)+'\')" onkeydown="if(event.key===\'Enter\')gmProfInputOpen(\''+gmEsc(r.sectionId)+'\')"><div class="p-ic" style="background:var(--'+S[0]+'-t);color:var(--'+S[0]+')">'+icon(r.icon||'info','sm')+'</div><div class="p-b"><div class="p-t">'+gmEsc(r.label)+'</div><div class="p-d">'+gmEsc(r.readers)+(r.hint?' · <i>'+gmEsc(r.hint)+'</i>':'')+'</div></div><div class="p-v" style="color:var(--'+S[0]+')">'+gmEsc(val)+'</div>'+icon('chev','sm')+'</div>';};
+  h+='<div class="setting-title">' + _uiT('ui.ps_wirkt_stark') + '</div><div class="setting-group">'+ev.groups.high.map(row).join('')+'</div>';
+  h+='<div class="setting-title">' + _uiT('ui.ps_wirkt_mittel') + '</div><div class="setting-group">'+ev.groups.medium.map(row).join('')+'</div>';
+  h+='<div class="eduhint">'+icon('info','sm')+'<div>' + _uiT('ui.ps_eduhint') + '</div></div>';
+  h+='</div><div class="tabspacer"></div>';
+  return h;
+}
+function gmProfInputOpen(sectionId){
+  try{if(typeof gmCloseProfPage==='function')gmCloseProfPage();}catch(_){ }
+  try{if(sectionId&&typeof openProfileSection==='function'){openProfileSection(sectionId);return;}}catch(_){ }
+  try{if(typeof toast==='function')toast(GM_NA);}catch(_){ }
+}
 var GM_PROF_ROUTES={
   settings:function(){return gmProfSettings();},appearance:function(){return gmProfAppearance();},
   notifications:function(){return gmProfNotifications();},privacy:function(){return gmProfPrivacy();},
@@ -11800,6 +11841,7 @@ var GM_PROF_ROUTES={
   about:function(){return gmProfAbout();},bestTimes:function(){return gmProfBestTimes();},
   medals:function(){return gmProfMedals();},milestones:function(){return gmProfMilestones();},
   paceCalc:function(){return gmProfPaceCalc();},
+  strength:function(){return gmProfStrengthPage();},
   /* G1 (2026-08-07): Leistungsdaten. Ohne diese Seite bleiben Intensitaet,
      Zielprognose, Wochenkilometer und Tagesziele bei „—". */
   performance:function(){return gmProfPerformance();}
