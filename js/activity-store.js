@@ -183,6 +183,48 @@
     return { ok: true, code: 'unlinked', activity: corrected, fromOccurrenceId: current };
   }
 
+  /* Gegenstueck zum Loesen (v8-418, Gians Befund 28.09.): eine Aktivitaet OHNE
+     Plan-Identitaet (Garmin-Import, freies ORVIA-Workout) kann nachtraeglich einer
+     geplanten Occurrence zugeordnet werden. Der Resolver verknuepft NIE automatisch
+     ueber Tag+Sport (I3b) — diese Funktion ist die manuelle, protokollierte
+     Bestaetigung genau dieses schwachen Kandidaten. One-to-one bleibt gewahrt:
+     traegt bereits eine andere Aktivitaet diese Occurrence, wird abgelehnt. */
+  function linkActivityToPlan(id, occurrenceId) {
+    if (!id) return { ok: false, code: 'missing_activity_id' };
+    if (!occurrenceId || typeof occurrenceId !== 'string') return { ok: false, code: 'missing_occurrence_id' };
+    var all = readAll(), idx = -1;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id || all[i].clientRecordId === id) { idx = i; break; }
+    }
+    if (idx < 0) return { ok: false, code: 'activity_not_found' };
+    var a = all[idx], current = planLinkOf(a);
+    if (current === occurrenceId) return { ok: true, code: 'already_linked', activity: a };
+    for (var j = 0; j < all.length; j++) {
+      if (j === idx) continue;
+      var o = all[j]; if (!o || isTombstoned(o)) continue;
+      if (planLinkOf(o) === occurrenceId) return { ok: false, code: 'occurrence_taken', byActivityId: o.id || o.clientRecordId };
+    }
+    var m = Object.assign({}, a.metrics || {});
+    m.planLinkCorrection = {
+      schemaVersion: 1,
+      fromOccurrenceId: current || null,
+      toOccurrenceId: occurrenceId,
+      reason: current ? 'user_relinked' : 'user_linked',
+      method: 'manual_correction',
+      correctedAt: now()
+    };
+    m.plannedSessionId = occurrenceId;
+    var corrected = Object.assign({}, a, {
+      plannedSessionId: occurrenceId,
+      metrics: m,
+      syncStatus: 'pending',
+      updatedAt: now()
+    });
+    all[idx] = corrected;
+    if (!writeAll(all)) return { ok: false, code: 'persist_failed' };
+    return { ok: true, code: 'linked', activity: corrected, fromOccurrenceId: current || null };
+  }
+
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ABGESCHLOSSENEN
      Workouts nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze.
      Die Korrektur ist eine manuelle Angabe und wird als solche protokolliert
@@ -412,7 +454,7 @@
   var api = {
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
-    planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan,
+    planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan, linkActivityToPlan: linkActivityToPlan,
     correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
     recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,

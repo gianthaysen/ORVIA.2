@@ -8583,12 +8583,32 @@ function gmOpenSessionPage(di,ii,dateIso){
     :'<div class="mini-note" style="margin:0 18px">'+icon('info','xs')+'<div>' + _uiT('ui.nur_lesbar_starten_ist_nur') + '</div></div>'+
      '<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="gmCloseSessionPage();openPlanEditor()">' + _uiT('ui.plan_bearbeiten_verschieben') + '</button>';
   var _dLbl2='';try{var _d4=new Date(dIso+'T12:00');_dLbl2=' · '+_d4.getDate()+'.'+(_d4.getMonth()+1);}catch(_){ }
+  /* v8-418 (Gians Befund 28.09.): der Resolver verknuepft NIE ueber Tag+Sport — eine
+     Garmin-Krafteinheit am geplanten Tag blieb „Geplant". Hier die manuelle Bestaetigung:
+     schwache Kandidaten (gleicher Tag + Sport, ohne Plan-Identitaet) als Knopf. */
+  var _linkBlock='';
+  try{
+    if(_occ2&&dIso&&dIso<=todayStr()&&typeof planActualResolveForDates==='function'){
+      var _pr=(planActualResolveForDates([dIso])||{}).byOcc||{};var _ru=_pr[_occ2];
+      var _cands=(_ru&&_ru.state!=='completed'&&Array.isArray(_ru.ambiguousCandidateIds))?_ru.ambiguousCandidateIds:[];
+      if(_cands.length){
+        var _rows=_cands.map(function(aid){
+          var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_a){ }
+          var vm=null;try{vm=a&&(typeof activityDetailViewModel==='function')?activityDetailViewModel(a):null;}catch(_v){ }
+          var lbl=(vm&&(vm.title||vm.sportLabel))||String(aid);
+          var sub=[(vm&&vm.time)||null,(vm&&vm.durationLabel)||null,(vm&&vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null].filter(Boolean).join(' · ');
+          return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(aid))+'\',\''+gmEsc(_occ2)+'\');gmCloseSessionPage();">'+icon('link','sm')+' '+gmEsc(lbl)+(sub?'<span class="ct-sub">'+gmEsc(sub)+'</span>':'')+'</button>';
+        }).join('');
+        _linkBlock='<div class="link-cands"><div class="sectlabel">' + _uiT('ui.link_cand_title') + '</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.link_cand_hint') + '</div></div>'+_rows+'</div>';
+      }
+    }
+  }catch(_lc){_linkBlock='';}
   var _undoPd=_pd2?'<button class="cta wide-ghost" style="margin:10px 18px 0;width:calc(100% - 36px)" onclick="confirmUndoPlanDone(\''+gmEsc(it.t)+'\',\''+gmEsc(dIso)+'\',\''+gmEsc(_occ2)+'\')">' + _uiT('ui.erledigt_') + '-Markierung zurücknehmen</button>':'';
   pg.innerHTML='<div class="page-head"><div class="page-head-row"><button class="backbtn" onclick="gmCloseSessionPage()" aria-label="' + _uiT('ui.zurueck') + '">'+icon('chev')+'</button><div><h2>'+gmEsc(DAYNAMES[di])+_dLbl2+' · '+gmEsc(it.l)+'</h2><p>Planvorgabe</p></div></div></div>'+   /* siehe GM7.9h-Notiz unter dieser Funktion */
     '<div class="plan-hero"><div class="plan-kicker">'+gmEsc(it.t)+'</div><h2>'+gmEsc(it.l)+'</h2><p>' + _uiT('ui.geplante_einheit_aus_deinem_wochenplan') + '</p>'+
     '<div class="week-progress"><div class="wp"><b>'+(it.d&&!/^(iv|ez|lr|tempo)$/.test(it.d)?gmEsc(it.d):'—')+'</b><span>' + _uiT('ui.umfang') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.intensitaet_') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.ziel___') + '</span></div><div class="wp"><b>—</b><span>' + _uiT('ui.konfidenz___') + '</span></div></div></div>'+
     '<div class="coach-card"><h3>'+icon('sparkle','sm')+' Warum diese ' + _uiT('ui.einheit') + '?</h3><p>'+(note?gmEsc(note):'' + _uiT('ui.eine_kanonische_begruendung_ist_noch') + '')+'</p></div>'+
-    cta+_undoPd+'<div class="tabspacer"></div>';
+    _linkBlock+cta+_undoPd+'<div class="tabspacer"></div>';
   pg.classList.add('on');
   try{pg.scrollTop=0;}catch(_){ }
 }
@@ -9123,6 +9143,13 @@ function gmOpenActivityPage(aid){
     if(_dbAct.distanceKm>0&&_dbAct.durationMin>0)_dbAct.paceSecPerKm=Math.round(_dbAct.durationMin*60/_dbAct.distanceKm);
     var _dbM=gmDebriefModel(_dbRec,_dbAct,{fam:_fam,planLink:vm.planLink||null});
     h+='<div style="margin:0 18px 14px">'+gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null})+'</div>';
+    /* v8-418: ohne Plan-Verknuepfung, aber mit offener geplanter Einheit am selben Tag —
+       manuelle Zuordnung anbieten (gleiche Sportart zuerst). */
+    if(!vm.planLink&&typeof planLinkCandidatesFor==='function'){
+      var _pc=planLinkCandidatesFor(a)||[];
+      if(_pc.length)h+='<div class="link-cands" style="margin:0 18px 14px"><div class="sectlabel" style="padding-left:0">' + _uiT('ui.link_act_title') + '</div>'+_pc.map(function(c){
+        return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(c.occurrenceId)+'\');gmCloseActivityPage();">'+icon('link','sm')+' '+gmEsc(c.label)+(c.sameSport?'':'<span class="ct-sub">' + _uiT('ui.link_andere_sportart') + '</span>')+'</button>';}).join('')+'</div>';
+    }
   }catch(_dbE){
     /* Rueckfall (z. B. Debrief-Helfer nicht geladen): bisherige Karte aus der bestehenden Bewertung. */
     h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p></div>';

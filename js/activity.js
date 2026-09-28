@@ -659,6 +659,42 @@ function unlinkActivityPlanCanonical(activityId, expectedOccurrenceId) {
   return run();
 }
 
+/* v8-418: manuelle Zuordnung einer Aktivitaet zu einer geplanten Occurrence (Gegenstueck
+   zu unlinkActivityPlanCanonical). Kein Bestaetigungsdialog — die Zuordnung ist ueber
+   „Vom Wochenplan loesen" jederzeit reversibel und wird als Korrektur protokolliert. */
+function linkActivityPlanCanonical(activityId, occurrenceId) {
+  var a = _resolveActivityAny(activityId);
+  var store = window.ORVIA && ORVIA.activityStore;
+  if (!a || !store || !store.linkActivityToPlan) return { ok: false, code: 'unavailable' };
+  var r = store.linkActivityToPlan(a.clientRecordId || a.id || activityId, occurrenceId);
+  if (!r || !r.ok) {
+    if (typeof toast === 'function') toast('' + _actT('act.zuordnung_nicht_geaendert') + '' + (r && r.code === 'occurrence_taken' ? ': ' + _actT('act.occurrence_bereits_belegt') : (r && r.code ? ': ' + r.code : '.')));
+    return r;
+  }
+  try { if (typeof renderAkt === 'function') renderAkt(); } catch (_) {}
+  try { if (typeof renderGMPlan === 'function') renderGMPlan(); } catch (_) {}
+  try { if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { planLinkCorrected: true, activityId: activityId } })); } catch (_) {}
+  try { if (ORVIA.activitySync && ORVIA.activitySync.flushPendingActivities) ORVIA.activitySync.flushPendingActivities(); } catch (_) {}
+  if (typeof toast === 'function') toast('' + _actT('act.mit_planeinheit_verknuepft') + '');
+  return r;
+}
+/* Kandidaten fuer eine Verknuepfung: geplante Einheiten desselben lokalen Tages, die noch
+   keine Aktivitaet tragen (Resolver-Zustand != completed). Gleiche Sportart zuerst. */
+function planLinkCandidatesFor(a) {
+  try {
+    var cfg = window.ORVIA && ORVIA.activityConfig;
+    var tz = (window.ORVIA && ORVIA.profileStore && ORVIA.profileStore.effectiveTimezone) ? ORVIA.profileStore.effectiveTimezone() : 'UTC';
+    var day = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10);
+    if (!day || typeof planActualResolveForDates !== 'function') return [];
+    var res = planActualResolveForDates([day]) || {};
+    var sport = (typeof _planActualNorm === 'function') ? _planActualNorm(a.sportId) : a.sportId;
+    var out = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned && r.planned.localDate === day; })
+      .map(function (r) { return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, sameSport: r.planned.sportId === sport, state: r.state, label: (function () { try { var wp = activeWeekPlan(); var m = /^po:\d{4}-\d{2}-\d{2}:(.+)$/.exec(r.plannedSessionId); var tid = m && m[1]; for (var d = 0; d < 7; d++) for (var k = 0; k < (wp[d] || []).length; k++) if (String(wp[d][k].id) === tid) return wp[d][k].l + ' · ' + wp[d][k].t; } catch (_) {} return r.planned.sportId; })() }; });
+    out.sort(function (x, y) { return (y.sameSport ? 1 : 0) - (x.sameSport ? 1 : 0); });
+    return out;
+  } catch (_) { return []; }
+}
+
 // ---- Löschen (manuell/Workout/Legacy) mit Bestätigung, offline-fest ----
 // AD1b: Kompatibilitäts-Adapter → EIN Löschpfad (deleteActivityCanonical, genau eine Bestätigung).
 function confirmDeleteActivity(aid) { return deleteActivityCanonical(aid); }
@@ -721,7 +757,7 @@ if (typeof window !== 'undefined') {
     resolvePlannedActivity: resolvePlannedActivity,
     closeActivityDetail: closeActivityDetail,
     deleteActivityCanonical: deleteActivityCanonical,
-    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical
+    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical, linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor
   };
 }
 

@@ -31,7 +31,7 @@
     var dates = weekDates(off), tod = today();
     var r = { off: off || 0, dates: dates, from: dates[0], to: dates[6], ongoing: dates[6] >= tod,
       planned: 0, due: 0, done: 0, keyPlanned: 0, keyDone: 0, restPlanned: 0, restKept: 0, missed: [],
-      totals: null, bySport: null, acts: [], elevationM: null, longest: null,
+      totals: null, bySport: null, acts: [], elevationM: null, longest: null, longestByTime: null, implausible: [],
       readiness: [], sleepH: [], hrv: [] };
     /* Plan + Resolver */
     var plan = null;
@@ -79,7 +79,15 @@
         var s = a.summary || {};
         if (s.elevationM != null && isFinite(s.elevationM)) { elev += s.elevationM; elevKnown = true; }
         var km = (s.distanceKm != null) ? s.distanceKm : null;
-        if (km != null && (!r.longest || km > r.longest.km)) r.longest = { km: km, day: ld, sportId: a.sportId || null, name: s.name || null, durationMin: a.durationSeconds != null ? a.durationSeconds / 60 : null, id: a.id || a.clientRecordId || null };
+        var durMin = a.durationSeconds != null ? a.durationSeconds / 60 : null;
+        var ent = { km: km, day: ld, sportId: a.sportId || null, name: s.name || null, durationMin: durMin, id: a.id || a.clientRecordId || null };
+        /* Laengste Einheit: nur mit echter Distanz (> 0). Ohne Distanzsport in der Woche
+           faellt die Karte auf die laengste Dauer zurueck — dann ohne „0 km". */
+        if (km > 0 && (!r.longest || km > r.longest.km)) r.longest = ent;
+        if (durMin > 0 && (!r.longestByTime || durMin > r.longestByTime.durationMin)) r.longestByTime = ent;
+        /* Unplausible Dauer (> 8 h in einer Einheit): faelscht Stunden und Vergleich —
+           benennen statt stillschweigend summieren. */
+        if (durMin > 480) r.implausible.push(ent);
       });
       r.elevationM = elevKnown ? Math.round(elev) : null;
       /* Ruhetage eingehalten: geplant frei UND keine Aktivitaet an dem Tag */
@@ -113,7 +121,7 @@
       hoursComplete: !!(w.totals && w.totals.completeness && w.totals.completeness.duration),
       elevationM: w.elevationM, sessions: w.totals ? w.totals.sessionCount : w.acts.length
     };
-    m.longest = w.longest;
+    m.longest = w.longest; m.longestByTime = w.longest ? null : w.longestByTime; m.implausible = w.implausible;
     /* Belastung nur fuer die laufende Woche: ACWR ist ein Jetzt-Wert */
     m.load = null;
     if (w.off === 0) {
@@ -156,6 +164,7 @@
   }
 
   /* ---- Markup ---- */
+  var SPORT_ICON = { running: 'run', cycling: 'activity', gym: 'dumbbell', swimming: 'activity' };
   function ring(pct, size, sw) {
     var r = (size - sw) / 2, c = 2 * Math.PI * r, off = pct == null ? c : c * (1 - Math.max(0, Math.min(100, pct)) / 100);
     return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="' + sw + '"/>' +
@@ -177,10 +186,17 @@
       h += '<div class="rev-kpis">' + kpi(m.kpi.km != null ? de(Math.round(m.kpi.km * 10) / 10, 1) : null, 'km') + kpi(m.kpi.hours != null ? fmtH(m.kpi.hours) : null, T('rev.stunden')) + kpi(m.kpi.sessions, T('rev.einheiten')) + '</div><div class="source">' + ic('info', 'xs') + ' ' + esc(T('rev.kein_plan')) + '</div>';
     }
     h += '</div>';
+    if (m.implausible && m.implausible.length) {
+      h += '<div class="card tight"><div class="gapnote rev-gap" style="margin:0">' + ic('alert', 'sm') + '<div>' + esc(T('rev.unplausibel', { count: m.implausible.length })) + ' ' + m.implausible.map(function (x) { return '<b>' + esc(x.name || ((O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(x.sportId) : x.sportId)) + ' · ' + fmtH(x.durationMin) + ' h</b>'; }).join(', ') + ' — ' + esc(T('rev.unplausibel_hint')) + '</div></div></div>';
+    }
+    if (!m.longest && m.longestByTime) {
+      var lt = m.longestByTime; var labT = (O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(lt.sportId) : (lt.sportId || '');
+      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('bolt') + ' ' + esc(T('rev.laengste_einheit_zeit')) + '</div></div><div class="rev-longest"' + (lt.id ? ' role="button" tabindex="0" onclick="gmOpenActivityPage(\'' + esc(String(lt.id)) + '\')"' : '') + '><div class="sh-hic">' + ic(SPORT_ICON[lt.sportId] || 'activity') + '</div><div class="rl-b"><div class="rl-t">' + esc(lt.name || labT) + ' · ' + fmtH(lt.durationMin) + ' h</div><div class="rl-s">' + esc(labT) + '</div></div>' + (lt.id ? ic('chev', 'sm') : '') + '</div></div>';
+    }
     if (m.longest) {
       var lg = m.longest; var lab = (O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(lg.sportId) : (lg.sportId || '');
       var pace = (lg.km > 0 && lg.durationMin > 0) ? (function (s) { var mm = Math.floor(s / 60), ss = Math.round(s % 60); return mm + ':' + (ss < 10 ? '0' : '') + ss + ' /km'; })(lg.durationMin * 60 / lg.km) : null;
-      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('bolt') + ' ' + esc(T('rev.laengste_einheit')) + '</div></div><div class="rev-longest"' + (lg.id ? ' role="button" tabindex="0" onclick="gmOpenActivityPage(\'' + esc(String(lg.id)) + '\')"' : '') + '><div class="sh-hic">' + ic('run') + '</div><div class="rl-b"><div class="rl-t">' + esc(lg.name || lab) + ' · ' + de(Math.round(lg.km * 10) / 10, 1) + ' km</div><div class="rl-s">' + esc(lab) + (pace ? ' · ' + pace : '') + (lg.durationMin ? ' · ' + fmtH(lg.durationMin) + ' h' : '') + '</div></div>' + (lg.id ? ic('chev', 'sm') : '') + '</div></div>';
+      h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('bolt') + ' ' + esc(T('rev.laengste_einheit')) + '</div></div><div class="rev-longest"' + (lg.id ? ' role="button" tabindex="0" onclick="gmOpenActivityPage(\'' + esc(String(lg.id)) + '\')"' : '') + '><div class="sh-hic">' + ic(SPORT_ICON[lg.sportId] || 'run') + '</div><div class="rl-b"><div class="rl-t">' + esc(lg.name || lab) + ' · ' + de(Math.round(lg.km * 10) / 10, 1) + ' km</div><div class="rl-s">' + esc(lab) + (pace ? ' · ' + pace : '') + (lg.durationMin ? ' · ' + fmtH(lg.durationMin) + ' h' : '') + '</div></div>' + (lg.id ? ic('chev', 'sm') : '') + '</div></div>';
     }
     if (m.load) {
       var zk = { low: 'rev.acwr_low', ok: 'rev.acwr_ok', high: 'rev.acwr_high', over: 'rev.acwr_over' }[m.load.zone];
@@ -242,7 +258,6 @@
     var monthSessions = Object.keys(actByDay).filter(function (k2) { return k2.slice(0, 7) === tod.slice(0, 7); }).reduce(function (n, k2) { return n + actByDay[k2].length; }, 0);
     return { sport: sport, weeks: weeks, streak: streak, weeksWithData: withData, enough: withData >= 2, month: { year: y, month: mo + 1, cells: cells, sessions: monthSessions, label: first.toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' }) } };
   }
-  var SPORT_ICON = { running: 'run', cycling: 'activity', gym: 'dumbbell', swimming: 'activity' };
   function monthHtml(m) {
     if (!m) return '';
     var h = '<div class="card tight"><div class="rev-serie"><div class="s"><b>' + m.streak + '</b><span>' + esc(T('rev.serie', { count: m.streak })) + '</span></div><div class="s"><b>' + m.month.sessions + '</b><span>' + esc(T('rev.einheiten_im', { month: m.month.label })) + '</span></div></div>' +
@@ -267,5 +282,5 @@
     return h;
   }
 
-  O.reviewV14 = { VERSION: 'review-v14@2', weekDates: weekDates, weekRaw: weekRaw, model: model, html: html, monthModel: monthModel, monthHtml: monthHtml, weekFulfilled: weekFulfilled, _ring: ring };
+  O.reviewV14 = { VERSION: 'review-v14@3', weekDates: weekDates, weekRaw: weekRaw, model: model, html: html, monthModel: monthModel, monthHtml: monthHtml, weekFulfilled: weekFulfilled, _ring: ring };
 })(typeof window !== 'undefined' ? window : globalThis);

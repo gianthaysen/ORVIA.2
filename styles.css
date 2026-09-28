@@ -4529,3 +4529,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 @media(min-width:640px){
   .orvia-sheet,.orvia-sheet--large{max-width:430px}
 }
+
+/* v8-418: manuelle Plan-Verknuepfung (Einheiten-Seite + Aktivitaetsseite) */
+.link-cands{margin:0 18px 14px}.link-cands .sectlabel{padding-left:0}.link-cands .mini-note{margin-bottom:10px}
+.link-cands .cta.link-cand{width:100%;margin:0 0 8px;flex-direction:column;gap:1px;text-align:center}
