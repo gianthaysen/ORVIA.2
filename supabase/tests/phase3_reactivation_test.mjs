@@ -262,9 +262,11 @@ const wr = await page.evaluate(() => {
   gmOpenWeekReviewSheet();
   const h = document.getElementById('detailSheet').innerHTML;
   r.sheet = /Wochenreview/.test(h) && /Coach Briefing kopieren/.test(h);
-  /* Inhalt kommt aus weeklyReviewHTML: entweder Datenzeilen ODER der ehrliche Leerzustand. */
-  r.canonical = /blrow/.test(h) || /Wochen-Review erscheint nach einigen Check-ins/.test(h);
-  r.sameSource = (typeof weeklyReviewHTML === 'function');
+  /* Inhalt: seit v8-412 aus review-v14 (Umschalter + Planerfuellung/Leerzustand);
+     ohne Modul die Legacy-Zeilen aus weeklyReviewHTML ODER deren ehrlicher Leerzustand. */
+  r.canonical = (/rev-seg/.test(h) && (/Planerfüllung/.test(h) || /Noch nichts zu bilanzieren/.test(h)))
+    || /blrow/.test(h) || /Wochen-Review erscheint nach einigen Check-ins/.test(h);
+  r.sameSource = (typeof weeklyReviewHTML === 'function') && !!(window.ORVIA && ORVIA.reviewV14 && ORVIA.reviewV14.model);
   try { gmCloseSheets(); } catch (e) {}
   return r;
 });

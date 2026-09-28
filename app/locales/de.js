@@ -1375,6 +1375,8 @@
     'act.zu_dieser_auswahl_ist_keine': 'Zu dieser Auswahl ist keine eindeutige Aktivität hinterlegt.',
     'act.zuordnung_loesen': 'Zuordnung lösen',
     'act.zuordnung_nicht_geaendert': 'Zuordnung nicht geändert',
+    'act.occurrence_bereits_belegt': 'diese Plan-Einheit trägt schon eine andere Aktivität',
+    'act.mit_planeinheit_verknuepft': 'Mit der Plan-Einheit verknüpft — zählt jetzt zur Planerfüllung.',
     'act.zurueck': 'Zurück',
     'act.zusammenfuehren': 'Zusammenführen',
 
@@ -3832,6 +3834,11 @@
     'tour.done_d': 'Jede Einheit eine Antwort, jedes Ziel ein Vertrag, jede Zahl ein Grund. Diesen Rundgang kannst du jederzeit neu starten — <b>Profil → Hilfe & über ORVIA</b>.',
     'ui.rundgang_starten': 'Rundgang durch die App',
     'ui.rundgang_sub': 'Erklärt die wichtigsten Stellen an deinen echten Werten',
+    /* v8-418: manuelle Plan-Verknuepfung */
+    'ui.link_cand_title': 'Passende Aktivität verknüpfen',
+    'ui.link_cand_hint': 'ORVIA verknüpft nie automatisch nur über Tag und Sportart. Diese Aktivität passt zu Tag und Sportart — bestätige, wenn sie diese Einheit war.',
+    'ui.link_act_title': 'Mit geplanter Einheit verknüpfen',
+    'ui.link_andere_sportart': 'andere Sportart als geplant',
     /* S5a (v14): Debrief als Zustand */
     'ui.dbv_soll_ist': 'Soll / Ist',
     'ui.dbv_prefix': 'Debrief:',
@@ -3883,6 +3890,10 @@
     'rev.kernreiz_fehlt': 'darunter ein Kernreiz. Der Planer fragt beim nächsten Plan nach.',
     'rev.kein_plan': 'Für diese Woche liegt kein gespeicherter Plan vor — nur die Aktivitäten.',
     'rev.laengste_einheit': 'Längste Einheit',
+    'rev.laengste_einheit_zeit': 'Längste Einheit (nach Dauer)',
+    'rev.unplausibel.one': '{count} Einheit mit unplausibler Dauer:',
+    'rev.unplausibel.other': '{count} Einheiten mit unplausibler Dauer:',
+    'rev.unplausibel_hint': 'sie verfälscht Stunden und Vergleich. Dauer in der Aktivität korrigieren.',
     'rev.belastung': 'Belastung',
     'rev.acwr_low': 'unter dem Korridor — die Last der Woche liegt deutlich unter deinem Schnitt.',
     'rev.acwr_ok': 'im grünen Korridor (0,8–1,3).',
