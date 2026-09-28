@@ -56,7 +56,8 @@ sec('B · UI-Verdrahtung');
   ok('B1 Einheiten-Seite: Kandidaten aus dem Resolver (ambiguousCandidateIds, nie bei completed, nie in der Zukunft)', /planActualResolveForDates\(\[dIso\]\)/.test(sp) && /_ru\.state!=='completed'/.test(sp) && /ambiguousCandidateIds/.test(sp) && /dIso<=todayStr\(\)/.test(sp));
   ok('B2 Kandidaten-Knopf ruft linkActivityPlanCanonical(aid, occ)', /linkActivityPlanCanonical\(\\'/.test(sp) && /_linkBlock\+cta\+_undoPd/.test(sp));
   ok('B3 activity.js: linkActivityPlanCanonical + planLinkCandidatesFor exportiert, Fehlercode occurrence_taken lesbar', /function linkActivityPlanCanonical\(activityId, occurrenceId\)/.test(act) && /function planLinkCandidatesFor\(a\)/.test(act) && /linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor/.test(act) && /act\.occurrence_bereits_belegt/.test(act));
-  ok('B4 planLinkCandidatesFor: nur offene Einheiten desselben Tages, gleiche Sportart zuerst', /r\.state !== 'completed' && r\.planned && r\.planned\.localDate === day/.test(act) && /sameSport/.test(act));
+  ok('B4 planLinkCandidatesFor: offene Einheiten derselben WOCHE, gleicher Tag + Sportart zuerst; unlinkedActivitiesInWeekOf als Umkehrung', /dates\.indexOf\(r\.planned\.localDate\) >= 0/.test(act) && /sameSport \? 2 : 0\) \+ \(y\.sameDay \? 1 : 0/.test(act) && /function unlinkedActivitiesInWeekOf\(dateIso, sportId\)/.test(act) && /unlinkedActivitiesInWeekOf: unlinkedActivitiesInWeekOf/.test(act));
+  ok('B4b Einheiten-Seite ergaenzt Wochen-Kandidaten (Tag-Kandidaten zuerst), Datum im Untertitel bei anderem Tag', /unlinkedActivitiesInWeekOf\(dIso,it\.t\)/.test(sp) && /vm\.date!==dIso/.test(sp));
   const ap = ui.slice(ui.indexOf('function gmOpenActivityPage(aid){'), ui.indexOf('function gmOpenActivityPage(aid){') + 40000);
   ok('B5 Aktivitaetsseite: Block nur ohne planLink, Knopf je Plan-Einheit', /if\(!vm\.planLink&&typeof planLinkCandidatesFor==='function'\)/.test(ap) && /linkActivityPlanCanonical\(\\''\+gmEsc\(String\(_aidCorr\)\)/.test(ap));
   ok('B6 Katalog + CSS', ['ui.link_cand_title', 'ui.link_cand_hint', 'ui.link_act_title', 'ui.link_andere_sportart', 'act.mit_planeinheit_verknuepft', 'act.occurrence_bereits_belegt'].every(k => de.indexOf("'" + k + "'") >= 0) && /\.link-cands \.cta\.link-cand\{/.test(css));
@@ -84,6 +85,10 @@ sec('C · Rueckblick');
   acts.push({ id: 'r1', sportId: 'running', startedAt: '2026-09-21T07:00:00Z', durationSeconds: 3000, summary: { distanceKm: 9.8, name: 'Lauf' } });
   const m2 = RV.model(0);
   ok('C4 mit Lauf: longest = Lauf (Distanz), Zeit-Karte entfaellt', m2.longest && m2.longest.id === 'r1' && m2.longestByTime === null && /data-i="run"/.test(RV.html(m2)));
+  acts.push({ id: 'k0', sportId: 'gym', startedAt: '2026-09-16T05:30:00Z', durationSeconds: 33 * 3600, summary: { name: 'Krafttraining' } });
+  acts[1].durationSeconds = 3000;
+  const m3 = RV.model(0);
+  ok('C5 unplausible Dauer in der VERGLEICHSWOCHE wird unter dem Vergleich benannt und ist antippbar', m3.prevImplausible.length === 1 && /Vergleichswoche enthält eine unplausible Dauer/.test(RV.html(m3)) && /gmOpenActivityPage\('k0'\)/.test(RV.html(m3)));
 }
 
 console.log('\n' + (fail ? '❌' : '✅') + ' plan_link_manual: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

@@ -3894,6 +3894,7 @@
     'rev.unplausibel.one': '{count} Einheit mit unplausibler Dauer:',
     'rev.unplausibel.other': '{count} Einheiten mit unplausibler Dauer:',
     'rev.unplausibel_hint': 'sie verfälscht Stunden und Vergleich. Dauer in der Aktivität korrigieren.',
+    'rev.vorwoche_unplausibel': 'Die Vergleichswoche enthält eine unplausible Dauer — antippen und korrigieren:',
     'rev.belastung': 'Belastung',
     'rev.acwr_low': 'unter dem Korridor — die Last der Woche liegt deutlich unter deinem Schnitt.',
     'rev.acwr_ok': 'im grünen Korridor (0,8–1,3).',

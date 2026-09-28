@@ -678,20 +678,48 @@ function linkActivityPlanCanonical(activityId, occurrenceId) {
   if (typeof toast === 'function') toast('' + _actT('act.mit_planeinheit_verknuepft') + '');
   return r;
 }
-/* Kandidaten fuer eine Verknuepfung: geplante Einheiten desselben lokalen Tages, die noch
-   keine Aktivitaet tragen (Resolver-Zustand != completed). Gleiche Sportart zuerst. */
+/* Kandidaten fuer eine Verknuepfung: offene geplante Einheiten derselben WOCHE (Mo–So) —
+   eine am Donnerstag gemachte Krafteinheit gehoert zur geplanten „Oberkoerper"-Einheit vom
+   Mittwoch (Gians Fall 28.09.: am Trainingstag selbst stand „Ruhetag"). Gleicher Tag und
+   gleiche Sportart zuerst; andere Tage tragen ihr Datum im Label. */
 function planLinkCandidatesFor(a) {
   try {
     var cfg = window.ORVIA && ORVIA.activityConfig;
     var tz = (window.ORVIA && ORVIA.profileStore && ORVIA.profileStore.effectiveTimezone) ? ORVIA.profileStore.effectiveTimezone() : 'UTC';
     var day = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10);
     if (!day || typeof planActualResolveForDates !== 'function') return [];
-    var res = planActualResolveForDates([day]) || {};
+    var d0 = new Date(day + 'T12:00'); var wd = (d0.getDay() + 6) % 7; var mon = new Date(d0); mon.setDate(d0.getDate() - wd);
+    var dates = []; for (var i = 0; i < 7; i++) { var d = new Date(mon); d.setDate(mon.getDate() + i); dates.push((typeof todayStr === 'function') ? todayStr(d) : d.toISOString().slice(0, 10)); }
+    var res = planActualResolveForDates(dates) || {};
     var sport = (typeof _planActualNorm === 'function') ? _planActualNorm(a.sportId) : a.sportId;
-    var out = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned && r.planned.localDate === day; })
-      .map(function (r) { return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, sameSport: r.planned.sportId === sport, state: r.state, label: (function () { try { var wp = activeWeekPlan(); var m = /^po:\d{4}-\d{2}-\d{2}:(.+)$/.exec(r.plannedSessionId); var tid = m && m[1]; for (var d = 0; d < 7; d++) for (var k = 0; k < (wp[d] || []).length; k++) if (String(wp[d][k].id) === tid) return wp[d][k].l + ' · ' + wp[d][k].t; } catch (_) {} return r.planned.sportId; })() }; });
-    out.sort(function (x, y) { return (y.sameSport ? 1 : 0) - (x.sameSport ? 1 : 0); });
+    var DN = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    var wp = null; try { wp = activeWeekPlan(); } catch (_) {}
+    var labelOf = function (occ, fallback) { try { var m = /^po:\d{4}-\d{2}-\d{2}:(.+)$/.exec(occ); var tid = m && m[1]; for (var dd = 0; dd < 7; dd++) for (var k = 0; k < ((wp && wp[dd]) || []).length; k++) if (String(wp[dd][k].id) === tid) return wp[dd][k].l + ' · ' + wp[dd][k].t; } catch (_) {} return fallback; };
+    var out = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned && dates.indexOf(r.planned.localDate) >= 0; })
+      .map(function (r) { var di = dates.indexOf(r.planned.localDate); return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, localDate: r.planned.localDate, sameDay: r.planned.localDate === day, sameSport: r.planned.sportId === sport, state: r.state, dayLabel: DN[di] || '', label: labelOf(r.plannedSessionId, r.planned.sportId) }; });
+    out.sort(function (x, y) { return ((y.sameSport ? 2 : 0) + (y.sameDay ? 1 : 0)) - ((x.sameSport ? 2 : 0) + (x.sameDay ? 1 : 0)); });
     return out;
+  } catch (_) { return []; }
+}
+/* Umkehrung fuer die Einheiten-Seite: unverknuepfte Aktivitaeten derselben Woche und Sportart,
+   die zu einer offenen Plan-Einheit passen koennten (zusaetzlich zu den Tag-Kandidaten des Resolvers). */
+function unlinkedActivitiesInWeekOf(dateIso, sportId) {
+  try {
+    var store = window.ORVIA && ORVIA.activityStore, cfg = window.ORVIA && ORVIA.activityConfig;
+    if (!store || !store.listActivities) return [];
+    var tz = (window.ORVIA && ORVIA.profileStore && ORVIA.profileStore.effectiveTimezone) ? ORVIA.profileStore.effectiveTimezone() : 'UTC';
+    var d0 = new Date(dateIso + 'T12:00'); var wd = (d0.getDay() + 6) % 7; var mon = new Date(d0); mon.setDate(d0.getDate() - wd);
+    var from = (typeof todayStr === 'function') ? todayStr(mon) : mon.toISOString().slice(0, 10); var sun = new Date(mon); sun.setDate(mon.getDate() + 6); var to = (typeof todayStr === 'function') ? todayStr(sun) : sun.toISOString().slice(0, 10);
+    var norm = (typeof _planActualNorm === 'function') ? _planActualNorm : function (x) { return x; };
+    var want = norm(sportId);
+    return (store.listActivities() || []).filter(function (a) {
+      if (!a || (store.isTombstoned && store.isTombstoned(a))) return false;
+      if (store.planLinkOf(a)) return false;
+      if (norm(a.sportId) !== want) return false;
+      var ld = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10);
+      return ld >= from && ld <= to;
+    }).map(function (a) { return { id: a.id || a.clientRecordId, localDate: (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10), activity: a }; })
+      .sort(function (x, y) { return x.localDate < y.localDate ? -1 : 1; });
   } catch (_) { return []; }
 }
 
@@ -757,7 +785,7 @@ if (typeof window !== 'undefined') {
     resolvePlannedActivity: resolvePlannedActivity,
     closeActivityDetail: closeActivityDetail,
     deleteActivityCanonical: deleteActivityCanonical,
-    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical, linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor
+    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical, linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor, unlinkedActivitiesInWeekOf: unlinkedActivitiesInWeekOf
   };
 }
 

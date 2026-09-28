@@ -8590,13 +8590,17 @@ function gmOpenSessionPage(di,ii,dateIso){
   try{
     if(_occ2&&dIso&&dIso<=todayStr()&&typeof planActualResolveForDates==='function'){
       var _pr=(planActualResolveForDates([dIso])||{}).byOcc||{};var _ru=_pr[_occ2];
-      var _cands=(_ru&&_ru.state!=='completed'&&Array.isArray(_ru.ambiguousCandidateIds))?_ru.ambiguousCandidateIds:[];
+      var _cands=(_ru&&_ru.state!=='completed'&&Array.isArray(_ru.ambiguousCandidateIds))?_ru.ambiguousCandidateIds.slice():[];
+      /* Zusaetzlich: unverknuepfte Aktivitaeten derselben Woche + Sportart (verschobene Einheit,
+         z. B. Kraft am Do statt Mi). Tag-Kandidaten des Resolvers stehen zuerst. */
+      if(!_ru||_ru.state!=='completed'){try{(typeof unlinkedActivitiesInWeekOf==='function'?unlinkedActivitiesInWeekOf(dIso,it.t):[]).forEach(function(x){if(_cands.indexOf(x.id)<0)_cands.push(x.id);});}catch(_w){ }}
       if(_cands.length){
         var _rows=_cands.map(function(aid){
           var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_a){ }
           var vm=null;try{vm=a&&(typeof activityDetailViewModel==='function')?activityDetailViewModel(a):null;}catch(_v){ }
           var lbl=(vm&&(vm.title||vm.sportLabel))||String(aid);
-          var sub=[(vm&&vm.time)||null,(vm&&vm.durationLabel)||null,(vm&&vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null].filter(Boolean).join(' · ');
+          var _dl='';try{if(vm&&vm.date&&vm.date!==dIso){var _dd=new Date(vm.date+'T12:00');_dl=['Mo','Di','Mi','Do','Fr','Sa','So'][(_dd.getDay()+6)%7]+' '+_dd.getDate()+'.'+(_dd.getMonth()+1);}}catch(_d){ }
+          var sub=[_dl||null,(vm&&vm.time)||null,(vm&&vm.durationLabel)||null,(vm&&vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null].filter(Boolean).join(' · ');
           return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(aid))+'\',\''+gmEsc(_occ2)+'\');gmCloseSessionPage();">'+icon('link','sm')+' '+gmEsc(lbl)+(sub?'<span class="ct-sub">'+gmEsc(sub)+'</span>':'')+'</button>';
         }).join('');
         _linkBlock='<div class="link-cands"><div class="sectlabel">' + _uiT('ui.link_cand_title') + '</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.link_cand_hint') + '</div></div>'+_rows+'</div>';
@@ -9148,7 +9152,8 @@ function gmOpenActivityPage(aid){
     if(!vm.planLink&&typeof planLinkCandidatesFor==='function'){
       var _pc=planLinkCandidatesFor(a)||[];
       if(_pc.length)h+='<div class="link-cands" style="margin:0 18px 14px"><div class="sectlabel" style="padding-left:0">' + _uiT('ui.link_act_title') + '</div>'+_pc.map(function(c){
-        return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(c.occurrenceId)+'\');gmCloseActivityPage();">'+icon('link','sm')+' '+gmEsc(c.label)+(c.sameSport?'':'<span class="ct-sub">' + _uiT('ui.link_andere_sportart') + '</span>')+'</button>';}).join('')+'</div>';
+        var _subs=[c.sameDay?null:(c.dayLabel+' '+c.localDate.slice(8,10)+'.'+String(Number(c.localDate.slice(5,7)))+'.'),c.sameSport?null:_uiT('ui.link_andere_sportart')].filter(Boolean).join(' · ');
+        return '<button type="button" class="cta wide-ghost link-cand" onclick="linkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(c.occurrenceId)+'\');gmCloseActivityPage();">'+icon('link','sm')+' '+gmEsc(c.label)+(_subs?'<span class="ct-sub">'+gmEsc(_subs)+'</span>':'')+'</button>';}).join('')+'</div>';
     }
   }catch(_dbE){
     /* Rueckfall (z. B. Debrief-Helfer nicht geladen): bisherige Karte aus der bestehenden Bewertung. */
