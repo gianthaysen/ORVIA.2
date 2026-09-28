@@ -56,6 +56,33 @@ sec('C · Handler-Simulation');
   ok('C5 skipWaiting nach der Vorbefuellung', g.skipped === true);
 }
 
+sec('E · Versions-Query (v8-417, Safari ignoriert cache:reload)');
+{
+  const fetched = [], put = [];
+  const cacheObj = { add: async (r) => { throw new Error('add darf im Normalpfad nicht laufen'); }, put: async (k, res) => { put.push([k, res && res.tag]); }, match: async () => null };
+  const g = {
+    self: { addEventListener: (t, fn) => { g.handlers[t] = fn; }, skipWaiting: async () => { g.skipped = true; }, clients: { claim: async () => {} }, location: { origin: 'https://x' } },
+    handlers: {}, skipped: false,
+    caches: { open: async () => cacheObj, keys: async () => [], delete: async () => true },
+    Request: class { constructor(url, init) { this.url = url; this.cache = (init && init.cache) || 'default'; } },
+    Response: { error: () => null },
+    fetch: async (r) => { fetched.push(r); return { ok: true, type: 'basic', tag: r.url }; }
+  };
+  const fn = new Function('self', 'caches', 'Request', 'Response', 'fetch', sw);
+  fn(g.self, g.caches, g.Request, g.Response, g.fetch);
+  let done; g.handlers.install({ waitUntil: p => { done = p; } }); await done;
+  const C = (sw.match(/const C = '([^']+)'/) || [])[1];
+  ok('E1 jede Vorbefuellung geht mit ?v=<Cache-Name> und cache:reload ins Netz', fetched.length > 100 && fetched.every(r => r.url.indexOf('?v=' + C) > 0 && r.cache === 'reload'));
+  ok('E2 abgelegt wird unter dem PLAIN-Schluessel (ohne Query), Antwort des versionierten Requests', put.length === fetched.length && put.every(([k, tag]) => k.indexOf('?') < 0 && tag === k + '?v=' + C));
+  ok('E3 styles.css/js/ui.js dabei, skipWaiting danach', put.some(([k]) => k === './styles.css') && put.some(([k]) => k === './js/ui.js') && g.skipped === true);
+  /* Rueckfall: Netz weg ⇒ unversionierter add(), nichts wirft */
+  const seen2 = []; const cacheObj2 = { add: async (r) => { seen2.push(r); }, put: async () => {}, match: async () => null };
+  g.caches.open = async () => cacheObj2; g.fetch = async () => { throw new Error('offline'); }; g.handlers = {};
+  const fn2 = new Function('self', 'caches', 'Request', 'Response', 'fetch', sw); fn2(g.self, g.caches, g.Request, g.Response, g.fetch);
+  let done2; g.handlers.install({ waitUntil: p => { done2 = p; } }); await done2;
+  ok('E4 offline ⇒ Rueckfall auf add(Request cache:reload), kein Throw', seen2.length > 100 && seen2.every(r => r.cache === 'reload'));
+}
+
 sec('D · Start-CTA');
 {
   const ui = rd('js/ui.js');
