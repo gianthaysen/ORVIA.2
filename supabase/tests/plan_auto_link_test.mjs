@@ -71,6 +71,10 @@ sec('B · run');
   S.unlinkActivityFromPlan('srv-w1', 'po:2026-09-23:ok');
   const r3 = AL.run();
   ok('B5 vom Nutzer geloest ⇒ wird NICHT automatisch neu zugeordnet', r3.applied === 0 && S.planLinkOf(S.getActivityById('srv-w1')) === null);
+  /* v8-421: Einheit nur im Server-Cache (anderes Geraet, Pull noch nicht gelaufen) */
+  g.ORVIA.activityServerCache = () => [{ id: 'srv-c1', clientRecordId: 'act:iphone:c1', sportId: 'gym', source: 'orvia_workout', sourceRecordId: 'sessC', workoutSessionId: 'sessC', startedAt: '2026-09-25T06:00:00.000Z', durationSeconds: 900, status: 'completed', summary: {}, metrics: {}, _server: true }];
+  const r4 = AL.run();
+  ok('B5b Server-Cache-Einheit (nicht im Store) wird lokal gesichert und zugeordnet (Fr ⇒ Sa, Abstand 1)', r4.ok && r4.applied === 1 && S.planLinkOf(S.getActivityById('act:iphone:c1')) === 'po:2026-09-26:ok' && S.getActivityById('srv-c1').metrics.planLinkCorrection.method === 'auto');
   ok('B6 ohne Resolver ⇒ unavailable, kein Throw', (() => { const s = g.planActualResolveForDates; delete g.planActualResolveForDates; const x = AL.run(); g.planActualResolveForDates = s; return x.ok === false && x.code === 'unavailable'; })());
 }
 

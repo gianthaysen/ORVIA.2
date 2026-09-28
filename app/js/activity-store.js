@@ -152,10 +152,7 @@
      entfernen. */
   function unlinkActivityFromPlan(id, expectedOccurrenceId) {
     if (!id) return { ok: false, code: 'missing_activity_id' };
-    var all = readAll(), idx = -1;
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id || all[i].clientRecordId === id) { idx = i; break; }
-    }
+    var all = readAll(), idx = findIndexByRef(all, id);
     if (idx < 0) return { ok: false, code: 'activity_not_found' };
     var a = all[idx], current = planLinkOf(a);
     if (!current) return { ok: true, code: 'already_unlinked', activity: a };
@@ -189,14 +186,55 @@
      ueber Tag+Sport (I3b) — diese Funktion ist die manuelle, protokollierte
      Bestaetigung genau dieses schwachen Kandidaten. One-to-one bleibt gewahrt:
      traegt bereits eine andere Aktivitaet diese Occurrence, wird abgelehnt. */
+  /* v8-421 (Gians Befund 28.09., „activity_not_found"): Referenz-Aufloesung ueber ALLE
+     stabilen Identitaeten — Server-id, clientRecordId, source+sourceRecordId,
+     workoutSessionId. Eine auf einem anderen Geraet aufgezeichnete Einheit kommt aus
+     der Serverliste mit der FREMDEN client_record_id; ueber die reine id/crid-Suche
+     war sie lokal unauffindbar. ref: String (id/crid) oder Activity-Objekt. */
+  function findIndexByRef(all, ref) {
+    if (!ref) return -1;
+    var o = (typeof ref === 'object') ? ref : { id: ref, clientRecordId: ref };
+    for (var i = 0; i < all.length; i++) {
+      var a = all[i]; if (!a) continue;
+      if (o.id && (a.id === o.id || a.clientRecordId === o.id)) return i;
+      if (o.clientRecordId && (a.clientRecordId === o.clientRecordId || a.id === o.clientRecordId)) return i;
+    }
+    if (typeof ref !== 'object') return -1;
+    for (var j = 0; j < all.length; j++) {
+      var b = all[j]; if (!b) continue;
+      if (o.source && o.sourceRecordId && b.source === o.source && b.sourceRecordId === o.sourceRecordId) return j;
+      if (o.workoutSessionId && b.workoutSessionId === o.workoutSessionId) return j;
+    }
+    return -1;
+  }
+  /* v8-421: Serverseitig bekannte Aktivitaet (normalisiert, camelCase — z. B. aus dem
+     Listen-Cache in activity.js) lokal sicherstellen. NUR Einfuegen, nie Ueberschreiben:
+     lokale Eintraege (pending oder synced) bleiben unberuehrt. Tombstones gewinnen. */
+  function ensureLocal(a) {
+    if (!a || typeof a !== 'object' || !a.id) return { ok: false, code: 'invalid' };
+    if (isTombstoned(a)) return { ok: false, code: 'tombstoned' };
+    var all = readAll();
+    var idx = findIndexByRef(all, a);
+    if (idx >= 0) return { ok: true, code: 'exists', activity: all[idx] };
+    var rec = {
+      id: a.id, clientRecordId: a.clientRecordId || cid(), userId: a.userId || uid(),
+      sportId: a.sportId || 'other', source: a.source || 'server', sourceRecordId: a.sourceRecordId || null,
+      workoutSessionId: a.workoutSessionId || null,
+      linkedActivityId: a.linkedActivityId || null, linkKind: a.linkKind || null,
+      startedAt: a.startedAt || null, endedAt: a.endedAt || null,
+      durationSeconds: a.durationSeconds != null ? a.durationSeconds : null,
+      status: a.status || 'completed', summary: a.summary || {}, metrics: a.metrics || {},
+      workoutSnapshot: null, syncStatus: 'synced', createdAt: now(), updatedAt: now()
+    };
+    all.push(rec);
+    if (!writeAll(all)) return { ok: false, code: 'persist_failed' };
+    return { ok: true, code: 'inserted', activity: rec };
+  }
   function linkActivityToPlan(id, occurrenceId, opts) {
     var lo = opts || {};
     if (!id) return { ok: false, code: 'missing_activity_id' };
     if (!occurrenceId || typeof occurrenceId !== 'string') return { ok: false, code: 'missing_occurrence_id' };
-    var all = readAll(), idx = -1;
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id || all[i].clientRecordId === id) { idx = i; break; }
-    }
+    var all = readAll(), idx = findIndexByRef(all, id);
     if (idx < 0) return { ok: false, code: 'activity_not_found' };
     var a = all[idx], current = planLinkOf(a);
     if (current === occurrenceId) return { ok: true, code: 'already_linked', activity: a };
@@ -406,6 +444,7 @@
       var a = all[i];
       if (a.source && a.sourceRecordId) byKey[a.source + ' ' + a.sourceRecordId] = i;
       if (a.id) byKey['id ' + a.id] = i;
+      if (a.clientRecordId) byKey['crid ' + a.clientRecordId] = i;   /* v8-421 */
     }
     var merged = 0, updated = 0, skipped = 0;
     for (var r = 0; r < rows.length; r++) {
@@ -414,7 +453,8 @@
       if (isTombstoned(n)) { skipped++; continue; }
       var idx = (n.source && n.sourceRecordId && byKey[n.source + ' ' + n.sourceRecordId] != null)
         ? byKey[n.source + ' ' + n.sourceRecordId]
-        : (byKey['id ' + n.id] != null ? byKey['id ' + n.id] : -1);
+        : (byKey['id ' + n.id] != null ? byKey['id ' + n.id]
+          : (n.clientRecordId && byKey['crid ' + n.clientRecordId] != null ? byKey['crid ' + n.clientRecordId] : -1));
       if (idx >= 0) {
         var ex = all[idx];
         if (ex.syncStatus === 'pending') { skipped++; continue; }   // Outbox-Vorrang
@@ -430,10 +470,16 @@
            ändert nichts. */
         if (n.metrics && Object.keys(n.metrics).length) ex.metrics = Object.assign({}, ex.metrics || {}, n.metrics);
         ex.status = n.status || ex.status; ex.syncStatus = 'synced'; ex.updatedAt = now();
+        /* v8-421: Server-client_record_id uebernehmen, wenn der lokale Eintrag nur eine
+           beim Merge erzeugte Ersatz-ID traegt (fremdes Geraet). Die UI adressiert die
+           Einheit ueber die Server-crid — ohne Uebernahme fand der Store sie nicht. */
+        if (n.clientRecordId && ex.clientRecordId !== n.clientRecordId && byKey['crid ' + n.clientRecordId] == null) {
+          byKey['crid ' + n.clientRecordId] = idx; ex.clientRecordId = n.clientRecordId;
+        }
         updated++;
       } else {
         all.push({
-          id: n.id, clientRecordId: cid(), userId: uid(),
+          id: n.id, clientRecordId: (n.clientRecordId && byKey['crid ' + n.clientRecordId] == null) ? n.clientRecordId : cid(), userId: uid(),   /* v8-421: Server-crid uebernehmen */
           sportId: n.sportId || 'other', source: n.source || 'server', sourceRecordId: n.sourceRecordId || null,
           workoutSessionId: n.workoutSessionId || null,
           linkedActivityId: n.linkedActivityId || null, linkKind: n.linkKind || null,
@@ -442,6 +488,7 @@
           metrics: n.metrics || {},   // Batch 2b: Server-metrics erhalten (vorher hart {})
           workoutSnapshot: null, syncStatus: 'synced', createdAt: now(), updatedAt: now()
         });
+        byKey['id ' + n.id] = all.length - 1; byKey['crid ' + all[all.length - 1].clientRecordId] = all.length - 1;
         merged++;
       }
     }
@@ -456,6 +503,7 @@
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
     planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan, linkActivityToPlan: linkActivityToPlan,
+    ensureLocal: ensureLocal, findIndexByRef: findIndexByRef,
     correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
     recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,

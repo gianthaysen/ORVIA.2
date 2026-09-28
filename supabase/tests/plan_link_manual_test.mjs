@@ -91,5 +91,38 @@ sec('C · Rueckblick');
   ok('C5 unplausible Dauer in der VERGLEICHSWOCHE wird unter dem Vergleich benannt und ist antippbar', m3.prevImplausible.length === 1 && /Vergleichswoche enthält eine unplausible Dauer/.test(RV.html(m3)) && /gmOpenActivityPage\('k0'\)/.test(RV.html(m3)));
 }
 
+sec('D · Identitaet ueber Geraete (v8-421, Gians Befund „activity_not_found")');
+{
+  /* Fall: Einheit auf dem iPhone aufgezeichnet (client_record_id des iPhones), auf dem Mac
+     aus der Serverliste angezeigt. Der Store hatte sie beim Merge mit einer NEUEN Ersatz-crid
+     eingefuegt ⇒ Suche ueber die Server-crid schlug fehl. */
+  const m = S.mergeServerActivities([
+    { id: 'srv-x1', client_record_id: 'act:iphone:abc', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessX', workout_session_id: 'sessX', started_at: '2026-09-24T05:32:00.000Z', duration_seconds: 720, status: 'completed', summary: {}, metrics: {} }
+  ]);
+  const x = S.getActivityById('act:iphone:abc');
+  ok('D1 Merge uebernimmt die Server-client_record_id (Store findet die Einheit ueber die crid des anderen Geraets)', m.merged === 1 && !!x && x.id === 'srv-x1' && x.clientRecordId === 'act:iphone:abc');
+  ok('D2 normalizeActivityRecord fuehrt clientRecordId mit', ORVIA.activityNormalize.normalizeActivityRecord({ id: 'q', client_record_id: 'c1' }).clientRecordId === 'c1');
+  const occ = 'po:2026-09-23:psg:3:0:oberkoerper';
+  ok('D3 link ueber die Server-crid ⇒ linked (vorher activity_not_found)', S.linkActivityToPlan('act:iphone:abc', occ).code === 'linked' && S.planLinkOf(S.getActivityById('srv-x1')) === occ);
+  ok('D4 unlink ueber Objekt-Referenz (source+sourceRecordId reicht)', S.unlinkActivityFromPlan({ source: 'orvia_workout', sourceRecordId: 'sessX' }, occ).code === 'unlinked');
+  ok('D5 link ueber Objekt-Referenz mit nur workoutSessionId', S.linkActivityToPlan({ workoutSessionId: 'sessX' }, occ).code === 'linked');
+  /* Altbestand: Eintrag hatte bereits eine Ersatz-crid ⇒ Update-Zweig uebernimmt die Server-crid */
+  S.mergeServerActivities([{ id: 'srv-y1', sport_id: 'gym', source: 'garmin', source_record_id: 'gy1', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 700, status: 'completed', summary: {}, metrics: {} }]);
+  const y0 = S.getActivityById('srv-y1');
+  S.mergeServerActivities([{ id: 'srv-y1', client_record_id: 'act:watch:y1', sport_id: 'gym', source: 'garmin', source_record_id: 'gy1', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 700, status: 'completed', summary: {}, metrics: {} }]);
+  ok('D6 Altbestand mit Ersatz-crid uebernimmt die Server-crid beim naechsten Merge (kein Duplikat)', /^act:u1:/.test(y0.clientRecordId) && S.getActivityById('act:watch:y1') && S.getActivityById('act:watch:y1').id === 'srv-y1' && S.listActivities().filter(a => a.id === 'srv-y1').length === 1);
+  /* ensureLocal: Server-Cache-Objekt (camelCase, _server) einfuegen — nie ueberschreiben */
+  const e1 = S.ensureLocal({ id: 'srv-z1', clientRecordId: 'act:iphone:z1', sportId: 'gym', source: 'orvia_workout', sourceRecordId: 'sessZ', workoutSessionId: 'sessZ', startedAt: '2026-09-26T05:32:00.000Z', durationSeconds: 600, summary: { exerciseCount: 3 }, metrics: {}, _server: true });
+  const z = S.getActivityById('act:iphone:z1');
+  ok('D7 ensureLocal fuegt eine unbekannte Server-Einheit als synced ein (crid des Geraets, keine _server-Markierung persistiert)', e1.code === 'inserted' && !!z && z.id === 'srv-z1' && z.syncStatus === 'synced' && z._server === undefined);
+  S.linkActivityToPlan('srv-z1', 'po:2026-09-26:psg:6:0:x');
+  const e2 = S.ensureLocal({ id: 'srv-z1', clientRecordId: 'act:iphone:z1', sportId: 'gym', source: 'orvia_workout', sourceRecordId: 'sessZ', startedAt: '2026-09-26T05:32:00.000Z', metrics: {} });
+  ok('D8 ensureLocal ueberschreibt nie: lokale (pending) Verknuepfung bleibt', e2.code === 'exists' && S.planLinkOf(S.getActivityById('srv-z1')) === 'po:2026-09-26:psg:6:0:x' && S.getActivityById('srv-z1').syncStatus === 'pending');
+  ok('D9 ensureLocal: ungueltig/ohne id ⇒ invalid; getombstoned ⇒ tombstoned', S.ensureLocal(null).code === 'invalid' && S.ensureLocal({ sportId: 'gym' }).code === 'invalid' && (() => { S.deleteActivity('srv-z1', { kind: 'activity' }); return S.ensureLocal({ id: 'srv-z1', clientRecordId: 'act:iphone:z1', source: 'orvia_workout', sourceRecordId: 'sessZ' }).code === 'tombstoned'; })());
+  const act = rd('js/activity.js'), al = rd('js/plan-auto-link.js');
+  ok('D10 activity.js: Server-Cache-Einheit vor dem Verknuepfen lokal sichern, Link/Unlink ueber Objekt-Referenz', /if \(a\._server && store\.ensureLocal\)/.test(act) && /store\.linkActivityToPlan\(a, occurrenceId\)/.test(act) && /store\.unlinkActivityFromPlan\(a, expectedOccurrenceId \|\| null\)/.test(act));
+  ok('D11 plan-auto-link: run() sichert Server-Cache-Einheiten lokal, bevor zugeordnet wird', /activityServerCache\(\) \|\| \[\]\)\.forEach\(function \(sa\) \{ if \(sa && sa\.id\) store\.ensureLocal\(sa\); \}\)/.test(al));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ' plan_link_manual: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

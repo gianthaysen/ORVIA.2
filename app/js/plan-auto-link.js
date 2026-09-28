@@ -63,6 +63,12 @@
       var norm = (typeof root._planActualNorm === 'function') ? root._planActualNorm : function (x) { return x; };
       var today = (typeof root.todayStr === 'function') ? root.todayStr() : _iso(new Date());
       var minDate = _iso(new Date(new Date(today + 'T12:00').getTime() - WEEKS_BACK * 7 * 864e5));
+      /* v8-421: Serverseitig geladene Einheiten (anderes Geraet), die den lokalen
+         Store noch nicht erreicht haben, zuerst lokal sicherstellen — sonst sieht
+         die Zuordnung sie nicht (Gians Befund 28.09.). Nur Einfuegen, nie Ueberschreiben. */
+      if (store.ensureLocal && typeof O.activityServerCache === 'function') {
+        try { (O.activityServerCache() || []).forEach(function (sa) { if (sa && sa.id) store.ensureLocal(sa); }); } catch (e) {}
+      }
       var acts = [];
       (store.listActivities() || []).forEach(function (a) {
         if (!a || (store.isTombstoned && store.isTombstoned(a))) return;

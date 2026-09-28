@@ -639,7 +639,7 @@ function unlinkActivityPlanCanonical(activityId, expectedOccurrenceId) {
   var store = window.ORVIA && ORVIA.activityStore;
   if (!a || !store || !store.unlinkActivityFromPlan) return { ok: false, code: 'unavailable' };
   var run = function () {
-    var r = store.unlinkActivityFromPlan(a.clientRecordId || a.id || activityId, expectedOccurrenceId || null);
+    var r = store.unlinkActivityFromPlan(a, expectedOccurrenceId || null);   /* v8-421: Objekt-Referenz (alle Identitaeten) */
     if (!r || !r.ok) {
       if (typeof toast === 'function') toast('' + _actT('act.zuordnung_nicht_geaendert') + '' + (r && r.code ? ': ' + r.code : '.'));
       return r;
@@ -666,7 +666,11 @@ function linkActivityPlanCanonical(activityId, occurrenceId) {
   var a = _resolveActivityAny(activityId);
   var store = window.ORVIA && ORVIA.activityStore;
   if (!a || !store || !store.linkActivityToPlan) return { ok: false, code: 'unavailable' };
-  var r = store.linkActivityToPlan(a.clientRecordId || a.id || activityId, occurrenceId);
+  /* v8-421 (Gians Befund „activity_not_found"): Einheit aus dem Server-Cache (anderes
+     Geraet, fremde client_record_id) zuerst lokal sicherstellen; dann ueber ALLE
+     Identitaeten (Objekt-Referenz) verknuepfen statt nur ueber die crid. */
+  if (a._server && store.ensureLocal) { try { store.ensureLocal(a); } catch (_) {} }
+  var r = store.linkActivityToPlan(a, occurrenceId);
   if (!r || !r.ok) {
     if (typeof toast === 'function') toast('' + _actT('act.zuordnung_nicht_geaendert') + '' + (r && r.code === 'occurrence_taken' ? ': ' + _actT('act.occurrence_bereits_belegt') : (r && r.code ? ': ' + r.code : '.')));
     return r;

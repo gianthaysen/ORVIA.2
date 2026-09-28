@@ -261,6 +261,7 @@
     var rawSummary = (raw.summary && typeof raw.summary === 'object' && !Array.isArray(raw.summary)) ? raw.summary : {};
     return {
       id: raw.id || null,
+      clientRecordId: raw.clientRecordId || raw.client_record_id || null,   /* v8-421: Geraete-Identitaet mitfuehren */
       userId: raw.userId || raw.user_id || null,
       sportId: sportId,
       source: raw.source || null,
