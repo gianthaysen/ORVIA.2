@@ -1307,10 +1307,13 @@ var AV_INTENS=[['easy','' + T('pf.nur_locker') + ''],['moderate','' + T('pf.mode
 var AV_FIX_DE={team_training:'Mannschaftstraining',match:'Spiel',fixed_session:'' + T('pf.feste_trainingseinheit') + '',work_school:'Arbeit/Schule',appointment:'Termin',other_load:'' + T('pf.sonstige_belastung') + ''};
 function _avSports(){return (window.ORVIA&&ORVIA.profile&&ORVIA.profile.activeSports)?ORVIA.profile.activeSports():[];}
 function _avTimeLabel(t){var p=AV_TIMES.filter(function(x){return x[0]===t;})[0];return p?p[1]:'';}
-function openAvailabilityEditor(){var M=pmModel();var av=M.normalizeAvailability(PROFILE.availability);
-  window._avEd={orig:JSON.stringify(av),av:JSON.parse(JSON.stringify(av)),open:{}};
+/* focus (2026-09-28): 'rest' | 'days' | 'double' — die drei Zeilen unter Plan & Wochenstruktur
+   oeffnen denselben Editor, springen aber zum passenden Feld statt immer nach oben. */
+function openAvailabilityEditor(focus){var M=pmModel();var av=M.normalizeAvailability(PROFILE.availability);
+  window._avEd={orig:JSON.stringify(av),av:JSON.parse(JSON.stringify(av)),open:{},focus:focus||null};
   openSheet({id:'_secEdM',title:'Trainingsverfügbarkeit',onClose:cancelAvailabilityEditor,body:'<div id="avBody"></div>',
-    actions:'<button class="btn" onclick="saveAvailabilityEditor()">' + T('pf.speichern') + '</button><button class="btn sec" onclick="cancelAvailabilityEditor()">' + T('pf.abbrechen') + '</button>'});renderAvailabilityEditor();}
+    actions:'<button class="btn" onclick="saveAvailabilityEditor()">' + T('pf.speichern') + '</button><button class="btn sec" onclick="cancelAvailabilityEditor()">' + T('pf.abbrechen') + '</button>'});renderAvailabilityEditor();
+  try{var _f=window._avEd.focus;if(_f){var _id=_f==='rest'?'av_prefRest':_f==='double'?'av_mo_dbl':_f==='days'?'av_mo_av':null;var _el=_id&&document.getElementById(_id);if(_el){var _fld=_el.closest('.gm-field')||_el;setTimeout(function(){try{_fld.scrollIntoView({block:'center',behavior:'smooth'});}catch(_e){}},80);}}}catch(_x){}}
 function _avSlotHTML(d,idx,slot,sports){var p='av_'+d+'_'+idx+'_';
   return '<div class="gm-field"><label>' + T('pf.tageszeit') + '</label>'+segHTML(p+'time',AV_TIMES,slot.preferredTime||'')+'</div>'+
     '<div class="gm-field"><label>' + T('pf.maximale_dauer_min') + '</label><input type="number" id="'+p+'min" value="'+(slot.maxMinutes!=null?slot.maxMinutes:'')+'"></div>'+

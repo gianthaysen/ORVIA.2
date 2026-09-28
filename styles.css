@@ -4516,3 +4516,16 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .ps-score{display:flex;align-items:baseline;gap:10px;margin:0 18px 12px}.ps-score b{font-size:34px;font-weight:850;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--gold-soft)}.ps-score span{font-size:12px;color:var(--muted);font-weight:700}
 .ps-page .prow .p-d i{font-style:normal;color:var(--faint)}
 .pc-strength-all{margin-left:auto;background:transparent;border:0;color:var(--gold-soft);font-weight:750;font-size:11.5px;cursor:pointer;padding:4px 0}
+
+/* Desktop-Breite (2026-09-28, Gians Befund): alle Bottom-Sheets und Overlays folgen der
+   430-px-App-Spalte — vorher lag #detailSheet links am Fensterrand (left:0, volle Breite),
+   der Profil-Sheet bei 560 px. Eine Regel je Sheet-Familie, mobil unveraendert. */
+@media(min-width:431px){
+  .sheet{left:50%;right:auto;width:430px;max-width:430px;transform:translate(-50%,102%)}
+  .sheet.on{transform:translate(-50%,0)}
+  #suppModal.show .sheet{transform:translate(-50%,0)}
+  .wo-sheet{max-width:430px}
+}
+@media(min-width:640px){
+  .orvia-sheet,.orvia-sheet--large{max-width:430px}
+}

@@ -11034,9 +11034,9 @@ function gmProfPlanSettings(){
       dbl=(av.doubleDays>0)?(av.doubleDays+'' + _uiT('ui.tage_erlaubt') + ''):'Aus';}}catch(_){ }
   return gmPPageHead('' + _uiT('ui.plan_wochenstruktur') + '','' + _uiT('ui.wie_orvia_deine_woche_bauen') + '')+
     '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
-    gmPRow('moon','' + _uiT('ui.fester_ruhetag') + '','' + _uiT('ui.wird_vom_planer_niemals_automatisch') + '',gmEsc(rest),"openAvailabilityEditor&&openAvailabilityEditor()")+
-    gmPRow('calendar','' + _uiT('ui.bevorzugte_trainingstage') + '','' + _uiT('ui.fuer_plan_und_wochenreview') + '',gmEsc(days),"openAvailabilityEditor&&openAvailabilityEditor()")+
-    gmPRow('activity','Doppel-' + _uiT('ui.einheiten_') + '','' + _uiT('ui.nur_nach_ausdruecklicher_freigabe') + '',gmEsc(dbl),"openAvailabilityEditor&&openAvailabilityEditor()")+
+    gmPRow('moon','' + _uiT('ui.fester_ruhetag') + '','' + _uiT('ui.wird_vom_planer_niemals_automatisch') + '',gmEsc(rest),"openAvailabilityEditor&&openAvailabilityEditor('rest')")+
+    gmPRow('calendar','' + _uiT('ui.bevorzugte_trainingstage') + '','' + _uiT('ui.fuer_plan_und_wochenreview') + '',gmEsc(days),"openAvailabilityEditor&&openAvailabilityEditor('days')")+
+    gmPRow('activity','Doppel-' + _uiT('ui.einheiten_') + '','' + _uiT('ui.nur_nach_ausdruecklicher_freigabe') + '',gmEsc(dbl),"openAvailabilityEditor&&openAvailabilityEditor('double')")+
     gmPRow('gauge','' + _uiT('ui.maximale_tagesbelastung') + '','' + _uiT('ui.noch_nicht_verfuegbar_wird_spaeter') + '','—','',true)+'</div>';
 }
 function gmProfHealth(){
