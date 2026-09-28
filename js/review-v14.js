@@ -121,7 +121,7 @@
       hoursComplete: !!(w.totals && w.totals.completeness && w.totals.completeness.duration),
       elevationM: w.elevationM, sessions: w.totals ? w.totals.sessionCount : w.acts.length
     };
-    m.longest = w.longest; m.longestByTime = w.longest ? null : w.longestByTime; m.implausible = w.implausible;
+    m.longest = w.longest; m.longestByTime = w.longest ? null : w.longestByTime; m.implausible = w.implausible; m.prevImplausible = p.implausible;
     /* Belastung nur fuer die laufende Woche: ACWR ist ein Jetzt-Wert */
     m.load = null;
     if (w.off === 0) {
@@ -187,7 +187,7 @@
     }
     h += '</div>';
     if (m.implausible && m.implausible.length) {
-      h += '<div class="card tight"><div class="gapnote rev-gap" style="margin:0">' + ic('alert', 'sm') + '<div>' + esc(T('rev.unplausibel', { count: m.implausible.length })) + ' ' + m.implausible.map(function (x) { return '<b>' + esc(x.name || ((O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(x.sportId) : x.sportId)) + ' · ' + fmtH(x.durationMin) + ' h</b>'; }).join(', ') + ' — ' + esc(T('rev.unplausibel_hint')) + '</div></div></div>';
+      h += '<div class="card tight"><div class="gapnote rev-gap" style="margin:0">' + ic('alert', 'sm') + '<div>' + esc(T('rev.unplausibel', { count: m.implausible.length })) + ' ' + m.implausible.map(function (x) { return '<b' + (x.id ? ' role="button" tabindex="0" style="cursor:pointer;text-decoration:underline" onclick="gmOpenActivityPage(\'' + esc(String(x.id)) + '\')"' : '') + '>' + esc(x.name || ((O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(x.sportId) : x.sportId)) + ' · ' + fmtH(x.durationMin) + ' h</b>'; }).join(', ') + ' — ' + esc(T('rev.unplausibel_hint')) + '</div></div></div>';
     }
     if (!m.longest && m.longestByTime) {
       var lt = m.longestByTime; var labT = (O.activityConfig && O.activityConfig.sportLabel) ? O.activityConfig.sportLabel(lt.sportId) : (lt.sportId || '');
@@ -218,6 +218,7 @@
       var LBL = { km: T('rev.cmp_km'), hours: T('rev.cmp_hours'), sessions: T('rev.cmp_sessions'), gym: T('rev.cmp_gym') };
       h += '<div class="card tight"><div class="ctitle"><div class="l">' + ic('trend') + ' ' + esc(T('rev.vergleich')) + '</div></div>' +
         m.compare.map(function (r) { var d = r.pct != null ? ((r.pct > 0 ? '+' : '') + r.pct + ' %') : ((r.delta > 0 ? '+' : '') + de(r.delta, 1)); return '<div class="eff-row"><span class="l">' + esc(LBL[r.key]) + '<small>' + esc(r.from) + ' → ' + esc(r.to) + '</small></span><span class="v' + (r.dir === 'up' ? ' up' : '') + '">' + esc(d) + '</span></div>'; }).join('') +
+        ((m.prevImplausible && m.prevImplausible.length) ? '<div class="gapnote rev-gap">' + ic('alert', 'sm') + '<div>' + esc(T('rev.vorwoche_unplausibel')) + ' ' + m.prevImplausible.map(function (x) { return '<b' + (x.id ? ' role="button" tabindex="0" style="cursor:pointer;text-decoration:underline" onclick="gmOpenActivityPage(\'' + esc(String(x.id)) + '\')"' : '') + '>' + esc(x.name || x.sportId) + ' · ' + fmtH(x.durationMin) + ' h</b>'; }).join(', ') + '</div></div>' : '') +
         '<div class="source">' + ic('info', 'xs') + ' ' + esc(T('rev.vergleich_quelle')) + '</div></div>';
     }
     return h;
