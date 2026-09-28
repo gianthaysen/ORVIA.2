@@ -1792,45 +1792,25 @@ var STATE_LABELS={GREEN:'GRÜN',YELLOW:'GELB',ORANGE:'ORANGE',RED:'ROT'};
 var DECISION_WORD={GREEN:'Trainieren',YELLOW:'Reduzieren',ORANGE:'Ersetzen',RED:'Pausieren'};
 /* Daily Decision Card (Phase 7) — rendert die zentrale Entscheidung. */
 function renderAdaptCard(){
+  /* S4a (v14): Die Darstellung lebt jetzt in gmDecisionCard()/gmRenderDecisionCard()
+     (GM1-Block). Hier bleiben NUR die Automatik-Nebenwirkungen des Legacy-Pfads:
+     Automatikmodus uebernimmt die Tagesanpassung und wendet Wochenverschiebungen
+     einmal an (mit Undo-Snapshot) — Persistenz unveraendert (entry.adaptChoice,
+     PROFILE._planUndo). Danach rendert die GM-Karte aus denselben Quellen. */
   var el=document.getElementById('adaptBox');if(!el)return;
   var d=(window.Calc&&Calc.buildTrainingDecision)?currentDecision():null;
-  if(!d){el.innerHTML='';el.style.display='none';return;}
-  el.style.display='';
-  var state=d.dayState,hasChange=(d.todayAction!=='KEEP');
-  var mode=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.adaptationMode)||'assisted';
-  var e=DB[todayStr()];
-  var ch=(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)?e.adaptChoice.choice:null;
-  if(mode==='automatic'&&hasChange&&!ch){var ea=entry(todayStr());ea.adaptChoice={action:d.todayAction,choice:'accepted'};if(typeof save==='function')save();ch='accepted';}
-  var head='<div class="adp-head">'+ic('pulse')+'<span>Tagesentscheidung</span>'+
-    '<span class="adp-state adp-state-'+state.toLowerCase()+'">'+STATE_LABELS[state]+' · '+DECISION_WORD[state]+'</span></div>';
-  var safety=(d.safety&&d.safety.triggered)?'<div class="adp-caution">'+esc(d.safety.advice)+'</div>':'';
-  var rec='<div class="adp-block"><span class="adp-lab">Heute</span><div class="adp-val"><b>'+esc(d.recommendedSession.label)+'</b>'+(d.recommendedSession.detail?'<span>'+esc(d.recommendedSession.detail)+'</span>':'')+'</div></div>';
-  var avoid=d.avoidedSession?'<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val">'+esc(d.avoidedSession.label)+'</div></div>':'';
-  /* H5 (2026-07-11): Der „Warum?"-Block lebt EINMAL — in der Command-Karte darüber.
-     Diese Karte zeigt nur noch das Plan-Delta (Heute/Vermeiden/Verschiebungen);
-     identische Trigger-Listen doppelt auf einem Screen waren Audit-Befund 3a. */
-  var why='';
-  var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
-  var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
-  var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
-  // Automatikmodus: Wochenplan einmal automatisch anwenden (mit Undo-Snapshot)
-  if(mode==='automatic'&&moves.length&&!applied){applyWeekAdjustments(false);return;}
-  var week='';
-  if(applied){
-    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_angepasst_') + '</b>' + _uiT('ui.aenderungen_gespeichert_siehe_plan') + '<button class="linklike" onclick="revertWeekAdjustments()">' + _uiT('ui.rueckgaengig') + '</button></div>';
-  }else if(moves.length){
-    week='<div class="adp-week"><b>' + _uiT('ui.wochenplan_vorschlag') + '</b> '+moves.map(function(c){return c.action==='MOVE_SESSION'?('' + _uiT('ui.harte_einheit') + ''+DN[c.day]+'' + _uiT('ui.48_h_abstand_kein_konflikt') + ''):esc(c.reason);}).join(' ')+
-      '<div class="adp-btns" style="margin-top:8px"><button class="btn sec" onclick="applyWeekAdjustments(true)">' + _uiT('ui.wochenplan_anpassen') + '</button></div></div>';
+  if(d){
+    var hasChange=(d.todayAction!=='KEEP');
+    var mode=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.adaptationMode)||'assisted';
+    var e=DB[todayStr()];
+    var ch=(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)?e.adaptChoice.choice:null;
+    if(mode==='automatic'&&hasChange&&!ch){var ea=entry(todayStr());ea.adaptChoice={action:d.todayAction,choice:'accepted',at:new Date().toISOString(),auto:true};if(typeof save==='function')save();}
+    var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
+    var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
+    if(mode==='automatic'&&moves.length&&!applied){applyWeekAdjustments(false);return;}
   }
-  var actions='';
-  if(hasChange){
-    if(ch==='accepted')actions='<div class="adp-accepted">✓ '+(mode==='automatic'?'' + _uiT('ui.automatisch_angepasst') + '':'Übernommen')+'. <button class="linklike" onclick="adaptReopen()">'+(mode==='automatic'?'' + _uiT('ui.rueckgaengig') + '':'ändern')+'</button></div>';
-    else if(ch==='original')actions='<div class="adp-folded">' + _uiT('ui.nur_als_hinweis_angezeigt') + '<button class="linklike" onclick="adaptReopen()">doch anpassen</button></div>';
-    else actions='<div class="adp-btns"><button class="btn" onclick="adaptChoose(\'accepted\')">Änderung übernehmen</button>'+
-      '<button class="btn sec" onclick="adaptChoose(\'original\')">Nur als Hinweis</button></div>';
-  }
-  var feel='<button class="linklike adp-feel" onclick="adaptFeelDifferent()">' + _uiT('ui.ich_fuehle_mich_anders_check') + '</button>';
-  el.innerHTML='<div class="adapt-card adp-'+state.toLowerCase()+'">'+head+safety+rec+avoid+why+week+actions+feel+'</div>';
+  if(typeof gmRenderDecisionCard==='function'){gmRenderDecisionCard();return;}
+  el.innerHTML='';el.style.display='none';
 }
 function adaptChoose(choice){var d=currentDecision();if(!d)return;var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice};if(typeof save==='function')save();renderAdaptCard();if(typeof toast==='function')toast(choice==='original'?'' + _uiT('ui.als_hinweis_angezeigt') + '':'' + _uiT('ui.anpassung_uebernommen') + '');}
 function adaptReopen(){var e=entry(todayStr());if(e.adaptChoice){delete e.adaptChoice;if(typeof save==='function')save();}renderAdaptCard();}
@@ -3046,7 +3026,9 @@ function renderDay(){if(typeof invalidateDecision==='function')invalidateDecisio
   if(typeof renderPauseBanner==='function')renderPauseBanner();
   /* GM7: renderAdaptCard/renderConfidence/renderTipEngine sind GM-fremde Legacy-Karten —
      Inhalte leben jetzt im Hero (changelog) bzw. im Readiness-&-Konfidenz-Modul. */
-  (function(){try{['adaptBox','confBox','insights'].forEach(function(id){var el=document.getElementById(id);if(el){el.innerHTML='';el.style.display='none';}});}catch(_){ }})();
+  (function(){try{['confBox','insights'].forEach(function(id){var el=document.getElementById(id);if(el){el.innerHTML='';el.style.display='none';}});}catch(_){ }})();
+  /* S4a (v14): #adaptBox traegt jetzt die GM-Tagesentscheidung (gmDecisionCard). */
+  try{if(typeof gmRenderDecisionCard==='function')gmRenderDecisionCard();}catch(_){ }
   if(typeof renderModules==='function')renderModules();
   if(typeof renderExtraCheckin==='function')renderExtraCheckin();
   if(window.ORVIA&&window.ORVIA.workoutUI&&window.ORVIA.workoutUI.renderEntry)window.ORVIA.workoutUI.renderEntry();
@@ -3230,10 +3212,38 @@ function recommendedRunVolume(){
   try{var rs=[];for(var i=0;i<7;i++){var s=(typeof readinessOf==='function')?readinessOf(dkey(-i)):null;if(s!=null)rs.push(s);}rd.avgReady=Calc.avg(rs);}catch(e){}
   return Calc.calculateRecommendedWeeklyRunVolume(prof,hist,rd);
 }
+/* S3 · P2 (SHADOW, 25.09.2026): neben der festen Tabelle den datengetriebenen
+   Kandidaten rechnen und protokollieren — ANGEZEIGT wird weiter die Tabelle.
+   Das Protokoll (localStorage orvia_shadow_lr_v1, je Datum+Woche ein Eintrag,
+   max 60) ist die Grundlage fuer die Umschalt-Entscheidung. Wirft nie. */
+var _lrShadowSeen={};
+function lrShadowRecord(wk,legacy){
+  try{
+    var LRP=(window.ORVIA&&ORVIA.longRunProgression)||null;if(!LRP)return null;
+    var g=goalOf();var dts=daysToSafe();
+    var lvlKey=null;try{var pm=window.ORVIA&&ORVIA.profileModel;lvlKey=(pm&&pm.primarySportLevel)?pm.primarySportLevel(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
+    var longest=null;try{longest=(typeof _longestRunKm==='function')?_longestRunKm(28):null;if(!(longest>0))longest=null;}catch(_){ }
+    var c=LRP.candidate({level:lvlKey,longest28Km:longest,raceKm:g&&g.distanceKm,weeksToRace:(dts!=null&&isFinite(dts))?dts/7:null});
+    var key=todayStr()+':'+wk;if(_lrShadowSeen[key])return c;_lrShadowSeen[key]=1;
+    var e={date:todayStr(),wk:wk,legacy:legacy,candidate:c.km,basis:c.basis,cap:c.cap,longest28:longest,level:lvlKey,peak:c.peakKm};
+    try{var raw=localStorage.getItem('orvia_shadow_lr_v1');var arr=raw?JSON.parse(raw):[];if(!Array.isArray(arr))arr=[];
+      arr=arr.filter(function(x){return !(x&&x.date===e.date&&x.wk===e.wk);});arr.push(e);if(arr.length>60)arr=arr.slice(-60);
+      localStorage.setItem('orvia_shadow_lr_v1',JSON.stringify(arr));}catch(_){ }
+    return c;
+  }catch(_){return null;}
+}
+function lrShadowReport(){
+  try{var raw=localStorage.getItem('orvia_shadow_lr_v1');var arr=raw?JSON.parse(raw):[];if(!Array.isArray(arr))arr=[];
+    var n=arr.length,diff=0,over=0,under=0;arr.forEach(function(x){if(x&&x.candidate!=null&&x.legacy!=null){var d=x.candidate-x.legacy;diff+=d;if(d>0)over++;else if(d<0)under++;}});
+    return {entries:n,meanDelta:n?Math.round(diff/n*10)/10:null,candidateHigher:over,candidateLower:under,rows:arr};
+  }catch(_){return {entries:0,meanDelta:null,candidateHigher:0,candidateLower:0,rows:[]};}
+}
 function lrKm(wk){
   // Nur echtes Lauf-Distanzziel mit Renndatum → Runna-Long-Run-Progression.
   if(typeof isRunDistanceGoal==='function'&&isRunDistanceGoal()&&goalOf().raceDate){
-    if(wk>=25)return null; if(wk>=22)return [12,10,8][wk-22]; return Math.max(7,Math.min(20,wk-2));
+    var _legacy=(wk>=25)?null:(wk>=22?[12,10,8][wk-22]:Math.max(7,Math.min(20,wk-2)));
+    try{lrShadowRecord(wk,_legacy);}catch(_){ }   /* SHADOW: nur protokollieren */
+    return _legacy;
   }
   // Sonst: profil-/historienbasiertes Long-Run-Limit (Anfänger konservativ).
   try{var v=recommendedRunVolume();return v.longRunKm||null;}catch(e){return null;}
@@ -6528,6 +6538,114 @@ function gmHero(d){
     '<div class="deltas">'+d.deltas.map(function(x){return '<span class="delta '+x[0]+'">'+arrow(x[0])+' '+gmEsc(x[1])+'</span>';}).join('')+'</div></div></div>'+
     reco+gmCtaRow(d)+gmBatt(d)+'</div>';
 }
+/* ============ S4a (v14): Tagesentscheidung als GM-Karte ============
+   Prototyp v14 dashAdp: Kopf (Zustand), „Heute" (empfohlene Einheit + Grund),
+   „Vermeiden" (vermiedene Einheit bzw. Abstand zum naechsten Kernreiz) und eine
+   protokollierte Wahl. Die Legacy-Karte renderAdaptCard() blieb seit GM7 leer
+   (#adaptBox wurde geloescht) — ihre Persistenz (entry.adaptChoice) bleibt die
+   EINZIGE Quelle der Wahl; neu ist nur, dass jede Wahl zusaetzlich append-only
+   ins Entscheidungs-Log geht (decisionType user_override, wie das Debrief).
+   Ehrlichkeit: ein „Tauschen" ohne echten Verschiebe-Mechanismus gibt es NICHT —
+   bei KEEP steht nur „Wie geplant" (Bestaetigung) plus der Weg ueber den
+   Check-in („Ich fuehle mich anders"). Keine toten Knoepfe. */
+function gmNextKeyUnit(){
+  try{
+    var wp=(typeof activeWeekPlan==='function')?activeWeekPlan():null;if(!wp||wp.length!==7)return null;
+    var ti=(new Date(todayStr()+'T12:00').getDay()+6)%7;
+    var DN=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
+    for(var di=ti+1;di<7;di++){var units=wp[di]||[];
+      for(var i=0;i<units.length;i++){if(gmPlanIsKeyUnit(units[i]))return {day:di,dayLbl:DN[di],label:units[i].l||'',gapDays:di-ti};}}
+  }catch(_){ }
+  return null;
+}
+function gmAdpChoice(d){
+  try{var e=DB[todayStr()];if(e&&e.adaptChoice&&e.adaptChoice.action===d.todayAction)return e.adaptChoice;}catch(_){ }
+  return null;
+}
+function gmAdpLog(d,choice){
+  try{
+    if(!(window.ORVIA&&ORVIA.decisionLog&&ORVIA.decisionLog.logDecision))return;
+    var ts=new Date().toISOString();
+    ORVIA.decisionLog.logDecision({
+      timestamp:ts,decisionType:'user_override',
+      decisionId:'adp:'+todayStr()+'@'+ts,
+      weekId:null,planId:null,registry:ORVIA,
+      inputs:{todayAction:d.todayAction,dayState:d.dayState,score:d.score,recommended:(d.recommendedSession&&d.recommendedSession.label)||null,avoided:(d.avoidedSession&&d.avoidedSession.label)||null},
+      selected:{choice:choice}
+    });
+  }catch(_){ }
+}
+function gmAdpChoose(choice){
+  var d=(typeof getDecision==='function')?getDecision():null;if(!d)return;
+  var e=entry(todayStr());e.adaptChoice={action:d.todayAction,choice:choice,at:new Date().toISOString()};
+  if(typeof save==='function')save();
+  gmAdpLog(d,choice);
+  gmRenderDecisionCard();
+  try{if(typeof toast==='function')toast(choice==='original'?'' + _uiT('ui.als_hinweis_angezeigt') + '':choice==='planned'?'' + _uiT('ui.adp_toast_planned') + '':'' + _uiT('ui.anpassung_uebernommen') + '');}catch(_){ }
+}
+function gmAdpReopen(){var e=entry(todayStr());if(e.adaptChoice){delete e.adaptChoice;if(typeof save==='function')save();}gmRenderDecisionCard();}
+function gmAdpTime(iso){try{if(!iso)return '';var t=new Date(iso);if(isNaN(t))return '';return t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr';}catch(_){return '';}}
+function gmDecisionCard(d){
+  if(!d||!d.dayState||!d.recommendedSession)return '';
+  var lvl=gmLevel();var st=String(d.dayState);
+  var hasChange=(d.todayAction!=='KEEP');
+  var ch=gmAdpChoice(d);
+  var head='<div class="adp-head">'+icon('pulse','sm')+'<span>' + _uiT('ui.tagesentscheidung') + '</span>'+
+    '<span class="adp-state adp-state-'+st.toLowerCase()+'">'+gmEsc((STATE_LABELS[st]||st)+' · '+(DECISION_WORD[st]||''))+'</span></div>';
+  var safety=(d.safety&&d.safety.triggered&&d.safety.advice)?'<div class="adp-caution">'+gmEsc(d.safety.advice)+'</div>':'';
+  var reason='';try{reason=(d.readinessReasons&&d.readinessReasons[0])||'';}catch(_){ }
+  var rec='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.adp_heute') + '</span><div class="adp-val"><b>'+gmEsc(d.recommendedSession.label)+'</b>'+
+    ((d.recommendedSession.detail||reason)?'<span>'+gmEsc([d.recommendedSession.detail||'',reason].filter(Boolean).join(' — '))+'</span>':'')+'</div></div>';
+  var avoid='';
+  if(d.avoidedSession&&d.avoidedSession.label){
+    avoid='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val"><b class="adp-muted">'+gmEsc(d.avoidedSession.label)+'</b>'+(d.avoidedSession.detail?'<span>'+gmEsc(d.avoidedSession.detail)+'</span>':'')+'</div></div>';
+  }else if(lvl!=='a'){
+    var nk=gmNextKeyUnit();
+    if(nk)avoid='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.vermeiden') + '</span><div class="adp-val"><b class="adp-muted">' + _uiT('ui.adp_avoid_default') + '</b><span>'+gmEsc(_uiT('ui.adp_next_key',{day:nk.dayLbl,label:nk.label}))+'</span></div></div>';
+  }
+  /* Wochenverschiebungen (Engine MOVE_SESSION/REBUILD_WEEK): der EINZIGE echte
+     „Tauschen"-Mechanismus — mit Undo-Snapshot (PROFILE._planUndo). */
+  var week='';
+  try{
+    var DN2=['' + _uiT('ui.mo_') + '','' + _uiT('ui.di') + '','' + _uiT('ui.mi') + '','' + _uiT('ui.do') + '','' + _uiT('ui.fr') + '','' + _uiT('ui.sa') + '','' + _uiT('ui.so') + ''];
+    var moves=(d.weekAdjustments||[]).filter(function(c){return c.action==='MOVE_SESSION'||c.action==='REBUILD_WEEK';});
+    var applied=(typeof weekAdjustmentsApplied==='function')&&weekAdjustmentsApplied();
+    if(applied){
+      week='<div class="adp-done adp-done-hint">'+icon('calendar','sm')+' <b>' + _uiT('ui.wochenplan_angepasst_') + '</b>' + _uiT('ui.aenderungen_gespeichert_siehe_plan') + '<span class="lk" role="button" tabindex="0" onclick="revertWeekAdjustments()">' + _uiT('ui.rueckgaengig') + '</span></div>';
+    }else if(moves.length){
+      week='<div class="adp-block"><span class="adp-lab">' + _uiT('ui.adp_woche') + '</span><div class="adp-val"><b class="adp-muted">' + _uiT('ui.wochenplan_vorschlag') + '</b><span>'+moves.map(function(c){return c.action==='MOVE_SESSION'?gmEsc('' + _uiT('ui.harte_einheit') + ''+(DN2[c.day]||'')+'' + _uiT('ui.48_h_abstand_kein_konflikt') + ''):gmEsc(c.reason||'');}).join(' ')+'</span>'+
+        '<div class="adp-btns" style="margin-top:8px"><button onclick="applyWeekAdjustments(true)">' + _uiT('ui.wochenplan_anpassen') + '</button></div></div></div>';
+    }
+  }catch(_){week='';}
+  var body;
+  if(ch&&ch.choice==='accepted'){
+    body='<div class="adp-done">'+icon('check','sm')+' '+gmEsc(_uiT('ui.adp_done_accepted',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(ch&&ch.choice==='planned'){
+    body='<div class="adp-done">'+icon('check','sm')+' '+gmEsc(_uiT('ui.adp_done_planned',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(ch&&ch.choice==='original'){
+    body='<div class="adp-done adp-done-hint">'+icon('info','sm')+' '+gmEsc(_uiT('ui.adp_done_hint',{time:gmAdpTime(ch.at)}))+' <span class="lk" role="button" tabindex="0" onclick="gmAdpReopen()">' + _uiT('ui.adp_change') + '</span></div>';
+  }else if(hasChange){
+    body='<div class="adp-btns"><button class="pri" onclick="gmAdpChoose(\'accepted\')">' + _uiT('ui.adp_change_accept') + '</button>'+
+      '<button onclick="gmAdpChoose(\'original\')">' + _uiT('ui.adp_hint_only') + '</button></div>'+
+      '<div class="interf adp-interf">'+icon('info','xs')+' <div>' + _uiT('ui.adp_protocol_change') + '</div></div>';
+  }else{
+    body='<div class="adp-btns"><button class="pri" onclick="gmAdpChoose(\'planned\')">' + _uiT('ui.adp_wie_geplant') + '</button>'+
+      '<button onclick="adaptFeelDifferent()">' + _uiT('ui.ich_fuehle_mich_anders_check') + '</button></div>'+
+      '<div class="interf adp-interf">'+icon('info','xs')+' <div>' + _uiT('ui.adp_protocol_keep') + '</div></div>';
+  }
+  return '<div class="card adx-decision adp-'+st.toLowerCase()+'" id="gmAdp">'+head+safety+rec+avoid+week+body+'</div>';
+}
+function gmRenderDecisionCard(){
+  var el=document.getElementById('adaptBox');if(!el)return;
+  var html='';
+  try{
+    if(typeof cur==='undefined'||cur===todayStr()){
+      var state=(typeof window!=='undefined'&&window._gmStateOverride)||((typeof gmDashState==='function')?gmDashState():'normal');
+      if(state==='normal'||state==='offline'){var d=(typeof getDecision==='function')?getDecision():null;if(d)html=gmDecisionCard(d);}
+    }
+  }catch(_){html='';}
+  el.innerHTML=html;el.style.display=html?'':'none';
+}
 /* Check-in-Karte (GM): steuert NUR das bestehende Formular (#checkinCard) — nie neu erzeugen. */
 function renderCheckinCompact(){try{
   var box=document.getElementById('checkinCompact');if(!box)return;
@@ -7050,6 +7168,12 @@ function openScore(){
        (gmConfVM: dataConfidence()+Baseline-Status), identisch zu gmModReadinessPro. */
     (d.conf&&d.conf.levelLabel?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b style="color:'+(SC[d.conf.levelColor]||'var(--muted)')+'">'+gmEsc(d.conf.levelLabel)+'</b></span>'+(d.conf.complete?'<span class="confchip">'+icon('db','xs')+' Daten <b>'+gmEsc(d.conf.complete)+'</b></span>':'')+'<span class="confchip">'+icon('pulse','xs')+' HRV-Abw. <b>'+(d.conf.sd!=null?gmEsc(d.conf.sd):'—')+'</b></span></div>'+(d.conf.note?'<p style="margin-top:10px;color:var(--muted);font-size:11.5px">'+gmEsc(d.conf.note)+'</p>':'')+'</div>':'')+
     (gmLevel()==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.berechnung') + '</div><p>' + _uiT('ui.zentrale_entscheidung_der_orvia_engine') + '</p></div>':'')+
+    /* S4b (v14): Basis-Zeile (Prototyp scoreRender „Basis … · Baselines 28 T. · Konfidenz")
+       aus echten Werten: gewichtete Teilwerte (scoreParts), recoveryCtx = 28-Tage-Fenster,
+       Konfidenz = dataConfidence(). Danach „Was der Score NICHT ist" mit den REALEN
+       Schwellen aus calc.dayStateEngine (70/55/40) und Peak (>= 85, calc peakOK). */
+    '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.score_basis',{conf:(d.conf&&d.conf.levelLabel)||GM_NA}))+'</div>'+
+    '<div class="sh-block score-not"><div class="bh">' + _uiT('ui.score_not_title') + '</div><p style="margin:0;color:var(--muted);font-size:12px;line-height:1.6">' + _uiT('ui.score_not_body') + '</p></div>'+
     '<div class="source">'+icon('db','xs')+' ORVIA-Engine · Anzeige ohne Neuberechnung</div>';
   gmOpenSheet('detailSheet');
 }
@@ -7723,10 +7847,23 @@ function gmOpenPlanSettingsSheet(){
    orvia-pro.js: Wochenvertrag + Readiness/Schlaf/Beschwerde-Mittel), plus der
    bestehende Coach-Briefing-Export (copyAIReview: vollstaendiges Datenpaket als
    Prompt in die Zwischenablage). Kein zweiter Rechenweg. */
+var _gmRevOff=0,_gmRevSport='running';
+function gmReviewSetOff(off){_gmRevOff=(off==='m')?'m':(off===-1)?-1:0;gmOpenWeekReviewSheet();}
+function gmReviewSetSport(sp){_gmRevSport=sp||'running';gmOpenWeekReviewSheet();}
 function gmOpenWeekReviewSheet(){
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var body='';
-  try{body=(typeof weeklyReviewHTML==='function')?weeklyReviewHTML():'<p class="muted">'+GM_NA+'</p>';}catch(_){body='<p class="muted">'+GM_NA+'</p>';}
+  /* S5b (v14): Rueckblick aus review-v14 (Planerfuellung, Kennzahlen, Belastung,
+     Stellschraube, Erholung, Vergleich) mit Umschalter Diese Woche / Vorwoche;
+     ohne Modul bleibt die Legacy-Liste (orvia-pro weeklyReviewHTML). */
+  try{
+    var RV=window.ORVIA&&ORVIA.reviewV14;
+    if(RV&&RV.model){
+      body='<div class="rev-seg"><button type="button"'+(_gmRevOff===0?' class="on"':'')+' onclick="gmReviewSetOff(0)">' + _uiT('rev.diese_woche') + '</button><button type="button"'+(_gmRevOff===-1?' class="on"':'')+' onclick="gmReviewSetOff(-1)">' + _uiT('rev.vorwoche') + '</button>'+
+        (RV.monthModel?'<button type="button"'+(_gmRevOff==='m'?' class="on"':'')+' onclick="gmReviewSetOff(\'m\')">' + _uiT('rev.monat') + '</button>':'')+'</div>'+
+        ((_gmRevOff==='m'&&RV.monthModel)?RV.monthHtml(RV.monthModel({sport:_gmRevSport})):RV.html(RV.model(_gmRevOff)));
+    }else body=(typeof weeklyReviewHTML==='function')?weeklyReviewHTML():'<p class="muted">'+GM_NA+'</p>';
+  }catch(_){body='<p class="muted">'+GM_NA+'</p>';}
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--activity-t);color:var(--activity)">'+icon('chart')+'</div><div><h3>' + _uiT('ui.wochenreview') + '</h3><div class="sh-sub" style="margin:2px 0 0">' + _uiT('ui.kanonischer_wochenvertrag_mo_so') + '</div></div></div>'+
     '<div class="sh-block">'+body+'</div>'+
     '<div class="sheet-cta"><button class="sec" onclick="typeof copyAIReview===\'function\'&&copyAIReview()">'+icon('copy','sm')+' Coach Briefing kopieren</button></div>'+
@@ -7816,7 +7953,18 @@ var GM_FEAS_TEXT={within_modeled_corridor:'' + _uiT('ui.im_rahmen_dessen_was_das
 var GM_MISSING_TEXT={current_performance:'' + _uiT('ui.ein_gemessener_leistungswert') + '',
   current_performance_not_decision_eligible:'' + _uiT('ui.ein_leistungswert_mit_datum_undatiert') + '',
   goal:'' + _uiT('ui.eine_bezifferte_zielzeit') + ''};
-function gmGoalForecastCard(lvl,perfBySport){
+/* S3b (v14 „Engpass"): der strukturelle Engpass der angezeigten Woche gegenueber dem Ziel —
+   aus der Zielabdeckung der Planqualitaet (plan-quality.goalScore.limiting), keine neue Rechnung. */
+var GM_BOTTLENECK_KEY={no_long_run:'ui.engpass_kein_long_run',too_few_run_days:'ui.engpass_zu_wenige_lauftage',no_quality_session:'ui.engpass_keine_qualitaetseinheit'};
+function gmGoalBottleneckText(pqEval){
+  try{
+    var gc=pqEval&&pqEval.subscores&&pqEval.subscores.goalCoverage;
+    var lim=(gc&&Array.isArray(gc.limiting))?gc.limiting.filter(function(k){return !!GM_BOTTLENECK_KEY[k];}):[];
+    if(!lim.length)return null;
+    return lim.map(function(k){return _uiT(GM_BOTTLENECK_KEY[k]);}).join(' · ');
+  }catch(_){return null;}
+}
+function gmGoalForecastCard(lvl,perfBySport,pqEval){
   var runPerf=(perfBySport&&perfBySport.running)||null;
   var goal=null;try{goal=(typeof goalOf==='function')?goalOf():null;}catch(_){ }
   var feas=null;
@@ -7846,17 +7994,60 @@ function gmGoalForecastCard(lvl,perfBySport){
       beyond:'' + _uiT('ui.deine_zielzeit') + ''+gmGoalForecastMin(v.target)+'' + _uiT('ui.liegt_unter_dem_was_der') + ''}[v.reachable];
     if(tw)tgtTxt=' '+gmEsc(tw);
   }
-  var statusTxt=v.status?('<b>'+gmEsc(GM_FEAS_TEXT[v.status]||v.status)+'.</b>'):'';
+  /* S3b (Gian, 25.09.): Realismus-Urteil. „ok" schweigt — ein realistisches Ziel
+     braucht keinen Stempel. „knapp" und „unrealistisch" werden sichtbar, mit
+     dem Vorschlag, den der Bewerter hergibt (sichere Zielzeit / fruehestes Datum). */
+  var verdict=gmGoalVerdictHTML(goal);
+  var statusTxt=(v.status==='insufficient_data')?('<b>'+gmEsc(GM_FEAS_TEXT[v.status])+'.</b>'):'';
   var weeksTxt=(v.weeks&&v.weeks.min!=null)
     ?('' + _uiT('ui.geschaetzter_zeitraum_etwa') + ''+gmEsc(String(v.weeks.min))+(v.weeks.max!=null?' bis '+gmEsc(String(v.weeks.max))+'' + _uiT('ui.wochen') + '':'' + _uiT('ui.wochen_oder_deutlich_mehr') + '')+'' + _uiT('ui.spanne_keine_terminzusage') + ''):'';
   var basisTxt=(lvl==='p'&&v.confidence)
     ?('' + _uiT('ui.grundlage_beleglage') + ''+gmEsc(String(v.confidence))+'' + _uiT('ui.bandbreite') + ''+gmEsc(String(v.bandPct))+' %.'):'';
-  return '<div class="card"><div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
+  /* S3b (v14): Prognosezeit gross, daneben Ziel und Abstand — keine neue Rechnung,
+     nur die drei Zahlen, die die Karte ohnehin traegt (realistischer Wert, Ziel). */
+  var head='';
+  if(v.realistic>0){
+    var dPct=(v.target>0)?Math.round((v.realistic-v.target)/v.target*1000)/10:null;
+    head='<div class="fc-head"><b>'+gmEsc(gmGoalForecastMin(v.realistic))+'</b><span>' + _uiT('ui.prognose_heute') + ''+
+      (v.target>0?' · ' + _uiT('ui.prognose_ziel') + ' '+gmEsc(gmGoalForecastMin(v.target))+(dPct!=null?' <i class="'+(dPct>0?'over':'under')+'">'+(dPct>0?'+':'')+gmEsc(String(dPct).replace('.',','))+' %</i>':''):'')+'</span></div>';
+  }
+  return '<div class="card">'+head+'<div class="fc-labels"><span>vorsichtig '+gmEsc(gmGoalForecastMin(v.cautious))+
       '</span><span>realistisch '+gmEsc(gmGoalForecastMin(v.realistic))+
       '</span><span>optimistisch '+gmEsc(gmGoalForecastMin(v.optimistic))+'</span></div>'+
     '<div class="fc-corridor"><div class="fc-band" style="left:'+inset+'%;right:'+inset+'%"></div></div>'+
+    verdict+
+    (function(){var b=gmGoalBottleneckText(pqEval);return b?'<div class="goalmeta fc-bottleneck"><span>' + _uiT('ui.engpass_diese_woche') + '</span><span>'+gmEsc(b)+'</span></div>':'';})()+
     '<div class="mini-note">'+icon('info','xs')+'<div>'+statusTxt+tgtTxt+weeksTxt+basisTxt+
       ' Modellwert aus deiner gemessenen Referenz — keine Garantie.</div></div></div>';
+}
+/* S3b: Realismus-Block fuer die Prognosekarte — nur bei tight/unrealistic. */
+function gmGoalRealismNow(goal){
+  try{
+    var GR=(window.ORVIA&&ORVIA.goalRealism)||null;if(!GR)return null;
+    var obs=(window.ORVIA&&ORVIA._lastFeasibility)||null;
+    return GR.grade(obs,(typeof todayStr==='function')?todayStr():null);
+  }catch(_){return null;}
+}
+function gmFmtSecHMS(sec){sec=Math.round(sec);var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),x=sec%60;return h?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0');}
+function gmGoalVerdictText(r){
+  if(!r||(r.grade!=='tight'&&r.grade!=='unrealistic'))return null;
+  var isTime=(r.metric==='race_time');
+  var parts=[];
+  parts.push(r.grade==='unrealistic'?_uiT('ui.ziel_unrealistisch_im_zeitraum'):_uiT('ui.ziel_knapp'));
+  if(r.weeksNeeded&&r.weeksNeeded.min!=null){
+    var wMin=String(Math.round(r.weeksNeeded.min)),wMax=r.weeksNeeded.max!=null?String(Math.round(r.weeksNeeded.max)):null;
+    parts.push(wMax!=null?_uiT('ui.laut_modell_braucht_es_spanne',{min:wMin,max:wMax}):_uiT('ui.laut_modell_braucht_es_min',{min:wMin}));
+    if(r.weeksAvailable!=null)parts.push(_uiT('ui.bis_zum_datum_sind_es',{weeks:String(Math.round(r.weeksAvailable))}));
+  }
+  if(isTime&&r.safeTarget>0)parts.push(_uiT('ui.sicher_im_rahmen_bis',{time:gmFmtSecHMS(r.safeTarget)}));
+  return parts.join(' ');
+}
+function gmGoalVerdictHTML(goal){
+  var r=gmGoalRealismNow(goal);var txt=gmGoalVerdictText(r);if(!txt)return '';
+  var gid='';try{gid=(goal&&goal._canonicalId)||(typeof mainGoalOf==='function'&&mainGoalOf()&&mainGoalOf().id)||'';}catch(_){ }
+  var open=gid?"ORVIA.screens.profileV14.openGoalSheet('"+gmEsc(gid)+"')":"ORVIA.screens.profileV14.openGoalSheet()";
+  return '<div class="fc-verdict '+(r.grade==='unrealistic'?'crit':'att')+'" data-grade="'+r.grade+'">'+icon(r.grade==='unrealistic'?'alert':'info','xs')+
+    '<div>'+gmEsc(txt)+' <span class="edit" role="button" tabindex="0" onclick="'+open+'" onkeydown="if(event.key===\'Enter\')'+open+'">' + _uiT('ui.ziel_anpassen') + '</span></div></div>';
 }
 /* ============================================================
    v8-316 · PLANQUALITÄT — die sechs Kacheln bekommen Werte.
@@ -8143,6 +8334,7 @@ function renderGMPlan(){
   try{_dayCfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(typeof PROFILE!=='undefined'?PROFILE:null):null;}catch(_){ }
   var cards='';
   var _keyDays=[];   /* S3a: Tage mit Kernreiz (fuer die Notiz unter der Liste) */
+  var _nextKeyMarked=false;   /* S3b: genau EINE Einheit traegt „Naechster Reiz" */
   for(var di=0;di<7;di++){
     var items=week[di]||[];var k=(typeof dayKeys!=='undefined'&&dayKeys[di])||'';
     /* Bugfix (2026-08-05, Nutzer-Feedback): zeigte bisher NUR "Tag.Monat" (z. B. "3.8"),
@@ -8187,6 +8379,9 @@ function renderGMPlan(){
           }
         }
       }catch(_){ }
+      /* S5a (v14): Debrief-Urteil auf der Karte (Prototyp „Debrief: zaehlt voll") —
+         nur aus dem gespeicherten Record derselben Occurrence, nichts nachgerechnet. */
+      try{if(done){var _dbr=gmDbRecordFor(occ,k,it);if(_dbr&&_dbr.judged){var _dbv=gmDebriefVerdict(_dbr,{planLink:occ});subP+=' · <span class="db-tag '+_dbv.cls+'">'+_uiT('ui.dbv_prefix')+' '+gmEsc(_dbv.title)+'</span>';}}}catch(_dbx){ }
       /* GM7.5g (Audit-Revert): Kern/Flexibel-Badges kamen aus derselben unitPriority-
          Label-Heuristik — keine Engine-Klassifikation, daher entfernt (kein erfundener
          Prioritaetsstatus; Erledigt/— kommt weiterhin aus dem echten Resolver). */
@@ -8207,7 +8402,13 @@ function renderGMPlan(){
            Ohne Vorgaben liefert der Helfer '' — Altbestand sieht unveraendert
            aus, kein leerer Kasten. */
         gmPlannedLinesHTML(it)+gmRxLinesHTML(it)+'</span>'+
-        '<span class="session-state'+(done?' done':'')+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':'—'))+'</span></div>';
+        /* S3b (v14): Zustands-Badge sagt, was die Einheit IST — „Geplant" statt „—";
+           die naechste offene Kernreiz-Einheit dieser Woche (ab heute) heisst „Naechster Reiz". */
+        (function(){
+          var _isNext=false;
+          try{if(!done&&!pSkip&&isKeyU&&_wOff===0&&!_nextKeyMarked&&dayKeys[di]>=todayStr()){_isNext=true;_nextKeyMarked=true;}}catch(_n){ }
+          return '<span class="session-state'+(done?' done':(_isNext?' today':''))+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':(_isNext?'' + _uiT('ui.naechster_reiz') + '':'' + _uiT('ui.geplant_badge') + '')))+'</span></div>';
+        })();
       /* IST-Werte einer absolvierten Einheit — der eigentliche Zweck des
          Zurueckblaetterns. Quelle ist ausschliesslich der Resolver (`actual`);
          fehlt dort ein Wert, wird er weggelassen statt geschaetzt. */
@@ -8246,6 +8447,9 @@ function renderGMPlan(){
     var _kd=[];_keyDays.forEach(function(d){if(_kd.indexOf(d)<0)_kd.push(d);});
     h+='<div class="mini-note" style="margin:-6px 18px 16px">'+icon('info','xs')+'<div><b>' + _uiT('ui.kernreize') + '</b> '+gmEsc(_uiT('ui.kernreize_note',{days:_kd.join('/')}))+'</div></div>';
   }
+  /* S3b (v14): EIN Statement der adaptiven Einschaetzung vor der Planqualitaet —
+     erst das Urteil, dann die Diagnose. Nur ab Stufe Fortgeschritten (wie zuvor). */
+  if(lvl!=='a')h+=gmAdaptiveSection();
   /* 7–8. Planqualität (E3-Quelle read-only; 6 strukturelle Zellen mit —) */
   var pq=null;try{pq=planQualityChecks();}catch(_){ }
   var _pqEval=gmPlanQualityEval(week,_perfBySport);
@@ -8265,7 +8469,7 @@ function renderGMPlan(){
     var _gLbl='';try{var _g=goalOf();var _rl=(typeof raceLabel==='function')?raceLabel(_g&&_g.type):null;var _tm=(typeof goalTargetMinOrNull==='function')?goalTargetMinOrNull():null;
       if(_rl)_gLbl=' · '+_rl+(_tm!=null?' '+Math.floor(_tm/60)+':'+String(_tm%60).padStart(2,'0'):'');}catch(_){ }
     h+='<div class="sectlabel" data-gm-slot="plan-goal-forecast">Zielprognose'+gmEsc(_gLbl)+'</div>';
-    h+=gmGoalForecastCard(lvl,_perfBySport);
+    h+=gmGoalForecastCard(lvl,_perfBySport,_pqEval);
     /* v8-314: ADAPTIVE EINSCHAETZUNG im SICHTBAREN Plan-Tab.
        Der Renderer (js/adaptive-card.js) existiert seit v8-283, ist String->String
        und als Verhalten getestet — er schrieb aber ausschliesslich in
@@ -8277,7 +8481,7 @@ function renderGMPlan(){
        View-Vertrag benutzt: keine zweite Darstellung, keine eigene Rechnung.
        FAIL-SOFT bleibt: ohne Beobachtung liefert render() den leeren String,
        dann entfaellt der Abschnitt ersatzlos (keine halb gefuellte Karte). */
-    h+=gmAdaptiveSection();
+    /* S3b: Adaptive Einschaetzung steht jetzt VOR der Planqualitaet (Statement vor Diagnose) — siehe unten. */
     /* 9b. Phasen — Saisonmodell (wie Kopf + Profil), Fallback Calc.racePhases read-only */
     var phases=[];try{var _spn=gmSeasonNow();phases=_spn?_spn.phases.slice():(Calc.racePhases(RACE.date,todayStr())||[]);}catch(_){ }
     var t0=todayStr();
@@ -8910,9 +9114,19 @@ function gmOpenActivityPage(aid){
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen). */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
     h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
-  /* Debrief NUR aus bestehender produktiver Bewertung; sonst ehrliche Missingness. */
-  h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p>'+
-    '<div class="coach-tags"><span>'+(rate?'' + _uiT('ui.beibehalten') + ''+gmEsc(rate.badge):'' + _uiT('ui.das_beibehalten') + '')+'</span><span>'+(rate&&rate.next?gmEsc(rate.next):'' + _uiT('ui.naechstes_mal') + '')+'</span><span>'+(rate?'' + _uiT('ui.planwirkung') + '':'' + _uiT('ui.auswirkung_auf_die_planung') + '')+'</span></div></div>';
+  /* S5a (v14): Debrief als Zustand aus dem kanonischen Record (gmDebriefModel) —
+     Soll/Ist-Zeilen + Mitnahmen nur aus Record-Feldern; freie Einheit behaelt den
+     bisherigen Bewertungstext (rateActivity) als Einordnung. */
+  try{
+    var _dbRec=gmDbRecordFor(vm.planLink||null,vm.date||null,null);
+    var _dbAct={distanceKm:(a.summary&&a.summary.distanceKm!=null)?a.summary.distanceKm:null,durationMin:(a.durationSeconds!=null)?a.durationSeconds/60:null,paceSecPerKm:null};
+    if(_dbAct.distanceKm>0&&_dbAct.durationMin>0)_dbAct.paceSecPerKm=Math.round(_dbAct.durationMin*60/_dbAct.distanceKm);
+    var _dbM=gmDebriefModel(_dbRec,_dbAct,{fam:_fam,planLink:vm.planLink||null});
+    h+='<div style="margin:0 18px 14px">'+gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null})+'</div>';
+  }catch(_dbE){
+    /* Rueckfall (z. B. Debrief-Helfer nicht geladen): bisherige Karte aus der bestehenden Bewertung. */
+    h+='<div class="coach-card"><h3>'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</h3><p>'+(rate?gmEsc(rate.txt):'' + _uiT('ui.ein_kanonisches_debrief_ist_fuer') + '')+'</p></div>';
+  }
   /* GM7.9: Krafttraining — Uebungs- & Satzliste aus den ECHTEN gespeicherten Saetzen
      (Snapshot/Legacy-Log). Reine Wiedergabe + Summen; ohne Details ehrlicher Leerzustand. */
   if(_fam==='gym'){
@@ -9193,13 +9407,39 @@ var GM_SPORT_ICON_EXTRA={
 function gmSportTileIcon(n,c){if(GM_SPORT_ICON_EXTRA[n])return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24">'+GM_SPORT_ICON_EXTRA[n]+'</svg>';return icon(n,c);}
 /* ---------- Training-Start-Sheet (GM-Einstieg; nur bestehende produktive Start-Handler) ---------- */
 var _gmStartCtx={mode:null,sport:null};
+/* S3c (v14 Schnellstart): die Sport-Kacheln des Start-Sheets als EINE Liste — auch der
+   Schnellzugriff (quick-actions.js) liest sie, damit Reihenfolge, Icon und Farbe je
+   Sportart nur an einer Stelle stehen. */
+var GM_START_SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
+var GM_SPORT_ID_TO_START={running:'Laufen',gym:'Krafttraining',strength:'Krafttraining',cycling:'Radfahren',swimming:'Schwimmen',football:'Fußball',mobility:'Mobility'};
+/* Kacheln fuer den Schnellzugriff: die AKTIVEN Sportarten des Profils (Hauptsport zuerst),
+   hoechstens `max`, nur solche, die das Start-Sheet kennt. Rein, ohne DOM. */
+function gmQuickStartTiles(profile,max){
+  var lim=(max>0)?max:3,out=[],seen={};
+  try{
+    var sp=(profile&&Array.isArray(profile.sports))?profile.sports.slice():[];
+    sp.sort(function(a,b){var ra=(a&&a.role==='primary')?0:1,rb=(b&&b.role==='primary')?0:1;return ra-rb;});
+    sp.forEach(function(e){
+      if(out.length>=lim||!e||e.activeInApp===false)return;
+      var id=typeof e==='string'?e:e.sportId;var label=GM_SPORT_ID_TO_START[id];if(!label||seen[label])return;
+      var row=null;GM_START_SPORTS.forEach(function(r){if(r[0]===label)row=r;});if(!row)return;
+      seen[label]=1;out.push({sport:row[0],icon:row[1],color:row[2],sportId:id});
+    });
+  }catch(_){ }
+  return out;
+}
+/* Einstieg aus dem Schnellzugriff: Start-Sheet oeffnen und die Sportart direkt vorwaehlen. */
+function gmQuickStart(sport){
+  try{if(typeof gmOpenStartSheet==='function')gmOpenStartSheet();}catch(_){ }
+  try{if(sport&&typeof gmStartSport==='function')gmStartSport(sport);}catch(_){ }
+}
 function gmOpenStartSheet(mode){
   _gmStartCtx={mode:mode||null,sport:null,explicit:false};
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var title=mode==='planned'?'' + _uiT('ui.geplante_einheit_starten') + '':mode==='repeat'?'' + _uiT('ui.letztes_training_wiederholen') + '':mode==='free'?'' + _uiT('ui.freies_training') + '':'' + _uiT('ui.training_starten') + '';
   var sub=lvl==='a'?'' + _uiT('ui.waehle_deine_sportart') + '':lvl==='p'?'' + _uiT('ui.sportart_geplant_frei_pre_start') + '':'' + _uiT('ui.sportart_waehlen_dann_geplant_oder') + '';
-  var SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
+  var SPORTS=GM_START_SPORTS;
   sh.innerHTML='<div class="grab"></div><h3>'+title+'</h3><div class="sh-sub">'+sub+'</div>'+
     '<div class="sport-grid">'+SPORTS.map(function(s){return '<button class="sport-tile" onclick="gmStartSport(\''+s[0]+'\')"><span class="st-ic" style="background:'+s[2]+';color:#0c1017">'+gmSportTileIcon(s[1],'sm')+'</span><b>'+s[0]+'</b></button>';}).join('')+'</div>';
   gmOpenSheet('detailSheet');
@@ -11245,7 +11485,16 @@ function gmProfAbout(){
     '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
     gmPRow('info','ORVIA','' + _uiT('ui.progressive_web_app') + '',gmOrviaBuildLabel(),'',false)+
     gmPRow('shield','' + _uiT('ui.medizinischer_hinweis') + '','' + _uiT('ui.kein_ersatz_fuer_medizinische_diagnose') + '','','',false)+
-    gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true)+'</div>';
+    /* S4c (v14): der Rundgang ersetzt die tote „Dokumentation folgt"-Zeile — echter
+       Einstieg (Profil → Hilfe), nie automatisch (M9). Ohne Modul bleibt die Zeile inaktiv. */
+    ((window.ORVIA&&ORVIA.tour&&ORVIA.tour.start)
+      ?gmPRow('book','' + _uiT('ui.rundgang_starten') + '','' + _uiT('ui.rundgang_sub') + '','','gmStartTour()')
+      :gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true))+'</div>';
+}
+function gmStartTour(){
+  try{if(typeof closeProfile==='function')closeProfile();}catch(_){ }
+  try{if(typeof gmCloseProfPage==='function')gmCloseProfPage();}catch(_){ }
+  try{if(window.ORVIA&&ORVIA.tour)ORVIA.tour.start();}catch(_){ }
 }
 /* ---------- GM5.3: Zeilenregister der Profil-Unterseiten ----------
    Die beiden Register halten ausschliesslich die Werte, die die jeweilige Zeile
@@ -11502,6 +11751,8 @@ function gmPcCompute(){
     try{if(sp==='run'&&dKm!=null&&tMin!=null&&window.Calc&&typeof Calc.riegel==='function')v=Calc.riegel(dKm,tMin,P[id]);}catch(_){ }
     el.textContent=(v!=null)?gmPcFmtHms(v):'—';
   });
+  /* S5c: Pacing-Plan nur beim Laufen aus einem vollstaendigen Paar; sonst Leerhinweis. */
+  try{var pe=document.getElementById('pcPlan');if(pe&&window.ORVIA&&ORVIA.pacingPlan){var pl=(sp==='run'&&dKm!=null&&tMin!=null)?ORVIA.pacingPlan.plan(dKm,tMin*60):null;pe.innerHTML=gmPcPlanHTML(pl);}}catch(_){ }
 }
 function gmProfPaceCalc(){
   var sp=_gmPcSport,tgt=_gmPcTarget;
@@ -11524,9 +11775,61 @@ function gmProfPaceCalc(){
     h+='<div class="sectlabel">' + _uiT('ui.wettkampfprognosen') + '</div><div class="card"><div class="link-row">'+
       [['5 km','pcP5'],['10 km','pcP10'],['Halbmarathon','pcPHM']].map(function(r){return '<div class="calc-field" style="margin-bottom:8px"><label>'+r[0]+'</label><b id="'+r[1]+'" style="font-size:16px">—</b></div>';}).join('')+
       '</div><div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.riegel_schaetzung_aus_deiner_eingabe') + '</div></div></div>';
+    /* S5c (v14): Pacing-Plan aus Distanz + Zeit (engine/pacing-plan.js), gefuellt in gmPcCompute. */
+    if(window.ORVIA&&ORVIA.pacingPlan)h+='<div class="sectlabel">' + _uiT('ui.pacing_plan') + '</div><div class="card" id="pcPlan">'+gmPcPlanHTML(null)+'</div>';
   }
   h+='</div><div class="tabspacer"></div>';
   return h;
+}
+function gmPcPlanHTML(pl){
+  if(!pl)return '<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.pacing_leer') + '</div></div>';
+  var SEG=[_uiT('ui.pacing_seg_start'),_uiT('ui.pacing_seg_rhythm'),_uiT('ui.pacing_seg_release')];
+  return '<div class="rev-text">'+gmEsc(_uiT('ui.pacing_intro',{avg:pl.fmt.avg}))+'</div><div class="rc-splits">'+
+    pl.fmt.segments.map(function(sg,i){return '<div class="rc-srow"><span class="km">km '+gmEsc(sg[0])+'</span><span class="pace"><b>'+gmEsc(sg[1])+' /km</b> · '+gmEsc(SEG[i])+'</span><span class="cum">'+gmEsc(sg[2])+'</span></div>';}).join('')+
+    '<div class="rc-srow fin"><span class="km">' + _uiT('ui.pacing_ziel') + '</span><span class="pace">'+gmEsc(fmtDe(Math.round(pl.distanceKm*10)/10))+' km</span><span class="cum">'+gmEsc(pl.fmt.total)+'</span></div></div>'+
+    '<div class="rc-halves"><div class="rc-half"><b>'+gmEsc(pl.fmt.h1)+'</b><span>' + _uiT('ui.pacing_h1') + '</span></div><div class="rc-half"><b>'+gmEsc(pl.fmt.h2)+'</b><span>' + _uiT('ui.pacing_h2') + '</span></div></div>'+
+    '<div class="source">'+icon('info','xs')+' '+gmEsc(_uiT('ui.pacing_quelle',{off:pl.offsetSec}))+'</div>';
+}
+/* ============ S6a (v14 pgStrength): Profilstaerke als eigene Seite ============
+   Jede Eingabe, die der Planer liest (engine/profile-inputs, nur belegte Leser),
+   mit Zustand vorhanden / geschaetzt / fehlt, Wirkung und Weg zum Editor. Der
+   Score oben ist der bestehende B-03-Wert (profileCenter.buildStrength). */
+function gmProfInputsCtx(){
+  var p=(typeof PROFILE!=='undefined'&&PROFILE)?PROFILE:{};
+  var O=window.ORVIA||{};var M=O.profileModel||null;
+  var c={p:p,planInput:null,perf:null,primary:null,availableDays:null,sections:{},hasCheckinRhr:false};
+  try{var mg=(typeof mainGoalOf==='function')?mainGoalOf():null;if(O.goalPlanInput)c.planInput=O.goalPlanInput.resolve({goal:mg,today:todayStr(),canon:(M&&M.canonGoalCategory)||null,taper:O.goalTaperResolver||null});}catch(_){ }
+  try{c.perf=(O.profileCenter&&O.profileCenter.resolvePerformance)?O.profileCenter.resolvePerformance(p):((O._lastPlanPerf!=null)?O._lastPlanPerf:null);}catch(_){ }
+  try{if(M&&M.normalizeSports)c.primary=M.normalizeSports(p.sports).filter(function(s){return s.role==='primary';})[0]||null;}catch(_){ }
+  try{var cfg=M&&M.effectiveTrainingConfig?M.effectiveTrainingConfig(p):null;c.availableDays=cfg&&Array.isArray(cfg.availableDayIdx)?cfg.availableDayIdx.length:null;}catch(_){ }
+  try{var cc=M&&M.computeSectionCompleteness?M.computeSectionCompleteness(p,'constraints'):null;if(cc)c.sections.constraints={complete:!!cc.complete,count:(Array.isArray(p.constraints)?p.constraints.length:(p.constraints&&Array.isArray(p.constraints.items)?p.constraints.items.length:null))};}catch(_){ }
+  try{if(typeof DB!=='undefined'&&DB){for(var i=0;i<28&&!c.hasCheckinRhr;i++){var e=DB[dkey(-i)];if(e&&e.morning&&e.morning.rhr!=null)c.hasCheckinRhr=true;}}}catch(_){ }
+  return c;
+}
+var GM_INPUT_STATE={present:['ready','check',null],estimated:['attention','info',null],missing:['crit','alert',null]};
+function gmProfStrengthPage(){
+  var PI=window.ORVIA&&ORVIA.profileInputs;
+  var st=null;try{st=(window.ORVIA&&ORVIA.profileCenter&&ORVIA.profileCenter.buildStrength)?ORVIA.profileCenter.buildStrength(typeof PROFILE!=='undefined'?PROFILE:{},new Date()):null;}catch(_){ }
+  var ev=null;try{ev=PI?PI.evaluate(gmProfInputsCtx()):null;}catch(_){ }
+  var sub=ev?_uiT('ui.ps_sub',{n:ev.counts.present,total:ev.total,pct:ev.pct}):GM_NA;
+  var h=gmPPageHead('' + _uiT('ui.profilstaerke') + '',sub)+'<div class="ps-page">';
+  h+='<div class="page-intro">' + _uiT('ui.ps_intro') + '</div>';
+  if(st)h+='<div class="ps-score"><b>'+gmEsc(String(st.score))+'</b><span>'+gmEsc(_uiT('pc.profilstaerke_band',{band:_uiT('pc.band_'+st.band)}))+'</span></div>';
+  if(!ev){h+='<div class="mini-note">'+icon('info','xs')+'<div>'+GM_NA+'</div></div></div><div class="tabspacer"></div>';return h;}
+  h+='<div class="kpi-row ps-kpis"><div class="kpi"><b>'+ev.counts.present+'</b><span>' + _uiT('ui.ps_vorhanden') + '</span></div><div class="kpi"><b>'+ev.counts.estimated+'</b><span>' + _uiT('ui.ps_geschaetzt') + '</span></div><div class="kpi"><b>'+ev.counts.missing+'</b><span>' + _uiT('ui.ps_fehlt') + '</span></div></div>';
+  var row=function(r){var S=GM_INPUT_STATE[r.state]||GM_INPUT_STATE.missing;
+    var val=r.state==='missing'?_uiT('ui.ps_fehlt'):(r.value||'—');
+    return '<div class="prow" role="button" tabindex="0" onclick="gmProfInputOpen(\''+gmEsc(r.sectionId)+'\')" onkeydown="if(event.key===\'Enter\')gmProfInputOpen(\''+gmEsc(r.sectionId)+'\')"><div class="p-ic" style="background:var(--'+S[0]+'-t);color:var(--'+S[0]+')">'+icon(r.icon||'info','sm')+'</div><div class="p-b"><div class="p-t">'+gmEsc(r.label)+'</div><div class="p-d">'+gmEsc(r.readers)+(r.hint?' · <i>'+gmEsc(r.hint)+'</i>':'')+'</div></div><div class="p-v" style="color:var(--'+S[0]+')">'+gmEsc(val)+'</div>'+icon('chev','sm')+'</div>';};
+  h+='<div class="setting-title">' + _uiT('ui.ps_wirkt_stark') + '</div><div class="setting-group">'+ev.groups.high.map(row).join('')+'</div>';
+  h+='<div class="setting-title">' + _uiT('ui.ps_wirkt_mittel') + '</div><div class="setting-group">'+ev.groups.medium.map(row).join('')+'</div>';
+  h+='<div class="eduhint">'+icon('info','sm')+'<div>' + _uiT('ui.ps_eduhint') + '</div></div>';
+  h+='</div><div class="tabspacer"></div>';
+  return h;
+}
+function gmProfInputOpen(sectionId){
+  try{if(typeof gmCloseProfPage==='function')gmCloseProfPage();}catch(_){ }
+  try{if(sectionId&&typeof openProfileSection==='function'){openProfileSection(sectionId);return;}}catch(_){ }
+  try{if(typeof toast==='function')toast(GM_NA);}catch(_){ }
 }
 var GM_PROF_ROUTES={
   settings:function(){return gmProfSettings();},appearance:function(){return gmProfAppearance();},
@@ -11538,6 +11841,7 @@ var GM_PROF_ROUTES={
   about:function(){return gmProfAbout();},bestTimes:function(){return gmProfBestTimes();},
   medals:function(){return gmProfMedals();},milestones:function(){return gmProfMilestones();},
   paceCalc:function(){return gmProfPaceCalc();},
+  strength:function(){return gmProfStrengthPage();},
   /* G1 (2026-08-07): Leistungsdaten. Ohne diese Seite bleiben Intensitaet,
      Zielprognose, Wochenkilometer und Tagesziele bei „—". */
   performance:function(){return gmProfPerformance();}
@@ -12643,6 +12947,85 @@ function gmDbFind(key,unit,dateIso){
   return null;
 }
 
+/* ============ S5a (v14): Einheiten-Debrief als Zustand ============
+   Prototyp scrDebrief: fuenf Faelle (zaehlt voll / teilweise / frei / ohne
+   Referenz / Kraft) mit Soll-Ist-Zeilen und drei Mitnahmen. Quelle ist AUSSCHLIESSLICH
+   der kanonische Debrief-Record (PROFILE.performance.debriefs, debrief-record@5,
+   Urteil aus session-debrief C3 gegen die DAMALS eingefrorene Vorgabe) — nichts
+   wird nachgerechnet, ohne Record gibt es einen ehrlichen Wartezustand. */
+function gmDbRecordFor(planLink,dateIso,unit){
+  try{
+    var st=gmDbStore();if(!st)return null;
+    if(planLink){var id='db:'+String(planLink).replace(/^(po:|occ:)/,'');
+      for(var i=0;i<st.length;i++)if(st[i]&&(st[i].id===id||st[i].sessionId===planLink))return st[i];}
+    if(dateIso&&unit)return gmDbFind(gmDbKey(dateIso,unit),unit,dateIso);
+  }catch(_){ }
+  return null;
+}
+function gmDbReasonLabel(r){for(var i=0;i<GM_DB_REASONS.length;i++)if(GM_DB_REASONS[i][0]===r)return GM_DB_REASONS[i][1];return r?String(r):'';}
+function gmDbFmtPace(s){if(s==null||!isFinite(s)||s<=0)return null;var m=Math.floor(s/60),r=Math.round(s%60);return m+':'+(r<10?'0':'')+r;}
+function gmDbFmtDelta(v,unit){if(v==null||!isFinite(v))return '';var r=Math.round(v);if(r===0)return '';return (r>0?'+':'')+r+(unit?' '+unit:'');}
+/* state: full | part | aborted | free | noref | gym | pending */
+function gmDebriefVerdict(rec,opts){
+  var o=opts||{};
+  if(o.fam==='gym')return {state:'gym',cls:'info',ic:'dumbbell',title:_uiT('ui.dbv_gym_t'),text:_uiT('ui.dbv_gym_d')};
+  if(!o.planLink&&!rec)return {state:'free',cls:'info',ic:'run',title:_uiT('ui.dbv_free_t'),text:_uiT('ui.dbv_free_d')};
+  if(!rec)return {state:'pending',cls:'info',ic:'pen',title:_uiT('ui.dbv_pending_t'),text:_uiT('ui.dbv_pending_d')};
+  if(!rec.judged){
+    var isFree=(rec.adherence==='nicht vergleichbar'&&!o.planLink);
+    return isFree?{state:'free',cls:'info',ic:'run',title:_uiT('ui.dbv_free_t'),text:_uiT('ui.dbv_free_d')}
+      :{state:'noref',cls:'info',ic:'info',title:_uiT('ui.dbv_noref_t'),text:rec.note||_uiT('ui.dbv_noref_d')};
+  }
+  if(rec.adherence==='abgebrochen')return {state:'aborted',cls:'part',ic:'alert',title:_uiT('ui.dbv_aborted_t'),text:_uiT('ui.dbv_aborted_d',{pct:rec.completionPct!=null?Math.round(rec.completionPct*100):'—'})+(rec.reason?' · '+gmDbReasonLabel(rec.reason):'')};
+  if(rec.adherence==='nicht vergleichbar')return {state:'noref',cls:'info',ic:'info',title:_uiT('ui.dbv_noref_t'),text:rec.note||_uiT('ui.dbv_noref_d')};
+  if(rec.adherence==='im Ziel'&&rec.completed!==false)return {state:'full',cls:'full',ic:'check',title:_uiT('ui.dbv_full_t'),text:rec.note||_uiT('ui.dbv_full_d')};
+  return {state:'part',cls:'part',ic:'alert',title:_uiT('ui.dbv_part_t'),text:(rec.note||'')+(rec.reason?' · '+gmDbReasonLabel(rec.reason):'')};
+}
+function gmDebriefModel(rec,actual,opts){
+  var v=gmDebriefVerdict(rec,opts);
+  var rows=[],take=[];
+  if(rec&&rec.judged){
+    var sn=rec.snapshot||{};var a=actual||{};
+    var pMin=sn.plannedDurationMin,aMin=a.durationMin;
+    if(pMin!=null||aMin!=null)rows.push({l:_uiT('ui.dbv_row_dauer'),soll:pMin!=null?Math.round(pMin)+' min':'—',ist:aMin!=null?Math.round(aMin)+' min':'—',extra:(pMin!=null&&aMin!=null)?gmDbFmtDelta(aMin-pMin,'min'):'',ok:(pMin==null||aMin==null)?null:(aMin>=pMin*0.85)});
+    var pKm=sn.plannedDistanceKm,aKm=a.distanceKm;
+    if(pKm!=null||aKm!=null)rows.push({l:_uiT('ui.dbv_row_distanz'),soll:pKm!=null?fmtDe(Math.round(pKm*10)/10)+' km':'—',ist:aKm!=null?fmtDe(Math.round(aKm*100)/100)+' km':'—',extra:'',ok:(pKm==null||aKm==null)?null:(aKm>=pKm*0.85)});
+    var lo=gmDbFmtPace(sn.targetLoSecPerKm),hi=gmDbFmtPace(sn.targetHiSecPerKm),ap=gmDbFmtPace(a.paceSecPerKm);
+    if(lo&&hi)rows.push({l:_uiT('ui.dbv_row_pace'),soll:lo+'–'+hi+' /km',ist:ap?ap+' /km':'—',extra:gmDbFmtDelta(rec.deltaPace,'s'),ok:rec.zoneHit==null?null:rec.zoneHit>=0.95});
+    if(rec.expectedRpe!=null||rec.rpe!=null)rows.push({l:_uiT('ui.dbv_row_rpe'),soll:rec.expectedRpe!=null?fmtDe(rec.expectedRpe)+(rec.expectedRpeEvidence==='table'||rec.expectedRpeEvidence==='weak'?' ('+_uiT('ui.dbv_tabelle')+')':''):'—',ist:rec.rpe!=null?String(rec.rpe):'—',extra:gmDbFmtDelta(rec.deltaRpe,''),ok:rec.deltaRpe==null?null:rec.deltaRpe<2});
+    /* Mitnahmen: nur aus Feldern des Records — keine Erzaehlung. */
+    if(rec.zoneHit!=null)take.push([_uiT('ui.dbv_take_keep'),rec.zoneHit>=0.95?_uiT('ui.dbv_keep_pace'):_uiT('ui.dbv_keep_done',{pct:rec.completionPct!=null?Math.round(Math.min(1,rec.completionPct)*100):'—'})]);
+    else if(rec.completionPct!=null)take.push([_uiT('ui.dbv_take_keep'),_uiT('ui.dbv_keep_done',{pct:Math.round(Math.min(1,rec.completionPct)*100)})]);
+    var nx=null;
+    if(rec.adherence==='zu schnell')nx=_uiT('ui.dbv_next_fast',{s:Math.abs(Math.round(rec.deltaPace||0))});
+    else if(rec.adherence==='zu langsam')nx=_uiT('ui.dbv_next_slow',{s:Math.abs(Math.round(rec.deltaPace||0))});
+    else if(rec.adherence==='abgebrochen')nx=rec.reason?_uiT('ui.dbv_next_reason',{reason:gmDbReasonLabel(rec.reason)}):_uiT('ui.dbv_next_reason_missing');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe>=2)nx=_uiT('ui.dbv_next_hard');
+    if(nx)take.push([_uiT('ui.dbv_take_next'),nx]);
+    var imp;
+    if(rec.pain)imp=_uiT('ui.dbv_impact_pain');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe>=2)imp=_uiT('ui.dbv_impact_over');
+    else if(rec.deltaRpe!=null&&rec.deltaRpe<=-1)imp=_uiT('ui.dbv_impact_headroom');
+    else imp=_uiT('ui.dbv_impact_none');
+    take.push([_uiT('ui.dbv_take_impact'),imp]);
+  }
+  var src=rec?_uiT('ui.dbv_source',{at:(rec.debriefedAt?gmAdpTime(rec.debriefedAt):'—')}):'';
+  return {verdict:v,rows:rows,take:take,source:src,rec:rec||null};
+}
+function gmDebriefCardHTML(m,opts){
+  var o=opts||{};var v=m.verdict;
+  var h='<div class="card db-card"><div class="ctitle"><div class="l">'+icon('sparkle','sm')+' ' + _uiT('ui.orvia_debrief') + '</div>'+(m.rec&&m.rec.judged?'<span class="pill-badge '+(v.cls==='full'?'ready':v.cls==='part'?'attention':'')+'">' + _uiT('ui.dbv_soll_ist') + '</span>':'')+'</div>'+
+    '<div class="db-verdict '+v.cls+'"><div class="v-ic">'+icon(v.ic)+'</div><div><h3>'+gmEsc(v.title)+'</h3><p>'+gmEsc(v.text)+'</p></div></div>';
+  if(m.rows.length){
+    h+='<div class="db-cmp"><div class="db-cmp-head"><span>' + _uiT('ui.dbv_vorgabe') + '</span><span>' + _uiT('ui.dbv_soll') + '</span><span>' + _uiT('ui.dbv_ist') + '</span><span></span></div>'+
+      m.rows.map(function(r){return '<div class="db-row"><span class="l">'+gmEsc(r.l)+'</span><span class="soll">'+gmEsc(r.soll)+'</span><span class="ist">'+gmEsc(r.ist)+(r.extra?'<small>'+gmEsc(r.extra)+'</small>':'')+'</span><span class="st '+(r.ok===null?'':(r.ok?'ok':'off'))+'">'+(r.ok===null?'':icon(r.ok?'check':'alert'))+'</span></div>';}).join('')+'</div>';
+  }
+  if(m.take.length)h+='<div class="db-take">'+m.take.map(function(t){return '<div class="tk"><span class="k">'+gmEsc(t[0])+'</span><span class="v">'+gmEsc(t[1])+'</span></div>';}).join('')+'</div>';
+  if(v.state==='pending'&&o.planCta)h+='<div class="adp-btns" style="margin-top:12px"><button onclick="showTab(\'plan\')">' + _uiT('ui.dbv_zum_plan') + '</button></div>';
+  if(v.state==='free'&&o.freeText)h+='<div class="gapnote" style="margin-top:12px">'+icon('info','sm')+'<div>'+gmEsc(o.freeText)+'</div></div>';
+  if(m.source)h+='<div class="source">'+icon('info','xs')+' '+gmEsc(m.source)+'</div>';
+  return h+'</div>';
+}
 /* Oeffnet die Erfassung fuer eine absolvierte Einheit. */
 function gmOpenDebrief(dateIso,unit,planned,actual){
   var key=gmDbKey(dateIso,unit);
