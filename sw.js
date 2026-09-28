@@ -1,4 +1,4 @@
-const C = 'orvia-v8-416';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
+const C = 'orvia-v8-417';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
 
    Der Upload von v8-354 war unvollstaendig: js/ und sw.js kamen an,
    styles.css NICHT (live weiterhin `.toast{z-index:99}`). Der Cache-Name
@@ -4338,7 +4338,14 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(C).then(c => Promise.all(ASSETS.map(a =>
-      c.add(new Request(a, { cache: 'reload' })).catch(() => c.add(a).catch(() => null))
+      /* v8-417 (Gians Befund 28.09., Safari Desktop): index.html zeigte v8-416, styles.css
+         und js/ waren noch v8-415 — Safari ignoriert cache:'reload' im SW-Install und fuellte
+         den neuen Cache aus dem HTTP-Cache. Deshalb zusaetzlich ein Versions-Query (?v=C),
+         das jeden HTTP-/CDN-Cache umgeht; abgelegt wird die Antwort unter dem PLAIN-Schluessel,
+         den die Seite anfragt. Rueckfall bleibt der unversionierte add(). */
+      fetch(new Request(a + (a.indexOf('?') < 0 ? '?v=' : '&v=') + C, { cache: 'reload' }))
+        .then(res => { if (!res || !(res.ok || res.type === 'opaque')) throw new Error('bad'); return c.put(a, res); })
+        .catch(() => c.add(new Request(a, { cache: 'reload' })).catch(() => c.add(a).catch(() => null)))
     ))).then(() => self.skipWaiting())
   );
 });
