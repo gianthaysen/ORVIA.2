@@ -701,6 +701,16 @@ function planLinkCandidatesFor(a) {
     return out;
   } catch (_) { return []; }
 }
+/* Anzeige-Label einer Occurrence ('po:<datum>:<templateId>') aus dem aktiven Wochenplan. */
+function planUnitLabelFor(occurrenceId) {
+  try {
+    var m = /^po:(\d{4}-\d{2}-\d{2}):(.+)$/.exec(String(occurrenceId || '')); if (!m) return null;
+    var date = m[1], tid = m[2]; var wp = activeWeekPlan(); var DN = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    var d = new Date(date + 'T12:00'); var dayLabel = DN[(d.getDay() + 6) % 7] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
+    for (var dd = 0; dd < 7; dd++) for (var k = 0; k < ((wp && wp[dd]) || []).length; k++) if (String(wp[dd][k].id) === tid) return { label: wp[dd][k].l + ' · ' + wp[dd][k].t, dayLabel: dayLabel, localDate: date, unit: wp[dd][k] };
+    return { label: tid, dayLabel: dayLabel, localDate: date, unit: null };
+  } catch (_) { return null; }
+}
 /* Umkehrung fuer die Einheiten-Seite: unverknuepfte Aktivitaeten derselben Woche und Sportart,
    die zu einer offenen Plan-Einheit passen koennten (zusaetzlich zu den Tag-Kandidaten des Resolvers). */
 function unlinkedActivitiesInWeekOf(dateIso, sportId) {
@@ -785,7 +795,7 @@ if (typeof window !== 'undefined') {
     resolvePlannedActivity: resolvePlannedActivity,
     closeActivityDetail: closeActivityDetail,
     deleteActivityCanonical: deleteActivityCanonical,
-    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical, linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor, unlinkedActivitiesInWeekOf: unlinkedActivitiesInWeekOf
+    unlinkActivityPlanCanonical: unlinkActivityPlanCanonical, linkActivityPlanCanonical: linkActivityPlanCanonical, planLinkCandidatesFor: planLinkCandidatesFor, unlinkedActivitiesInWeekOf: unlinkedActivitiesInWeekOf, planUnitLabelFor: planUnitLabelFor
   };
 }
 

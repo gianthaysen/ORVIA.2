@@ -59,7 +59,7 @@ sec('B · UI-Verdrahtung');
   ok('B4 planLinkCandidatesFor: offene Einheiten derselben WOCHE, gleicher Tag + Sportart zuerst; unlinkedActivitiesInWeekOf als Umkehrung', /dates\.indexOf\(r\.planned\.localDate\) >= 0/.test(act) && /sameSport \? 2 : 0\) \+ \(y\.sameDay \? 1 : 0/.test(act) && /function unlinkedActivitiesInWeekOf\(dateIso, sportId\)/.test(act) && /unlinkedActivitiesInWeekOf: unlinkedActivitiesInWeekOf/.test(act));
   ok('B4b Einheiten-Seite ergaenzt Wochen-Kandidaten (Tag-Kandidaten zuerst), Datum im Untertitel bei anderem Tag', /unlinkedActivitiesInWeekOf\(dIso,it\.t\)/.test(sp) && /vm\.date!==dIso/.test(sp));
   const ap = ui.slice(ui.indexOf('function gmOpenActivityPage(aid){'), ui.indexOf('function gmOpenActivityPage(aid){') + 40000);
-  ok('B5 Aktivitaetsseite: Block nur ohne planLink, Knopf je Plan-Einheit', /if\(!vm\.planLink&&typeof planLinkCandidatesFor==='function'\)/.test(ap) && /linkActivityPlanCanonical\(\\''\+gmEsc\(String\(_aidCorr\)\)/.test(ap));
+  ok('B5 Aktivitaetsseite (seit v8-420): eine Zeile gmActPlanLinkCard, Auswahl im Sheet', /gmActPlanLinkCard\(a,vm,_aidCorr\)/.test(ap) && /function gmOpenPlanLinkSheet\(aid\)/.test(ui));
   ok('B6 Katalog + CSS', ['ui.link_cand_title', 'ui.link_cand_hint', 'ui.link_act_title', 'ui.link_andere_sportart', 'act.mit_planeinheit_verknuepft', 'act.occurrence_bereits_belegt'].every(k => de.indexOf("'" + k + "'") >= 0) && /\.link-cands \.cta\.link-cand\{/.test(css));
 }
 

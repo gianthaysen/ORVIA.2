@@ -189,7 +189,8 @@
      ueber Tag+Sport (I3b) — diese Funktion ist die manuelle, protokollierte
      Bestaetigung genau dieses schwachen Kandidaten. One-to-one bleibt gewahrt:
      traegt bereits eine andere Aktivitaet diese Occurrence, wird abgelehnt. */
-  function linkActivityToPlan(id, occurrenceId) {
+  function linkActivityToPlan(id, occurrenceId, opts) {
+    var lo = opts || {};
     if (!id) return { ok: false, code: 'missing_activity_id' };
     if (!occurrenceId || typeof occurrenceId !== 'string') return { ok: false, code: 'missing_occurrence_id' };
     var all = readAll(), idx = -1;
@@ -209,8 +210,8 @@
       schemaVersion: 1,
       fromOccurrenceId: current || null,
       toOccurrenceId: occurrenceId,
-      reason: current ? 'user_relinked' : 'user_linked',
-      method: 'manual_correction',
+      reason: lo.reason || (current ? 'user_relinked' : 'user_linked'),
+      method: lo.method || 'manual_correction',
       correctedAt: now()
     };
     m.plannedSessionId = occurrenceId;
