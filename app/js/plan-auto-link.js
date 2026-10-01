@@ -17,7 +17,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'plan-auto-link@1';
+  var VERSION = 'plan-auto-link@2';
   var WEEKS_BACK = 8;
 
   function _iso(d) { return (typeof root.todayStr === 'function') ? root.todayStr(d) : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
@@ -69,22 +69,34 @@
       if (store.ensureLocal && typeof O.activityServerCache === 'function') {
         try { (O.activityServerCache() || []).forEach(function (sa) { if (sa && sa.id) store.ensureLocal(sa); }); } catch (e) {}
       }
-      var acts = [];
+      /* v8-422 (Gians Befund 1.10.): eine VERWAISTE Zuordnung — plannedSessionId zeigt
+         auf eine Occurrence, die der heutige Plan nicht mehr kennt (generierte psg:-IDs
+         wandern bei Planaenderung/Verfuegbarkeits-Umbau) — zaehlt nirgends und blockierte
+         bisher die automatische Zuordnung („schon verknuepft"). Sie wird wie unverknuepft
+         behandelt und protokolliert neu zugeordnet (fromOccurrenceId bleibt erhalten). */
+      var acts = [], linked = [];
       (store.listActivities() || []).forEach(function (a) {
         if (!a || (store.isTombstoned && store.isTombstoned(a))) return;
-        if (store.planLinkOf(a)) return;
         var c = a.metrics && a.metrics.planLinkCorrection;
         if (c && (c.reason === 'user_unlinked')) return;   /* Nutzerentscheidung respektieren */
         var ld = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10);
         if (!ld || ld < minDate || ld > today) return;
-        acts.push({ id: a.id || a.clientRecordId, sportId: norm(a.sportId), localDate: ld, startedAt: a.startedAt || '' });
+        var rec = { id: a.id || a.clientRecordId, sportId: norm(a.sportId), localDate: ld, startedAt: a.startedAt || '' };
+        var cur = store.planLinkOf(a);
+        if (cur) linked.push({ act: rec, occ: cur }); else acts.push(rec);
       });
-      if (!acts.length) return { ok: true, applied: 0, decisions: [] };
-      var dates = {}; acts.forEach(function (a) { weekOf(a.localDate).forEach(function (d) { dates[d] = 1; }); });
+      if (!acts.length && !linked.length) return { ok: true, applied: 0, decisions: [], dangling: 0 };
+      var dates = {}; acts.concat(linked.map(function (l) { return l.act; })).forEach(function (a) { weekOf(a.localDate).forEach(function (d) { dates[d] = 1; }); });
       var res = root.planActualResolveForDates(Object.keys(dates).sort()) || {};
+      var known = {}; (res.results || []).forEach(function (r) { if (r && r.plannedSessionId) known[r.plannedSessionId] = 1; });
+      var dangling = 0;
+      linked.forEach(function (l) { if (!known[l.occ]) { l.act.dangling = true; acts.push(l.act); dangling++; } });
+      if (!acts.length) return { ok: true, applied: 0, decisions: [], dangling: 0 };
       var units = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned; })
         .map(function (r) { return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, localDate: r.planned.localDate }; });
       var decisions = decide({ activities: acts, units: units });
+      var byId = {}; acts.forEach(function (a) { byId[a.id] = a; });
+      decisions.forEach(function (d) { if (byId[d.activityId] && byId[d.activityId].dangling) d.reason = d.reason + '_relinked'; });
       var applied = 0;
       decisions.forEach(function (d) {
         var r = store.linkActivityToPlan(d.activityId, d.occurrenceId, { reason: d.reason, method: 'auto' });
@@ -94,7 +106,7 @@
         try { if (O.activitySync && O.activitySync.flushPendingActivities) O.activitySync.flushPendingActivities(); } catch (e) {}
         try { if (root.dispatchEvent && typeof CustomEvent === 'function') root.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { autoLinked: applied } })); } catch (e) {}
       }
-      return { ok: true, applied: applied, decisions: decisions };
+      return { ok: true, applied: applied, decisions: decisions, dangling: dangling };
     } catch (e) { return { ok: false, code: 'error', error: String(e && e.message || e) }; }
     finally { _running = false; }
   }

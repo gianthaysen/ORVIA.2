@@ -75,6 +75,14 @@ sec('B · run');
   g.ORVIA.activityServerCache = () => [{ id: 'srv-c1', clientRecordId: 'act:iphone:c1', sportId: 'gym', source: 'orvia_workout', sourceRecordId: 'sessC', workoutSessionId: 'sessC', startedAt: '2026-09-25T06:00:00.000Z', durationSeconds: 900, status: 'completed', summary: {}, metrics: {}, _server: true }];
   const r4 = AL.run();
   ok('B5b Server-Cache-Einheit (nicht im Store) wird lokal gesichert und zugeordnet (Fr ⇒ Sa, Abstand 1)', r4.ok && r4.applied === 1 && S.planLinkOf(S.getActivityById('act:iphone:c1')) === 'po:2026-09-26:ok' && S.getActivityById('srv-c1').metrics.planLinkCorrection.method === 'auto');
+  /* v8-422: VERWAISTE Zuordnung (Occurrence nicht mehr im Plan) wird neu zugeordnet */
+  S.mergeServerActivities([{ id: 'srv-d1', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessD', workout_session_id: 'sessD', started_at: '2026-09-24T07:00:00.000Z', duration_seconds: 720, status: 'completed', summary: {}, metrics: { plannedSessionId: 'po:2026-09-23:psg:2:1:alt' } }]);
+  ok('B5c vorher: Zuordnung zeigt auf eine unbekannte Occurrence', S.planLinkOf(S.getActivityById('srv-d1')) === 'po:2026-09-23:psg:2:1:alt');
+  const r5 = AL.run();
+  const d1 = S.getActivityById('srv-d1');
+  ok('B5d verwaist ⇒ neu zugeordnet (naechste offene Gym-Einheit), reason *_relinked, fromOccurrenceId erhalten, dangling gezaehlt', r5.ok && r5.dangling === 1 && r5.applied === 1 && /^po:2026-09-2[1-6]:ok$/.test(S.planLinkOf(d1)) && /_relinked$/.test(d1.metrics.planLinkCorrection.reason) && d1.metrics.planLinkCorrection.fromOccurrenceId === 'po:2026-09-23:psg:2:1:alt');
+  const r6 = AL.run();
+  ok('B5e gueltige Zuordnungen werden NICHT angefasst (zweiter Lauf: 0 verwaist, 0 zugeordnet)', r6.ok && r6.dangling === 0 && r6.applied === 0);
   ok('B6 ohne Resolver ⇒ unavailable, kein Throw', (() => { const s = g.planActualResolveForDates; delete g.planActualResolveForDates; const x = AL.run(); g.planActualResolveForDates = s; return x.ok === false && x.code === 'unavailable'; })());
 }
 

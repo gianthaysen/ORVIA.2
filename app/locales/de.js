@@ -3853,6 +3853,8 @@
     'ui.pl_aktuell': 'Aktuell',
     'ui.pl_keine_kandidaten': 'In dieser Woche ist keine offene Plan-Einheit mehr frei.',
     'ui.pl_loesen': 'Zuordnung lösen',
+    'ui.pl_verwaist': 'Plan-Einheit nicht mehr im Plan',
+    'ui.pl_verwaist_sub': 'Die zugeordnete Einheit wurde seither geändert oder entfernt. ORVIA ordnet beim nächsten Abgleich neu zu — oder du wählst selbst.',
     'ui.pl_sheet_source': 'ORVIA ordnet automatisch die nächstliegende offene Einheit gleicher Sportart in der Woche zu. Jede Änderung wird protokolliert und synchronisiert.',
     /* S5a (v14): Debrief als Zustand */
     'ui.dbv_soll_ist': 'Soll / Ist',
