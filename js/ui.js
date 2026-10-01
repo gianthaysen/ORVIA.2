@@ -8864,13 +8864,12 @@ function renderGMActivity(){
     var gsp=GM_ACT_SPORT[a.sportId]||null;
     var title=vm.title||vm.sportLabel||'Aktivität';
     var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'—')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
-    var um=vm.distanceLabel||((a.sportId==='gym'&&a.summary&&a.summary.exerciseCount!=null)?a.summary.exerciseCount+'' + _uiT('ui.uebungen_') + '':null)||'—';
-    var tempo=vm.paceLabel||((a.sportId==='gym'&&a.summary&&a.summary.rpe!=null)?'' + _uiT('ui.rpe') + ''+a.summary.rpe:null)||'—';
+    var kp=gmActCardKpis(a,vm);
     return '<article class="activity-card" role="button" tabindex="0" data-aid="'+gmEsc(aid)+'" onclick="gmOpenActivityPage(\''+gmEsc(aid)+'\')" onkeydown="if(event.key===\'Enter\')gmOpenActivityPage(\''+gmEsc(aid)+'\')">'+
       '<div class="activity-visual" data-sport="'+(gsp||'')+'">'+gmActGlyph(gsp||'Laufen')+'</div>'+
       '<div class="activity-body"><div class="activity-row"><div><h3>'+gmEsc(title)+'</h3><p>'+gmEsc(dl)+' · '+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+'</p></div>'+
       (a.status==='completed'?'<span class="session-state done">' + _uiT('ui.abgeschlossen') + '</span>':'<span class="session-state">—</span>')+'</div>'+
-      '<div class="activity-metrics"><div><b>'+gmEsc(um)+'</b><span>' + _uiT('ui.umfang') + '</span></div><div><b>'+gmEsc(vm.durationLabel||'—')+'</b><span>DAUER</span></div><div><b>'+gmEsc(tempo)+'</b><span>TEMPO</span></div><div><b>'+(vm.avgHr!=null?gmEsc(vm.avgHr)+' bpm':'—')+'</b><span>' + _uiT('ui.hf_') + '</span></div></div></div></article>';
+      '<div class="activity-metrics">'+kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div></div></article>';
   }).join('');
   h+='<div class="activity-list">'+(list.length?cards:'<div class="empty"><div class="e-ic">'+icon('activity')+'</div><div class="et">' + _uiT('ui.keine_aktivitaet_in_diesem_filter') + '</div></div>')+'</div>';
   if(restN>0)h+='<button class="btn sec act-more" onclick="gmActLoadMore()">'+_uiT('ui.act_mehr_laden',{count:restN})+'</button>';
@@ -8903,6 +8902,38 @@ function gmActStreamDefs(sportId){
 }
 /* GM7.9: Sportfamilien-Aufloesung fuer sportgerechte Detail-/Story-Darstellung.
    Reine Klassifikation der vorhandenen Sport-ID — keine Datenlogik. */
+/* v8-422 (Gians Befund 1.10.: „Tempo bei Krafttraining"): Kennzahlen der Aktivitaets-
+   KARTE je Sportfamilie — dieselbe Einteilung wie die Detailseite (GM7.9). Vier Zellen,
+   vorhandene Werte zuerst, fehlende sportgerechte Zellen bleiben ehrlich „—" (nie eine
+   fremde Zelle wie Tempo bei Kraft). Reine Darstellung, keine neue Berechnung. */
+function gmActCardKpis(a,vm){
+  a=a||{};vm=vm||{};var s=a.summary||{};
+  var fam=gmActFamily(vm.sportId||a.sportId);
+  var dur=vm.durationLabel||null, hr=(vm.avgHr!=null)?vm.avgHr+' bpm':null, kcal=(vm.caloriesKcal!=null)?fmtDe(vm.caloriesKcal)+' kcal':null;
+  var elev=(vm.elevationM!=null)?Math.round(vm.elevationM)+' m':null, rpe=(s.rpe!=null)?'' + _uiT('ui.rpe') + ''+s.rpe:null;
+  var cells;
+  if(fam==='gym'){
+    var g=null;try{g=gmActGymAgg(a,vm,null);}catch(_){ }
+    var ex=(s.exerciseCount!=null)?s.exerciseCount:(g&&g.exCount!=null?g.exCount:null);
+    var sets=(s.workingSetCount!=null)?s.workingSetCount:(g&&g.setCount!=null?g.setCount:null);
+    var vol=(s.totalVolumeKg!=null&&s.totalVolumeKg>0)?s.totalVolumeKg:(g&&g.volumeKg!=null?g.volumeKg:null);
+    cells=[[ex!=null?String(ex):null,'ÜBUNGEN'],[sets!=null?String(sets):null,'SÄTZE'],[dur,'DAUER'],[vol!=null?gmKg(vol)+' kg':null,'VOLUMEN'],[hr,'' + _uiT('ui.hf_') + ''],[kcal,'KALORIEN'],[rpe,'BELASTUNG']];
+  }else if(fam==='cycling'){
+    var spd=(s.avgSpeedKmh>0)?Math.round(s.avgSpeedKmh*10)/10:((s.distanceKm>0&&a.durationSeconds>0)?Math.round(s.distanceKm/(a.durationSeconds/3600)*10)/10:null);
+    cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[spd!=null?fmtDe(spd)+' km/h':null,'Ø KM/H'],[hr,'' + _uiT('ui.hf_') + ''],[elev,'HÖHENMETER'],[kcal,'KALORIEN']];
+  }else if(fam==='swimming'||fam==='rowing'){
+    cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[vm.paceLabel||null,'TEMPO'],[hr,'' + _uiT('ui.hf_') + ''],[kcal,'KALORIEN'],[rpe,'BELASTUNG']];
+  }else if(fam==='pace'){
+    cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[vm.paceLabel||null,'PACE'],[hr,'' + _uiT('ui.hf_') + ''],[elev,'HÖHENMETER'],[kcal,'KALORIEN']];
+  }else{
+    cells=[[dur,'DAUER'],[hr,'' + _uiT('ui.hf_') + ''],[vm.distanceLabel||null,'DISTANZ'],[kcal,'KALORIEN'],[rpe,'BELASTUNG']];
+  }
+  var have=cells.filter(function(c){return c[0]!=null;}),miss=cells.filter(function(c){return c[0]==null;});
+  var out=have.slice(0,4);while(out.length<4&&miss.length)out.push(miss.shift());
+  /* Reihenfolge der Sportfamilie beibehalten (nicht „vorhanden zuerst" anzeigen) */
+  out.sort(function(x,y){return cells.indexOf(x)-cells.indexOf(y);});
+  return out.map(function(c){return [c[0]!=null?c[0]:'—',c[1]];});
+}
 function gmActFamily(sportId){
   var s=null;try{s=(window.ORVIA&&ORVIA.trainingDomain&&ORVIA.trainingDomain.normSport)?ORVIA.trainingDomain.normSport(sportId):null;}catch(_){ }
   s=(s||String(sportId||'')).toLowerCase();
@@ -9015,7 +9046,9 @@ function gmActPlanLinkCard(a,vm,aid){
   var inner;
   if(occ){
     var L=(typeof planUnitLabelFor==='function')?planUnitLabelFor(occ):null;
-    inner='<div class="pl-b"><div class="pl-t">'+gmEsc(L?L.label:occ)+'</div><div class="pl-s">'+gmEsc(L?L.dayLabel:'')+(auto?' · ' + _uiT('ui.pl_auto') + '':'')+'</div></div><button type="button" class="pl-btn" onclick="gmOpenPlanLinkSheet(\''+gmEsc(String(aid))+'\')">' + _uiT('ui.pl_aendern') + '</button>';
+    /* v8-422: verwaiste Zuordnung (Einheit nicht mehr im Plan) ehrlich benennen statt die rohe ID zu zeigen */
+    if(L&&!L.unit)inner='<div class="pl-b"><div class="pl-t">' + _uiT('ui.pl_verwaist') + '</div><div class="pl-s">' + _uiT('ui.pl_verwaist_sub') + '</div></div><button type="button" class="pl-btn pri" onclick="gmOpenPlanLinkSheet(\''+gmEsc(String(aid))+'\')">' + _uiT('ui.pl_aendern') + '</button>';
+    else inner='<div class="pl-b"><div class="pl-t">'+gmEsc(L?L.label:occ)+'</div><div class="pl-s">'+gmEsc(L?L.dayLabel:'')+(auto?' · ' + _uiT('ui.pl_auto') + '':'')+'</div></div><button type="button" class="pl-btn" onclick="gmOpenPlanLinkSheet(\''+gmEsc(String(aid))+'\')">' + _uiT('ui.pl_aendern') + '</button>';
   }else{
     var n=0;try{n=(typeof planLinkCandidatesFor==='function')?planLinkCandidatesFor(a).length:0;}catch(_){ }
     if(!n)return '';
