@@ -5718,7 +5718,58 @@ window.addEventListener('orvia:activity-updated',function(ev){try{
 document.getElementById('eveForm').addEventListener('click',e=>{if(e.target.closest('.chip'))autoEve();});
 window.addEventListener('pagehide',function(){flushAuto();if(window.orviaFlushSync)window.orviaFlushSync();});
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){flushAuto();if(window.orviaFlushSync)window.orviaFlushSync();}});
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js');
+/* v8-426 (Gians Befund 2.10., zum dritten Mal in dieser Woche): Nach einem Deploy zeigte
+   „Über ORVIA" schon die neue Version, die Seite lief aber noch mit dem ALTEN Code — die
+   neue Funktion „gab es nicht". Ablauf: index.html kommt immer frisch aus dem Netz
+   (Build-Marker neu), die Skripte lieferte beim ersten Laden noch der alte Service Worker
+   aus seinem alten Cache; der neue uebernimmt erst danach (skipWaiting + claim) — ohne
+   dass die bereits geladene Seite davon etwas hat. Bisher half nur ein zweites Neuladen
+   von Hand. Jetzt laedt die Seite EINMAL selbst neu, sobald der neue Service Worker
+   uebernommen hat (controllerchange).
+   Nie mitten in der Arbeit: laeuft ein Workout, ist ein Eingabefeld aktiv oder ein
+   Sheet/eine Unterseite/Story offen, erscheint stattdessen ein Hinweis mit Knopf, und der
+   Neustart wird beim naechsten ruhigen Moment (Tabwechsel, Rueckkehr in die App)
+   nachgeholt. Erstinstallation (vorher kein Controller) loest nichts aus; eine Sperre
+   von 15 s verhindert jede Neuladeschleife. */
+function gmSwBusy(){
+  try{
+    var a=document.activeElement,tg=a&&a.tagName?a.tagName.toLowerCase():'';
+    if(a&&(tg==='input'||tg==='textarea'||tg==='select'||a.isContentEditable===true))return true;
+    if(document.body.classList.contains('story-open'))return true;
+    if(document.querySelector('.sheet.on,.gm-page.on,.gm-story.on,.orvia-modal-bg,#suppModal.show,#woSheet:not(.hide),.spot-hole'))return true;
+    var w=window.ORVIA&&ORVIA.workout,ss=w&&w.session;
+    if(ss&&ss.status!=='completed'&&ss.status!=='cancelled')return true;
+  }catch(_){ }
+  return false;
+}
+var _gmSwPending=false;
+function gmSwReloadNow(){
+  try{
+    var last=+(sessionStorage.getItem('orvia_sw_reload_at')||0);
+    if(Date.now()-last<15000)return false;                 /* Schleifenschutz */
+    sessionStorage.setItem('orvia_sw_reload_at',String(Date.now()));
+  }catch(_){ }
+  try{flushAuto();}catch(_){ }
+  try{if(window.orviaFlushSync)window.orviaFlushSync();}catch(_){ }
+  location.reload();
+  return true;
+}
+function gmSwApplyUpdate(){
+  if(!gmSwBusy()){_gmSwPending=false;gmSwReloadNow();return;}
+  _gmSwPending=true;
+  try{toastAction(_uiT('ui.sw_neue_version'),_uiT('ui.sw_neu_laden'),function(){_gmSwPending=false;gmSwReloadNow();});}catch(_){ }
+}
+function gmSwRetryPending(){if(_gmSwPending&&!gmSwBusy()){_gmSwPending=false;gmSwReloadNow();}}
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  var _gmSwHadCtrl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js');
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(!_gmSwHadCtrl){_gmSwHadCtrl=true;return;}           /* Erstinstallation: Seite ist bereits aktuell */
+    gmSwApplyUpdate();
+  });
+  window.addEventListener('orvia:tab-changed',gmSwRetryPending);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')gmSwRetryPending();});
+}
 
 
 /* ====== Kompakter Check-in (v5): Statuskarte aus ECHTEN Daten, Formular bleibt im DOM ====== */

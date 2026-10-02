@@ -3277,6 +3277,8 @@
     'ui.status_': 'Status: ',
     'ui.status_nicht_abrufbar_offline_oder': 'Worker nicht erreichbar (keine Verbindung). Der automatische Abgleich läuft weiter alle 30 Minuten.',
     'ui.sync_worker_http': 'Worker antwortet mit Fehler {code}. Der automatische Abgleich läuft weiter.',
+    'ui.sw_neue_version': 'Neue Version bereit.',
+    'ui.sw_neu_laden': 'Neu laden',
     'ui.sync_sitzung_abgelaufen': 'Sitzung abgelaufen — App neu laden und erneut versuchen.',
     'ui.statusleitfaden_30_tage': 'Statusleitfaden · 30 Tage',
     'ui.steigende_naechtliche_wachzeit_ueber_mehrere': 'Steigende nächtliche Wachzeit über mehrere Tage spricht für fragmentierte Erholung — Readiness-Entscheidungen konservativer treffen.',
