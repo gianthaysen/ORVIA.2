@@ -12,6 +12,14 @@
 
   var _flushing = false;     // Single-Flight-Mutex
   var _rerun = false;        // falls während eines Flushes ein weiterer angefordert wird
+  /* v8-423: Rueckzug je Datensatz nach Fehlschlag (1 → 2 → 4 … max. 30 Minuten). Ein
+     dauerhaft abgelehnter Datensatz (z. B. Identitaetskonflikt) darf nicht bei jedem
+     Flush erneut gegen den Server laufen — Gians Konsole 2.10.: Hunderte 400er. */
+  var _backoff = {};         // clientRecordId -> { n, until }
+  var _isUuid = function (v) { return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v); };
+  function _blocked(crid, now) { var b = crid && _backoff[crid]; return !!(b && b.until > now); }
+  function _noteFail(crid, now) { if (!crid) return; var b = _backoff[crid] || { n: 0, until: 0 }; b.n += 1; b.until = now + Math.min(60000 * Math.pow(2, b.n - 1), 30 * 60000); _backoff[crid] = b; }
+  function _noteOk(crid) { if (crid) delete _backoff[crid]; }
 
   async function flushPendingActivities() {
     var store = O.activityStore, repo = O.repos && O.repos.activity;
@@ -35,23 +43,35 @@
         } catch (e) { failed++; }
       }
       var pending = store.pendingActivities();
+      var nowMs = Date.now(), deferred = 0;
       for (var i = 0; i < pending.length; i++) {
         var a = pending[i];
+        if (_blocked(a.clientRecordId, nowMs)) { deferred++; continue; }
         try {
           var r;
-          if (a.source === 'orvia_workout') {
+          if (_isUuid(a.id) && repo.updateFields) {
+            /* v8-423: bereits serverseitig vorhanden (jede Quelle) ⇒ nur die lokal
+               geaenderten Felder nachtragen. Kein RPC, kein Identitaetskonflikt. */
+            var patch = { metrics: a.metrics || {} };
+            if (a.durationSeconds != null) patch.duration_seconds = a.durationSeconds;
+            r = await repo.updateFields(a.id, patch);
+          } else if (a.source === 'orvia_workout') {
             if (!a.workoutSessionId) { skipped++; continue; }       // nur echte Server-Session-uuid pushen
             r = await repo.upsertFromSession(a.workoutSessionId, a.summary || {}, a.metrics || {}, a.clientRecordId || null);
           } else if (a.source === 'manual' || a.source === 'import') {
             r = await repo.upsertManual(serverRowFromLocal(a));
           } else { skipped++; continue; }                            // legacy_local wird NICHT gepusht
-          if (r && r.success) { store.markSynced(a.clientRecordId, r.data && r.data.id); pushed++; }
-          else { failed++; if (r && r.error && /identity_conflict/.test(String(r.error.code) + String(r.error.message))) conflicts++; }
-        } catch (e) { failed++; }
+          if (r && r.success) { store.markSynced(a.clientRecordId, r.data && r.data.id); _noteOk(a.clientRecordId); pushed++; }
+          else { failed++; _noteFail(a.clientRecordId, nowMs); if (r && r.error && /identity_conflict/.test(String(r.error.code) + String(r.error.message))) conflicts++; }
+        } catch (e) { failed++; _noteFail(a.clientRecordId, nowMs); }
       }
     } finally { _flushing = false; }
-    var res = { ok: failed === 0, pushed: pushed, deleted: deleted, failed: failed, skipped: skipped, conflicts: conflicts, remaining: store.pendingActivities().length, remainingDeletes: store.pendingDeletes().length };
-    if (_rerun && online()) { _rerun = false; return flushPendingActivities().then ? flushPendingActivities() : res; }
+    var res = { ok: failed === 0, pushed: pushed, deleted: deleted, failed: failed, skipped: skipped, deferred: deferred, conflicts: conflicts, remaining: store.pendingActivities().length, remainingDeletes: store.pendingDeletes().length };
+    /* v8-423: Nachlauf GENAU EINMAL. Vorher wurde flushPendingActivities() hier zweimal
+       aufgerufen (einmal fuer die .then-Pruefung, einmal real) — der zweite Aufruf traf
+       auf den laufenden ersten, setzte _rerun erneut, und der Flush lief endlos, solange
+       ein Datensatz pending blieb. */
+    if (_rerun && online()) { _rerun = false; return flushPendingActivities(); }   // Fehlschlaege sind jetzt im Rueckzug ⇒ endet
     _rerun = false;
     return res;
   }
@@ -103,6 +123,6 @@
     try { setTimeout(_autoFlush, 1500); } catch (e) {}          // App-Start nach Auth-Init (defensiv)
   }
 
-  O.activitySync = { flushPendingActivities: flushPendingActivities, pullServerActivities: pullServerActivities, _autoFlush: _autoFlush };
+  O.activitySync = { flushPendingActivities: flushPendingActivities, pullServerActivities: pullServerActivities, _autoFlush: _autoFlush, _backoffReset: function () { _backoff = {}; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.activitySync;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

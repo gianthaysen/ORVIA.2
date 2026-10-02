@@ -100,7 +100,8 @@ echo
 echo "Reihenfolge: Worker-Check → JWT → Garmin-Login. Du brauchst:"
 echo "  1. Garmin-E-Mail + Passwort (ggf. MFA-Code aus der E-Mail)"
 echo "  2. Supabase-JWT: ORVIA im Browser öffnen, eingeloggt, Konsole (Alt-Cmd-I):"
-echo "     (await ORVIA.sb.auth.getSession()).data.session.access_token"
+echo "     ORVIA.sb.auth.getSession().then(r => console.log(r.data.session.access_token))"
+echo "     (Safari kennt kein await in der Konsole — deshalb die .then-Form)"
 echo "     → Token ohne Anführungszeichen kopieren (gültig ca. 1 Stunde)"
 echo
 

@@ -457,7 +457,12 @@
           : (n.clientRecordId && byKey['crid ' + n.clientRecordId] != null ? byKey['crid ' + n.clientRecordId] : -1));
       if (idx >= 0) {
         var ex = all[idx];
-        if (ex.syncStatus === 'pending') { skipped++; continue; }   // Outbox-Vorrang
+        if (ex.syncStatus === 'pending') {
+          /* v8-423: Outbox-Vorrang fuer DATEN — die Identitaet (Server-crid) darf trotzdem
+             nachgezogen werden, sonst scheitert der Push dauerhaft am Identitaetskonflikt. */
+          if (n.clientRecordId && ex.clientRecordId !== n.clientRecordId && byKey['crid ' + n.clientRecordId] == null) { byKey['crid ' + n.clientRecordId] = idx; ex.clientRecordId = n.clientRecordId; updated++; }
+          skipped++; continue;
+        }
         ex.id = n.id; ex.sportId = n.sportId || ex.sportId; ex.startedAt = n.startedAt || ex.startedAt;
         ex.endedAt = n.endedAt || ex.endedAt;
         ex.linkedActivityId = n.linkedActivityId || null; ex.linkKind = n.linkKind || null;   // S2c: Server ist Quelle der Kopplung

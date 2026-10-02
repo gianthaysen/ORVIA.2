@@ -128,6 +128,18 @@ def main() -> None:
 
     worker = (input(f"Worker-URL [{WORKER_DEFAULT}]: ").strip()
               or WORKER_DEFAULT).rstrip("/")
+    # 2026-10-02: Gian hat hier das JWT eingefuegt -> ValueError 'unknown url type'.
+    # Ein JWT (eyJ...) oder etwas ohne http(s) ist keine URL: Standard verwenden,
+    # ehrlich sagen, und das JWT NICHT weiterverwenden (es gehoert in die
+    # naechste Abfrage und steht jetzt sichtbar im Terminal).
+    if worker.startswith("eyJ"):
+        print("Hinweis: Das war ein JWT, keine Worker-URL. Hier nur Enter druecken "
+              "(Standard-URL); das JWT kommt gleich dran. Verwende Standard-URL.")
+        worker = WORKER_DEFAULT
+    elif not worker.startswith(("http://", "https://")):
+        print(f"Hinweis: '{worker[:40]}' ist keine URL (http/https fehlt). "
+              "Verwende Standard-URL.")
+        worker = WORKER_DEFAULT
 
     # -- Vorprüfung 1: Worker erreichbar? ------------------------------------
     _preflight_worker(worker)

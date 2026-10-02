@@ -149,5 +149,51 @@ await (async () => {
   globalThis.navigator.onLine = true;
 })();
 
+/* v8-423 · Gians Konsole 2.10.: 400-Sturm auf orvia_upsert_activity_from_session */
+await (async () => {
+  reset(); sync._backoffReset();
+  let updateCalls = [];
+  const origFrom = globalThis.ORVIA.sb.from;
+  globalThis.ORVIA.sb.from = (table) => Object.assign(origFrom(table), {
+    update: (patch) => ({ eq: (k1, v1) => ({ eq: (k2, v2) => ({ select: () => { updateCalls.push({ table, id: v1, patch });
+      if (v1 === DEAD) return Promise.resolve({ data: null, error: { message: 'boom' } });
+      return Promise.resolve({ data: [Object.assign({ id: v1 }, patch)], error: null }); } }) }) })
+  });
+  const UUID = '0f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c21', DEAD = '2f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c23';
+  /* A) bereits serverseitig vorhandenes Workout von einem anderen Geraet (fremde crid) — lokal
+        nur die Plan-Zuordnung geaendert ⇒ Update ueber die Server-id, KEIN RPC */
+  S.mergeServerActivities([{ id: UUID, client_record_id: 'act:iphone:q1', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessQ', workout_session_id: 'sessQ', started_at: '2026-09-24T05:32:00.000Z', duration_seconds: 720, status: 'completed', summary: {}, metrics: {} }]);
+  const lk = S.linkActivityToPlan(UUID, 'po:2026-09-23:psg:2:1:ok', { reason: 'auto_same_week', method: 'auto' });
+  ok('A1 Zuordnung lokal pending', lk.ok && S.pendingActivities().length === 1);
+  let rA = await sync.flushPendingActivities();
+  ok('A2 Push ueber activities.update(id) — kein RPC, metrics + duration_seconds im Patch', rA.pushed === 1 && rpcCalls.length === 0 && updateCalls.length === 1 && updateCalls[0].id === UUID && updateCalls[0].patch.metrics.plannedSessionId === 'po:2026-09-23:psg:2:1:ok' && updateCalls[0].patch.duration_seconds === 720, JSON.stringify(rA));
+  ok('A3 danach synced, id bleibt', S.getActivityById(UUID).syncStatus === 'synced' && S.pendingActivities().length === 0);
+  /* B) Garmin-Aktivitaet (bisher: nie gepusht) wird jetzt ebenfalls ueber die id nachgetragen */
+  const G = '1f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c22';
+  S.mergeServerActivities([{ id: G, sport_id: 'gym', source: 'garmin', source_record_id: 'g-77', started_at: '2026-09-24T05:42:00.000Z', duration_seconds: 3360, status: 'completed', summary: { avgHr: 110 }, metrics: {} }]);
+  S.linkActivityToPlan(G, 'po:2026-09-22:psg:1:1:ok');
+  updateCalls = [];
+  let rB = await sync.flushPendingActivities();
+  ok('B1 Garmin-Zuordnung wird synchronisiert (vorher skipped)', rB.pushed === 1 && rB.skipped === 0 && updateCalls.length === 1 && updateCalls[0].id === G);
+  /* C) dauerhaft abgelehnter Datensatz: Rueckzug — kein zweiter Versuch im selben Fenster */
+  S.mergeServerActivities([{ id: DEAD, client_record_id: 'act:x:dead', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessDead', workout_session_id: 'sessDead', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 600, status: 'completed', summary: {}, metrics: {} }]);
+  S.linkActivityToPlan(DEAD, 'po:2026-09-26:psg:5:1:ok');
+  rpcCalls = []; updateCalls = [];
+  let rC1 = await sync.flushPendingActivities();
+  let rC2 = await sync.flushPendingActivities();
+  let rC3 = await sync.flushPendingActivities();
+  ok('C1 Fehlschlag wird NICHT sofort wiederholt (1 Versuch, danach deferred)', rC1.failed === 1 && rC2.failed === 0 && rC2.deferred === 1 && rC3.deferred === 1 && updateCalls.length === 1, JSON.stringify([rC1, rC2, rC3]));
+  ok('C2 Datensatz bleibt pending (keine Datenverluste), remaining 1', rC3.remaining === 1);
+  /* D) Nachlauf-Schleife: ein waehrend des Flushes angeforderter Flush laeuft genau EINMAL nach */
+  sync._backoffReset(); updateCalls = [];
+  const p1 = sync.flushPendingActivities();           // startet (await im Inneren)
+  const p2 = sync.flushPendingActivities();           // trifft auf laufenden ⇒ _rerun
+  const [d1, d2] = await Promise.all([p1, p2]);
+  await new Promise(r => setTimeout(r, 30));
+  ok('D1 kein Endlos-Flush: hoechstens 2 Versuche am abgelehnten Datensatz (1 + Nachlauf im Rueckzug = 0)', d2.busy === true && updateCalls.length <= 2, 'update=' + updateCalls.length);
+  ok('D2 Quelle: Nachlauf ruft flushPendingActivities genau einmal, keine .then-Doppelung', !/flushPendingActivities\(\)\.then \? flushPendingActivities\(\)/.test(fs.readFileSync(new URL(_APPREL + 'js/activity-sync.js', import.meta.url), 'utf8')));
+  globalThis.ORVIA.sb.from = origFrom;
+})();
+
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');
 process.exit(fail ? 1 : 0);

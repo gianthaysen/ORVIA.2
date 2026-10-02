@@ -26,6 +26,26 @@
     } catch (e) { return b.fail('exception', String(e && e.message || e)); }
   }
 
+  /* v8-423: Felder einer BESTEHENDEN eigenen Aktivitaet nachtragen (Plan-Zuordnung,
+     Dauerkorrektur) — direkter Update unter RLS (activities_upd_own) ueber die Server-id.
+     Ersetzt fuer bereits synchronisierte Datensaetze den RPC-Pfad, der bei abweichender
+     client_record_id (Datensatz von einem anderen Geraet) activity_identity_conflict
+     wirft und damit nie durchkam (Gians Konsole 2.10.: 400-Sturm). Gilt fuer JEDE
+     Quelle, auch Garmin — der Worker fuegt nur ein, ueberschreibt nie. */
+  async function updateFields(id, patch) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!id) return b.fail('invalid_id', 'Keine Aktivitaets-id.', { source: 'empty' });
+    if (!patch || typeof patch !== 'object' || !Object.keys(patch).length) return b.fail('empty_patch', 'Nichts zu aktualisieren.', { source: 'empty' });
+    if (!b.online()) return b.fail('offline', 'Offline — Activity-Sync später.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().from('activities').update(patch).eq('id', id).eq('user_id', b.currentUserId()).select();
+      if (error) return b.fail('update_failed', error.message);
+      if (!Array.isArray(data) || !data.length) return b.fail('not_found', 'Aktivitaet nicht gefunden (fremd oder geloescht).');
+      return b.ok(data[0]);
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+
   // Manuelle/importierte Aktivität (kein Workout): direkter idempotenter Upsert unter RLS.
   async function upsertManual(row) {
     const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
@@ -102,5 +122,5 @@
   }
 
   O.repos = O.repos || {};
-  O.repos.activity = { upsertFromSession, upsertManual, list, getById, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
+  O.repos.activity = { upsertFromSession, updateFields, upsertManual, list, getById, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
 })();
