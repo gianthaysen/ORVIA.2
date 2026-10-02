@@ -27,22 +27,26 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
   ok('A5 View-Model: Summary fuehrt, sonst Ø/Max aus der echten Messreihe (powerSource stream)', /powerSource: \(dm && dm\.avgPowerW != null\) \? 'summary' : null/.test(act) && /vm\.avgPowerW = Math\.round\(_ps \/ _pn\); vm\.powerSource = 'stream';/.test(act) && /if \(_pn >= 5 && _pm > 0\)/.test(act));
 }
 {
+  /* v8-429 — Gians Vorgabe 2.10. (Entwurf als HTML/CSS geliefert): Diagramm-Tafel, gestricheltes
+     Raster, Verlaufsflaeche, kraeftige Kurve mit weichem Schein, Ø-Linie gestrichelt mit Punkt
+     und Schild, Ring am Hoechstwert. Punktraster entfaellt. Abweichung vom Entwurf: die
+     Etiketten stehen in einer eigenen Spalte neben der Zeichenflaeche. */
   const i = ui.indexOf('var _gmStoryChartSeq=0;'), j = ui.indexOf('/* Baut die Seiten NUR aus vorhandenen');
   const mk = calm => { const c = { gmEsc: s => String(s), window: { matchMedia: () => ({ matches: calm }) } }; vm.createContext(c); vm.runInContext(ui.slice(i, j) + '\nthis.F=gmStoryDotChart;this.M=gmMonoPath;', c); return c; };
   const ctx = mk(false);
   const vals = []; for (let k = 0; k < 300; k++) vals.push(120 + 30 * Math.sin(k / 20));
   const h = ctx.F(vals, ' bpm', 0, { avg: 135, max: 167 });
-  const clipId = (/<clipPath id="(wstClip\d+)">/.exec(h) || [])[1];
-  ok('B1 durchgezogene Linie ueber dem Punktraster', /<path class="wst-line" d="M0,/.test(h) && h.indexOf('class="wst-line"') > h.lastIndexOf('<circle'));
-  ok('B2 Punkte werden an der Kurve abgeschnitten (clipPath = Flaeche unter der Linie)', !!clipId && new RegExp('<g clip-path="url\\(#' + clipId + '\\)">').test(h) && /L360,430 L0,430 Z"\/><\/clipPath>/.test(h));
-  /* v8-425: EINE gemeinsame Aufdeck-Bewegung, weiche Kurve, Verlaufsflaeche */
-  const revId = (/<clipPath id="(wstRev\d+)">/.exec(h) || [])[1];
-  const iRev = h.indexOf('<g clip-path="url(#' + revId + ')">');
-  ok('B2a Flaeche, Punkte UND Linie liegen im selben Reveal-Zuschnitt (Linie zeichnet sich mit den Punkten)', !!revId && iRev > 0 && iRev < h.indexOf('class="wst-area"') && iRev < h.indexOf('<circle') && iRev < h.indexOf('class="wst-line"'));
-  ok('B2b Reveal laeuft von links nach rechts; statische Breite = volle Breite (ohne SMIL sofort sichtbar)', /<rect x="0" y="-12" width="360" height="454"><animate attributeName="width" from="0" to="360" begin="0s" dur="1\.6s" fill="freeze"/.test(h));
+  const dLine = (/<path class="wst-line" d="([^"]+)"/.exec(h) || [])[1], dArea = (/<path class="wst-area" d="([^"]+)"/.exec(h) || [])[1];
+  ok('B1 durchgezogene Kurve', /<path class="wst-line" d="M0,/.test(h));
+  ok('B2 Flaeche liegt genau unter DERSELBEN Kurve (Kurve + Grundlinie)', !!dLine && dArea === dLine + ' L360,430 L0,430 Z');
+  const iRev = h.indexOf('<div class="wst-rev">'), iRevEnd = h.indexOf('</svg></div>', iRev);
+  const inRev = cls => { const p = h.indexOf('class="' + cls); return p > iRev && p < iRevEnd; };
+  ok('B2a Flaeche, Schein UND Kurve liegen in EINER Aufdeck-Huelle (erscheinen gemeinsam)', iRev > 0 && inRev('wst-area') && inRev('wst-glow g1') && inRev('wst-line') && h.indexOf('class="wst-grid"') < iRev && h.indexOf('class="wst-avg"') < iRev);
+  ok('B2b Aufdecken per CSS (clip-path, 1,6 s, links → rechts) — KEIN SMIL mehr im Markup', !/<animate/.test(h) && !/<clipPath/.test(h) && /\.gm-story \.wst-rev\{[^}]*clip-path:inset\(-16px\);animation:wstReveal 1\.6s cubic-bezier\(\.35,0,\.25,1\) both\}/.test(css) && /@keyframes wstReveal\{from\{[^}]*clip-path:inset\(-16px 100% -16px -16px\)\}to\{[^}]*clip-path:inset\(-16px\)\}\}/.test(css));
+  ok('B2b2 Safari: -webkit-clip-path steht neben clip-path (Huelle und Keyframes)', (css.match(/-webkit-clip-path:inset\(-16px/g) || []).length >= 3);
   const hc = mk(true).F(vals, ' bpm', 0);
-  ok('B2c „Bewegung reduzieren": keine Animation, Diagramm steht sofort', !/<animate/.test(hc) && /class="wst-dotwrap calm"/.test(hc) && /class="wst-line"/.test(hc));
-  ok('B2d Kurve ist kubisch (weich), keine Polylinie', (h.match(/ C[\d.-]+,[\d.-]+ /g) || []).length >= 70 && /linearGradient id="wstGrad\d+"/.test(h));
+  ok('B2c „Bewegung reduzieren": Diagramm steht sofort (Klasse calm + Medienabfrage)', /class="wst-dotwrap calm"/.test(hc) && /class="wst-line"/.test(hc) && /\.gm-story \.wst-dotwrap\.calm \.wst-rev\{animation:none\}/.test(css) && /prefers-reduced-motion:reduce\)\{[\s\S]{0,700}\.gm-story \.wst-rev\{animation:none\}/.test(css));
+  ok('B2d Kurve ist kubisch (weich), Verlauf mit drei Stufen', (h.match(/ C[\d.-]+,[\d.-]+ /g) || []).length >= 110 && /<linearGradient id="wstGrad\d+"[^>]*><stop offset="0" class="wst-g0"\/><stop offset="\.55" class="wst-g1"\/><stop offset="1" class="wst-g2"\/>/.test(h));
   {
     /* monoton-kubisch: trifft jeden Stuetzpunkt, kein Ueberschwingen (Kontrollpunkte bleiben zwischen den Nachbarn) */
     const pts = [[0, 100], [10, 40], [20, 40], [30, 90], [40, 10], [50, 60]];
@@ -51,43 +55,31 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
     const bounded = segs.every((sg, k) => { const lo = Math.min(pts[k][1], pts[k + 1][1]) - 0.05, hi = Math.max(pts[k][1], pts[k + 1][1]) + 0.05; return sg[0][1] >= lo && sg[0][1] <= hi && sg[1][1] >= lo && sg[1][1] <= hi; });
     ok('B2e Kurve trifft jeden Stuetzpunkt exakt und schwingt nie ueber einen Messwert hinaus', segs.length === 5 && hit && bounded, JSON.stringify(segs.map(sg => [sg[0][1], sg[1][1]])));
   }
-  const dLine = (/<path class="wst-line" d="([^"]+)"/.exec(h) || [])[1], dClip = (/<clipPath id="[^"]+"><path d="([^"]+)"/.exec(h) || [])[1];
-  ok('B3 Linie und Zuschnitt folgen DERSELBEN Kurve', !!dLine && !!dClip && dClip.indexOf(dLine) === 0);
-  ok('B4 Punkte ohne Hervorhebung (kein t0/t1/t2 mehr) — reiner Hintergrund', !/class="t[012]"/.test(h) && (h.match(/<circle/g) || []).length > 300 && (h.match(/<circle/g) || []).length < 2100);
-  ok('B5 Ø/Max aus der Summary als Anzeige (eine Wahrheit mit dem Zahlenraster)', /class="wst-ax wst-axavg"[^>]*>Ø 135<\/span>/.test(h) && /class="wst-ax wst-axmax"[^>]*>167<i>bpm<\/i><\/span>/.test(h));
+  ok('B3 Schein = drei breite, blasse Striche derselben Kurve (kein Filter, kein Gruppen-opacity)', ['g1', 'g2', 'g3'].every(g => new RegExp('<path class="wst-glow ' + g + '" d="').test(h) && new RegExp('\\.gm-story \\.wst-glow\\.' + g + '\\{stroke-width:\\d+;stroke-opacity:\\.\\d+\\}').test(css)) && !/\.wst-glow[^{]*\{[^}]*(filter|[^-]opacity:)/.test(css) && (h.match(/class="wst-glow g\d" d="([^"]+)"/g) || []).every(m => m.indexOf(dLine) > 0));
+  ok('B4 kein Punktraster mehr', !/<circle/.test(h));
+  ok('B5 Ø/Max aus der Summary als Anzeige (eine Wahrheit mit dem Zahlenraster)', /class="wst-ax wst-axavg"[^>]*><i>Ø<\/i><b>135<\/b><\/span>/.test(h) && /class="wst-ax wst-axmax"><b>167<\/b><i>bpm<\/i><\/span>/.test(h));
   const h2 = ctx.F(vals, ' bpm', 0);
-  ok('B6 ohne Summary: Ø/Max der Samples; Summary-Max unter dem Sample-Max wird ignoriert', />Ø 1\d\d<\/span>/.test(h2) && />150<i>bpm<\/i>/.test(h2) && />150<i>bpm<\/i>/.test(ctx.F(vals, ' bpm', 0, { max: 140 })));
-  ok('B7 jede Grafik bekommt eine eigene clipPath-id', (/<clipPath id="(wstClip\d+)">/.exec(h2) || [])[1] !== clipId);
+  ok('B6 ohne Summary: Ø/Max der Samples; Summary-Max unter dem Sample-Max wird ignoriert', /<i>Ø<\/i><b>1\d\d<\/b>/.test(h2) && /wst-axmax"><b>150<\/b><i>bpm<\/i>/.test(h2) && /wst-axmax"><b>150<\/b>/.test(ctx.F(vals, ' bpm', 0, { max: 140 })));
+  ok('B7 jede Grafik bekommt eine eigene Verlaufs-id', (/linearGradient id="(wstGrad\d+)"/.exec(h2) || [])[1] !== (/linearGradient id="(wstGrad\d+)"/.exec(h) || [])[1]);
   ok('B8 zu wenige Werte ⇒ kein Diagramm', ctx.F([1, 2, 3], ' W', 0) === '' && ctx.F(null) === '');
-  ok('B9 CSS: Linie skaliert nicht mit, erscheint NICHT mehr per eigener Einblendung; Story auf breiten Bildschirmen im Handy-Format', /\.gm-story \.wst-line\{[^}]*vector-effect:non-scaling-stroke/.test(css) && !/wstLineIn/.test(css) && /@media\(min-width:700px\)\{\s*\.gm-story\{inset:0 auto 0 50%;width:440px/.test(css));
-
-  /* v8-428 (Gian 2.10.: „sieht jetzt noch billiger aus"): duenne Linie, ruhiges Raster,
-     Beschriftung als Werteachse NEBEN der Zeichenflaeche — nichts liegt mehr auf der Kurve. */
+  ok('B9 CSS: Striche skalieren nicht mit; Story auf breiten Bildschirmen im Handy-Format', /\.gm-story \.wst-line\{[^}]*stroke-width:2\.5;[^}]*vector-effect:non-scaling-stroke/.test(css) && !/wstLineIn/.test(css) && /@media\(min-width:700px\)\{\s*\.gm-story\{inset:0 auto 0 50%;width:440px/.test(css));
   {
-    const iPlot = h.indexOf('<div class="wst-plot">'), iAxis = h.indexOf('<div class="wst-axis"'), iSvgEnd = h.indexOf('</svg>'), iPk = h.indexOf('class="wst-pk"');
-    ok('B10 Zeichenflaeche und Werteachse sind getrennt: SVG + Marker in .wst-plot, Etiketten danach in .wst-axis', iPlot > 0 && iSvgEnd > iPlot && iPk > iSvgEnd && iAxis > iPk && h.indexOf('class="wst-ax ') > iAxis && !/wst-avgbadge/.test(h) && !/wst-avgbadge/.test(css));
-    ok('B11 CSS: Zeichenflaeche laesst rechts Platz fuer die Achse; Achse liegt in diesem Rand', /\.gm-story \.wst-plot\{position:absolute;inset:0 50px 0 0\}/.test(css) && /\.gm-story \.wst-axis\{position:absolute;top:0;bottom:0;right:0;width:42px\}/.test(css));
-    const lineCss = (/\.gm-story \.wst-line\{([^}]*)\}/.exec(css) || [])[1] || '';
-    ok('B12 Linie: 2 px, runde Enden, KEIN Leuchten/Schatten', /stroke-width:2;/.test(lineCss) && /stroke-linecap:round/.test(lineCss) && !/filter|drop-shadow/.test(lineCss));
-    const avgCss = (/\.gm-story \.wst-avg\{([^}]*)\}/.exec(css) || [])[1] || '';
-    ok('B13 Ø-Linie: durchgezogene Haarlinie (nie gestrichelt), liegt HINTER der Kurve', /stroke-width:1;/.test(avgCss) && !/dasharray/.test(avgCss) && h.indexOf('class="wst-avg"') > 0 && h.indexOf('class="wst-avg"') < h.indexOf('<g clip-path="url(#' + revId + ')">'));
-    ok('B14 Raster zurueckgenommen (≤ .18), Flaeche nur als Hauch (≤ .25)', (() => { const a = /\.gm-story \.wst-dots circle\{[^}]*opacity:(\.\d+)/.exec(css), g = /\.gm-story \.wst-g0\{[^}]*stop-opacity:(\.\d+)/.exec(css); return !!a && !!g && parseFloat(a[1]) <= 0.18 && parseFloat(g[1]) <= 0.25; })());
-    ok('B15 Etiketten tragen Textfarbe, nie die Serienfarbe', (() => { const a = /\.gm-story \.wst-ax\{([^}]*)\}/.exec(css), b = /\.gm-story \.wst-axavg\{([^}]*)\}/.exec(css); return !!a && !!b && !/var\(--acc/.test(a[1]) && !/var\(--acc/.test(b[1]); })());
-    const top = cls => parseFloat((new RegExp('class="wst-ax ' + cls + '" style="top:([\\d.]+)%"').exec(h) || [])[1]);
-    ok('B16 Max oben, Min unten, Ø dazwischen auf seiner Hoehe', top('wst-axmax') < 5 && top('wst-axmin') > 95 && top('wst-axavg') > top('wst-axmax') && top('wst-axavg') < top('wst-axmin'), [top('wst-axmax'), top('wst-axavg'), top('wst-axmin')].join(' / '));
-    /* Ø dicht am Maximum (gleichmaessige Fahrt mit einem Einbruch): nur das ETIKETT rueckt ab, die Haarlinie bleibt wahr */
-    const flat = []; for (let k = 0; k < 400; k++) flat.push(k > 200 && k < 210 ? 60 : 150);
-    const hf = ctx.F(flat, ' W', 0);
-    const tf = cls => parseFloat((new RegExp('class="wst-ax ' + cls + '" style="top:([\\d.]+)%"').exec(hf) || [])[1]);
-    const yLine = parseFloat((/class="wst-avg" x1="0" x2="360" y1="([\d.]+)"/.exec(hf) || [])[1]) / 430 * 100;
-    ok('B17 Ø nahe Max: Etiketten halten ≥ 8 % Abstand, Haarlinie bleibt auf dem echten Wert', tf('wst-axavg') - tf('wst-axmax') >= 7.99 && yLine < tf('wst-axavg') && yLine > 0, 'Etikett ' + tf('wst-axavg') + ' % · Linie ' + yLine.toFixed(1) + ' %');
-    /* Hoechstwert in der letzten Spalte: Marker bleibt ganz im Bild */
+    const iPlot = h.indexOf('<div class="wst-plot">'), iAxis = h.indexOf('<div class="wst-axis"'), iPk = h.indexOf('class="wst-pk"'), iDot = h.indexOf('class="wst-avgdot"');
+    ok('B10 Zeichenflaeche und Wertespalte sind getrennt: Diagramm + Marker in .wst-plot, Etiketten danach in .wst-axis', iPlot > 0 && iPk > iRevEnd && iDot > iPk && iAxis > iDot && h.indexOf('class="wst-ax ') > iAxis && !/wst-avgbadge/.test(h) && !/wst-avgbadge/.test(css));
+    const pr = +(/\.gm-story \.wst-plot\{position:absolute;inset:20px (\d+)px 20px 16px\}/.exec(css) || [])[1];
+    const ax = /\.gm-story \.wst-axis\{position:absolute;top:20px;bottom:20px;right:(\d+)px;width:(\d+)px\}/.exec(css) || [];
+    ok('B11 Abstand Zeichenflaeche → Wertespalte ≥ 13 px (Ring am Hoechstwert beruehrt kein Etikett)', pr > 0 && ax.length === 3 && pr - (+ax[1] + +ax[2]) >= 13, pr + ' − (' + ax[1] + ' + ' + ax[2] + ')');
+    ok('B12 Raster: 4 waagerechte + 5 senkrechte Linien, gestrichelt, sehr zurueckhaltend', ((/<g class="wst-grid">(.*?)<\/g>/.exec(h) || [])[1] || '').split('<line').length - 1 === 9 && /\.gm-story \.wst-grid line\{stroke:rgba\(129,171,207,\.10\);stroke-width:1;stroke-dasharray:3 7;vector-effect:non-scaling-stroke\}/.test(css));
+    ok('B13 Ø: gestrichelte Bezugslinie, Punkt am rechten Rand der Zeichenflaeche, Schild auf derselben Hoehe', /\.gm-story \.wst-avg\{[^}]*stroke-dasharray:5 5/.test(css) && /\.gm-story \.wst-avgdot\{position:absolute;left:100%/.test(css) && (() => { const d = /class="wst-avgdot" style="top:([\d.]+)%"/.exec(h), p = /class="wst-ax wst-axavg" style="top:clamp\(60px,([\d.]+)%,calc\(100% - 40px\)\)"/.exec(h), y = /class="wst-avg" x1="0" x2="360" y1="([\d.]+)"/.exec(h); return !!d && !!p && !!y && d[1] === p[1] && Math.abs(+y[1] / 430 * 100 - +d[1]) < 0.06; })());
+    ok('B14 Schild weicht Max/Min aus (clamp in Pixeln), Linie und Punkt bleiben auf dem echten Wert', (() => { const flat = []; for (let k = 0; k < 400; k++) flat.push(k > 200 && k < 210 ? 60 : 150); const hf = ctx.F(flat, ' W', 0); const d = +(/class="wst-avgdot" style="top:([\d.]+)%"/.exec(hf) || [])[1]; return d < 12 && /wst-axavg" style="top:clamp\(60px,/.test(hf); })());
+    ok('B15 Etiketten in Textfarbe; nur das Ø-Zeichen traegt den Akzent', (() => { const a = /\.gm-story \.wst-ax\{([^}]*)\}/.exec(css), b = /\.gm-story \.wst-axmax b\{([^}]*)\}/.exec(css); return !!a && !!b && !/var\(--acc/.test(a[1]) && !/var\(--acc/.test(b[1]) && /\.gm-story \.wst-axavg i\{color:var\(--acc/.test(css); })());
+    ok('B16 Tafel: Verlauf, feine Kante, Innenkante, festes Seitenverhaeltnis', /\.gm-story \.wst-dotwrap\{[^}]*aspect-ratio:1\.18\/1;[^}]*border-radius:26px;border:1px solid rgba\(175,208,237,\.18\);[^}]*linear-gradient\(180deg,rgba\(19,36,53,\.88\),rgba\(7,17,27,\.94\)\)/.test(css) && /\.gm-story \.wst-dotwrap::after\{[^}]*inset:4px;[^}]*border-radius:22px/.test(css));
     const up = []; for (let k = 0; k < 300; k++) up.push(100 + k / 3);
     const pkL = parseFloat((/class="wst-pk" style="left:([\d.]+)%/.exec(ctx.F(up, ' bpm', 0)) || [])[1]);
-    const dn = up.slice().reverse();
-    const pkL2 = parseFloat((/class="wst-pk" style="left:([\d.]+)%/.exec(ctx.F(dn, ' bpm', 0)) || [])[1]);
-    ok('B18 Marker am Hoechstwert wird am Rand nicht abgeschnitten (1,4 % … 98,6 %)', pkL <= 98.6 && pkL > 95 && pkL2 >= 1.4 && pkL2 < 5, pkL2 + ' / ' + pkL);
-    ok('B19 Linie nutzt die volle Aufloesung (150 Stuetzpunkte), das Raster bleibt grob (58 Spalten)', /lcols=Math\.min\(150,vals\.length\),dcols=Math\.min\(58,vals\.length\)/.test(ui) && (h.match(/ C[\d.-]+,[\d.-]+ /g) || []).length >= 140);
+    const pkL2 = parseFloat((/class="wst-pk" style="left:([\d.]+)%/.exec(ctx.F(up.slice().reverse(), ' bpm', 0)) || [])[1]);
+    ok('B17 Ring am Hoechstwert wird am Rand nicht abgeschnitten (1,4 % … 98,6 %)', pkL <= 98.6 && pkL > 95 && pkL2 >= 1.4 && pkL2 < 5, pkL2 + ' / ' + pkL);
+    ok('B18 Ring: heller Punkt mit Akzentrand und blassem Hof', /\.gm-story \.wst-pk\{[^}]*background:#f7fbff;border:2\.5px solid var\(--acc/.test(css) && /\.gm-story \.wst-pk\{[^}]*box-shadow:0 0 0 6px rgba/.test(css));
+    ok('B19 Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile als EINE Gruppe', (ui.match(/,'wst-chartpg'\)\);/g) || []).length === 3 && /var page=function\(mid,footHtml,cls\)/.test(ui) && /\.gm-story \.wst-in\.wst-chartpg \.wst-mid\{flex:0 1 auto;margin-top:auto;/.test(css) && /\.gm-story \.wst-in\.wst-chartpg \.wst-foot\{margin-top:24px;margin-bottom:auto\}/.test(css));
   }
 }
 {

@@ -32,6 +32,16 @@ ok('B2 Ziel: vor/zurueck, kein Umlauf an den Enden', T.target('heute', 'next') =
   globalThis.getComputedStyle = () => ({ overflowX: 'auto' });
   const body = {}; const scroller = { nodeType: 1, scrollWidth: 800, clientWidth: 300, parentNode: body }; const chip = { nodeType: 1, scrollWidth: 60, clientWidth: 60, parentNode: scroller, closest: () => null };
   ok('B6 Start in waagerecht scrollbarem Bereich (Filterzeile) gesperrt', T._blockedStart(chip, { body }) === true);
+  /* v8-429 (Gian 2.10.): im Diagramm bleibt die Seite fest — die Diagramme sind SVG, nicht <canvas> */
+  const inSel = sel => ({ closest: s => s.split(',').map(x => x.trim()).indexOf(sel) >= 0 ? {} : null });
+  ok('B7 Start im ORVIA-Diagramm gesperrt (.oc2, .oc-svg, svg[tabindex], Story-Diagramm)', ['.oc2', '.oc-svg', 'svg[tabindex]', '.wst-dotwrap'].every(sel => T._blockedStart(inSel(sel), { body: {} }) === true), T.BLOCK_SEL);
+  {
+    /* Netz 2: ein Element, das die waagerechte Geste per CSS selbst beansprucht */
+    const mk = ta => { globalThis.getComputedStyle = n => ({ overflowX: 'visible', touchAction: n.ta || 'auto' }); const b = {}; const host = { nodeType: 1, scrollWidth: 300, clientWidth: 300, parentNode: b, ta }; const leaf = { nodeType: 1, scrollWidth: 10, clientWidth: 10, parentNode: host, closest: () => null }; return T._blockedStart(leaf, { body: b }); };
+    ok('B8 touch-action none / pan-y an einem Vorfahren sperrt den Wisch (kuenftige Diagramme ohne Eintrag)', mk('none') === true && mk('pan-y') === true);
+    ok('B9 normale Flaechen (auto / manipulation / pan-x) bleiben wischbar', mk('auto') === false && mk('manipulation') === false && mk('pan-x') === false);
+    globalThis.getComputedStyle = () => ({ overflowX: 'auto' });
+  }
 }
 {
   const ui = rd('js/ui.js'), sw = rd('sw.js'), idx = rd('index.html'), src = rd('js/tab-swipe.js'), css = rd('styles.css');

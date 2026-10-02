@@ -108,6 +108,10 @@ ok('C1 waehrend der Eingabe wird NICHT neu geladen — das Getippte bleibt', loa
 ok('C2 stattdessen ein Hinweis mit Knopf „Neu laden"', /Neue Version bereit/.test(busy.toast) && /Neu laden/.test(busy.toast) && busy.pending === true, busy.toast);
 await page.evaluate(() => { document.getElementById('e2eInput').blur(); try { sessionStorage.removeItem('orvia_sw_reload_at'); } catch (_) {} window.dispatchEvent(new CustomEvent('orvia:tab-changed', { detail: { tab: 'plan' } })); });
 const got3 = await waitPhase(3, 20000);
+/* v8-429: phase() liest schon die NEUE Seite, waehrend deren load-Ereignis (Zaehler `loads`)
+   unter Last noch aussteht — in der Gesamtsuite einmal „phase=3 loads=2". Kurz auf den
+   Zaehler warten statt ihn im selben Moment zu lesen. */
+for (let _w = 0; _w < 50 && loads < 3; _w++) await page.waitForTimeout(100);
 ok('C3 im naechsten ruhigen Moment (Tabwechsel) wird nachgeholt', got3 === true && loads === 3, 'phase=' + (await phase()) + ' loads=' + loads);
 
 /* ---- 4 · Schleifenschutz ---- */
