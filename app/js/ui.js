@@ -9913,12 +9913,14 @@ function gmStoryMarkSeen(aid){
 /* Warmer Verlaufs-Akzent je Sportfamilie (reine Darstellung). */
 function gmStoryTheme(fam){
   var T={
-    pace:    {acc:'#FF8A4C',soft:'rgba(255,138,76,.30)'},
-    cycling: {acc:'#5AA0F0',soft:'rgba(90,160,240,.30)'},
-    swimming:{acc:'#3ED6C4',soft:'rgba(62,214,196,.28)'},
-    gym:     {acc:'#DCC79A',soft:'rgba(220,199,154,.28)'},
-    rowing:  {acc:'#7C9CFF',soft:'rgba(124,156,255,.28)'},
-    other:   {acc:'#43D693',soft:'rgba(67,214,147,.28)'}
+    /* hi (v8-431): leuchtende Diagrammfarbe — die Akzentfarbe ist fuer Text gemacht und
+       wirkt als Kurve auf dunklem Grund matt; die Kurve braucht mehr Saettigung/Helligkeit. */
+    pace:    {acc:'#FF8A4C',soft:'rgba(255,138,76,.30)',hi:'#FF9B52'},
+    cycling: {acc:'#5AA0F0',soft:'rgba(90,160,240,.30)',hi:'#4FB0FF'},
+    swimming:{acc:'#3ED6C4',soft:'rgba(62,214,196,.28)',hi:'#35E6D2'},
+    gym:     {acc:'#DCC79A',soft:'rgba(220,199,154,.28)',hi:'#F0D28A'},
+    rowing:  {acc:'#7C9CFF',soft:'rgba(124,156,255,.28)',hi:'#7FA2FF'},
+    other:   {acc:'#43D693',soft:'rgba(67,214,147,.28)',hi:'#3FE89A'}
   };
   return T[fam]||T.other;
 }
@@ -9994,6 +9996,14 @@ function gmStoryDotChart(vals,unit,dec,opts){
   var lcols=Math.min(84,vals.length);
   var lb=mean(lcols);
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  /* v8-431: Die Spalte mit dem hoechsten und die mit dem tiefsten Messwert zeigen genau
+     diesen Wert (alle anderen ihr Mittel). Vorher endete die gemittelte Kurve weit unter
+     der Max-Linie (Leistung: Linie bei 503 W, Kurve bis ~300 W) — die Bezugslinien hingen
+     in der Luft und die halbe Flaeche blieb leer. Jetzt beruehrt die Kurve beide Linien
+     dort, wo der Wert gemessen wurde. */
+  var iMx=vals.indexOf(mx),iMn=vals.indexOf(mn);
+  lb[Math.min(lcols-1,Math.floor(iMx*lcols/vals.length))]=mx;
+  if(mn<mx)lb[Math.min(lcols-1,Math.floor(iMn*lcols/vals.length))]=mn;
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
   var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
   var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
@@ -10011,7 +10021,7 @@ function gmStoryDotChart(vals,unit,dec,opts){
        K(x) = min(1, A/f(L(x))) je Stuetzpunkt eine Deckkraft, als waagerechter Verlauf
      ⇒ an der Kurve gilt Deckkraft = min(f, A): hohe Spalten leuchten mit A, niedrige
      entsprechend schwaecher; ueberall weich, ohne Streifen. */
-  var A=0.58,FE=1.6,stops='',fade='',fq;
+  var A=0.7,FE=1.6,stops='',fade='',fq;   /* A hoch + Gesamtdeckkraft im CSS (.wst-area): weniger Helligkeitssprung neben hohen Spitzen */
   var fOf=function(y){return Math.pow(Math.max(0,1-y/H),FE);};
   pts.forEach(function(p2){stops+='<stop offset="'+(p2[0]/W).toFixed(4)+'" stop-opacity="'+Math.min(1,A/Math.max(0.0001,fOf(p2[1]))).toFixed(3)+'"/>';});
   for(fq=0;fq<=8;fq++){var gv=Math.round(255*fOf(H*fq/8));fade+='<stop offset="'+(fq/8)+'" stop-color="rgb('+gv+','+gv+','+gv+')"/>';}
@@ -10025,9 +10035,10 @@ function gmStoryDotChart(vals,unit,dec,opts){
   var lab=function(v){return f(v)+(u?' '+gmEsc(u):'');};
   var maxP=yOf(maxShow)/H*100,minP=yOf(mn)/H*100,avgP=yOf(avg)/H*100;
   /* Seite fuer Max/Min: links, ausser die Kurve laeuft dort durch den Text (dann rechts).
-     Geprueft wird das aeussere Viertel der Breite in einem Band von ±7 % um die Linie. */
-  var hits=function(yp,fromF,toF){for(var i=0;i<lcols;i++){var xf=lcols>1?i/(lcols-1):0;if(xf<fromF||xf>toF)continue;if(Math.abs(pts[i][1]/H*100-yp)<7)return true;}return false;};
-  var side=function(yp){if(!hits(yp,0,0.27))return '';if(!hits(yp,0.73,1))return ' r';return '';};
+     Geprueft wird das aeussere Viertel der Breite in einem Band von ±7 % um die Linie;
+     beruehrt die Kurve beide Seiten, gewinnt die mit weniger Beruehrungen. */
+  var hits=function(yp,fromF,toF){var n=0;for(var i=0;i<lcols;i++){var xf=lcols>1?i/(lcols-1):0;if(xf<fromF||xf>toF)continue;if(Math.abs(pts[i][1]/H*100-yp)<7)n++;}return n;};
+  var side=function(yp){var l=hits(yp,0,0.27),r=hits(yp,0.73,1);return r<l?' r':'';};   /* die Seite mit weniger Beruehrungen; bei Gleichstand links */
   var sMax=side(maxP),sMin=side(minP);
   /* Ø-Schild rechts; liegt ein Max/Min-Wert ebenfalls rechts und zu nah, rueckt nur das Schild */
   var pillP=avgP;
@@ -10044,9 +10055,13 @@ function gmStoryDotChart(vals,unit,dec,opts){
       '<linearGradient id="'+gV+'" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="'+H+'">'+fade+'</linearGradient>'+
       '<mask id="'+mA+'" maskUnits="userSpaceOnUse" x="0" y="0" width="'+W+'" height="'+H+'"><rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#'+gV+')"/></mask></defs>'+
       '<path class="wst-area" d="'+line+' L'+W+','+H+' L0,'+H+' Z" fill="url(#'+gA+')" mask="url(#'+mA+')"/>'+
-      '<path class="wst-glow g2" d="'+line+'"/><path class="wst-glow g1" d="'+line+'"/>'+
       '<path class="wst-line" d="'+line+'"/>'+
-    '</svg></div>'+
+    '</svg>'+
+    /* Schein: derselbe Linienzug in einem eigenen SVG, als GANZES per CSS weichgezeichnet
+       (filter auf dem Element — laeuft in jedem Browser gleich; ein SVG-Filter am Pfad
+       ist in Safari mit nicht mitskalierenden Strichen unzuverlaessig). Liegt UNTER der Kurve. */
+    '<svg class="wst-dots wst-halo" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true"><path class="wst-glow" d="'+line+'"/></svg>'+
+    '</div>'+
     '<span class="wst-avgline" style="top:'+avgP.toFixed(1)+'%"></span>'+
     '<span class="wst-avgpill" style="top:'+pillP.toFixed(1)+'%"><i></i><b><em>Ø</em> '+lab(avgShow)+'</b></span>'+
     '</div></div>';
@@ -10058,7 +10073,7 @@ function gmStoryPages(a){
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var fam=gmActFamily(vm.sportId);
   var th=gmStoryTheme(fam);
-  var accCss='--acc:'+th.acc+';--accsoft:'+th.soft;
+  var accCss='--acc:'+th.acc+';--accsoft:'+th.soft+';--acchi:'+(th.hi||th.acc);
   var pages=[];
   /* Legacy-Sessions tragen ein synthetisches T00:00 — keine gemessene Uhrzeit. */
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');

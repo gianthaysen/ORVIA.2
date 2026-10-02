@@ -3701,13 +3701,13 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-cell{opacity:0;transform:translateY(22px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards}
 .gm-story .wst-debrief{font-size:15px;line-height:1.65;color:var(--text)}
 /* Dot-Matrix-Flächenchart */
-.gm-story .wst-dotwrap{position:relative;flex:none;height:clamp(230px,calc(100vh - 410px),420px);height:clamp(230px,calc(100dvh - 410px - var(--sat,0px) - env(safe-area-inset-bottom,0px)),420px);margin:2px -13px 0;
+.gm-story .wst-dotwrap{position:relative;flex:none;height:clamp(230px,calc(100vh - 370px),560px);height:clamp(230px,calc(100dvh - 370px - var(--sat,0px) - env(safe-area-inset-bottom,0px)),560px);margin:2px -13px 0;
   border-radius:18px;border:1px solid rgba(190,220,245,.58);
   background:linear-gradient(180deg,#1a324d 0,#0e1f33 22%,#0b1929 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 18px rgba(90,160,240,.07),0 0 0 1px rgba(0,0,0,.5),0 0 22px rgba(70,150,245,.20),0 18px 50px rgba(0,0,0,.35)}
-/* Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile bilden EINE Gruppe direkt unter dem Titel
-   (wie im Referenzbild); die Tafel nimmt die freie Hoehe des Bildschirms auf. */
-.gm-story .wst-in.wst-chartpg .wst-mid{flex:0 0 auto;margin-top:20px;justify-content:flex-start;gap:14px;overflow:visible}
+/* Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile bilden EINE Gruppe unter dem Titel (wie im
+   Referenzbild). Die Tafel nimmt die freie Hoehe des Bildschirms auf (230–560 px). */
+.gm-story .wst-in.wst-chartpg .wst-mid{flex:0 0 auto;margin-top:clamp(20px,6vh,60px);justify-content:flex-start;gap:14px;overflow:visible}
 .gm-story .wst-in.wst-chartpg .wst-foot{margin-top:26px;margin-bottom:auto}
 /* v8-430 (Gians Referenzbild): Tafel fast randlos, darin der Rahmen der Zeichenflaeche.
    Die Kurve laeuft von Rand zu Rand; Max, Min und Ø stehen in der Flaeche. */
@@ -3718,15 +3718,16 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-rev{position:absolute;inset:0;-webkit-clip-path:inset(0);clip-path:inset(0);animation:wstReveal 1.6s cubic-bezier(.35,0,.25,1) both}
 .gm-story .wst-dotwrap.calm .wst-rev{animation:none}
 @keyframes wstReveal{from{-webkit-clip-path:inset(0 100% 0 0);clip-path:inset(0 100% 0 0)}to{-webkit-clip-path:inset(0);clip-path:inset(0)}}
-/* Kurve: kantiger Linienzug, 2 px, heller als die Akzentfarbe; enger Schein (ein blasser,
-   breiterer Strich — kein Filter, kein Gruppen-opacity). */
-.gm-story .wst-line{fill:none;stroke:var(--acc,#5FBAFE);stroke:color-mix(in srgb,var(--acc,#5FBAFE) 88%,#fff);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-glow{fill:none;stroke:var(--acc,#5FBAFE);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-glow.g1{stroke-width:4.5;stroke-opacity:.13}
-.gm-story .wst-glow.g2{stroke-width:8;stroke-opacity:.05}
-/* Flaeche: Farbe der Sportart; die Deckkraft kommt je Stuetzpunkt aus dem Markup (stop-opacity)
+/* Kurve: kantiger Linienzug in der leuchtenden Diagrammfarbe der Sportart (--acchi), heller
+   Kern; darunter derselbe Zug in einem eigenen SVG, als Ganzes per CSS weichgezeichnet (Schein). */
+.gm-story .wst-line{fill:none;stroke:var(--acchi,var(--acc,#4FB0FF));stroke:color-mix(in srgb,var(--acchi,var(--acc,#4FB0FF)) 82%,#fff);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-glow{fill:none;stroke:var(--acchi,var(--acc,#4FB0FF));stroke-width:5;stroke-opacity:.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-halo{z-index:0;-webkit-filter:blur(3.5px);filter:blur(3.5px)}
+.gm-story .wst-rev>.wst-dots:not(.wst-halo){z-index:1}
+/* Flaeche: leuchtende Diagrammfarbe; die Deckkraft kommt je Stuetzpunkt aus dem Markup (stop-opacity)
    und wird mit dem senkrechten Masken-Verlauf multipliziert. */
-.gm-story .wst-gk stop{stop-color:var(--acc,#5FBAFE)}
+.gm-story .wst-gk stop{stop-color:var(--acchi,var(--acc,#4FB0FF))}
+.gm-story .wst-area{fill-opacity:.82}
 /* Max/Min: Punkt · Wert · gestrichelte Linie (als Zeile; .r = Wert rechts) */
 .gm-story .wst-ref{position:absolute;left:9px;right:9px;display:flex;align-items:center;gap:7px;transform:translateY(-50%);
   font-size:11px;font-weight:600;color:#dfe8f2;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;white-space:nowrap;pointer-events:none}
@@ -3742,7 +3743,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-avgpill i{flex:none;width:6px;height:6px;margin-right:-3px;border-radius:50%;background:#fff;position:relative;z-index:1}
 .gm-story .wst-avgpill b{padding:5px 9px 5px 10px;border-radius:9px;border:1px solid rgba(225,235,245,.72);background:rgba(8,18,31,.96);
   color:#f4f7fb;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}
-.gm-story .wst-avgpill em{font-style:normal;color:var(--acc,#5FBAFE);color:color-mix(in srgb,var(--acc,#5FBAFE) 76%,#fff)}
+.gm-story .wst-avgpill em{font-style:normal;color:var(--acchi,var(--acc,#4FB0FF))}
 .gm-story .wst-dotwrap.calm .wst-avgline,.gm-story .wst-dotwrap.calm .wst-avgpill{animation:none;opacity:1}
 .gm-story .wst-dc{opacity:0;animation:wstDot .6s ease-out forwards}
 @keyframes wstIn{to{opacity:1;transform:none}}

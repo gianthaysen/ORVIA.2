@@ -27,7 +27,11 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
   ok('A5 View-Model: Summary fuehrt, sonst Ø/Max aus der echten Messreihe (powerSource stream)', /powerSource: \(dm && dm\.avgPowerW != null\) \? 'summary' : null/.test(act) && /vm\.avgPowerW = Math\.round\(_ps \/ _pn\); vm\.powerSource = 'stream';/.test(act) && /if \(_pn >= 5 && _pm > 0\)/.test(act));
 }
 {
-  /* v8-430 — Gians Rueckmeldung 2.10. zu v8-429: „sieht immer noch billig aus". Massstab ist
+  /* v8-431 — Gians Rueckmeldung zu v8-430 (drei Bildschirmfotos): „das geht immer noch besser".
+     Befund an seinen Bildern: Kurve und Flaeche wirkten matt (Akzentfarbe statt leuchtender
+     Diagrammfarbe), bei Leistung hing die Max-Linie bei 503 W in der Luft (gemittelte Kurve bis
+     ~300 W, halbe Flaeche leer), unten blieb ein Drittel des Bildschirms leer.
+     v8-430 — Rueckmeldung zu v8-429: „sieht immer noch billig aus". Massstab ist
      jetzt sein REFERENZBILD (nicht das mitgelieferte CSS): Tafel fast randlos mit eigenem
      Rahmen fuer die Zeichenflaeche, kantiger Linienzug von Rand zu Rand, Flaeche leuchtet
      direkt unter der Kurve, Max/Min als gestrichelte Bezugslinien mit Wert, Ø als helle
@@ -40,9 +44,9 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
   const dLine = (/<path class="wst-line" d="([^"]+)"/.exec(h) || [])[1], dArea = (/<path class="wst-area" d="([^"]+)"/.exec(h) || [])[1];
   ok('B1 Kurve ist ein KANTIGER Linienzug (gerade Stuecke, keine Rundung) von Rand zu Rand', !!dLine && /^M0\.0,[\d.]+ L/.test(dLine) && !/C/.test(dLine) && / L360\.0,[\d.]+$/.test(dLine) && (dLine.match(/ L/g) || []).length === 83);
   ok('B2 Flaeche liegt genau unter DERSELBEN Kurve (Kurve + Grundlinie)', dArea === dLine + ' L360,300 L0,300 Z');
-  const iRev = h.indexOf('<div class="wst-rev">'), iRevEnd = h.indexOf('</svg></div>', iRev);
+  const iRev = h.indexOf('<div class="wst-rev">'), iRevEnd = h.indexOf('</svg></div>', iRev);   /* Ende = nach dem Schein-SVG */
   const inRev = cls => { const p = h.indexOf('class="' + cls); return p > iRev && p < iRevEnd; };
-  ok('B2a Flaeche, Schein UND Kurve liegen in EINER Aufdeck-Huelle (erscheinen gemeinsam)', iRev > 0 && inRev('wst-area') && inRev('wst-glow g1') && inRev('wst-line') && h.indexOf('class="wst-grid"') < iRev);
+  ok('B2a Flaeche, Schein UND Kurve liegen in EINER Aufdeck-Huelle (erscheinen gemeinsam)', iRev > 0 && inRev('wst-area') && inRev('wst-glow') && inRev('wst-line') && h.indexOf('class="wst-grid"') < iRev);
   ok('B2b Aufdecken per CSS (clip-path, 1,6 s, links → rechts) — kein SMIL im Markup', !/<animate/.test(h) && /\.gm-story \.wst-rev\{[^}]*clip-path:inset\(0\);animation:wstReveal 1\.6s cubic-bezier\(\.35,0,\.25,1\) both\}/.test(css) && /@keyframes wstReveal\{from\{[^}]*clip-path:inset\(0 100% 0 0\)\}to\{[^}]*clip-path:inset\(0\)\}\}/.test(css) && (css.match(/-webkit-clip-path:inset\(0/g) || []).length >= 3);
   const hc = mk(true).F(vals, ' bpm', 0);
   ok('B2c „Bewegung reduzieren": Diagramm steht sofort (Klasse calm + Medienabfrage)', /class="wst-dotwrap calm"/.test(hc) && /\.gm-story \.wst-dotwrap\.calm \.wst-rev\{animation:none\}/.test(css) && /prefers-reduced-motion:reduce\)\{[\s\S]{0,700}\.gm-story \.wst-rev\{animation:none\}[\s\S]{0,200}\.gm-story \.wst-avgline,\.gm-story \.wst-avgpill\{animation:none;opacity:1\}/.test(css));
@@ -51,15 +55,15 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
     const stops = [...h.matchAll(/<stop offset="([\d.]+)" stop-opacity="([\d.]+)"\/>/g)].map(m => [+m[1], +m[2]]);
     const pts = dLine.replace(/^M/, '').split(' L').map(q => q.split(',').map(Number));
     const fOf = y => Math.pow(Math.max(0, 1 - y / 300), 1.6);
-    const okK = stops.length === pts.length && stops.every((st, k) => Math.abs(st[0] - pts[k][0] / 360) < 0.0006 && Math.abs(st[1] - Math.min(1, 0.58 / fOf(pts[k][1]))) < 0.004);
+    const okK = stops.length === pts.length && stops.every((st, k) => Math.abs(st[0] - pts[k][0] / 360) < 0.0006 && Math.abs(st[1] - Math.min(1, 0.7 / fOf(pts[k][1]))) < 0.004);
     ok('B3 je Stuetzpunkt eine Deckkraft K = min(1, A/f) als waagerechter Verlauf (84 Stufen)', okK && /<linearGradient id="wstGrad\d+" class="wst-gk" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="360" y2="0">/.test(h), stops.length + ' Stufen');
     const fade = [...h.matchAll(/<stop offset="([\d.]+)" stop-color="rgb\((\d+),\2,\2\)"\/>/g)].map(m => [+m[1], +m[2]]);
     ok('B3a senkrechte Maske: oben weiss (1), Boden schwarz (0), dazwischen f(y) = (1−y)^1,6', fade.length === 9 && fade[0][1] === 255 && fade[8][1] === 0 && fade.every(q => Math.abs(q[1] - Math.round(255 * Math.pow(1 - q[0], 1.6))) <= 1) && /<mask id="(wstMask\d+)" maskUnits="userSpaceOnUse" x="0" y="0" width="360" height="300">/.test(h) && /class="wst-area"[^>]* fill="url\(#wstGrad\d+\)" mask="url\(#wstMask\d+\)"/.test(h));
     const at = k => stops[k][1] * fOf(pts[k][1]);
-    ok('B3b Ergebnis an der Kurve: nie heller als A = 0,58; hohe Spalten erreichen A, niedrige bleiben darunter', stops.every((st, k) => at(k) <= 0.5805) && stops.some((st, k) => Math.abs(at(k) - 0.58) < 0.003) && stops.some((st, k) => at(k) < 0.45));
+    ok('B3b Ergebnis an der Kurve: nie heller als A = 0,7 (× .82 Gesamtdeckkraft); hohe Spalten erreichen A, niedrige bleiben darunter', stops.every((st, k) => at(k) <= 0.7005) && stops.some((st, k) => at(k) < 0.45) && (() => { /* Kurve bis an die Max-Linie (ohne Summary-Max): dort wird A erreicht */ const hh = ctx.F(vals, ' bpm', 0); const s2 = [...hh.matchAll(/<stop offset="([\d.]+)" stop-opacity="([\d.]+)"\/>/g)].map(m => +m[2]); const p2 = ((/<path class="wst-line" d="([^"]+)"/.exec(hh) || [])[1] || '').replace(/^M/, '').split(' L').map(q => +q.split(',')[1]); return s2.some((o, k) => Math.abs(o * fOf(p2[k]) - 0.7) < 0.003) && s2.every((o, k) => o * fOf(p2[k]) <= 0.7005); })() && /\.gm-story \.wst-area\{fill-opacity:\.82\}/.test(css));
     ok('B3c EIN Flaechen-Pfad, keine Streifen/Punkte', (h.match(/class="wst-area"/g) || []).length === 1 && !/<rect x="[\d.]+" y="[\d.]+" width="2/.test(h) && !/<circle/.test(h));
   }
-  ok('B4 Schein = zwei blasse, breitere Striche derselben Kurve (kein Filter, kein Gruppen-opacity)', ['g1', 'g2'].every(g => new RegExp('<path class="wst-glow ' + g + '" d="').test(h) && new RegExp('\\.gm-story \\.wst-glow\\.' + g + '\\{stroke-width:[\\d.]+;stroke-opacity:\\.\\d+\\}').test(css)) && !/\.wst-glow[^{]*\{[^}]*(filter|[^-]opacity:)/.test(css));
+  ok('B4 Schein = derselbe Linienzug in einem eigenen SVG UNTER der Kurve, als Ganzes per CSS weichgezeichnet (kein SVG-Filter am Pfad)', (() => { const m = /<svg class="wst-dots wst-halo"[^>]*><path class="wst-glow" d="([^"]+)"\/><\/svg>/.exec(h); return !!m && m[1] === dLine && h.indexOf('wst-halo') > h.indexOf('class="wst-line"') && !/<filter|filter="/.test(h) && /\.gm-story \.wst-halo\{z-index:0;-webkit-filter:blur\(3\.5px\);filter:blur\(3\.5px\)\}/.test(css) && /\.gm-story \.wst-rev>\.wst-dots:not\(\.wst-halo\)\{z-index:1\}/.test(css); })());
   ok('B5 Max und Ø aus der Summary, mit Einheit, in der Zeichenflaeche', /class="wst-ref wst-refmax[^"]*" style="top:[\d.]+%"><i><\/i><b>167 bpm<\/b><u><\/u><\/span>/.test(h) && /class="wst-avgpill" style="top:[\d.]+%"><i><\/i><b><em>Ø<\/em> 135 bpm<\/b><\/span>/.test(h) && /class="wst-ref wst-refmin[^"]*"[^>]*><i><\/i><b>90 bpm<\/b>/.test(h));
   const h2 = ctx.F(vals, ' bpm', 0);
   ok('B6 ohne Summary: Ø/Max der Samples; Summary-Max unter dem Sample-Max wird ignoriert', /<em>Ø<\/em> 1\d\d bpm/.test(h2) && /wst-refmax[^>]*><i><\/i><b>150 bpm<\/b>/.test(h2) && /wst-refmax[^>]*><i><\/i><b>150 bpm<\/b>/.test(ctx.F(vals, ' bpm', 0, { max: 140 })));
@@ -88,8 +92,22 @@ const AN = (await import(new URL(_APPREL + 'js/activity-normalize.js', import.me
     ok('B14 Raster: 5 waagerechte + 8 senkrechte Linien, fein gestrichelt, sehr zurueckhaltend', ((/<g class="wst-grid">(.*?)<\/g>/.exec(h) || [])[1] || '').split('<line').length - 1 === 13 && /\.gm-story \.wst-grid line\{stroke:rgba\(120,170,220,\.15\);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke\}/.test(css));
     ok('B15 Ø: helle gestrichelte Linie ueber die ganze Breite, Punkt + Schild rechts; erscheinen nach dem Aufdecken', /\.gm-story \.wst-avgline\{position:absolute;left:0;right:0;height:1px;[^}]*rgba\(240,244,248,\.92\)[^}]*animation:wstDot \.5s ease-out 1\.5s forwards/.test(css) && /\.gm-story \.wst-avgpill\{position:absolute;right:8px;[^}]*animation:wstDot \.5s ease-out 1\.5s forwards/.test(css) && h.indexOf('class="wst-avgline"') > iRevEnd);
     ok('B16 Tafel fast randlos (ragt 13 px ueber den Seitenrand), heller Rand, eigener Rahmen fuer die Zeichenflaeche', /\.gm-story \.wst-dotwrap\{[^}]*margin:2px -13px 0;\s*border-radius:18px;border:1px solid rgba\(190,220,245,\.58\)/.test(css) && /\.gm-story \.wst-plot\{position:absolute;inset:15px 12px 13px;border-radius:12px;border:1px solid rgba\(125,170,215,\.20\);overflow:hidden/.test(css));
-    ok('B17 Tafel nimmt die freie Bildschirmhoehe auf (230–420 px), Gruppe steht direkt unter dem Titel', /height:clamp\(230px,calc\(100dvh - 410px - var\(--sat,0px\) - env\(safe-area-inset-bottom,0px\)\),420px\)/.test(css) && /height:clamp\(230px,calc\(100vh - 410px\),420px\);height:clamp/.test(css) && /\.gm-story \.wst-in\.wst-chartpg \.wst-mid\{flex:0 0 auto;margin-top:20px;/.test(css) && /\.gm-story \.wst-in\.wst-chartpg \.wst-foot\{margin-top:26px;margin-bottom:auto\}/.test(css) && (ui.match(/,'wst-chartpg'\)\);/g) || []).length === 3);
-    ok('B18 Farbe folgt der Sportart (Kurve, Schein, Flaeche, Ø-Zeichen); Werte in Textfarbe', /\.gm-story \.wst-line\{fill:none;stroke:var\(--acc/.test(css) && /\.gm-story \.wst-gk stop\{stop-color:var\(--acc/.test(css) && /\.gm-story \.wst-avgpill em\{font-style:normal;color:var\(--acc/.test(css) && !/var\(--acc/.test((/\.gm-story \.wst-ref\{([^}]*)\}/.exec(css) || [])[1] || 'var(--acc'));
+    ok('B17 Tafel nimmt die freie Bildschirmhoehe auf (230–560 px), Gruppe steht unter dem Titel', /height:clamp\(230px,calc\(100dvh - 370px - var\(--sat,0px\) - env\(safe-area-inset-bottom,0px\)\),560px\)/.test(css) && /height:clamp\(230px,calc\(100vh - 370px\),560px\);height:clamp/.test(css) && /\.gm-story \.wst-in\.wst-chartpg \.wst-mid\{flex:0 0 auto;margin-top:clamp\(20px,6vh,60px\);/.test(css) && /\.gm-story \.wst-in\.wst-chartpg \.wst-foot\{margin-top:26px;margin-bottom:auto\}/.test(css) && (ui.match(/,'wst-chartpg'\)\);/g) || []).length === 3);
+    ok('B18 Farbe folgt der Sportart in der LEUCHTENDEN Diagrammfarbe (--acchi; Rueckfall --acc): Kurve, Schein, Flaeche, Ø-Zeichen; Werte in Textfarbe', /\.gm-story \.wst-line\{fill:none;stroke:var\(--acchi,var\(--acc/.test(css) && /\.gm-story \.wst-glow\{fill:none;stroke:var\(--acchi,var\(--acc/.test(css) && /\.gm-story \.wst-gk stop\{stop-color:var\(--acchi,var\(--acc/.test(css) && /\.gm-story \.wst-avgpill em\{font-style:normal;color:var\(--acchi,var\(--acc/.test(css) && !/var\(--acc/.test((/\.gm-story \.wst-ref\{([^}]*)\}/.exec(css) || [])[1] || 'var(--acc'));
+    {
+      /* Spitzen erhalten: Leistung mit 1-Hz-Rauschen und einem 4-s-Sprint — die Kurve MUSS die Max-Linie beruehren */
+      const pw = []; for (let k = 0; k < 3000; k++) pw.push(100 + ((k * 37) % 61) - 30); for (let q = 0; q < 4; q++) pw[2700 + q] = [470, 503, 488, 430][q]; pw[900] = 0;
+      const hp = ctx.F(pw, ' W', 0, { avg: 101, max: 503 });
+      const ys = ((/<path class="wst-line" d="([^"]+)"/.exec(hp) || [])[1] || '').replace(/^M/, '').split(' L').map(q => +q.split(',')[1]);
+      const yMax = 300 * 0.09, yMin = 300 * (1 - 0.085);
+      ok('B19a Kurve beruehrt die Max-Linie dort, wo der Hoechstwert gemessen wurde (nicht mehr nur das Spaltenmittel)', Math.abs(Math.min(...ys) - yMax) < 0.06 && ys.indexOf(Math.min(...ys)) === Math.floor(2701 * 84 / 3000), 'oben ' + Math.min(...ys).toFixed(1) + ' / Linie ' + yMax.toFixed(1));
+      ok('B19b … und die Min-Linie am tiefsten Messwert', Math.abs(Math.max(...ys) - yMin) < 0.06 && ys.indexOf(Math.max(...ys)) === Math.floor(900 * 84 / 3000));
+      ok('B19c alle uebrigen Spalten bleiben ihr Mittel (kein Zickzack aus Einzelwerten)', ys.filter(y => y < 300 * 0.5).length === 1);
+    }
+    {
+      const th = ui.slice(ui.indexOf('function gmStoryTheme(fam){'), ui.indexOf('return T[fam]||T.other;'));
+      ok('B19d jede Sportart hat eine leuchtende Diagrammfarbe (hi) und reicht sie als --acchi an die Seite', ['pace', 'cycling', 'swimming', 'gym', 'rowing', 'other'].every(f => new RegExp(f + ':\\s*\\{acc:\'#[0-9A-F]{6}\',soft:\'rgba\\([^)]+\\)\',hi:\'#[0-9A-F]{6}\'\\}').test(th)) && /var accCss='--acc:'\+th\.acc\+';--accsoft:'\+th\.soft\+';--acchi:'\+\(th\.hi\|\|th\.acc\);/.test(ui));
+    }
     ok('B19 alte Bausteine sind restlos weg (Etikettenspalte, Ring, Streifen-Zuschnitt)', !/wst-axis|wst-axmax|wst-axavg|wst-pk|wst-avgdot|wst-avgbadge/.test(h + css) && !/<clipPath/.test(h));
   }
   {
