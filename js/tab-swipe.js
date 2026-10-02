@@ -39,7 +39,16 @@
     return (j >= 0 && j < ORDER.length) ? ORDER[j] : null;
   }
 
-  var BLOCK_SEL = 'input,textarea,select,[contenteditable="true"],[draggable="true"],canvas,.route-map,.tabbar,.fab,.noswipe,[data-noswipe]';
+  /* v8-429 (Gians Befund 2.10.: „durch das Wischen kannst du in den Grafiken nicht mehr
+     hin- und herschauen"): Gesperrt war nur <canvas> — die ORVIA-Diagramme sind aber SVG
+     (richChart in .oc2 / .oc-svg). Der Finger fuhr den Messpunkt ab UND zog die Seite mit.
+     Jetzt gilt: beginnt die Beruehrung in einem Diagramm, bleibt die Seite fest.
+     Zwei Netze: (1) die bekannten Diagramm-Huellen per Selektor, (2) jedes Element, das
+     die waagerechte Geste per CSS selbst beansprucht (touch-action: none / pan-y) —
+     damit ist auch ein kuenftiges Diagramm ohne Eintrag hier automatisch geschuetzt. */
+  var BLOCK_SEL = 'input,textarea,select,[contenteditable="true"],[draggable="true"],canvas,.route-map,.tabbar,.fab,.noswipe,[data-noswipe],' +
+    '.oc2,.oc-svg,.wst-dotwrap,svg[tabindex],[role="slider"]';
+  function ownsHorizontal(ta) { ta = String(ta || ''); return ta === 'none' || ta === 'pan-y' || ta === 'pinch-zoom' || ta === 'pan-y pinch-zoom'; }
   function overlayOpen(doc) {
     try {
       if (doc.body.classList.contains('story-open')) return true;
@@ -51,8 +60,10 @@
       if (!el || !el.closest) return false;
       if (el.closest(BLOCK_SEL)) return true;
       for (var n = el; n && n !== doc.body && n.nodeType === 1; n = n.parentNode) {
+        var cs = root.getComputedStyle ? root.getComputedStyle(n) : null;
+        if (cs && ownsHorizontal(cs.touchAction)) return true;    /* Element fuehrt die Geste selbst (Diagramm-Abfahren, Regler) */
         if (n.scrollWidth > n.clientWidth + 4) {
-          var ox = root.getComputedStyle ? root.getComputedStyle(n).overflowX : '';
+          var ox = cs ? cs.overflowX : '';
           if (ox === 'auto' || ox === 'scroll') return true;      /* waagerecht scrollbarer Bereich */
         }
       }
@@ -147,7 +158,7 @@
     }, { passive: true });
   }
 
-  O.tabSwipe = { ORDER: ORDER, CFG: CFG, decide: decide, target: target, axis: axis, follow: follow, bind: bind, _overlayOpen: overlayOpen, _blockedStart: blockedStart, _currentTab: currentTab };
+  O.tabSwipe = { ORDER: ORDER, CFG: CFG, BLOCK_SEL: BLOCK_SEL, decide: decide, target: target, axis: axis, follow: follow, bind: bind, _overlayOpen: overlayOpen, _blockedStart: blockedStart, _currentTab: currentTab };
   if (root.document && root.document.addEventListener) {
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', bind); else bind();
   }

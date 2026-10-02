@@ -9970,71 +9970,67 @@ function gmMonoPath(pts){
 function gmStoryDotChart(vals,unit,dec,opts){
   if(!Array.isArray(vals)||vals.length<5)return '';
   var o=opts||{};
-  /* v8-428 (Gians Rueckmeldung 2.10.: „sieht jetzt noch billiger aus"): die 3-px-Linie
-     mit Leuchtrand ueber 78 groben Stuetzpunkten wirkte wie ein Filzstift. Jetzt nach
-     den Diagramm-Grundregeln: DUENNE Linie (2 px, ohne Leuchten), die Flaeche darunter
-     nur als Hauch (Verlauf), das Punktraster deutlich zurueckgenommen, die Ø-Linie als
-     ruhige Haarlinie statt gestrichelt. Die Linie nutzt die volle Aufloesung der
-     Messreihe (bis 150 Stuetzpunkte) — sie liest sich als Messung, nicht als Skizze.
-     Das Punktraster bleibt bewusst grob (Hintergrund). Ein Marker sitzt auf dem
-     hoechsten Punkt der Kurve. */
-  var W=360,H=430,rows=34;
+  /* v8-429 — Gians Vorgabe 2.10. (Entwurf als HTML/CSS geliefert, „deutlich besser"):
+     das Diagramm sitzt in einer eigenen Tafel (Verlauf, feine Kante), dahinter ein
+     ruhiges gestricheltes Raster, darunter eine Verlaufsflaeche, die Kurve kraeftig mit
+     weichem Schein, Ø als gestrichelte Bezugslinie mit Punkt und Schild, ein Ring auf
+     dem Hoechstwert. Das Punktraster entfaellt.
+     Eine Abweichung vom Entwurf, bewusst: Max, Ø-Schild und Min stehen in einer EIGENEN
+     Spalte rechts neben der Zeichenflaeche (feste Pixelbreite) — im Entwurf lag das
+     Schild auf dem Ende der Kurve. Der Name der Funktion bleibt (Aufrufer, Tests). */
+  var W=360,H=430,PT=0.07,PB=0.06;
   var mean=function(n){var out=[];for(var c=0;c<n;c++){
     var a0=Math.floor(c*vals.length/n),b0=Math.max(a0+1,Math.floor((c+1)*vals.length/n));
     var sm=0,k=0;for(var i=a0;i<b0&&i<vals.length;i++){sm+=vals[i];k++;}
     out.push(k?sm/k:vals[a0]);}return out;};
-  var lcols=Math.min(150,vals.length),dcols=Math.min(58,vals.length);
-  var lb=mean(lcols),db=mean(dcols);
+  var lcols=Math.min(120,vals.length);
+  var lb=mean(lcols);
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rng=(mx-mn)||1;
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
-  var rh=H/rows;
-  var yOf=function(v){return H-(((v-mn)/rng)*(rows-2)+1)*rh;};
-  /* Linie: Spaltenmittel in voller Aufloesung, monoton-kubisch verbunden */
+  var yOf=function(v){return H*(PT+(1-(v-mn)/rng)*(1-PT-PB));};
+  /* Kurve: Spaltenmittel, monoton-kubisch verbunden (trifft jeden Stuetzpunkt, schwingt nie ueber) */
   var lw=W/lcols,pts=[],pk=0;
   lb.forEach(function(v,c){pts.push([c*lw+lw/2,yOf(v)]);if(v>lb[pk])pk=c;});
   var y0=pts[0][1].toFixed(1),yN=pts[pts.length-1][1].toFixed(1);
   var line='M0,'+y0+' L'+pts[0][0].toFixed(1)+','+y0+gmMonoPath(pts)+' L'+W+','+yN;
-  /* Punktraster: grob, nur Hintergrund — der Zuschnitt an der Kurve macht die Kante */
-  var dw=W/dcols,r=Math.max(1.4,Math.min(dw,rh)*0.22),dots='';
-  db.forEach(function(v,c){
-    var x=c*dw+dw/2,hN=Math.min(rows,Math.max(1,Math.ceil((H-yOf(v))/rh)+3));
-    for(var q=0;q<hN;q++)dots+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
-  });
-  var k=(++_gmStoryChartSeq),cA='wstClip'+k,cR='wstRev'+k,gA='wstGrad'+k;
+  /* Raster: 4 waagerechte, 5 senkrechte Linien — gleichmaessig, reine Orientierung */
+  var grid='',g;
+  for(g=1;g<=4;g++){var gy=(H*g/5).toFixed(1);grid+='<line x1="0" x2="'+W+'" y1="'+gy+'" y2="'+gy+'"/>';}
+  for(g=1;g<=5;g++){var gx=(W*g/6).toFixed(1);grid+='<line x1="'+gx+'" x2="'+gx+'" y1="0" y2="'+H+'"/>';}
+  var k=(++_gmStoryChartSeq),gA='wstGrad'+k;
   var calm=false;try{calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){ }
-  var DUR=1.6;
-  var anim=calm?'':'<animate attributeName="width" from="0" to="'+W+'" begin="0s" dur="'+DUR+'s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.35 0 0.25 1"/>';
   var avgY=yOf(avg);
   var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
   var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
   var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
   /* Marker nie halb ueber den Rand (Hoechstwert in der ersten/letzten Spalte) */
   var pkX=Math.max(1.4,Math.min(98.6,pts[pk][0]/W*100)).toFixed(2),pkY=(pts[pk][1]/H*100).toFixed(2);
-  /* Beschriftung als rechte Werteachse AUSSERHALB der Zeichenflaeche: Max, Ø, Min stehen
-     auf ihrer Hoehe neben der Kurve. Frueher lag das Ø-Schild IN der Flaeche und verdeckte
-     die Linie (eine Messreihe kreuzt ihren Mittelwert staendig — eine freie Stelle gibt es
-     dort praktisch nie). Liegt Ø nahe an Max/Min, rueckt nur das Etikett ab; die Haarlinie
-     bleibt auf dem echten Wert. */
-  var maxY=yOf(mx)/H*100,minY=yOf(mn)/H*100,GAP=8;
-  var avgL=Math.max(maxY+GAP,Math.min(minY-GAP,avgY/H*100));
+  var avgP=(avgY/H*100).toFixed(1);
   var u=String(unit||'').replace(/^\s+/,'');
   return '<div class="wst-dotwrap'+(calm?' calm':'')+'">'+
     '<div class="wst-plot">'+
-    '<svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-    '<defs><clipPath id="'+cA+'"><path d="'+line+' L'+W+','+H+' L0,'+H+' Z"/></clipPath>'+
-    '<clipPath id="'+cR+'"><rect x="0" y="-12" width="'+W+'" height="'+(H+24)+'">'+anim+'</rect></clipPath>'+
-    '<linearGradient id="'+gA+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wst-g0"/><stop offset="1" class="wst-g1"/></linearGradient></defs>'+
-    '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/>'+
-    '<g clip-path="url(#'+cR+')">'+
-      '<g clip-path="url(#'+cA+')"><rect class="wst-area" x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#'+gA+')"/><g class="wst-dg">'+dots+'</g></g>'+
+    /* Aufdecken von links nach rechts per CSS (clip-path auf der Huelle .wst-rev), NICHT mehr
+       per SMIL: die Story legt alle Seiten vorab an und blendet sie spaeter ein — die
+       SMIL-Uhr lief dabei so, dass die Kurve 1,6 s unsichtbar blieb und dann schlagartig
+       erschien (im Browser nachgemessen). Eine CSS-Animation startet genau dann, wenn die
+       Seite sichtbar wird, und laeuft im Takt mit Ø-Linie, Schild und Ring. */
+    '<svg class="wst-dots wst-base" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+      '<g class="wst-grid">'+grid+'</g>'+
+      '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/>'+
+    '</svg>'+
+    '<div class="wst-rev"><svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+      '<defs><linearGradient id="'+gA+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wst-g0"/><stop offset=".55" class="wst-g1"/><stop offset="1" class="wst-g2"/></linearGradient></defs>'+
+      '<path class="wst-area" d="'+line+' L'+W+','+H+' L0,'+H+' Z" fill="url(#'+gA+')"/>'+
+      '<path class="wst-glow g3" d="'+line+'"/><path class="wst-glow g2" d="'+line+'"/><path class="wst-glow g1" d="'+line+'"/>'+
       '<path class="wst-line" d="'+line+'"/>'+
-    '</g></svg>'+
+    '</svg></div>'+
     '<span class="wst-pk" style="left:'+pkX+'%;top:'+pkY+'%"></span>'+
+    '<span class="wst-avgdot" style="top:'+avgP+'%"></span>'+
     '</div>'+
     '<div class="wst-axis" aria-hidden="true">'+
-      '<span class="wst-ax wst-axmax" style="top:'+maxY.toFixed(1)+'%">'+f(maxShow)+(u?'<i>'+gmEsc(u)+'</i>':'')+'</span>'+
-      '<span class="wst-ax wst-axavg" style="top:'+avgL.toFixed(1)+'%">Ø '+f(avgShow)+'</span>'+
-      '<span class="wst-ax wst-axmin" style="top:'+minY.toFixed(1)+'%">'+f(mn)+'</span>'+
+      '<span class="wst-ax wst-axmax"><b>'+f(maxShow)+'</b>'+(u?'<i>'+gmEsc(u)+'</i>':'')+'</span>'+
+      '<span class="wst-ax wst-axavg" style="top:clamp(60px,'+avgP+'%,calc(100% - 40px))"><i>Ø</i><b>'+f(avgShow)+'</b></span>'+
+      '<span class="wst-ax wst-axmin">'+f(mn)+'</span>'+
     '</div></div>';
 }
 /* Baut die Seiten NUR aus vorhandenen Werten. Rueckgabe: [] = keine Story moeglich. */
@@ -10050,7 +10046,7 @@ function gmStoryPages(a){
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
   var title=vm.title||vm.sportLabel||'' + _uiT('ui.training') + '';
   var top='<div class="wst-top"><b>'+gmEsc(title)+'</b><span>'+gmEsc(dl)+(vm.source?' · '+gmEsc(gmActSrcLabel(vm.source)):'')+'</span></div>';
-  var page=function(mid,footHtml){return '<div class="wst-bg" style="'+accCss+'"></div><div class="wst-in" style="'+accCss+'">'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
+  var page=function(mid,footHtml,cls){return '<div class="wst-bg" style="'+accCss+'"></div><div class="wst-in'+(cls?' '+cls:'')+'" style="'+accCss+'">'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
   var foot=function(hl,sub){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+'</div>';};
   var em=function(v){return '<em class="wst-em">'+gmEsc(String(v))+'</em>';};
   /* Verknuepfte Legacy-Session (Splits/Saetze/RPE/Debrief): storyRef ODER _legacy. */
@@ -10201,7 +10197,7 @@ function gmStoryPages(a){
     var hrAvg=(vm.avgHr!=null)?Math.round(vm.avgHr):Math.round(hr.reduce(function(x,y){return x+y;},0)/hr.length);
     var hrMax=Math.max(Math.max.apply(null,hr),(vm.maxHr!=null?vm.maxHr:0));
     pages.push(page('<div class="wst-kick">' + _uiT('ui.herzfrequenz__') + '</div>'+gmStoryDotChart(hr,' bpm',0,{avg:hrAvg,max:hrMax}),
-      foot('Ø '+em(hrAvg+' bpm')+'' + _uiT('ui.ueber_die_einheit') + '','' + _uiT('ui.maximal') + ''+hrMax+'' + _uiT('ui.bpm_gemessene_werte_nichts_nachgerechnet') + '')));
+      foot('Ø '+em(hrAvg+' bpm')+'' + _uiT('ui.ueber_die_einheit') + '','' + _uiT('ui.maximal') + ''+hrMax+'' + _uiT('ui.bpm_gemessene_werte_nichts_nachgerechnet') + ''),'wst-chartpg'));
   }
   /* ---------- 5) Rad: Geschwindigkeit als Dot-Matrix (reine km/h-Umrechnung) ---------- */
   if(fam==='cycling'){
@@ -10209,14 +10205,14 @@ function gmStoryPages(a){
     if(spdC){
       var spAvg=(spdAvg!=null)?spdAvg:Math.round(spdC.reduce(function(x,y){return x+y;},0)/spdC.length*10)/10;
       pages.push(page('<div class="wst-kick">' + _uiT('ui.geschwindigkeit__') + '</div>'+gmStoryDotChart(spdC,' km/h',1,{avg:spAvg}),
-        foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','' + _uiT('ui.gemessene_geschwindigkeit_reine_einheitenumrechnung_aus') + '')));
+        foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','' + _uiT('ui.gemessene_geschwindigkeit_reine_einheitenumrechnung_aus') + ''),'wst-chartpg'));
     }
   }
   /* ---------- 5b) Leistung (Watt): eigene Seite, sobald die Messreihe vorliegt ---------- */
   var pw=cleanArr(st&&st.power,function(v){return v>=0?v:null;});
   if(pw&&vm.avgPowerW!=null){
     pages.push(page('<div class="wst-kick">' + _uiT('ui.leistung__') + '</div>'+gmStoryDotChart(pw,' W',0,{avg:vm.avgPowerW,max:vm.maxPowerW}),
-      foot('Ø '+em(vm.avgPowerW+' W')+'.',(vm.normPowerW!=null?'' + _uiT('ui.leistung_story_np') + ''+vm.normPowerW+' W · ':'')+'' + _uiT('ui.maximal') + ''+(vm.maxPowerW!=null?vm.maxPowerW:Math.round(Math.max.apply(null,pw)))+'' + _uiT('ui.leistung_story_sub') + '')));
+      foot('Ø '+em(vm.avgPowerW+' W')+'.',(vm.normPowerW!=null?'' + _uiT('ui.leistung_story_np') + ''+vm.normPowerW+' W · ':'')+'' + _uiT('ui.maximal') + ''+(vm.maxPowerW!=null?vm.maxPowerW:Math.round(Math.max.apply(null,pw)))+'' + _uiT('ui.leistung_story_sub') + ''),'wst-chartpg'));
   }
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
