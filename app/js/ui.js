@@ -4052,17 +4052,28 @@ function gmPlanForOffset(off){
   return {days:gmRecurringBaselineDays(),provenance:'recurring_preview',weekKey:weekKey};
 }
 /* Die wiederkehrende Struktur OHNE Nebenwirkung: kein Speichern, keine
-   ID-Vergabe, keine Beobachtung — siehe Riegel (b). */
+   Beobachtung, keine PERSISTIERTE ID-Vergabe — siehe Riegel (b).
+   v8-425 (Gians Befund 2.10., im Browser nachgestellt): Bei einem GENERIERTEN Plan
+   kamen die Einheiten einer fremden Woche hier OHNE id zurueck (activeWeekPlan vergibt
+   die psg:-IDs erst nach dem Generator, dieser Pfad nicht). Ohne id gibt es keine
+   Occurrence ('po:<datum>:<id>') — die Plankarte der Vorwoche konnte deshalb NIE
+   „Erledigt" werden, egal wie die Aktivitaet zugeordnet war, und die automatische
+   Zuordnung fand dort keine Einheit. Die IDs werden jetzt auf der WEGWERF-Kopie
+   vergeben — deterministisch nach demselben Schema wie in activeWeekPlan
+   (psg:<tag>:<pos>:<slug>), also identisch zu den IDs, gegen die verknuepft wurde.
+   Nichts wird gespeichert, PROFILE bleibt unberuehrt. */
 function gmRecurringBaselineDays(){
   try{
     var p=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.weekPlan);
     if(p&&p.length===7){
       var cp=JSON.parse(JSON.stringify(p));
+      try{ensureGeneratedPlanIds(cp);}catch(_i){ }   /* nur fehlende; vorhandene ps:-IDs bleiben */
       var cfg=null;
       try{cfg=(window.ORVIA&&ORVIA.profileModel&&ORVIA.profileModel.effectiveTrainingConfig)?ORVIA.profileModel.effectiveTrainingConfig(PROFILE):null;}catch(_){ }
       return (typeof alignPlanToAvailability==='function')?alignPlanToAvailability(cp,cfg):cp;
     }
     var g=(typeof generateWeekPlan==='function')?generateWeekPlan():null;
+    if(g){try{ensureGeneratedPlanIds(g);}catch(_j){ }}
     return g||[[],[],[],[],[],[],[]];
   }catch(_){return [[],[],[],[],[],[],[]];}
 }
@@ -9809,22 +9820,47 @@ function gmStoryTheme(fam){
 function gmStoryBigVal(txt){
   return gmEsc(String(txt==null?'':txt)).replace(/([A-Za-zÄÖÜäöüß]+)/g,'<small>$1</small>');
 }
-/* v8-424 (Gians Wunsch 2.10.): die Punkte sind nur noch HINTERGRUND. Darueber liegt
-   eine durchgezogene Linie mit dem echten Verlauf; die Punktflaeche wird exakt an
-   dieser Linie abgeschnitten (clipPath = Flaeche unter der Kurve) — oberhalb der
-   Linie steht kein Punkt mehr, und die Linie zeigt Hoehen und Tiefen eindeutig.
-   Die Linie verbindet dieselben Spaltenmittel wie zuvor (keine Interpolation, keine
-   Glaettung). opts.avg/opts.max: Anzeigewerte aus der Summary (EINE Wahrheit mit dem
-   Kennzahlen-Raster — die Messreihe ist heruntergerechnet und trifft Ø/Max nicht
-   immer exakt); die Geometrie bleibt die der Samples. */
+/* v8-424/425 · Story-Diagramm.
+   Die Punkte sind HINTERGRUND; darueber liegt die Kurve als durchgezogene Linie, und
+   die Punktflaeche wird exakt an dieser Kurve abgeschnitten (clipPath = Flaeche unter
+   der Kurve).
+   v8-425 (Gians Rueckmeldung 2.10.: „die Linie erscheint sofort, die Punkte haben einen
+   Effekt — das passt nicht, die Linie sieht billig aus"):
+     · EINE Bewegung: Flaeche, Punkte und Linie werden gemeinsam von links nach rechts
+       aufgedeckt (ein Reveal-Zuschnitt, SMIL) — die Linie „zeichnet sich", statt
+       nachtraeglich aufzutauchen. Ohne SMIL bzw. bei „Bewegung reduzieren" steht das
+       Diagramm sofort vollstaendig da (statische Breite = volle Breite).
+     · weiche Kurve statt Zickzack: monoton-kubisch DURCH dieselben Spaltenmittel
+       (Fritsch–Carlson). Jeder Stuetzpunkt wird exakt getroffen, die Kurve schwingt
+       nie ueber einen Messwert hinaus — es entsteht kein Extremum, das nicht in den
+       Daten steht.
+     · Verlaufsflaeche unter der Kurve fuer Tiefe; Punkte gleichmaessig gedaempft.
+   opts.avg/opts.max: Anzeigewerte aus der Summary (EINE Wahrheit mit dem Kennzahlen-
+   Raster); die Geometrie bleibt die der Samples. */
 var _gmStoryChartSeq=0;
+function gmMonoPath(pts){
+  var n=pts.length;if(n<2)return '';
+  var dx=[],m=[],t=[],i;
+  for(i=0;i<n-1;i++){dx[i]=pts[i+1][0]-pts[i][0];m[i]=(pts[i+1][1]-pts[i][1])/(dx[i]||1);}
+  t[0]=m[0];t[n-1]=m[n-2];
+  for(i=1;i<n-1;i++){
+    if(m[i-1]*m[i]<=0)t[i]=0;                       /* Extremum: waagerechte Tangente ⇒ kein Ueberschwingen */
+    else{var w1=2*dx[i]+dx[i-1],w2=dx[i]+2*dx[i-1];t[i]=(w1+w2)/(w1/m[i-1]+w2/m[i]);}
+  }
+  var d='';
+  for(i=0;i<n-1;i++){
+    var h=dx[i]/3;
+    d+=' C'+(pts[i][0]+h).toFixed(1)+','+(pts[i][1]+t[i]*h).toFixed(1)+' '+(pts[i+1][0]-h).toFixed(1)+','+(pts[i+1][1]-t[i+1]*h).toFixed(1)+' '+pts[i+1][0].toFixed(1)+','+pts[i+1][1].toFixed(1);
+  }
+  return d;
+}
 function gmStoryDotChart(vals,unit,dec,opts){
   if(!Array.isArray(vals)||vals.length<5)return '';
   var o=opts||{};
   /* GM7.9e: mehr Spalten = kuerzeres Mittelungsfenster je Spalte. Bei 46 Spalten wurden
      ueber eine lange Einheit teils 2 Minuten je Spalte gemittelt, wodurch echte
      Schwankungen (z. B. Intervalle) verschwanden und der Verlauf konstant wirkte.
-     Weiterhin reine Spaltenmittelung derselben Samples — keine Interpolation. */
+     Weiterhin reine Spaltenmittelung derselben Samples. */
   var W=360,H=430,cols=Math.min(78,vals.length),rows=34;
   var bucket=[];
   for(var c=0;c<cols;c++){
@@ -9836,28 +9872,33 @@ function gmStoryDotChart(vals,unit,dec,opts){
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
   var cw=W/cols,rh=H/rows,r=Math.max(1.6,Math.min(cw,rh)*0.30);
   var yOf=function(v){return H-(((v-mn)/rng)*(rows-2)+1)*rh;};
-  var dots='',lp=[];
+  var dots='',pts=[];
   bucket.forEach(function(v,c){
     var x=c*cw+cw/2,y=yOf(v);
-    lp.push(x.toFixed(1)+','+y.toFixed(1));
-    /* eine Reihe UEBER die Kurve hinaus zeichnen — der Zuschnitt erledigt die Kante */
-    var hN=Math.min(rows,Math.max(1,Math.ceil((H-y)/rh)+1));
-    var col='';
-    for(var q=0;q<hN;q++)col+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
-    dots+='<g class="wst-dc" style="animation-delay:'+(180+c*24)+'ms">'+col+'</g>';
+    pts.push([x,y]);
+    /* zwei Reihen UEBER den Stuetzpunkt hinaus — der Zuschnitt an der Kurve macht die Kante */
+    var hN=Math.min(rows,Math.max(1,Math.ceil((H-y)/rh)+2));
+    for(var q=0;q<hN;q++)dots+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
   });
-  var y0=yOf(bucket[0]).toFixed(1),yN=yOf(bucket[bucket.length-1]).toFixed(1);
-  var line='M0,'+y0+' L'+lp.join(' L')+' L'+W+','+yN;
-  var cid='wstClip'+(++_gmStoryChartSeq);
+  var y0=pts[0][1].toFixed(1),yN=pts[pts.length-1][1].toFixed(1);
+  var line='M0,'+y0+' L'+pts[0][0].toFixed(1)+','+y0+gmMonoPath(pts)+' L'+W+','+yN;
+  var k=(++_gmStoryChartSeq),cA='wstClip'+k,cR='wstRev'+k,gA='wstGrad'+k;
+  var calm=false;try{calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){ }
+  var DUR=1.9;
+  var anim=calm?'':'<animate attributeName="width" from="0" to="'+W+'" begin="0s" dur="'+DUR+'s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.35 0 0.25 1"/>';
   var avgY=yOf(avg);
   var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
   var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
   var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
-  return '<div class="wst-dotwrap">'+
+  return '<div class="wst-dotwrap'+(calm?' calm':'')+'">'+
     '<svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-    '<defs><clipPath id="'+cid+'"><path d="'+line+' L'+W+','+H+' L0,'+H+' Z"/></clipPath></defs>'+
-    '<g clip-path="url(#'+cid+')">'+dots+'</g>'+
-    '<path class="wst-line" d="'+line+'"/>'+
+    '<defs><clipPath id="'+cA+'"><path d="'+line+' L'+W+','+H+' L0,'+H+' Z"/></clipPath>'+
+    '<clipPath id="'+cR+'"><rect x="0" y="-12" width="'+W+'" height="'+(H+24)+'">'+anim+'</rect></clipPath>'+
+    '<linearGradient id="'+gA+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wst-g0"/><stop offset="1" class="wst-g1"/></linearGradient></defs>'+
+    '<g clip-path="url(#'+cR+')">'+
+      '<g clip-path="url(#'+cA+')"><rect class="wst-area" x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#'+gA+')"/><g class="wst-dg">'+dots+'</g></g>'+
+      '<path class="wst-line" d="'+line+'"/>'+
+    '</g>'+
     '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/></svg>'+
     '<span class="wst-avgbadge" style="top:'+Math.max(5,Math.min(92,avgY/H*100)).toFixed(1)+'%">Ø '+f(avgShow)+gmEsc(unit)+'</span>'+
     '<span class="wst-ax wst-axmax">'+f(maxShow)+gmEsc(unit)+'</span>'+
@@ -11369,9 +11410,27 @@ async function gmDeviceSyncNowTrigger(){
   }catch(_){ }
   if(!token){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.keine_aktive_sitzung') + ''};gmRerenderConnections();return;}
   if(!base){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.worker_nicht_konfiguriert') + ''};gmRerenderConnections();return;}
-  var baseline=null;
-  try{var st0=await gmDeviceSyncStatus(base,token);baseline={succ:st0&&st0.lastSuccessfulSyncAt,err:st0&&st0.lastErrorCode};}catch(_){ }
-  if(!baseline){_gmDevSyncNow={state:'error',error:'' + _uiT('ui.status_nicht_abrufbar_offline_oder') + ''};gmRerenderConnections();return;}
+  /* v8-425 (Gians Befund 2.10.: „Status nicht abrufbar (offline oder Netzwerkfehler)"):
+     EIN Fehlversuch reichte fuer den Abbruch, und jede Ursache bekam dieselbe Meldung.
+     Der Worker startet nach einem Deploy einige Sekunden neu, und im Mobilfunk faellt
+     eine einzelne Anfrage schnell aus — deshalb bis zu drei Versuche mit Pause. Bleibt
+     es beim Fehler, sagt die Meldung, WAS es war: Worker antwortet mit HTTP-Code,
+     Sitzung abgelaufen, oder wirklich keine Verbindung. */
+  var baseline=null,stErr=null;
+  for(var _try=0;_try<3&&!baseline;_try++){
+    try{var st0=await gmDeviceSyncStatus(base,token);baseline={succ:st0&&st0.lastSuccessfulSyncAt,err:st0&&st0.lastErrorCode};}
+    catch(e0){stErr=e0;
+      if(/status_http_401/.test(String(e0&&e0.message||''))){
+        /* Token abgelaufen ⇒ einmal frisch holen, dann erneut */
+        try{var rs=sb&&sb.auth&&sb.auth.refreshSession?await sb.auth.refreshSession():null;var nt=rs&&rs.data&&rs.data.session&&rs.data.session.access_token;if(nt)token=nt;}catch(_r){ }
+      }
+      if(_try<2)await new Promise(function(r){setTimeout(r,2500);});
+    }
+  }
+  if(!baseline){
+    var _hm=/status_http_(\d+)/.exec(String(stErr&&stErr.message||''));
+    var _msg=_hm?((_hm[1]==='401'||_hm[1]==='403')?_uiT('ui.sync_sitzung_abgelaufen'):_uiT('ui.sync_worker_http',{code:_hm[1]})):('' + _uiT('ui.status_nicht_abrufbar_offline_oder') + '');
+    _gmDevSyncNow={state:'error',error:_msg};gmRerenderConnections();return;}
   try{
     var resp=await fetch(base+'/sync',{method:'POST',headers:{'Authorization':'Bearer '+token}});
     if(resp.status===202){gmDeviceSyncPoll(base,token,baseline);return;}

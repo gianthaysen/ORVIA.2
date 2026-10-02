@@ -42,5 +42,16 @@ ok('B2 Ziel: vor/zurueck, kein Umlauf an den Enden', T.target('heute', 'next') =
   ok('D2 Neubewertung bei resize, scroll, Fokuswechsel, Rueckkehr und Tabwechsel (kein Haengenbleiben)', /visualViewport\.addEventListener\('scroll',gmKbEval\)/.test(ui) && /addEventListener\('focusout'/.test(ui) && /addEventListener\('pageshow',gmKbEval\)/.test(ui) && /addEventListener\('orvia:tab-changed',gmKbEval\)/.test(ui));
   ok('D3 Planseite zeichnet nach einer Zuordnung neu', /d\.autoLinked\|\|d\.planLinkCorrected/.test(ui));
 }
+{
+  /* v8-425: die Seite geht mit dem Finger mit */
+  ok('E1 Achse: erst ab 10 px, klar waagerecht ⇒ h; senkrecht ⇒ v (dann nie mitziehen)', T.axis(6, 2) === null && T.axis(14, 4) === 'h' && T.axis(14, 12) === 'v' && T.axis(3, 20) === 'v' && T.axis(-30, 10) === 'h');
+  const f1 = T.follow(-100, 390, true), f2 = T.follow(-100, 390, false), f3 = T.follow(-800, 390, true);
+  ok('E2 Mitziehen gedaempft (42 %), am Rand nur Widerstand (14 %), Deckkraft nie unter 55 %', f1.x === -42 && f2.x === -14 && f1.opacity < 1 && f1.opacity > 0.8 && f3.opacity === 0.55);
+  const src = rd('js/tab-swipe.js'), css = rd('styles.css');
+  ok('E3 Loslassen: erkannt ⇒ hinausgleiten + Wechsel, sonst zurueckfedern; Styles werden immer aufgeraeumt', /root\.setTimeout\(go, 150\)/.test(src) && /var back = function \(\)/.test(src) && /function clearPane\(el\)/.test(src) && /touchcancel', function \(\) \{ if \(st\) clearPane\(st\.el\)/.test(src));
+  ok('E4 nur transform/opacity (Compositor), Listener weiterhin passiv, kein preventDefault', /translate3d\(/.test(src) && !/preventDefault/.test(src) && !/\.style\.left/.test(src));
+  ok('E5 „Bewegung reduzieren" ⇒ Wechsel ohne Mitziehen/Animation', /st\.lock !== 'h' \|\| st\.calm/.test(src) && /if \(s\.calm \|\| !s\.el\) \{ go\(\); return; \}/.test(src));
+  ok('E6 Einschub der neuen Seite: 64 px, .34 s, weiche Kurve', /tabInNext\{from\{opacity:0;transform:translate3d\(64px,0,0\)\}/.test(css) && /animation:tabInNext \.34s cubic-bezier\(\.16,\.84,\.24,1\) both/.test(css));
+}
 console.log('\n' + (fail ? '❌' : '✅') + ' tab_swipe: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

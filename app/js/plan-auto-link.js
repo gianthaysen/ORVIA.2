@@ -17,7 +17,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'plan-auto-link@3';
+  var VERSION = 'plan-auto-link@4';
   var WEEKS_BACK = 8;
 
   function _iso(d) { return (typeof root.todayStr === 'function') ? root.todayStr(d) : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
@@ -128,5 +128,36 @@
     root.addEventListener('load', function () { setTimeout(function () { run(); }, 2500); });
   }
 
-  O.planAutoLink = { VERSION: VERSION, decide: decide, run: run, weekOf: weekOf };
+  /* v8-425 · Diagnose fuer die Konsole: ORVIA.planAutoLink.debug() — zeigt je Woche
+     (diese + zwei zurueck) die Herkunft des Plans, die Einheiten samt id und Zustand
+     sowie jede Aktivitaet mit ihrer Zuordnung. Reine Leseansicht, aendert nichts.
+     Zweimal hintereinander lag die Ursache woanders als hergeleitet — damit laesst
+     sich der echte Zustand auf dem Geraet ablesen statt zu raten. */
+  function debug() {
+    var out = { version: VERSION, today: null, weeks: [] };
+    try {
+      var store = O.activityStore, cfg = O.activityConfig;
+      var tz = (O.profileStore && O.profileStore.effectiveTimezone) ? O.profileStore.effectiveTimezone() : 'UTC';
+      var today = (typeof root.todayStr === 'function') ? root.todayStr() : _iso(new Date()); out.today = today;
+      for (var w = 0; w >= -2; w--) {
+        var d = new Date(today + 'T12:00'); d.setDate(d.getDate() + w * 7);
+        var dates = weekOf(_iso(d));
+        var sel = (typeof root.gmPlanForOffset === 'function') ? root.gmPlanForOffset(w) : null;
+        var res = (typeof root.planActualResolveForDates === 'function') ? (root.planActualResolveForDates(dates) || {}) : {};
+        var known = {}; (res.results || []).forEach(function (r) { if (r && r.plannedSessionId) known[r.plannedSessionId] = r.state; });
+        var wk = { offset: w, from: dates[0], to: dates[6], provenance: sel ? sel.provenance : null, pending: Object.keys(res.planPendingDates || {}).length > 0, units: [], activities: [] };
+        (sel && sel.days || []).forEach(function (day, i) { (day || []).forEach(function (it) { var occ = it && it.id ? ('po:' + dates[i] + ':' + it.id) : null; wk.units.push({ date: dates[i], t: it && it.t, l: it && it.l, id: (it && it.id) || null, state: occ ? (known[occ] || 'nicht im Resolver') : 'OHNE id' }); }); });
+        (store && store.listActivities ? store.listActivities() : []).forEach(function (a) {
+          var ld = (cfg && cfg.dayOfActLocal) ? cfg.dayOfActLocal(a, tz) : String(a.startedAt || '').slice(0, 10);
+          if (dates.indexOf(ld) < 0) return;
+          var link = store.planLinkOf ? store.planLinkOf(a) : null; var c = (a.metrics && a.metrics.planLinkCorrection) || null;
+          wk.activities.push({ date: ld, sport: a.sportId, source: a.source, link: link, linkKnown: link ? (link in known) : null, reason: c ? c.reason : null, sync: a.syncStatus });
+        });
+        out.weeks.push(wk);
+      }
+    } catch (e) { out.error = String(e && e.message || e); }
+    return out;
+  }
+
+  O.planAutoLink = { VERSION: VERSION, decide: decide, run: run, weekOf: weekOf, debug: debug };
 })(typeof window !== 'undefined' ? window : globalThis);

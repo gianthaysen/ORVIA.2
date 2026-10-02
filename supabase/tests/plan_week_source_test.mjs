@@ -70,5 +70,12 @@ const CUR = mk('ps:cur-ok'), PREV = mk('ps:prev-ok');
   ok('D3 ui.js meldet geladene Wochenplaene (orvia:week-plan-loaded)', /new CustomEvent\('orvia:week-plan-loaded'/.test(ui));
   ok('D4 vergangene offene Einheit heisst „Nicht erledigt" statt „Geplant"', /dayKeys\[di\]<todayStr\(\)/.test(ui) && /ui\.nicht_erledigt_badge/.test(ui) && /'ui\.nicht_erledigt_badge': 'Nicht erledigt'/.test(de) && /\.session-state\.missed\{/.test(css));
 }
+{
+  /* v8-425 */
+  const al = rd('js/plan-auto-link.js'), de = rd('locales/de.js');
+  ok('E1 fremde Woche: IDs auf der Wegwerf-Kopie (generiert UND gespeichert), nichts wird persistiert', /if\(g\)\{try\{ensureGeneratedPlanIds\(g\);\}catch\(_j\)\{ \}\}/.test(ui) && /try\{ensureGeneratedPlanIds\(cp\);\}catch\(_i\)\{ \}/.test(ui));
+  ok('E2 Diagnose ORVIA.planAutoLink.debug() vorhanden (Leseansicht)', /function debug\(\)/.test(al) && /debug: debug/.test(al) && /'OHNE id'/.test(al));
+  ok('E3 „Jetzt synchronisieren": drei Versuche, Meldung nennt die Ursache (HTTP-Code / Sitzung / keine Verbindung)', /for\(var _try=0;_try<3&&!baseline;_try\+\+\)/.test(ui) && /ui\.sync_worker_http/.test(ui) && /ui\.sync_sitzung_abgelaufen/.test(ui) && /'ui\.sync_worker_http': 'Worker antwortet mit Fehler \{code\}/.test(de));
+}
 console.log('\n' + (fail ? '❌' : '✅') + ' plan_week_source: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
