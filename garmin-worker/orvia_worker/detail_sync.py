@@ -32,7 +32,19 @@ _MISSING_TABLE_MARKERS = ("does not exist", "42P01", "PGRST205", "could not find
 # GM7.4.1 · Detailvollständigkeitsvertrag: aktuelle Version des Detail-Merge-
 # Kontrakts. Erhöhen, falls sich Feldbedeutung/Parser-Semantik künftig ändert
 # und Altbestand kontrolliert erneut angereichert werden soll.
-DETAILS_CONTRACT_VERSION = 1
+DETAILS_CONTRACT_VERSION = 2
+
+# v8-424 · Version 2 ergaenzt die Leistungs-Messreihe (directPower) und die Rad-
+# Trittfrequenz. Kontrolliert erneut angereichert wird NUR, wo das neue Feld
+# ueberhaupt vorkommen kann — Radaktivitaeten —, nicht die gesamte Historie
+# (jede Nachladung ist ein Garmin-Abruf; begrenzt durch detail_backfill_limit).
+_REENRICH_SPORTS_V2 = ("cycling",)
+
+# Schluessel in activities.metrics, die der CLIENT fuehrt (Plan-Zuordnung,
+# Dauerkorrektur). Der Worker liest die Zeile zu Beginn des Laufs und schreibt
+# sie nach den Garmin-Abrufen zurueck — dazwischen kann der Client genau diese
+# Felder gesetzt haben. Sie werden vor dem Schreiben frisch nachgelesen.
+CLIENT_OWNED_METRIC_KEYS = ("plannedSessionId", "planLinkCorrection", "durationCorrection")
 
 
 def _details_complete(metrics: Any) -> bool:
@@ -52,6 +64,19 @@ def _details_complete(metrics: Any) -> bool:
     return isinstance(metrics, dict) and bool(metrics.get("detailsFetchedAt"))
 
 
+def _needs_details(act: Any) -> bool:
+    """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
+    metrics = act.get("metrics") if isinstance(act, dict) else None
+    if not _details_complete(metrics):
+        return True
+    if act.get("sport_id") in _REENRICH_SPORTS_V2:
+        try:
+            return int(metrics.get("detailsVersion") or 1) < 2
+        except (TypeError, ValueError):
+            return True
+    return False
+
+
 async def sync_activity_details(
     db, user_id: str, get_details: Callable[[str], Any], *, limit: int, max_retries: int = 2,
     on_rate_limit: Callable[[int], None] | None = None,
@@ -60,7 +85,8 @@ async def sync_activity_details(
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged."""
     acts = await db.select("activities", {"user_id": user_id, "source": "garmin"})
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
-    already = [a["source_record_id"] for a in acts if _details_complete(a.get("metrics"))]
+    already = [a["source_record_id"] for a in acts
+               if a.get("source_record_id") and not _needs_details(a)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
     plan = backfill_activity_details(
@@ -75,6 +101,23 @@ async def sync_activity_details(
         # gemergten Abruf setzen — nie bei einem Fehlschlag (siehe `failed`).
         merged["detailsFetchedAt"] = datetime.now(timezone.utc).isoformat()
         merged["detailsVersion"] = DETAILS_CONTRACT_VERSION
+        # v8-424: clientgefuehrte Felder frisch nachlesen (siehe CLIENT_OWNED_METRIC_KEYS).
+        # Schlaegt das Nachlesen fehl, bleibt der zu Laufbeginn gelesene Stand — der
+        # Sync bricht deshalb nie ab.
+        try:
+            fresh = await db.select(
+                "activities",
+                {"user_id": user_id, "source": "garmin", "source_record_id": aid},
+            )
+            fm = (fresh[0].get("metrics") if fresh else None) or {}
+            if isinstance(fm, dict):
+                for k in CLIENT_OWNED_METRIC_KEYS:
+                    if k in fm:
+                        merged[k] = fm[k]
+                    else:
+                        merged.pop(k, None)
+        except Exception:
+            pass
         await db.update(
             "activities",
             {"user_id": user_id, "source": "garmin", "source_record_id": aid},

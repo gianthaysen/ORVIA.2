@@ -16,6 +16,15 @@
      dauerhaft abgelehnter Datensatz (z. B. Identitaetskonflikt) darf nicht bei jedem
      Flush erneut gegen den Server laufen — Gians Konsole 2.10.: Hunderte 400er. */
   var _backoff = {};         // clientRecordId -> { n, until }
+  /* v8-424: Schluessel in activities.metrics, die der CLIENT fuehrt (alles andere gehoert
+     der Quelle — Worker bzw. aufzeichnendes Geraet — und wird nie von hier ueberschrieben). */
+  var OWNED_METRIC_KEYS = ['plannedSessionId', 'planLinkCorrection', 'durationCorrection'];
+  function _isConflict(r) { return !!(r && r.error && /identity_conflict/.test(String(r.error.code) + String(r.error.message))); }
+  function _ownedPatch(a) {
+    var p = { metrics: a.metrics || {} };
+    if (a.metrics && a.metrics.durationCorrection && a.durationSeconds != null) p.duration_seconds = a.durationSeconds;   // nur nach manueller Korrektur
+    return p;
+  }
   var _isUuid = function (v) { return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v); };
   function _blocked(crid, now) { var b = crid && _backoff[crid]; return !!(b && b.until > now); }
   function _noteFail(crid, now) { if (!crid) return; var b = _backoff[crid] || { n: 0, until: 0 }; b.n += 1; b.until = now + Math.min(60000 * Math.pow(2, b.n - 1), 30 * 60000); _backoff[crid] = b; }
@@ -49,20 +58,25 @@
         if (_blocked(a.clientRecordId, nowMs)) { deferred++; continue; }
         try {
           var r;
-          if (_isUuid(a.id) && repo.updateFields) {
-            /* v8-423: bereits serverseitig vorhanden (jede Quelle) ⇒ nur die lokal
-               geaenderten Felder nachtragen. Kein RPC, kein Identitaetskonflikt. */
-            var patch = { metrics: a.metrics || {} };
-            if (a.durationSeconds != null) patch.duration_seconds = a.durationSeconds;
-            r = await repo.updateFields(a.id, patch);
-          } else if (a.source === 'orvia_workout') {
+          if (a.source === 'orvia_workout') {
             if (!a.workoutSessionId) { skipped++; continue; }       // nur echte Server-Session-uuid pushen
             r = await repo.upsertFromSession(a.workoutSessionId, a.summary || {}, a.metrics || {}, a.clientRecordId || null);
+            /* v8-423/424: Workout eines ANDEREN Geraets (fremde client_record_id ⇒
+               activity_identity_conflict). Jenes Geraet bleibt Quelle fuer Inhalt und
+               Summary; von hier werden nur die lokal gefuehrten Zuordnungsfelder
+               nachgetragen — ueber die Server-id, gemerged in den Serverstand. */
+            if (!(r && r.success) && _isConflict(r) && _isUuid(a.id) && repo.updateFields) {
+              r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, localWins: false } });
+            }
           } else if (a.source === 'manual' || a.source === 'import') {
             r = await repo.upsertManual(serverRowFromLocal(a));
+          } else if (_isUuid(a.id) && repo.updateFields) {
+            /* Server-Quelle (Garmin-Worker u. a.): nie neu anlegen, nie metrics ersetzen —
+               nur die lokal gefuehrten Felder in den aktuellen Serverstand mergen. */
+            r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, localWins: false } });
           } else { skipped++; continue; }                            // legacy_local wird NICHT gepusht
           if (r && r.success) { store.markSynced(a.clientRecordId, r.data && r.data.id); _noteOk(a.clientRecordId); pushed++; }
-          else { failed++; _noteFail(a.clientRecordId, nowMs); if (r && r.error && /identity_conflict/.test(String(r.error.code) + String(r.error.message))) conflicts++; }
+          else { failed++; _noteFail(a.clientRecordId, nowMs); if (_isConflict(r)) conflicts++; }
         } catch (e) { failed++; _noteFail(a.clientRecordId, nowMs); }
       }
     } finally { _flushing = false; }

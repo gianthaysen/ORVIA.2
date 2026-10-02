@@ -599,6 +599,12 @@ def normalize_activity(raw: Any) -> NormalizedActivity | None:
         ("elevationGain", "elevation_gain_m"),
         ("averageSpeed", "avg_speed_mps"),
         ("activityName", "name"),
+        # v8-424: Leistung (Rad/Zwift, Laufleistung). Garmin liefert die Felder nur,
+        # wenn ein Leistungsmesser/Smart-Trainer aufgezeichnet hat — fehlen sie,
+        # entsteht kein Feld (kein Platzhalter, keine Schaetzung).
+        ("avgPower", "avg_power_w"),
+        ("maxPower", "max_power_w"),
+        ("normPower", "norm_power_w"),
     ):
         v = raw.get(src_key)
         if v is not None:

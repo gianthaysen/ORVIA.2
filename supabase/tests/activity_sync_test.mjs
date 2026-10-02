@@ -149,35 +149,61 @@ await (async () => {
   globalThis.navigator.onLine = true;
 })();
 
-/* v8-423 · Gians Konsole 2.10.: 400-Sturm auf orvia_upsert_activity_from_session */
+/* v8-423/424 · Gians Konsole 2.10.: 400-Sturm auf orvia_upsert_activity_from_session */
 await (async () => {
   reset(); sync._backoffReset();
   let updateCalls = [];
+  const serverMetrics = {};                         // id -> aktueller Serverstand von metrics
   const origFrom = globalThis.ORVIA.sb.from;
   globalThis.ORVIA.sb.from = (table) => Object.assign(origFrom(table), {
+    select: () => ({ eq: (k1, v1) => ({ eq: () => ({ limit: () => Promise.resolve(Object.prototype.hasOwnProperty.call(serverMetrics, v1) ? { data: [{ metrics: serverMetrics[v1] }], error: null } : { data: [], error: null }) }) }) }),
     update: (patch) => ({ eq: (k1, v1) => ({ eq: (k2, v2) => ({ select: () => { updateCalls.push({ table, id: v1, patch });
       if (v1 === DEAD) return Promise.resolve({ data: null, error: { message: 'boom' } });
       return Promise.resolve({ data: [Object.assign({ id: v1 }, patch)], error: null }); } }) }) })
   });
-  const UUID = '0f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c21', DEAD = '2f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c23';
-  /* A) bereits serverseitig vorhandenes Workout von einem anderen Geraet (fremde crid) — lokal
-        nur die Plan-Zuordnung geaendert ⇒ Update ueber die Server-id, KEIN RPC */
+  /* der echte RPC gibt die BESTEHENDE Zeile zurueck (gleiche id) — der Basis-Stub erfindet 'srv-<session>' */
+  const origRpc = globalThis.ORVIA.sb.rpc;
+  globalThis.ORVIA.sb.rpc = (name, args) => origRpc(name, args).then(res => (res && res.data && args.p_session_id === 'sessQ') ? { data: [Object.assign({}, res.data[0], { id: UUID })], error: null } : res);
+  const UUID = '0f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c21', DEAD = '2f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c23', G = '1f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c22', CONF = '3f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c24';
+  /* A) Workout eines anderen Geraets, Server-crid uebernommen ⇒ der RPC laeuft OHNE Konflikt (Normalfall) */
   S.mergeServerActivities([{ id: UUID, client_record_id: 'act:iphone:q1', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessQ', workout_session_id: 'sessQ', started_at: '2026-09-24T05:32:00.000Z', duration_seconds: 720, status: 'completed', summary: {}, metrics: {} }]);
   const lk = S.linkActivityToPlan(UUID, 'po:2026-09-23:psg:2:1:ok', { reason: 'auto_same_week', method: 'auto' });
   ok('A1 Zuordnung lokal pending', lk.ok && S.pendingActivities().length === 1);
   let rA = await sync.flushPendingActivities();
-  ok('A2 Push ueber activities.update(id) — kein RPC, metrics + duration_seconds im Patch', rA.pushed === 1 && rpcCalls.length === 0 && updateCalls.length === 1 && updateCalls[0].id === UUID && updateCalls[0].patch.metrics.plannedSessionId === 'po:2026-09-23:psg:2:1:ok' && updateCalls[0].patch.duration_seconds === 720, JSON.stringify(rA));
+  ok('A2 Workout mit uebernommener Server-crid: RPC mit DIESER crid, kein Konflikt, kein Direkt-Update', rA.pushed === 1 && rpcCalls.length === 1 && rpcCalls[0].args.p_client_record_id === 'act:iphone:q1' && rpcCalls[0].args.p_metrics.plannedSessionId === 'po:2026-09-23:psg:2:1:ok' && updateCalls.length === 0, JSON.stringify(rA));
   ok('A3 danach synced, id bleibt', S.getActivityById(UUID).syncStatus === 'synced' && S.pendingActivities().length === 0);
-  /* B) Garmin-Aktivitaet (bisher: nie gepusht) wird jetzt ebenfalls ueber die id nachgetragen */
-  const G = '1f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c22';
-  S.mergeServerActivities([{ id: G, sport_id: 'gym', source: 'garmin', source_record_id: 'g-77', started_at: '2026-09-24T05:42:00.000Z', duration_seconds: 3360, status: 'completed', summary: { avgHr: 110 }, metrics: {} }]);
+  /* A') RPC meldet Identitaetskonflikt ⇒ Rueckfall: nur die Zuordnungsfelder in den Serverstand mergen */
+  S.mergeServerActivities([{ id: CONF, sport_id: 'gym', source: 'orvia_workout', source_record_id: 'wconf', workout_session_id: 'wconf', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 900, status: 'completed', summary: { exerciseCount: 4 }, metrics: { exercises: ['a'] } }]);
+  serverMetrics[CONF] = { exercises: ['a', 'b'], serverOnly: 1 };
+  S.linkActivityToPlan(CONF, 'po:2026-09-26:psg:5:1:ok');
+  rpcCalls = []; updateCalls = [];
+  let rA2 = await sync.flushPendingActivities();
+  const pc = updateCalls[0] && updateCalls[0].patch;
+  ok('A4 Konflikt ⇒ Rueckfall auf activities.update(id): Zuordnung gesetzt, Inhalt des aufzeichnenden Geraets unberuehrt, keine Summary', rA2.pushed === 1 && rA2.conflicts === 0 && rpcCalls.length === 1 && updateCalls.length === 1 && updateCalls[0].id === CONF && pc.metrics.plannedSessionId === 'po:2026-09-26:psg:5:1:ok' && JSON.stringify(pc.metrics.exercises) === '["a","b"]' && pc.metrics.serverOnly === 1 && !('summary' in pc) && !('duration_seconds' in pc), JSON.stringify(pc));
+  /* B) Garmin: Worker hat die Zeile inzwischen angereichert — das darf der Client NIE loeschen */
+  S.mergeServerActivities([{ id: G, sport_id: 'gym', source: 'garmin', source_record_id: 'g-77', started_at: '2026-09-24T05:42:00.000Z', duration_seconds: 3360, status: 'completed', summary: { avgHr: 110 }, metrics: { training_load: 30 } }]);
+  serverMetrics[G] = { training_load: 31, streams: { heart_rate: [100, 110] }, route: [[1, 2], [3, 4]], detailsFetchedAt: '2026-09-24T07:00:00Z' };
   S.linkActivityToPlan(G, 'po:2026-09-22:psg:1:1:ok');
-  updateCalls = [];
+  rpcCalls = []; updateCalls = [];
   let rB = await sync.flushPendingActivities();
-  ok('B1 Garmin-Zuordnung wird synchronisiert (vorher skipped)', rB.pushed === 1 && rB.skipped === 0 && updateCalls.length === 1 && updateCalls[0].id === G);
+  const pg = updateCalls[0] && updateCalls[0].patch;
+  ok('B1 Garmin-Zuordnung wird synchronisiert — ohne RPC, ueber die Server-id', rB.pushed === 1 && rB.skipped === 0 && rpcCalls.length === 0 && updateCalls.length === 1 && updateCalls[0].id === G);
+  ok('B2 metrics wird GEMERGED: Messreihen/Route/detailsFetchedAt des Workers bleiben, Serverwert gewinnt (training_load 31), nur Zuordnungsfelder kommen dazu', pg && pg.metrics.streams && pg.metrics.streams.heart_rate.length === 2 && pg.metrics.route.length === 2 && pg.metrics.detailsFetchedAt === '2026-09-24T07:00:00Z' && pg.metrics.training_load === 31 && pg.metrics.plannedSessionId === 'po:2026-09-22:psg:1:1:ok' && pg.metrics.planLinkCorrection.toOccurrenceId === 'po:2026-09-22:psg:1:1:ok', JSON.stringify(pg && Object.keys(pg.metrics)));
+  ok('B3 duration_seconds wird OHNE manuelle Korrektur nicht geschrieben', pg && !('duration_seconds' in pg));
+  /* B') Loesen: lokal entfernter Schluessel wird auch am Server entfernt */
+  serverMetrics[G] = pg.metrics;
+  S.unlinkActivityFromPlan(G, 'po:2026-09-22:psg:1:1:ok');
+  updateCalls = [];
+  await sync.flushPendingActivities();
+  const pu = updateCalls[0] && updateCalls[0].patch;
+  ok('B4 „Zuordnung loesen" entfernt plannedSessionId am Server, Korrektur protokolliert (user_unlinked), Messreihen bleiben', pu && !('plannedSessionId' in pu.metrics) && pu.metrics.planLinkCorrection.reason === 'user_unlinked' && pu.metrics.streams.heart_rate.length === 2);
+  /* B'') Zeile am Server nicht (mehr) vorhanden ⇒ not_found, kein blinder Schreibversuch */
+  const rNF = await repo.updateFields('9f8e0b4e-2a1c-4e6b-9c6a-5b2f1a7d3c29', { metrics: { plannedSessionId: 'x' } }, { metricsMerge: { ownedKeys: ['plannedSessionId'] } });
+  ok('B5 unbekannte Zeile ⇒ not_found (kein Update abgesetzt)', rNF.success === false && rNF.error.code === 'not_found');
   /* C) dauerhaft abgelehnter Datensatz: Rueckzug — kein zweiter Versuch im selben Fenster */
-  S.mergeServerActivities([{ id: DEAD, client_record_id: 'act:x:dead', sport_id: 'gym', source: 'orvia_workout', source_record_id: 'sessDead', workout_session_id: 'sessDead', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 600, status: 'completed', summary: {}, metrics: {} }]);
-  S.linkActivityToPlan(DEAD, 'po:2026-09-26:psg:5:1:ok');
+  S.mergeServerActivities([{ id: DEAD, sport_id: 'gym', source: 'garmin', source_record_id: 'g-dead', started_at: '2026-09-25T05:32:00.000Z', duration_seconds: 600, status: 'completed', summary: {}, metrics: {} }]);
+  serverMetrics[DEAD] = {};
+  S.linkActivityToPlan(DEAD, 'po:2026-09-21:psg:0:1:ok');
   rpcCalls = []; updateCalls = [];
   let rC1 = await sync.flushPendingActivities();
   let rC2 = await sync.flushPendingActivities();
@@ -186,13 +212,13 @@ await (async () => {
   ok('C2 Datensatz bleibt pending (keine Datenverluste), remaining 1', rC3.remaining === 1);
   /* D) Nachlauf-Schleife: ein waehrend des Flushes angeforderter Flush laeuft genau EINMAL nach */
   sync._backoffReset(); updateCalls = [];
-  const p1 = sync.flushPendingActivities();           // startet (await im Inneren)
-  const p2 = sync.flushPendingActivities();           // trifft auf laufenden ⇒ _rerun
+  const p1 = sync.flushPendingActivities();
+  const p2 = sync.flushPendingActivities();
   const [d1, d2] = await Promise.all([p1, p2]);
   await new Promise(r => setTimeout(r, 30));
-  ok('D1 kein Endlos-Flush: hoechstens 2 Versuche am abgelehnten Datensatz (1 + Nachlauf im Rueckzug = 0)', d2.busy === true && updateCalls.length <= 2, 'update=' + updateCalls.length);
+  ok('D1 kein Endlos-Flush: hoechstens 2 Versuche am abgelehnten Datensatz', d2.busy === true && updateCalls.length <= 2, 'update=' + updateCalls.length);
   ok('D2 Quelle: Nachlauf ruft flushPendingActivities genau einmal, keine .then-Doppelung', !/flushPendingActivities\(\)\.then \? flushPendingActivities\(\)/.test(fs.readFileSync(new URL(_APPREL + 'js/activity-sync.js', import.meta.url), 'utf8')));
-  globalThis.ORVIA.sb.from = origFrom;
+  globalThis.ORVIA.sb.from = origFrom; globalThis.ORVIA.sb.rpc = origRpc;
 })();
 
 console.log('\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen.');

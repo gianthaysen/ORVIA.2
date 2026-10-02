@@ -17,7 +17,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'plan-auto-link@2';
+  var VERSION = 'plan-auto-link@3';
   var WEEKS_BACK = 8;
 
   function _iso(d) { return (typeof root.todayStr === 'function') ? root.todayStr(d) : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
@@ -89,9 +89,16 @@
       var dates = {}; acts.concat(linked.map(function (l) { return l.act; })).forEach(function (a) { weekOf(a.localDate).forEach(function (d) { dates[d] = 1; }); });
       var res = root.planActualResolveForDates(Object.keys(dates).sort()) || {};
       var known = {}; (res.results || []).forEach(function (r) { if (r && r.plannedSessionId) known[r.plannedSessionId] = 1; });
+      /* v8-424: Wochen, deren Plan noch laedt, werden NICHT angefasst — weder neu
+         zugeordnet noch als verwaist gewertet (sonst wuerde gegen die vorlaeufige
+         Struktur verknuepft und nach dem Laden wieder umgehaengt). Der Lauf wird
+         durch 'orvia:week-plan-loaded' erneut angestossen. */
+      var pend = res.planPendingDates || {}; var pendWeek = function (d) { return weekOf(d).some(function (x) { return pend[x]; }); };
+      var deferred = 0;
+      acts = acts.filter(function (a) { if (pendWeek(a.localDate)) { deferred++; return false; } return true; });
       var dangling = 0;
-      linked.forEach(function (l) { if (!known[l.occ]) { l.act.dangling = true; acts.push(l.act); dangling++; } });
-      if (!acts.length) return { ok: true, applied: 0, decisions: [], dangling: 0 };
+      linked.forEach(function (l) { if (pendWeek(l.act.localDate)) { deferred++; return; } if (!known[l.occ]) { l.act.dangling = true; acts.push(l.act); dangling++; } });
+      if (!acts.length) return { ok: true, applied: 0, decisions: [], dangling: 0, deferred: deferred };
       var units = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned; })
         .map(function (r) { return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, localDate: r.planned.localDate }; });
       var decisions = decide({ activities: acts, units: units });
@@ -106,7 +113,7 @@
         try { if (O.activitySync && O.activitySync.flushPendingActivities) O.activitySync.flushPendingActivities(); } catch (e) {}
         try { if (root.dispatchEvent && typeof CustomEvent === 'function') root.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { autoLinked: applied } })); } catch (e) {}
       }
-      return { ok: true, applied: applied, decisions: decisions, dangling: dangling };
+      return { ok: true, applied: applied, decisions: decisions, dangling: dangling, deferred: deferred };
     } catch (e) { return { ok: false, code: 'error', error: String(e && e.message || e) }; }
     finally { _running = false; }
   }
@@ -116,6 +123,7 @@
   function schedule() { if (_t) clearTimeout(_t); _t = setTimeout(function () { _t = null; run(); }, 400); }
   if (typeof root.addEventListener === 'function') {
     root.addEventListener('orvia:activities-pulled', schedule);
+    root.addEventListener('orvia:week-plan-loaded', schedule);   /* v8-424 */
     root.addEventListener('orvia:activity-updated', function (ev) { if (ev && ev.detail && ev.detail.autoLinked) return; schedule(); });
     root.addEventListener('load', function () { setTimeout(function () { run(); }, 2500); });
   }

@@ -86,6 +86,12 @@ def parse_activity_details(raw: Any) -> dict:
     STREAMS = [
         ("heart_rate", ("directHeartRate",), "bpm"),
         ("cadence", ("directRunCadence", "directDoubleCadence"), "spm"),
+        # v8-424: Rad — Trittfrequenz und Leistung. Schluesselnamen nach der Garmin-
+        # Detailantwort fuer Radaktivitaeten (directBikeCadence / directPower). Im Repo
+        # liegt bisher nur ein LAUF-Fixture: fehlt der Schluessel in der Antwort,
+        # entsteht schlicht keine Serie (kein Fehler, nichts erfunden).
+        ("cadence", ("directBikeCadence",), "rpm"),
+        ("power", ("directPower",), "W"),
         ("elevation", ("directElevation", "directCorrectedElevation"), "m"),
         ("speed", ("directSpeed",), "mps"),
         ("distance", ("sumDistance",), "m"),
@@ -103,6 +109,8 @@ def parse_activity_details(raw: Any) -> dict:
             m = r.get("metrics") if isinstance(r, dict) else None
             if isinstance(m, list) and idx < len(m):
                 vals.append(_num(m[idx]))
+        if name in out["streams"]:
+            continue  # erste passende Definition gewinnt (z. B. Lauf- vor Rad-Kadenz)
         if any(v is not None for v in vals):
             out["streams"][name] = _downsample(vals, STREAM_MAX)
             out["stream_units"][name] = unit

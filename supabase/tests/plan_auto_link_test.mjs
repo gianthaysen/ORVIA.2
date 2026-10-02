@@ -83,6 +83,14 @@ sec('B · run');
   ok('B5d verwaist ⇒ neu zugeordnet (naechste offene Gym-Einheit), reason *_relinked, fromOccurrenceId erhalten, dangling gezaehlt', r5.ok && r5.dangling === 1 && r5.applied === 1 && /^po:2026-09-2[1-6]:ok$/.test(S.planLinkOf(d1)) && /_relinked$/.test(d1.metrics.planLinkCorrection.reason) && d1.metrics.planLinkCorrection.fromOccurrenceId === 'po:2026-09-23:psg:2:1:alt');
   const r6 = AL.run();
   ok('B5e gueltige Zuordnungen werden NICHT angefasst (zweiter Lauf: 0 verwaist, 0 zugeordnet)', r6.ok && r6.dangling === 0 && r6.applied === 0);
+  /* v8-424: Wochenplan laedt noch ⇒ nichts anfassen (weder zuordnen noch als verwaist werten) */
+  S.mergeServerActivities([{ id: 'srv-p1', sport_id: 'gym', source: 'garmin', source_record_id: 'gp1', started_at: '2026-09-21T06:00:00.000Z', duration_seconds: 1800, status: 'completed', summary: {}, metrics: {} }]);
+  const _prev = g.planActualResolveForDates;
+  g.planActualResolveForDates = dates => Object.assign(_prev(dates), { planPendingDates: { '2026-09-22': true } });
+  const r7 = AL.run();
+  ok('B5f ladende Woche ⇒ zurueckgestellt (deferred > 0), keine Zuordnung, bestehende Links unberuehrt', r7.ok && r7.applied === 0 && r7.deferred >= 1 && S.planLinkOf(S.getActivityById('srv-p1')) === null && S.planLinkOf(S.getActivityById('srv-g1')) === 'po:2026-09-22:ok', JSON.stringify({ a: r7.applied, d: r7.deferred }));
+  g.planActualResolveForDates = _prev;
+  S.deleteActivity('srv-p1', { kind: 'activity' });
   ok('B6 ohne Resolver ⇒ unavailable, kein Throw', (() => { const s = g.planActualResolveForDates; delete g.planActualResolveForDates; const x = AL.run(); g.planActualResolveForDates = s; return x.ok === false && x.code === 'unavailable'; })());
 }
 

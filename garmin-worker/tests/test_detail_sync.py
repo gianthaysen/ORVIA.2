@@ -226,3 +226,92 @@ def test_gm741_case6_repeated_sync_idempotent_no_duplicate_merge():
         assert rows2[0]["metrics"] == m1                                   # unveraendert
         assert len(await db.select("activities", {"user_id": uid, "source_record_id": "X6"})) == 1  # keine Dublette
     asyncio.run(run())
+
+
+# ---- v8-424 · Leistung (Watt), kontrolliertes Nachladen, clientgefuehrte Felder ----
+
+def _ride_details():
+    """Synthetische RAD-Detailantwort im belegten Garmin-Schema (metricDescriptors +
+    activityDetailMetrics). Die Schluesselnamen directPower/directBikeCadence sind
+    eine ANNAHME (im Repo liegt nur ein Lauf-Fixture) — der Test belegt die
+    Verdrahtung, nicht die Garmin-Nutzlast."""
+    return {
+        "metricDescriptors": [
+            {"metricsIndex": 0, "key": "directHeartRate"},
+            {"metricsIndex": 1, "key": "directPower"},
+            {"metricsIndex": 2, "key": "directBikeCadence"},
+            {"metricsIndex": 3, "key": "directSpeed"},
+        ],
+        "activityDetailMetrics": [{"metrics": [120 + i % 5, 150 + i, 85, 6.5]} for i in range(20)],
+    }
+
+
+def test_power_and_bike_cadence_streams_are_parsed():
+    from orvia_worker.series_normalize import parse_activity_details
+    out = parse_activity_details(_ride_details())
+    assert out["streams"]["power"][0] == 150 and out["stream_units"]["power"] == "W"
+    assert out["streams"]["cadence"][0] == 85 and out["stream_units"]["cadence"] == "rpm"
+    # Lauf-Fixture: keine Leistung ⇒ keine Serie, Lauf-Kadenz bleibt spm (nichts erfunden)
+    run = parse_activity_details(DETAILS)
+    assert "power" not in run["streams"] and run["stream_units"].get("cadence") == "spm"
+
+
+def test_activity_summary_carries_power_only_when_present():
+    from orvia_worker.normalize import normalize_activity
+    base = {"activityId": 1, "activityType": {"typeKey": "virtual_ride"}, "duration": 3060, "startTimeGMT": "2026-10-02 03:46:00"}
+    with_p = normalize_activity(dict(base, avgPower=141, maxPower=402, normPower=156))
+    assert with_p.summary["avg_power_w"] == 141 and with_p.summary["max_power_w"] == 402 and with_p.summary["norm_power_w"] == 156
+    without = normalize_activity(base)
+    assert "avg_power_w" not in without.summary and "norm_power_w" not in without.summary
+
+
+def test_cycling_v1_is_reenriched_once_other_sports_are_not():
+    async def run():
+        db = FakeDb(); uid = "u7"
+        done_v1 = {"detailsFetchedAt": "2026-01-01T00:00:00+00:00", "detailsVersion": 1, "streams": {"heart_rate": [1, 2]}}
+        await db.insert("activities", [
+            {"user_id": uid, "source": "garmin", "source_record_id": "R1", "sport_id": "cycling", "metrics": dict(done_v1)},
+            {"user_id": uid, "source": "garmin", "source_record_id": "L1", "sport_id": "running", "metrics": dict(done_v1)},
+        ])
+        res = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=10)
+        assert res["selected"] == ["R1"] and res["updated"] == 1          # nur die Radeinheit
+        m = (await db.select("activities", {"user_id": uid, "source_record_id": "R1"}))[0]["metrics"]
+        assert m["detailsVersion"] == 2 and "power" in m["streams"]
+        res2 = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=10)
+        assert res2["selected"] == []                                      # danach nie wieder
+    asyncio.run(run())
+
+
+def test_client_owned_keys_survive_the_detail_write():
+    """Der Client setzt die Plan-Zuordnung, WAEHREND der Worker die Details laedt:
+    der Worker las die Zeile vorher und darf die Zuordnung beim Zurueckschreiben
+    nicht ueberschreiben (und ein geloestes Feld nicht wiederbeleben)."""
+    async def run():
+        db = FakeDb(); uid = "u8"
+        await db.insert("activities", [
+            {"user_id": uid, "source": "garmin", "source_record_id": "C1", "sport_id": "cycling",
+             "metrics": {"training_load": 49, "plannedSessionId": "po:alt"}},
+        ])
+        async def client_writes():
+            await db.update("activities", {"user_id": uid, "source_record_id": "C1"},
+                            {"metrics": {"training_load": 49,
+                                         "planLinkCorrection": {"toOccurrenceId": "po:2026-10-02:ps:x", "method": "auto"},
+                                         "plannedSessionId": "po:2026-10-02:ps:x"}})
+        def get(aid):
+            return _ride_details()
+        # Client-Schreibzugriff zwischen Lesen (Start) und Schreiben simulieren:
+        orig_select = db.select
+        state = {"n": 0}
+        async def select(table, flt=None, **kw):
+            state["n"] += 1
+            if state["n"] == 2:               # 1 = Laufbeginn, 2 = frisches Nachlesen vor dem Schreiben
+                await client_writes()
+            return await orig_select(table, flt, **kw)
+        db.select = select
+        await detail_sync.sync_activity_details(db, uid, get, limit=10)
+        db.select = orig_select
+        m = (await db.select("activities", {"user_id": uid, "source_record_id": "C1"}))[0]["metrics"]
+        assert m["plannedSessionId"] == "po:2026-10-02:ps:x"               # Client-Stand, nicht „po:alt"
+        assert m["planLinkCorrection"]["method"] == "auto"
+        assert "power" in m["streams"] and m["training_load"] == 49       # Anreicherung + Bestand bleiben
+    asyncio.run(run())

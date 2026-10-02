@@ -1297,6 +1297,32 @@ function _planActualNorm(v){
   return nd?nd(v):String(v||'').toLowerCase();
 }
 function _planActualWeekdayIndex(dateStr){ return (new Date(dateStr+'T12:00').getDay()+6)%7; }
+/* v8-424 (Gians Befund 2.10.: Vorwoche zugeordnet, Plan zeigt trotzdem „Geplant"):
+   EINE Planquelle je Woche. Die Planseite liest fremde Wochen ueber gmPlanForOffset
+   (eigener persistierter Wochenplan oder wiederkehrende Struktur), der Resolver nahm
+   aber IMMER activeWeekPlan() — die Einheiten-IDs der Vorwoche stimmten nicht mit
+   denen ueberein, gegen die verknuepft wurde: die Zuordnung zeigte auf eine
+   Occurrence, die die Vorwochen-Karte nie bildete. planWeekDaysFor ist die eine
+   Stelle, die fuer ein Datum den Plan SEINER Woche liefert. pending=true, solange
+   der Wochenplan noch geladen wird (dann nichts automatisch zuordnen). */
+function _planActualWeekOffsetFor(dateStr){
+  try{
+    var t=new Date(todayStr()+'T12:00');var tm=new Date(t);tm.setDate(t.getDate()-((t.getDay()+6)%7));
+    var d=new Date(dateStr+'T12:00');var dm=new Date(d);dm.setDate(d.getDate()-((d.getDay()+6)%7));
+    return Math.round((dm.getTime()-tm.getTime())/(7*864e5));
+  }catch(_){return 0;}
+}
+function planWeekDaysFor(dateStr){
+  var off=_planActualWeekOffsetFor(dateStr);
+  if(off===0||typeof gmPlanForOffset!=='function'){
+    var d0=null;try{d0=activeWeekPlan();}catch(_){ }
+    return {days:d0||[[],[],[],[],[],[],[]],pending:false,offset:0};
+  }
+  var sel=null;try{sel=gmPlanForOffset(off);}catch(_){ }
+  if(sel&&Array.isArray(sel.days)&&sel.days.length===7)return {days:sel.days,pending:sel.provenance==='loading',offset:off};
+  var d1=null;try{d1=activeWeekPlan();}catch(_){ }
+  return {days:d1||[[],[],[],[],[],[],[]],pending:false,offset:off};
+}
 function planActualResolveForDates(dates){
   dates=(dates||[]).filter(Boolean);
   var dateSet={}; dates.forEach(function(d){ dateSet[d]=true; });
@@ -1307,11 +1333,16 @@ function planActualResolveForDates(dates){
   var planLoaded=(typeof activeWeekPlan==='function');
   // Occurrences: je Datum den (wiederkehrenden) Wochenplan-Slot; plan-eigene ID 'po:<date>:<templateId>'.
   var planned=[];
+  var pendingDates={};
   if(planLoaded){
-    var wp=activeWeekPlan();
+    var _wkCache={};
     dates.forEach(function(day){
       var wd=_planActualWeekdayIndex(day);
-      var items=(wp&&wp[wd])||[];
+      var off=_planActualWeekOffsetFor(day);
+      if(!_wkCache[off])_wkCache[off]=planWeekDaysFor(day);   /* je Woche einmal */
+      var wk=_wkCache[off];
+      if(wk.pending)pendingDates[day]=true;
+      var items=(wk.days&&wk.days[wd])||[];
       items.forEach(function(it){
         if(!it||!it.t)return;
         var occ=it.id?('po:'+day+':'+it.id):null;
@@ -1358,6 +1389,7 @@ function planActualResolveForDates(dates){
   var byOcc={};
   (res.results||[]).forEach(function(r){ if(r.plannedSessionId!=null) byOcc[r.plannedSessionId]=r; });
   res.byOcc=byOcc;
+  res.planPendingDates=pendingDates;   /* v8-424: Wochen, deren Plan noch laedt */
   return res;
 }
 /* Heute-Chip: EIN Tagesstatus aus dem Resolver, gemappt auf die bestehende pf-Vokabular. */
@@ -3977,6 +4009,8 @@ function gmWeekPlanEnsure(weekKey,cb){
     _gmWeekCache[weekKey]=(r&&r.success&&r.data)?r.data:null;
     if(cb)cb(_gmWeekCache[weekKey]);
     try{if(typeof gmPlanWeekOff==='function'&&gmWeekKeyForOffset(gmPlanWeekOff())===weekKey&&typeof renderGMPlan==='function')renderGMPlan();}catch(_){ }
+    /* v8-424: die automatische Plan-Zuordnung wartet auf den Wochenplan (planPendingDates) */
+    try{if(window.dispatchEvent&&typeof CustomEvent==='function')window.dispatchEvent(new CustomEvent('orvia:week-plan-loaded',{detail:{weekKey:weekKey}}));}catch(_){ }
   }).catch(function(){delete _gmWeekLoading[weekKey];_gmWeekCache[weekKey]=null;});
 }
 /* DER Lesepfad des Plan-Renderers. Liefert IMMER {days, provenance, weekKey}.
@@ -5471,6 +5505,8 @@ function showTab(name){
        dann wieder voll ausgefahren sein. Ein Event statt einer direkten Kopplung —
        der Tabwechsel kennt die Bar-Optik nicht. */
     try{window.dispatchEvent(new CustomEvent('orvia:tab-changed',{detail:{tab:name}}));}catch(_){ }}
+  /* v8-424: derselbe Wechselpfad fuer die Wisch-Geste (js/tab-swipe.js) — keine zweite Navigation. */
+  window._orviaGoTab=goTab;
   /* Click nur für Tastatur/Assistive Tech (detail===0) — Pointer-Taps navigieren im pointerdown,
      weil setPointerCapture den Click auf die Wrap retargetet (verifiziert im Harness). */
   wrap.addEventListener('click',function(e){if(e.detail!==0)return;var b=e.target.closest('button[data-tab]');if(b)goTab(b.dataset.tab);});
@@ -5608,9 +5644,34 @@ function gotoHist(){closeProfile();showTab('hist');}
 /* renderAkt() ist der Kompatibilitäts-Wrapper um ORVIA.activity.render (GM3-Pfad, unten). */
 document.getElementById('suppModal').addEventListener('click',e=>{if(e.target.id==='suppModal')closeSupp();});
 /* Tastatur: Tabbar ausblenden, wenn iOS-Keyboard offen */
-if(window.visualViewport){visualViewport.addEventListener('resize',()=>{
-  const kb=window.innerHeight-visualViewport.height>120;
-  document.querySelector('.tabbar').classList.toggle('kb',kb);});}
+/* v8-424 (Gians Befund 2.10.: „ab und zu wird unten die Bar nicht angezeigt"): die alte
+   Heuristik wertete JEDE Verkleinerung des sichtbaren Bereichs um >120 px als Tastatur —
+   auch Zoom und Toolbar-Wechsel — und pruefte nur bei `resize`. Schloss iOS die Tastatur
+   ohne resize-Ereignis, blieb die Leiste (samt Plus-Knopf) weggefahren, bis zum
+   naechsten Neuladen. Jetzt: Tastatur nur, wenn wirklich ein Eingabefeld den Fokus hat
+   und nicht gezoomt ist; neu bewertet bei resize, scroll, Fokuswechsel, Rueckkehr in
+   die App und Tabwechsel. */
+function gmKbEval(){
+  try{
+    var bar=document.querySelector('.tabbar');if(!bar)return false;
+    var vv=window.visualViewport;if(!vv){bar.classList.remove('kb');return false;}
+    var a=document.activeElement,tg=a&&a.tagName?a.tagName.toLowerCase():'';
+    var editing=!!a&&(tg==='input'||tg==='textarea'||tg==='select'||a.isContentEditable===true);
+    var zoomed=!!vv.scale&&Math.abs(vv.scale-1)>0.02;
+    var kb=editing&&!zoomed&&(window.innerHeight-vv.height>120);
+    bar.classList.toggle('kb',kb);
+    return kb;
+  }catch(_){return false;}
+}
+if(window.visualViewport){
+  visualViewport.addEventListener('resize',gmKbEval);
+  visualViewport.addEventListener('scroll',gmKbEval);
+  document.addEventListener('focusin',function(){setTimeout(gmKbEval,80);});
+  document.addEventListener('focusout',function(){setTimeout(gmKbEval,160);});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')setTimeout(gmKbEval,80);});
+  window.addEventListener('pageshow',gmKbEval);
+  window.addEventListener('orvia:tab-changed',gmKbEval);
+}
 /* Profil laden + Race/Ziel synchronisieren; Onboarding bei frischer Installation */
 const _profileExisted=(typeof ensureProfile==='function')?ensureProfile():true;
 if(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.hmTargetMin&&DB._hmTargetMin==null)DB._hmTargetMin=PROFILE.hmTargetMin;
@@ -5635,6 +5696,13 @@ document.getElementById('eveForm').addEventListener('input',e=>{try{if(e&&e.targ
 /* Ziel-SSOT: nach einem Server-Activity-Pull sichtbare Zielkarten aktualisieren. */
 window.addEventListener('orvia:activities-pulled',function(){try{
   ['goalDetail','goalDetail2'].forEach(function(id){if(document.getElementById(id))renderGoalCard(id);});
+}catch(e){}});
+/* v8-424: nach einer (automatischen oder manuellen) Plan-Zuordnung die sichtbare Planseite
+   neu zeichnen — sonst blieb die Karte bis zum naechsten Tabwechsel auf dem alten Stand. */
+window.addEventListener('orvia:activity-updated',function(ev){try{
+  var d=ev&&ev.detail;if(!d||!(d.autoLinked||d.planLinkCorrected))return;
+  var tp=document.getElementById('tab-plan');
+  if(tp&&!tp.classList.contains('hide')&&typeof renderGMPlan==='function')renderGMPlan();
 }catch(e){}});
 document.getElementById('eveForm').addEventListener('click',e=>{if(e.target.closest('.chip'))autoEve();});
 window.addEventListener('pagehide',function(){flushAuto();if(window.orviaFlushSync)window.orviaFlushSync();});
@@ -8407,7 +8475,9 @@ function renderGMPlan(){
         (function(){
           var _isNext=false;
           try{if(!done&&!pSkip&&isKeyU&&_wOff===0&&!_nextKeyMarked&&dayKeys[di]>=todayStr()){_isNext=true;_nextKeyMarked=true;}}catch(_n){ }
-          return '<span class="session-state'+(done?' done':(_isNext?' today':''))+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':(_isNext?'' + _uiT('ui.naechster_reiz') + '':'' + _uiT('ui.geplant_badge') + '')))+'</span></div>';
+          /* v8-424: eine vergangene, nicht absolvierte Einheit ist nicht mehr „Geplant". */
+          var _past=false;try{_past=!done&&!pSkip&&dayKeys[di]<todayStr();}catch(_p){ }
+          return '<span class="session-state'+(done?' done':(_isNext?' today':(_past?' missed':'')))+'">'+(done?'' + _uiT('ui.erledigt_') + '':(pSkip?'' + _uiT('ui.entfaellt') + ''+pSel+')':(_isNext?'' + _uiT('ui.naechster_reiz') + '':(_past?'' + _uiT('ui.nicht_erledigt_badge') + '':'' + _uiT('ui.geplant_badge') + ''))))+'</span></div>';
         })();
       /* IST-Werte einer absolvierten Einheit — der eigentliche Zweck des
          Zurueckblaetterns. Quelle ist ausschliesslich der Resolver (`actual`);
@@ -8896,7 +8966,11 @@ function gmActStreamDefs(sportId){
   return [
     {key:'heart_rate',label:'' + _uiT('ui.herzfrequenz_bpm') + '',unit:' bpm',color:'ready',hb:false,dec:0,conv:null},
     speedDef,
-    {key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:'cyan',hb:true,dec:0,conv:null},
+    /* v8-424: Leistung (Garmin directPower) — nur wenn die Messreihe wirklich vorliegt. */
+    {key:'power',label:'' + _uiT('ui.leistung_w') + '',unit:' W',color:'attention',hb:true,dec:0,conv:null},
+    (sportId==='cycling'
+      ?{key:'cadence',label:'' + _uiT('ui.trittfrequenz_rpm') + '',unit:' rpm',color:'cyan',hb:true,dec:0,conv:null}
+      :{key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:'cyan',hb:true,dec:0,conv:null}),
     {key:'elevation',label:'' + _uiT('ui.hoehe_m') + '',unit:' m',color:'activity',hb:null,dec:0,conv:null}
   ];
 }
@@ -8920,7 +8994,7 @@ function gmActCardKpis(a,vm){
     cells=[[ex!=null?String(ex):null,'ÜBUNGEN'],[sets!=null?String(sets):null,'SÄTZE'],[dur,'DAUER'],[vol!=null?gmKg(vol)+' kg':null,'VOLUMEN'],[hr,'' + _uiT('ui.hf_') + ''],[kcal,'KALORIEN'],[rpe,'BELASTUNG']];
   }else if(fam==='cycling'){
     var spd=(s.avgSpeedKmh>0)?Math.round(s.avgSpeedKmh*10)/10:((s.distanceKm>0&&a.durationSeconds>0)?Math.round(s.distanceKm/(a.durationSeconds/3600)*10)/10:null);
-    cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[spd!=null?fmtDe(spd)+' km/h':null,'Ø KM/H'],[hr,'' + _uiT('ui.hf_') + ''],[elev,'HÖHENMETER'],[kcal,'KALORIEN']];
+    cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[vm.avgPowerW!=null?vm.avgPowerW+' W':null,'Ø WATT'],[spd!=null?fmtDe(spd)+' km/h':null,'Ø KM/H'],[hr,'' + _uiT('ui.hf_') + ''],[elev,'HÖHENMETER'],[kcal,'KALORIEN']];
   }else if(fam==='swimming'||fam==='rowing'){
     cells=[[vm.distanceLabel||null,'DISTANZ'],[dur,'DAUER'],[vm.paceLabel||null,'TEMPO'],[hr,'' + _uiT('ui.hf_') + ''],[kcal,'KALORIEN'],[rpe,'BELASTUNG']];
   }else if(fam==='pace'){
@@ -9131,6 +9205,17 @@ function gmOpenActivityPage(aid){
       _hrC,
       [_rpe!=null?'' + _uiT('ui.rpe') + ''+_rpe:'—','BELASTUNG']
     ];
+    /* v8-424: Krafteinheit OHNE Uebungslog (z. B. reine Uhr-Aufzeichnung) — statt vier
+       leerer Kacheln (Uebungen/Saetze/Volumen/Belastung „—") nur, was die Quelle traegt. */
+    if(!_gym||(_gym.exCount==null&&_gym.setCount==null&&_gym.volumeKg==null)){
+      kcells=[
+        [vm.durationLabel||'—','DAUER'],
+        _hrC,
+        [vm.maxHr!=null?vm.maxHr+' bpm':null,'' + _uiT('ui.max_herzfrequenz') + ''],
+        [vm.caloriesKcal!=null?fmtDe(vm.caloriesKcal)+' kcal':null,'KALORIEN'],
+        [_rpe!=null?'' + _uiT('ui.rpe') + ''+_rpe:null,'BELASTUNG']
+      ].filter(function(c){return c[0]!=null;});
+    }
   }else if(_fam==='cycling'){
     kcells=[
       [vm.distanceLabel||'—','DISTANZ'],
@@ -9140,6 +9225,13 @@ function gmOpenActivityPage(aid){
       [(vm.elevationM!=null?vm.elevationM+' m':'—'),'HÖHENMETER'],
       [vm.caloriesKcal!=null?fmtDe(vm.caloriesKcal)+' kcal':'—','KALORIEN']
     ];
+    /* v8-424 (Gians Befund 2.10.: „die Wattanzahl fehlt"): Leistung direkt nach der
+       Geschwindigkeit — nur belegte Zellen, keine leere „— W"-Kachel ohne Leistungsmesser. */
+    var _pwC=[];
+    if(vm.avgPowerW!=null)_pwC.push([vm.avgPowerW+' W','' + _uiT('ui.leistung_avg') + '']);
+    if(vm.normPowerW!=null)_pwC.push([vm.normPowerW+' W','' + _uiT('ui.leistung_np') + '']);
+    if(vm.maxPowerW!=null)_pwC.push([vm.maxPowerW+' W','' + _uiT('ui.leistung_max') + '']);
+    if(_pwC.length)kcells.splice.apply(kcells,[3,0].concat(_pwC));
   }else if(_fam==='swimming'||_fam==='rowing'){
     kcells=[
       [vm.distanceLabel||'—','DISTANZ'],
@@ -9717,8 +9809,18 @@ function gmStoryTheme(fam){
 function gmStoryBigVal(txt){
   return gmEsc(String(txt==null?'':txt)).replace(/([A-Za-zÄÖÜäöüß]+)/g,'<small>$1</small>');
 }
-function gmStoryDotChart(vals,unit,dec){
+/* v8-424 (Gians Wunsch 2.10.): die Punkte sind nur noch HINTERGRUND. Darueber liegt
+   eine durchgezogene Linie mit dem echten Verlauf; die Punktflaeche wird exakt an
+   dieser Linie abgeschnitten (clipPath = Flaeche unter der Kurve) — oberhalb der
+   Linie steht kein Punkt mehr, und die Linie zeigt Hoehen und Tiefen eindeutig.
+   Die Linie verbindet dieselben Spaltenmittel wie zuvor (keine Interpolation, keine
+   Glaettung). opts.avg/opts.max: Anzeigewerte aus der Summary (EINE Wahrheit mit dem
+   Kennzahlen-Raster — die Messreihe ist heruntergerechnet und trifft Ø/Max nicht
+   immer exakt); die Geometrie bleibt die der Samples. */
+var _gmStoryChartSeq=0;
+function gmStoryDotChart(vals,unit,dec,opts){
   if(!Array.isArray(vals)||vals.length<5)return '';
+  var o=opts||{};
   /* GM7.9e: mehr Spalten = kuerzeres Mittelungsfenster je Spalte. Bei 46 Spalten wurden
      ueber eine lange Einheit teils 2 Minuten je Spalte gemittelt, wodurch echte
      Schwankungen (z. B. Intervalle) verschwanden und der Verlauf konstant wirkte.
@@ -9733,23 +9835,32 @@ function gmStoryDotChart(vals,unit,dec){
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rng=(mx-mn)||1;
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
   var cw=W/cols,rh=H/rows,r=Math.max(1.6,Math.min(cw,rh)*0.30);
-  var dots='';
+  var yOf=function(v){return H-(((v-mn)/rng)*(rows-2)+1)*rh;};
+  var dots='',lp=[];
   bucket.forEach(function(v,c){
-    var hN=Math.max(1,Math.round(((v-mn)/rng)*(rows-2))+1);
+    var x=c*cw+cw/2,y=yOf(v);
+    lp.push(x.toFixed(1)+','+y.toFixed(1));
+    /* eine Reihe UEBER die Kurve hinaus zeichnen — der Zuschnitt erledigt die Kante */
+    var hN=Math.min(rows,Math.max(1,Math.ceil((H-y)/rh)+1));
     var col='';
-    for(var q=0;q<hN;q++){
-      var depth=hN-1-q;                                  /* 0 = oberster Punkt der Spalte */
-      var kc=(depth===0)?' class="t0"':(depth===1?' class="t1"':(depth===2?' class="t2"':''));
-      col+='<circle'+kc+' cx="'+(c*cw+cw/2).toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';}
+    for(var q=0;q<hN;q++)col+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
     dots+='<g class="wst-dc" style="animation-delay:'+(180+c*24)+'ms">'+col+'</g>';
   });
-  var avgY=H-(((avg-mn)/rng)*(rows-2)+1)*rh;
+  var y0=yOf(bucket[0]).toFixed(1),yN=yOf(bucket[bucket.length-1]).toFixed(1);
+  var line='M0,'+y0+' L'+lp.join(' L')+' L'+W+','+yN;
+  var cid='wstClip'+(++_gmStoryChartSeq);
+  var avgY=yOf(avg);
   var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
+  var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
+  var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
   return '<div class="wst-dotwrap">'+
-    '<svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+dots+
+    '<svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
+    '<defs><clipPath id="'+cid+'"><path d="'+line+' L'+W+','+H+' L0,'+H+' Z"/></clipPath></defs>'+
+    '<g clip-path="url(#'+cid+')">'+dots+'</g>'+
+    '<path class="wst-line" d="'+line+'"/>'+
     '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/></svg>'+
-    '<span class="wst-avgbadge" style="top:'+Math.max(5,Math.min(92,avgY/H*100)).toFixed(1)+'%">Ø '+f(avg)+gmEsc(unit)+'</span>'+
-    '<span class="wst-ax wst-axmax">'+f(mx)+gmEsc(unit)+'</span>'+
+    '<span class="wst-avgbadge" style="top:'+Math.max(5,Math.min(92,avgY/H*100)).toFixed(1)+'%">Ø '+f(avgShow)+gmEsc(unit)+'</span>'+
+    '<span class="wst-ax wst-axmax">'+f(maxShow)+gmEsc(unit)+'</span>'+
     '<span class="wst-ax wst-axmin">'+f(mn)+gmEsc(unit)+'</span></div>';
 }
 /* Baut die Seiten NUR aus vorhandenen Werten. Rueckgabe: [] = keine Story moeglich. */
@@ -9911,19 +10022,27 @@ function gmStoryPages(a){
   }
   /* ---------- 4) Herzfrequenz: Dot-Matrix-Flaeche ueber die ganze Seite ---------- */
   if(hr){
-    var hrAvg=Math.round(hr.reduce(function(x,y){return x+y;},0)/hr.length);
-    var hrMax=Math.max.apply(null,hr);
-    pages.push(page('<div class="wst-kick">' + _uiT('ui.herzfrequenz__') + '</div>'+gmStoryDotChart(hr,' bpm',0),
+    /* v8-424: Ø und Max aus der Summary, wenn vorhanden — dieselben Zahlen wie im
+       Kennzahlen-Raster (vorher: „Maximal 164" hier, „167" zwei Seiten weiter). */
+    var hrAvg=(vm.avgHr!=null)?Math.round(vm.avgHr):Math.round(hr.reduce(function(x,y){return x+y;},0)/hr.length);
+    var hrMax=Math.max(Math.max.apply(null,hr),(vm.maxHr!=null?vm.maxHr:0));
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.herzfrequenz__') + '</div>'+gmStoryDotChart(hr,' bpm',0,{avg:hrAvg,max:hrMax}),
       foot('Ø '+em(hrAvg+' bpm')+'' + _uiT('ui.ueber_die_einheit') + '','' + _uiT('ui.maximal') + ''+hrMax+'' + _uiT('ui.bpm_gemessene_werte_nichts_nachgerechnet') + '')));
   }
   /* ---------- 5) Rad: Geschwindigkeit als Dot-Matrix (reine km/h-Umrechnung) ---------- */
   if(fam==='cycling'){
     var spdC=cleanArr(st&&st.speed,function(v){return v>0?v*3.6:null;});
     if(spdC){
-      var spAvg=Math.round(spdC.reduce(function(x,y){return x+y;},0)/spdC.length*10)/10;
-      pages.push(page('<div class="wst-kick">' + _uiT('ui.geschwindigkeit__') + '</div>'+gmStoryDotChart(spdC,' km/h',1),
+      var spAvg=(spdAvg!=null)?spdAvg:Math.round(spdC.reduce(function(x,y){return x+y;},0)/spdC.length*10)/10;
+      pages.push(page('<div class="wst-kick">' + _uiT('ui.geschwindigkeit__') + '</div>'+gmStoryDotChart(spdC,' km/h',1,{avg:spAvg}),
         foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','' + _uiT('ui.gemessene_geschwindigkeit_reine_einheitenumrechnung_aus') + '')));
     }
+  }
+  /* ---------- 5b) Leistung (Watt): eigene Seite, sobald die Messreihe vorliegt ---------- */
+  var pw=cleanArr(st&&st.power,function(v){return v>=0?v:null;});
+  if(pw&&vm.avgPowerW!=null){
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.leistung__') + '</div>'+gmStoryDotChart(pw,' W',0,{avg:vm.avgPowerW,max:vm.maxPowerW}),
+      foot('Ø '+em(vm.avgPowerW+' W')+'.',(vm.normPowerW!=null?'' + _uiT('ui.leistung_story_np') + ''+vm.normPowerW+' W · ':'')+'' + _uiT('ui.maximal') + ''+(vm.maxPowerW!=null?vm.maxPowerW:Math.round(Math.max.apply(null,pw)))+'' + _uiT('ui.leistung_story_sub') + '')));
   }
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
@@ -9931,6 +10050,8 @@ function gmStoryPages(a){
   if(durTxt)cells.push([durTxt,'Dauer']);
   if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','' + _uiT('ui.geschwindigkeit_') + '']);}
   else if(vm.paceLabel)cells.push([vm.paceLabel,'' + _uiT('ui.tempo_') + '']);
+  if(vm.avgPowerW!=null)cells.push([vm.avgPowerW+' W','Ø ' + _uiT('ui.leistung__') + '']);
+  if(vm.normPowerW!=null)cells.push([vm.normPowerW+' W','NP']);
   if(vm.avgHr!=null)cells.push([vm.avgHr+' bpm','' + _uiT('ui.herzfrequenz_') + '']);
   if(vm.maxHr!=null)cells.push([vm.maxHr+' bpm','' + _uiT('ui.max_herzfrequenz_') + '']);
   if(gym){

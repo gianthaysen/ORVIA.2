@@ -34,6 +34,8 @@ const labels = r => r.map(c => c[1]).join('|'), vals = r => r.map(c => c[0]).joi
   ok('A5 Schwimmen: Distanz · Dauer · Tempo/100 m · HF (—)', labels(s) === 'DISTANZ|DAUER|TEMPO|Ø HF' && vals(s) === '1.900 m|45:00|2:22/100 m|—', labels(s) + ' / ' + vals(s));
   const o = K({ sportId: 'football', summary: { avgHr: 140 }, durationSeconds: 3600 }, { sportId: 'football', durationLabel: '60 min', avgHr: 140 });
   ok('A6 Sonstige: Dauer · HF · Distanz (—) · Kalorien (—), nie Pace', labels(o) === 'DAUER|Ø HF|DISTANZ|KALORIEN' && vals(o) === '60 min|140 bpm|—|—', labels(o) + ' / ' + vals(o));
+  const cp = K({ sportId: 'cycling', summary: { distanceKm: 19.96, avgHr: 135 }, durationSeconds: 3060 }, { sportId: 'cycling', durationLabel: '51 min', distanceLabel: '19,96 km', avgHr: 135, avgPowerW: 141 });
+  ok('A4b Rad MIT Leistung (Zwift): Distanz · Dauer · Ø Watt · Ø km/h', labels(cp) === 'DISTANZ|DAUER|Ø WATT|Ø KM/H' && vals(cp) === '19,96 km|51 min|141 W|23,5 km/h', labels(cp) + ' / ' + vals(cp));
   const e = K({}, {});
   ok('A7 leer ⇒ vier ehrliche Zellen, kein Throw', e.length === 4 && e.every(c => c[0] === '—'));
   ok('A8 Karte nutzt gmActCardKpis; Altpfad (UMFANG/TEMPO fuer alle) entfernt', /var kp=gmActCardKpis\(a,vm\);/.test(ui) && !/<span>TEMPO<\/span>/.test(ui));
