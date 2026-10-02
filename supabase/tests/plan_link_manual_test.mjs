@@ -121,7 +121,34 @@ sec('D · Identitaet ueber Geraete (v8-421, Gians Befund „activity_not_found")
   ok('D9 ensureLocal: ungueltig/ohne id ⇒ invalid; getombstoned ⇒ tombstoned', S.ensureLocal(null).code === 'invalid' && S.ensureLocal({ sportId: 'gym' }).code === 'invalid' && (() => { S.deleteActivity('srv-z1', { kind: 'activity' }); return S.ensureLocal({ id: 'srv-z1', clientRecordId: 'act:iphone:z1', source: 'orvia_workout', sourceRecordId: 'sessZ' }).code === 'tombstoned'; })());
   const act = rd('js/activity.js'), al = rd('js/plan-auto-link.js');
   ok('D10 activity.js: Server-Cache-Einheit vor dem Verknuepfen lokal sichern, Link/Unlink ueber Objekt-Referenz', /if \(a\._server && store\.ensureLocal\)/.test(act) && /store\.linkActivityToPlan\(a, occurrenceId\)/.test(act) && /store\.unlinkActivityFromPlan\(a, expectedOccurrenceId \|\| null\)/.test(act));
-  ok('D11 plan-auto-link: run() sichert Server-Cache-Einheiten lokal, bevor zugeordnet wird', /activityServerCache\(\) \|\| \[\]\)\.forEach\(function \(sa\) \{ if \(sa && sa\.id\) store\.ensureLocal\(sa\); \}\)/.test(al));
+  ok('D11 plan-auto-link: run() sichert Server-Cache-Einheiten lokal, bevor zugeordnet wird (v8-428: in EINEM Vorgang)', /store\.ensureLocalMany\(_srv\)/.test(al) && /store\.linkManyToPlan\(decisions, \{ method: 'auto' \}\)/.test(al));
+  /* v8-428: Sammelvarianten + gemerktes Parse-Ergebnis */
+  {
+    const before = S.listActivities().length;
+    const em = S.ensureLocalMany([
+      { id: 'srv-m1', clientRecordId: 'act:m:1', sportId: 'gym', source: 'garmin', sourceRecordId: 'gm1', startedAt: '2026-09-27T06:00:00.000Z', durationSeconds: 600, summary: {}, metrics: {} },
+      { id: 'srv-m1', clientRecordId: 'act:m:1', sportId: 'gym', source: 'garmin', sourceRecordId: 'gm1' },   /* doppelt in derselben Liste */
+      { id: 'srv-x1', source: 'orvia_workout', sourceRecordId: 'sessX' },                                       /* existiert bereits */
+      { sportId: 'gym' }, null
+    ]);
+    ok('D12 ensureLocalMany: ein neuer Eintrag, Duplikat in der Liste und Bestand erkannt, Ungueltiges uebersprungen', em.inserted === 1 && em.existing === 2 && em.skipped === 2 && S.listActivities().length === before + 1 && S.getActivityById('act:m:1').syncStatus === 'synced', JSON.stringify(em));
+    const lm = S.linkManyToPlan([
+      { activityId: 'srv-m1', occurrenceId: 'po:2026-09-27:psg:6:0:a', reason: 'auto_same_day' },
+      { activityId: 'srv-y1', occurrenceId: 'po:2026-09-27:psg:6:0:a', reason: 'auto_same_week' },             /* dieselbe Occurrence ⇒ belegt */
+      { activityId: 'gibtsnicht', occurrenceId: 'po:2026-09-27:psg:6:1:b' }
+    ], { method: 'auto' });
+    const m1 = S.getActivityById('srv-m1');
+    ok('D13 linkManyToPlan: one-to-one auch innerhalb der Liste, protokolliert (auto), pending', lm.applied === 1 && lm.results.map(r => r.code).join(',') === 'linked,occurrence_taken,activity_not_found' && S.planLinkOf(m1) === 'po:2026-09-27:psg:6:0:a' && m1.metrics.planLinkCorrection.method === 'auto' && m1.metrics.planLinkCorrection.reason === 'auto_same_day' && m1.syncStatus === 'pending', JSON.stringify(lm.results));
+    /* Merkstand: Aufrufer kann seinen Eintrag veraendern, ohne den Speicher zu beruehren */
+    const a1 = S.getActivityById('srv-m1'); a1.syncStatus = 'KAPUTT'; a1.recording = { x: 1 };
+    const a2 = S.getActivityById('srv-m1');
+    ok('D14 gelesene Eintraege sind Kopien — fremde Feldaenderungen landen nicht im Speicher', a2.syncStatus === 'pending' && a2.recording === undefined);
+    /* Aenderung von aussen (anderes Tab / Test) wird gesehen: Rohtext entscheidet */
+    const k = Object.keys(mem).find(x => /^orvia_activities_/.test(x)); const arr = JSON.parse(mem[k]); arr.push({ id: 'ext-1', clientRecordId: 'ext:1', sportId: 'running', source: 'manual', sourceRecordId: 'e1', startedAt: '2026-09-28T06:00:00.000Z', status: 'completed', summary: {}, metrics: {}, syncStatus: 'synced' }); mem[k] = JSON.stringify(arr);
+    ok('D15 von aussen geaenderter Speicher wird sofort gelesen (kein veralteter Merkstand)', !!S.getActivityById('ext-1'));
+    const dc = S.correctActivityDuration('srv-m1', 25);
+    ok('D16 Dauerkorrektur ersetzt metrics (Zuordnung bleibt erhalten, kein Aendern an Ort und Stelle)', dc.ok && S.getActivityById('srv-m1').metrics.durationCorrection.toMin === 25 && S.planLinkOf(S.getActivityById('srv-m1')) === 'po:2026-09-27:psg:6:0:a');
+  }
 }
 
 console.log('\n' + (fail ? '❌' : '✅') + ' plan_link_manual: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

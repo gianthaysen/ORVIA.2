@@ -38,7 +38,10 @@
   }
 
   function rerender() {
-    try { if (typeof renderDay === 'function') renderDay(); } catch (e) {}
+    /* v8-428: in der Start-Hydration zeichnet der Abschluss-Refresh (auth-ready) einmal
+       mit dem fertigen Stand — hier kein Zwischenstand des Dashboards. */
+    var _hyd = !!(window.ORVIA && window.ORVIA.hydrating);
+    try { if (!_hyd && typeof renderDay === 'function') renderDay(); } catch (e) {}
     try { if (typeof renderProfileScreen === 'function') renderProfileScreen(); } catch (e) {}
     try { if (typeof renderAccountCard === 'function') renderAccountCard(); } catch (e) {}
   }

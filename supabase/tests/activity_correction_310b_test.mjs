@@ -22,6 +22,12 @@ function sliceBalanced(src,needle){
   const b=src.indexOf('{',s);let d=0,q=null,esc=false;
   for(let i=b;i<src.length;i++){const ch=src[i];
     if(q){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch===q)q=null;continue;}
+    /* v8-428: Kommentare ueberspringen. Ein deutsches Zitat im Kommentar („…") endet auf
+       ein gerades Anfuehrungszeichen — ohne diesen Schritt kippte der Zeichenketten-
+       Zustand, der Ausschnitt lief hunderte Zeilen ueber die Funktion hinaus und hing
+       an der Zeichen-Paritaet von voellig fremdem Code (Story-Diagramm). */
+    if(ch==='/'&&src[i+1]==='*'){const e=src.indexOf('*/',i+2);if(e<0)break;i=e+1;continue;}
+    if(ch==='/'&&src[i+1]==='/'&&src[i-1]!==':'){const e=src.indexOf('\n',i);if(e<0)break;i=e;continue;}
     if(ch==='"'||ch==="'"||ch==='`'){q=ch;continue;}if(ch==='{')d++;else if(ch==='}'&&--d===0)return src.slice(s,i+1);
   }throw new Error('unbalanciert: '+needle);
 }

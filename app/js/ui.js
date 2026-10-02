@@ -769,6 +769,35 @@ function gmSportIdOfUnit(u){
   if(t.indexOf('schwimm')>=0)return 'swimming';
   return null;
 }
+/* v8-428 (Gians Befund 2.10.: „das Dashboard laedt deutlich laenger"; per CPU-Profil
+   belegt): Der Beobachter-Snapshot kopiert, serialisiert, hasht und friert ALLE
+   Aktivitaeten ein — bei JEDEM activeWeekPlan()-Aufruf (16-mal je Dashboard-Render).
+   Seit die Server-metrics lokal mitgefuehrt werden, haengen an jeder Aktivitaet die
+   kompletten Messreihen (HF, Tempo, Hoehe, Kadenz, Distanz, jetzt auch Leistung) und
+   die Route. Gemessen mit 160 Aktivitaeten (3,9 MB): 4,4 von 5,9 s eines einzigen
+   Dashboard-Renders gingen in genau diese Arbeit — und sie waechst mit jeder
+   synchronisierten Einheit.
+   Die Beobachter (Schatten, Vorhersage, Sicherheitsgates) lesen Dauer, Distanz,
+   Sportart, Datum, Zuordnung und Korrekturen — NIE Messreihen, Route oder Runden.
+   Diese Rohdaten bleiben deshalb draussen; alles andere geht unveraendert hinein
+   (auch der Hash reagiert weiterhin auf jede fachliche Aenderung). */
+var GM_OBS_HEAVY={streams:1,stream_units:1,route:1,splits:1};
+function gmObsSlim(a){
+  if(!a||typeof a!=='object')return a;
+  var m=a.metrics,heavy=false,k;
+  if(m&&typeof m==='object'){for(k in GM_OBS_HEAVY){if(m[k]!==undefined){heavy=true;break;}}}
+  if(!heavy&&!a.recording)return a;
+  var out={};for(k in a){if(k!=='recording')out[k]=a[k];}
+  if(heavy){var mm={};for(k in m){if(!GM_OBS_HEAVY[k])mm[k]=m[k];}out.metrics=mm;}
+  if(a.recording)out.recording=gmObsSlim(a.recording);
+  return out;
+}
+function gmObsActivities(list){
+  if(!Array.isArray(list))return list;
+  var out=new Array(list.length);
+  for(var i=0;i<list.length;i++)out[i]=gmObsSlim(list[i]);
+  return out;
+}
 function gmObserveWeekPlan(w,src){
   try{
     if(!Array.isArray(w))return w;
@@ -792,7 +821,7 @@ function gmObserveWeekPlan(w,src){
          activitiesAll() existierte nie, DB.activities ist tagbasiert leer.
          Fehlt der Store, ist das 'unavailable', keine leere Liste. */
       activities:(function(){try{var st=window.ORVIA&&ORVIA.activityStore;
-        return (st&&st.listActivities)?(st.listActivities()||[]):undefined;}catch(_e){return undefined;}})(),
+        return (st&&st.listActivities)?gmObsActivities(st.listActivities()||[]):undefined;}catch(_e){return undefined;}})(),
       debriefs:(function(){try{return (typeof gmDbStore==='function')?(gmDbStore()||[]):undefined;}catch(_e){return undefined;}})(),
       sports:(function(){try{return (typeof PROFILE!=='undefined'&&PROFILE)?(PROFILE.sports||null):undefined;}catch(_e){return undefined;}})(),
       goal:(function(){try{return (typeof goalOf==='function')?(goalOf()||null):undefined;}catch(_e){return undefined;}})(),
@@ -7097,9 +7126,23 @@ function gmDashState(){
      ausgewertet; lediglich die Aufteilung in 'offline'/'error' haengt an noData. */
   if(degraded&&!noData)return 'offline';
   if(degraded)return 'error';
+  /* v8-428: Start-Hydration laeuft und lokal gibt es noch keinen Score — das ist
+     „wird geladen", nicht „Check-in ausstehend"/„keine Daten". Ein vorhandener lokaler
+     Score bleibt sichtbar (er ist in aller Regel der richtige). */
+  if(!d.hasScore&&typeof window!=='undefined'&&window.ORVIA&&ORVIA.hydrating)return 'loading';
   if(noData)return 'empty';
   return 'normal';
 }
+/* v8-428: Beginn der Start-Hydration. Steht im Dashboard noch KEIN Score („—"), sofort
+   die Lade-Ansicht einsetzen — ohne Berechnung, rein am vorhandenen Markup erkannt. */
+window.addEventListener('orvia:hydration-start',function(){try{
+  var el=document.getElementById('command');if(!el)return;
+  var big=el.querySelector('.ring-c .big');
+  var noScore=!big||!/\d/.test(big.textContent||'');
+  if(!noScore)return;
+  gmSetHTML(el,gmLoadingHero());
+  var host=document.getElementById('modules');if(host)host.innerHTML=gmLoadingMods();
+}catch(_){ }});
 function gmErrorHero(){var d=gmDashVM();var sc=d.hasScore?d.score:null;
   return '<div class="hero"><div class="hero-top"><div class="ring-wrap" style="width:150px;height:150px;opacity:.55">'+ring(sc!=null?sc:0,'var(--neutral)',150,12)+'<div class="ring-c"><div class="big" style="color:var(--muted)">'+(sc!=null?sc:'—')+'</div><div class="u">' + _uiT('ui.zuletzt_') + '</div></div></div><div class="hero-right"><div class="lead" style="color:var(--muted)">' + _uiT('ui.zwischengespeicherter_stand') + '</div><div class="why">' + _uiT('ui.werte_koennten_veraltet_sein_pruefe') + '</div></div></div>'+
   '<button id="gmRetryBtn" class="cta wide-ghost" style="margin-top:14px;width:100%" onclick="renderDay&&renderDay()">'+icon('wifi','sm')+' ' + _uiT('ui.erneut_versuchen') + '</button></div>';}
@@ -9379,7 +9422,7 @@ function gmOpenActivityPage(aid){
     '<button class="cta wide-ghost danger-btn" style="width:100%" onclick="deleteActivityCanonical(\''+gmEsc(String(_aidCorr))+'\')">Aktivität löschen</button></div>';
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen). */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
-    h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
+    h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
   /* S5a (v14): Debrief als Zustand aus dem kanonischen Record (gmDebriefModel) —
      Soll/Ist-Zeilen + Mitnahmen nur aus Record-Feldern; freie Einheit behaelt den
      bisherigen Bewertungstext (rateActivity) als Einordnung. */
@@ -9388,7 +9431,9 @@ function gmOpenActivityPage(aid){
     var _dbAct={distanceKm:(a.summary&&a.summary.distanceKm!=null)?a.summary.distanceKm:null,durationMin:(a.durationSeconds!=null)?a.durationSeconds/60:null,paceSecPerKm:null};
     if(_dbAct.distanceKm>0&&_dbAct.durationMin>0)_dbAct.paceSecPerKm=Math.round(_dbAct.durationMin*60/_dbAct.distanceKm);
     var _dbM=gmDebriefModel(_dbRec,_dbAct,{fam:_fam,planLink:vm.planLink||null});
-    h+='<div style="margin:0 18px 14px">'+gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null})+'</div>';
+    /* v8-428 (Gians Befund 2.10.): der Debrief stand schmaler als alle anderen Karten —
+       die Huelle ruckte 18 px ein, die Karte selbst noch einmal. Jetzt nur die Karte. */
+    h+=gmDebriefCardHTML(_dbM,{planCta:true,freeText:rate?rate.txt:null});
     /* v8-420 (Gians Entscheidung): Zuordnung passiert automatisch (plan-auto-link) und ist
        hier als EINE kompakte Zeile sichtbar — „aendern" oeffnet die Auswahl als Sheet. */
     try{h+=gmActPlanLinkCard(a,vm,_aidCorr);}catch(_pl){ }
@@ -9925,52 +9970,72 @@ function gmMonoPath(pts){
 function gmStoryDotChart(vals,unit,dec,opts){
   if(!Array.isArray(vals)||vals.length<5)return '';
   var o=opts||{};
-  /* GM7.9e: mehr Spalten = kuerzeres Mittelungsfenster je Spalte. Bei 46 Spalten wurden
-     ueber eine lange Einheit teils 2 Minuten je Spalte gemittelt, wodurch echte
-     Schwankungen (z. B. Intervalle) verschwanden und der Verlauf konstant wirkte.
-     Weiterhin reine Spaltenmittelung derselben Samples. */
-  var W=360,H=430,cols=Math.min(78,vals.length),rows=34;
-  var bucket=[];
-  for(var c=0;c<cols;c++){
-    var a0=Math.floor(c*vals.length/cols),b0=Math.max(a0+1,Math.floor((c+1)*vals.length/cols));
-    var sm=0,n=0;for(var i=a0;i<b0&&i<vals.length;i++){sm+=vals[i];n++;}
-    bucket.push(n?sm/n:vals[a0]);
-  }
+  /* v8-428 (Gians Rueckmeldung 2.10.: „sieht jetzt noch billiger aus"): die 3-px-Linie
+     mit Leuchtrand ueber 78 groben Stuetzpunkten wirkte wie ein Filzstift. Jetzt nach
+     den Diagramm-Grundregeln: DUENNE Linie (2 px, ohne Leuchten), die Flaeche darunter
+     nur als Hauch (Verlauf), das Punktraster deutlich zurueckgenommen, die Ø-Linie als
+     ruhige Haarlinie statt gestrichelt. Die Linie nutzt die volle Aufloesung der
+     Messreihe (bis 150 Stuetzpunkte) — sie liest sich als Messung, nicht als Skizze.
+     Das Punktraster bleibt bewusst grob (Hintergrund). Ein Marker sitzt auf dem
+     hoechsten Punkt der Kurve. */
+  var W=360,H=430,rows=34;
+  var mean=function(n){var out=[];for(var c=0;c<n;c++){
+    var a0=Math.floor(c*vals.length/n),b0=Math.max(a0+1,Math.floor((c+1)*vals.length/n));
+    var sm=0,k=0;for(var i=a0;i<b0&&i<vals.length;i++){sm+=vals[i];k++;}
+    out.push(k?sm/k:vals[a0]);}return out;};
+  var lcols=Math.min(150,vals.length),dcols=Math.min(58,vals.length);
+  var lb=mean(lcols),db=mean(dcols);
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rng=(mx-mn)||1;
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
-  var cw=W/cols,rh=H/rows,r=Math.max(1.6,Math.min(cw,rh)*0.30);
+  var rh=H/rows;
   var yOf=function(v){return H-(((v-mn)/rng)*(rows-2)+1)*rh;};
-  var dots='',pts=[];
-  bucket.forEach(function(v,c){
-    var x=c*cw+cw/2,y=yOf(v);
-    pts.push([x,y]);
-    /* zwei Reihen UEBER den Stuetzpunkt hinaus — der Zuschnitt an der Kurve macht die Kante */
-    var hN=Math.min(rows,Math.max(1,Math.ceil((H-y)/rh)+2));
-    for(var q=0;q<hN;q++)dots+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
-  });
+  /* Linie: Spaltenmittel in voller Aufloesung, monoton-kubisch verbunden */
+  var lw=W/lcols,pts=[],pk=0;
+  lb.forEach(function(v,c){pts.push([c*lw+lw/2,yOf(v)]);if(v>lb[pk])pk=c;});
   var y0=pts[0][1].toFixed(1),yN=pts[pts.length-1][1].toFixed(1);
   var line='M0,'+y0+' L'+pts[0][0].toFixed(1)+','+y0+gmMonoPath(pts)+' L'+W+','+yN;
+  /* Punktraster: grob, nur Hintergrund — der Zuschnitt an der Kurve macht die Kante */
+  var dw=W/dcols,r=Math.max(1.4,Math.min(dw,rh)*0.22),dots='';
+  db.forEach(function(v,c){
+    var x=c*dw+dw/2,hN=Math.min(rows,Math.max(1,Math.ceil((H-yOf(v))/rh)+3));
+    for(var q=0;q<hN;q++)dots+='<circle cx="'+x.toFixed(1)+'" cy="'+(H-(q*rh+rh/2)).toFixed(1)+'" r="'+r.toFixed(1)+'"/>';
+  });
   var k=(++_gmStoryChartSeq),cA='wstClip'+k,cR='wstRev'+k,gA='wstGrad'+k;
   var calm=false;try{calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){ }
-  var DUR=1.9;
+  var DUR=1.6;
   var anim=calm?'':'<animate attributeName="width" from="0" to="'+W+'" begin="0s" dur="'+DUR+'s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.35 0 0.25 1"/>';
   var avgY=yOf(avg);
   var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
   var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
   var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
+  /* Marker nie halb ueber den Rand (Hoechstwert in der ersten/letzten Spalte) */
+  var pkX=Math.max(1.4,Math.min(98.6,pts[pk][0]/W*100)).toFixed(2),pkY=(pts[pk][1]/H*100).toFixed(2);
+  /* Beschriftung als rechte Werteachse AUSSERHALB der Zeichenflaeche: Max, Ø, Min stehen
+     auf ihrer Hoehe neben der Kurve. Frueher lag das Ø-Schild IN der Flaeche und verdeckte
+     die Linie (eine Messreihe kreuzt ihren Mittelwert staendig — eine freie Stelle gibt es
+     dort praktisch nie). Liegt Ø nahe an Max/Min, rueckt nur das Etikett ab; die Haarlinie
+     bleibt auf dem echten Wert. */
+  var maxY=yOf(mx)/H*100,minY=yOf(mn)/H*100,GAP=8;
+  var avgL=Math.max(maxY+GAP,Math.min(minY-GAP,avgY/H*100));
+  var u=String(unit||'').replace(/^\s+/,'');
   return '<div class="wst-dotwrap'+(calm?' calm':'')+'">'+
+    '<div class="wst-plot">'+
     '<svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
     '<defs><clipPath id="'+cA+'"><path d="'+line+' L'+W+','+H+' L0,'+H+' Z"/></clipPath>'+
     '<clipPath id="'+cR+'"><rect x="0" y="-12" width="'+W+'" height="'+(H+24)+'">'+anim+'</rect></clipPath>'+
     '<linearGradient id="'+gA+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wst-g0"/><stop offset="1" class="wst-g1"/></linearGradient></defs>'+
+    '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/>'+
     '<g clip-path="url(#'+cR+')">'+
       '<g clip-path="url(#'+cA+')"><rect class="wst-area" x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#'+gA+')"/><g class="wst-dg">'+dots+'</g></g>'+
       '<path class="wst-line" d="'+line+'"/>'+
-    '</g>'+
-    '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/></svg>'+
-    '<span class="wst-avgbadge" style="top:'+Math.max(5,Math.min(92,avgY/H*100)).toFixed(1)+'%">Ø '+f(avgShow)+gmEsc(unit)+'</span>'+
-    '<span class="wst-ax wst-axmax">'+f(maxShow)+gmEsc(unit)+'</span>'+
-    '<span class="wst-ax wst-axmin">'+f(mn)+gmEsc(unit)+'</span></div>';
+    '</g></svg>'+
+    '<span class="wst-pk" style="left:'+pkX+'%;top:'+pkY+'%"></span>'+
+    '</div>'+
+    '<div class="wst-axis" aria-hidden="true">'+
+      '<span class="wst-ax wst-axmax" style="top:'+maxY.toFixed(1)+'%">'+f(maxShow)+(u?'<i>'+gmEsc(u)+'</i>':'')+'</span>'+
+      '<span class="wst-ax wst-axavg" style="top:'+avgL.toFixed(1)+'%">Ø '+f(avgShow)+'</span>'+
+      '<span class="wst-ax wst-axmin" style="top:'+minY.toFixed(1)+'%">'+f(mn)+'</span>'+
+    '</div></div>';
 }
 /* Baut die Seiten NUR aus vorhandenen Werten. Rueckgabe: [] = keine Story moeglich. */
 function gmStoryPages(a){

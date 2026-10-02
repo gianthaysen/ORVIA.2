@@ -232,8 +232,24 @@
 
     try { if (window.orviaApplyUserScope) window.orviaApplyUserScope(O.user.id); } catch (e) {}
 
+    /* v8-428 (Gians Befund 2.10.: „erst der Score ohne Berechnung, dann nochmal anders,
+       dann erst final"): Die Anmeldekette holt Profil, Ziele, Check-ins und Bereitschaft
+       NACHEINANDER, und jeder Schritt zeichnete das Dashboard neu — mit dem jeweils halb
+       geladenen Stand. O.hydrating markiert diese Phase. Solange sie laeuft, wird das
+       Dashboard nicht mit Zwischenstaenden neu gezeichnet (ui-refresh/sync stellen
+       zurueck); gibt es lokal noch keinen Score, steht dort die Lade-Ansicht statt
+       „Check-in ausstehend". Am Ende der Kette: EIN Neuzeichnen mit dem fertigen Stand.
+       Der Wachhund beendet die Phase spaetestens nach 20 s — die Oberflaeche bleibt nie
+       im Ladezustand haengen. */
+    O.hydrating = true;
+    var _hydWatch = setTimeout(function () {
+      if (!O.hydrating) return;
+      O.hydrating = false;
+      try { if (typeof CustomEvent === 'function' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:hydration-end', { detail: { reason: 'watchdog' } })); } catch (e) {}
+    }, 20000);
     hideGate();
     document.documentElement.classList.remove('orvia-gated');
+    try { if (typeof CustomEvent === 'function' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:hydration-start')); } catch (e) {}
     if (window.renderAccountCard) window.renderAccountCard();
     // PERF-INSTRUMENTIERUNG (Audit 2026-07-15, s. config.js ORVIA.perf): reine Zeitmessung,
     // keine Verhaltensänderung. _P fällt lautlos auf No-Ops zurück, falls perf-Helper fehlt.
@@ -281,6 +297,8 @@
       if (O.workoutUI && O.workoutUI.tryRestore) { _t = _P.now(); await O.workoutUI.tryRestore(); _P.mark('onAuthed: workoutUI.tryRestore', _t); }
     } catch (e) {}
     _P.mark('onAuthed: TOTAL login-init chain', _loginT0);
+    O.hydrating = false;                       /* v8-428: VOR dem Ready-Signal — der eine Abschluss-Refresh darf zeichnen */
+    try { clearTimeout(_hydWatch); } catch (e) {}
 
     // GM6.1 (2026-07-27): Hydration abgeschlossen. Die letzten Schritte
     // (checkin/readiness/workout) melden sich nicht selbst — readinessStore

@@ -557,6 +557,11 @@ sec('Z12 · Viele fremde Vorhersagen: die Session ueberlebt das 50er-Fenster');
 
   const awpSrc = sliceBalanced(uiRaw, 'var _gmObsLast=') + '\n' +
   sliceBalanced(uiRaw, 'function gmPlanIdentity(') + '\n' +
+  /* v8-428: der Snapshot bekommt die Aktivitaeten ohne Rohdaten (Messreihen/Route) —
+     die drei Helfer gehoeren seitdem zum Beobachtungspfad. */
+  sliceBalanced(uiRaw, 'var GM_OBS_HEAVY=') + ';\n' +
+  sliceBalanced(uiRaw, 'function gmObsSlim(') + '\n' +
+  sliceBalanced(uiRaw, 'function gmObsActivities(') + '\n' +
   sliceBalanced(uiRaw, 'function gmObserveWeekPlan(') + '\n' +
   sliceBalanced(uiRaw, 'function activeWeekPlan(');
 function runAWP(env) {
