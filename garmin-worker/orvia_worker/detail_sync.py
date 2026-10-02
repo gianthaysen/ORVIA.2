@@ -64,6 +64,18 @@ def _details_complete(metrics: Any) -> bool:
     return isinstance(metrics, dict) and bool(metrics.get("detailsFetchedAt"))
 
 
+def _neg_ts(started_at: Any) -> float:
+    """Sortierschluessel „neueste zuerst"; unlesbares/fehlendes Datum ans Ende."""
+    try:
+        s = str(started_at).replace("Z", "+00:00").replace(" ", "T")
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return -dt.timestamp()
+    except (TypeError, ValueError):
+        return float("inf")
+
+
 def _needs_details(act: Any) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
@@ -84,6 +96,16 @@ async def sync_activity_details(
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged."""
     acts = await db.select("activities", {"user_id": user_id, "source": "garmin"})
+    # v8-424b · Reihenfolge der Auswahl (vorher: Tabellenreihenfolge, also die aeltesten
+    # zuerst). Mit dem einmaligen Nachladen der Radeinheiten haette eine FRISCHE
+    # Aktivitaet hinter dem ganzen Rueckstand gewartet — Route und Messreihen des
+    # heutigen Trainings kaemen erst nach mehreren Laeufen. Deshalb:
+    #   1. nie detaillierte vor nachzuladenden,
+    #   2. innerhalb jeder Gruppe die neuesten zuerst.
+    def _prio(a: Any) -> tuple:
+        fresh = 0 if not _details_complete(a.get("metrics")) else 1
+        return (fresh, _neg_ts(a.get("started_at")))
+    acts = sorted(acts, key=_prio)
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
     already = [a["source_record_id"] for a in acts
                if a.get("source_record_id") and not _needs_details(a)]

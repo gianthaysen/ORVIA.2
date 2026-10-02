@@ -315,3 +315,23 @@ def test_client_owned_keys_survive_the_detail_write():
         assert m["planLinkCorrection"]["method"] == "auto"
         assert "power" in m["streams"] and m["training_load"] == 49       # Anreicherung + Bestand bleiben
     asyncio.run(run())
+
+
+def test_selection_prefers_new_activities_then_newest_reenrichment():
+    """Rueckstand an nachzuladenden Radeinheiten darf eine frische Aktivitaet nicht
+    verdraengen; innerhalb des Rueckstands kommen die neuesten zuerst."""
+    async def run():
+        db = FakeDb(); uid = "u9"
+        v1 = {"detailsFetchedAt": "2026-01-01T00:00:00+00:00", "detailsVersion": 1}
+        await db.insert("activities", [
+            {"user_id": uid, "source": "garmin", "source_record_id": "old", "sport_id": "cycling", "started_at": "2026-05-01T06:00:00+00:00", "metrics": dict(v1)},
+            {"user_id": uid, "source": "garmin", "source_record_id": "mid", "sport_id": "cycling", "started_at": "2026-08-01T06:00:00+00:00", "metrics": dict(v1)},
+            {"user_id": uid, "source": "garmin", "source_record_id": "new", "sport_id": "cycling", "started_at": "2026-10-02T03:46:00+00:00", "metrics": dict(v1)},
+            {"user_id": uid, "source": "garmin", "source_record_id": "run", "sport_id": "running", "started_at": "2026-09-30T06:00:00+00:00", "metrics": {}},
+            {"user_id": uid, "source": "garmin", "source_record_id": "nodate", "sport_id": "cycling", "metrics": dict(v1)},
+        ])
+        res = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=2)
+        assert res["selected"] == ["run", "new"]              # nie detailliert zuerst, dann die neueste Radeinheit
+        res2 = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=10)
+        assert res2["selected"] == ["mid", "old", "nodate"]   # Rest: neueste zuerst, ohne Datum zuletzt
+    asyncio.run(run())
