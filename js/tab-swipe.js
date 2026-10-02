@@ -67,6 +67,31 @@
     } catch (e) { return 'heute'; }
   }
 
+  /* v8-425 (Gians Rueckmeldung 2.10.: „ein bisschen herzlos"): die Seite GEHT MIT.
+     Sobald die Geste klar waagerecht ist, folgt die aktuelle Seite dem Finger (gedaempft,
+     leicht ausblendend). Beim Loslassen: Wisch erkannt ⇒ Seite gleitet hinaus, die neue
+     gleitet aus der Gegenrichtung herein; sonst federt sie zurueck. Am ersten/letzten
+     Ziel gibt es nur einen kurzen Widerstand. Alles ueber transform/opacity (Compositor),
+     Listener bleiben passiv; bei „Bewegung reduzieren" wird ohne Animation gewechselt. */
+  var FOLLOW = 0.42, FOLLOW_EDGE = 0.14, LOCK_PX = 10, LOCK_RATIO = 1.6;
+  function reduced() { try { return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  function paneOf(doc, tab) { try { return doc.getElementById('tab-' + tab); } catch (e) { return null; } }
+  function clearPane(el) { if (!el) return; try { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; el.style.willChange = ''; } catch (e) {} }
+  /* axis(dx,dy) → 'h' | 'v' | null — rein, testbar. */
+  function axis(dx, dy) {
+    var ax = Math.abs(dx), ay = Math.abs(dy);
+    if (ax >= LOCK_PX && ax >= ay * LOCK_RATIO) return 'h';
+    if (ay >= LOCK_PX) return 'v';
+    return null;
+  }
+  /* follow(dx,width,hasTarget) → {x, opacity} — rein, testbar. */
+  function follow(dx, width, hasTarget) {
+    var k = hasTarget ? FOLLOW : FOLLOW_EDGE;
+    var x = Math.round(dx * k);
+    var w = width > 0 ? width : 390;
+    return { x: x, opacity: Math.max(0.55, 1 - Math.min(0.45, Math.abs(dx) / w * 0.7)) };
+  }
+
   function bind() {
     var doc = root.document; if (!doc || !doc.addEventListener || doc.documentElement.dataset.tabSwipe) return;
     doc.documentElement.dataset.tabSwipe = '1';
@@ -75,27 +100,54 @@
       st = null;
       if (!e.touches || e.touches.length !== 1) return;
       if (overlayOpen(doc) || blockedStart(e.target, doc)) return;
-      var t = e.touches[0];
-      st = { x: t.clientX, y: t.clientY, t: Date.now(), multi: false };
+      var t = e.touches[0]; var cur = currentTab(doc);
+      st = { x: t.clientX, y: t.clientY, t: Date.now(), multi: false, lock: null, cur: cur, el: paneOf(doc, cur), calm: reduced() };
     }, { passive: true });
-    doc.addEventListener('touchmove', function (e) { if (st && e.touches && e.touches.length > 1) st.multi = true; }, { passive: true });
-    doc.addEventListener('touchcancel', function () { st = null; }, { passive: true });
+    doc.addEventListener('touchmove', function (e) {
+      if (!st) return;
+      if (e.touches && e.touches.length > 1) { st.multi = true; clearPane(st.el); return; }
+      var t = e.touches && e.touches[0]; if (!t) return;
+      var dx = t.clientX - st.x, dy = t.clientY - st.y;
+      if (!st.lock) st.lock = axis(dx, dy);
+      if (st.lock !== 'h' || st.calm || !st.el) return;
+      var f = follow(dx, root.innerWidth || doc.documentElement.clientWidth, !!target(st.cur, dx < 0 ? 'next' : 'prev'));
+      st.el.style.willChange = 'transform,opacity';
+      st.el.style.transition = 'none';
+      st.el.style.transform = 'translate3d(' + f.x + 'px,0,0)';
+      st.el.style.opacity = String(f.opacity);
+    }, { passive: true });
+    doc.addEventListener('touchcancel', function () { if (st) clearPane(st.el); st = null; }, { passive: true });
     doc.addEventListener('touchend', function (e) {
       var s = st; st = null;
-      if (!s || s.multi || !e.changedTouches || !e.changedTouches.length) return;
-      if (overlayOpen(doc)) return;
+      if (!s) return;
+      var back = function () {            /* zurueckfedern */
+        if (!s.el) return;
+        s.el.style.transition = 'transform .24s cubic-bezier(.2,.8,.2,1), opacity .24s ease';
+        s.el.style.transform = 'translate3d(0,0,0)'; s.el.style.opacity = '1';
+        root.setTimeout(function () { clearPane(s.el); }, 260);
+      };
+      if (s.multi || !e.changedTouches || !e.changedTouches.length || overlayOpen(doc)) { back(); return; }
       var t = e.changedTouches[0];
-      var dir = decide({ dx: t.clientX - s.x, dy: t.clientY - s.y, dt: Date.now() - s.t, startX: s.x, width: root.innerWidth || doc.documentElement.clientWidth });
-      if (!dir) return;
-      var to = target(currentTab(doc), dir);
-      if (!to || typeof root._orviaGoTab !== 'function') return;
-      try { doc.documentElement.setAttribute('data-swipe-dir', dir); } catch (_) {}
-      root._orviaGoTab(to);
-      root.setTimeout(function () { try { doc.documentElement.removeAttribute('data-swipe-dir'); } catch (_) {} }, 260);
+      var w = root.innerWidth || doc.documentElement.clientWidth;
+      var dir = (s.lock === 'v') ? null : decide({ dx: t.clientX - s.x, dy: t.clientY - s.y, dt: Date.now() - s.t, startX: s.x, width: w });
+      var to = dir ? target(s.cur, dir) : null;
+      if (!to || typeof root._orviaGoTab !== 'function') { back(); return; }
+      var go = function () {
+        clearPane(s.el);
+        try { doc.documentElement.setAttribute('data-swipe-dir', dir); } catch (_) {}
+        root._orviaGoTab(to);
+        root.setTimeout(function () { try { doc.documentElement.removeAttribute('data-swipe-dir'); } catch (_) {} }, 380);
+      };
+      if (s.calm || !s.el) { go(); return; }
+      /* hinausgleiten, dann wechseln — die neue Seite kommt per CSS (data-swipe-dir) herein */
+      s.el.style.transition = 'transform .15s cubic-bezier(.4,0,1,1), opacity .15s linear';
+      s.el.style.transform = 'translate3d(' + (dir === 'next' ? -1 : 1) * Math.round(w * 0.28) + 'px,0,0)';
+      s.el.style.opacity = '0';
+      root.setTimeout(go, 150);
     }, { passive: true });
   }
 
-  O.tabSwipe = { ORDER: ORDER, CFG: CFG, decide: decide, target: target, bind: bind, _overlayOpen: overlayOpen, _blockedStart: blockedStart, _currentTab: currentTab };
+  O.tabSwipe = { ORDER: ORDER, CFG: CFG, decide: decide, target: target, axis: axis, follow: follow, bind: bind, _overlayOpen: overlayOpen, _blockedStart: blockedStart, _currentTab: currentTab };
   if (root.document && root.document.addEventListener) {
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', bind); else bind();
   }
