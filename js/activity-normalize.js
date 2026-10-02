@@ -151,7 +151,7 @@
     // 1) unbekannte Felder NICHT verlieren — alles durchkopieren (Eingabe unberührt).
     Object.keys(summary).forEach(function (k) { out[k] = summary[k]; });
     // 2) snake_case-Rohschlüssel entfernen; kanonische camelCase-Felder setzen.
-    ['distance_m', 'distance_km', 'avg_hr', 'max_hr', 'elevation_gain_m', 'elevation_m', 'calories_kcal', 'avg_speed_mps'].forEach(function (k) { delete out[k]; });
+    ['distance_m', 'distance_km', 'avg_hr', 'max_hr', 'elevation_gain_m', 'elevation_m', 'calories_kcal', 'avg_speed_mps', 'avg_power_w', 'max_power_w', 'norm_power_w'].forEach(function (k) { delete out[k]; });
 
     var kind = _sportDistanceKind(sportId);
     // Ungültige/negative Distanzen werden ENTFERNT (nicht kanonisiert/angezeigt), nicht geclampt.
@@ -179,6 +179,12 @@
     var spd = _preferNonNeg(summary.avgSpeedMps, summary.avg_speed_mps);
     if (spd != null) { out.avgSpeedMps = spd; if (_nonNegNum(summary.avgSpeedKmh) == null) out.avgSpeedKmh = _round(spd * 3.6, 2); else out.avgSpeedKmh = _nonNegNum(summary.avgSpeedKmh); }
     else { delete out.avgSpeedMps; if (_nonNegNum(summary.avgSpeedKmh) != null) out.avgSpeedKmh = _nonNegNum(summary.avgSpeedKmh); else delete out.avgSpeedKmh; }
+    /* v8-424: Leistung (Watt) — Garmin avgPower/maxPower/normPower. Nur echte, positive
+       Werte; 0 W als Durchschnitt ist „kein Leistungsmesser", kein Messwert. */
+    [['avgPowerW', 'avg_power_w'], ['maxPowerW', 'max_power_w'], ['normPowerW', 'norm_power_w']].forEach(function (pr) {
+      var v = _preferNonNeg(summary[pr[0]], summary[pr[1]]);
+      if (v != null && v > 0) out[pr[0]] = Math.round(v); else delete out[pr[0]];
+    });
     if (typeof summary.name === 'string' && summary.name !== '') out.name = summary.name; else delete out.name;
     return out;
   }
@@ -247,7 +253,10 @@
       maxHr: _nonNegNum(summary.maxHr),
       caloriesKcal: _nonNegNum(summary.caloriesKcal),
       elevationM: _nonNegNum(summary.elevationM),
-      avgSpeedKmh: _nonNegNum(summary.avgSpeedKmh)
+      avgSpeedKmh: _nonNegNum(summary.avgSpeedKmh),
+      avgPowerW: _nonNegNum(summary.avgPowerW),
+      maxPowerW: _nonNegNum(summary.maxPowerW),
+      normPowerW: _nonNegNum(summary.normPowerW)
     };
   }
 

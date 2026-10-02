@@ -405,6 +405,13 @@ function activityDetailViewModel(a) {
     avgHr: dm ? dm.avgHr : (s.avgHr != null ? s.avgHr : null),
     maxHr: dm ? dm.maxHr : (s.maxHr != null ? s.maxHr : null),
     caloriesKcal: dm ? dm.caloriesKcal : (s.caloriesKcal != null ? s.caloriesKcal : null),
+    /* v8-424: Leistung. Summary (Garmin avg/max/NP) fuehrt; fehlt sie, aber die
+       Leistungs-Messreihe liegt vor, sind Ø und Max der reine Mittelwert bzw. das
+       Maximum der ECHTEN Samples (powerSource 'stream') — keine Modellleistung. */
+    avgPowerW: (dm && dm.avgPowerW != null) ? dm.avgPowerW : null,
+    maxPowerW: (dm && dm.maxPowerW != null) ? dm.maxPowerW : null,
+    normPowerW: (dm && dm.normPowerW != null) ? dm.normPowerW : null,
+    powerSource: (dm && dm.avgPowerW != null) ? 'summary' : null,
     source: a.source || null,
     sourceRecordId: a.sourceRecordId || null,
     workoutSessionId: a.workoutSessionId || null,
@@ -436,6 +443,17 @@ function activityDetailViewModel(a) {
       return (out && out.length >= 2) ? out : null;
     })()
   };
+  try {
+    var _pw = vm.canonicalStreams && vm.canonicalStreams.power;
+    if (Array.isArray(_pw)) {
+      var _ps = 0, _pn = 0, _pm = null;
+      for (var _pi = 0; _pi < _pw.length; _pi++) { var _pv = _pw[_pi]; if (typeof _pv === 'number' && isFinite(_pv) && _pv >= 0) { _ps += _pv; _pn++; if (_pm == null || _pv > _pm) _pm = _pv; } }
+      if (_pn >= 5 && _pm > 0) {
+        if (vm.avgPowerW == null) { vm.avgPowerW = Math.round(_ps / _pn); vm.powerSource = 'stream'; }
+        if (vm.maxPowerW == null) vm.maxPowerW = Math.round(_pm);
+      }
+    }
+  } catch (_) {}
   /* S2c (v8-388): Gekoppelte Geraeteaufzeichnung (a.recording, vgl. activityConfig.
      attachRecordings). Sie ergaenzt NUR, was das Workout nicht hat — HF, Kalorien,
      Streams — und liefert die Uhr-Dauer als eigenen Wert. Nichts wird ueberschrieben,
@@ -697,7 +715,7 @@ function planLinkCandidatesFor(a) {
     var res = planActualResolveForDates(dates) || {};
     var sport = (typeof _planActualNorm === 'function') ? _planActualNorm(a.sportId) : a.sportId;
     var DN = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-    var wp = null; try { wp = activeWeekPlan(); } catch (_) {}
+    var wp = null; try { wp = (typeof planWeekDaysFor === 'function') ? planWeekDaysFor(day).days : activeWeekPlan(); } catch (_) {}
     var labelOf = function (occ, fallback) { try { var m = /^po:\d{4}-\d{2}-\d{2}:(.+)$/.exec(occ); var tid = m && m[1]; for (var dd = 0; dd < 7; dd++) for (var k = 0; k < ((wp && wp[dd]) || []).length; k++) if (String(wp[dd][k].id) === tid) return wp[dd][k].l + ' · ' + wp[dd][k].t; } catch (_) {} return fallback; };
     var out = (res.results || []).filter(function (r) { return r && r.plannedSessionId && r.state !== 'completed' && r.planned && dates.indexOf(r.planned.localDate) >= 0; })
       .map(function (r) { var di = dates.indexOf(r.planned.localDate); return { occurrenceId: r.plannedSessionId, sportId: r.planned.sportId, localDate: r.planned.localDate, sameDay: r.planned.localDate === day, sameSport: r.planned.sportId === sport, state: r.state, dayLabel: DN[di] || '', label: labelOf(r.plannedSessionId, r.planned.sportId) }; });
@@ -709,7 +727,8 @@ function planLinkCandidatesFor(a) {
 function planUnitLabelFor(occurrenceId) {
   try {
     var m = /^po:(\d{4}-\d{2}-\d{2}):(.+)$/.exec(String(occurrenceId || '')); if (!m) return null;
-    var date = m[1], tid = m[2]; var wp = activeWeekPlan(); var DN = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    /* v8-424: Plan der Woche DIESES Datums (nicht pauschal die laufende Woche) */
+    var date = m[1], tid = m[2]; var wp = (typeof planWeekDaysFor === 'function') ? planWeekDaysFor(date).days : activeWeekPlan(); var DN = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     var d = new Date(date + 'T12:00'); var dayLabel = DN[(d.getDay() + 6) % 7] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.';
     for (var dd = 0; dd < 7; dd++) for (var k = 0; k < ((wp && wp[dd]) || []).length; k++) if (String(wp[dd][k].id) === tid) return { label: wp[dd][k].l + ' · ' + wp[dd][k].t, dayLabel: dayLabel, localDate: date, unit: wp[dd][k] };
     return { label: tid, dayLabel: dayLabel, localDate: date, unit: null };

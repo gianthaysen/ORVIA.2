@@ -26,20 +26,39 @@
     } catch (e) { return b.fail('exception', String(e && e.message || e)); }
   }
 
-  /* v8-423: Felder einer BESTEHENDEN eigenen Aktivitaet nachtragen (Plan-Zuordnung,
+  /* v8-423/424: Felder einer BESTEHENDEN eigenen Aktivitaet nachtragen (Plan-Zuordnung,
      Dauerkorrektur) — direkter Update unter RLS (activities_upd_own) ueber die Server-id.
-     Ersetzt fuer bereits synchronisierte Datensaetze den RPC-Pfad, der bei abweichender
-     client_record_id (Datensatz von einem anderen Geraet) activity_identity_conflict
-     wirft und damit nie durchkam (Gians Konsole 2.10.: 400-Sturm). Gilt fuer JEDE
-     Quelle, auch Garmin — der Worker fuegt nur ein, ueberschreibt nie. */
-  async function updateFields(id, patch) {
+     Fuer Datensaetze, die NICHT von diesem Geraet stammen (Garmin-Worker, Workout eines
+     anderen Geraets mit fremder client_record_id — dort wirft der RPC
+     activity_identity_conflict).
+     v8-424 · metricsMerge: metrics wird NIE als Ganzes ersetzt. Der Worker reichert
+     dieselbe Zeile nachtraeglich an (Route, Messreihen, detailsFetchedAt); ein lokaler
+     Stand von vor der Anreicherung haette diese Felder beim Zurueckschreiben geloescht.
+     Deshalb: aktuelle Server-metrics lesen, NUR die clientseitig gefuehrten Schluessel
+     (ownedKeys) uebertragen — vorhanden ⇒ setzen, lokal entfernt ⇒ entfernen —, Rest
+     bleibt Serverstand. localWins=true legt zusaetzlich alle lokalen Schluessel darueber. */
+  async function updateFields(id, patch, opts) {
     const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
     const guard = b.requireAuth(); if (guard) return guard;
     if (!id) return b.fail('invalid_id', 'Keine Aktivitaets-id.', { source: 'empty' });
     if (!patch || typeof patch !== 'object' || !Object.keys(patch).length) return b.fail('empty_patch', 'Nichts zu aktualisieren.', { source: 'empty' });
     if (!b.online()) return b.fail('offline', 'Offline — Activity-Sync später.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
     try {
-      const { data, error } = await b.sb().from('activities').update(patch).eq('id', id).eq('user_id', b.currentUserId()).select();
+      let send = patch;
+      const mm = opts && opts.metricsMerge;
+      if (mm && patch.metrics && typeof patch.metrics === 'object') {
+        const cur = await b.sb().from('activities').select('metrics').eq('id', id).eq('user_id', b.currentUserId()).limit(1);
+        if (cur && cur.error) return b.fail('read_failed', cur.error.message);
+        if (!cur || !Array.isArray(cur.data) || !cur.data.length) return b.fail('not_found', 'Aktivitaet nicht gefunden (fremd oder geloescht).');
+        const base = (cur.data[0].metrics && typeof cur.data[0].metrics === 'object') ? cur.data[0].metrics : {};
+        const local = patch.metrics;
+        const merged = mm.localWins ? Object.assign({}, base, local) : Object.assign({}, base);
+        (Array.isArray(mm.ownedKeys) ? mm.ownedKeys : []).forEach(function (k) {
+          if (Object.prototype.hasOwnProperty.call(local, k)) merged[k] = local[k]; else delete merged[k];
+        });
+        send = Object.assign({}, patch, { metrics: merged });
+      }
+      const { data, error } = await b.sb().from('activities').update(send).eq('id', id).eq('user_id', b.currentUserId()).select();
       if (error) return b.fail('update_failed', error.message);
       if (!Array.isArray(data) || !data.length) return b.fail('not_found', 'Aktivitaet nicht gefunden (fremd oder geloescht).');
       return b.ok(data[0]);
