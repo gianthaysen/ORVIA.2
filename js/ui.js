@@ -9970,67 +9970,85 @@ function gmMonoPath(pts){
 function gmStoryDotChart(vals,unit,dec,opts){
   if(!Array.isArray(vals)||vals.length<5)return '';
   var o=opts||{};
-  /* v8-429 — Gians Vorgabe 2.10. (Entwurf als HTML/CSS geliefert, „deutlich besser"):
-     das Diagramm sitzt in einer eigenen Tafel (Verlauf, feine Kante), dahinter ein
-     ruhiges gestricheltes Raster, darunter eine Verlaufsflaeche, die Kurve kraeftig mit
-     weichem Schein, Ø als gestrichelte Bezugslinie mit Punkt und Schild, ein Ring auf
-     dem Hoechstwert. Das Punktraster entfaellt.
-     Eine Abweichung vom Entwurf, bewusst: Max, Ø-Schild und Min stehen in einer EIGENEN
-     Spalte rechts neben der Zeichenflaeche (feste Pixelbreite) — im Entwurf lag das
-     Schild auf dem Ende der Kurve. Der Name der Funktion bleibt (Aufrufer, Tests). */
-  var W=360,H=430,PT=0.07,PB=0.06;
+  /* v8-430 — Gians Rueckmeldung 2.10. zu v8-429: „sieht immer noch billig aus".
+     Ursache (Vergleich mit seinem Referenzbild, nicht mit dem mitgelieferten CSS): die
+     Kurve war weichgezeichnet und dick, die Flaeche darunter praktisch unsichtbar, die
+     Zeichenflaeche durch eine eigene Etikettenspalte auf 70 % geschrumpft. Jetzt wie im
+     Referenzbild:
+       · Tafel fast randlos, darin ein eigener Rahmen fuer die Zeichenflaeche, die Kurve
+         laeuft von Rand zu Rand.
+       · Kurve als KANTIGER Linienzug (gerade Stuecke zwischen den Stuetzpunkten) — eine
+         Messreihe sieht so aus; die Rundung liess sie wie gemalt wirken.
+       · Flaeche leuchtet direkt unter der Kurve und laeuft je Spalte bis zum Boden aus
+         (schmale Streifen mit einem gemeinsamen Verlauf — ein Verlauf ueber die ganze
+         Flaeche kann das nicht: er ist an die Hoehe gebunden, nicht an die Kurve).
+       · Max und Min als gestrichelte Bezugslinien mit Wert, Ø als helle gestrichelte
+         Linie mit Schild — alles IN der Zeichenflaeche. Max/Min weichen auf die Seite
+         aus, auf der die Kurve nicht durch den Text laeuft.
+     Der Funktionsname bleibt (Aufrufer, Tests). */
+  var W=360,H=300,PT=0.09,PB=0.085;
   var mean=function(n){var out=[];for(var c=0;c<n;c++){
     var a0=Math.floor(c*vals.length/n),b0=Math.max(a0+1,Math.floor((c+1)*vals.length/n));
     var sm=0,k=0;for(var i=a0;i<b0&&i<vals.length;i++){sm+=vals[i];k++;}
     out.push(k?sm/k:vals[a0]);}return out;};
-  var lcols=Math.min(120,vals.length);
+  var lcols=Math.min(84,vals.length);
   var lb=mean(lcols);
-  var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rng=(mx-mn)||1;
+  var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
   var avg=0;vals.forEach(function(v){avg+=v;});avg/=vals.length;
-  var yOf=function(v){return H*(PT+(1-(v-mn)/rng)*(1-PT-PB));};
-  /* Kurve: Spaltenmittel, monoton-kubisch verbunden (trifft jeden Stuetzpunkt, schwingt nie ueber) */
-  var lw=W/lcols,pts=[],pk=0;
-  lb.forEach(function(v,c){pts.push([c*lw+lw/2,yOf(v)]);if(v>lb[pk])pk=c;});
-  var y0=pts[0][1].toFixed(1),yN=pts[pts.length-1][1].toFixed(1);
-  var line='M0,'+y0+' L'+pts[0][0].toFixed(1)+','+y0+gmMonoPath(pts)+' L'+W+','+yN;
-  /* Raster: 4 waagerechte, 5 senkrechte Linien — gleichmaessig, reine Orientierung */
-  var grid='',g;
-  for(g=1;g<=4;g++){var gy=(H*g/5).toFixed(1);grid+='<line x1="0" x2="'+W+'" y1="'+gy+'" y2="'+gy+'"/>';}
-  for(g=1;g<=5;g++){var gx=(W*g/6).toFixed(1);grid+='<line x1="'+gx+'" x2="'+gx+'" y1="0" y2="'+H+'"/>';}
-  var k=(++_gmStoryChartSeq),gA='wstGrad'+k;
-  var calm=false;try{calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){ }
-  var avgY=yOf(avg);
-  var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
   var avgShow=(typeof o.avg==='number'&&isFinite(o.avg))?o.avg:avg;
   var maxShow=(typeof o.max==='number'&&isFinite(o.max)&&o.max>=mx)?o.max:mx;
-  /* Marker nie halb ueber den Rand (Hoechstwert in der ersten/letzten Spalte) */
-  var pkX=Math.max(1.4,Math.min(98.6,pts[pk][0]/W*100)).toFixed(2),pkY=(pts[pk][1]/H*100).toFixed(2);
-  var avgP=(avgY/H*100).toFixed(1);
+  var rng=(maxShow-mn)||1;
+  var yOf=function(v){return H*(PT+(1-(v-mn)/rng)*(1-PT-PB));};
+  /* Linienzug: Spaltenmittel, gerade verbunden, von Rand zu Rand */
+  var pts=[],c2;
+  for(c2=0;c2<lcols;c2++)pts.push([lcols>1?c2/(lcols-1)*W:0,yOf(lb[c2])]);
+  var line='M'+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L');
+  var yAt=function(x){var f=Math.max(0,Math.min(lcols-1,x/W*(lcols-1))),i=Math.floor(f),j=Math.min(lcols-1,i+1);return pts[i][1]+(pts[j][1]-pts[i][1])*(f-i);};
+  /* Flaeche: hell direkt unter der Kurve, zum Boden hin aus — bezogen auf die KURVE, nicht
+     auf die Hoehe im Bild. Ein einzelner Verlauf kann das nicht (er kennt nur oben/unten).
+     Loesung aus zwei Faktoren, die sich multiplizieren:
+       f(y) = ((H−y)/H)^1,6     senkrechter Verlauf, als Maske (oben 1, Boden 0)
+       K(x) = min(1, A/f(L(x))) je Stuetzpunkt eine Deckkraft, als waagerechter Verlauf
+     ⇒ an der Kurve gilt Deckkraft = min(f, A): hohe Spalten leuchten mit A, niedrige
+     entsprechend schwaecher; ueberall weich, ohne Streifen. */
+  var A=0.58,FE=1.6,stops='',fade='',fq;
+  var fOf=function(y){return Math.pow(Math.max(0,1-y/H),FE);};
+  pts.forEach(function(p2){stops+='<stop offset="'+(p2[0]/W).toFixed(4)+'" stop-opacity="'+Math.min(1,A/Math.max(0.0001,fOf(p2[1]))).toFixed(3)+'"/>';});
+  for(fq=0;fq<=8;fq++){var gv=Math.round(255*fOf(H*fq/8));fade+='<stop offset="'+(fq/8)+'" stop-color="rgb('+gv+','+gv+','+gv+')"/>';}
+  var grid='',g;
+  for(g=1;g<=5;g++){var gy=(H*g/6).toFixed(1);grid+='<line x1="0" x2="'+W+'" y1="'+gy+'" y2="'+gy+'"/>';}
+  for(g=1;g<=8;g++){var gx=(W*g/9).toFixed(1);grid+='<line x1="'+gx+'" x2="'+gx+'" y1="0" y2="'+H+'"/>';}
+  var k=(++_gmStoryChartSeq),gA='wstGrad'+k,gV='wstFade'+k,mA='wstMask'+k;
+  var calm=false;try{calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(_){ }
+  var f=function(v){return (dec===0?Math.round(v):Math.round(v*10)/10).toLocaleString('de-DE');};
   var u=String(unit||'').replace(/^\s+/,'');
+  var lab=function(v){return f(v)+(u?' '+gmEsc(u):'');};
+  var maxP=yOf(maxShow)/H*100,minP=yOf(mn)/H*100,avgP=yOf(avg)/H*100;
+  /* Seite fuer Max/Min: links, ausser die Kurve laeuft dort durch den Text (dann rechts).
+     Geprueft wird das aeussere Viertel der Breite in einem Band von ±7 % um die Linie. */
+  var hits=function(yp,fromF,toF){for(var i=0;i<lcols;i++){var xf=lcols>1?i/(lcols-1):0;if(xf<fromF||xf>toF)continue;if(Math.abs(pts[i][1]/H*100-yp)<7)return true;}return false;};
+  var side=function(yp){if(!hits(yp,0,0.27))return '';if(!hits(yp,0.73,1))return ' r';return '';};
+  var sMax=side(maxP),sMin=side(minP);
+  /* Ø-Schild rechts; liegt ein Max/Min-Wert ebenfalls rechts und zu nah, rueckt nur das Schild */
+  var pillP=avgP;
+  if(sMax&&pillP-maxP<11)pillP=maxP+11;
+  if(sMin&&minP-pillP<11)pillP=minP-11;
   return '<div class="wst-dotwrap'+(calm?' calm':'')+'">'+
     '<div class="wst-plot">'+
-    /* Aufdecken von links nach rechts per CSS (clip-path auf der Huelle .wst-rev), NICHT mehr
-       per SMIL: die Story legt alle Seiten vorab an und blendet sie spaeter ein — die
-       SMIL-Uhr lief dabei so, dass die Kurve 1,6 s unsichtbar blieb und dann schlagartig
-       erschien (im Browser nachgemessen). Eine CSS-Animation startet genau dann, wenn die
-       Seite sichtbar wird, und laeuft im Takt mit Ø-Linie, Schild und Ring. */
-    '<svg class="wst-dots wst-base" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-      '<g class="wst-grid">'+grid+'</g>'+
-      '<line class="wst-avg" x1="0" x2="'+W+'" y1="'+avgY.toFixed(1)+'" y2="'+avgY.toFixed(1)+'"/>'+
-    '</svg>'+
+    '<svg class="wst-dots wst-base" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><g class="wst-grid">'+grid+'</g></svg>'+
+    '<span class="wst-ref wst-refmax'+sMax+'" style="top:'+maxP.toFixed(1)+'%"><i></i><b>'+lab(maxShow)+'</b><u></u></span>'+
+    (maxShow>mn?'<span class="wst-ref wst-refmin'+sMin+'" style="top:'+minP.toFixed(1)+'%"><i></i><b>'+lab(mn)+'</b><u></u></span>':'')+   /* konstante Reihe: Max = Min ⇒ nur eine Linie */
+    /* Aufdecken per CSS (clip-path auf der Huelle), nicht per SMIL — s. v8-429 */
     '<div class="wst-rev"><svg class="wst-dots" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-      '<defs><linearGradient id="'+gA+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="wst-g0"/><stop offset=".55" class="wst-g1"/><stop offset="1" class="wst-g2"/></linearGradient></defs>'+
-      '<path class="wst-area" d="'+line+' L'+W+','+H+' L0,'+H+' Z" fill="url(#'+gA+')"/>'+
-      '<path class="wst-glow g3" d="'+line+'"/><path class="wst-glow g2" d="'+line+'"/><path class="wst-glow g1" d="'+line+'"/>'+
+      '<defs><linearGradient id="'+gA+'" class="wst-gk" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="'+W+'" y2="0">'+stops+'</linearGradient>'+
+      '<linearGradient id="'+gV+'" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="'+H+'">'+fade+'</linearGradient>'+
+      '<mask id="'+mA+'" maskUnits="userSpaceOnUse" x="0" y="0" width="'+W+'" height="'+H+'"><rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#'+gV+')"/></mask></defs>'+
+      '<path class="wst-area" d="'+line+' L'+W+','+H+' L0,'+H+' Z" fill="url(#'+gA+')" mask="url(#'+mA+')"/>'+
+      '<path class="wst-glow g2" d="'+line+'"/><path class="wst-glow g1" d="'+line+'"/>'+
       '<path class="wst-line" d="'+line+'"/>'+
     '</svg></div>'+
-    '<span class="wst-pk" style="left:'+pkX+'%;top:'+pkY+'%"></span>'+
-    '<span class="wst-avgdot" style="top:'+avgP+'%"></span>'+
-    '</div>'+
-    '<div class="wst-axis" aria-hidden="true">'+
-      '<span class="wst-ax wst-axmax"><b>'+f(maxShow)+'</b>'+(u?'<i>'+gmEsc(u)+'</i>':'')+'</span>'+
-      '<span class="wst-ax wst-axavg" style="top:clamp(60px,'+avgP+'%,calc(100% - 40px))"><i>Ø</i><b>'+f(avgShow)+'</b></span>'+
-      '<span class="wst-ax wst-axmin">'+f(mn)+'</span>'+
+    '<span class="wst-avgline" style="top:'+avgP.toFixed(1)+'%"></span>'+
+    '<span class="wst-avgpill" style="top:'+pillP.toFixed(1)+'%"><i></i><b><em>Ø</em> '+lab(avgShow)+'</b></span>'+
     '</div></div>';
 }
 /* Baut die Seiten NUR aus vorhandenen Werten. Rueckgabe: [] = keine Story moeglich. */

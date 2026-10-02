@@ -3701,69 +3701,58 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-cell{opacity:0;transform:translateY(22px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards}
 .gm-story .wst-debrief{font-size:15px;line-height:1.65;color:var(--text)}
 /* Dot-Matrix-Flächenchart */
-.gm-story .wst-dotwrap{position:relative;flex:0 1 auto;width:100%;aspect-ratio:1.18/1;min-height:180px;max-height:52dvh;margin:4px 0;
-  overflow:hidden;border-radius:26px;border:1px solid rgba(175,208,237,.18);
-  background:radial-gradient(circle at 50% 0%,rgba(77,140,196,.10),transparent 46%),linear-gradient(180deg,rgba(19,36,53,.88),rgba(7,17,27,.94));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(0,0,0,.35),0 20px 60px rgba(0,0,0,.20)}
-/* Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile bilden EINE Gruppe (wie im Entwurf),
-   mittig auf der Seite — nicht mehr Tafel in der Mitte und Schlagzeile am unteren Rand. */
-.gm-story .wst-in.wst-chartpg .wst-mid{flex:0 1 auto;margin-top:auto;justify-content:flex-start;gap:16px;overflow:visible}
-.gm-story .wst-in.wst-chartpg .wst-foot{margin-top:24px;margin-bottom:auto}
-/* v8-429 (Gians Entwurf): Diagramm-Tafel mit feiner zweiter Innenkante */
-.gm-story .wst-dotwrap::after{content:"";position:absolute;inset:4px;pointer-events:none;border-radius:22px;border:1px solid rgba(255,255,255,.025)}
-/* Zeichenflaeche links, Wertespalte (Max · Ø-Schild · Min) rechts daneben in fester Pixelbreite —
-   kein Etikett liegt auf der Kurve. */
-.gm-story .wst-plot{position:absolute;inset:20px 84px 20px 16px}
-.gm-story .wst-dots{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.gm-story .wst-rev{position:absolute;inset:0;-webkit-clip-path:inset(-16px);clip-path:inset(-16px);animation:wstReveal 1.6s cubic-bezier(.35,0,.25,1) both}
+.gm-story .wst-dotwrap{position:relative;flex:none;height:clamp(230px,calc(100vh - 410px),420px);height:clamp(230px,calc(100dvh - 410px - var(--sat,0px) - env(safe-area-inset-bottom,0px)),420px);margin:2px -13px 0;
+  border-radius:18px;border:1px solid rgba(190,220,245,.58);
+  background:linear-gradient(180deg,#1a324d 0,#0e1f33 22%,#0b1929 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 18px rgba(90,160,240,.07),0 0 0 1px rgba(0,0,0,.5),0 0 22px rgba(70,150,245,.20),0 18px 50px rgba(0,0,0,.35)}
+/* Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile bilden EINE Gruppe direkt unter dem Titel
+   (wie im Referenzbild); die Tafel nimmt die freie Hoehe des Bildschirms auf. */
+.gm-story .wst-in.wst-chartpg .wst-mid{flex:0 0 auto;margin-top:20px;justify-content:flex-start;gap:14px;overflow:visible}
+.gm-story .wst-in.wst-chartpg .wst-foot{margin-top:26px;margin-bottom:auto}
+/* v8-430 (Gians Referenzbild): Tafel fast randlos, darin der Rahmen der Zeichenflaeche.
+   Die Kurve laeuft von Rand zu Rand; Max, Min und Ø stehen in der Flaeche. */
+.gm-story .wst-plot{position:absolute;inset:15px 12px 13px;border-radius:12px;border:1px solid rgba(125,170,215,.20);overflow:hidden;
+  background:linear-gradient(180deg,#0d1d30,#08131f)}
+.gm-story .wst-dots{position:absolute;inset:0;width:100%;height:100%}
+.gm-story .wst-grid line{stroke:rgba(120,170,220,.15);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
+.gm-story .wst-rev{position:absolute;inset:0;-webkit-clip-path:inset(0);clip-path:inset(0);animation:wstReveal 1.6s cubic-bezier(.35,0,.25,1) both}
 .gm-story .wst-dotwrap.calm .wst-rev{animation:none}
-@keyframes wstReveal{from{-webkit-clip-path:inset(-16px 100% -16px -16px);clip-path:inset(-16px 100% -16px -16px)}to{-webkit-clip-path:inset(-16px);clip-path:inset(-16px)}}
-.gm-story .wst-grid line{stroke:rgba(129,171,207,.10);stroke-width:1;stroke-dasharray:3 7;vector-effect:non-scaling-stroke}
-/* Kurve kraeftig mit weichem Schein (zweiter, breiter, blasser Strich — kein Filter,
-   damit es in jedem Browser gleich aussieht). Aufgedeckt wird Flaeche + Kurve gemeinsam
-   von links nach rechts (Reveal-Zuschnitt im SVG). */
-.gm-story .wst-line{fill:none;stroke:var(--acc,#63AFFF);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-glow{fill:none;stroke:var(--acc,#63AFFF);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-glow.g1{stroke-width:5;stroke-opacity:.10}
-.gm-story .wst-glow.g2{stroke-width:9;stroke-opacity:.06}
-.gm-story .wst-glow.g3{stroke-width:14;stroke-opacity:.035}
-.gm-story .wst-g0{stop-color:var(--acc,#63AFFF);stop-opacity:.32}
-.gm-story .wst-g1{stop-color:var(--acc,#63AFFF);stop-opacity:.16}
-.gm-story .wst-g2{stop-color:var(--acc,#63AFFF);stop-opacity:.03}
-/* Ring auf dem hoechsten Punkt der Kurve */
-.gm-story .wst-pk{position:absolute;box-sizing:border-box;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;
-  background:#f7fbff;border:2.5px solid var(--acc,#63AFFF);box-shadow:0 0 0 6px rgba(160,200,240,.14),0 0 0 7px rgba(160,200,240,.30);
-  opacity:0;animation:wstDot .35s ease-out 1.6s forwards;pointer-events:none}
-.gm-story .wst-dotwrap.calm .wst-pk{animation:none;opacity:1}
+@keyframes wstReveal{from{-webkit-clip-path:inset(0 100% 0 0);clip-path:inset(0 100% 0 0)}to{-webkit-clip-path:inset(0);clip-path:inset(0)}}
+/* Kurve: kantiger Linienzug, 2 px, heller als die Akzentfarbe; enger Schein (ein blasser,
+   breiterer Strich — kein Filter, kein Gruppen-opacity). */
+.gm-story .wst-line{fill:none;stroke:var(--acc,#5FBAFE);stroke:color-mix(in srgb,var(--acc,#5FBAFE) 88%,#fff);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-glow{fill:none;stroke:var(--acc,#5FBAFE);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-glow.g1{stroke-width:4.5;stroke-opacity:.13}
+.gm-story .wst-glow.g2{stroke-width:8;stroke-opacity:.05}
+/* Flaeche: Farbe der Sportart; die Deckkraft kommt je Stuetzpunkt aus dem Markup (stop-opacity)
+   und wird mit dem senkrechten Masken-Verlauf multipliziert. */
+.gm-story .wst-gk stop{stop-color:var(--acc,#5FBAFE)}
+/* Max/Min: Punkt · Wert · gestrichelte Linie (als Zeile; .r = Wert rechts) */
+.gm-story .wst-ref{position:absolute;left:9px;right:9px;display:flex;align-items:center;gap:7px;transform:translateY(-50%);
+  font-size:11px;font-weight:600;color:#dfe8f2;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;white-space:nowrap;pointer-events:none}
+.gm-story .wst-ref.r{flex-direction:row-reverse}
+.gm-story .wst-ref i{flex:none;width:5px;height:5px;border-radius:50%;background:#8ea3bd}
+.gm-story .wst-ref b{flex:none;font-weight:600}
+.gm-story .wst-ref u{flex:1;height:1px;text-decoration:none;background:repeating-linear-gradient(90deg,rgba(125,155,190,.55) 0 4px,transparent 4px 7px)}
+/* Ø: helle gestrichelte Linie ueber die ganze Breite, Punkt und Schild am rechten Rand */
+.gm-story .wst-avgline{position:absolute;left:0;right:0;height:1px;margin-top:-.5px;background:repeating-linear-gradient(90deg,rgba(240,244,248,.92) 0 5px,transparent 5px 8px);
+  opacity:0;animation:wstDot .5s ease-out 1.5s forwards;pointer-events:none}
+.gm-story .wst-avgpill{position:absolute;right:8px;display:flex;align-items:center;transform:translateY(-50%);
+  opacity:0;animation:wstDot .5s ease-out 1.5s forwards;pointer-events:none}
+.gm-story .wst-avgpill i{flex:none;width:6px;height:6px;margin-right:-3px;border-radius:50%;background:#fff;position:relative;z-index:1}
+.gm-story .wst-avgpill b{padding:5px 9px 5px 10px;border-radius:9px;border:1px solid rgba(225,235,245,.72);background:rgba(8,18,31,.96);
+  color:#f4f7fb;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}
+.gm-story .wst-avgpill em{font-style:normal;color:var(--acc,#5FBAFE);color:color-mix(in srgb,var(--acc,#5FBAFE) 76%,#fff)}
+.gm-story .wst-dotwrap.calm .wst-avgline,.gm-story .wst-dotwrap.calm .wst-avgpill{animation:none;opacity:1}
 .gm-story .wst-dc{opacity:0;animation:wstDot .6s ease-out forwards}
-/* Ø: gestrichelte Bezugslinie, Punkt am rechten Rand der Zeichenflaeche, Schild in der Wertespalte */
-.gm-story .wst-avg{stroke:rgba(220,233,245,.62);stroke-width:1;stroke-dasharray:5 5;vector-effect:non-scaling-stroke;opacity:0;animation:wstDot .5s ease-out 1.5s forwards}
-.gm-story .wst-avgdot{position:absolute;left:100%;box-sizing:border-box;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
-  background:#eef7ff;border:2px solid var(--acc,#63AFFF);opacity:0;animation:wstDot .5s ease-out 1.5s forwards;pointer-events:none}
-.gm-story .wst-dotwrap.calm .wst-avg,.gm-story .wst-dotwrap.calm .wst-avgdot{animation:none;opacity:1}
-.gm-story .wst-axis{position:absolute;top:20px;bottom:20px;right:12px;width:58px}
-/* Abstand Zeichenflaeche → Spalte = 14 px: der Ring am Hoechstwert (12,5 px) beruehrt nie ein Etikett */
-.gm-story .wst-ax{position:absolute;left:0;white-space:nowrap;line-height:1;color:#a8b5c7;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.gm-story .wst-ax b{font-weight:700}
-.gm-story .wst-ax i{font-style:normal}
-.gm-story .wst-axmax{top:0;display:flex;flex-direction:column;align-items:flex-start}
-.gm-story .wst-axmax b{font-size:17px;color:#f5f8fc}
-.gm-story .wst-axmax i{margin-top:4px;font-size:12px;font-weight:550;color:#9dabbd}
-.gm-story .wst-axmin{bottom:0;font-size:14px;font-weight:600}
-.gm-story .wst-axavg{left:-7px;transform:translateY(-50%);display:flex;align-items:center;gap:5px;padding:7px 9px;border-radius:13px;
-  background:linear-gradient(180deg,rgba(17,31,46,.96),rgba(8,19,30,.96));border:1px solid rgba(153,194,229,.38);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 22px rgba(0,0,0,.23);color:#eaf3fb;font-size:13px;
-  opacity:0;animation:wstDot .5s ease-out 1.5s forwards}
-.gm-story .wst-axavg i{color:var(--acc,#80BFFF)}
-.gm-story .wst-dotwrap.calm .wst-axavg{animation:none;opacity:1}
 @keyframes wstIn{to{opacity:1;transform:none}}
 @keyframes wstUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes wstDot{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){
   .gm-story .wst-hl,.gm-story .wst-hsub,.gm-story .wst-lap,.gm-story .wst-ex,.gm-story .wst-cell,
-  .gm-story .wst-dc,.gm-story .wst-bignum b,.gm-story .wst-avg,.gm-story .wst-pk,.gm-story .wst-avgdot{animation:none;opacity:1;transform:none}
+  .gm-story .wst-dc,.gm-story .wst-bignum b{animation:none;opacity:1;transform:none}
   .gm-story .wst-rev{animation:none}
-  .gm-story .wst-axavg{animation:none;opacity:1}
+  .gm-story .wst-avgline,.gm-story .wst-avgpill{animation:none;opacity:1}
 }
 /* Gym-Aktivitätsdetail: Übungs- & Satzliste (echte gespeicherte Sätze) */
 .gymex{padding:10px 0;border-bottom:1px solid var(--hairline)}
