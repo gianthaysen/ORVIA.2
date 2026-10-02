@@ -97,8 +97,15 @@
   /* Ein einziger Planer für alle Anlässe. Ein bereits geplanter Refresh saugt
      weitere Anlässe auf; der jüngere, breitere Anlass gewinnt (leere Sektionsliste
      = „alles"), damit ein älterer Lauf einen neueren nicht verengt. */
+  var _deferredByHydration = false;
   function schedule(sections, opts) {
     var s = Array.isArray(sections) ? sections : [];
+    /* v8-428: waehrend der Start-Hydration (O.hydrating, auth.js) keine Zwischenstaende
+       zeichnen — jeder Schritt der Anmeldekette loeste hier einen vollen Dashboard-
+       Render mit halb geladenen Daten aus (Score sprang, Start wurde zaeh). Der Anlass
+       wird gemerkt; 'orvia:auth-ready' bzw. der Wachhund ('orvia:hydration-end')
+       zeichnet danach genau einmal ALLES. */
+    if (root.ORVIA && root.ORVIA.hydrating) { _deferredByHydration = true; return; }
     if (_pending) {                             // Coalescing: ein Refresh pro Tick
       if (s.length === 0 || !_pendingSections || _pendingSections.length === 0) _pendingSections = [];
       else _pendingSections = _pendingSections.concat(s);
@@ -132,6 +139,12 @@
      Der Einmal-Vertrag liegt in auth.js (onAuthed._initFor je Nutzer-Session);
      hier wird bewusst KEIN zweiter Ready-Zustand geführt. */
   function onAuthReady() {
+    _deferredByHydration = false;
+    schedule([], { protectInput: true });
+  }
+  function onHydrationEnd() {                   /* Wachhund: Kette haengt — trotzdem einmal zeichnen */
+    if (!_deferredByHydration) return;
+    _deferredByHydration = false;
     schedule([], { protectInput: true });
   }
 
@@ -140,6 +153,7 @@
     root.__orviaUiRefreshBound = true;
     try { if (root.addEventListener) root.addEventListener('orvia:profile-updated', onProfileUpdated); } catch (e) {}
     try { if (root.addEventListener) root.addEventListener('orvia:auth-ready', onAuthReady); } catch (e) {}
+    try { if (root.addEventListener) root.addEventListener('orvia:hydration-end', onHydrationEnd); } catch (e) {}
   }
 
   /* GM6.2 (2026-07-27): schedule wird öffentlich. Grund: checkin-store.js rief

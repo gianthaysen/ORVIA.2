@@ -17,7 +17,7 @@
    ============================================================ */
 (function (root) {
   var O = root.ORVIA = root.ORVIA || {};
-  var VERSION = 'plan-auto-link@4';
+  var VERSION = 'plan-auto-link@5';
   var WEEKS_BACK = 8;
 
   function _iso(d) { return (typeof root.todayStr === 'function') ? root.todayStr(d) : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
@@ -66,8 +66,14 @@
       /* v8-421: Serverseitig geladene Einheiten (anderes Geraet), die den lokalen
          Store noch nicht erreicht haben, zuerst lokal sicherstellen — sonst sieht
          die Zuordnung sie nicht (Gians Befund 28.09.). Nur Einfuegen, nie Ueberschreiben. */
-      if (store.ensureLocal && typeof O.activityServerCache === 'function') {
-        try { (O.activityServerCache() || []).forEach(function (sa) { if (sa && sa.id) store.ensureLocal(sa); }); } catch (e) {}
+      if (typeof O.activityServerCache === 'function') {
+        try {
+          var _srv = O.activityServerCache() || [];
+          if (_srv.length) {
+            if (store.ensureLocalMany) store.ensureLocalMany(_srv);   /* v8-428: EIN Lese-/Schreibvorgang statt einer je Einheit */
+            else if (store.ensureLocal) _srv.forEach(function (sa) { if (sa && sa.id) store.ensureLocal(sa); });
+          }
+        } catch (e) {}
       }
       /* v8-422 (Gians Befund 1.10.): eine VERWAISTE Zuordnung — plannedSessionId zeigt
          auf eine Occurrence, die der heutige Plan nicht mehr kennt (generierte psg:-IDs
@@ -105,10 +111,15 @@
       var byId = {}; acts.forEach(function (a) { byId[a.id] = a; });
       decisions.forEach(function (d) { if (byId[d.activityId] && byId[d.activityId].dangling) d.reason = d.reason + '_relinked'; });
       var applied = 0;
-      decisions.forEach(function (d) {
-        var r = store.linkActivityToPlan(d.activityId, d.occurrenceId, { reason: d.reason, method: 'auto' });
-        if (r && r.ok && r.code === 'linked') applied++;
-      });
+      if (decisions.length && store.linkManyToPlan) {          /* v8-428: ein Schreibvorgang fuer alle */
+        var _lm = store.linkManyToPlan(decisions, { method: 'auto' });
+        applied = (_lm && _lm.applied) || 0;
+      } else {
+        decisions.forEach(function (d) {
+          var r = store.linkActivityToPlan(d.activityId, d.occurrenceId, { reason: d.reason, method: 'auto' });
+          if (r && r.ok && r.code === 'linked') applied++;
+        });
+      }
       if (applied && !o.silent) {
         try { if (O.activitySync && O.activitySync.flushPendingActivities) O.activitySync.flushPendingActivities(); } catch (e) {}
         try { if (root.dispatchEvent && typeof CustomEvent === 'function') root.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { autoLinked: applied } })); } catch (e) {}
@@ -120,12 +131,19 @@
 
   /* Ausloeser: nach Sync-Pull, nach Aktivitaets-Aenderungen (nicht nach eigenem Lauf), einmal beim Start. */
   var _t = null;
-  function schedule() { if (_t) clearTimeout(_t); _t = setTimeout(function () { _t = null; run(); }, 400); }
+  function schedule() { if (O.hydrating) return; if (_t) clearTimeout(_t); _t = setTimeout(function () { _t = null; run(); }, 400); }   /* waehrend der Start-Hydration nie (v8-428) */
   if (typeof root.addEventListener === 'function') {
     root.addEventListener('orvia:activities-pulled', schedule);
     root.addEventListener('orvia:week-plan-loaded', schedule);   /* v8-424 */
     root.addEventListener('orvia:activity-updated', function (ev) { if (ev && ev.detail && ev.detail.autoLinked) return; schedule(); });
-    root.addEventListener('load', function () { setTimeout(function () { run(); }, 2500); });
+    /* v8-428: nicht mehr 2,5 s nach dem Laden (mitten in der Start-Hydration — der Lauf
+       parst den Aktivitaetsspeicher und rechnet den Plan-Ist-Abgleich fuer bis zu acht
+       Wochen), sondern NACH dem Start: wenn die Anmeldekette fertig ist. Rueckfall nach
+       12 s fuer den Fall, dass das Signal ausbleibt (offline, bereits angemeldet). */
+    var _started = false;
+    var _first = function () { if (_started) return; _started = true; setTimeout(function () { run(); }, 600); };
+    root.addEventListener('orvia:auth-ready', _first);
+    root.addEventListener('load', function () { setTimeout(_first, 12000); });
   }
 
   /* v8-425 · Diagnose fuer die Konsole: ORVIA.planAutoLink.debug() — zeigt je Woche

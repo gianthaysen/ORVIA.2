@@ -17,9 +17,30 @@
   function now() { return new Date().toISOString(); }
   function cid() { return 'act:' + uid() + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+  /* v8-428 (Gians Befund 2.10.: „das Dashboard laedt deutlich laenger"; gemessen): Der
+     Speicher traegt je Aktivitaet Messreihen und Route (Server-metrics) — bei 160
+     Einheiten rund 4 MB. JEDER Leser hat diesen Block neu geparst; ein Dashboard-Render
+     liest den Speicher Dutzende Male ⇒ mehrere Sekunden reine JSON-Arbeit.
+     Jetzt wird das geparste Ergebnis gemerkt, solange der ROHTEXT identisch ist
+     (Vergleich des Strings — damit bleibt jede Aenderung von aussen sichtbar: anderes
+     Tab, Kontowechsel, Tests). Zurueckgegeben werden FLACHE KOPIEN der Eintraege:
+     ein Aufrufer kann Felder seines Eintrags setzen (recording, syncStatus …), ohne
+     den Merkstand zu veraendern. Verschachtelte Objekte (summary, metrics, Snapshot)
+     sind geteilt und werden im Speicher nie an Ort und Stelle veraendert, sondern
+     ersetzt (siehe correctActivityDuration). */
+  var _memo = { key: null, raw: null, arr: null };
   function readAll() {
-    try { var raw = localStorage.getItem(key()); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
-    catch (e) { return []; }
+    try {
+      var k = key(), raw = localStorage.getItem(k);
+      if (!raw) { _memo = { key: k, raw: null, arr: null }; return []; }
+      if (_memo.key !== k || _memo.raw !== raw || !_memo.arr) {
+        var parsed = JSON.parse(raw);
+        _memo = { key: k, raw: raw, arr: Array.isArray(parsed) ? parsed : [] };
+      }
+      var src = _memo.arr, out = new Array(src.length);
+      for (var i = 0; i < src.length; i++) { var e = src[i]; out[i] = (e && typeof e === 'object') ? Object.assign({}, e) : e; }
+      return out;
+    } catch (e) { return []; }
   }
   function writeAll(arr) { try { localStorage.setItem(key(), JSON.stringify(arr)); return true; } catch (e) { return false; } }
 
@@ -230,6 +251,47 @@
     if (!writeAll(all)) return { ok: false, code: 'persist_failed' };
     return { ok: true, code: 'inserted', activity: rec };
   }
+  /* v8-428 (Gians Befund 2.10.: „das Dashboard laedt deutlich laenger"): ensureLocal las
+     und parste je Aufruf den GESAMTEN Aktivitaetsspeicher (Messreihen und Routen
+     inklusive, mehrere MB). plan-auto-link rief es fuer jede Einheit der Serverliste —
+     bis zu 200-mal hintereinander, bei jedem Lauf, mitten im Start. Die Sammelvariante
+     liest EINMAL, prueft alle, schreibt hoechstens einmal. */
+  function ensureLocalMany(list) {
+    list = Array.isArray(list) ? list : [];
+    var res = { inserted: 0, existing: 0, skipped: 0 };
+    if (!list.length) return res;
+    var all = readAll(), dirty = false;
+    var byId = {}, byCrid = {}, bySrc = {}, byWs = {};
+    for (var i = 0; i < all.length; i++) {
+      var x = all[i]; if (!x) continue;
+      if (x.id) byId[x.id] = 1; if (x.clientRecordId) byCrid[x.clientRecordId] = 1;
+      if (x.source && x.sourceRecordId) bySrc[x.source + '|' + x.sourceRecordId] = 1;
+      if (x.workoutSessionId) byWs[x.workoutSessionId] = 1;
+    }
+    for (var k = 0; k < list.length; k++) {
+      var a = list[k];
+      if (!a || typeof a !== 'object' || !a.id) { res.skipped++; continue; }
+      if (byId[a.id] || byCrid[a.id] || (a.clientRecordId && (byCrid[a.clientRecordId] || byId[a.clientRecordId])) ||
+          (a.source && a.sourceRecordId && bySrc[a.source + '|' + a.sourceRecordId]) || (a.workoutSessionId && byWs[a.workoutSessionId])) { res.existing++; continue; }
+      if (isTombstoned(a)) { res.skipped++; continue; }
+      var rec = {
+        id: a.id, clientRecordId: a.clientRecordId || cid(), userId: a.userId || uid(),
+        sportId: a.sportId || 'other', source: a.source || 'server', sourceRecordId: a.sourceRecordId || null,
+        workoutSessionId: a.workoutSessionId || null,
+        linkedActivityId: a.linkedActivityId || null, linkKind: a.linkKind || null,
+        startedAt: a.startedAt || null, endedAt: a.endedAt || null,
+        durationSeconds: a.durationSeconds != null ? a.durationSeconds : null,
+        status: a.status || 'completed', summary: a.summary || {}, metrics: a.metrics || {},
+        workoutSnapshot: null, syncStatus: 'synced', createdAt: now(), updatedAt: now()
+      };
+      all.push(rec); dirty = true; res.inserted++;
+      byId[rec.id] = 1; byCrid[rec.clientRecordId] = 1;
+      if (rec.source && rec.sourceRecordId) bySrc[rec.source + '|' + rec.sourceRecordId] = 1;
+      if (rec.workoutSessionId) byWs[rec.workoutSessionId] = 1;
+    }
+    if (dirty && !writeAll(all)) return { inserted: 0, existing: res.existing, skipped: res.skipped, error: 'persist_failed' };
+    return res;
+  }
   function linkActivityToPlan(id, occurrenceId, opts) {
     var lo = opts || {};
     if (!id) return { ok: false, code: 'missing_activity_id' };
@@ -264,6 +326,35 @@
     return { ok: true, code: 'linked', activity: corrected, fromOccurrenceId: current || null };
   }
 
+  /* v8-428: mehrere Zuordnungen in EINEM Lese-/Schreibvorgang (automatische Zuordnung:
+     beim ersten Lauf Dutzende — einzeln waere das je Zuordnung ein kompletter
+     Schreibzyklus des Speichers). Gleiche Regeln wie linkActivityToPlan: one-to-one,
+     protokolliert, sync 'pending'. items: [{activityId, occurrenceId, reason}]. */
+  function linkManyToPlan(items, opts) {
+    var lo = opts || {}; items = Array.isArray(items) ? items : [];
+    var out = { applied: 0, results: [] };
+    if (!items.length) return out;
+    var all = readAll(), taken = {};
+    for (var j = 0; j < all.length; j++) { var o = all[j]; if (!o || isTombstoned(o)) continue; var pl = planLinkOf(o); if (pl) taken[pl] = j; }
+    items.forEach(function (it) {
+      var idx = it && it.activityId ? findIndexByRef(all, it.activityId) : -1;
+      if (idx < 0 || !it.occurrenceId) { out.results.push({ activityId: it && it.activityId, ok: false, code: idx < 0 ? 'activity_not_found' : 'missing_occurrence_id' }); return; }
+      var a = all[idx], current = planLinkOf(a);
+      if (current === it.occurrenceId) { out.results.push({ activityId: it.activityId, ok: true, code: 'already_linked' }); return; }
+      if (taken[it.occurrenceId] != null && taken[it.occurrenceId] !== idx) { out.results.push({ activityId: it.activityId, ok: false, code: 'occurrence_taken' }); return; }
+      var m = Object.assign({}, a.metrics || {});
+      m.planLinkCorrection = { schemaVersion: 1, fromOccurrenceId: current || null, toOccurrenceId: it.occurrenceId,
+        reason: it.reason || lo.reason || (current ? 'user_relinked' : 'user_linked'), method: lo.method || 'manual_correction', correctedAt: now() };
+      m.plannedSessionId = it.occurrenceId;
+      all[idx] = Object.assign({}, a, { plannedSessionId: it.occurrenceId, metrics: m, syncStatus: 'pending', updatedAt: now() });
+      if (current && taken[current] === idx) delete taken[current];
+      taken[it.occurrenceId] = idx;
+      out.applied++; out.results.push({ activityId: it.activityId, ok: true, code: 'linked' });
+    });
+    if (out.applied && !writeAll(all)) return { applied: 0, results: [], error: 'persist_failed' };
+    return out;
+  }
+
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ABGESCHLOSSENEN
      Workouts nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze.
      Die Korrektur ist eine manuelle Angabe und wird als solche protokolliert
@@ -277,8 +368,8 @@
       if (a.id === id || a.clientRecordId === id) {
         if (a.status !== 'completed') return { ok: false, error: 'nur abgeschlossene Aktivitaeten' };
         var fromMin = a.durationSeconds != null ? Math.round(a.durationSeconds / 60) : null;
-        a.metrics = a.metrics || {};
-        a.metrics.durationCorrection = { fromMin: fromMin, toMin: Math.round(newMin), at: now(), method: 'manual_correction' };
+        /* v8-428: metrics ERSETZEN statt an Ort und Stelle aendern (geteilter Merkstand, s. readAll) */
+        a.metrics = Object.assign({}, a.metrics || {}, { durationCorrection: { fromMin: fromMin, toMin: Math.round(newMin), at: now(), method: 'manual_correction' } });
         a.durationSeconds = Math.round(newMin) * 60;
         a.syncStatus = 'pending'; a.updatedAt = now();
         writeAll(all);
@@ -508,7 +599,7 @@
     upsertActivityFromWorkout: upsertActivityFromWorkout, upsertManualActivity: upsertManualActivity,
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
     planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan, linkActivityToPlan: linkActivityToPlan,
-    ensureLocal: ensureLocal, findIndexByRef: findIndexByRef,
+    ensureLocal: ensureLocal, ensureLocalMany: ensureLocalMany, linkManyToPlan: linkManyToPlan, findIndexByRef: findIndexByRef,
     correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
     recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
