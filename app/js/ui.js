@@ -1358,7 +1358,9 @@ function planActualResolveForDates(dates){
       var ld=(cfg&&cfg.dayOfActLocal)?cfg.dayOfActLocal(a,tz):((a.startedAt||'').slice(0,10));
       if(!dateSet[ld])return;
       var dm=(a.durationSeconds!=null)?Math.round(a.durationSeconds/60):null;
-      var dk=(a.summary&&a.summary.distanceKm!=null)?a.summary.distanceKm:null;
+      /* v8-427: Distanz 0 (z. B. Garmin-Krafttraining) ist „keine Distanz", kein Messwert. */
+      var dk=(a.summary&&typeof a.summary.distanceKm==='number'&&a.summary.distanceKm>0)?a.summary.distanceKm
+        :((a.summary&&typeof a.summary.distanceM==='number'&&a.summary.distanceM>0)?a.summary.distanceM/1000:null);   /* Schwimmen fuehrt Meter */
       var _pl=(store&&store.planLinkOf)?store.planLinkOf(a):((a.metrics&&a.metrics.plannedSessionId)||null);
       activities.push({activityId:(a.id||a.clientRecordId), sportId:_planActualNorm(a.sportId), localDate:ld,
         plannedSessionId:_pl, durationMin:dm, distanceKm:dk,
@@ -7881,6 +7883,27 @@ var GM_PLAN_VARIANTS=(function(){
    man Wochen spaeter unbemerkt in einer alten Woche und haelt sie fuer aktuell. */
 var _gmPlanWeekOff=0;
 function gmPlanWeekOff(){return _gmPlanWeekOff;}
+/* v8-427 (Gians Befund 2.10.: „Absolviert: 0 km · 56 min" an einer KRAFT-Einheit):
+   Ist-Werte der Plankarte sportgerecht. Vorher fuer jede Sportart „km · min · /km" —
+   Garmin liefert fuer Krafttraining die Distanz 0, daraus wurde „0 km"; Rad bekam ein
+   Lauf-Tempo, Schwimmen Kilometer. Jetzt: Kraft/Mobilitaet nur Dauer · Rad km + km/h ·
+   Schwimmen Meter + /100 m · Lauf km + /km. Eine Distanz von 0 ist kein Messwert und
+   erscheint nie. Rein: (Plan-Sportart, actual) → Textbausteine. */
+function gmPlanActualBits(t,a){
+  var out=[];if(!a)return out;
+  var km=(typeof a.distanceKm==='number'&&isFinite(a.distanceKm)&&a.distanceKm>0)?a.distanceKm:null;
+  var min=(typeof a.durationMin==='number'&&isFinite(a.durationMin)&&a.durationMin>0)?a.durationMin:null;
+  var kind=(t==='Gym'||t==='Mobilität')?'none':(t==='Rad'?'speed':(t==='Schwimmen'?'swim':'pace'));
+  var mmss=function(sec){sec=Math.round(sec);return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');};
+  if(km!=null&&kind!=='none')out.push(kind==='swim'?(Math.round(km*1000).toLocaleString('de-DE')+' m'):(fmtDe(Math.round(km*10)/10)+' km'));
+  if(min!=null)out.push(Math.round(min)+' min');
+  if(km!=null&&min!=null){
+    if(kind==='pace')out.push(mmss(min*60/km)+'/km');
+    else if(kind==='speed')out.push(fmtDe(Math.round(km/(min/60)*10)/10)+' km/h');
+    else if(kind==='swim')out.push(mmss(min*60/(km*10))+'/100 m');
+  }
+  return out;
+}
 function gmShiftPlanWeek(d){
   _gmPlanWeekOff=Math.max(-52,Math.min(52,_gmPlanWeekOff+(d||0)));
   try{renderGMPlan();}catch(_){ }
@@ -8546,13 +8569,7 @@ function renderGMPlan(){
          fehlt dort ein Wert, wird er weggelassen statt geschaetzt. */
       try{
         if(_res&&_res.actual){
-          var _a=_res.actual,_bits=[];
-          if(_a.distanceKm!=null)_bits.push(fmtDe(Math.round(_a.distanceKm*10)/10)+' km');
-          if(_a.durationMin!=null)_bits.push(Math.round(_a.durationMin)+' min');
-          if(_a.distanceKm>0&&_a.durationMin>0){
-            var _pc=Math.round(_a.durationMin*60/_a.distanceKm);
-            _bits.push(Math.floor(_pc/60)+':'+String(_pc%60).padStart(2,'0')+'/km');
-          }
+          var _a=_res.actual,_bits=gmPlanActualBits(it.t,_a);
           if(_bits.length){
             /* C3: Rueckmeldung zur absolvierten Einheit. Der Zustand wird
                ANGEZEIGT (erfasst / offen), damit sichtbar ist, wo die Engine

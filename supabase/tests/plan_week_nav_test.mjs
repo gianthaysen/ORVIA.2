@@ -68,8 +68,14 @@ sec('3 · Absolvierte Einheiten zeigen ihre Ist-Werte');
 ok('die Karte liest das Resolver-Ergebnis, nicht nur den Status',
    /_res\s*=\s*\(occ&&byOcc\[occ\]\)/.test(blk));
 ok('Ist-Werte kommen aus `actual` — der einzigen belastbaren Quelle', /_res\.actual/.test(blk));
+/* v8-427: die Textbausteine baut gmPlanActualBits — sportgerecht (Kraft nur Dauer, Rad km/h,
+   Schwimmen /100 m, Lauf /km). Die Karte reicht Plan-Sportart und `actual` hinein. */
 ok('Distanz, Dauer und die daraus berechnete Pace werden gezeigt',
-   /distanceKm!=null/.test(blk) && /durationMin!=null/.test(blk) && /\/km/.test(blk));
+   /_bits=gmPlanActualBits\(it\.t,_a\)/.test(blk) && (function () {
+     const src = String(typeof ui !== 'undefined' ? ui : '');
+     const i = src.indexOf('function gmPlanActualBits('); const f = i >= 0 ? src.slice(i, i + 1400) : '';
+     return /a\.distanceKm>0/.test(f) && /a\.durationMin>0/.test(f) && /'\/km'/.test(f) && /' km\/h'/.test(f) && /'\/100 m'/.test(f);
+   })());
 ok('fehlende Werte werden weggelassen, nicht geschätzt',
    /_bits\.length/.test(blk) && !/\|\|\s*0\s*\)\s*\+\s*' km'/.test(blk));
 ok('eine unsichere Zuordnung wird als solche gekennzeichnet',

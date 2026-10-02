@@ -40,5 +40,17 @@ const labels = r => r.map(c => c[1]).join('|'), vals = r => r.map(c => c[0]).joi
   ok('A7 leer ⇒ vier ehrliche Zellen, kein Throw', e.length === 4 && e.every(c => c[0] === '—'));
   ok('A8 Karte nutzt gmActCardKpis; Altpfad (UMFANG/TEMPO fuer alle) entfernt', /var kp=gmActCardKpis\(a,vm\);/.test(ui) && !/<span>TEMPO<\/span>/.test(ui));
 }
+{
+  /* v8-427 · Ist-Werte der PLANKARTE sportgerecht (Gians Befund: Absolviert: 0 km · 56 min bei Kraft) */
+  const c2 = { fmtDe: v => String(v).replace('.', ',') }; vm.createContext(c2);
+  vm.runInContext(slice('gmPlanActualBits') + '\nthis.B=gmPlanActualBits;', c2);
+  const B = (t, a) => c2.B(t, a).join(' · ');
+  ok('B1 Kraft: nur die Dauer — nie 0 km, auch nicht bei Distanz 0 oder > 0', B('Gym', { distanceKm: 0, durationMin: 56 }) === '56 min' && B('Gym', { distanceKm: null, durationMin: 56 }) === '56 min' && B('Gym', { distanceKm: 1.2, durationMin: 56 }) === '56 min', B('Gym', { distanceKm: 0, durationMin: 56 }));
+  ok('B2 Lauf: km · min · /km', B('Laufen', { distanceKm: 10.24, durationMin: 50 }) === '10,2 km · 50 min · 4:53/km', B('Laufen', { distanceKm: 10.24, durationMin: 50 }));
+  ok('B3 Rad: km · min · km/h (kein Lauf-Tempo)', B('Rad', { distanceKm: 19.96, durationMin: 51 }) === '20 km · 51 min · 23,5 km/h', B('Rad', { distanceKm: 19.96, durationMin: 51 }));
+  ok('B4 Schwimmen: Meter · min · /100 m', B('Schwimmen', { distanceKm: 0.9, durationMin: 22.5 }) === '900 m · 23 min · 2:30/100 m', B('Schwimmen', { distanceKm: 0.9, durationMin: 22.5 }));
+  ok('B5 Distanz 0 erscheint in KEINER Sportart; ohne Werte nichts', B('Laufen', { distanceKm: 0, durationMin: 30 }) === '30 min' && B('Rad', { distanceKm: 0, durationMin: 0 }) === '' && c2.B('Gym', null).length === 0);
+  ok('B6 Resolver: Distanz 0 wird nicht als Messwert uebernommen, Schwimm-Meter werden gelesen', /a\.summary\.distanceKm>0\)\?a\.summary\.distanceKm/.test(ui) && /a\.summary\.distanceM>0\)\?a\.summary\.distanceM\/1000:null/.test(ui) && /_bits=gmPlanActualBits\(it\.t,_a\)/.test(ui));
+}
 console.log('\n' + (fail ? '❌' : '✅') + ' act_card_kpis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

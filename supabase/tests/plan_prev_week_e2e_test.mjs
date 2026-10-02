@@ -94,7 +94,7 @@ const R = await page.evaluate(async () => {
   if (!unit) return out;
   const occ = 'po:' + day(di) + ':' + unit.id;
   const actDay = day(Math.min(6, di + 2));                 /* zwei Tage spaeter absolviert — wie in Gians Fall */
-  S.mergeServerActivities([{ id: 'e2e-g1', sport_id: 'gym', source: 'garmin', source_record_id: 'e2e-g1', started_at: actDay + 'T05:42:00.000Z', duration_seconds: 3360, status: 'completed', summary: { avgHr: 110 }, metrics: { plannedSessionId: occ } }]);
+  S.mergeServerActivities([{ id: 'e2e-g1', sport_id: 'gym', source: 'garmin', source_record_id: 'e2e-g1', started_at: actDay + 'T05:42:00.000Z', duration_seconds: 3360, status: 'completed', summary: { avgHr: 110, distance_m: 0 }, metrics: { plannedSessionId: occ } }]);   /* Garmin liefert fuer Kraft die Distanz 0 */
   showTab('plan'); gmShiftPlanWeek(-1); await W(150);
   const card = () => document.querySelector('#tab-plan .session-card[data-sid="' + CSS.escape(unit.id) + '"]');
   const cards = () => [].slice.call(document.querySelectorAll('#tab-plan .session-card[data-sid]'));
@@ -102,6 +102,7 @@ const R = await page.evaluate(async () => {
   out.linkedBadge = card() ? card().querySelector('.session-state').textContent.trim() : null;
   out.others = cards().filter(c => c !== card()).map(c => c.querySelector('.session-state').textContent.trim());
   out.ist = (document.querySelector('#tab-plan').textContent.match(/56 min/) || [])[0] || null;
+  out.zeroKm = /Absolviert:[^A-Za-z]*0 km/.test(document.querySelector('#tab-plan').textContent);
   /* automatische Zuordnung: unverknuepfte Gym-Aktivitaet in der Vorwoche */
   S.mergeServerActivities([{ id: 'e2e-g2', sport_id: 'gym', source: 'garmin', source_record_id: 'e2e-g2', started_at: day(6) + 'T07:00:00.000Z', duration_seconds: 1800, status: 'completed', summary: {}, metrics: {} }]);
   const r = ORVIA.planAutoLink.run();
@@ -123,7 +124,7 @@ ok('A2 Vorwoche kommt aus der wiederkehrenden Struktur und hat Einheiten', R.pro
 ok('A3 JEDE Einheit der Vorwoche traegt eine id (vorher: keine ⇒ nie „Erledigt")', R.noId === 0, 'ohne id: ' + R.noId);
 ok('A4 die IDs sind dieselben wie in der laufenden Woche (gegen sie wurde verknuepft)', R.sameIds === true);
 ok('B1 zugeordnete Aktivitaet ⇒ Vorwochen-Karte „Erledigt"', R.unit && R.linkedDone === true && /Erledigt/.test(R.linkedBadge || ''), JSON.stringify({ u: R.unit, b: R.linkedBadge }));
-ok('B2 Ist-Wert (56 min) steht an der Karte', R.ist === '56 min');
+ok('B2 Ist-Wert (56 min) steht an der Karte, ohne 0 km an der Krafteinheit', R.ist === '56 min' && R.zeroKm === false);
 ok('B3 uebrige vergangene Einheiten: „Nicht erledigt", keine heisst mehr „Geplant"', R.others.length > 0 && R.others.every(x => x !== 'Geplant') && R.others.some(x => x === 'Nicht erledigt'), JSON.stringify(R.others));
 ok('C1 automatische Zuordnung ordnet eine unverknuepfte Vorwochen-Aktivitaet zu', R.auto && R.auto.ok && R.auto.applied === 1 && /^po:\d{4}-\d{2}-\d{2}:/.test(R.auto.link || ''), JSON.stringify(R.auto));
 ok('C2 danach zwei Karten „Erledigt" — die Planseite zeichnet von selbst neu', R.doneAfter === 2, 'done=' + R.doneAfter);
