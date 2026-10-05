@@ -9282,17 +9282,43 @@ function gmActMountRouteMap(pg,route,vm){
   try{
     var RM=window.ORVIA&&ORVIA.routeMap;
     if(!pg||!route||route.length<2||!RM||!RM.enabled||!RM.enabled())return false;
-    if(!RM.cfg||RM.cfg().detail!==true)return false;      /* v8-433: vorerst nur die Story (map-config.js: detail) */
+    if(!RM.cfg||RM.cfg().detail!==true)return false;      /* Schalter in map-config.js (detail) — seit v8-435 an */
     var el=pg.querySelector('.route-map');if(!el)return false;
     var th=(typeof gmStoryTheme==='function')?gmStoryTheme(gmActFamily(vm&&vm.sportId)):null;
     var keep=el.innerHTML;
     var ok=RM.mount(el,route,{cls:'detail',width:4,color:(th&&(th.hi||th.acc))||null,pad:{t:26,r:26,b:30,l:26}});
+    /* v8-435: Laeuft gerade die 5-Minuten-Pause nach einem Kachelfehler, meldet die Karte ihr
+       Scheitern schon WAEHREND des Einsetzens — noch bevor unten jemand zuhoert. Dann sofort
+       die bisherige Zeichnung (vorher blieb ein leeres Kartenfeld stehen). */
+    if(ok&&el.querySelector('.rmx.tiles-failed'))ok=false;
     if(ok){
       el.classList.add('has-rmx');
+      gmActBindRouteMapOpen(el,route,vm,th);
       /* Kacheln nicht ladbar (offline, Kontingent) ⇒ exakt die bisherige Zeichnung zurueck */
-      el.addEventListener('orvia:rmx-failed',function(){try{el.innerHTML=keep;el.classList.remove('has-rmx');}catch(_){ }},{once:true});
+      el.addEventListener('orvia:rmx-failed',function(){try{el.innerHTML=keep;el.classList.remove('has-rmx');el.classList.remove('can-open');el.removeAttribute('role');el.removeAttribute('tabindex');el.removeAttribute('aria-label');}catch(_){ }},{once:true});
     }else el.innerHTML=keep;
     return ok;
+  }catch(_){return false;}
+}
+/* v8-435 (Gian 5.10.): Tippen auf das Kartenfeld oeffnet die Kartenansicht zum Umsehen
+   (route-map-view.js: verschieben, zoomen). Nur solange im Feld wirklich die Karte steht —
+   faellt sie auf die bisherige Zeichnung zurueck, ist das Feld wieder ein Bild wie zuvor. */
+function gmActBindRouteMapOpen(el,route,vm,th){
+  try{
+    var V=window.ORVIA&&ORVIA.routeMapView;
+    if(!el||!V||typeof V.open!=='function')return false;
+    el.classList.add('can-open');el.setAttribute('role','button');el.setAttribute('tabindex','0');el.setAttribute('aria-label',_uiT('ui.karte_oeffnen'));
+    el.insertAdjacentHTML('beforeend','<span class="rmx-open" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></span>');
+    var go=function(){
+      if(!el.classList.contains('can-open'))return;
+      V.open(route,{color:(th&&(th.hi||th.acc))||null,title:(vm&&(vm.title||vm.sportLabel))||'',
+        sub:[vm&&vm.distanceLabel,vm&&vm.durationLabel].filter(Boolean).join(' · '),
+        labels:{map:_uiT('ui.karte'),close:_uiT('ui.karte_schliessen'),zoomIn:_uiT('ui.karte_groesser'),zoomOut:_uiT('ui.karte_kleiner'),fit:_uiT('ui.karte_ganze_strecke'),unavailable:_uiT('ui.karte_nicht_verfuegbar')}});
+    };
+    el.addEventListener('click',go);
+    /* Tastatur NUR an diesem Feld (kein weiterer globaler Tasten-Lauscher in diesem Block) */
+    el.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};
+    return true;
   }catch(_){return false;}
 }
 function gmOpenActivityPage(aid){
@@ -10161,8 +10187,12 @@ function gmStoryPages(a){
     try{
       var _vw=(typeof window!=='undefined'&&window.innerWidth)||390,_vh=(typeof window!=='undefined'&&window.innerHeight)||780;
       var _sw=(_vw>=700)?440:_vw,_mh=Math.round(_vh*0.66);
+      /* v8-435: Der Kopf (Balken, Titel, Datum) rueckt auf dem iPhone um den sicheren Rand
+         (--sat, 54–59 px) nach unten — der Innenrand der Strecke muss mitgehen, sonst liegt
+         die Strecke auf der Datumszeile (Gians Bild vom 5.10.). */
+      var _sat=0;try{var _pb=document.createElement('div');_pb.style.cssText='position:fixed;left:0;top:0;width:0;height:var(--sat,0px);visibility:hidden;pointer-events:none';document.body.appendChild(_pb);_sat=_pb.offsetHeight||0;document.body.removeChild(_pb);}catch(_){_sat=0;}
       var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:4.5,tiles:_mapOn,
-        pad:{t:Math.round(Math.max(96,Math.min(150,_vh*0.17))),r:44,b:Math.round(_mh*0.17),l:44}});
+        pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(_mh*0.17),l:44}});
       if(_map){
         var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
         var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);}catch(_){ }

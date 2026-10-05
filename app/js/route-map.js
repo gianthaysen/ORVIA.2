@@ -28,7 +28,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map@3';
+  var VERSION = 'route-map@4';
   var BASE = 256;                 /* Bezugsraster der Zoomstufe Z (Welt = 256 · 2^Z CSS-px) */
   var MAX_Z = 16.6, MIN_Z = 3;    /* nie bis auf Hausnummern hinein, nie die halbe Welt */
   /* v8-433 — Anfragen sparen (abgerechnet wird je Kachel):
@@ -117,12 +117,27 @@
     if (!isFinite(Z)) Z = MAX_Z;
     Z = Math.max(MIN_Z, Math.min(MAX_Z, Z));
     var T = (+tileSize === 256) ? 256 : (tileSize ? 512 : cfg().tileSize);
-    var Zt = Z - Math.log(T / BASE) / Math.LN2;            /* Zoomstufe im Raster der Kachelgroesse */
-    var z = Math.max(0, Math.min(18, Math.floor(Zt + Z_BIAS)));
+    var lv = level(Z, T);
     var world = BASE * Math.pow(2, Z);
     var cx = (x0 + x1) / 2 * world, cy = (y0 + y1) / 2 * world;
-    return { w: w, h: h, Z: Z, z: z, tile: T, scale: Math.pow(2, Zt - z), world: world,
+    return { w: w, h: h, Z: Z, z: lv.z, tile: T, scale: lv.scale, world: world,
       ox: cx - (pL + aw / 2), oy: cy - (pT + ah / 2), pad: { t: pT, r: pR, b: pB, l: pL } };
+  }
+  /* level(Z,T) → Kachelstufe z und Streckung fuer die stufenlose Zoomstufe Z (EINE Stelle:
+     Standbild und Kartenansicht waehlen dieselbe Stufe und teilen sich so die Kacheln). */
+  function level(Z, T) {
+    var Zt = Z - Math.log(T / BASE) / Math.LN2;            /* Zoomstufe im Raster der Kachelgroesse */
+    var z = Math.max(0, Math.min(18, Math.floor(Zt + Z_BIAS)));
+    return { z: z, scale: Math.pow(2, Zt - z) };
+  }
+  /* viewAt(cx,cy,Z,w,h) → derselbe Ausschnitt wie fit(), aber aus Mittelpunkt (Mercator 0…1)
+     und Zoomstufe — fuer die Kartenansicht zum Umsehen (route-map-view.js). */
+  function viewAt(cx, cy, Z, w, h, tileSize) {
+    if (!(w > 0) || !(h > 0) || !isFinite(cx) || !isFinite(cy) || !isFinite(Z)) return null;
+    var T = (+tileSize === 256) ? 256 : (tileSize ? 512 : cfg().tileSize);
+    var lv = level(Z, T), world = BASE * Math.pow(2, Z);
+    return { w: w, h: h, Z: Z, z: lv.z, tile: T, scale: lv.scale, world: world,
+      ox: cx * world - w / 2, oy: cy * world - h / 2, pad: { t: 0, r: 0, b: 0, l: 0 } };
   }
   function project(lat, lon, v) { return [lonX(lon) * v.world - v.ox, latY(lat) * v.world - v.oy]; }
   /* tiles(view) → alle Kacheln, die den Ausschnitt lueckenlos decken. Kanten ganzzahlig
@@ -268,7 +283,8 @@
 
   O.routeMap = { VERSION: VERSION, cfg: cfg, enabled: function () { return cfg().enabled; },
     lonX: lonX, latY: latY, xLon: xLon, yLat: yLat, haversineM: haversineM,
-    trim: trim, fit: fit, project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
+    trim: trim, fit: fit, viewAt: viewAt, level: level, valid: valid, project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
+    MAX_Z: MAX_Z, MIN_Z: MIN_Z, paused: function () { return _downUntil > _now(); },
     html: html, mount: mount, hydrate: hydrate, _err: _err, _ok: _ok,
     stats: function () { return { started: _started, reused: _reused, failed: _fails, kept: _keepOrder.length, pausedMs: Math.max(0, _downUntil - _now()) }; },
     _resume: function () { _downUntil = 0; },

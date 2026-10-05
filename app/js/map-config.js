@@ -1,5 +1,5 @@
 /* ============================================================
-   ORVIA · map-config — Quelle der Kartenkacheln (v8-432/433/434)
+   ORVIA · map-config — Quelle der Kartenkacheln (v8-432 … 435)
    ------------------------------------------------------------
    DIE EINE Stelle fuer alles, was die Karte betrifft. Der Schluessel steht nur hier —
    route-map.js liest ihn ueber ORVIA_MAP_CONFIG, kein anderes Modul kennt ihn.
@@ -25,11 +25,15 @@
        im Mittel 3–4, auf dem Handy hoechstens 6 Kacheln (+ Logo); innerhalb der
        Sitzung werden geladene Kacheln wiederverwendet (gemessen ueber 20.000
        simulierte Strecken; mit 256er-Kacheln waeren es im Mittel 7–9, bis zu 20).
+       Kartenansicht zum Umsehen (v8-435): je Bildschirm im Mittel 4, hoechstens 6
+       Kacheln; jedes Weiterschieben oder jede neue Zoomstufe laedt nur, was fehlt.
+       Ein ausgiebiges Umsehen kostet typisch 20–40 Kacheln. Der Anbieter erlaubt dem
+       Browser 8 Stunden Zwischenspeichern (cache-control max-age=28800, geprueft 5.10.).
 
    Wo die Karte erscheint:
      · story:  true  — Abschluss-Seite der Story
-     · detail: false — Aktivitaetsseite bleibt vorerst bei der bisherigen Zeichnung
-                       (erst einschalten, wenn die Optik in der Story abgestimmt ist)
+     · detail: true  — Kartenfeld der Aktivitaetsseite; Tippen darauf oeffnet die
+                       Kartenansicht zum Umsehen (route-map-view.js) — seit v8-435
 
    Adressen des Anbieters (tiles / logo / attribution) stehen ebenfalls NUR hier —
    route-map.js setzt lediglich {style} {key} {z} {x} {y} {r} ein ({r} = „@2x").
@@ -47,7 +51,7 @@ window.ORVIA_MAP_CONFIG = {
   style: 'dataviz-dark',
   tileSize: 512,
   story: true,
-  detail: false,
+  detail: true,
   tiles: {
     512: 'https://api.maptiler.com/maps/{style}/{z}/{x}/{y}{r}.png?key={key}',
     256: 'https://api.maptiler.com/maps/{style}/256/{z}/{x}/{y}{r}.png?key={key}'
