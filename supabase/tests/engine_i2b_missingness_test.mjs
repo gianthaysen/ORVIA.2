@@ -126,7 +126,8 @@ const run = (day, km, tag, hh) => ({ clientRecordId: 'a:' + day + ':' + km + ':'
 
 /* ---------- Gruppe D: baselineRows (intelligence.js) — kein Crash/falsche 0 ---------- */
 {
-  const intelBlock = slice(intelSrc, 'function intelCtx(', 'function renderBaselines(){');
+  /* F01 (05.10.2026): intelCtx baut auf intelFeatures() auf — der Ausschnitt beginnt dort. */
+  const intelBlock = slice(intelSrc, 'function intelFeatures(', 'function renderBaselines(){');
   function mkBaseline(wk) {
     const sb = {}; sb.window = sb; sb.globalThis = sb;
     sb.dataDays = () => 10;

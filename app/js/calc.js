@@ -1932,9 +1932,19 @@ function nutritionTargets(p){
   var kcal=Math.max(Math.round(b*1.05),maint+adj);      // nie unter ~BMR*1.05
   var protein=Math.round(p.weightKg*(p.proteinPerKg||1.9));
   var fat=Math.round(p.weightKg*(hard?0.8:0.95));
-  var carbs=Math.max(Math.round((kcal-protein*4-fat*9)/4),Math.round(p.weightKg*(hard?5:3)));
+  /* F03 (Metaanalyse 05.10.2026): Vorher stand hier Math.max(Rest, 3 bzw. 5 g/kg).
+     Griff die Untergrenze, lagen die Makros über dem Kalorienziel (live: 1.995 kcal
+     Makros neben 1.784 kcal Ziel) — die Tagesvorgabe war nicht erfüllbar.
+     Rangfolge jetzt eindeutig: Energieziel → Protein → Fett → Kohlenhydrate = Rest.
+     Der kg-Wert bleibt als RICHTWERT erhalten (carbsGuide); liegt der Rest darunter,
+     weist das Ergebnis es aus (carbsBelowGuide) statt das Ziel still zu sprengen. */
+  var carbsGuide=Math.round(p.weightKg*(hard?5:3));
+  var rest=kcal-protein*4-fat*9;
+  if(rest<0){fat=Math.max(0,Math.floor((kcal-protein*4)/9));rest=Math.max(0,kcal-protein*4-fat*9);}   // Engpass: Fett weicht vor Protein
+  var carbs=Math.round(rest/4);
   var ea=Math.round((kcal-burn)/p.weightKg);            // grobe Energieverfügbarkeit kcal/kg
-  return {kcal:kcal,protein:protein,carbs:carbs,fat:fat,base:base,burn:burn,maint:maint,ea:ea,bmr:b,hard:hard,goal:goal,dayType:p.dayType};
+  return {kcal:kcal,protein:protein,carbs:carbs,fat:fat,base:base,burn:burn,maint:maint,ea:ea,bmr:b,hard:hard,goal:goal,dayType:p.dayType,
+    carbsGuide:carbsGuide,carbsBelowGuide:carbs<carbsGuide};
 }
 const Calc={HM_KM,RACE_DATE,avg,median,sd,clampC,fmtPace,fmtTime,fmtDuration,paceZones,bmr,nutritionTargets,ewma,sessionLoad,acwr,
   loadModel,loadSeries,loadConfidenceContract,weekKmTarget,effectiveKmTarget,runnaWeek,planStatus,resolvePlanActual,activityDuplicate,racePhases,buildIntervals,swimPace100,aggregateMuscleVolume,muscleVolumeStatus,muscleWeeklyEquivalent,muscleTargetRange,activityPlausibility,moveActivity,isValidRunForAnalytics,applyActivityPatchPreview,racePhase,trendDir,readiness,ampel,hrvScoreOf,riegel,riegelHM,goalEngine,

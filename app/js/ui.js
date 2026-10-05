@@ -1808,8 +1808,12 @@ function getDecision(){
   var _gdc=_gdP.now();var ctx=(typeof recoveryCtx==='function')?recoveryCtx(cur):{};_gdP.mark('getDecision: recoveryCtx (28d loop)',_gdc);
   var r=Calc.readiness(m,ctx);
   // Mess-Komponenten aus UI-Quellen (keine Caps/keine Entscheidung):
-  var riskRaw=0;try{if(typeof riskCard==='function')riskRaw=riskCard().score;}catch(_){}
-  var ic2={};try{if(typeof intelCtx==='function')ic2=intelCtx();}catch(_){}
+  /* F01: nur die NEUTRALEN Merkmale (intelFeatures/riskScore) — sie fragen die
+     Entscheidung nicht ab, also baut getDecision ohne Rückgriff auf sich selbst.
+     Der zweite Zweig greift nur, wenn nach einem Teil-Deploy noch die alte
+     intelligence.js im Cache liegt; dort schützt weiter der Reentranz-Guard oben. */
+  var ic2={};try{ic2=(typeof intelFeatures==='function')?intelFeatures():((typeof intelCtx==='function')?intelCtx():{});}catch(_){}
+  var riskRaw=0;try{riskRaw=(typeof riskScore==='function')?riskScore(ic2).score:((typeof riskCard==='function')?riskCard().score:0);}catch(_){}
   var loadFit=null;if(ic2&&ic2.targetKm&&ic2.weekKm>0){var ratio=ic2.weekKm/ic2.targetKm;loadFit=Math.round(Calc.clampC(100-Math.abs(ratio-1)*110,25,100));}
   var execution=(typeof executionScore==='function')?executionScore():null;
   var _gdg=_gdP.now();var progress=null;try{var g=buildGoal();progress=g.state==='ontrack'?88:g.state==='border'?62:g.state==='risk'?38:null;}catch(_){}_gdP.mark('getDecision: buildGoal (incl. allLoads 90-365d loop; 5s TTL-cached)',_gdg);
@@ -6989,7 +6993,11 @@ function gmOpenNutritionSheet(){
     (t?('<div class="sh-block"><div class="nu-legend nu-legend-lg">'+
       '<span><i class="nu-p"></i>' + _uiT('ui.protein') + '<b>'+gmEsc(fmtDe(t.protein))+' g</b></span>'+
       '<span><i class="nu-c"></i>' + _uiT('ui.carbs') + '<b>'+gmEsc(fmtDe(t.carbs))+' g</b></span>'+
-      '<span><i class="nu-f"></i>' + _uiT('ui.fett') + '<b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div></div>'):'')+
+      '<span><i class="nu-f"></i>' + _uiT('ui.fett') + '<b>'+gmEsc(fmtDe(t.fat))+' g</b></span></div>'+
+      /* F03: Makros summieren jetzt zum Kalorienziel. Reicht das an einem harten Tag
+         nicht für den Kohlenhydrat-Richtwert, steht es hier — statt still im Ziel zu fehlen. */
+      ((t.hard&&t.carbsBelowGuide)?'<p class="note" style="text-align:left;margin-top:8px">'+gmEsc(_uiT('ui.nut_carbs_below_guide',{guide:fmtDe(t.carbsGuide)}))+'</p>':'')+
+      '</div>'):'')+
     '<div class="sh-block"><h4 style="margin:0 0 8px;font-size:13px">' + _uiT('ui.protein_letzte_14_tage') + '</h4>'+
       (got?('<div class="nu-bars">'+bars+'</div><p class="note" style="text-align:left;margin-top:8px">'+got+'' + _uiT('ui.von_14_tagen_erfasst') + ''+(pT?'' + _uiT('ui.ziel') + ''+fmtDe(pT)+'' + _uiT('ui.g_gruen_mindestens_90_erreicht') + '':'')+'. Nur eingetragene Abendwerte — nichts hochgerechnet.</p>')
         :'<p class="note" style="text-align:left">' + _uiT('ui.noch_keine_protein_eintraege_der') + '</p>')+'</div>'+
@@ -9858,7 +9866,9 @@ function gmStartSport(sport){
       ['Body Battery',(_bb&&_bb.value!=null)?fmtDe(_bb.value):'—'],
       ['' + _uiT('ui.stress_heute') + '',(_st5&&_st5.value!=null)?fmtDe(_st5.value):'—'],
       /* v8-397: „83 ·" mit leerem Statustext — der Trenner haengt nur an, wenn Text folgt. */
-      ['Readiness',(_os5&&_os5.score!=null)?(_os5.score+(_os5.statusText?' · '+gmEsc(_os5.statusText):'')):'—']
+      /* F02: Gesamtscore beim Namen; der Statustext liegt in status.l (ein Feld
+         `statusText` hat orviaScore() nicht — der Zusatz blieb deshalb immer leer). */
+      [_uiT('ui.orvia_score'),(_os5&&_os5.score!=null)?(_os5.score+((_os5.status&&_os5.status.l)?' · '+gmEsc(_os5.status.l):'')):'—']
     ];
     preRows='<div class="sh-block" style="margin:0 0 6px"><div class="bh">' + _uiT('ui.vor_start_werte_gemessen') + '</div>'+
       '<div class="card prestart" style="margin:6px 0 0">'+pr.map(function(r){return '<div class="ps-row"><span>'+r[0]+'</span><b>'+gmEsc(r[1])+'</b></div>';}).join('')+'</div>'+
@@ -10580,13 +10590,15 @@ function gmAnaOverview(ctx){
   var ctl=(ctx.ok&&ctx.S)?Math.round(ctx.S.ctl[ctx.S.ctl.length-1]):null;
   var atl=(ctx.ok&&ctx.S)?Math.round(ctx.S.atl[ctx.S.atl.length-1]):null;
   var acwrShow=(ctx.lm&&ctx.lm.acwr!=null&&ctx.lm.acwrReliable&&ctx.lcc&&!ctx.lcc.suppressNumbers)?ctx.lm.acwr:null;
-  if(d&&lvl==='p'){heroP='' + _uiT('ui.readiness_') + ''+(sc&&sc.score!=null?sc.score:'—')+'' + _uiT('ui.ctl') + ''+(ctl!=null?ctl:'—')+'' + _uiT('ui.acwr') + ''+(acwrShow!=null?fmtDe(acwrShow):'—')+'' + _uiT('ui.alle_werte_read_only_aus') + '';}
+  /* F02: sc.score ist der ORVIA-Gesamtscore (Erholung × 60 % + Belastungskontrolle
+     × 25 % + Umsetzung × 15 %), nicht die Erholung — er heißt deshalb auch so. */
+  if(d&&lvl==='p'){heroP='' + _uiT('ui.orvia_score') + ' '+(sc&&sc.score!=null?sc.score:'—')+'' + _uiT('ui.ctl') + ''+(ctl!=null?ctl:'—')+'' + _uiT('ui.acwr') + ''+(acwrShow!=null?fmtDe(acwrShow):'—')+'' + _uiT('ui.alle_werte_read_only_aus') + '';}
   if(!heroP)heroP=GM_NA+'' + _uiT('ui.die_entscheidung_erscheint_nach_dem') + '';
   var h='<div class="decision-hero"><div class="eyebrow">' + _uiT('ui.wichtigste_erkenntnis_heute') + '</div><h2>'+gmEsc(heroT)+'</h2><p>'+gmEsc(heroP)+'</p>'+
     '<div class="decision-actions"><button onclick="gmAnaGoPlan()">Im Plan ansehen</button><button onclick="gmSetAnaSeg(\'endurance\')">Daten prüfen</button></div></div>';
   /* 4 KPI-Slots — nur kanonische Werte */
   var kpis=[
-    [sc&&sc.score!=null?String(sc.score):'—','Readiness',sc&&sc.status?gmEsc(sc.status.l):'—'],
+    [sc&&sc.score!=null?String(sc.score):'—',_uiT('ui.orvia_score'),sc&&sc.status?gmEsc(sc.status.l):'—'],
     [ctl!=null?String(ctl):'—','' + _uiT('ui.fitness_ctl_') + '',lvl==='p'?('' + _uiT('ui.srpe_skala_atl') + ''+(atl!=null?atl:'—')):(ctl!=null?'' + _uiT('ui.srpe_skala_42_t') + '':'—')],
     [acwrShow!=null?fmtDe(acwrShow):'—','' + _uiT('ui.belastung_acwr') + '',acwrShow!=null?'Lastmodell':'—'],
     (function(){/* GM7: Planerfuellung aus dem kanonischen Plan-Ist-Abgleich (7 Tage) */
@@ -10931,6 +10943,23 @@ function gmBodySVG(model,side){
   }).join('');
   return '<svg viewBox="0 0 100 200" class="bodysvg anat" role="img" aria-label="Anatomische Muskelkarte '+(side==='front'?'' + _uiT('ui.vorderseite') + '':'' + _uiT('ui.rueckseite') + '')+'">'+neutral+plates+'</svg>';
 }
+/* F10: EIN Renderer für die Konfidenz. Die Muskelengine liefert eine Kategorie
+   (low/medium/high) — die wird übersetzt, nie in Prozent umgedeutet. Eine echte
+   Zahl 0…1 wird als Prozent gezeigt. Alles andere ist „—", nie NaN. */
+function gmConfLabel(v){
+  if(typeof v==='string')return CONF_LABEL_DE[v]||'—';
+  if(typeof v==='number'&&isFinite(v)&&v>=0&&v<=1)return Math.round(v*100)+'%';
+  return '—';
+}
+/* F09: Wochenwert eines Muskels — unverändert aus dem Modell. Fehlt er (älteres
+   Modell), rechnet ihn dieselbe Engine-Funktion aus Summe und Zeitraum; die
+   Oberfläche führt keine eigene Formel. Ohne Modellwert: null (dann „—", kein Balken). */
+function gmMvWeekly(m){
+  if(!m||m.effectiveSetEquivalents==null)return null;
+  if(typeof m.weeklyEquivalent==='number'&&isFinite(m.weeklyEquivalent))return m.weeklyEquivalent;
+  var G=window.ORVIA&&ORVIA.gymVolume;
+  return (G&&typeof G.weeklyEquivalent==='function')?G.weeklyEquivalent(m.effectiveSetEquivalents,gmBodyRange):null;
+}
 function gmMuscleTile(model,id){
   var byId={};((model&&model.muscles)||[]).forEach(function(m){byId[m.muscleId]=m;});
   var m=byId[id],st=gmMvSt(m);
@@ -10939,15 +10968,17 @@ function gmMuscleTile(model,id){
   var eq=(m&&m.effectiveSetEquivalents!=null)?m.effectiveSetEquivalents:null;
   var lo=(m&&m.targetRange&&m.targetRange.min!=null)?m.targetRange.min:null;
   var hi=(m&&m.targetRange&&m.targetRange.max!=null)?m.targetRange.max:null;
-  var conf='—';
-  if(m&&m.confidence!=null){conf=(typeof m.confidence==='string')?(CONF_LABEL_DE[m.confidence]||m.confidence):Math.round(m.confidence*100)+'%';}
+  /* F09: Der Richtwert gilt PRO WOCHE — verglichen wird deshalb der Wochenwert der
+     Engine, nicht die Summe des Zeitraums (10 Sätze in 28 Tagen sind 2,5/Woche). */
+  var wk=gmMvWeekly(m);
+  var conf=gmConfLabel(m?m.confidence:null);
   /* v8-352: „Ziel" → „Richtwert". Der Korridor ist ein Produktwert ohne
      Quelle; wer ihn „Ziel" nennt, macht ihn zur Vorgabe. */
-  var sub=(eq!=null?fmtDe(eq)+'' + _uiT('ui.effektive_saetze') + '':'—')+'' + _uiT('ui.richtwert') + ''+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?'' + _uiT('ui.konfidenz_') + ''+conf:'');
+  var sub=(wk!=null?_uiT('ui.mv_tile_week',{wk:fmtDe(wk),sum:fmtDe(eq),days:gmBodyRange}):'—')+'' + _uiT('ui.richtwert') + ''+(lo!=null&&hi!=null?lo+'–'+hi+'/Woche':'—')+(lvl==='p'?'' + _uiT('ui.konfidenz_') + ''+conf:'');
   var bar='';
-  if(eq!=null&&lo!=null&&hi!=null){
-    var scaleMax=Math.max(hi*1.25,eq*1.1);
-    var tgtL=lo/scaleMax*100,tgtW=(hi-lo)/scaleMax*100,fill=Math.min(100,eq/scaleMax*100);
+  if(wk!=null&&lo!=null&&hi!=null){
+    var scaleMax=Math.max(hi*1.25,wk*1.1);
+    var tgtL=lo/scaleMax*100,tgtW=(hi-lo)/scaleMax*100,fill=Math.min(100,wk/scaleMax*100);
     bar='<div class="mbar"><span class="tgt" style="left:'+tgtL+'%;width:'+tgtW+'%"></span><span class="fillm" style="width:'+fill+'%;background:'+st.c+'"></span></div>';
   }else{
     bar='<div class="mbar"><span class="tgt" style="left:0;width:0"></span><span class="fillm" style="width:0"></span></div>';
@@ -11044,15 +11075,24 @@ function gmOpenMuscleSheet(id){
     ex=ORVIA.gymVolume.explainMuscleVolume(id,snaps,{days:gmBodyRange,weeks:Math.round(gmBodyRange/7*10)/10,experience:(typeof mvExperience==='function')?mvExperience():'beginner'});
   }}catch(_){ }
   var exNames=[];try{((ex&&ex.contributions)||[]).forEach(function(c){var n=c.exerciseName||c.name;if(n&&exNames.indexOf(n)<0)exNames.push(n);});}catch(_){ }
-  var eff=(eq==null||lo==null||hi==null)?(GM_NA+'' + _uiT('ui.ohne_zielkorridor_keine_einordnung') + '')
-    :(eq<lo?'Aktuell <b>unter</b> dem wirksamen Bereich für spürbaren Aufbau.':eq>hi?'Aktuell <b>' + _uiT('ui.ueber') + '</b> dem nötigen Bereich – mehr bringt kaum Zusatznutzen, erhöht aber Ermüdung.':'Aktuell im <b>wirksamen</b> Bereich für ' + _uiT('ui.dein_ziel') + '.')+'' + _uiT('ui.direkt_indirekt_zusammengefasst_unveraendert_aus') + '';
+  /* F09: Die Einordnung kommt aus dem Engine-Status (st.key) — die Oberfläche
+     vergleicht nicht selbst gegen den Korridor. Vorher stand hier ein zweiter
+     Vergleich „Zeitraumsumme gegen Wochenrichtwert", der dem Status widersprach. */
+  var wk=gmMvWeekly(m);
+  var basis=(eq!=null&&wk!=null)?_uiT('ui.mv_sheet_basis',{sum:fmtDe(eq),days:gmBodyRange,wk:fmtDe(wk)})+' ':'';
+  var eff=(lo==null||hi==null)?(GM_NA+'' + _uiT('ui.ohne_zielkorridor_keine_einordnung') + '')
+    :st.key==='below'?basis+'Aktuell <b>unter</b> dem wirksamen Bereich für spürbaren Aufbau.'+_uiT('ui.direkt_indirekt_zusammengefasst_unveraendert_aus')
+    :st.key==='above'?basis+'Aktuell <b>' + _uiT('ui.ueber') + '</b> dem nötigen Bereich – mehr bringt kaum Zusatznutzen, erhöht aber Ermüdung.'+_uiT('ui.direkt_indirekt_zusammengefasst_unveraendert_aus')
+    :st.key==='in'?basis+'Aktuell im <b>wirksamen</b> Bereich für ' + _uiT('ui.dein_ziel') + '.'+_uiT('ui.direkt_indirekt_zusammengefasst_unveraendert_aus')
+    :st.key==='low_history'?basis+_uiT('ui.mv_sheet_low_history')
+    :_uiT('ui.mv_sheet_no_data');
   sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:'+st.t+';color:'+st.c+'">'+icon('dumbbell')+'</div><div><h3>'+gmEsc(name)+'</h3><div class="sh-sub" style="margin:2px 0 0">'+st.sym+' '+st.l+' · letzte '+gmBodyRange+'' + _uiT('ui.tage_') + '</div></div></div>'+
-    '<div class="statgrid3"><div><div class="n">'+(m&&m.realWorkingSets!=null?m.realWorkingSets:'—')+'</div><div class="l">' + _uiT('ui.arbeitssaetze') + '</div></div><div><div class="n">'+(eq!=null?fmtDe(eq):'—')+'</div><div class="l">effektiv</div></div><div><div class="n">'+(lo!=null&&hi!=null?lo+'–'+hi:'—')+'</div><div class="l">' + _uiT('ui.ziel_woche') + '</div></div></div>'+
+    '<div class="statgrid3"><div><div class="n">'+(m&&m.realWorkingSets!=null?m.realWorkingSets:'—')+'</div><div class="l">' + _uiT('ui.arbeitssaetze') + '</div></div><div><div class="n">'+(wk!=null?fmtDe(wk):'—')+'</div><div class="l">' + _uiT('ui.mv_eff_week') + '</div></div><div><div class="n">'+(lo!=null&&hi!=null?lo+'–'+hi:'—')+'</div><div class="l">' + _uiT('ui.mv_guide_week') + '</div></div></div>'+
     '<div class="sh-block"><div class="bh">' + _uiT('ui.verlauf_saetze_woche') + '</div><div class="oc2"><div class="gm-chart-empty">'+GM_NA+' — eine kanonische Wochenhistorie je Muskel liegt noch nicht vor.</div></div></div>'+
     '<div class="sh-block"><div class="bh">' + _uiT('ui.wirksamkeit_fuers_ziel') + '</div><p>'+eff+'</p></div>'+
     '<div class="sh-block"><div class="bh">' + _uiT('ui.zuletzt_beteiligte_uebungen') + '</div><div class="msheet-ex">'+(exNames.length?exNames.slice(0,6).map(function(e){return '<span>'+gmEsc(e)+'</span>';}).join(''):'<span>—</span>')+'</div></div>'+
     '<div class="sh-block"><div class="bh">' + _uiT('ui.empfehlung_naechste_woche') + '</div><p>'+gmEsc((typeof mvNextStep==='function')?mvNextStep(st.key):'—')+'</p></div>'+
-    (lvl==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b>'+(m&&m.confidence!=null?Math.round(m.confidence*100)+'%':'—')+'</b></span><span class="confchip">'+icon('db','xs')+' Trend <b>—</b></span></div></div>':'')+
+    (lvl==='p'?'<div class="sh-block"><div class="bh">' + _uiT('ui.datenqualitaet') + '</div><div class="confidence"><span class="confchip">'+icon('check','xs')+' ' + _uiT('ui.konfidenz__') + ' <b>'+gmConfLabel(m?m.confidence:null)+'</b></span><span class="confchip">'+icon('db','xs')+' Trend <b>—</b></span></div></div>':'')+
     '<div class="source">'+icon('info','xs')+' Kanonische Muskelengine (effektive Satzäquivalente) — keine medizinische Aussage.</div>';
   gmOpenSheet('detailSheet');
 }

@@ -135,8 +135,11 @@ ok('R3 keine Rekursion: max. Tiefe ≤ 2 (vor Fix: 871–2802)', vm.runInContext
 ok('R4 keine gefangenen Stack-RangeErrors (vor Fix: ~5000)', vm.runInContext('__range', h.sb) === 0);
 ok('R5 Ergebnis ist echte Entscheidung (dayState gesetzt)', dec && typeof dec.dayState === 'string' && dec.dayState.length > 0, dec && dec.dayState);
 const nested = vm.runInContext('({n:__nestedNull,x:__nestedNonNull})', h.sb);
-ok('R6 verschachtelte Aufrufe WÄHREND des Aufbaus lieferten null (steuern nichts)', nested.n >= 1 && nested.x === 0, 'null=' + nested.n + ' nonNull=' + nested.x);
-
+/* F01 (05.10.2026): getDecision baut aus intelFeatures()/riskScore() — die fragen die
+   Entscheidung nicht ab. Der Zyklus ist damit strukturell weg (R6b); der Guard bleibt
+   als Netz für fremde Aufrufer: käme doch ein verschachtelter Aufruf, dann nur null (R6). */
+ok('R6 kein verschachtelter Aufruf liefert WÄHREND des Aufbaus eine Entscheidung', nested.x === 0, 'null=' + nested.n + ' nonNull=' + nested.x);
+ok('R6b der Aufbau ruft sich gar nicht mehr selbst auf', nested.n === 0, 'verschachtelte Aufrufe=' + nested.n);
 /* ---------- Cache + Interaktionspfade ---------- */
 const cached = vm.runInContext('getDecision()', h.sb, { timeout: 2000 });
 ok('R7 zweiter Aufruf kommt aus dem Cache (Identität)', cached === dec);
@@ -148,6 +151,15 @@ try {
 } catch (e) { e2 = e && e.message; }
 ok('R8 showTab(heute)+autoMorning+saveMorning je < 3 s (vor Fix: je >8 s)', e2 == null, e2 || (performance.now() - t0).toFixed(0) + ' ms gesamt');
 ok('R9 auch nach Interaktionen keine Rekursion (Tiefe ≤ 2)', vm.runInContext('__max', h.sb) <= 2, 'Tiefe=' + vm.runInContext('__max', h.sb));
+
+{
+  /* Der Guard selbst: ein Aufrufer, der mitten im Aufbau fragt, bekommt null. */
+  const g = vm.runInContext(`(function(){var seen='unset';var o=intelFeatures;
+    intelFeatures=function(){seen=currentDecision();return o.apply(this,arguments);};
+    try{invalidateDecision();getDecision();}finally{intelFeatures=o;}
+    return seen;})()`, h.sb, { timeout: 3000 });
+  ok('R6c Reentranz-Guard hält: Abfrage mitten im Aufbau → null', g === null, String(g));
+}
 
 console.log('\n' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

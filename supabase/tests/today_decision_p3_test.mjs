@@ -39,7 +39,11 @@ function makeIntel(opts) {
   sb.RACE = { date: '2026-10-01' };
   sb.daysTo = () => 84;
   sb.Calc = { weekKmTarget: () => 30 };
-  sb.currentDecision = () => ({ state: opts.decision || 'GREEN' });
+  /* F01 (05.10.2026): Der Stub lieferte `{state:…}` und bildete damit den Lesefehler
+     der App nach statt des echten Vertrags — die Engine liefert `dayState`. Den
+     Vertrag selbst prüft decision_contract_f01_test am echten Objekt. */
+  sb.currentDecision = () => ({ dayState: opts.decision || 'GREEN' });
+  sb.DECISION_WORD = { GREEN: 'Trainieren', YELLOW: 'Reduzieren', ORANGE: 'Ersetzen', RED: 'Pausieren' };
   sb.escH = s => String(s == null ? '' : s);
   sb.statusColorVar = () => '#fff';
   sb.document = { getElementById: () => null };
@@ -72,7 +76,7 @@ function makeIntel(opts) {
   ok('D1 kein positiver Freigabe-Tipp bei ORANGE', titles.indexOf('Guter Tag für Qualität') < 0);
   ok('D2 Hinweis „Tagesentscheidung beachten"', titles.indexOf('Tagesentscheidung beachten') >= 0);
   const risk = sb.riskCard();
-  ok('D3 riskCard verweist bei niedrigem Score auf die Entscheidung', /Tagesentscheidung \(ORANGE\)/.test(risk.rec), risk.rec);
+  ok('D3 riskCard verweist bei niedrigem Score auf die Entscheidung', /Tagesentscheidung „Ersetzen"/.test(risk.rec), risk.rec);
 }
 
 /* ---------- 3) Gesund + GREEN: positiver Tipp bleibt möglich ---------- */
