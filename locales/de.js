@@ -2822,6 +2822,7 @@
     'ui.max_herzfrequenz': 'MAX. HERZFREQUENZ',
     'ui.max_herzfrequenz_': 'Max. Herzfrequenz',
     'ui.maximal': 'Maximal ',
+    'ui.max_kurz': 'Max. ',
     'ui.maximale_detailtiefe': 'Maximale Detailtiefe',
     'ui.maximale_tagesbelastung': 'Maximale Tagesbelastung',
     'ui.medaillen_erscheinen_mit_deinen_ersten': 'Medaillen erscheinen mit deinen ersten abgeschlossenen Aktivitäten — keine erfundenen Auszeichnungen, Tiers oder Fortschritte.',
