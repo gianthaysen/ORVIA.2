@@ -1,8 +1,33 @@
 /* ============================================================
-   ORVIA · map-config — Quelle der Kartenkacheln (v8-432 … 437)
+   ORVIA · map-config — Quelle der Karte (v8-432 … 440)
    ------------------------------------------------------------
    DIE EINE Stelle fuer alles, was die Karte betrifft. Der Schluessel steht nur hier —
-   route-map.js liest ihn ueber ORVIA_MAP_CONFIG, kein anderes Modul kennt ihn.
+   route-map.js und route-map-gl.js lesen ihn ueber ORVIA_MAP_CONFIG, kein anderes Modul
+   kennt ihn.
+
+   engine (seit v8-440) — WIE die Karte entsteht:
+     · 'vector'  Die Karte wird auf dem Geraet gezeichnet (route-map-gl.js, Stil in
+                 map-style.js): eigene ORVIA-Farben, scharf in jeder Pixeldichte,
+                 Beschriftung in fester Groesse. Braucht die Angaben unter vector.
+                 Geht das auf einem Geraet nicht (kein WebGL, Bibliothek nicht ladbar),
+                 gilt dort fuer die Sitzung automatisch 'raster'.
+     · 'raster'  Fertige Bildkacheln wie bis v8-439 (style / tileSize / tiles weiter unten).
+                 EINE Zeile zurueckstellen genuegt, falls die neue Karte auf einem Geraet
+                 Probleme macht.
+   vector:
+     · lib      mitgelieferte Zeichenbibliothek (MapLibre GL JS 5.24.0, BSD-Lizenz, liegt
+                unter assets/vendor/ — kein fremder Server). Wird erst geladen, wenn zum
+                ersten Mal eine Karte gebraucht wird.
+     · tiles    Adressvorlage der Kartendaten ({z}/{x}/{y} fuellt die Bibliothek)
+     · glyphs   Adressvorlage der Schriften fuer die Beschriftung
+     · maxzoom  feinste Stufe der Kartendaten (darueber wird vergroessert)
+     · fonts    Schriftname(n), wie der Anbieter sie fuehrt
+     Am 5.10.2026 von der Live-Herkunft aus geprueft: Kartendaten bis Stufe 15, erste
+     Antwort 70–100 ms (die Bildkacheln brauchten 300–900 ms, weil der Anbieter sie erst
+     auf Abruf rechnete), Zwischenspeichern 4 Stunden. Ein Bildschirm braucht 4 Datenkacheln
+     und einmal je Sitzung die Schrift. Die Datenkacheln sind groesser als die Bilder
+     (100–300 kB statt 60 kB) — die Karte kostet also mehr Datenvolumen, dafuer sofort scharf.
+     Im kostenlosen Tarif zaehlen sie wie Bildkacheln gegen die 100.000 Anfragen im Monat.
 
    key leer ⇒ Karte AUS: es geht keine einzige Anfrage an einen Kartenanbieter, die
    Strecke wird ohne Karte gezeichnet.
@@ -55,6 +80,14 @@
    ============================================================ */
 window.ORVIA_MAP_CONFIG = {
   provider: 'maptiler',
+  engine: 'vector',
+  vector: {
+    lib: 'assets/vendor/maplibre-gl.js',
+    tiles: 'https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key={key}',
+    glyphs: 'https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key={key}',
+    maxzoom: 15,
+    fonts: ['Noto Sans Regular']
+  },
   key: 'CwKts3eJvP6HZyk1hUpe',
   style: 'basic-v2-dark',
   tileSize: 512,

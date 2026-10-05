@@ -70,6 +70,9 @@
   --orvia-success:#43D69E;--orvia-warning:#F1B75A;--orvia-error:#FF6464;--orvia-info:#67AFFF;--orvia-neutral-info:#8996A5;
   /* Start und Ziel einer Strecke sind Zustaende: immer Gruen und Rot, in jeder Sportart */
   --orvia-route-start:var(--orvia-success);--orvia-route-finish:var(--orvia-error);
+  /* Karte (v8-440): Flaeche hinter der Karte und Landfarbe — dieselben Werte wie PALETTE in js/map-style.js
+     (dort steht der ganze Kartenstil; ein Test haelt beide Stellen gleich) */
+  --orvia-map-bg:#080D14;--orvia-map-land:#0D141C;
   /* Diagrammflaeche (Story + Aktivitaetsseite) */
   --orvia-chart-surface:#071321;--orvia-chart-border:rgba(130,160,190,.26);--orvia-chart-grid:rgba(130,160,190,.12);
 
@@ -3751,6 +3754,35 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmx-attr{position:absolute;right:8px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:600;letter-spacing:.01em;
   color:rgba(255,255,255,.58);text-shadow:0 1px 2px rgba(0,0,0,.9);pointer-events:none;white-space:nowrap}
 .rmx-attr .rmx-logo{height:13px;width:auto;opacity:.85}
+/* ============================================================
+   v8-440 · Karte, die auf dem Geraet gezeichnet wird (route-map-gl.js, Stil: map-style.js).
+   Der Halter .rmx-tiles.rmx-gl bleibt die Kartenebene (Masken und Verlaeufe gelten weiter); darin
+   liegt die Zeichenflaeche (.rmx-glbox) und blendet sich ein, sobald die Karte steht. Kein
+   Schleier mehr: die Farben der Karte sind schon die von ORVIA.
+   Die wenigen Regeln fuer .maplibregl-* ersetzen das Stylesheet der Bibliothek (es wuerde vor
+   allem Bedienelemente gestalten, die es hier nicht gibt).
+   ============================================================ */
+.rmx-tiles.rmx-gl,.gm-story .wst-mapbg .rmx-tiles.rmx-gl{--rmx-dim:0}
+.rmx-tiles .rmx-glbox{position:absolute;inset:0;opacity:0;transition:opacity .45s ease}
+.rmx-tiles .rmx-glbox.ok{opacity:1}
+.maplibregl-map{overflow:hidden;position:relative;-webkit-tap-highlight-color:transparent}
+.maplibregl-canvas{position:absolute;left:0;top:0}
+.maplibregl-canvas-container.maplibregl-interactive{cursor:grab;-webkit-user-select:none;user-select:none}
+.maplibregl-canvas-container.maplibregl-interactive:active{cursor:grabbing}
+.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan,
+.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan .maplibregl-canvas{touch-action:none}
+/* Kartenansicht: die gezeichnete Karte liegt zuunterst; Bildkachel-Ebene aus; das Strecken-Standbild
+   verschwindet, sobald die Karte die Strecke selbst zeichnet */
+.rmv .rmv-gl{position:absolute;inset:0;display:none}
+.rmv.rmv-glmode{background:var(--orvia-map-bg)}
+.rmv.rmv-glmode .rmv-gl{display:block}
+.rmv.rmv-glmode .rmv-layer{display:none}
+/* Band hinter dem Kopf: kuerzer und leichter als ueber Bildkacheln (die eigene Karte ist dunkel und sparsam
+   beschriftet). Endet 104 px unter dem sicheren Rand = Kopf (~64 px) + GL_BAND (40 px, route-map-view.js);
+   die Strecke beginnt erst darunter. */
+.rmv.rmv-glmode .rmv-dim{--rmx-dim:0;background:linear-gradient(180deg,rgba(5,9,16,.88) 0,rgba(5,9,16,.72) calc(var(--sat,0px) + 52px),rgba(5,9,16,0) calc(var(--sat,0px) + 104px),rgba(5,9,16,0) 86%,rgba(5,9,16,.45) 100%)}
+.rmv.rmv-glready .rmv-route{display:none}
+@media (prefers-reduced-motion:reduce){.rmx-tiles .rmx-glbox{transition:none}}
 /* Aktivitaetsseite: Karte fuellt das bestehende Streckenfeld */
 /* v8-439: Die Karte endete als hartes Rechteck. Jetzt laeuft die KARTENEBENE nach unten aus (Maske
    statt Farbkante: darunter liegt die Seite samt Stimmung der Sportart — eine feste Farbe saehe man

@@ -58,7 +58,9 @@ const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 let KEY = 'TESTKEY', FAIL = false;
 /* ausgeliefert wird die ECHTE map-config.js — ersetzt wird nur der Schluessel */
-const cfgFile = () => { const s0 = readFileSync(join(APP, 'js', 'map-config.js'), 'utf8'); if (!/key: '[A-Za-z0-9]*'/.test(s0)) throw new Error('map-config.js hat eine unerwartete Form'); return s0.replace(/key: '[A-Za-z0-9]*'/, "key: '" + KEY + "'"); };
+/* v8-440: Dieser Test prueft die Kartenansicht ueber BILDKACHELN (engine:'raster' — Rueckfall und Schalter);
+   die auf dem Geraet gezeichnete Karte laeuft in route_map_gl_e2e_test.mjs. */
+const cfgFile = () => { const s0 = readFileSync(join(APP, 'js', 'map-config.js'), 'utf8'); if (!/key: '[A-Za-z0-9]*'/.test(s0) || !/engine: 'vector',/.test(s0)) throw new Error('map-config.js hat eine unerwartete Form'); return s0.replace(/key: '[A-Za-z0-9]*'/, "key: '" + KEY + "'").replace(/engine: 'vector',/, "engine: 'raster',"); };
 const server = http.createServer((req, res) => {
   let p = req.url.split('?')[0]; if (p === '/') p = '/index.html';
   if (p === '/env.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); res.end('/* Test */'); return; }

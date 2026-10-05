@@ -56,8 +56,11 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 let KEY = 'TESTKEY', DETAIL = true, TS = 512;
 /* v8-434: ausgeliefert wird die ECHTE map-config.js (Adressvorlagen!) — ersetzt werden nur Schluessel,
    Kachelgroesse und der Schalter fuer die Aktivitaetsseite. Der echte Schluessel verlaesst den Test nie. */
-const cfgFile = () => { const s0 = readFileSync(join(APP, 'js', 'map-config.js'), 'utf8'); const s = s0.replace(/key: '[A-Za-z0-9]*'/, "key: '" + KEY + "'").replace(/tileSize: 512,/, 'tileSize: ' + TS + ',').replace(/detail: true,(\s*tiles:)/, 'detail: ' + DETAIL + ',$1');
-  if (!/key: '[A-Za-z0-9]*'/.test(s0) || !/tileSize: 512,/.test(s0) || !/detail: true,\s*tiles:/.test(s0)) throw new Error('map-config.js hat eine unerwartete Form'); return s; };
+const cfgFile = () => { const s0 = readFileSync(join(APP, 'js', 'map-config.js'), 'utf8'); const s = s0.replace(/key: '[A-Za-z0-9]*'/, "key: '" + KEY + "'").replace(/tileSize: 512,/, 'tileSize: ' + TS + ',').replace(/detail: true,(\s*tiles:)/, 'detail: ' + DETAIL + ',$1')
+    /* v8-440: Dieser Test prueft den Weg ueber BILDKACHELN (engine:'raster' — Rueckfall und Schalter).
+       Die auf dem Geraet gezeichnete Karte hat ihren eigenen Lauf: route_map_gl_e2e_test.mjs. */
+    .replace(/engine: 'vector',/, "engine: 'raster',");
+  if (!/key: '[A-Za-z0-9]*'/.test(s0) || !/tileSize: 512,/.test(s0) || !/detail: true,\s*tiles:/.test(s0) || !/engine: 'vector',/.test(s0)) throw new Error('map-config.js hat eine unerwartete Form'); return s; };
 const server = http.createServer((req, res) => {
   let p = req.url.split('?')[0]; if (p === '/') p = '/index.html';
   if (p === '/env.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); res.end('/* Test */'); return; }
