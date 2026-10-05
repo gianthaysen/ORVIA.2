@@ -95,7 +95,7 @@ const INFO = `(() => { const el = document.querySelector('.rmv'); if (!el) retur
   const line = el.querySelector('.rmx-line'), p0 = line.getPointAtLength(0), m = line.getScreenCTM(), pp = [p0.x * m.a + p0.y * m.c + m.e - sr.left, p0.x * m.b + p0.y * m.d + m.f - sr.top];
   return { Z: st.Z, fitZ: st.fitZ, z: z, tiles: imgs.length, cur: cur.length, loaded: cur.filter(i => i.classList.contains('ok') && i.complete && i.naturalWidth > 0).length, covers: covers,
     start: [sb.left + sb.width / 2 - sr.left, sb.top + sb.height / 2 - sr.top], end: [eb.left + eb.width / 2 - sr.left, eb.top + eb.height / 2 - sr.top], cross: cross, path0: pp,
-    pathLen: line.getTotalLength(), strokeW: parseFloat(getComputedStyle(line).strokeWidth), stage: [Math.round(sr.width), Math.round(sr.height)], requested: st.requested, reused: st.reused, failed: st.failed,
+    pathLen: line.getTotalLength(), lineW: line.getBoundingClientRect().width, d: line.getAttribute('d'), gT: el.querySelector('.rmv-g').getAttribute('transform'), seeded: st.seeded, bakes: st.bakes, points: st.points, under: imgs.length - cur.length, strokeW: parseFloat(getComputedStyle(line).strokeWidth), stage: [Math.round(sr.width), Math.round(sr.height)], requested: st.requested, reused: st.reused, failed: st.failed,
     notiles: el.classList.contains('rmv-notiles'), note: (el.querySelector('.rmv-note') || {}).textContent || '', noteShown: getComputedStyle(el.querySelector('.rmv-note')).display !== 'none',
     attrShown: !!(el.querySelector('.rmx-attr') && getComputedStyle(el.querySelector('.rmx-attr')).display !== 'none'), attr: (el.querySelector('.rmx-attr') || {}).textContent || '',
     title: el.querySelector('.rmv-ttl b').textContent, sub: el.querySelector('.rmv-ttl span').textContent, focus: document.activeElement && document.activeElement.className, role: el.getAttribute('role'), modal: el.getAttribute('aria-modal') };
@@ -111,10 +111,10 @@ async function boot(mode) {
   const reqs = [];
   await ctx.route('**api.maptiler.com/**', r => { const u = new URL(r.request().url()); reqs.push({ path: u.pathname, key: u.searchParams.get('key'), ref: r.request().headers()['referer'] || '' });
     if (/logo\.svg/.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="12"/>' });
-    const m = /^\/maps\/([^/]+)\/(256\/)?(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
+    const m = /^\/maps\/([^/]+)\/(256\/)?(\d+)\/(\d+)\/(\d+)@2x\.webp$/.exec(u.pathname);
     if (!m || FAIL) return r.fulfill({ status: 403, body: 'no' });
     return r.fulfill({ contentType: 'image/svg+xml', body: tileSvg(+m[3], +m[4], +m[5]) }); });
-  const tiles = () => reqs.filter(q => /@2x\.png$/.test(q.path)).length;
+  const tiles = () => reqs.filter(q => /@2x\.webp$/.test(q.path)).length;
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
   await page.waitForTimeout(1200);
@@ -151,12 +151,22 @@ async function boot(mode) {
   ok('A4 alle Kacheln des Ausschnitts geladen, Bildschirm lueckenlos gedeckt', !!o && o.cur >= 1 && o.loaded === o.cur && o.covers === true && o.notiles === false, JSON.stringify(o && { kacheln: o.cur, geladen: o.loaded, stufe: o.z }));
   ok('A5 Strecke liegt deckungsgleich: Start-Ring auf der Kreuzung 51,4800 / 7,2160 der Kachel (± 1 px), Pfadanfang auf dem Ring', !!o && close1(o.start, o.cross, 1) && close1(o.path0, o.start, 1), JSON.stringify(o && [r1(o.start), r1(o.cross), r1(o.path0)]));
   ok('A6 ganze Strecke sichtbar; Kopf und Knoepfe bleiben frei (Start/Ziel im Innenrand)', !!o && o.start[0] > 40 && o.start[0] < 350 && o.start[1] > 70 && o.start[1] < 720 && Math.abs(o.Z - o.fitZ) < 1e-6 && o.pathLen > 400, JSON.stringify(o && [r1(o.start), +o.pathLen.toFixed(0)]));
-  ok('A7 Anfragen beim Oeffnen: hoechstens 6 Kacheln', nOpen - nField <= 6 && nOpen - nField === o.requested, 'neu: ' + (nOpen - nField));
+  ok('A7 Anfragen beim Oeffnen: hoechstens 6 Kacheln der Ansicht (die Unterlage aus dem Kartenfeld kommt im echten Betrieb aus dem Zwischenspeicher — der Test hat keinen)', o.requested <= 6 && o.seeded >= 1 && o.seeded <= 6 && nOpen - nField === o.requested + o.seeded, JSON.stringify({ ansicht: o.requested, unterlage: o.seeded, netz: nOpen - nField }));
+  ok('A7a gezeichnet wird die Anzeige-Strecke (ausgeduennt): deutlich weniger Punkte als aufgezeichnet', o.points >= 8 && o.points < 60, o.points + ' von 121');
   ok('A8 Quellenhinweis sichtbar', !!o && o.attrShown === true && /© MapTiler © OpenStreetMap contributors/.test(o.attr));
 
   sec('Verschieben');
+  { /* kleines Stueck (40 px): die fertig gezeichnete Streckenebene wird nur bewegt, nicht neu gezeichnet */
+    await page.mouse.move(200, 520); await page.mouse.down();
+    for (let i = 1; i <= 8; i++) { await page.mouse.move(200 + i * 5, 520 + i * 3); await page.waitForTimeout(16); }
+    await page.waitForTimeout(180); const s1 = await B.info(); await page.mouse.up(); await page.waitForTimeout(400);
+    const s2 = await B.info();
+    ok('B0 kleines Verschieben (40 / 24 px): Strecke folgt genau (± 1 px), wird dafuer aber NICHT neu gezeichnet (nur die Ebene bewegt sich)', close1([s1.start[0] - o.start[0], s1.start[1] - o.start[1]], [40, 24], 1) && s1.bakes === o.bakes && s2.bakes === o.bakes && close1(s1.path0, s1.start, 1) && close1(s2.start, s2.cross, 1), JSON.stringify({ bewegt: r1([s1.start[0] - o.start[0], s1.start[1] - o.start[1]]), neuGezeichnet: s2.bakes - o.bakes }));
+    await page.mouse.move(240, 544); await page.mouse.down(); for (let i = 1; i <= 8; i++) { await page.mouse.move(240 - i * 5, 544 - i * 3); await page.waitForTimeout(16); } await page.waitForTimeout(180); await page.mouse.up(); await page.waitForTimeout(400);
+  }
   await page.mouse.move(200, 520); await page.mouse.down();
   for (let i = 1; i <= 10; i++) { await page.mouse.move(200 - i * 14, 520 - i * 18); await page.waitForTimeout(16); }
+  await page.waitForTimeout(180);   /* Finger ruht vor dem Loslassen ⇒ kein Schwung */
   const mid = await B.info();
   await page.mouse.up(); await page.waitForTimeout(900);
   const p = await B.info();
@@ -178,12 +188,26 @@ async function boot(mode) {
   ok('C1 Finger doppelt so weit auseinander ⇒ eine Stufe hinein; der Ort zwischen den Fingern bleibt stehen (± 1,5 px)', !!z2 && Math.abs(z2.Z - (f0.Z + 1)) < 0.02 && close1(z2.start, f0.start, 1.5), JSON.stringify([+f0.Z.toFixed(2), +z2.Z.toFixed(2), r1(z2.start), r1(f0.start)]));
   ok('C2 WAEHREND des Zoomens geht keine Anfrage hinaus — erst danach die Kacheln der Endstufe', nDuring === nBefore && Math.abs(during.Z - (f0.Z + 1)) < 0.02 && nAfter > nBefore && nAfter - nBefore <= 6, JSON.stringify({ vorher: nBefore, waehrend: nDuring, danach: nAfter }));
   ok('C3 Strichstaerke bleibt gleich (4,5 px), Strecke liegt in der neuen Stufe auf der Karte (± 1,5 px)', Math.abs(z2.strokeW - 4.5) < 0.01 && Math.abs(during.strokeW - 4.5) < 0.01 && z2.covers === true && z2.loaded === z2.cur && close1(z2.start, z2.cross, 1.5) && z2.z === f0.z + 1, JSON.stringify([r1(z2.start), r1(z2.cross), z2.z]));
-  ok('C4 Streckenlaenge auf dem Bildschirm verdoppelt sich (Pfad neu gelegt, nicht nur gestreckt)', Math.abs(z2.pathLen / f0.pathLen - 2) < 0.03, (z2.pathLen / f0.pathLen).toFixed(3));
+  ok('C4 Strecke ist auf dem Bildschirm doppelt so gross — der Pfad selbst wurde dafuer NICHT neu geschrieben (nur transformiert)', Math.abs(z2.lineW / f0.lineW - 2) < 0.04 && z2.d === o.d && during.d === o.d && z2.gT !== f0.gT, (z2.lineW / f0.lineW).toFixed(3));
+
+  sec('Schwung');
+  await page.click('.rmv-fit'); await page.waitForTimeout(800);
+  const g0 = await B.info();
+  await page.mouse.move(250, 560); await page.mouse.down();
+  for (let i = 1; i <= 6; i++) { await page.mouse.move(250 - i * 16, 560 - i * 12); await page.waitForTimeout(12); }
+  await page.mouse.up(); await page.waitForTimeout(120);
+  const g1 = await B.info(); await page.waitForTimeout(1500);
+  const g2 = await B.info(); await page.waitForTimeout(300);
+  const g3 = await B.info();
+  { const drag = [-96, -72], moved = [g2.start[0] - g0.start[0], g2.start[1] - g0.start[1]];
+    ok('B3 Loslassen im Schwung: die Karte gleitet in dieselbe Richtung weiter und kommt zur Ruhe; danach lueckenlos gedeckt, Strecke auf der Karte', moved[0] < drag[0] - 25 && moved[1] < drag[1] - 18 && Math.abs(moved[0] / moved[1] - drag[0] / drag[1]) < 0.25 && close1(g3.start, g2.start, 0.01) && g2.covers === true && g2.loaded === g2.cur && close1(g2.start, g2.cross, 1) && Math.abs(g2.Z - g0.Z) < 1e-9, JSON.stringify({ gezogen: drag, bewegt: r1(moved), kurzDanach: r1([g1.start[0] - g0.start[0], g1.start[1] - g0.start[1]]) })); }
 
   sec('Mausrad, Knoepfe, Grenzen');
-  await page.mouse.move(z2.start[0], z2.start[1]); for (let i = 0; i < 2; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(40); } await page.waitForTimeout(800);
+  await page.click('.rmv-fit'); await page.waitForTimeout(800);
+  const wf = await B.info();
+  await page.mouse.move(wf.start[0], wf.start[1]); for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(40); } await page.waitForTimeout(800);
   const w = await B.info();
-  ok('D1 Mausrad zoomt auf die Stelle unter dem Zeiger (± 1,5 px)', Math.abs(w.Z - (z2.Z + 1)) < 0.02 && close1(w.start, z2.start, 1.5) && w.covers === true, JSON.stringify([+w.Z.toFixed(2), r1(w.start), r1(z2.start)]));
+  ok('D1 Mausrad zoomt auf die Stelle unter dem Zeiger (± 1,5 px)', Math.abs(w.Z - (wf.Z + 2)) < 0.02 && close1(w.start, wf.start, 1.5) && w.covers === true && w.loaded === w.cur, JSON.stringify([+w.Z.toFixed(2), r1(w.start), r1(wf.start)]));
   await page.click('.rmv-out'); await page.waitForTimeout(700);
   const m1 = await B.info();
   await page.click('.rmv-in'); await page.waitForTimeout(700);
@@ -210,7 +234,7 @@ async function boot(mode) {
   const re = await B.info(); const st1 = await page.evaluate(() => ORVIA.routeMapView.stats());
   ok('E2 Enter auf dem Feld oeffnet erneut — OHNE neue Kachel-Anfrage (Sitzungsspeicher), Karte steht sofort', !!re && B.tiles() === nAll && st1.requested === st0.requested && st1.reused > st0.reused && re.loaded === re.cur && re.covers === true && close1(re.start, o.start, 1), JSON.stringify({ anfragen: [nAll, B.tiles()], wiederverwendet: [st0.reused, st1.reused] }));
   await page.click('.rmv-close'); await page.waitForTimeout(300);
-  ok('E3 Knopf „Karte schließen" schliesst; alle Anfragen trugen nur Stil, Schluessel und die Herkunft der Seite', await page.evaluate(() => !document.querySelector('.rmv')) && B.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/1[0-7]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && B.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), 'Anfragen gesamt: ' + B.reqs.length);
+  ok('E3 Knopf „Karte schließen" schliesst; alle Anfragen trugen nur Stil, Schluessel und die Herkunft der Seite', await page.evaluate(() => !document.querySelector('.rmv')) && B.reqs.filter(q => /@2x\.webp$/.test(q.path)).every(q => /^\/maps\/basic-v2-dark\/1[0-7]\/\d+\/\d+@2x\.webp$/.test(q.path) && q.key === 'TESTKEY') && B.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), 'Anfragen gesamt: ' + B.reqs.length);
   ok('E4 keine Laufzeitfehler', B.errs.length === 0, B.errs.slice(0, 2).join(' | '));
   ok('E5 Anfragen der ganzen Sitzung (oeffnen, schieben, 2-Finger, Rad, alle Stufen bis zur Grenze und zurueck) bleiben ueberschaubar', nAll - nField <= 60, 'Kacheln: ' + (nAll - nField));
   await B.ctx.close();
@@ -268,7 +292,7 @@ async function boot(mode) {
   sec('Story');
   ok('H1 Strecke haelt Abstand zur Datumszeile — ohne sicheren Rand UND mit 59 px (iPhone mit Dynamic Island)', S.s0.gap >= 16 && S.s59.gap >= 16 && Math.abs(S.s59.gap - S.s0.gap) <= 2 && S.s59.headBottom - S.s0.headBottom > 50, JSON.stringify({ ohne: +S.s0.gap.toFixed(1), mit59: +S.s59.gap.toFixed(1), kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)] }));
   ok('H2 … und die Strecke bleibt gross genug (≥ 200 px hoch)', S.s59.routeH >= 200 && S.s0.routeH >= 200, JSON.stringify([+S.s0.routeH.toFixed(0), +S.s59.routeH.toFixed(0)]));
-  ok('H3 Tonwerte wirken am Kachelbild (Helligkeit 2,2 · Kontrast 2,9), Schleier der Story 0,30', /brightness\(2\.2\) contrast\(2\.9\)/.test(S.s0.filter) && /rgba\(5, 8, 13, 0\.3\)/.test(S.s0.dim), JSON.stringify([S.s0.filter, S.s0.dim]));
+  ok('H3 kein Filter auf dem Kachelbild (der Kartenstil liefert das Bild), Schleier der Story 0,18', S.s0.filter === 'none' && /rgba\(5, 8, 13, 0\.18\)/.test(S.s0.dim), JSON.stringify([S.s0.filter, S.s0.dim]));
   { /* Band des Kopfes: bis wohin ist es fast deckend (≥ 0,86), wo ist es ausgelaufen (0,05)? — aus den berechneten Stopps */
     const px = s => (s.match(/(\d+(?:\.\d+)?)px/g) || []).map(parseFloat);
     const a = px(S.s0.band), b = px(S.s59.band);

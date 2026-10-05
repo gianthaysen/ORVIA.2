@@ -3638,24 +3638,22 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
      →  Strecke  →  Start/Ziel.
    Bewusst KEINE Deckkraft auf der ganzen Kartenebene (dabei verloeren Strassen, Schrift
    und Flaechen gleichmaessig Struktur) — abgedunkelt wird ueber den Schleier.
-   Stellschrauben: --rmx-sat (Saettigung der Karte) · --rmx-dim (Deckkraft des Schleiers)
-     · --rmx-bri / --rmx-con (Tonwerte der Karte).
-   v8-435 — Gian nach dem ersten echten Bild: „Karte zu wenig erkennbar, Kontrast zu den
-   Strassen muss staerker sein". Gemessen an der echten Kachel (Dataviz Dark, reines Grau):
-   Flaeche 41, Gebaeude 34, Strassen 50, Schrift bis 124 — Strasse und Flaeche liegen nur
-   9 von 255 Stufen auseinander; unter dem Schleier blieb davon nichts. Helligkeit × Kontrast
-   spreizen genau diesen Bereich: Flaeche ≈ 20, Gebaeude ≈ 0, Strassen ≈ 75, Schrift hell.
-   Die Karte bleibt dunkel und einfarbig, die Strassen tragen jetzt die Struktur.
-   (Die Werte gehoeren zu diesem Kartenstil — bei einem anderen Stil neu abstimmen.)
+   Stellschraube: --rmx-dim (Deckkraft des Schleiers).
+   v8-437 — KEIN Filter mehr auf den Kachelbildern. Der Versuch aus v8-435, dem sehr
+   kontrastarmen Stil „Dataviz Dark" die Strassen per Helligkeit × Kontrast abzuringen, machte
+   die Gebaeude schwarz (Gian: „zu dunkel, viel zu schwarz"; die Strecke „lief durch Haeuser").
+   Jetzt liefert der Kartenstil selbst das Bild (map-config.js: basic-v2-dark — graue Flaeche,
+   hellere Strassen, keine Gebaeudegrundrisse); hier wird nur noch leicht abgedunkelt.
+   Ohne Filter muss das Geraet die grossen Kachelbilder beim Verschieben auch nicht bei
+   jedem Bild neu durchrechnen.
    ============================================================ */
 .rmx{position:relative;overflow:hidden;flex:none}
 /* z-index:0 ⇒ eigener Stapel: Schleier (::before) und Verlauf (::after) bleiben UNTER der Strecke.
    Ohne das lagen sie im Kartenfeld der Aktivitaetsseite ueber der Linie und nahmen ihr die Farbe
    (in der Story fiel es nicht auf — dort bildet die Maske schon einen eigenen Stapel). */
 .rmx-tiles{position:absolute;inset:0;z-index:0}
-.rmx-tiles img.rmx-t,.rmv-tiles img.rmx-t{position:absolute;z-index:0;display:block;max-width:none;opacity:0;transition:opacity .6s ease;-webkit-user-select:none;user-select:none;pointer-events:none;
-  -webkit-filter:saturate(var(--rmx-sat,.6)) brightness(var(--rmx-bri,2.2)) contrast(var(--rmx-con,2.9));filter:saturate(var(--rmx-sat,.6)) brightness(var(--rmx-bri,2.2)) contrast(var(--rmx-con,2.9))}
-.rmx-tiles::before{content:"";position:absolute;inset:0;z-index:1;background:rgba(5,8,13,var(--rmx-dim,.30));pointer-events:none}
+.rmx-tiles img.rmx-t,.rmv-tiles img.rmx-t{position:absolute;z-index:0;display:block;max-width:none;opacity:0;transition:opacity .6s ease;-webkit-user-select:none;user-select:none;pointer-events:none}
+.rmx-tiles::before{content:"";position:absolute;inset:0;z-index:1;background:rgba(5,8,13,var(--rmx-dim,.10));pointer-events:none}
 .rmx-tiles img.rmx-t.ok,.rmv-tiles img.rmx-t.ok{opacity:1}
 .rmx.tiles-failed .rmx-tiles,.rmx.tiles-failed .rmx-attr{display:none}
 .rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 5px rgba(0,0,0,.55));filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
@@ -3674,14 +3672,15 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .route-map.can-open{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .route-map.can-open:focus-visible{outline:2px solid rgba(190,220,245,.8);outline-offset:2px}
 .route-map .rmx-open{position:absolute;top:10px;right:10px;z-index:3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(10,15,22,.72);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;pointer-events:none;
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  background:rgba(14,19,27,.90);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;pointer-events:none}
 .route-map.has-rmx .rmx-attr{right:8px;left:auto}
 /* ============================================================
    v8-435 · Kartenansicht zum Umsehen (route-map-view.js)
    Vollbild ueber der Aktivitaetsseite. Unten nach oben: Kachelebene (.rmv-layer, wird
    waehrend der Geste als Ganzes verschoben/gestreckt) → Schleier (.rmv-dim, steht still)
-   → Strecke (SVG) → Bedienung. Die Karte ist hier der Inhalt, deshalb weniger Schleier.
+   → Strecke (SVG) → Bedienung. Die Karte ist hier der Inhalt, deshalb fast kein Schleier.
+   Ueber der bewegten Karte liegen bewusst KEINE Unschaerfe-Flaechen (backdrop-filter): sie
+   muessten bei jedem Bild neu gerechnet werden — auf dem iPhone ein Grund fuers Ruckeln.
    ============================================================ */
 .rmv{position:fixed;inset:0;z-index:190;background:#070b11;overflow:hidden;color:#f3f1ea;font-family:var(--font);
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;animation:rmvIn .2s ease-out both}
@@ -3692,8 +3691,10 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmv-tiles{position:absolute;inset:0}
 .rmv-tiles img.rmx-t{transition:opacity .25s ease}
 .rmv-dim{position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(5,8,13,.90) 0,rgba(5,8,13,.80) calc(var(--sat,0px) + 60px),rgba(5,8,13,0) calc(var(--sat,0px) + 132px),rgba(5,8,13,0) 84%,rgba(5,8,13,.55) 100%),rgba(5,8,13,var(--rmx-dim,.16))}
-.rmv-route{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
+  background:linear-gradient(180deg,rgba(5,8,13,.90) 0,rgba(5,8,13,.80) calc(var(--sat,0px) + 60px),rgba(5,8,13,0) calc(var(--sat,0px) + 132px),rgba(5,8,13,0) 84%,rgba(5,8,13,.55) 100%),rgba(5,8,13,var(--rmx-dim,.04))}
+/* Streckenebene: 140 px groesser als der Bildschirm (EDGE in route-map-view.js) — beim Verschieben wird sie
+   nur bewegt statt neu gezeichnet */
+.rmv-route{position:absolute;left:-140px;top:-140px;width:calc(100% + 280px);height:calc(100% + 280px);display:block;overflow:hidden;pointer-events:none;will-change:transform}
 .rmv .rmx-case{stroke-opacity:.6}
 .rmv-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
   padding:calc(var(--sat,0px) + 14px) 14px 0 18px;pointer-events:none}
@@ -3701,8 +3702,8 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmv-ttl b{display:block;font-size:17px;font-weight:750;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rmv-ttl span{display:block;margin-top:2px;font-size:12.5px;font-weight:600;color:rgba(232,238,245,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rmv-btn{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;pointer-events:auto;
-  background:rgba(12,17,25,.78);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;font-family:var(--font);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-tap-highlight-color:transparent;transition:background .15s ease,transform .12s ease}
+  background:rgba(14,19,27,.92);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;font-family:var(--font);
+  box-shadow:0 2px 10px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;transition:background .15s ease,transform .12s ease}
 .rmv-btn:active{transform:scale(.94);background:rgba(28,36,48,.9)}
 .rmv-btn:focus-visible{outline:2px solid rgba(190,220,245,.85);outline-offset:2px}
 .rmv-ctl{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 40px);display:flex;flex-direction:column;gap:10px}
@@ -3714,7 +3715,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 @media (prefers-reduced-motion:reduce){.rmv{animation:none}.rmv-tiles img.rmx-t{transition:none}}
 /* Story-Cover: Karte ist Seitenhintergrund, laeuft nach unten ins Schwarz aus */
 .gm-story .wst-mapbg{position:absolute;top:0;left:0;right:0;z-index:0;display:flex;justify-content:center;overflow:hidden;pointer-events:none}
-.gm-story .wst-mapbg .rmx-tiles{--rmx-dim:.30;
+.gm-story .wst-mapbg .rmx-tiles{--rmx-dim:.18;
   /* nach unten ausblenden (Maske) statt auf eine feste Farbe zulaufen: darunter liegt der
      Seitenverlauf der Sportart — eine Farbkante waere als Strich sichtbar */
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%);

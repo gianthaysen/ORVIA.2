@@ -89,10 +89,10 @@ async function run(mode) {
     if (/logo\.svg/.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="12"/>' });
     /* Der ECHTE Vertrag des Anbieters (5.10.2026 live geprueft): 512er OHNE Groessenangabe, 256er mit „/256/";
        „/512/…" gibt es nicht und scheitert — der fruehere Platzhalter nahm es an und verdeckte den Fehler. */
-    const m = /^\/maps\/([^/]+)\/(256\/)?(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
+    const m = /^\/maps\/([^/]+)\/(256\/)?(\d+)\/(\d+)\/(\d+)@2x\.webp$/.exec(u.pathname);
     if (!m || mode === 'fail') return r.fulfill({ status: 403, body: 'no' });
     return r.fulfill({ contentType: 'image/svg+xml', body: tileSvg(+m[3], +m[4], +m[5]) }); });
-  const tileReqs = () => reqs.filter(q => /@2x\.png$/.test(q.path)).length;
+  const tileReqs = () => reqs.filter(q => /@2x\.webp$/.test(q.path)).length;
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
   await page.waitForTimeout(1200);
@@ -178,7 +178,7 @@ ok('A1 App laedt ohne Laufzeitfehler, Story oeffnet', T.errs.length === 0 && T.R
 ok('A2 Karte an: alle Kacheln geladen und sichtbar', T.R.enabled === true && T.R.tiles >= 1 && T.R.loaded === T.R.tiles && T.R.tilesShown === true && /has-tiles/.test(T.R.cls), T.R.loaded + '/' + T.R.tiles);
 ok('A3 Kacheln decken den Ausschnitt lueckenlos (390 × 557), ohne Fugen', T.R.covers === true && T.R.noGap === true && T.R.rmx[0] === 390 && T.R.rmx[1] === 557, JSON.stringify(T.R.rmx));
 ok('A4 Strecke und Karte liegen deckungsgleich: Start-Ring sitzt auf der Kreuzung 51,4800 / 7,2160 der Kachel (± 1 px)', !!T.R.cross && Math.abs(T.R.start[0] - T.R.cross[0]) <= 1 && Math.abs(T.R.start[1] - T.R.cross[1]) <= 1, JSON.stringify([T.R.start.map(x => +x.toFixed(1)), (T.R.cross || []).map(x => +x.toFixed(1))]));
-ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.png$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/1[3-5]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
+ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.webp$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.webp$/.test(q.path)).every(q => /^\/maps\/basic-v2-dark\/1[3-5]\/\d+\/\d+@2x\.webp$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
 ok('A6 Quellenhinweis sichtbar', T.R.attrShown === true && /© MapTiler © OpenStreetMap contributors/.test(T.R.attr || ''));
 ok('A7 Cover: Distanz als Hauptzahl, drei Kennzahlen, kein Satz mehr', /^3,33 km$/i.test(T.R.hero || '') && T.R.stats.length === 3 && /36 min/.test(T.R.stats[0]) && /10:49/.test(T.R.stats[1]) && /110 bpm/.test(T.R.stats[2]) && T.R.sentence === false, JSON.stringify([T.R.hero, T.R.stats]));
 ok('A8 Diagramm-Seite: „Ø 110 bpm · Max. 131 bpm · Garmin" — ohne Erklaersatz', /Ø 110 bpm/.test(T.R.chartFoot || '') && /Max\. 131 bpm/.test(T.R.chartFoot || '') && /garmin/i.test(T.R.chartFoot || '') && !/nachgerechnet|über die Einheit/.test(T.R.chartFoot || ''), T.R.chartFoot);
@@ -191,7 +191,7 @@ ok('A10 Einheit ohne Strecke (Kraft): Seite wie bisher, keine Karte', T.R.gymOpe
 
 /* 256er-Rueckfall: eine Zeile in map-config.js (tileSize: 256) — Karte, Lage und Wiederverwendung bleiben richtig */
 const S = await run('ts256');
-ok('A16 Rueckfall tileSize 256: alle Kacheln ueber „/256/" geladen, lueckenlos, Strecke deckungsgleich (± 1 px)', S.errs.length === 0 && S.R.tiles >= 1 && S.R.loaded === S.R.tiles && S.R.covers === true && S.R.noGap === true && S.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/256\/1[4-6]\/\d+\/\d+@2x\.png$/.test(q.path)) && !!S.R.cross && Math.abs(S.R.start[0] - S.R.cross[0]) <= 1 && Math.abs(S.R.start[1] - S.R.cross[1]) <= 1, JSON.stringify({ kacheln: S.R.tiles, start: S.R.start.map(x => +x.toFixed(1)), kreuzung: (S.R.cross || []).map(x => +x.toFixed(1)) }));
+ok('A16 Rueckfall tileSize 256: alle Kacheln ueber „/256/" geladen, lueckenlos, Strecke deckungsgleich (± 1 px)', S.errs.length === 0 && S.R.tiles >= 1 && S.R.loaded === S.R.tiles && S.R.covers === true && S.R.noGap === true && S.reqs.filter(q => /@2x\.webp$/.test(q.path)).every(q => /^\/maps\/basic-v2-dark\/256\/1[4-6]\/\d+\/\d+@2x\.webp$/.test(q.path)) && !!S.R.cross && Math.abs(S.R.start[0] - S.R.cross[0]) <= 1 && Math.abs(S.R.start[1] - S.R.cross[1]) <= 1, JSON.stringify({ kacheln: S.R.tiles, start: S.R.start.map(x => +x.toFixed(1)), kreuzung: (S.R.cross || []).map(x => +x.toFixed(1)) }));
 ok('A17 … und auch dort keine erneute Anfrage beim Blaettern und Wiederoeffnen', S.R.n2 === S.R.n1 && S.R.n3 === S.R.n1 && S.R.n1 === S.R.tiles && S.R.n1 <= 24, JSON.stringify({ n1: S.R.n1, n2: S.R.n2, n3: S.R.n3 }));
 
 const D = await run('nodetail');

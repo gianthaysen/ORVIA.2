@@ -1,5 +1,5 @@
 /* ============================================================
-   ORVIA · map-config — Quelle der Kartenkacheln (v8-432 … 435)
+   ORVIA · map-config — Quelle der Kartenkacheln (v8-432 … 437)
    ------------------------------------------------------------
    DIE EINE Stelle fuer alles, was die Karte betrifft. Der Schluessel steht nur hier —
    route-map.js liest ihn ueber ORVIA_MAP_CONFIG, kein anderes Modul kennt ihn.
@@ -15,8 +15,16 @@
                       sie fangen den Anbieter ab)
        Der Schluessel ist ein oeffentlicher Browser-Schluessel (er steht in jeder
        Kachel-Adresse) — die Beschraenkung auf die Herkunft ist sein Schutz.
-     · style: Karten-Id aus MapTiler, z. B. 'dataviz-dark' (sehr reduziert) oder die Id
-       eines eigenen Stils aus dem MapTiler-Editor.
+     · style: Karten-Id aus MapTiler oder die Id eines eigenen Stils aus dem MapTiler-Editor.
+       Seit v8-437 'basic-v2-dark' (Gian: „noch zu dunkel und viel zu schwarz", Vergleich
+       Runna). Am 5.10. an echten Kacheln verglichen (Bochum, Stufen 13–17):
+         dataviz-dark   Flaeche 41 · Strassen 50 · Gebaeude 34 als dunkle Bloecke
+                        → Strassen kaum zu sehen; mit Kontrastfilter wurden die Gebaeude schwarz
+         basic-v2-dark  Flaeche 44 · Strassen 68 · KEINE Gebaeudegrundrisse, Strassennamen
+                        → grau statt schwarz, Strassen deutlich, ohne jeden Filter
+       Ohne Gebaeude faellt auch nicht mehr auf, wenn die GPS-Aufzeichnung ein paar Meter
+       neben der Strasse liegt (vorher „lief" die Strecke sichtbar durch Haeuser).
+     · Bildformat .webp: dieselbe Kachel 60 statt 108 kB (gemessen) — laedt mobil schneller.
      · tileSize: 512 (Standard; vier Mal weniger Anfragen als 256) oder 256.
        Sollten die 512er-Kacheln einmal nicht mehr kommen: hier auf 256 stellen —
        das ist die ganze Umstellung (es gilt dann die Vorlage tiles[256]).
@@ -48,13 +56,13 @@
 window.ORVIA_MAP_CONFIG = {
   provider: 'maptiler',
   key: 'CwKts3eJvP6HZyk1hUpe',
-  style: 'dataviz-dark',
+  style: 'basic-v2-dark',
   tileSize: 512,
   story: true,
   detail: true,
   tiles: {
-    512: 'https://api.maptiler.com/maps/{style}/{z}/{x}/{y}{r}.png?key={key}',
-    256: 'https://api.maptiler.com/maps/{style}/256/{z}/{x}/{y}{r}.png?key={key}'
+    512: 'https://api.maptiler.com/maps/{style}/{z}/{x}/{y}{r}.webp?key={key}',
+    256: 'https://api.maptiler.com/maps/{style}/256/{z}/{x}/{y}{r}.webp?key={key}'
   },
   logo: 'https://api.maptiler.com/resources/logo.svg',
   attribution: '© MapTiler © OpenStreetMap contributors'

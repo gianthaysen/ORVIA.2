@@ -9278,6 +9278,7 @@ function gmPlanLinkPick(aid,occ){
    Platz bleiben). Nur bei eingeschalteter Kartenquelle und vorhandener GPS-Strecke; sonst
    bleibt exakt die bisherige Zeichnung stehen (routeSVG). Laeuft NACH dem Einsetzen, weil
    die Karte die echte Breite des Feldes braucht. */
+var GM_ACT_MAP_PAD={t:26,r:26,b:30,l:26};   /* Innenrand der Strecke im Kartenfeld — EINE Stelle (Feld + Unterlage der Kartenansicht) */
 function gmActMountRouteMap(pg,route,vm){
   try{
     var RM=window.ORVIA&&ORVIA.routeMap;
@@ -9286,7 +9287,7 @@ function gmActMountRouteMap(pg,route,vm){
     var el=pg.querySelector('.route-map');if(!el)return false;
     var th=(typeof gmStoryTheme==='function')?gmStoryTheme(gmActFamily(vm&&vm.sportId)):null;
     var keep=el.innerHTML;
-    var ok=RM.mount(el,route,{cls:'detail',width:4,color:(th&&(th.hi||th.acc))||null,pad:{t:26,r:26,b:30,l:26}});
+    var ok=RM.mount(el,route,{cls:'detail',width:4,color:(th&&(th.hi||th.acc))||null,pad:GM_ACT_MAP_PAD});
     /* v8-435: Laeuft gerade die 5-Minuten-Pause nach einem Kachelfehler, meldet die Karte ihr
        Scheitern schon WAEHREND des Einsetzens — noch bevor unten jemand zuhoert. Dann sofort
        die bisherige Zeichnung (vorher blieb ein leeres Kartenfeld stehen). */
@@ -9312,6 +9313,8 @@ function gmActBindRouteMapOpen(el,route,vm,th){
     var go=function(){
       if(!el.classList.contains('can-open'))return;
       V.open(route,{color:(th&&(th.hi||th.acc))||null,title:(vm&&(vm.title||vm.sportLabel))||'',
+        /* Kacheln des Felds als sofortige Unterlage (kommen aus dem Zwischenspeicher) */
+        seed:{w:el.clientWidth,h:el.clientHeight,pad:GM_ACT_MAP_PAD},
         sub:[vm&&vm.distanceLabel,vm&&vm.durationLabel].filter(Boolean).join(' · '),
         labels:{map:_uiT('ui.karte'),close:_uiT('ui.karte_schliessen'),zoomIn:_uiT('ui.karte_groesser'),zoomOut:_uiT('ui.karte_kleiner'),fit:_uiT('ui.karte_ganze_strecke'),unavailable:_uiT('ui.karte_nicht_verfuegbar')}});
     };

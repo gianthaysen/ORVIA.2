@@ -28,7 +28,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map@4';
+  var VERSION = 'route-map@5';
   var BASE = 256;                 /* Bezugsraster der Zoomstufe Z (Welt = 256 · 2^Z CSS-px) */
   var MAX_Z = 16.6, MIN_Z = 3;    /* nie bis auf Hausnummern hinein, nie die halbe Welt */
   /* v8-433 — Anfragen sparen (abgerechnet wird je Kachel):
@@ -163,9 +163,80 @@
     return c.url.replace('{style}', encodeURIComponent(c.style)).replace('{key}', encodeURIComponent(c.key))
       .replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y).replace('{r}', '@2x');
   }
-  function pathD(pts, v) {
-    var d = '';
-    for (var i = 0; i < pts.length; i++) { var p = project(pts[i][0], pts[i][1], v); d += (i ? ' L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }
+  /* ---- Darstellung der Strecke (v8-437) ----
+     Gian 5.10.: „bei Runna ist alles deutlich smoother". Die Aufzeichnung zittert um wenige
+     Meter (GPS); gezeichnet sah man jede Zacke. Fuer die ANZEIGE wird deshalb
+       1. geglaettet  (gewichtetes Mittel ueber je zwei Nachbarn davor/danach, nur wenn sie
+                       hoechstens 25 m entfernt sind — echte Ecken und duenne Aufzeichnungen
+                       bleiben stehen; Start und Ziel bleiben exakt),
+       2. ausgeduennt (Punkte, die weniger als 0,7 m von der Linie abweichen, fallen weg —
+                       weniger Arbeit beim Zeichnen und Verschieben),
+       3. mit gerundeten Ecken gezeichnet (pathD: Radius hoechstens 6 m).
+     Die gespeicherten GPS-Daten bleiben unberuehrt — hier entsteht nur eine Kopie.
+     Was das NICHT kann: einen ganzen Abschnitt, den das GPS um 10 m daneben gelegt hat,
+     auf die Strasse zurueckschieben (das waere Kartenabgleich ueber einen Routendienst). */
+  var SMOOTH_W = [1, 2, 3, 2, 1], SMOOTH_MAX_M = 25, SIMPLIFY_M = 0.7, ROUND_M = 6;
+  function smooth(pts) {
+    var n = pts.length;
+    if (n < 5) return pts.slice();
+    var out = [pts[0]];
+    for (var i = 1; i < n - 1; i++) {
+      var sa = 0, so = 0, sw = 0;
+      for (var k = -2; k <= 2; k++) {
+        var j = i + k; if (j < 0 || j >= n) continue;
+        if (k !== 0 && haversineM(pts[i], pts[j]) > SMOOTH_MAX_M) continue;
+        var w = SMOOTH_W[k + 2]; sa += pts[j][0] * w; so += pts[j][1] * w; sw += w;
+      }
+      out.push(sw === SMOOTH_W[2] ? pts[i] : [sa / sw, so / sw]);   /* ohne nahen Nachbarn bleibt der Punkt, wie er ist */
+    }
+    out.push(pts[n - 1]);
+    return out;
+  }
+  /* simplify: Douglas-Peucker in Metern (ohne Rekursion — lange Strecken) */
+  function simplify(pts, tolM) {
+    var n = pts.length, tol = (tolM == null) ? SIMPLIFY_M : +tolM;
+    if (n < 3 || !(tol > 0)) return pts.slice();
+    var k = Math.cos(pts[0][0] * Math.PI / 180), MX = 111320 * k, MY = 110540;
+    var X = new Array(n), Y = new Array(n), keep = new Array(n), i;
+    for (i = 0; i < n; i++) { X[i] = pts[i][1] * MX; Y[i] = pts[i][0] * MY; keep[i] = false; }
+    keep[0] = keep[n - 1] = true;
+    var stack = [[0, n - 1]];
+    while (stack.length) {
+      var seg = stack.pop(), a = seg[0], b = seg[1], dx = X[b] - X[a], dy = Y[b] - Y[a], len2 = dx * dx + dy * dy, best = -1, bi = -1;
+      for (i = a + 1; i < b; i++) {
+        var px = X[i] - X[a], py = Y[i] - Y[a], d2;
+        if (len2 > 0) { var t = Math.max(0, Math.min(1, (px * dx + py * dy) / len2)), ex = px - t * dx, ey = py - t * dy; d2 = ex * ex + ey * ey; }
+        else d2 = px * px + py * py;
+        if (d2 > best) { best = d2; bi = i; }
+      }
+      if (bi > 0 && best > tol * tol) { keep[bi] = true; stack.push([a, bi]); stack.push([bi, b]); }
+    }
+    var out = [];
+    for (i = 0; i < n; i++) if (keep[i]) out.push(pts[i]);
+    return out;
+  }
+  /* display(route) → die Strecke, wie sie gezeichnet wird (Kopie; Rohdaten bleiben) */
+  function display(route) { return simplify(smooth(valid(route))); }
+  /* pathD(pts, view, opts) — opts.round: Eckenradius in Metern (0/ohne = Kanten), opts.digits */
+  function pathD(pts, v, opts) {
+    opts = opts || {};
+    var n = pts.length, dg = opts.digits == null ? 1 : opts.digits, P = new Array(n), i;
+    for (i = 0; i < n; i++) P[i] = project(pts[i][0], pts[i][1], v);
+    var f = function (p) { return p[0].toFixed(dg) + ',' + p[1].toFixed(dg); };
+    if (!n) return '';
+    var d = 'M' + f(P[0]);
+    var R = 0;
+    if (opts.round > 0 && n > 2) R = opts.round * v.world / (40075016.686 * Math.cos(pts[0][0] * Math.PI / 180));   /* Meter → px */
+    for (i = 1; i < n; i++) {
+      if (!(R > 0) || i === n - 1) { d += ' L' + f(P[i]); continue; }
+      var a = P[i - 1], b = P[i], c = P[i + 1];
+      var ax = a[0] - b[0], ay = a[1] - b[1], cx = c[0] - b[0], cy = c[1] - b[1];
+      var la = Math.sqrt(ax * ax + ay * ay), lc = Math.sqrt(cx * cx + cy * cy);
+      /* fast gerade weiter (Knick < ~6°) oder Punkte uebereinander ⇒ normale Kante */
+      if (la < 0.01 || lc < 0.01 || (ax * cx + ay * cy) / (la * lc) < -0.9945) { d += ' L' + f(b); continue; }
+      var ra = Math.min(R, la / 2), rc = Math.min(R, lc / 2);
+      d += ' L' + f([b[0] + ax * ra / la, b[1] + ay * ra / la]) + ' Q' + f(b) + ' ' + f([b[0] + cx * rc / lc, b[1] + cy * rc / lc]);
+    }
     return d;
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -200,7 +271,8 @@
     var c = cfg(), useTiles = c.enabled && opts.tiles !== false;
     var v = fit(pts, w, h, opts.pad, c.tileSize);
     if (!v) return '';
-    var d = pathD(pts, v);
+    /* Ausschnitt aus den Rohpunkten (die geglaettete Linie liegt immer innerhalb), gezeichnet wird die Anzeige-Strecke */
+    var d = pathD(simplify(smooth(pts)), v, { round: ROUND_M });
     var a = project(pts[0][0], pts[0][1], v), b = project(pts[pts.length - 1][0], pts[pts.length - 1][1], v);
     var col = opts.color ? esc(opts.color) : 'var(--acchi,var(--acc,#DCC79A))';
     var sw = +opts.width || 4;
@@ -283,7 +355,8 @@
 
   O.routeMap = { VERSION: VERSION, cfg: cfg, enabled: function () { return cfg().enabled; },
     lonX: lonX, latY: latY, xLon: xLon, yLat: yLat, haversineM: haversineM,
-    trim: trim, fit: fit, viewAt: viewAt, level: level, valid: valid, project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
+    trim: trim, fit: fit, viewAt: viewAt, level: level, valid: valid, smooth: smooth, simplify: simplify, display: display, ROUND_M: ROUND_M,
+    project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
     MAX_Z: MAX_Z, MIN_Z: MIN_Z, paused: function () { return _downUntil > _now(); },
     html: html, mount: mount, hydrate: hydrate, _err: _err, _ok: _ok,
     stats: function () { return { started: _started, reused: _reused, failed: _fails, kept: _keepOrder.length, pausedMs: Math.max(0, _downUntil - _now()) }; },
