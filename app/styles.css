@@ -3633,12 +3633,19 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* ============================================================
    v8-432 · Karte hinter der Strecke (route-map.js)
    .rmx = Ausschnitt in festen Pixeln: Kachelbilder (.rmx-tiles) + Strecke als SVG darueber.
-   Die Karte ist Kulisse: stark entsaettigt und abgedunkelt; die Strecke traegt die Farbe.
-   Stellschrauben: --rmx-sat (Saettigung) und --rmx-bri (Helligkeit).
+   Die Karte ist Kulisse, die Strecke traegt die Farbe. Aufbau von unten nach oben:
+     Kachelbilder (leicht entsaettigt)  →  dunkler ORVIA-Schleier  →  Verlauf (nur Story)
+     →  Strecke  →  Start/Ziel.
+   Bewusst KEINE Deckkraft auf der ganzen Kartenebene (dabei verloeren Strassen, Schrift
+   und Flaechen gleichmaessig Struktur) — abgedunkelt wird ueber den Schleier.
+   Stellschrauben: --rmx-sat (Saettigung der Karte) · --rmx-dim (Deckkraft des Schleiers).
+   Die Werte sind Startwerte; endgueltig erst mit echten Kacheln abstimmen.
    ============================================================ */
 .rmx{position:relative;overflow:hidden;flex:none}
-.rmx-tiles{position:absolute;inset:0;filter:saturate(var(--rmx-sat,.35)) brightness(var(--rmx-bri,.74)) contrast(1.04)}
-.rmx-tiles img.rmx-t{position:absolute;display:block;max-width:none;opacity:0;transition:opacity .6s ease;-webkit-user-select:none;user-select:none;pointer-events:none}
+.rmx-tiles{position:absolute;inset:0}
+.rmx-tiles img.rmx-t{position:absolute;z-index:0;display:block;max-width:none;opacity:0;transition:opacity .6s ease;-webkit-user-select:none;user-select:none;pointer-events:none;
+  -webkit-filter:saturate(var(--rmx-sat,.6));filter:saturate(var(--rmx-sat,.6))}
+.rmx-tiles::before{content:"";position:absolute;inset:0;z-index:1;background:rgba(5,8,13,var(--rmx-dim,.38));pointer-events:none}
 .rmx-tiles img.rmx-t.ok{opacity:1}
 .rmx.tiles-failed .rmx-tiles,.rmx.tiles-failed .rmx-attr{display:none}
 .rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 5px rgba(0,0,0,.55));filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
@@ -3651,17 +3658,17 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* Aktivitaetsseite: Karte fuellt das bestehende Streckenfeld */
 .route-map.has-rmx{background-image:none;background-color:#0a1018}
 .route-map.has-rmx .rmx{position:absolute;inset:0}
-.route-map.has-rmx .rmx-tiles::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 45%,rgba(5,8,13,0) 55%,rgba(5,8,13,.55) 100%)}
+.route-map.has-rmx .rmx-tiles::after{content:"";position:absolute;inset:0;z-index:2;background:radial-gradient(120% 90% at 50% 45%,rgba(5,8,13,0) 55%,rgba(5,8,13,.55) 100%)}
 [data-theme="light"] .route-map.has-rmx{filter:none}
 /* Story-Cover: Karte ist Seitenhintergrund, laeuft nach unten ins Schwarz aus */
 .gm-story .wst-mapbg{position:absolute;top:0;left:0;right:0;z-index:0;display:flex;justify-content:center;overflow:hidden;pointer-events:none}
-.gm-story .wst-mapbg .rmx-tiles{--rmx-bri:.70;
+.gm-story .wst-mapbg .rmx-tiles{--rmx-dim:.42;
   /* nach unten ausblenden (Maske) statt auf eine feste Farbe zulaufen: darunter liegt der
      Seitenverlauf der Sportart — eine Farbkante waere als Strich sichtbar */
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%)}
 /* oben abdunkeln, damit Titel und Schliessen-Knopf auf der Karte lesbar bleiben */
-.gm-story .wst-mapbg .rmx-tiles::after{content:"";position:absolute;inset:0;
+.gm-story .wst-mapbg .rmx-tiles::after{content:"";position:absolute;inset:0;z-index:2;
   background:linear-gradient(180deg,rgba(5,8,13,.80) 0,rgba(5,8,13,.36) 15%,rgba(5,8,13,.05) 32%,rgba(5,8,13,.05) 100%)}
 .gm-story .wst-mapbg .gm-route-line{stroke-dasharray:var(--rl);stroke-dashoffset:var(--rl);animation:stDraw 3.2s cubic-bezier(.35,0,.15,1) .15s forwards}
 .gm-story .wst-mapbg .rmx-end{opacity:0;animation:wstDot .4s ease-out 3s forwards}

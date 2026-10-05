@@ -53,11 +53,11 @@ const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  �
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-let KEY = 'TESTKEY';
+let KEY = 'TESTKEY', DETAIL = false;
 const server = http.createServer((req, res) => {
   let p = req.url.split('?')[0]; if (p === '/') p = '/index.html';
   if (p === '/env.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); res.end('/* Test */'); return; }
-  if (p === '/js/map-config.js') { res.writeHead(200, { 'content-type': MIME['.js'], 'cache-control': 'no-store' }); res.end("window.ORVIA_MAP_CONFIG={provider:'maptiler',key:'" + KEY + "',style:'dataviz-dark'};"); return; }
+  if (p === '/js/map-config.js') { res.writeHead(200, { 'content-type': MIME['.js'], 'cache-control': 'no-store' }); res.end("window.ORVIA_MAP_CONFIG={provider:'maptiler',key:'" + KEY + "',style:'dataviz-dark',tileSize:512,story:true,detail:" + DETAIL + "};"); return; }
   const f = join(APP, normalize(p).replace(/^([\\/])+/, ''));
   if (!f.startsWith(APP) || !existsSync(f)) { res.writeHead(404); res.end('nf'); return; }
   res.writeHead(200, { 'content-type': MIME[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
@@ -76,16 +76,17 @@ const tileSvg = (z, x, y) => { const n = 2 ** z, S = 512, step = 0.001; const lo
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${g}</svg>`; };
 
 async function run(mode) {
-  KEY = mode === 'nokey' ? '' : 'TESTKEY';
+  KEY = mode === 'nokey' ? '' : 'TESTKEY'; DETAIL = mode === 'detail';
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.route('**cdnjs.cloudflare.com/**', r => r.fulfill({ contentType: 'text/javascript', body: 'window.Chart=function(){this.destroy=function(){}};window.Chart.register=function(){};window.Chart.defaults={plugins:{}};' }));
   await ctx.route('**cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: '/* stub */' }));
   const reqs = [];
   await ctx.route('**api.maptiler.com/**', r => { const u = new URL(r.request().url()); reqs.push({ path: u.pathname, key: u.searchParams.get('key'), ref: r.request().headers()['referer'] || '' });
     if (/logo\.svg/.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="12"/>' });
-    const m = /\/maps\/([^/]+)\/256\/(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
+    const m = /\/maps\/([^/]+)\/(256|512)\/(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
     if (!m || mode === 'fail') return r.fulfill({ status: 403, body: 'no' });
-    return r.fulfill({ contentType: 'image/svg+xml', body: tileSvg(+m[2], +m[3], +m[4]) }); });
+    return r.fulfill({ contentType: 'image/svg+xml', body: tileSvg(+m[3], +m[4], +m[5]) }); });
+  const tileReqs = () => reqs.filter(q => /@2x\.png$/.test(q.path)).length;
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
   await page.waitForTimeout(1200);
@@ -134,6 +135,20 @@ async function run(mode) {
     /* Texte der Diagramm-Seite */
     const all = [].slice.call(document.querySelectorAll('.gm-story .wst-page')); const ci = all.findIndex(p => p.querySelector('.wst-dotwrap'));
     out.chartFoot = ci >= 0 ? all[ci].querySelector('.wst-foot').innerText.replace(/\s+/g, ' ').trim() : null;
+    return out;
+  });
+  /* Anfragen zaehlen: erster Aufbau · alle Seiten durchblaettern und zurueck · schliessen + neu oeffnen */
+  const n1 = tileReqs();
+  const nav = await page.evaluate(async () => { const W = ms => new Promise(r => setTimeout(r, ms)); const n = document.querySelectorAll('.gm-story .wst-page').length;
+    for (let i = 0; i < n - 1; i++) { gmStoryNext(); await W(120); } for (let i = 0; i < n - 1; i++) { gmStoryPrev(); await W(120); } await W(300);
+    const pg = document.querySelector('.gm-story .wst-page.on'); const imgs = [].slice.call(pg.querySelectorAll('.rmx-t'));
+    return { pages: n, backOnCover: !!pg.querySelector('.rmx'), tiles: imgs.length, shown: imgs.filter(i => i.classList.contains('ok') && i.complete && i.naturalWidth > 0).length, stats: ORVIA.routeMap.stats() }; });
+  const n2 = tileReqs();
+  const re = await page.evaluate(async () => { const W = ms => new Promise(r => setTimeout(r, ms)); gmStoryClose(); await W(200); gmOpenStory('map-r1'); await W(500);
+    const pg = document.querySelector('.gm-story .wst-page.on'); const imgs = [].slice.call(pg.querySelectorAll('.rmx-t')); return { tiles: imgs.length, shown: imgs.filter(i => i.classList.contains('ok') && i.naturalWidth > 0).length, stats: ORVIA.routeMap.stats() }; });
+  const n3 = tileReqs();
+  const R2 = await page.evaluate(async () => {
+    const W = ms => new Promise(r => setTimeout(r, ms)); const out = {};
     gmStoryClose(); await W(200);
     /* Kraft ohne Strecke: Seite wie bisher (keine Karte, keine Hauptzahl-Zeile) */
     out.gymOpened = gmOpenStory('map-g1'); await W(300);
@@ -146,21 +161,29 @@ async function run(mode) {
     out.detail = { cls: el.className, h: Math.round(eb.height), tiles: el.querySelectorAll('.rmx-t').length, oldSvg: !!el.querySelector('svg.rmap'), rmx: !!el.querySelector('.rmx') };
     return out;
   });
+  Object.assign(R, R2, { n1, n2, n3, nav, re });
   await ctx.close();
   return { R, reqs, errs };
 }
 
 const T = await run('tiles');
 ok('A1 App laedt ohne Laufzeitfehler, Story oeffnet', T.errs.length === 0 && T.R.opened === true, T.errs.slice(0, 2).join(' | '));
-ok('A2 Karte an: alle Kacheln geladen und sichtbar', T.R.enabled === true && T.R.tiles >= 4 && T.R.loaded === T.R.tiles && T.R.tilesShown === true && /has-tiles/.test(T.R.cls), T.R.loaded + '/' + T.R.tiles);
+ok('A2 Karte an: alle Kacheln geladen und sichtbar', T.R.enabled === true && T.R.tiles >= 1 && T.R.loaded === T.R.tiles && T.R.tilesShown === true && /has-tiles/.test(T.R.cls), T.R.loaded + '/' + T.R.tiles);
 ok('A3 Kacheln decken den Ausschnitt lueckenlos (390 × 557), ohne Fugen', T.R.covers === true && T.R.noGap === true && T.R.rmx[0] === 390 && T.R.rmx[1] === 557, JSON.stringify(T.R.rmx));
 ok('A4 Strecke und Karte liegen deckungsgleich: Start-Ring sitzt auf der Kreuzung 51,4800 / 7,2160 der Kachel (± 1 px)', !!T.R.cross && Math.abs(T.R.start[0] - T.R.cross[0]) <= 1 && Math.abs(T.R.start[1] - T.R.cross[1]) <= 1, JSON.stringify([T.R.start.map(x => +x.toFixed(1)), (T.R.cross || []).map(x => +x.toFixed(1))]));
-ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.png$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/256\/1[4-6]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
+ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.png$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/512\/1[3-5]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
 ok('A6 Quellenhinweis sichtbar', T.R.attrShown === true && /© MapTiler © OpenStreetMap contributors/.test(T.R.attr || ''));
 ok('A7 Cover: Distanz als Hauptzahl, drei Kennzahlen, kein Satz mehr', /^3,33 km$/i.test(T.R.hero || '') && T.R.stats.length === 3 && /36 min/.test(T.R.stats[0]) && /10:49/.test(T.R.stats[1]) && /110 bpm/.test(T.R.stats[2]) && T.R.sentence === false, JSON.stringify([T.R.hero, T.R.stats]));
 ok('A8 Diagramm-Seite: „Ø 110 bpm · Max. 131 bpm · Garmin" — ohne Erklaersatz', /Ø 110 bpm/.test(T.R.chartFoot || '') && /Max\. 131 bpm/.test(T.R.chartFoot || '') && /garmin/i.test(T.R.chartFoot || '') && !/nachgerechnet|über die Einheit/.test(T.R.chartFoot || ''), T.R.chartFoot);
-ok('A9 Aktivitaetsseite: Karte im bestehenden Feld (255 px hoch), alte Zeichnung ersetzt', T.R.detail.rmx === true && T.R.detail.oldSvg === false && T.R.detail.h === 255 && T.R.detail.tiles >= 2 && /has-rmx/.test(T.R.detail.cls), JSON.stringify(T.R.detail));
+ok('A9 Aktivitaetsseite bleibt vorerst unveraendert (bisherige Zeichnung, keine Kachel-Anfrage von dort)', T.R.detail.rmx === false && T.R.detail.oldSvg === true && T.R.detail.h === 255 && !/has-rmx/.test(T.R.detail.cls), JSON.stringify(T.R.detail));
+ok('A11 Anfragen je Story: hoechstens 6 Kacheln beim ersten Oeffnen', T.R.n1 === T.R.tiles && T.R.n1 <= 6, 'Kacheln: ' + T.R.n1);
+ok('A12 alle Seiten durchblaettern und zurueck: KEINE weitere Kachel-Anfrage, Karte steht sofort wieder', T.R.n2 === T.R.n1 && T.R.nav.backOnCover === true && T.R.nav.shown === T.R.nav.tiles && T.R.nav.stats.reused >= T.R.tiles, JSON.stringify({ n1: T.R.n1, n2: T.R.n2, seiten: T.R.nav.pages, st: T.R.nav.stats }));
+ok('A13 Story schliessen und neu oeffnen: weiterhin keine neue Anfrage (Sitzungsspeicher)', T.R.n3 === T.R.n1 && T.R.re.shown === T.R.re.tiles && T.R.re.tiles === T.R.tiles, JSON.stringify({ n3: T.R.n3, st: T.R.re.stats }));
+ok('A14 insgesamt gingen nur Story-Kacheln + das Logo hinaus', T.reqs.length === T.R.n1 + 1, 'Anfragen gesamt: ' + T.reqs.length);
 ok('A10 Einheit ohne Strecke (Kraft): Seite wie bisher, keine Karte', T.R.gymOpened === true ? (T.R.gym && T.R.gym.rmx === false && T.R.gym.hero === false) : true, JSON.stringify(T.R.gym));
+
+const D = await run('detail');
+ok('A15 mit detail:true (vorbereitet): Karte im bestehenden Feld (255 px), alte Zeichnung ersetzt', D.R.detail.rmx === true && D.R.detail.oldSvg === false && D.R.detail.h === 255 && D.R.detail.tiles >= 1 && /has-rmx/.test(D.R.detail.cls) && D.errs.length === 0, JSON.stringify(D.R.detail));
 
 const N = await run('nokey');
 ok('B1 ohne Schluessel: KEINE einzige Anfrage an den Kartenanbieter', N.reqs.length === 0 && N.R.enabled === false, 'Anfragen: ' + N.reqs.length);
@@ -169,7 +192,8 @@ ok('B3 … Aktivitaetsseite zeigt exakt die bisherige Zeichnung', N.R.detail.old
 
 const F = await run('fail');
 ok('C1 Kacheln nicht ladbar: Kartenebene und Quellenhinweis gehen aus, Strecke + Hauptzahl bleiben', /tiles-failed/.test(F.R.cls || '') && F.R.tilesShown === false && F.R.attrShown === false && /^3,33 km$/i.test(F.R.hero || '') && F.R.pathLen > 100 && F.errs.length === 0, F.R.cls);
-ok('C2 … Aktivitaetsseite faellt auf die bisherige Zeichnung zurueck', F.R.detail.oldSvg === true && F.R.detail.rmx === false && !/has-rmx/.test(F.R.detail.cls), JSON.stringify(F.R.detail));
+ok('C2 … Aktivitaetsseite zeigt die bisherige Zeichnung', F.R.detail.oldSvg === true && F.R.detail.rmx === false && !/has-rmx/.test(F.R.detail.cls), JSON.stringify(F.R.detail));
+ok('C3 … und es wird nicht endlos nachgefragt: nach dem Fehlschlag keine weiteren Versuche (Blaettern, neu oeffnen)', F.R.n1 === F.R.tiles && F.R.n2 === F.R.n1 && F.R.n3 === F.R.n1 && F.R.re.stats.pausedMs > 0, JSON.stringify({ n1: F.R.n1, n2: F.R.n2, n3: F.R.n3, tiles: F.R.tiles }));
 
 await browser.close(); server.close();
 console.log('\n' + (fail ? '❌' : '✅') + ' route_map_e2e: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

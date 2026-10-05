@@ -6,7 +6,7 @@
 
    Bewusst KEINE Kartenbibliothek (MapLibre GL waeren ~800 KB + WebGL fuer ein Bild,
    das sich nie bewegt): Die Karte ist ein STANDBILD aus fertigen Rasterkacheln
-   (512-px-Bilder im ueblichen z/x/y-Schema), die hier selbst zum Ausschnitt gelegt
+   (512er-Kacheln im ueblichen z/x/y-Schema, doppelte Aufloesung), die hier selbst zum Ausschnitt gelegt
    werden; die Strecke liegt als eigenes SVG in derselben Projektion (Web-Mercator)
    darueber. Damit: kein Zoom, keine Bedienelemente, pixelgenau zur Seite passend,
    Kachelbilder liegen danach im Browser-Cache.
@@ -26,9 +26,19 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map@1';
-  var TILE = 256;                 /* Kachelkante in CSS-px bei scale 1 (Bild selbst 512 px = @2x) */
+  var VERSION = 'route-map@2';
+  var BASE = 256;                 /* Bezugsraster der Zoomstufe Z (Welt = 256 · 2^Z CSS-px) */
   var MAX_Z = 16.6, MIN_Z = 3;    /* nie bis auf Hausnummern hinein, nie die halbe Welt */
+  /* v8-433 — Anfragen sparen (abgerechnet wird je Kachel):
+     · 512er-Kacheln statt 256er: eine Anfrage deckt die vierfache Flaeche.
+     · Kachelstufe eher eine Stufe NIEDRIGER waehlen und das Bild etwas strecken
+       (Streckung 0,78…1,57 statt 0,71…1,41): auf dem Handy reichen damit
+       typisch 4, hoechstens 6 Kacheln fuer die Story-Karte.
+     · Geladene Kachelbilder bleiben fuer die Sitzung im Speicher und werden beim
+       naechsten Aufbau wieder eingesetzt (hydrate) — die Story setzt ihr Markup bei
+       JEDEM Seitenwechsel neu; ohne das wuerde jede Kachel mehrfach angefragt. */
+  var Z_BIAS = 0.35;
+  var KEEP_MAX = 96;
 
   function cfg() {
     var c = root.ORVIA_MAP_CONFIG || {};
@@ -36,8 +46,11 @@
     var provider = c.provider || 'maptiler';
     /* Eigene Kachelquelle: url mit {z} {x} {y} {r} — braucht dann keinen Schluessel. */
     var url = c.url ? String(c.url) : null;
+    var ts = (+c.tileSize === 256) ? 256 : 512;
     return {
-      provider: provider, key: key, style: c.style || 'dataviz-dark', url: url,
+      provider: provider, key: key, style: c.style || 'dataviz-dark', url: url, tileSize: ts,
+      /* Wo die Karte erscheint: Story ja; Aktivitaetsseite erst, wenn die Optik abgestimmt ist. */
+      story: c.story !== false, detail: c.detail === true,
       enabled: c.enabled !== false && (!!key || !!url),
       attribution: c.attribution || (provider === 'maptiler' && !url ? '© MapTiler © OpenStreetMap contributors' : '© OpenStreetMap contributors'),
       logo: (c.logo === undefined) ? (provider === 'maptiler' && !url ? 'https://api.maptiler.com/resources/logo.svg' : null) : c.logo
@@ -84,7 +97,7 @@
 
   /* fit(route,w,h,pad) → Ausschnitt, in dem die GANZE Strecke innerhalb des Innenrands liegt.
      Z ist die stufenlose Zoomstufe, z die Kachelstufe, scale = 2^(Z−z) streckt die Kacheln. */
-  function fit(route, w, h, pad) {
+  function fit(route, w, h, pad, tileSize) {
     var pts = valid(route);
     if (pts.length < 2 || !(w > 0) || !(h > 0)) return null;
     pad = pad || {};
@@ -93,13 +106,15 @@
     var x0 = 1, x1 = 0, y0 = 1, y1 = 0;
     pts.forEach(function (p) { var x = lonX(p[1]), y = latY(p[0]); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; });
     var sx = x1 - x0, sy = y1 - y0;
-    var Z = Math.log(Math.min(sx > 0 ? aw / (sx * TILE) : Infinity, sy > 0 ? ah / (sy * TILE) : Infinity)) / Math.LN2;
+    var Z = Math.log(Math.min(sx > 0 ? aw / (sx * BASE) : Infinity, sy > 0 ? ah / (sy * BASE) : Infinity)) / Math.LN2;
     if (!isFinite(Z)) Z = MAX_Z;
     Z = Math.max(MIN_Z, Math.min(MAX_Z, Z));
-    var z = Math.max(1, Math.min(18, Math.round(Z)));
-    var world = TILE * Math.pow(2, Z);
+    var T = (+tileSize === 256) ? 256 : (tileSize ? 512 : cfg().tileSize);
+    var Zt = Z - Math.log(T / BASE) / Math.LN2;            /* Zoomstufe im Raster der Kachelgroesse */
+    var z = Math.max(0, Math.min(18, Math.floor(Zt + Z_BIAS)));
+    var world = BASE * Math.pow(2, Z);
     var cx = (x0 + x1) / 2 * world, cy = (y0 + y1) / 2 * world;
-    return { w: w, h: h, Z: Z, z: z, scale: Math.pow(2, Z - z), world: world,
+    return { w: w, h: h, Z: Z, z: z, tile: T, scale: Math.pow(2, Zt - z), world: world,
       ox: cx - (pL + aw / 2), oy: cy - (pT + ah / 2), pad: { t: pT, r: pR, b: pB, l: pL } };
   }
   function project(lat, lon, v) { return [lonX(lon) * v.world - v.ox, latY(lat) * v.world - v.oy]; }
@@ -107,7 +122,7 @@
      gerundet und von Nachbarn geteilt — sonst blitzen zwischen gestreckten Bildern Fugen. */
   function tiles(v) {
     if (!v) return [];
-    var ts = TILE * v.scale, n = Math.pow(2, v.z), out = [];
+    var ts = v.tile * v.scale, n = Math.pow(2, v.z), out = [];
     var tx0 = Math.floor(v.ox / ts), tx1 = Math.floor((v.ox + v.w - 0.001) / ts);
     var ty0 = Math.floor(v.oy / ts), ty1 = Math.floor((v.oy + v.h - 0.001) / ts);
     for (var ty = ty0; ty <= ty1; ty++) {
@@ -123,7 +138,7 @@
   function tileUrl(t, c) {
     c = c || cfg();
     if (c.url) return c.url.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y).replace('{r}', '@2x');
-    return 'https://api.maptiler.com/maps/' + encodeURIComponent(c.style) + '/256/' + t.z + '/' + t.x + '/' + t.y + '@2x.png?key=' + encodeURIComponent(c.key);
+    return 'https://api.maptiler.com/maps/' + encodeURIComponent(c.style) + '/' + c.tileSize + '/' + t.z + '/' + t.x + '/' + t.y + '@2x.png?key=' + encodeURIComponent(c.key);
   }
   function pathD(pts, v) {
     var d = '';
@@ -132,19 +147,23 @@
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  var _fails = 0;
-  /* Eine Kachel fehlt (offline, Kontingent, falscher Schluessel) ⇒ die ganze Kartenebene
-     dieser Karte geht aus. Eine halbe Karte saehe kaputt aus; die Strecke allein nicht. */
-  function _err(img) {
-    _fails++;
+  var _fails = 0, _downUntil = 0;
+  var DOWN_MS = 5 * 60 * 1000;    /* nach einem Kachelfehler 5 min keine neuen Versuche (offline, Kontingent, Schluessel) */
+  function _now() { return (typeof Date !== 'undefined') ? Date.now() : 0; }
+  function _markFailed(box) {
     try {
-      var box = img && img.closest ? img.closest('.rmx') : null;
       if (box && !box.classList.contains('tiles-failed')) {
         box.classList.remove('has-tiles'); box.classList.add('tiles-failed');
         /* Der Aufrufer kann darauf reagieren (Aktivitaetsseite stellt die alte Zeichnung wieder her). */
         if (typeof CustomEvent === 'function') box.dispatchEvent(new CustomEvent('orvia:rmx-failed', { bubbles: true }));
       }
     } catch (e) {}
+  }
+  /* Eine Kachel fehlt (offline, Kontingent, falscher Schluessel) ⇒ die ganze Kartenebene
+     dieser Karte geht aus. Eine halbe Karte saehe kaputt aus; die Strecke allein nicht. */
+  function _err(img) {
+    _fails++; _downUntil = _now() + DOWN_MS;
+    _markFailed(img && img.closest ? img.closest('.rmx') : null);
   }
   function _ok(img) { try { img.classList.add('ok'); } catch (e) {} }
 
@@ -155,9 +174,9 @@
     opts = opts || {};
     var pts = trim(route, { startM: opts.trimStartM, endM: opts.trimEndM });
     var w = Math.round(+opts.w || 0), h = Math.round(+opts.h || 0);
-    var v = fit(pts, w, h, opts.pad);
-    if (!v) return '';
     var c = cfg(), useTiles = c.enabled && opts.tiles !== false;
+    var v = fit(pts, w, h, opts.pad, c.tileSize);
+    if (!v) return '';
     var d = pathD(pts, v);
     var a = project(pts[0][0], pts[0][1], v), b = project(pts[pts.length - 1][0], pts[pts.length - 1][1], v);
     var col = opts.color ? esc(opts.color) : 'var(--acchi,var(--acc,#DCC79A))';
@@ -165,7 +184,9 @@
     var tl = '';
     if (useTiles) {
       tl = '<div class="rmx-tiles">' + tiles(v).map(function (t) {
-        return '<img class="rmx-t" alt="" draggable="false" decoding="async" referrerpolicy="strict-origin" src="' + esc(tileUrl(t, c)) + '" style="left:' + t.left + 'px;top:' + t.top + 'px;width:' + t.width + 'px;height:' + t.height + 'px" onload="ORVIA.routeMap._ok(this)" onerror="ORVIA.routeMap._err(this)">';
+        /* KEIN src im Markup: erst hydrate() laedt — und nimmt Bilder, die in dieser Sitzung
+           schon geladen wurden, aus dem Speicher statt sie erneut anzufragen. */
+        return '<img class="rmx-t" alt="" draggable="false" decoding="async" referrerpolicy="strict-origin" data-rmx-src="' + esc(tileUrl(t, c)) + '" style="left:' + t.left + 'px;top:' + t.top + 'px;width:' + t.width + 'px;height:' + t.height + 'px">';
       }).join('') + '</div>';
     }
     var cx = function (p) { return p[0].toFixed(1); }, cy = function (p) { return p[1].toFixed(1); };
@@ -181,9 +202,50 @@
         '<circle class="rmx-start" cx="' + cx(a) + '" cy="' + cy(a) + '" r="6.5"/>' +
         '<circle class="rmx-end" cx="' + cx(b) + '" cy="' + cy(b) + '" r="4.5"/>' +
       '</svg>' +
-      (useTiles ? '<div class="rmx-attr">' + (c.logo ? '<img class="rmx-logo" alt="" referrerpolicy="strict-origin" src="' + esc(c.logo) + '" onerror="this.style.display=\'none\'">' : '') + '<span>' + esc(c.attribution) + '</span></div>' : '') +
+      (useTiles ? '<div class="rmx-attr">' + (c.logo ? '<img class="rmx-logo" alt="" referrerpolicy="strict-origin" data-rmx-src="' + esc(c.logo) + '">' : '') + '<span>' + esc(c.attribution) + '</span></div>' : '') +
       '</div>';
   }
+  /* ---- Sitzungsspeicher fuer geladene Kachelbilder ---- */
+  var _keep = {}, _keepOrder = [], _started = 0, _reused = 0;
+  function _remember(url, img) {
+    if (_keep[url]) return;
+    _keep[url] = img; _keepOrder.push(url);
+    while (_keepOrder.length > KEEP_MAX) delete _keep[_keepOrder.shift()];
+  }
+  /* hydrate(root) — laedt die Kacheln aller Karten unter root. Bereits geladene Bilder
+     werden als DASSELBE Element wieder eingesetzt (kein Netz, kein Einblenden).
+     Gibt { started, reused } zurueck. Ohne Aufruf bleibt die Karte leer und die Strecke
+     steht allein — nie ein Fehler. */
+  function hydrate(root) {
+    var res = { started: 0, reused: 0 };
+    try {
+      if (!root || !root.querySelectorAll) return res;
+      var list = root.querySelectorAll('img[data-rmx-src]');
+      /* Anbieter gerade nicht erreichbar ⇒ gar nicht erst anfragen; Karte aus, Strecke bleibt. */
+      if (_downUntil > _now()) {
+        for (var d = 0; d < list.length; d++) if (list[d].closest && !list[d].classList.contains('rmx-logo')) _markFailed(list[d].closest('.rmx'));
+        res.skipped = list.length; return res;
+      }
+      for (var i = 0; i < list.length; i++) {
+        (function (ph) {
+          var url = ph.getAttribute('data-rmx-src'); if (!url) return;
+          var logo = ph.classList.contains('rmx-logo');
+          var have = _keep[url];
+          if (have && have !== ph && have.complete && have.naturalWidth > 0) {
+            have.style.cssText = ph.style.cssText;
+            if (ph.parentNode) ph.parentNode.replaceChild(have, ph);
+            res.reused++; _reused++; return;
+          }
+          ph.removeAttribute('data-rmx-src');
+          ph.onload = function () { if (!logo) _ok(ph); _remember(url, ph); };
+          ph.onerror = function () { if (logo) ph.style.display = 'none'; else _err(ph); };
+          ph.src = url; res.started++; _started++;
+        })(list[i]);
+      }
+    } catch (e) {}
+    return res;
+  }
+
   /* mount(el, route, opts) — misst den Behaelter und setzt die Karte hinein (Aktivitaetsseite). */
   function mount(el, route, opts) {
     try {
@@ -192,13 +254,16 @@
       o.w = el.clientWidth; o.h = el.clientHeight;
       var m = html(route, o);
       if (!m) return false;
-      el.innerHTML = m; return true;
+      el.innerHTML = m; hydrate(el); return true;
     } catch (e) { return false; }
   }
 
   O.routeMap = { VERSION: VERSION, cfg: cfg, enabled: function () { return cfg().enabled; },
     lonX: lonX, latY: latY, xLon: xLon, yLat: yLat, haversineM: haversineM,
     trim: trim, fit: fit, project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
-    html: html, mount: mount, _err: _err, _ok: _ok, fails: function () { return _fails; } };
+    html: html, mount: mount, hydrate: hydrate, _err: _err, _ok: _ok,
+    stats: function () { return { started: _started, reused: _reused, failed: _fails, kept: _keepOrder.length, pausedMs: Math.max(0, _downUntil - _now()) }; },
+    _resume: function () { _downUntil = 0; },
+    fails: function () { return _fails; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.routeMap;
 })(typeof window !== 'undefined' ? window : globalThis);

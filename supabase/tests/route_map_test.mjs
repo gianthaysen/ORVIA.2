@@ -14,7 +14,7 @@ const rd = f => fs.readFileSync(new URL(_APPREL + f, import.meta.url), 'utf8');
 let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i != null ? '  — ' + i : '')); c ? pass++ : fail++; };
 const src = rd('js/route-map.js'), ui = rd('js/ui.js'), css = rd('styles.css'), idx = rd('index.html'), sw = rd('sw.js'), cfgSrc = rd('js/map-config.js'), de = rd('locales/de.js');
-const mk = conf => { const c = { ORVIA: {}, ORVIA_MAP_CONFIG: conf, Math, isFinite, encodeURIComponent, String, Array, Infinity }; c.window = c; c.globalThis = c; vm.createContext(c); vm.runInContext(src, c); return c.ORVIA.routeMap; };
+const mk = conf => { const c = { ORVIA: {}, ORVIA_MAP_CONFIG: conf, Math, isFinite, encodeURIComponent, String, Array, Infinity, Object }; c.window = c; c.globalThis = c; vm.createContext(c); vm.runInContext(src, c); return c.ORVIA.routeMap; };
 const OFF = mk({ provider: 'maptiler', key: '', style: 'dataviz-dark' });
 const ON = mk({ provider: 'maptiler', key: 'abc123', style: 'dataviz-dark' });
 
@@ -47,7 +47,8 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
   ok('B2 die engere Richtung fuellt den Innenrand genau aus', fillsX || fillsY);
   const midX = (Math.min(...xs) + Math.max(...xs)) / 2, midY = (Math.min(...ys) + Math.max(...ys)) / 2;
   ok('B3 Strecke sitzt mittig im Innenrand', Math.abs(midX - (pad.l + (w - pad.l - pad.r) / 2)) < 0.01 && Math.abs(midY - (pad.t + (h - pad.t - pad.b) / 2)) < 0.01);
-  ok('B4 Kachelstufe = gerundete Zoomstufe; Streckung zwischen 0,71 und 1,42', v.z === Math.round(v.Z) && v.scale > 0.70 && v.scale < 1.42, 'Z ' + v.Z.toFixed(2) + ' → z ' + v.z + ' × ' + v.scale.toFixed(2));
+  ok('B4 512er-Kacheln: Stufe eher niedriger, Bild leicht gestreckt (0,78 … 1,57) — spart Anfragen', v.tile === 512 && v.z === Math.floor(v.Z - 1 + 0.35) && v.scale > 0.78 && v.scale <= 1.5701 && Math.abs(256 * 2 ** v.Z - 512 * 2 ** v.z * v.scale) < 1e-6, 'Z ' + v.Z.toFixed(2) + ' → z ' + v.z + ' × ' + v.scale.toFixed(2));
+  { const v6 = R.fit(route, w, h, pad, 256); ok('B4a 256er-Kacheln bleiben waehlbar (gleicher Ausschnitt, eine Stufe hoeher)', v6.tile === 256 && v6.z === v.z + 1 && Math.abs(v6.world - v.world) < 1e-6 && Math.abs(v6.ox - v.ox) < 1e-6); }
   const tiny = [[51.48, 7.216], [51.48001, 7.21601], [51.48002, 7.21602]];
   ok('B5 winzige Strecke (Bahn, Start/Stopp): Zoom gedeckelt bei 16,6 — nie bis auf Hausnummern', Math.abs(R.fit(tiny, w, h, pad).Z - 16.6) < 1e-9);
   ok('B6 Strecke ohne Ausdehnung / zu wenig Punkte / keine Groesse ⇒ kein Absturz', Math.abs(R.fit([[51.48, 7.2], [51.48, 7.2]], w, h, pad).Z - 16.6) < 1e-9 && R.fit([[51.48, 7.2]], w, h, pad) === null && R.fit(route, 0, 0, pad) === null && R.fit(null, w, h) === null);
@@ -72,7 +73,15 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
     if (!(cover && seamX && seamY && ints && grid)) { allOk = false; info = w + 'x' + h; }
   }
   ok('C1 Kacheln decken den Ausschnitt vollstaendig, Nachbarn teilen ganzzahlige Kanten (keine Fugen)', allOk, info || 'max. ' + maxN + ' Kacheln');
-  ok('C2 Anzahl bleibt klein (Story ≤ 16, Aktivitaetsfeld ≤ 12)', maxN <= 16 && R.tiles(R.fit(route, 390, 255, { t: 26, r: 26, b: 30, l: 26 })).length <= 12, String(maxN));
+  ok('C2 Beispielstrecke: Story-Karte kommt mit hoechstens 4 Kacheln aus', R.tiles(R.fit(route, 390, 557, { t: 140, r: 44, b: 95, l: 44 })).length <= 4, String(R.tiles(R.fit(route, 390, 557, { t: 140, r: 44, b: 95, l: 44 })).length));
+  {
+    /* Anfragen sind die Abrechnungseinheit: ueber viele zufaellige Strecken (0,5–60 km, ganz DACH) messen */
+    let seed = 5; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const sim = ts => { let sum = 0, max = 0, n = 4000; for (let i = 0; i < n; i++) { const lat = 47 + rnd() * 8, lon = 6 + rnd() * 9, km = 0.5 + Math.pow(rnd(), 2) * 60; const dLat = km / 111 * (0.2 + rnd()), dLon = km / 70 * (0.2 + rnd()); const r = [[lat, lon], [lat + dLat, lon + dLon * rnd()], [lat + dLat * rnd(), lon + dLon]]; const c = R.tiles(R.fit(r, 390, 557, { t: 140, r: 44, b: 95, l: 44 }, ts)).length; sum += c; if (c > max) max = c; } return { mean: sum / n, max }; };
+    const a = sim(512), b = sim(256);
+    ok('C2a Handy-Story (390 × 557): im Mittel < 4 Kacheln, nie mehr als 6', a.mean < 4 && a.max <= 6, 'Mittel ' + a.mean.toFixed(2) + ' · max ' + a.max);
+    ok('C2b 512er-Kacheln halbieren die Anfragen gegenueber 256ern mindestens', b.mean / a.mean >= 2, '256er: Mittel ' + b.mean.toFixed(2) + ' · max ' + b.max);
+  }
   /* Kachelecke: geografische Ecke der Kachel muss auf ihrer linken oberen Bildecke liegen (± Rundung) */
   const v = R.fit(route, 390, 557, { t: 140, r: 44, b: 95, l: 44 }), n = 2 ** v.z;
   const cornerOk = R.tiles(v).every(t => { const p = R.project(R.yLat(t.y / n), R.xLon(t.x / n), v); return Math.abs(p[0] - t.left) <= 0.51 && Math.abs(p[1] - t.top) <= 0.51; });
@@ -101,9 +110,11 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
   ok('E1 Schluessel leer ⇒ Karte aus: kein Bild, kein Anbieter, kein Quellenhinweis — nur die Strecke', OFF.enabled() === false && !/<img/.test(off) && !/maptiler|https?:\/\//.test(off) && /class="rmx cover"/.test(off) && /class="rmx-line gm-route-line"/.test(off));
   const nT = ON.tiles(ON.fit(route, 390, 557, o.pad)).length;
   ok('E2 mit Schluessel: genau ein Bild je Kachel', ON.enabled() === true && (on.match(/class="rmx-t"/g) || []).length === nT && /class="rmx has-tiles cover"/.test(on), String(nT));
-  ok('E3 Kacheladresse: Stil, 256er-Raster in doppelter Aufloesung, Schluessel', /src="https:\/\/api\.maptiler\.com\/maps\/dataviz-dark\/256\/15\/\d+\/\d+@2x\.png\?key=abc123"/.test(on));
+  ok('E2a KEIN src im Markup — geladen wird erst durch hydrate() (sonst fragt jeder Seitenwechsel der Story neu an)', !/<img[^>]* src=/.test(on) && (on.match(/data-rmx-src="https:/g) || []).length === nT + 1);
+  ok('E3 Kacheladresse: Stil, 512er-Raster in doppelter Aufloesung, Schluessel', /data-rmx-src="https:\/\/api\.maptiler\.com\/maps\/dataviz-dark\/512\/14\/\d+\/\d+@2x\.png\?key=abc123"/.test(on));
+  ok('E3a tileSize 256 in der Einstellung ⇒ 256er-Adressen', /\/dataviz-dark\/256\/15\/\d+\/\d+@2x\.png/.test(mk({ key: 'abc', tileSize: 256 }).html(route, o)));
   ok('E4 es geht nur die Herkunft der Seite mit (referrerpolicy strict-origin), nie die volle Adresse', (on.match(/referrerpolicy="strict-origin"/g) || []).length === nT + 1 && !/referrerpolicy="(unsafe-url|no-referrer-when-downgrade)"/.test(on));
-  ok('E5 jede Kachel meldet Erfolg/Fehlschlag (Fehlschlag blendet die Kartenebene aus)', (on.match(/onerror="ORVIA\.routeMap\._err\(this\)"/g) || []).length === nT && (on.match(/onload="ORVIA\.routeMap\._ok\(this\)"/g) || []).length === nT);
+  ok('E5 hydrate() haengt Erfolg/Fehlschlag an jede Kachel (Fehlschlag blendet die Kartenebene aus)', /ph\.onload = function \(\) \{ if \(!logo\) _ok\(ph\); _remember\(url, ph\); \};/.test(src) && /ph\.onerror = function \(\) \{ if \(logo\) ph\.style\.display = 'none'; else _err\(ph\); \};/.test(src));
   ok('E6 Quellenhinweis sichtbar: © MapTiler © OpenStreetMap contributors', /class="rmx-attr">.*© MapTiler © OpenStreetMap contributors/.test(on));
   const dCase = (/class="rmx-case[^"]*"[^>]* d="([^"]+)"/.exec(on) || [])[1], dLine = (/class="rmx-line[^"]*"[^>]* d="([^"]+)"/.exec(on) || [])[1];
   ok('E7 dunkler Rand und Strecke folgen demselben Pfad und zeichnen sich gemeinsam', !!dLine && dCase === dLine && /class="rmx-case gm-route-line" pathLength="1"/.test(on) && /class="rmx-line gm-route-line" pathLength="1"/.test(on));
@@ -113,14 +124,42 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
   ok('E10 unbrauchbare Strecke / fehlende Groesse ⇒ leerer Text (Aufrufer faellt zurueck)', ON.html([[51, 7]], o) === '' && ON.html(route, { w: 0, h: 0 }) === '' && ON.html(null, o) === '');
   const own = mk({ url: 'https://karten.example/{z}/{x}/{y}{r}.png', attribution: '© OpenStreetMap contributors', logo: null });
   const ho = own.html(route, o);
-  ok('E11 eigene Kachelquelle: Adressmuster wird befuellt, kein Schluessel noetig, kein Fremdlogo', own.enabled() === true && /src="https:\/\/karten\.example\/15\/\d+\/\d+@2x\.png"/.test(ho) && !/maptiler/.test(ho) && !/rmx-logo/.test(ho));
+  ok('E11 eigene Kachelquelle: Adressmuster wird befuellt, kein Schluessel noetig, kein Fremdlogo', own.enabled() === true && /data-rmx-src="https:\/\/karten\.example\/14\/\d+\/\d+@2x\.png"/.test(ho) && !/maptiler/.test(ho) && !/rmx-logo/.test(ho));
   ok('E12 enabled:false schaltet trotz Schluessel ab', mk({ key: 'abc', enabled: false }).enabled() === false);
   ok('E13 Sonderzeichen in Farbe/Klasse werden entschaerft', !/<script/.test(ON.html(route, { w: 390, h: 255, color: '"><script>', cls: '"><script>' })));
 }
 
+/* ---------- E') hydrate: laden + Wiederverwendung in der Sitzung ---------- */
+{
+  const R = mk({ key: 'abc' });
+  const mkImg = (url, logo) => { const at = { 'data-rmx-src': url }; return { _at: at, style: { cssText: 'left:1px' }, classList: { _s: new Set(logo ? ['rmx-logo'] : ['rmx-t']), contains(c) { return this._s.has(c); }, add(c) { this._s.add(c); } }, getAttribute: k => at[k] ?? null, removeAttribute: k => { delete at[k]; }, complete: false, naturalWidth: 0, parentNode: null, closest: () => null, src: null }; };
+  const mkRoot = imgs => { const root = { replaced: [], querySelectorAll: () => imgs.filter(i => i._at['data-rmx-src']) }; imgs.forEach(i => { i.parentNode = { replaceChild: (n, o) => { root.replaced.push([n, o]); } }; }); return root; };
+  const a1 = mkImg('https://t/1.png'), a2 = mkImg('https://t/2.png'), lg = mkImg('https://t/logo.svg', true);
+  const r1 = R.hydrate(mkRoot([a1, a2, lg]));
+  ok('H\'1 erster Aufbau: jede Kachel (und das Logo) wird genau einmal angefragt', r1.started === 3 && r1.reused === 0 && a1.src === 'https://t/1.png' && a2.src === 'https://t/2.png' && !a1._at['data-rmx-src']);
+  a1.complete = true; a1.naturalWidth = 1024; a1.onload(); a2.complete = true; a2.naturalWidth = 1024; a2.onload(); lg.complete = true; lg.naturalWidth = 80; lg.onload();
+  ok('H\'2 geladene Kachel wird als sichtbar markiert und gemerkt', a1.classList.contains('ok') && R.stats().kept === 3);
+  /* die Story setzt ihr Markup neu ⇒ neue Platzhalter mit denselben Adressen */
+  const b1 = mkImg('https://t/1.png'), b2 = mkImg('https://t/2.png'), b3 = mkImg('https://t/3.png'); b1.style.cssText = 'left:7px';
+  const root2 = mkRoot([b1, b2, b3]);
+  const r2 = R.hydrate(root2);
+  ok('H\'3 zweiter Aufbau: schon geladene Kacheln kommen aus dem Speicher (kein Netz), nur die neue wird angefragt', r2.reused === 2 && r2.started === 1 && b1.src === null && b3.src === 'https://t/3.png' && root2.replaced.length === 2 && root2.replaced[0][0] === a1, JSON.stringify(r2));
+  ok('H\'4 wiederverwendetes Bild uebernimmt die Lage des Platzhalters', a1.style.cssText === 'left:7px');
+  const bad = mkImg('https://t/9.png'); let failed = 0; bad.closest = () => ({ classList: { contains: () => false, remove() {}, add() { failed++; } }, dispatchEvent() {} });
+  R.hydrate(mkRoot([bad])); bad.onerror();
+  ok('H\'5 Fehlschlag: Kartenebene geht aus, das Bild wird NICHT gemerkt', failed === 1 && R.stats().kept === 3 && R.stats().failed === 1);
+  { const c1 = mkImg('https://t/5.png'); let off = 0; c1.closest = () => ({ classList: { contains: () => false, remove() {}, add() { off++; } }, dispatchEvent() {} });
+    const r5 = R.hydrate(mkRoot([c1]));
+    ok('H\'5a nach einem Fehlschlag 5 min keine neuen Anfragen — die Karte bleibt aus, die Strecke steht', r5.started === 0 && r5.skipped === 1 && c1.src === null && off === 1 && R.stats().pausedMs > 4 * 60 * 1000);
+    R._resume(); const c2 = mkImg('https://t/6.png'); ok('H\'5b danach wird wieder geladen', R.hydrate(mkRoot([c2])).started === 1); }
+  ok('H\'6 ohne DOM / ohne Karten kein Fehler', R.hydrate(null).started === 0 && R.hydrate({ querySelectorAll: () => [] }).started === 0);
+}
+
 /* ---------- F) Einstellung + Einbindung ---------- */
 {
-  ok('F1 map-config.js: Anbieter MapTiler, reduzierter dunkler Stil', /window\.ORVIA_MAP_CONFIG = \{\s*provider: 'maptiler',\s*key: '[A-Za-z0-9]*',\s*style: 'dataviz-dark'\s*\};/.test(cfgSrc));
+  ok('F1 map-config.js: EINE Stelle — Anbieter, Schluessel, Stil, 512er-Kacheln, Story an, Aktivitaetsseite aus', /window\.ORVIA_MAP_CONFIG = \{\s*provider: 'maptiler',\s*key: '[A-Za-z0-9]*',\s*style: 'dataviz-dark',\s*tileSize: 512,\s*story: true,\s*detail: false\s*\};/.test(cfgSrc));
+  ok('F1a der Schluessel steht in keiner anderen Datei (nur map-config.js; route-map liest die Einstellung)', (() => { const dir = new URL(_APPREL + 'js/', import.meta.url); const others = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && f !== 'map-config.js' && f !== 'route-map.js'); return others.length > 20 && others.every(f => { const x = fs.readFileSync(new URL(f, dir), 'utf8'); return !/api\.maptiler\.com|ORVIA_MAP_CONFIG/.test(x); }); })() && (src.match(/ORVIA_MAP_CONFIG/g) || []).length >= 1 && !/api\.maptiler\.com/.test(idx + sw) && (src.match(/c\.key/g) || []).length <= 3);
+  { const R0 = mk({ key: 'abc' }); ok('F1b Voreinstellung ohne Angabe: Story an, Aktivitaetsseite aus, 512er', R0.cfg().story === true && R0.cfg().detail === false && R0.cfg().tileSize === 512 && mk({ key: 'abc', detail: true }).cfg().detail === true && mk({ key: 'abc', story: false }).cfg().story === false); }
   ok('F2 beide Dateien geladen (Einstellung VOR dem Modul) und im Precache', idx.indexOf('js/map-config.js') > 0 && idx.indexOf('js/map-config.js') < idx.indexOf('js/route-map.js') && /'\.\/js\/map-config\.js','\.\/js\/route-map\.js'/.test(sw));
   ok('F3 keine Kartenbibliothek eingebunden (Standbild aus Kacheln, kein MapLibre/Leaflet)', !/maplibre|leaflet|mapbox-gl/i.test(idx) && !/maplibregl\.|L\.map\(|mapboxgl\./.test(src) && !/maplibre|leaflet|mapbox-gl/i.test(sw));
   ok('F4 Service Worker faengt fremde Kacheln nicht ab (nur eigene Dateien)', /if \(!sameOrigin\) return;/.test(sw));
@@ -128,9 +167,11 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
 
 /* ---------- G) Story-Cover + Aktivitaetsseite + Texte ---------- */
 {
-  ok('G1 Cover: Karte als Seitenhintergrund ueber route-map, Strecke zeichnet sich', /ORVIA\.routeMap\.html\(route,\{w:_sw,h:_mh,cls:'cover',draw:true,width:4\.5,/.test(ui) && /<div class="wst-mapbg" style="'\+accCss\+'">'\+_map\+'<\/div>'/.test(ui));
+  ok('G1 Cover: Karte als Seitenhintergrund ueber route-map, Strecke zeichnet sich', /ORVIA\.routeMap\.html\(route,\{w:_sw,h:_mh,cls:'cover',draw:true,width:4\.5,tiles:_mapOn,/.test(ui) && /<div class="wst-mapbg" style="'\+accCss\+'">'\+_map\+'<\/div>'/.test(ui));
   ok('G2 Cover: Distanz als Hauptzahl + bis zu drei sportgerechte Kennzahlen (ohne Distanz)', /class="wst-heronum"><b>'\+gmEsc\(_dm\[1\]\)\+'<\/b>/.test(ui) && /gmActCardKpis\(a,vm\)\.filter\(function\(c\)\{return c\[0\]!=='—'&&c\[1\]!=='DISTANZ'/.test(ui) && /\.slice\(0,3\)/.test(ui));
   ok('G3 Rueckfall bleibt: ohne Modul/Strecke die bisherige Seite (routeSVG bzw. grosse Kennzahl)', /if\(!coverPage&&route&&typeof routeSVG==='function'\)\{/.test(ui) && /pages\.push\(coverPage\|\|page\(/.test(ui));
+  ok('G3a Story laedt Kacheln nur fuer die sichtbare Seite und ueber hydrate (Wiederverwendung)', /var _on=host\.querySelector\('\.wst-page\.on'\);if\(_on&&window\.ORVIA&&ORVIA\.routeMap&&ORVIA\.routeMap\.hydrate\)ORVIA\.routeMap\.hydrate\(_on\);/.test(ui));
+  ok('G3b Aktivitaetsseite vorerst unveraendert: Karte dort nur mit detail:true in der Einstellung', /if\(!RM\.cfg\|\|RM\.cfg\(\)\.detail!==true\)return false;/.test(ui));
   ok('G4 Aktivitaetsseite: Karte nur bei eingeschalteter Quelle; scheitern die Kacheln, kommt exakt die alte Zeichnung zurueck', /if\(!pg\|\|!route\|\|route\.length<2\|\|!RM\|\|!RM\.enabled\|\|!RM\.enabled\(\)\)return false;/.test(ui) && /el\.addEventListener\('orvia:rmx-failed',function\(\)\{try\{el\.innerHTML=keep;el\.classList\.remove\('has-rmx'\);/.test(ui) && /new CustomEvent\('orvia:rmx-failed', \{ bubbles: true \}\)/.test(src));
   ok('G5 Aktivitaetsseite: Karte wird NACH dem Einsetzen der Seite gesetzt (braucht die echte Breite) — genau ein Aufruf', (ui.match(/gmActMountRouteMap\(pg,route,vm\);/g) || []).length === 1 && /pg\.innerHTML=h;\s*pg\.classList\.add\('on'\);\s*gmActMountRouteMap\(pg,route,vm\);/.test(ui));
   ok('G6 Diagramm-Seiten: Zahlen statt Erklaersaetzen (Ø · Max. · Quelle)', /foot\('Ø '\+em\(hrAvg\+' bpm'\),'' \+ _uiT\('ui\.max_kurz'\) \+ ''\+hrMax\+' bpm',srcLine\)/.test(ui) && /foot\('Ø '\+em\(fmtDe\(spAvg\)\+' km\/h'\),'' \+ _uiT\('ui\.max_kurz'\)/.test(ui) && /foot\('Ø '\+em\(vm\.avgPowerW\+' W'\),'' \+ _uiT\('ui\.max_kurz'\)/.test(ui) && /'ui\.max_kurz': 'Max\. '/.test(de));
@@ -140,7 +181,8 @@ const route = []; for (let i = 0; i < way.length - 1; i++) for (let k = 0; k < 1
 
 /* ---------- H) Gestaltung ---------- */
 {
-  ok('H1 Karte ist Kulisse: entsaettigt und abgedunkelt, einstellbar', /\.rmx-tiles\{position:absolute;inset:0;filter:saturate\(var\(--rmx-sat,\.35\)\) brightness\(var\(--rmx-bri,\.74\)\) contrast\(1\.04\)\}/.test(css));
+  ok('H1 Abdunkeln ueber einen eigenen Schleier zwischen Karte und Strecke — KEINE Deckkraft/Helligkeit auf der ganzen Ebene', /\.rmx-tiles::before\{content:"";position:absolute;inset:0;z-index:1;background:rgba\(5,8,13,var\(--rmx-dim,\.38\)\);/.test(css) && /\.rmx-tiles\{position:absolute;inset:0\}/.test(css) && !/\.rmx-tiles\{[^}]*(opacity|brightness)/.test(css));
+  ok('H1a Karte nur leicht entsaettigt (am Bild, nicht an der Ebene); beide Werte einstellbar', /\.rmx-tiles img\.rmx-t\{[^}]*filter:saturate\(var\(--rmx-sat,\.6\)\)/.test(css) && /\.gm-story \.wst-mapbg \.rmx-tiles\{--rmx-dim:\.42;/.test(css));
   ok('H2 Story: Karte blendet nach unten per Maske aus (keine Farbkante), oben abgedunkelt fuer den Titel', /\.gm-story \.wst-mapbg \.rmx-tiles\{[^}]*-webkit-mask-image:linear-gradient\(180deg,#000 0,#000 52%,rgba\(0,0,0,\.55\) 72%,transparent 100%\);\s*mask-image:linear-gradient/.test(css) && /\.gm-story \.wst-mapbg \.rmx-tiles::after\{[^}]*rgba\(5,8,13,\.80\) 0/.test(css));
   ok('H3 Kacheln blenden weich ein; gescheiterte Karte + Quellenhinweis verschwinden', /\.rmx-tiles img\.rmx-t\{[^}]*opacity:0;transition:opacity \.6s ease/.test(css) && /\.rmx-tiles img\.rmx-t\.ok\{opacity:1\}/.test(css) && /\.rmx\.tiles-failed \.rmx-tiles,\.rmx\.tiles-failed \.rmx-attr\{display:none\}/.test(css));
   ok('H4 Start gruen (Ring), Ziel korall (Punkt)', /\.rmx-start\{fill:#05080d;stroke:#3FE89A;stroke-width:3\}/.test(css) && /\.rmx-end\{fill:#FF6B5E;/.test(css));
