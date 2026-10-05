@@ -9,19 +9,26 @@
    Quellenhinweis kommen ueber ORVIA.routeMap.cfg() aus map-config.js.
 
    Aufbau
-     · „gelegte Ansicht" L: fuer sie liegen die Kacheln (Lage/Groesse in px) und der
-       Streckenpfad. „aktuelle Ansicht" C: wohin der Finger sie gerade geschoben hat.
-       Waehrend der Geste bewegt nur EINE Transformation die Kachelebene (kein Neulegen,
-       kein Neuladen); der Streckenpfad bekommt dieselbe Transformation im SVG, seine
-       Strichstaerke bleibt gleich (non-scaling-stroke).
-     · Kommt die Geste zur Ruhe, wird neu gelegt: fehlende Kacheln der passenden Stufe
-       werden angefragt, die bisherigen bleiben als Unterlage liegen, bis die neuen da sind.
+     · „gelegte Ansicht" L: fuer sie liegen die Kacheln (Lage/Groesse in px). „aktuelle
+       Ansicht" C: wohin der Finger sie gerade geschoben hat. Waehrend der Geste bewegt nur
+       EINE Transformation die Kachelebene (kein Neulegen, kein Neuladen).
+     · Der Streckenpfad wird EINMAL gerechnet (Bezugsansicht R0 = „ganze Strecke") und
+       danach nur noch transformiert; seine Strichstaerke bleibt gleich (non-scaling-stroke).
+     · Neu gelegt wird nur, wenn Kacheln fehlen oder sich die Zoomstufe geaendert hat; die
+       bisherigen Kacheln bleiben als Unterlage liegen, bis die neuen da sind.
+   Fluessigkeit (v8-437, Gian: „laedt noch laenger und ruckelt manchmal")
+     · Vorher wurde beim Schieben alle 220 ms ALLES neu gelegt und der Pfad (zwei Mal einige
+       tausend Punkte) neu geschrieben — das waren die Ruckler. Jetzt: Pfad einmal,
+       Kacheln nur bei Bedarf; je Bild genau zwei Transformationen.
+     · Kein Filter auf den Kachelbildern, keine Unschaerfe-Flaechen ueber der Karte.
+     · Beim Oeffnen liegen sofort die Kacheln des Kartenfelds darunter (kommen aus dem
+       Zwischenspeicher des Browsers), die scharfen ersetzen sie.
+     · Loslassen im Schwung ⇒ die Karte gleitet aus.
    Anfragen sparen (abgerechnet wird je Kachel)
      · Waehrend zwei Finger zoomen, wird NICHTS angefragt — erst die Endstufe.
      · Geladene Kachelbilder bleiben fuer die Sitzung im Speicher: erneutes Oeffnen und
        Zurueckschieben kosten keine Anfrage. (Der Anbieter erlaubt dem Browser ausserdem
-       acht Stunden Zwischenspeichern — Kacheln, die schon das Standbild geladen hat,
-       kommen daher ohne Netz.)
+       acht Stunden Zwischenspeichern.)
      · Dieselbe Kachelstufe wie das Standbild (routeMap.level).
    Rueckfall
      · Scheitert eine Kachel, gilt die gemeinsame 5-Minuten-Pause von route-map.js; die
@@ -32,14 +39,17 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map-view@1';
+  var VERSION = 'route-map-view@2';
   var Z_OUT = 3;            /* so viele Stufen weiter heraus als „ganze Strecke" */
   var Z_MAX = 18;           /* stufenlose Obergrenze (Welt = 256 · 2^Z) ⇒ 512er-Kachelstufe hoechstens 17 */
   var KEEP_MAX = 32;        /* Kachelbilder im Sitzungsspeicher dieser Ansicht (ein Bild ≈ 4 MB entpackt — auf dem Handy bewusst knapp;
                                was herausfaellt, liefert der Browser-Zwischenspeicher ohne neue Anfrage nach) */
   var MAX_PTS = 4000;       /* mehr Streckenpunkte werden fuer die Ansicht ausgeduennt */
-  var PAN_LAYOUT_MS = 220;  /* beim Schieben hoechstens so oft neu legen/nachladen */
+  var PAN_CHECK_MS = 160;   /* beim Schieben hoechstens so oft pruefen, ob Kacheln fehlen */
   var SETTLE_MS = 140;
+  var FLING_MIN = 0.25;     /* px/ms — ab diesem Schwung gleitet die Karte nach dem Loslassen aus */
+  var FLING_TAU = 300;      /* ms — so schnell klingt der Schwung ab */
+  var EDGE = 140;           /* px — so weit reicht die Streckenebene ueber den Bildschirm hinaus (siehe apply) */
 
   function RM() { return O.routeMap; }
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -82,7 +92,7 @@
   }
 
   /* ---- Sitzungsspeicher ---- */
-  var _keep = {}, _order = [], _req = 0, _reused = 0;
+  var _keep = {}, _order = [], _req = 0, _reused = 0, _seeded = 0, _bakes = 0;
   function remember(url, img) {
     if (_keep[url]) return;
     _keep[url] = img; _order.push(url);
@@ -105,8 +115,11 @@
     try {
       var R = RM(), doc = root.document;
       if (!R || !doc || !doc.body) return false;
-      var pts = thin(R.valid(route));
-      if (pts.length < 2) return false;
+      var raw = R.valid(route);
+      if (raw.length < 2) return false;
+      /* gezeichnet wird die geglaettete, ausgeduennte Anzeige-Strecke; der Ausschnitt kommt aus den Rohpunkten */
+      var pts = thin(R.display ? R.display(raw) : raw);
+      if (pts.length < 2) pts = raw;
       if (S) close();
       opts = opts || {};
       var L = opts.labels || {}, c = R.cfg();
@@ -139,17 +152,21 @@
       var top = el.querySelector('.rmv-top'), padT = 96;
       try { padT = Math.round(top.getBoundingClientRect().bottom - el.getBoundingClientRect().top) + 8; } catch (e) {}
       var pad = { t: clamp(padT, 60, h * 0.35), r: 44, b: clamp(Math.round(h * 0.16), 70, 150), l: 44 };
-      var fit = fitView(pts, w, h, pad);
+      var fit = fitView(raw, w, h, pad);
       if (!fit) { doc.body.removeChild(el); return false; }
 
       S = { el: el, stage: stage, layer: el.querySelector('.rmv-layer'), tilesEl: el.querySelector('.rmv-tiles'),
-        g: el.querySelector('.rmv-g'), cas: el.querySelector('.rmx-case'), line: el.querySelector('.rmx-line'),
+        svg: el.querySelector('.rmv-route'), g: el.querySelector('.rmv-g'), cas: el.querySelector('.rmx-case'), line: el.querySelector('.rmx-line'), B: null,
         start: el.querySelector('.rmx-start'), end: el.querySelector('.rmx-end'),
-        pts: pts, pad: pad, fit: fit, lim: limits(fit.Z), L: copy(fit), C: copy(fit),
-        ptrs: {}, n: 0, raf: 0, settleT: 0, anim: 0, lastLayout: 0, tiles: {}, failed: false, moved: 0, down: null, lastTap: null,
+        pts: pts, raw: raw, pad: pad, fit: fit, lim: limits(fit.Z), L: copy(fit), C: copy(fit), R0: copy(fit),
+        ptrs: {}, n: 0, raf: 0, settleT: 0, anim: 0, lastCheck: 0, tiles: {}, failed: false, moved: 0, down: null, lastTap: null, trail: [],
         prevFocus: doc.activeElement, prevOverflow: doc.documentElement.style.overflow };
       try { doc.documentElement.style.overflow = 'hidden'; } catch (e) {}
+      /* Pfad EINMAL in der Bezugsansicht (zwei Nachkommastellen: bleibt auch 100-fach vergroessert genau) */
+      var d = R.pathD(pts, R.viewAt(fit.cx, fit.cy, fit.Z, w, h, c.tileSize), { round: R.ROUND_M, digits: 2 });
+      S.cas.setAttribute('d', d); S.line.setAttribute('d', d);
       if (!c.enabled || R.paused()) noTiles(false);
+      else if (opts.seed) seed(opts.seed, c);
       bind();
       layout();
       try { el.querySelector('.rmv-close').focus(); } catch (e) {}
@@ -183,11 +200,39 @@
     return im;
   }
 
+  /* Unterlage beim Oeffnen: die Kacheln, die das Kartenfeld der Seite schon geladen hat. Sie kommen
+     aus dem Zwischenspeicher des Browsers (keine Wartezeit) und liegen unscharf darunter, bis die
+     scharfen Kacheln der Ansicht da sind. sd = { w, h, pad } des Felds. */
+  function seed(sd, c) {
+    try {
+      var R = RM(), v = R.fit(S.raw, +sd.w, +sd.h, sd.pad, c.tileSize);
+      if (!v) return;
+      var t = R.tiles(v);
+      for (var i = 0; i < t.length && i < 6; i++) {
+        var url = R.tileUrl(t[i], c); if (S.tiles[url]) continue;
+        var had = !!(_keep[url] && _keep[url].complete && _keep[url].naturalWidth > 0);
+        S.tiles[url] = { img: tileImg(url, S), gx: (t[i].left + v.ox) / v.world, gy: (t[i].top + v.oy) / v.world, gs: (v.tile * v.scale) / v.world, cur: false, seed: true };
+        if (!had) { _req--; _seeded++; }
+        S.tilesEl.appendChild(S.tiles[url].img);
+      }
+    } catch (e) {}
+  }
+  /* need(): fehlt fuer die aktuelle Ansicht eine Kachel? (nur dann wird neu gelegt/geladen) */
+  function need() {
+    if (!S) return false;
+    var R = RM(), c = R.cfg();
+    if (S.failed || !c.enabled || R.paused()) return false;
+    var v = R.viewAt(S.C.cx, S.C.cy, S.C.Z, S.C.w, S.C.h, c.tileSize);
+    if (!v) return false;
+    var t = R.tiles(v);
+    for (var i = 0; i < t.length; i++) { var rec = S.tiles[R.tileUrl(t[i], c)]; if (!rec || !rec.cur) return true; }
+    return false;
+  }
   /* Neu legen: Kacheln der passenden Stufe fuer die aktuelle Ansicht, alte als Unterlage. */
   function layout() {
     if (!S) return;
     var R = RM(), c = R.cfg();
-    S.L = copy(S.C); S.lastLayout = Date.now();
+    S.L = copy(S.C); S.lastCheck = Date.now();
     var v = R.viewAt(S.L.cx, S.L.cy, S.L.Z, S.L.w, S.L.h, c.tileSize);
     if (!v) return;
     var want = (S.failed || !c.enabled || R.paused()) ? [] : R.tiles(v);
@@ -201,6 +246,7 @@
         rec = S.tiles[url] = { img: tileImg(url, S), gx: 0, gy: 0, gs: 0 };
         S.tilesEl.appendChild(rec.img);
       }
+      rec.seed = false;
       /* Lage in Weltkoordinaten merken — damit die Kachel spaeter als Unterlage richtig liegt */
       rec.gx = (t.left + v.ox) / v.world; rec.gy = (t.top + v.oy) / v.world; rec.gs = (v.tile * v.scale) / v.world;
       rec.cur = true;
@@ -210,13 +256,11 @@
     for (k in S.tiles) {
       rec = S.tiles[k]; if (rec.cur) continue;
       var size = rec.gs * v.world, left = rec.gx * v.world - v.ox, tp = rec.gy * v.world - v.oy;
-      var out = left > v.w || tp > v.h || left + size < 0 || tp + size < 0 || !(rec.img.complete && rec.img.naturalWidth > 0);
+      var out = left > v.w || tp > v.h || left + size < 0 || tp + size < 0 || (!rec.seed && !(rec.img.complete && rec.img.naturalWidth > 0));
       if (out) { if (rec.img.parentNode) rec.img.parentNode.removeChild(rec.img); delete S.tiles[k]; continue; }
       rec.img.style.cssText = 'left:' + left.toFixed(1) + 'px;top:' + tp.toFixed(1) + 'px;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;z-index:0';
     }
     prune();
-    var d = R.pathD(S.pts, v);
-    S.cas.setAttribute('d', d); S.line.setAttribute('d', d);
     S.el.setAttribute('data-z', v.z);
     apply();
   }
@@ -233,10 +277,26 @@
     if (!S) return;
     var d = delta(S.L, S.C);
     S.layer.style.transform = 'translate3d(' + d.tx.toFixed(2) + 'px,' + d.ty.toFixed(2) + 'px,0) scale(' + d.s.toFixed(5) + ')';
-    S.g.setAttribute('transform', 'translate(' + d.tx.toFixed(2) + ' ' + d.ty.toFixed(2) + ') scale(' + d.s.toFixed(5) + ')');
+    /* Strecke: Gemessen kostet das Neuzeichnen des Pfads je Bild mehr als alles andere. Beim
+       reinen Verschieben (gleiche Zoomstufe) wird die fertig gezeichnete Streckenebene deshalb
+       nur verschoben — sie reicht EDGE px ueber den Bildschirm hinaus; erst wenn davon 60 %
+       verbraucht sind, wird neu gezeichnet. Beim Zoomen wird je Bild neu gezeichnet (Linie
+       bleibt scharf und gleich breit). */
+    if (S.B && Math.abs(S.C.Z - S.B.Z) < 1e-9) {
+      var m = delta(S.B, S.C);
+      if (Math.abs(m.tx) <= EDGE * 0.6 && Math.abs(m.ty) <= EDGE * 0.6) { S.svg.style.transform = 'translate3d(' + m.tx.toFixed(2) + 'px,' + m.ty.toFixed(2) + 'px,0)'; return; }
+    }
+    bake();
+  }
+  /* bake(): Strecke fuer die aktuelle Ansicht zeichnen (Pfad bleibt, nur seine Transformation) */
+  function bake() {
+    var r = delta(S.R0, S.C);
+    S.g.setAttribute('transform', 'translate(' + (r.tx + EDGE).toFixed(2) + ' ' + (r.ty + EDGE).toFixed(2) + ') scale(' + r.s.toFixed(6) + ')');
     var a = screenOf(S.pts[0][0], S.pts[0][1], S.C), b = screenOf(S.pts[S.pts.length - 1][0], S.pts[S.pts.length - 1][1], S.C);
-    S.start.setAttribute('cx', a[0].toFixed(1)); S.start.setAttribute('cy', a[1].toFixed(1));
-    S.end.setAttribute('cx', b[0].toFixed(1)); S.end.setAttribute('cy', b[1].toFixed(1));
+    S.start.setAttribute('cx', (a[0] + EDGE).toFixed(1)); S.start.setAttribute('cy', (a[1] + EDGE).toFixed(1));
+    S.end.setAttribute('cx', (b[0] + EDGE).toFixed(1)); S.end.setAttribute('cy', (b[1] + EDGE).toFixed(1));
+    S.B = copy(S.C); S.svg.style.transform = 'translate3d(0,0,0)';
+    _bakes++;
   }
   function frame() {
     if (!S || S.raf) return;
@@ -247,7 +307,22 @@
     if (!S) return;
     clearTimeout(S.settleT);
     var st = S;
-    S.settleT = setTimeout(function () { if (S === st) layout(); }, ms == null ? SETTLE_MS : ms);
+    S.settleT = setTimeout(function () { if (S === st) rest(); }, ms == null ? SETTLE_MS : ms);
+  }
+  /* Ruhe: neu legen nur bei geaenderter Zoomstufe (scharfe Kacheln) oder wenn Kacheln fehlen */
+  function rest() { if (!S) return; if (Math.abs(S.C.Z - S.L.Z) > 1e-9 || need()) layout(); }
+  /* Schwung nach dem Loslassen: gleitet aus, laedt unterwegs nur Fehlendes */
+  function fling(vx, vy) {
+    if (!S) return;
+    var st = S, last = Date.now();
+    var raf = root.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    (function step() {
+      if (S !== st) return;
+      var t = Date.now(), dt = Math.min(48, Math.max(1, t - last)), k = Math.exp(-dt / FLING_TAU); last = t;
+      st.C = norm(panBy(st.C, vx * dt, vy * dt), st.lim); vx *= k; vy *= k; apply();
+      if (t - st.lastCheck > PAN_CHECK_MS) { st.lastCheck = t; if (need()) layout(); }
+      if (Math.sqrt(vx * vx + vy * vy) > 0.03) st.anim = raf(step); else { st.anim = 0; rest(); }
+    })();
   }
   function stopAnim() { if (S && S.anim) { (root.cancelAnimationFrame || clearTimeout)(S.anim); S.anim = 0; } }
   /* animate(at): at(t) liefert die Ansicht fuer t = 0…1 */
@@ -257,12 +332,12 @@
     var st = S, t0 = Date.now(), dur = ms || 220;
     var raf = root.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
     var reduce = false; try { reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
-    if (reduce) { S.C = norm(at(1), S.lim); layout(); return; }
+    if (reduce) { S.C = norm(at(1), S.lim); apply(); rest(); return; }
     (function step() {
       if (S !== st) return;
       var p = Math.min(1, (Date.now() - t0) / dur), e = 1 - Math.pow(1 - p, 3);
       S.C = norm(at(e), S.lim); apply();
-      if (p < 1) S.anim = raf(step); else { S.anim = 0; layout(); }
+      if (p < 1) S.anim = raf(step); else { S.anim = 0; rest(); }
     })();
   }
   function zoomStep(dZ, px, py) {
@@ -286,6 +361,7 @@
       stopAnim(); clearTimeout(st.settleT);
       st.ptrs[e.pointerId] = at(e); st.n++;
       try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+      st.trail = [];
       if (st.n === 1) { st.moved = 0; st.down = { t: Date.now(), x: st.ptrs[e.pointerId].x, y: st.ptrs[e.pointerId].y }; } else st.down = null;
     });
     stage.addEventListener('pointermove', function (e) {
@@ -298,8 +374,12 @@
       st.C = norm(v, st.lim);
       st.moved += Math.abs(c1.x - c0.x) + Math.abs(c1.y - c0.y);
       frame();
-      /* nur beim Schieben mit einem Finger nachladen — nie mitten im Zoomen */
-      if (c1.n === 1 && Date.now() - st.lastLayout > PAN_LAYOUT_MS) layout();
+      var now = Date.now();
+      if (c1.n === 1) {
+        st.trail.push({ t: now, x: c1.x, y: c1.y }); if (st.trail.length > 6) st.trail.shift();
+        /* nur beim Schieben mit einem Finger nachladen — nie mitten im Zoomen — und nur, wenn wirklich eine Kachel fehlt */
+        if (now - st.lastCheck > PAN_CHECK_MS) { st.lastCheck = now; if (need()) layout(); }
+      } else st.trail = [];
     });
     function up(e) {
       if (S !== st || !st.ptrs[e.pointerId]) return;
@@ -313,7 +393,16 @@
         if (st.lastTap && now - st.lastTap.t < 340 && Math.abs(st.lastTap.x - p.x) < 34 && Math.abs(st.lastTap.y - p.y) < 34) { st.lastTap = null; zoomStep(1, p.x, p.y); return; }
         st.lastTap = { t: now, x: p.x, y: p.y };
       } else st.lastTap = null;
-      settle(40);
+      /* Schwung: Geschwindigkeit der letzten ~100 ms; nur wenn der Finger bis zuletzt in Bewegung war */
+      var tr = st.trail, vx = 0, vy = 0; st.trail = [];
+      if (e.type === 'pointerup' && tr.length >= 2 && now - tr[tr.length - 1].t < 60) {
+        var a = tr[0]; for (var i = 0; i < tr.length; i++) if (now - tr[i].t <= 110) { a = tr[i]; break; }
+        var b = tr[tr.length - 1], dt = b.t - a.t;
+        if (dt > 8) { vx = (b.x - a.x) / dt; vy = (b.y - a.y) / dt; }
+      }
+      var reduce = false; try { reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) {}
+      if (!reduce && Math.sqrt(vx * vx + vy * vy) >= FLING_MIN) { var cap = 3 / Math.max(3, Math.sqrt(vx * vx + vy * vy)); fling(vx * cap, vy * cap); }
+      else settle(40);
     }
     stage.addEventListener('pointerup', up);
     stage.addEventListener('pointercancel', up);
@@ -350,8 +439,10 @@
       if (S !== st) return;
       var w = stage.clientWidth, h = stage.clientHeight;
       if (!(w > 0) || !(h > 0) || (w === st.C.w && h === st.C.h)) return;
-      var f = fitView(st.pts, w, h, st.pad); if (!f) return;
-      st.fit = f; st.lim = limits(f.Z); st.C.w = w; st.C.h = h; st.C = norm(st.C, st.lim); layout();
+      var f = fitView(st.raw, w, h, st.pad); if (!f) return;
+      /* Bezugsansicht des Pfads behaelt ihre Groesse — die Umrechnung laeuft ueber Mittelpunkt und Zoomstufe */
+      var f0 = fitView(st.raw, w, h, st.pad) || f;
+      st.fit = f0; st.lim = limits(f0.Z); st.C.w = w; st.C.h = h; st.L.w = w; st.L.h = h; st.B = null; st.C = norm(st.C, st.lim); layout();
     };
     root.addEventListener('resize', st.onResize);
   }
@@ -371,7 +462,7 @@
     fitView: fitView, limits: limits, norm: norm, panBy: panBy, zoomAt: zoomAt, delta: delta, origin: origin, thin: thin,
     Z_OUT: Z_OUT, Z_MAX: Z_MAX,
     stats: function () { var n = 0, cur = 0, k; if (S) for (k in S.tiles) { n++; if (S.tiles[k].cur) cur++; }
-      return { open: !!S, requested: _req, reused: _reused, kept: _order.length, tiles: n, current: cur, failed: !!(S && S.failed), Z: S ? S.C.Z : null, cx: S ? S.C.cx : null, cy: S ? S.C.cy : null, fitZ: S ? S.fit.Z : null }; },
+      return { open: !!S, requested: _req, seeded: _seeded, bakes: _bakes, reused: _reused, kept: _order.length, tiles: n, current: cur, points: S ? S.pts.length : null, failed: !!(S && S.failed), Z: S ? S.C.Z : null, cx: S ? S.C.cx : null, cy: S ? S.C.cy : null, fitZ: S ? S.fit.Z : null }; },
     /* nur fuer Tests: Ansicht setzen und sofort legen */
     _set: function (v) { if (!S) return false; S.C = norm({ cx: v.cx == null ? S.C.cx : v.cx, cy: v.cy == null ? S.C.cy : v.cy, Z: v.Z == null ? S.C.Z : v.Z, w: S.C.w, h: S.C.h }, S.lim); layout(); return true; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.routeMapView;
