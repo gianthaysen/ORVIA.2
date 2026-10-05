@@ -1,5 +1,5 @@
 /* ============================================================
-   ORVIA · map-config — Quelle der Kartenkacheln (v8-432/433)
+   ORVIA · map-config — Quelle der Kartenkacheln (v8-432/433/434)
    ------------------------------------------------------------
    DIE EINE Stelle fuer alles, was die Karte betrifft. Der Schluessel steht nur hier —
    route-map.js liest ihn ueber ORVIA_MAP_CONFIG, kein anderes Modul kennt ihn.
@@ -18,6 +18,8 @@
      · style: Karten-Id aus MapTiler, z. B. 'dataviz-dark' (sehr reduziert) oder die Id
        eines eigenen Stils aus dem MapTiler-Editor.
      · tileSize: 512 (Standard; vier Mal weniger Anfragen als 256) oder 256.
+       Sollten die 512er-Kacheln einmal nicht mehr kommen: hier auf 256 stellen —
+       das ist die ganze Umstellung (es gilt dann die Vorlage tiles[256]).
      · Kostenloser Tarif: nur nicht-kommerziell / Entwicklung, Logo Pflicht,
        100.000 Anfragen im Monat. Eine Story-Karte braucht beim ersten Oeffnen
        im Mittel 3–4, auf dem Handy hoechstens 6 Kacheln (+ Logo); innerhalb der
@@ -29,14 +31,27 @@
      · detail: false — Aktivitaetsseite bleibt vorerst bei der bisherigen Zeichnung
                        (erst einschalten, wenn die Optik in der Story abgestimmt ist)
 
-   Eigene Kachelquelle statt MapTiler:
-     url: 'https://…/{z}/{x}/{y}{r}.png', attribution: '© …', logo: null
+   Adressen des Anbieters (tiles / logo / attribution) stehen ebenfalls NUR hier —
+   route-map.js setzt lediglich {style} {key} {z} {x} {y} {r} ein ({r} = „@2x").
+     · MapTiler kennt KEIN „/512/" im Pfad: ohne Groessenangabe kommen 512er-Kacheln,
+       nur 256er tragen „/256/". Am 5.10.2026 von der Live-Herkunft aus geprueft:
+         …/maps/dataviz-dark/512/{z}/{x}/{y}@2x.png   → Fehler
+         …/maps/dataviz-dark/{z}/{x}/{y}@2x.png       → 1024 × 1024 px (512er, doppelt)
+         …/maps/dataviz-dark/256/{z}/{x}/{y}@2x.png   →  512 ×  512 px (256er, doppelt)
+     · Anderer Anbieter: tiles (oder eine einzige Vorlage als url), attribution und
+       logo austauschen — sonst ist nichts anzufassen.
    ============================================================ */
 window.ORVIA_MAP_CONFIG = {
   provider: 'maptiler',
-  key: '',
+  key: 'CwKts3eJvP6HZyk1hUpe',
   style: 'dataviz-dark',
   tileSize: 512,
   story: true,
-  detail: false
+  detail: false,
+  tiles: {
+    512: 'https://api.maptiler.com/maps/{style}/{z}/{x}/{y}{r}.png?key={key}',
+    256: 'https://api.maptiler.com/maps/{style}/256/{z}/{x}/{y}{r}.png?key={key}'
+  },
+  logo: 'https://api.maptiler.com/resources/logo.svg',
+  attribution: '© MapTiler © OpenStreetMap contributors'
 };

@@ -11,7 +11,9 @@
    darueber. Damit: kein Zoom, keine Bedienelemente, pixelgenau zur Seite passend,
    Kachelbilder liegen danach im Browser-Cache.
 
-   Quelle der Kacheln: frei einstellbar (ORVIA_MAP_CONFIG in map-config.js). Ohne
+   Quelle der Kacheln: steht ALLEIN in map-config.js (ORVIA_MAP_CONFIG) — Anbieter,
+   Schluessel, Adressvorlagen, Logo, Quellenhinweis. Dieses Modul kennt keinen Anbieter
+   und keine Anbieter-Adresse (v8-434); es setzt nur {style} {key} {z} {x} {y} {r} ein. Ohne
    Schluessel gibt es KEINE Anfrage an irgendeinen Anbieter — dann zeichnet dieses Modul
    nur die Strecke (ruhiger Rueckfall). Scheitert eine Kachel, blendet sich die ganze
    Kartenebene aus; die Strecke bleibt.
@@ -26,7 +28,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map@2';
+  var VERSION = 'route-map@3';
   var BASE = 256;                 /* Bezugsraster der Zoomstufe Z (Welt = 256 · 2^Z CSS-px) */
   var MAX_Z = 16.6, MIN_Z = 3;    /* nie bis auf Hausnummern hinein, nie die halbe Welt */
   /* v8-433 — Anfragen sparen (abgerechnet wird je Kachel):
@@ -43,17 +45,22 @@
   function cfg() {
     var c = root.ORVIA_MAP_CONFIG || {};
     var key = String(c.key || '').trim();
-    var provider = c.provider || 'maptiler';
-    /* Eigene Kachelquelle: url mit {z} {x} {y} {r} — braucht dann keinen Schluessel. */
-    var url = c.url ? String(c.url) : null;
     var ts = (+c.tileSize === 256) ? 256 : 512;
+    /* Adressvorlagen kommen NUR aus der Einstellung: tiles[512] / tiles[256] je Kachelgroesse,
+       oder url als eine Vorlage fuer alles. Fehlt die Vorlage der gewuenschten Groesse, gilt
+       die vorhandene andere; fehlt jede, bleibt die Karte aus. */
+    var tl = c.tiles || {};
+    if (!c.url && !tl[ts] && tl[ts === 512 ? 256 : 512]) ts = (ts === 512) ? 256 : 512;
+    var url = c.url ? String(c.url) : (tl[ts] ? String(tl[ts]) : null);
+    var needKey = !!url && url.indexOf('{key}') >= 0;
     return {
-      provider: provider, key: key, style: c.style || 'dataviz-dark', url: url, tileSize: ts,
+      provider: c.provider || null, key: key, style: String(c.style || ''), url: url, tileSize: ts,
       /* Wo die Karte erscheint: Story ja; Aktivitaetsseite erst, wenn die Optik abgestimmt ist. */
       story: c.story !== false, detail: c.detail === true,
-      enabled: c.enabled !== false && (!!key || !!url),
-      attribution: c.attribution || (provider === 'maptiler' && !url ? '© MapTiler © OpenStreetMap contributors' : '© OpenStreetMap contributors'),
-      logo: (c.logo === undefined) ? (provider === 'maptiler' && !url ? 'https://api.maptiler.com/resources/logo.svg' : null) : c.logo
+      /* an nur mit Vorlage — und mit Schluessel, wenn die Vorlage einen verlangt */
+      enabled: c.enabled !== false && !!url && (!needKey || !!key),
+      attribution: c.attribution ? String(c.attribution) : '© OpenStreetMap contributors',
+      logo: c.logo ? String(c.logo) : null
     };
   }
 
@@ -137,8 +144,9 @@
   }
   function tileUrl(t, c) {
     c = c || cfg();
-    if (c.url) return c.url.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y).replace('{r}', '@2x');
-    return 'https://api.maptiler.com/maps/' + encodeURIComponent(c.style) + '/' + c.tileSize + '/' + t.z + '/' + t.x + '/' + t.y + '@2x.png?key=' + encodeURIComponent(c.key);
+    if (!c.url) return '';
+    return c.url.replace('{style}', encodeURIComponent(c.style)).replace('{key}', encodeURIComponent(c.key))
+      .replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y).replace('{r}', '@2x');
   }
   function pathD(pts, v) {
     var d = '';

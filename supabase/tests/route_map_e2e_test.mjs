@@ -53,11 +53,15 @@ const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i ? '  �
 const sec = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-let KEY = 'TESTKEY', DETAIL = false;
+let KEY = 'TESTKEY', DETAIL = false, TS = 512;
+/* v8-434: ausgeliefert wird die ECHTE map-config.js (Adressvorlagen!) — ersetzt werden nur Schluessel,
+   Kachelgroesse und der Schalter fuer die Aktivitaetsseite. Der echte Schluessel verlaesst den Test nie. */
+const cfgFile = () => { const s0 = readFileSync(join(APP, 'js', 'map-config.js'), 'utf8'); const s = s0.replace(/key: '[A-Za-z0-9]*'/, "key: '" + KEY + "'").replace(/tileSize: 512,/, 'tileSize: ' + TS + ',').replace(/detail: false,(\s*tiles:)/, 'detail: ' + DETAIL + ',$1');
+  if (!/key: '[A-Za-z0-9]*'/.test(s0) || !/tileSize: 512,/.test(s0) || !/detail: false,\s*tiles:/.test(s0)) throw new Error('map-config.js hat eine unerwartete Form'); return s; };
 const server = http.createServer((req, res) => {
   let p = req.url.split('?')[0]; if (p === '/') p = '/index.html';
   if (p === '/env.js') { res.writeHead(200, { 'content-type': MIME['.js'] }); res.end('/* Test */'); return; }
-  if (p === '/js/map-config.js') { res.writeHead(200, { 'content-type': MIME['.js'], 'cache-control': 'no-store' }); res.end("window.ORVIA_MAP_CONFIG={provider:'maptiler',key:'" + KEY + "',style:'dataviz-dark',tileSize:512,story:true,detail:" + DETAIL + "};"); return; }
+  if (p === '/js/map-config.js') { res.writeHead(200, { 'content-type': MIME['.js'], 'cache-control': 'no-store' }); res.end(cfgFile()); return; }
   const f = join(APP, normalize(p).replace(/^([\\/])+/, ''));
   if (!f.startsWith(APP) || !existsSync(f)) { res.writeHead(404); res.end('nf'); return; }
   res.writeHead(200, { 'content-type': MIME[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
@@ -76,14 +80,16 @@ const tileSvg = (z, x, y) => { const n = 2 ** z, S = 512, step = 0.001; const lo
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">${g}</svg>`; };
 
 async function run(mode) {
-  KEY = mode === 'nokey' ? '' : 'TESTKEY'; DETAIL = mode === 'detail';
+  KEY = mode === 'nokey' ? '' : 'TESTKEY'; DETAIL = mode === 'detail'; TS = mode === 'ts256' ? 256 : 512;
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.route('**cdnjs.cloudflare.com/**', r => r.fulfill({ contentType: 'text/javascript', body: 'window.Chart=function(){this.destroy=function(){}};window.Chart.register=function(){};window.Chart.defaults={plugins:{}};' }));
   await ctx.route('**cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: '/* stub */' }));
   const reqs = [];
   await ctx.route('**api.maptiler.com/**', r => { const u = new URL(r.request().url()); reqs.push({ path: u.pathname, key: u.searchParams.get('key'), ref: r.request().headers()['referer'] || '' });
     if (/logo\.svg/.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="12"/>' });
-    const m = /\/maps\/([^/]+)\/(256|512)\/(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
+    /* Der ECHTE Vertrag des Anbieters (5.10.2026 live geprueft): 512er OHNE Groessenangabe, 256er mit „/256/";
+       „/512/…" gibt es nicht und scheitert — der fruehere Platzhalter nahm es an und verdeckte den Fehler. */
+    const m = /^\/maps\/([^/]+)\/(256\/)?(\d+)\/(\d+)\/(\d+)@2x\.png$/.exec(u.pathname);
     if (!m || mode === 'fail') return r.fulfill({ status: 403, body: 'no' });
     return r.fulfill({ contentType: 'image/svg+xml', body: tileSvg(+m[3], +m[4], +m[5]) }); });
   const tileReqs = () => reqs.filter(q => /@2x\.png$/.test(q.path)).length;
@@ -171,7 +177,7 @@ ok('A1 App laedt ohne Laufzeitfehler, Story oeffnet', T.errs.length === 0 && T.R
 ok('A2 Karte an: alle Kacheln geladen und sichtbar', T.R.enabled === true && T.R.tiles >= 1 && T.R.loaded === T.R.tiles && T.R.tilesShown === true && /has-tiles/.test(T.R.cls), T.R.loaded + '/' + T.R.tiles);
 ok('A3 Kacheln decken den Ausschnitt lueckenlos (390 × 557), ohne Fugen', T.R.covers === true && T.R.noGap === true && T.R.rmx[0] === 390 && T.R.rmx[1] === 557, JSON.stringify(T.R.rmx));
 ok('A4 Strecke und Karte liegen deckungsgleich: Start-Ring sitzt auf der Kreuzung 51,4800 / 7,2160 der Kachel (± 1 px)', !!T.R.cross && Math.abs(T.R.start[0] - T.R.cross[0]) <= 1 && Math.abs(T.R.start[1] - T.R.cross[1]) <= 1, JSON.stringify([T.R.start.map(x => +x.toFixed(1)), (T.R.cross || []).map(x => +x.toFixed(1))]));
-ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.png$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/512\/1[3-5]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
+ok('A5 Anfragen: richtiger Stil, Schluessel, nur die Herkunft als Referer (kein Pfad, keine Kennung)', T.reqs.filter(q => /@2x\.png$/.test(q.path)).length >= T.R.tiles && T.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/1[3-5]\/\d+\/\d+@2x\.png$/.test(q.path) && q.key === 'TESTKEY') && T.reqs.every(q => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(q.ref)), JSON.stringify([...new Set(T.reqs.map(q => q.ref))]));
 ok('A6 Quellenhinweis sichtbar', T.R.attrShown === true && /© MapTiler © OpenStreetMap contributors/.test(T.R.attr || ''));
 ok('A7 Cover: Distanz als Hauptzahl, drei Kennzahlen, kein Satz mehr', /^3,33 km$/i.test(T.R.hero || '') && T.R.stats.length === 3 && /36 min/.test(T.R.stats[0]) && /10:49/.test(T.R.stats[1]) && /110 bpm/.test(T.R.stats[2]) && T.R.sentence === false, JSON.stringify([T.R.hero, T.R.stats]));
 ok('A8 Diagramm-Seite: „Ø 110 bpm · Max. 131 bpm · Garmin" — ohne Erklaersatz', /Ø 110 bpm/.test(T.R.chartFoot || '') && /Max\. 131 bpm/.test(T.R.chartFoot || '') && /garmin/i.test(T.R.chartFoot || '') && !/nachgerechnet|über die Einheit/.test(T.R.chartFoot || ''), T.R.chartFoot);
@@ -181,6 +187,11 @@ ok('A12 alle Seiten durchblaettern und zurueck: KEINE weitere Kachel-Anfrage, Ka
 ok('A13 Story schliessen und neu oeffnen: weiterhin keine neue Anfrage (Sitzungsspeicher)', T.R.n3 === T.R.n1 && T.R.re.shown === T.R.re.tiles && T.R.re.tiles === T.R.tiles, JSON.stringify({ n3: T.R.n3, st: T.R.re.stats }));
 ok('A14 insgesamt gingen nur Story-Kacheln + das Logo hinaus', T.reqs.length === T.R.n1 + 1, 'Anfragen gesamt: ' + T.reqs.length);
 ok('A10 Einheit ohne Strecke (Kraft): Seite wie bisher, keine Karte', T.R.gymOpened === true ? (T.R.gym && T.R.gym.rmx === false && T.R.gym.hero === false) : true, JSON.stringify(T.R.gym));
+
+/* 256er-Rueckfall: eine Zeile in map-config.js (tileSize: 256) — Karte, Lage und Wiederverwendung bleiben richtig */
+const S = await run('ts256');
+ok('A16 Rueckfall tileSize 256: alle Kacheln ueber „/256/" geladen, lueckenlos, Strecke deckungsgleich (± 1 px)', S.errs.length === 0 && S.R.tiles >= 1 && S.R.loaded === S.R.tiles && S.R.covers === true && S.R.noGap === true && S.reqs.filter(q => /@2x\.png$/.test(q.path)).every(q => /^\/maps\/dataviz-dark\/256\/1[4-6]\/\d+\/\d+@2x\.png$/.test(q.path)) && !!S.R.cross && Math.abs(S.R.start[0] - S.R.cross[0]) <= 1 && Math.abs(S.R.start[1] - S.R.cross[1]) <= 1, JSON.stringify({ kacheln: S.R.tiles, start: S.R.start.map(x => +x.toFixed(1)), kreuzung: (S.R.cross || []).map(x => +x.toFixed(1)) }));
+ok('A17 … und auch dort keine erneute Anfrage beim Blaettern und Wiederoeffnen', S.R.n2 === S.R.n1 && S.R.n3 === S.R.n1 && S.R.n1 === S.R.tiles && S.R.n1 <= 24, JSON.stringify({ n1: S.R.n1, n2: S.R.n2, n3: S.R.n3 }));
 
 const D = await run('detail');
 ok('A15 mit detail:true (vorbereitet): Karte im bestehenden Feld (255 px), alte Zeichnung ersetzt', D.R.detail.rmx === true && D.R.detail.oldSvg === false && D.R.detail.h === 255 && D.R.detail.tiles >= 1 && /has-rmx/.test(D.R.detail.cls) && D.errs.length === 0, JSON.stringify(D.R.detail));
