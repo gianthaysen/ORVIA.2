@@ -9282,6 +9282,7 @@ function gmActMountRouteMap(pg,route,vm){
   try{
     var RM=window.ORVIA&&ORVIA.routeMap;
     if(!pg||!route||route.length<2||!RM||!RM.enabled||!RM.enabled())return false;
+    if(!RM.cfg||RM.cfg().detail!==true)return false;      /* v8-433: vorerst nur die Story (map-config.js: detail) */
     var el=pg.querySelector('.route-map');if(!el)return false;
     var th=(typeof gmStoryTheme==='function')?gmStoryTheme(gmActFamily(vm&&vm.sportId)):null;
     var keep=el.innerHTML;
@@ -10156,10 +10157,11 @@ function gmStoryPages(a){
      Ohne Kartenschluessel/Netz zeichnet route-map nur die Strecke — der Aufbau bleibt. */
   var coverPage=null;
   if(route&&window.ORVIA&&ORVIA.routeMap&&typeof ORVIA.routeMap.html==='function'){
+    var _mapOn=true;try{_mapOn=ORVIA.routeMap.cfg().story!==false;}catch(_){ }
     try{
       var _vw=(typeof window!=='undefined'&&window.innerWidth)||390,_vh=(typeof window!=='undefined'&&window.innerHeight)||780;
       var _sw=(_vw>=700)?440:_vw,_mh=Math.round(_vh*0.66);
-      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:4.5,
+      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:4.5,tiles:_mapOn,
         pad:{t:Math.round(Math.max(96,Math.min(150,_vh*0.17))),r:44,b:Math.round(_mh*0.17),l:44}});
       if(_map){
         var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
@@ -10355,6 +10357,10 @@ function gmStoryRender(){
     '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
     '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');
+  /* v8-433: Kartenkacheln nur fuer die SICHTBARE Seite laden — und aus dem Sitzungsspeicher,
+     wenn sie schon einmal geladen wurden. Dieses Markup wird bei jedem Seitenwechsel neu
+     gesetzt; mit src im Markup wuerde jede Kachel je Seitenwechsel erneut angefragt. */
+  try{var _on=host.querySelector('.wst-page.on');if(_on&&window.ORVIA&&ORVIA.routeMap&&ORVIA.routeMap.hydrate)ORVIA.routeMap.hydrate(_on);}catch(_){ }
   /* Auto-Weiterschaltung wie im Story-Muster; Tap uebersteuert jederzeit. */
   gmStoryStop();
   try{host.style.setProperty('--st-dur',(GM_STORY_MS/1000)+'s');}catch(_){ }
