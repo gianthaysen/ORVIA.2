@@ -3630,6 +3630,60 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-map .gm-route-line{stroke-dasharray:var(--rl);stroke-dashoffset:var(--rl);
   animation:stDraw 3.8s cubic-bezier(.35,0,.15,1) forwards}
 @keyframes stDraw{to{stroke-dashoffset:0}}
+/* ============================================================
+   v8-432 · Karte hinter der Strecke (route-map.js)
+   .rmx = Ausschnitt in festen Pixeln: Kachelbilder (.rmx-tiles) + Strecke als SVG darueber.
+   Die Karte ist Kulisse: stark entsaettigt und abgedunkelt; die Strecke traegt die Farbe.
+   Stellschrauben: --rmx-sat (Saettigung) und --rmx-bri (Helligkeit).
+   ============================================================ */
+.rmx{position:relative;overflow:hidden;flex:none}
+.rmx-tiles{position:absolute;inset:0;filter:saturate(var(--rmx-sat,.35)) brightness(var(--rmx-bri,.74)) contrast(1.04)}
+.rmx-tiles img.rmx-t{position:absolute;display:block;max-width:none;opacity:0;transition:opacity .6s ease;-webkit-user-select:none;user-select:none;pointer-events:none}
+.rmx-tiles img.rmx-t.ok{opacity:1}
+.rmx.tiles-failed .rmx-tiles,.rmx.tiles-failed .rmx-attr{display:none}
+.rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 5px rgba(0,0,0,.55));filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
+.rmx-case{stroke:#05080d;stroke-opacity:.5}
+.rmx-start{fill:#05080d;stroke:#3FE89A;stroke-width:3}
+.rmx-end{fill:#FF6B5E;stroke:#05080d;stroke-width:2}
+.rmx-attr{position:absolute;right:8px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:600;letter-spacing:.01em;
+  color:rgba(255,255,255,.58);text-shadow:0 1px 2px rgba(0,0,0,.9);pointer-events:none;white-space:nowrap}
+.rmx-attr .rmx-logo{height:13px;width:auto;opacity:.85}
+/* Aktivitaetsseite: Karte fuellt das bestehende Streckenfeld */
+.route-map.has-rmx{background-image:none;background-color:#0a1018}
+.route-map.has-rmx .rmx{position:absolute;inset:0}
+.route-map.has-rmx .rmx-tiles::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 45%,rgba(5,8,13,0) 55%,rgba(5,8,13,.55) 100%)}
+[data-theme="light"] .route-map.has-rmx{filter:none}
+/* Story-Cover: Karte ist Seitenhintergrund, laeuft nach unten ins Schwarz aus */
+.gm-story .wst-mapbg{position:absolute;top:0;left:0;right:0;z-index:0;display:flex;justify-content:center;overflow:hidden;pointer-events:none}
+.gm-story .wst-mapbg .rmx-tiles{--rmx-bri:.70;
+  /* nach unten ausblenden (Maske) statt auf eine feste Farbe zulaufen: darunter liegt der
+     Seitenverlauf der Sportart — eine Farbkante waere als Strich sichtbar */
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%)}
+/* oben abdunkeln, damit Titel und Schliessen-Knopf auf der Karte lesbar bleiben */
+.gm-story .wst-mapbg .rmx-tiles::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(5,8,13,.80) 0,rgba(5,8,13,.36) 15%,rgba(5,8,13,.05) 32%,rgba(5,8,13,.05) 100%)}
+.gm-story .wst-mapbg .gm-route-line{stroke-dasharray:var(--rl);stroke-dashoffset:var(--rl);animation:stDraw 3.2s cubic-bezier(.35,0,.15,1) .15s forwards}
+.gm-story .wst-mapbg .rmx-end{opacity:0;animation:wstDot .4s ease-out 3s forwards}
+.gm-story .wst-in.wst-coverpg .wst-top b,.gm-story .wst-in.wst-coverpg .wst-top span{text-shadow:0 1px 10px rgba(0,0,0,.75)}
+/* Hauptzahl + drei Kennzahlen am Fuss der Seite */
+.gm-story .wst-hero{margin-top:auto;flex:none}
+.gm-story .wst-heronum{display:flex;align-items:baseline;gap:10px;line-height:.92;animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .2s both}
+.gm-story .wst-heronum b{font-size:clamp(76px,25vw,112px);font-weight:850;letter-spacing:-.045em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gm-story .wst-heronum span{font-size:19px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.gm-story .wst-herostats{display:flex;margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.10);animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .42s both}
+.gm-story .wst-herostats div{flex:1;min-width:0}
+.gm-story .wst-herostats b{display:block;font-size:19px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gm-story .wst-herostats span{display:block;margin-top:5px;font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:359px){.gm-story .wst-herostats b{font-size:16.5px}}
+/* Diagramm-Seiten: zweite Zahl deutlich, Quelle klein */
+.gm-story .wst-in.wst-chartpg .wst-hsub{font-size:17px;font-weight:750;color:rgba(255,255,255,.80);margin-top:10px;font-variant-numeric:tabular-nums}
+.gm-story .wst-hsrc{margin-top:12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.38);animation:wstUp .85s cubic-bezier(.2,.7,.2,1) .6s both}
+@media (prefers-reduced-motion:reduce){
+  .gm-story .wst-mapbg .gm-route-line{animation:none;stroke-dashoffset:0}
+  .gm-story .wst-mapbg .rmx-end,.gm-story .wst-heronum,.gm-story .wst-herostats,.gm-story .wst-hsrc{animation:none;opacity:1;transform:none}
+  .rmx-tiles img.rmx-t{transition:none}
+}
 .gm-story .wst-lap{display:grid;grid-template-columns:30px 1fr 54px;align-items:center;gap:9px;padding:8px 0;
   border-bottom:1px solid rgba(255,255,255,.07);font-size:11px}
 .gm-story .wst-lap i{display:block;height:20px;border-radius:6px;background:linear-gradient(90deg,var(--cyan),var(--activity));opacity:.85}

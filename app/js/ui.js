@@ -9274,6 +9274,26 @@ function gmPlanLinkPick(aid,occ){
   var r=null;try{r=(typeof linkActivityPlanCanonical==='function')?linkActivityPlanCanonical(aid,occ):null;}catch(_){ }
   try{if(r&&r.ok&&typeof gmOpenActivityPage==='function')gmOpenActivityPage(aid);}catch(_){ }
 }
+/* v8-432: echte Karte im bestehenden Streckenfeld der Aktivitaetsseite (Groesse, Rundung und
+   Platz bleiben). Nur bei eingeschalteter Kartenquelle und vorhandener GPS-Strecke; sonst
+   bleibt exakt die bisherige Zeichnung stehen (routeSVG). Laeuft NACH dem Einsetzen, weil
+   die Karte die echte Breite des Feldes braucht. */
+function gmActMountRouteMap(pg,route,vm){
+  try{
+    var RM=window.ORVIA&&ORVIA.routeMap;
+    if(!pg||!route||route.length<2||!RM||!RM.enabled||!RM.enabled())return false;
+    var el=pg.querySelector('.route-map');if(!el)return false;
+    var th=(typeof gmStoryTheme==='function')?gmStoryTheme(gmActFamily(vm&&vm.sportId)):null;
+    var keep=el.innerHTML;
+    var ok=RM.mount(el,route,{cls:'detail',width:4,color:(th&&(th.hi||th.acc))||null,pad:{t:26,r:26,b:30,l:26}});
+    if(ok){
+      el.classList.add('has-rmx');
+      /* Kacheln nicht ladbar (offline, Kontingent) ⇒ exakt die bisherige Zeichnung zurueck */
+      el.addEventListener('orvia:rmx-failed',function(){try{el.innerHTML=keep;el.classList.remove('has-rmx');}catch(_){ }},{once:true});
+    }else el.innerHTML=keep;
+    return ok;
+  }catch(_){return false;}
+}
 function gmOpenActivityPage(aid){
   var pg=document.getElementById('gmActPage');if(!pg)return;
   _gmActCharts=[];
@@ -9528,6 +9548,7 @@ function gmOpenActivityPage(aid){
   h+='<div class="tabspacer"></div>';
   pg.innerHTML=h;
   pg.classList.add('on');
+  gmActMountRouteMap(pg,route,vm);
   try{pg.scrollTop=0;}catch(_){ }
   /* GM7.7: Stream-Charts nach dem Einhaengen zeichnen — dieselbe GM-Komponente wie in den
      Metrik-Sheets. Baseline = Ø der ECHTEN Samples (reine Aggregation). X-Achse: Sample-
@@ -10080,7 +10101,9 @@ function gmStoryPages(a){
   var title=vm.title||vm.sportLabel||'' + _uiT('ui.training') + '';
   var top='<div class="wst-top"><b>'+gmEsc(title)+'</b><span>'+gmEsc(dl)+(vm.source?' · '+gmEsc(gmActSrcLabel(vm.source)):'')+'</span></div>';
   var page=function(mid,footHtml,cls){return '<div class="wst-bg" style="'+accCss+'"></div><div class="wst-in'+(cls?' '+cls:'')+'" style="'+accCss+'">'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
-  var foot=function(hl,sub){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+'</div>';};
+  var foot=function(hl,sub,src){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+(src?'<div class="wst-hsrc">'+gmEsc(src)+'</div>':'')+'</div>';};
+  /* v8-432: Quelle der Messung klein unter den Zahlen — statt erklaerender Saetze. */
+  var srcLine=(vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null;if(srcLine==='—')srcLine=null;
   var em=function(v){return '<em class="wst-em">'+gmEsc(String(v))+'</em>';};
   /* Verknuepfte Legacy-Session (Splits/Saetze/RPE/Debrief): storyRef ODER _legacy. */
   var sess=null;
@@ -10126,7 +10149,31 @@ function gmStoryPages(a){
   /* ---------- 1) Cover: Route (zeichnet sich) oder grosse Kennzahl ---------- */
   var route=(vm.canonicalRoute&&vm.canonicalRoute.length>1)?vm.canonicalRoute:null;
   var cover='';
-  if(route&&typeof routeSVG==='function'){
+  /* v8-432 (Gians Auftrag 5.10.): Die Strecke schwebte als Linie im Nichts, darunter ein
+     Satz („Du bist 3,33 km gelaufen."). Jetzt: Die Karte ist Teil des Seitenhintergrunds
+     (obere zwei Drittel, laeuft nach unten ins Schwarz aus), die Strecke liegt darueber,
+     und die Distanz ist die Hauptzahl; drei sportgerechte Kennzahlen darunter.
+     Ohne Kartenschluessel/Netz zeichnet route-map nur die Strecke — der Aufbau bleibt. */
+  var coverPage=null;
+  if(route&&window.ORVIA&&ORVIA.routeMap&&typeof ORVIA.routeMap.html==='function'){
+    try{
+      var _vw=(typeof window!=='undefined'&&window.innerWidth)||390,_vh=(typeof window!=='undefined'&&window.innerHeight)||780;
+      var _sw=(_vw>=700)?440:_vw,_mh=Math.round(_vh*0.66);
+      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:4.5,
+        pad:{t:Math.round(Math.max(96,Math.min(150,_vh*0.17))),r:44,b:Math.round(_mh*0.17),l:44}});
+      if(_map){
+        var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
+        var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);}catch(_){ }
+        coverPage='<div class="wst-bg" style="'+accCss+'"></div><div class="wst-mapbg" style="'+accCss+'">'+_map+'</div>'+
+          '<div class="wst-in wst-coverpg" style="'+accCss+'">'+top+
+          '<div class="wst-hero">'+
+            (_dm?'<div class="wst-heronum"><b>'+gmEsc(_dm[1])+'</b>'+(_dm[2]?'<span>'+gmEsc(_dm[2])+'</span>':'')+'</div>':'')+
+            (_kp.length?'<div class="wst-herostats">'+_kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>':'')+
+          '</div></div>';
+      }
+    }catch(_){coverPage=null;}
+  }
+  if(!coverPage&&route&&typeof routeSVG==='function'){
     /* GM7.9e: Cover-Route im echten Seitenverhaeltnis der Strecke und ohne Kachel-
        hintergrund, damit sie die freie Seitenhoehe nutzt. pathLength normiert die
        Zeichenanimation auf die tatsaechliche Pfadlaenge (vorher fester Schaetzwert). */
@@ -10140,7 +10187,7 @@ function gmStoryPages(a){
     cover=bigV?'<div class="wst-bignum'+(String(bigV[0]).length>6?' long':'')+'"><b>'+gmStoryBigVal(bigV[0])+'</b><span>'+gmEsc(bigV[1])+'</span></div>':'';
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
-  pages.push(page('<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub)));
+  pages.push(coverPage||page('<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub)));
   /* ---------- 1b) Neue Bestzeit — zwei kanonische Wege, EINE Rangfolge:
      (1) DISTANZ-Bestzeit aus dem kanonischen Bestzeitenmodell (bestTimes().meas):
          stammt eine gemessene 1/5/10-km-Bestzeit aus GENAU dieser Aktivitaet,
@@ -10230,7 +10277,7 @@ function gmStoryPages(a){
     var hrAvg=(vm.avgHr!=null)?Math.round(vm.avgHr):Math.round(hr.reduce(function(x,y){return x+y;},0)/hr.length);
     var hrMax=Math.max(Math.max.apply(null,hr),(vm.maxHr!=null?vm.maxHr:0));
     pages.push(page('<div class="wst-kick">' + _uiT('ui.herzfrequenz__') + '</div>'+gmStoryDotChart(hr,' bpm',0,{avg:hrAvg,max:hrMax}),
-      foot('Ø '+em(hrAvg+' bpm')+'' + _uiT('ui.ueber_die_einheit') + '','' + _uiT('ui.maximal') + ''+hrMax+'' + _uiT('ui.bpm_gemessene_werte_nichts_nachgerechnet') + ''),'wst-chartpg'));
+      foot('Ø '+em(hrAvg+' bpm'),'' + _uiT('ui.max_kurz') + ''+hrMax+' bpm',srcLine),'wst-chartpg'));
   }
   /* ---------- 5) Rad: Geschwindigkeit als Dot-Matrix (reine km/h-Umrechnung) ---------- */
   if(fam==='cycling'){
@@ -10238,14 +10285,14 @@ function gmStoryPages(a){
     if(spdC){
       var spAvg=(spdAvg!=null)?spdAvg:Math.round(spdC.reduce(function(x,y){return x+y;},0)/spdC.length*10)/10;
       pages.push(page('<div class="wst-kick">' + _uiT('ui.geschwindigkeit__') + '</div>'+gmStoryDotChart(spdC,' km/h',1,{avg:spAvg}),
-        foot('Ø '+em(fmtDe(spAvg)+' km/h')+'.','' + _uiT('ui.gemessene_geschwindigkeit_reine_einheitenumrechnung_aus') + ''),'wst-chartpg'));
+        foot('Ø '+em(fmtDe(spAvg)+' km/h'),'' + _uiT('ui.max_kurz') + ''+fmtDe(Math.round(Math.max.apply(null,spdC)*10)/10)+' km/h',srcLine),'wst-chartpg'));
     }
   }
   /* ---------- 5b) Leistung (Watt): eigene Seite, sobald die Messreihe vorliegt ---------- */
   var pw=cleanArr(st&&st.power,function(v){return v>=0?v:null;});
   if(pw&&vm.avgPowerW!=null){
     pages.push(page('<div class="wst-kick">' + _uiT('ui.leistung__') + '</div>'+gmStoryDotChart(pw,' W',0,{avg:vm.avgPowerW,max:vm.maxPowerW}),
-      foot('Ø '+em(vm.avgPowerW+' W')+'.',(vm.normPowerW!=null?'' + _uiT('ui.leistung_story_np') + ''+vm.normPowerW+' W · ':'')+'' + _uiT('ui.maximal') + ''+(vm.maxPowerW!=null?vm.maxPowerW:Math.round(Math.max.apply(null,pw)))+'' + _uiT('ui.leistung_story_sub') + ''),'wst-chartpg'));
+      foot('Ø '+em(vm.avgPowerW+' W'),'' + _uiT('ui.max_kurz') + ''+(vm.maxPowerW!=null?vm.maxPowerW:Math.round(Math.max.apply(null,pw)))+' W'+(vm.normPowerW!=null?' · NP '+vm.normPowerW+' W':''),srcLine),'wst-chartpg'));
   }
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
