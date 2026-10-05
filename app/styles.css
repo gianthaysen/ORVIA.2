@@ -3692,7 +3692,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmv-tiles{position:absolute;inset:0}
 .rmv-tiles img.rmx-t{transition:opacity .25s ease}
 .rmv-dim{position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(5,8,13,.78) 0,rgba(5,8,13,0) 20%,rgba(5,8,13,0) 84%,rgba(5,8,13,.55) 100%),rgba(5,8,13,var(--rmx-dim,.16))}
+  background:linear-gradient(180deg,rgba(5,8,13,.90) 0,rgba(5,8,13,.80) calc(var(--sat,0px) + 60px),rgba(5,8,13,0) calc(var(--sat,0px) + 132px),rgba(5,8,13,0) 84%,rgba(5,8,13,.55) 100%),rgba(5,8,13,var(--rmx-dim,.16))}
 .rmv-route{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .rmv .rmx-case{stroke-opacity:.6}
 .rmv-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
@@ -3719,9 +3719,12 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
      Seitenverlauf der Sportart — eine Farbkante waere als Strich sichtbar */
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 52%,rgba(0,0,0,.55) 72%,transparent 100%)}
-/* oben abdunkeln, damit Titel und Schliessen-Knopf auf der Karte lesbar bleiben */
+/* oben abdunkeln, damit Titel und Schliessen-Knopf auf der Karte lesbar bleiben.
+   v8-436: Seit die Karte mehr Kontrast hat, leuchten auch ihre Ortsnamen — einer stand quer
+   hinter der Datumszeile. Der Kopf bekommt deshalb ein fast deckendes Band, gemessen in px
+   ab dem sicheren Rand (der Kopf sitzt in px, nicht in Prozent der Kartenhoehe). */
 .gm-story .wst-mapbg .rmx-tiles::after{content:"";position:absolute;inset:0;z-index:2;
-  background:linear-gradient(180deg,rgba(5,8,13,.80) 0,rgba(5,8,13,.36) 15%,rgba(5,8,13,.05) 32%,rgba(5,8,13,.05) 100%)}
+  background:linear-gradient(180deg,rgba(5,8,13,.92) 0,rgba(5,8,13,.86) calc(var(--sat,0px) + 92px),rgba(5,8,13,.05) calc(var(--sat,0px) + 150px),rgba(5,8,13,.05) 100%)}
 .gm-story .wst-mapbg .gm-route-line{stroke-dasharray:var(--rl);stroke-dashoffset:var(--rl);animation:stDraw 3.2s cubic-bezier(.35,0,.15,1) .15s forwards}
 .gm-story .wst-mapbg .rmx-end{opacity:0;animation:wstDot .4s ease-out 3s forwards}
 .gm-story .wst-in.wst-coverpg .wst-top b,.gm-story .wst-in.wst-coverpg .wst-top span{text-shadow:0 1px 10px rgba(0,0,0,.75)}

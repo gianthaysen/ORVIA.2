@@ -262,12 +262,17 @@ async function boot(mode) {
     const go = async sat => { document.documentElement.style.setProperty('--sat', sat); gmOpenStory('map-r1'); await W(700);
       const pg = document.querySelector('.gm-story .wst-page.on'), top = pg.querySelector('.wst-top span').getBoundingClientRect(), ln = pg.querySelector('.rmx-line').getBBox(), rb = pg.querySelector('.rmx').getBoundingClientRect();
       const img = pg.querySelector('.rmx-t'), cs = img ? getComputedStyle(img).filter : '', dim = getComputedStyle(pg.querySelector('.rmx-tiles'), '::before').backgroundColor;
-      const r = { headBottom: top.bottom, routeTop: rb.top + ln.y - 4.5, gap: rb.top + ln.y - 4.5 - top.bottom, routeH: ln.height, filter: cs, dim: dim }; gmStoryClose(); await W(250); return r; };
+      const band = getComputedStyle(pg.querySelector('.rmx-tiles'), '::after').backgroundImage;
+      const r = { headBottom: top.bottom, routeTop: rb.top + ln.y - 4.5, gap: rb.top + ln.y - 4.5 - top.bottom, routeH: ln.height, filter: cs, dim: dim, band: band }; gmStoryClose(); await W(250); return r; };
     out.s0 = await go('0px'); out.s59 = await go('59px'); document.documentElement.style.removeProperty('--sat'); return out; });
   sec('Story');
   ok('H1 Strecke haelt Abstand zur Datumszeile — ohne sicheren Rand UND mit 59 px (iPhone mit Dynamic Island)', S.s0.gap >= 16 && S.s59.gap >= 16 && Math.abs(S.s59.gap - S.s0.gap) <= 2 && S.s59.headBottom - S.s0.headBottom > 50, JSON.stringify({ ohne: +S.s0.gap.toFixed(1), mit59: +S.s59.gap.toFixed(1), kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)] }));
   ok('H2 … und die Strecke bleibt gross genug (≥ 200 px hoch)', S.s59.routeH >= 200 && S.s0.routeH >= 200, JSON.stringify([+S.s0.routeH.toFixed(0), +S.s59.routeH.toFixed(0)]));
   ok('H3 Tonwerte wirken am Kachelbild (Helligkeit 2,2 · Kontrast 2,9), Schleier der Story 0,30', /brightness\(2\.2\) contrast\(2\.9\)/.test(S.s0.filter) && /rgba\(5, 8, 13, 0\.3\)/.test(S.s0.dim), JSON.stringify([S.s0.filter, S.s0.dim]));
+  { /* Band des Kopfes: bis wohin ist es fast deckend (≥ 0,86), wo ist es ausgelaufen (0,05)? — aus den berechneten Stopps */
+    const px = s => (s.match(/(\d+(?:\.\d+)?)px/g) || []).map(parseFloat);
+    const a = px(S.s0.band), b = px(S.s59.band);
+    ok('H3a Kopfband der Story deckt die Datumszeile (Ortsnamen der Karte scheinen nicht durch) und geht mit dem sicheren Rand mit', a.length >= 3 && b.length >= 3 && a[0] === 0 && a[1] >= S.s0.headBottom && b[1] >= S.s59.headBottom && Math.abs((b[1] - a[1]) - 59) < 0.5 && a[2] > a[1] && /rgba\(5, 8, 13, 0\.92\)/.test(S.s0.band) && /rgba\(5, 8, 13, 0\.86\)/.test(S.s0.band), JSON.stringify({ fastDeckendBis: [a[1], b[1]], kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)], ausgelaufenBei: [a[2], b[2]] })); }
   ok('H4 keine Laufzeitfehler', B.errs.length === 0, B.errs.slice(0, 2).join(' | '));
   await B.ctx.close();
 }
