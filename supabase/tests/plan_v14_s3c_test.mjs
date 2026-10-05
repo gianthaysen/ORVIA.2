@@ -26,7 +26,8 @@ sec('A · Kacheln aus dem Profil');
   ok('A2 inaktive Sportart (activeInApp:false) fehlt', !t.some(x => x.sport === 'Schwimmen'));
   ok('A3 unbekannte Sportart (padel) wird nicht erfunden', !t.some(x => x.sportId === 'padel'));
   ok('A4 max greift', g.gmQuickStartTiles(P, 2).length === 2);
-  ok('A5 Icon und Farbe aus GM_START_SPORTS', t[0].icon === 'run' && /--ready/.test(t[0].color) && t[1].icon === 'dumbbell');
+  /* v8-439: Laufen traegt die Farbe seines Farbthemas (--run-primary), nicht mehr die Zustandsfarbe Gruen (--ready) */
+  ok('A5 Icon und Farbe aus GM_START_SPORTS', t[0].icon === 'run' && t[0].color === 'var(--run-primary)' && !/--ready/.test(t[0].color) && t[1].icon === 'dumbbell');
   ok('A6 leer/kaputt ⇒ [] ohne Throw', g.gmQuickStartTiles(null).length === 0 && g.gmQuickStartTiles({ sports: 'x' }).length === 0 && g.gmQuickStartTiles({ sports: [null, 3] }).length === 0);
   ok('A7 String-Eintraege (Legacy) werden gelesen, Dubletten einmal', g.gmQuickStartTiles({ sports: ['running', 'running', 'gym'] }).map(x => x.sport).join() === 'Laufen,Krafttraining');
 }

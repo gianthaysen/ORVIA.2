@@ -33,6 +33,86 @@
   --gold-grad:linear-gradient(135deg,#DCC79A,#C9AE7C 55%,#8E7647);
   --ink:#070C14;--navy:#0B1220;--brand-txt:#F4F2EC;
 }
+/* ============================================================
+   ORVIA FARBSYSTEM v6 (v8-439) — Grundfarben + Sportart-Farben, EINE Stelle.
+
+   Regel:  Farbe kennzeichnet die Sportart.  Gold kennzeichnet ORVIA.
+           Rot/Gruen melden einen Zustand.   Neutrale Toene tragen die Information.
+
+   Drei Ebenen:
+     1) --orvia-*            feste Grundfarben der App (aendern sich nie nach Sportart)
+     2) --run-* --bike-* …   die Werte je Sportart (nur hier definiert)
+     3) --activity-*         was Bausteine benutzen. Ein Baustein kennt NIE --run-primary,
+                             sondern nur var(--activity-primary). Welche Sportart gilt,
+                             bestimmt das Attribut data-activity am umgebenden Element
+                             (gesetzt ueber js/activity-theme.js).
+   Ohne data-activity gilt das ORVIA-Gold (Sportarten ohne eigenes Farbthema, Bestzeit-Seiten,
+   Triathlon-Gesamtansicht).
+
+   Neue Sportart: einen Werte-Block (2) und einen Zuordnungs-Block (3) ergaenzen und die ID in
+   js/activity-theme.js eintragen — kein Baustein muss dafuer angefasst werden.
+
+   Nicht verwechseln: --activity / --activity-t (weiter unten, blau) sind die AELTERE
+   Zustandsfarbe „Aktivitaet" des Dashboards und haben mit diesem System nichts zu tun.
+   Die aelteren Grund-Tokens (--bg, --text, --gold …) bleiben fuer den Rest der App bestehen;
+   das Farbsystem v6 gilt fuer Aktivitaetsseite, Story, Diagramme, Karte und Sport-Kennzeichen.
+   ============================================================ */
+:root{
+  /* 1) Grundfarben */
+  --orvia-bg-base:#050910;--orvia-bg-primary:#070C14;--orvia-bg-secondary:#0B111A;
+  --orvia-surface-1:#0E151F;--orvia-surface-2:#121B26;--orvia-surface-3:#17212D;
+  --orvia-border-subtle:#202A36;--orvia-border-default:#2B3643;--orvia-border-strong:#3B4857;
+  --orvia-text-primary:#F4F2ED;--orvia-text-secondary:#ADB5C1;--orvia-text-tertiary:#737E8C;--orvia-text-disabled:#505966;
+  --orvia-brand-gold:#D8BB7A;--orvia-brand-gold-soft:#B99A5D;--orvia-brand-gold-light:#E8D19A;
+  --orvia-brand-tint:rgba(216,187,122,0.08);--orvia-brand-tint-strong:rgba(216,187,122,0.14);
+  --orvia-brand-glow:rgba(216,187,122,0.20);--orvia-brand-glow-strong:rgba(216,187,122,0.28);
+  /* Zustandsfarben — nie sportartspezifisch */
+  --orvia-success:#43D69E;--orvia-warning:#F1B75A;--orvia-error:#FF6464;--orvia-info:#67AFFF;--orvia-neutral-info:#8996A5;
+  /* Start und Ziel einer Strecke sind Zustaende: immer Gruen und Rot, in jeder Sportart */
+  --orvia-route-start:var(--orvia-success);--orvia-route-finish:var(--orvia-error);
+  /* Diagrammflaeche (Story + Aktivitaetsseite) */
+  --orvia-chart-surface:#071321;--orvia-chart-border:rgba(130,160,190,.26);--orvia-chart-grid:rgba(130,160,190,.12);
+
+  /* 2) Werte je Sportart */
+  --run-primary:#FF9A5C;--run-secondary:#D97B3F;--run-light:#FFB47D;
+  --run-tint:rgba(255,154,92,0.08);--run-tint-strong:rgba(255,154,92,0.14);
+  --run-glow:rgba(255,154,92,0.22);--run-glow-strong:rgba(255,154,92,0.32);
+
+  --bike-primary:#5DAAFF;--bike-secondary:#3D84D6;--bike-light:#8AC2FF;
+  --bike-tint:rgba(93,170,255,0.08);--bike-tint-strong:rgba(93,170,255,0.14);
+  --bike-glow:rgba(93,170,255,0.22);--bike-glow-strong:rgba(93,170,255,0.32);
+
+  --swim-primary:#48D8CF;--swim-secondary:#29ACA6;--swim-light:#7BE7E0;
+  --swim-tint:rgba(72,216,207,0.08);--swim-tint-strong:rgba(72,216,207,0.14);
+  --swim-glow:rgba(72,216,207,0.22);--swim-glow-strong:rgba(72,216,207,0.32);
+
+  --strength-primary:#D8BB7A;--strength-secondary:#B29458;--strength-light:#E8D19A;
+  --strength-tint:rgba(216,187,122,0.08);--strength-tint-strong:rgba(216,187,122,0.14);
+  --strength-glow:rgba(216,187,122,0.20);--strength-glow-strong:rgba(216,187,122,0.28);
+
+  /* Rudern: bestehender Ton der Story (v8-431), in dieselbe Form gebracht — keine neue Farbe */
+  --row-primary:#7C9CFF;--row-secondary:#5C7BDB;--row-light:#A5BAFF;
+  --row-tint:rgba(124,156,255,0.08);--row-tint-strong:rgba(124,156,255,0.14);
+  --row-glow:rgba(124,156,255,0.22);--row-glow-strong:rgba(124,156,255,0.32);
+
+  /* 3) Was Bausteine benutzen — Vorgabe ohne Sportart: ORVIA-Gold */
+  --activity-primary:var(--orvia-brand-gold);--activity-secondary:var(--orvia-brand-gold-soft);--activity-light:var(--orvia-brand-gold-light);
+  --activity-tint:var(--orvia-brand-tint);--activity-tint-strong:var(--orvia-brand-tint-strong);
+  --activity-glow:var(--orvia-brand-glow);--activity-glow-strong:var(--orvia-brand-glow-strong);
+}
+[data-activity="running"]{--activity-primary:var(--run-primary);--activity-secondary:var(--run-secondary);--activity-light:var(--run-light);
+  --activity-tint:var(--run-tint);--activity-tint-strong:var(--run-tint-strong);--activity-glow:var(--run-glow);--activity-glow-strong:var(--run-glow-strong)}
+[data-activity="cycling"]{--activity-primary:var(--bike-primary);--activity-secondary:var(--bike-secondary);--activity-light:var(--bike-light);
+  --activity-tint:var(--bike-tint);--activity-tint-strong:var(--bike-tint-strong);--activity-glow:var(--bike-glow);--activity-glow-strong:var(--bike-glow-strong)}
+[data-activity="swimming"]{--activity-primary:var(--swim-primary);--activity-secondary:var(--swim-secondary);--activity-light:var(--swim-light);
+  --activity-tint:var(--swim-tint);--activity-tint-strong:var(--swim-tint-strong);--activity-glow:var(--swim-glow);--activity-glow-strong:var(--swim-glow-strong)}
+[data-activity="strength"]{--activity-primary:var(--strength-primary);--activity-secondary:var(--strength-secondary);--activity-light:var(--strength-light);
+  --activity-tint:var(--strength-tint);--activity-tint-strong:var(--strength-tint-strong);--activity-glow:var(--strength-glow);--activity-glow-strong:var(--strength-glow-strong)}
+[data-activity="rowing"]{--activity-primary:var(--row-primary);--activity-secondary:var(--row-secondary);--activity-light:var(--row-light);
+  --activity-tint:var(--row-tint);--activity-tint-strong:var(--row-tint-strong);--activity-glow:var(--row-glow);--activity-glow-strong:var(--row-glow-strong)}
+/* ausdruecklich ORVIA-Gold — auch INNERHALB eines Sportart-Bereichs (z. B. Bestzeit-Seite einer Lauf-Story) */
+[data-activity="brand"]{--activity-primary:var(--orvia-brand-gold);--activity-secondary:var(--orvia-brand-gold-soft);--activity-light:var(--orvia-brand-gold-light);
+  --activity-tint:var(--orvia-brand-tint);--activity-tint-strong:var(--orvia-brand-tint-strong);--activity-glow:var(--orvia-brand-glow);--activity-glow-strong:var(--orvia-brand-glow-strong)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scrollbar-gutter:stable;min-height:100%}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
@@ -3056,9 +3136,13 @@ body{font-family:var(--font);color:var(--text);min-height:100vh;background:radia
 .hero .batt-head .t span{color:rgba(226,236,245,.6)!important}
 /* Aktivitäts-Glyphen (sportgerecht statt Fake-Route) */
 .act-glyph{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
-.activity-visual[data-sport="Kraft"]{background:linear-gradient(135deg,#2a2411,#1b1712 60%,#241d10)}
-.activity-visual[data-sport="Schwimmen"]{background:linear-gradient(135deg,#0d2f3d,#122436 55%,#0e2333)}
-.activity-visual[data-sport="Radfahren"]{background:linear-gradient(135deg,#122f3d,#152643 52%,#241e43)}
+/* v8-439: EIN Aufbau fuer alle Sportarten — neutrale ORVIA-Flaeche, darin ein leiser Schein und das
+   Zeichen in der Farbe der Sportart (data-activity am Feld). Vorher je Sportart ein eigener, frei
+   gewaehlter Verlauf (Petrol/Violett fuer Laufen und Rad, Braun fuer Kraft). */
+.activity-visual[data-activity]{background:
+  radial-gradient(130% 170% at 0% 0%,var(--activity-tint-strong),transparent 62%),
+  linear-gradient(135deg,var(--orvia-surface-2),var(--orvia-surface-1))}
+.activity-visual[data-activity]:before,.activity-visual[data-activity]:after{background:rgba(255,255,255,.06)}
 .activity-visual[data-sport="Kraft"]:before,.activity-visual[data-sport="Kraft"]:after,.activity-visual[data-sport="Schwimmen"]:before,.activity-visual[data-sport="Schwimmen"]:after{opacity:.4}
 .reco.flow::before{content:"";position:absolute;left:13px;right:13px;top:0;height:1px;background:linear-gradient(90deg,var(--rcA),rgba(255,255,255,.05) 55%,transparent)}
 .reco.flow .rc-ic{background:linear-gradient(140deg,var(--rcIcA),var(--rcIcB))!important;color:#fff!important;box-shadow:0 6px 16px rgba(0,0,0,.20)}
@@ -3589,14 +3673,13 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
    Aktivitaetsdetail (.gm-page, z-index 140) heraus geoeffnet — sie muss darueber
    liegen, sonst startet sie unsichtbar im Hintergrund. Bleibt unter Onboarding
    (300)/Splash (500)/Gate (600). */
-.gm-story{position:fixed;inset:0;z-index:200;display:none;background:#05080d;
+.gm-story{position:fixed;inset:0;z-index:200;display:none;background:var(--orvia-bg-base);
   color:var(--text);overflow:hidden;touch-action:manipulation}
 .gm-story.on{display:block}
 .gm-story .wst-page{position:absolute;inset:0;display:none;flex-direction:column;
   padding:calc(var(--sat) + 54px) 22px calc(env(safe-area-inset-bottom,0px) + 26px)}
 .gm-story .wst-page.on{display:flex}
-.gm-story .wst-bg{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.5;
-  background:radial-gradient(120% 70% at 50% 0%,var(--acc,rgba(67,214,147,.30)),transparent 62%)}
+.gm-story .wst-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
 .gm-story .wst-in{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;min-height:0}
 /* Fortschrittsbalken oben (Insta-Muster) */
 .gm-story .wst-bars{position:absolute;top:calc(var(--sat) + 12px);left:14px;right:14px;
@@ -3620,9 +3703,11 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-note{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:12px}
 .gm-story .wst-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:16px}
 .gm-story .wst-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-.gm-story .wst-cell{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:13px 14px}
-.gm-story .wst-cell b{display:block;font-size:23px;font-weight:850;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.gm-story .wst-cell span{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-top:3px}
+.gm-story .wst-cell{background:var(--orvia-surface-1);border:1px solid var(--orvia-border-subtle);border-radius:16px;padding:13px 14px}
+.gm-story .wst-cell b{display:block;font-size:23px;font-weight:850;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--orvia-text-primary)}
+/* v8-439: genau die Hauptkennzahl (Distanz bzw. Kraft-Volumen) traegt die Farbe der Sportart */
+.gm-story .wst-cell.key b{color:var(--activity-primary)}
+.gm-story .wst-cell span{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--orvia-text-secondary);font-weight:800;margin-top:3px}
 .gm-story .wst-map{position:relative;margin-top:18px;border-radius:20px;overflow:hidden;
   background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.09);padding:10px}
 .gm-story .wst-map svg{width:100%;height:auto;display:block}
@@ -3657,16 +3742,27 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmx-tiles img.rmx-t.ok,.rmv-tiles img.rmx-t.ok{opacity:1}
 .rmx.tiles-failed .rmx-tiles,.rmx.tiles-failed .rmx-attr{display:none}
 .rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 5px rgba(0,0,0,.55));filter:drop-shadow(0 1px 5px rgba(0,0,0,.55))}
-.rmx-case{stroke:#05080d;stroke-opacity:.5}
-.rmx-start{fill:#05080d;stroke:#3FE89A;stroke-width:3}
-.rmx-end{fill:#FF6B5E;stroke:#05080d;stroke-width:2}
+/* v8-439: Strecke = Farbe der Sportart (stroke im Markup: var(--activity-primary)), 5 px, darunter ein
+   dunkler Rand (8 px, 62 %) — kein Leuchten. Start und Ziel sind ZUSTAENDE und in jeder Sportart
+   gleich: Gruen = Start, Rot = Ziel. */
+.rmx-case{stroke:#000;stroke-opacity:.62}
+.rmx-start{fill:var(--orvia-bg-base);stroke:var(--orvia-route-start);stroke-width:3}
+.rmx-end{fill:var(--orvia-route-finish);stroke:var(--orvia-bg-base);stroke-width:2}
 .rmx-attr{position:absolute;right:8px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:600;letter-spacing:.01em;
   color:rgba(255,255,255,.58);text-shadow:0 1px 2px rgba(0,0,0,.9);pointer-events:none;white-space:nowrap}
 .rmx-attr .rmx-logo{height:13px;width:auto;opacity:.85}
 /* Aktivitaetsseite: Karte fuellt das bestehende Streckenfeld */
-.route-map.has-rmx{background-image:none;background-color:#0a1018}
+/* v8-439: Die Karte endete als hartes Rechteck. Jetzt laeuft die KARTENEBENE nach unten aus (Maske
+   statt Farbkante: darunter liegt die Seite samt Stimmung der Sportart — eine feste Farbe saehe man
+   als Strich). Die Strecke selbst wird nicht ausgeblendet. Im auslaufenden Bereich ein sehr leiser
+   Schein in der Farbe der Sportart (::before, liegt unter Karte und Strecke). */
+.route-map.has-rmx{background-image:none;background-color:transparent}
+.route-map.has-rmx::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 35% at 50% 100%,var(--activity-tint),transparent 70%)}
 .route-map.has-rmx .rmx{position:absolute;inset:0}
-.route-map.has-rmx .rmx-tiles::after{content:"";position:absolute;inset:0;z-index:2;background:radial-gradient(120% 90% at 50% 45%,rgba(5,8,13,0) 55%,rgba(5,8,13,.55) 100%)}
+.route-map.has-rmx .rmx-tiles{
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 50%,rgba(0,0,0,.72) 70%,rgba(0,0,0,.22) 90%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 50%,rgba(0,0,0,.72) 70%,rgba(0,0,0,.22) 90%,transparent 100%)}
+.route-map.has-rmx .rmx-tiles::after{content:"";position:absolute;inset:0;z-index:2;background:radial-gradient(120% 90% at 50% 45%,rgba(5,9,16,0) 55%,rgba(5,9,16,.45) 100%)}
 [data-theme="light"] .route-map.has-rmx{filter:none}
 /* v8-435: das Feld oeffnet die Kartenansicht — kleines Zeichen oben rechts sagt es */
 .route-map.can-open{cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -3695,7 +3791,6 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* Streckenebene: 140 px groesser als der Bildschirm (EDGE in route-map-view.js) — beim Verschieben wird sie
    nur bewegt statt neu gezeichnet */
 .rmv-route{position:absolute;left:-140px;top:-140px;width:calc(100% + 280px);height:calc(100% + 280px);display:block;overflow:hidden;pointer-events:none;will-change:transform}
-.rmv .rmx-case{stroke-opacity:.6}
 .rmv-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
   padding:calc(var(--sat,0px) + 14px) 14px 0 18px;pointer-events:none}
 .rmv-ttl{min-width:0;padding-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.8)}
@@ -3749,7 +3844,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 }
 .gm-story .wst-lap{display:grid;grid-template-columns:30px 1fr 54px;align-items:center;gap:9px;padding:8px 0;
   border-bottom:1px solid rgba(255,255,255,.07);font-size:11px}
-.gm-story .wst-lap i{display:block;height:20px;border-radius:6px;background:linear-gradient(90deg,var(--cyan),var(--activity));opacity:.85}
+.gm-story .wst-lap i{display:block;height:20px;border-radius:6px;opacity:.85}
 .gm-story .wst-lap strong{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
 .gm-story .wst-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .gm-story .wst-tags span{font-size:11.5px;font-weight:700;padding:7px 11px;border-radius:10px;
@@ -3768,11 +3863,13 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
    GM7.9 · Story-Redesign (Runna-inspiriert) + Gym-Aktivitätsdetail.
    Reine Darstellung — Datenquellen unverändert.
    ============================================================ */
-/* Warme sportartspezifische Verlaufs-Hintergründe (Akzent via --acc/--accsoft inline) */
-.gm-story .wst-bg{opacity:1;background:
-  radial-gradient(150% 95% at 50% -12%,var(--accsoft,rgba(67,214,147,.28)),transparent 58%),
-  radial-gradient(120% 70% at 50% 118%,var(--accsoft,rgba(67,214,147,.28)),transparent 55%),
-  linear-gradient(180deg,#0a1018,#05080d)}
+/* v8-439 · Stimmung der Sportart: EIN sehr leiser Schein von oben in der Farbe des Themas
+   (data-activity ⇒ --activity-tint…), darunter der feste ORVIA-Grund. Der Nutzer soll die
+   Sportart spueren, nicht einen Verlauf sehen: 85–90 % der Flaeche bleiben neutral.
+   Vorher: zwei kraeftige Verlaeufe (oben + unten, 28–30 % Deckkraft) — die Seite war eingefaerbt. */
+.gm-story .wst-bg{background:
+  radial-gradient(90% 45% at 50% 0%,var(--activity-tint-strong) 0%,var(--activity-tint) 45%,transparent 75%),
+  var(--orvia-bg-base)}
 /* Titel oben links: Einheitsname + Datum */
 .gm-story .wst-top{display:flex;flex-direction:column;gap:2px;padding-right:44px;flex:none}
 .gm-story .wst-top b{font-size:14.5px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3781,7 +3878,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-mid{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:14px;overflow:hidden;margin-top:10px}
 .gm-story .wst-foot{flex:none;margin-top:14px}
 .gm-story .wst-hl{font-size:31px;font-weight:850;letter-spacing:-.025em;line-height:1.14;animation:wstUp .85s cubic-bezier(.2,.7,.2,1) .18s both}
-.gm-story .wst-hl .wst-em{color:var(--acc,#43D693);font-style:normal}
+.gm-story .wst-hl .wst-em{color:var(--activity-primary);font-style:normal}
 .gm-story .wst-hsub{font-size:13px;color:var(--muted);font-weight:650;margin-top:8px;line-height:1.5;animation:wstUp .85s cubic-bezier(.2,.7,.2,1) .46s both}
 @media (max-width:359px){.gm-story .wst-hl{font-size:26px}}
 /* Cover: Route gross und rahmenlos / grosse Kennzahl.
@@ -3805,46 +3902,52 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* Runden/Übungen: gestaffelter Einflug von links */
 .gm-story .wst-laps{display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:0;overflow:hidden}
 .gm-story .wst-lap{grid-template-columns:44px 1fr 62px;border-bottom:none;padding:5px 0;opacity:0;transform:translateX(-46px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards}
-.gm-story .wst-lap i{height:26px;border-radius:8px;background:linear-gradient(90deg,var(--acc,#43D693),rgba(255,255,255,.22));opacity:.9}
-.gm-story .wst-lap.best i{opacity:1;box-shadow:0 0 18px var(--accsoft,rgba(67,214,147,.3))}
-.gm-story .wst-lap.best strong{color:var(--acc,#43D693)}
+.gm-story .wst-lap i{height:26px;border-radius:8px;background:linear-gradient(90deg,var(--activity-secondary),var(--activity-primary));opacity:.72}
+.gm-story .wst-lap.best i{opacity:1;box-shadow:0 0 14px var(--activity-glow)}
+.gm-story .wst-lap.best strong{color:var(--activity-primary)}
 .gm-story .wst-lap strong{font-size:13.5px}
 .gm-story .wst-lap span{font-size:11.5px;color:var(--muted);font-weight:800}
-.gm-story .wst-ex{opacity:0;transform:translateX(-46px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards;padding:10px 13px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.gm-story .wst-ex{opacity:0;transform:translateX(-46px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards;padding:10px 13px;border-radius:14px;background:var(--orvia-surface-1);border:1px solid var(--orvia-border-subtle)}
 .gm-story .wst-exh{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .gm-story .wst-exh b{font-size:13.5px;font-weight:800}
-.gm-story .wst-exh span{font-size:11px;color:var(--acc,#43D693);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* v8-439: Volumen je Uebung neutral — die Farbe der Sportart gehoert der Schlagzeile, nicht jeder Zahl */
+.gm-story .wst-exh span{font-size:11px;color:var(--orvia-text-secondary);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gm-story .wst-exd{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:3px;font-variant-numeric:tabular-nums}
 .gm-story .wst-cell{opacity:0;transform:translateY(22px);animation:wstIn .75s cubic-bezier(.2,.7,.2,1) forwards}
 .gm-story .wst-debrief{font-size:15px;line-height:1.65;color:var(--text)}
 /* Dot-Matrix-Flächenchart */
 .gm-story .wst-dotwrap{position:relative;flex:none;height:clamp(230px,calc(100vh - 370px),560px);height:clamp(230px,calc(100dvh - 370px - var(--sat,0px) - env(safe-area-inset-bottom,0px)),560px);margin:2px -13px 0;
-  border-radius:18px;border:1px solid rgba(190,220,245,.58);
-  background:linear-gradient(180deg,#1a324d 0,#0e1f33 22%,#0b1929 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),inset 0 0 18px rgba(90,160,240,.07),0 0 0 1px rgba(0,0,0,.5),0 0 22px rgba(70,150,245,.20),0 18px 50px rgba(0,0,0,.35)}
+  /* v8-439: ruhige Tafel — kuehles blaugraues Randsystem, kein blauer Aussenschein mehr (die Tafel
+     leuchtete in jeder Sportart blau und wirkte wie eine Spielanzeige). Farbe traegt nur die Kurve. */
+  border-radius:18px;border:1px solid var(--orvia-chart-border);
+  background:linear-gradient(180deg,#0C1B2C 0,#091624 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px rgba(0,0,0,.45),0 18px 50px rgba(0,0,0,.35)}
 /* Diagramm-Seiten: Ueberschrift, Tafel und Schlagzeile bilden EINE Gruppe unter dem Titel (wie im
    Referenzbild). Die Tafel nimmt die freie Hoehe des Bildschirms auf (230–560 px). */
 .gm-story .wst-in.wst-chartpg .wst-mid{flex:0 0 auto;margin-top:clamp(20px,6vh,60px);justify-content:flex-start;gap:14px;overflow:visible}
 .gm-story .wst-in.wst-chartpg .wst-foot{margin-top:26px;margin-bottom:auto}
 /* v8-430 (Gians Referenzbild): Tafel fast randlos, darin der Rahmen der Zeichenflaeche.
    Die Kurve laeuft von Rand zu Rand; Max, Min und Ø stehen in der Flaeche. */
-.gm-story .wst-plot{position:absolute;inset:15px 12px 13px;border-radius:12px;border:1px solid rgba(125,170,215,.20);overflow:hidden;
-  background:linear-gradient(180deg,#0d1d30,#08131f)}
+.gm-story .wst-plot{position:absolute;inset:15px 12px 13px;border-radius:12px;border:1px solid rgba(130,160,190,.16);overflow:hidden;
+  background:var(--orvia-chart-surface)}
 .gm-story .wst-dots{position:absolute;inset:0;width:100%;height:100%}
-.gm-story .wst-grid line{stroke:rgba(120,170,220,.15);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
+.gm-story .wst-grid line{stroke:var(--orvia-chart-grid);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
 .gm-story .wst-rev{position:absolute;inset:0;-webkit-clip-path:inset(0);clip-path:inset(0);animation:wstReveal 1.6s cubic-bezier(.35,0,.25,1) both}
 .gm-story .wst-dotwrap.calm .wst-rev{animation:none}
 @keyframes wstReveal{from{-webkit-clip-path:inset(0 100% 0 0);clip-path:inset(0 100% 0 0)}to{-webkit-clip-path:inset(0);clip-path:inset(0)}}
-/* Kurve: kantiger Linienzug in der leuchtenden Diagrammfarbe der Sportart (--acchi), heller
-   Kern; darunter derselbe Zug in einem eigenen SVG, als Ganzes per CSS weichgezeichnet (Schein). */
-.gm-story .wst-line{fill:none;stroke:var(--acchi,var(--acc,#4FB0FF));stroke:color-mix(in srgb,var(--acchi,var(--acc,#4FB0FF)) 82%,#fff);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-glow{fill:none;stroke:var(--acchi,var(--acc,#4FB0FF));stroke-width:5;stroke-opacity:.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.gm-story .wst-halo{z-index:0;-webkit-filter:blur(3.5px);filter:blur(3.5px)}
+/* Kurve: kantiger Linienzug in der Farbe der Sportart (--activity-primary — dieselbe wie Strecke,
+   Schlagzeile und Hauptkennzahl; bis v8-437 gab es je Sportart einen zweiten, helleren Diagrammton).
+   Darunter derselbe Zug in einem eigenen SVG, als Ganzes per CSS weichgezeichnet: ein leiser Schein
+   (--activity-glow-strong, 28–32 % Deckkraft) statt des frueheren Leuchtens (80 %). */
+.gm-story .wst-line{fill:none;stroke:var(--activity-primary);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-glow{fill:none;stroke:var(--activity-glow-strong);stroke-width:6;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gm-story .wst-halo{z-index:0;-webkit-filter:blur(3px);filter:blur(3px)}
 .gm-story .wst-rev>.wst-dots:not(.wst-halo){z-index:1}
-/* Flaeche: leuchtende Diagrammfarbe; die Deckkraft kommt je Stuetzpunkt aus dem Markup (stop-opacity)
-   und wird mit dem senkrechten Masken-Verlauf multipliziert. */
-.gm-story .wst-gk stop{stop-color:var(--acchi,var(--acc,#4FB0FF))}
-.gm-story .wst-area{fill-opacity:.82}
+/* Flaeche: Farbe der Sportart; die Deckkraft kommt je Stuetzpunkt aus dem Markup (stop-opacity, hoechstens
+   0,7) und wird mit dem senkrechten Masken-Verlauf multipliziert. fill-opacity .32 ⇒ direkt unter der
+   Kurve rund 22 %, zum Boden hin aus (vorher .82 ⇒ 57 %: die Flaeche leuchtete). */
+.gm-story .wst-gk stop{stop-color:var(--activity-primary)}
+.gm-story .wst-area{fill-opacity:.32}
 /* Max/Min: Punkt · Wert · gestrichelte Linie (als Zeile; .r = Wert rechts) */
 .gm-story .wst-ref{position:absolute;left:9px;right:9px;display:flex;align-items:center;gap:7px;transform:translateY(-50%);
   font-size:11px;font-weight:600;color:#dfe8f2;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;white-space:nowrap;pointer-events:none}
@@ -3860,7 +3963,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gm-story .wst-avgpill i{flex:none;width:6px;height:6px;margin-right:-3px;border-radius:50%;background:#fff;position:relative;z-index:1}
 .gm-story .wst-avgpill b{padding:5px 9px 5px 10px;border-radius:9px;border:1px solid rgba(225,235,245,.72);background:rgba(8,18,31,.96);
   color:#f4f7fb;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.15;white-space:nowrap}
-.gm-story .wst-avgpill em{font-style:normal;color:var(--acchi,var(--acc,#4FB0FF))}
+.gm-story .wst-avgpill em{font-style:normal;color:var(--activity-primary)}
 .gm-story .wst-dotwrap.calm .wst-avgline,.gm-story .wst-dotwrap.calm .wst-avgpill{animation:none;opacity:1}
 .gm-story .wst-dc{opacity:0;animation:wstDot .6s ease-out forwards}
 @keyframes wstIn{to{opacity:1;transform:none}}
@@ -3884,16 +3987,17 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .gymset-row > span:first-child{width:52px;font-size:10.5px;font-weight:700;flex:none}
 /* GM7.9c: „Neue Bestzeit"-Seite in der Story — eigener Gold-Akzent unabhaengig von der
    Sportart-Theme-Farbe (klar erkennbarer Ausnahme-Moment, kein Standard-Seitentyp). */
-.gm-story .wst-bg.pr{opacity:1;background:
-  radial-gradient(140% 90% at 50% -10%,rgba(220,199,154,.40),transparent 55%),
-  radial-gradient(120% 60% at 50% 112%,rgba(220,199,154,.22),transparent 55%),
-  linear-gradient(180deg,#141008,#0a0805 60%,#05080d)}
-.gm-story .wst-kick.pr{display:inline-flex;align-items:center;gap:7px;color:var(--gold,#DCC79A);
+/* v8-439: Thema „brand" (ORVIA-Gold) am Element; als Ausnahme-Moment etwas kraeftiger als eine
+   normale Seite, aber aus denselben Tokens. */
+.gm-story .wst-bg.pr{background:
+  radial-gradient(110% 55% at 50% 0%,var(--activity-glow-strong) 0%,var(--activity-tint-strong) 42%,transparent 78%),
+  var(--orvia-bg-base)}
+.gm-story .wst-kick.pr{display:inline-flex;align-items:center;gap:7px;color:var(--activity-primary);
   text-transform:uppercase;letter-spacing:.14em;font-weight:850;animation:wstUp .8s ease-out both}
 .gm-story .wst-kick.pr svg{width:14px;height:14px}
 .gm-story .wst-prval{font-size:64px;font-weight:850;letter-spacing:-.03em;line-height:1;
   font-variant-numeric:tabular-nums;margin-top:16px;
-  background:linear-gradient(135deg,#F3E7C9,#DCC79A 55%,#B99A63);-webkit-background-clip:text;
+  background:linear-gradient(135deg,var(--orvia-brand-gold-light),var(--orvia-brand-gold) 55%,var(--orvia-brand-gold-soft));-webkit-background-clip:text;
   background-clip:text;color:transparent;animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .2s both}
 
 /* Phase 1b — entschaerfte Attrappen: sichtbar als Information, nicht als Bedienelement. */
@@ -4706,3 +4810,16 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
 
 /* v8-428: Karten in Sheets stehen buendig mit Umschalter und Knoepfen (vorher 18 px eingerueckt) */
 .sheet .sh-block>.card{margin-left:0;margin-right:0}
+
+/* ============================================================
+   v8-439 · Aktivitaetsseite im Farbthema der Sportart (#gmActPage[data-activity]).
+   Die Seite bleibt neutral; die Farbe der Sportart tragen nur: Sport-Kennzeichen ueber dem Titel,
+   Strecke, Messreihen, Rundenbalken und EINE Hauptkennzahl. Zustandsfarben (Abgeschlossen = gruen,
+   Fehler = rot) bleiben unberuehrt.
+   ============================================================ */
+#gmActPage[data-activity]{background:
+  radial-gradient(90% 45% at 50% 0%,var(--activity-tint-strong) 0%,var(--activity-tint) 45%,transparent 75%),
+  var(--orvia-bg-primary)}
+#gmActPage[data-activity] .plan-kicker{color:var(--activity-primary)}
+#gmActPage[data-activity] .splitbar{background:linear-gradient(90deg,var(--activity-secondary),var(--activity-primary))}
+#gmActPage[data-activity] .detail-kpis div.key b{color:var(--activity-primary)}

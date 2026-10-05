@@ -176,6 +176,8 @@
      Was das NICHT kann: einen ganzen Abschnitt, den das GPS um 10 m daneben gelegt hat,
      auf die Strasse zurueckschieben (das waere Kartenabgleich ueber einen Routendienst). */
   var SMOOTH_W = [1, 2, 3, 2, 1], SMOOTH_MAX_M = 25, SIMPLIFY_M = 0.7, ROUND_M = 6;
+  /* dunkler Rand unter der Strecke: 3 px breiter als die Linie (5 px Linie ⇒ 8 px Rand, je 1,5 px sichtbar) */
+  var CASE_W = 3;
   function smooth(pts) {
     var n = pts.length;
     if (n < 5) return pts.slice();
@@ -274,8 +276,11 @@
     /* Ausschnitt aus den Rohpunkten (die geglaettete Linie liegt immer innerhalb), gezeichnet wird die Anzeige-Strecke */
     var d = pathD(simplify(smooth(pts)), v, { round: ROUND_M });
     var a = project(pts[0][0], pts[0][1], v), b = project(pts[pts.length - 1][0], pts[pts.length - 1][1], v);
-    var col = opts.color ? esc(opts.color) : 'var(--acchi,var(--acc,#DCC79A))';
-    var sw = +opts.width || 4;
+    /* v8-439: Die Strecke traegt die Farbe der Sportart — var(--activity-primary) aus dem
+       umgebenden data-activity-Bereich (Werte: styles.css „ORVIA FARBSYSTEM v6"). Dieses Modul
+       kennt keine Sportart und keine Farbwerte. opts.color bleibt als Einzelfarbe moeglich. */
+    var col = opts.color ? esc(opts.color) : 'var(--activity-primary)';
+    var sw = +opts.width || 5;
     var tl = '';
     if (useTiles) {
       tl = '<div class="rmx-tiles">' + tiles(v).map(function (t) {
@@ -290,7 +295,7 @@
       '<svg class="rmx-route" viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">' +
         /* dunkler Rand unter der Strecke — zeichnet sich MIT der Strecke (sonst stuende die
            ganze Form schon da, bevor die Linie sie abfaehrt) */
-        '<path class="rmx-case' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke-width="' + (sw + 4) + '" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<path class="rmx-case' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke-width="' + (sw + CASE_W) + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         '<path class="rmx-line' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         /* Start = offener Ring, Ziel = gefuellter Punkt: bei Rundkursen liegen beide
            uebereinander und bleiben trotzdem beide lesbar. */

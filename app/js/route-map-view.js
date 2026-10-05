@@ -125,14 +125,18 @@
       var L = opts.labels || {}, c = R.cfg();
       var el = doc.createElement('div');
       el.className = 'rmv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', L.map || 'Karte');
-      if (opts.color) el.style.setProperty('--acchi', String(opts.color));
+      /* v8-439: Farbthema der Sportart (data-activity ⇒ --activity-primary, Werte in styles.css).
+         Die Ansicht haengt am body, erbt das Thema der Aktivitaetsseite also nicht — es wird mitgegeben.
+         opts.color bleibt als ausdrueckliche Einzelfarbe moeglich (ueberschreibt das Thema). */
+      if (opts.activity) el.setAttribute('data-activity', String(opts.activity));
+      if (opts.color) el.style.setProperty('--activity-primary', String(opts.color));
       el.innerHTML =
         '<div class="rmv-stage">' +
           '<div class="rmv-layer"><div class="rmv-tiles"></div></div>' +
           '<div class="rmv-dim"></div>' +
           '<svg class="rmv-route" aria-hidden="true"><g class="rmv-g">' +
-            '<path class="rmx-case" fill="none" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-            '<path class="rmx-line" fill="none" stroke="var(--acchi,var(--acc,#DCC79A))" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+            '<path class="rmx-case" fill="none" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+            '<path class="rmx-line" fill="none" stroke="var(--activity-primary)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
           '</g><circle class="rmx-start" r="7"/><circle class="rmx-end" r="5"/></svg>' +
         '</div>' +
         '<div class="rmv-top"><div class="rmv-ttl"><b>' + esc(opts.title || '') + '</b><span>' + esc(opts.sub || '') + '</span></div>' +

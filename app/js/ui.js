@@ -6408,7 +6408,7 @@ function gmLoadEnvelopes(){
       sessKnown=Math.max(0,sessAll-missDur);
       var pct=function(sp){return mins[sp]?Math.round(mins[sp]/tot*100):0;};
       out.sport=E.create({metricId:'training_load_by_sport',
-        value:tot>0?[['Laufen',pct('running'),'ready'],['Kraft',pct('gym'),'activity'],['Rad',pct('cycling'),'cyan']]:null,
+        value:tot>0?[['Laufen',pct('running'),'running'],['Kraft',pct('gym'),'gym'],['Rad',pct('cycling'),'cycling']]:null,   /* 3. Wert = Sport-ID; Farbe: gmActThemeColor (v8-439) */
         unit:'%',
         period:{type:'calendar_week',startDate:wk.weekStart,endDate:wk.weekEnd},
         coverage:{eligible:sessAll,available:sessKnown},
@@ -6591,7 +6591,7 @@ function gmDashVM(){
         strain:(lm&&lm.strain!=null&&!sup2)?fmtDe(lm.strain):null,
         trimp:(ex&&ex.trimp!=null)?fmtDe(ex.trimp):null,
         hi:(ex&&ex.hi!=null)?ex.hi:null,
-        sport:(ex&&ex.sport)?ex.sport:[['Laufen',null,'ready'],['Kraft',null,'activity'],['Rad',null,'cyan']],
+        sport:(ex&&ex.sport)?ex.sport:[['Laufen',null,'running'],['Kraft',null,'gym'],['Rad',null,'cycling']],
         interf:(ex&&ex.interf)?ex.interf:null,
         env:(ex&&ex.env)?ex.env:null};
     })(),
@@ -6905,7 +6905,7 @@ function gmModLoadPro(d){var L=d.load;
       if(!parts.length)return '';
       return '<div class="interf">'+icon('alert','xs')+' <b>' + _uiT('ui.teilabdeckung') + '</b> '+gmEsc(parts.join(' · '))+' · letzte 7 ' + _uiT('ui.tage__') + ' — ' + _uiT('ui.details_') + ' im Last-Sheet.</div>';})()+
     '<div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:800;margin-top:14px">' + _uiT('ui.belastung_nach_sportart') + '</div>'+
-    '<div class="sportbars">'+L.sport.map(function(s){return '<div class="sportbar"><div class="sn">'+gmEsc(s[0])+'</div><div class="st"><i style="width:'+(s[1]!=null?s[1]:0)+'%;background:'+SC[s[2]]+'"></i></div><div class="sv">'+(s[1]!=null?gmEsc(fmtDe(s[1]))+'%':'—')+'</div></div>';}).join('')+'</div>'+
+    '<div class="sportbars">'+L.sport.map(function(s){return '<div class="sportbar"><div class="sn">'+gmEsc(s[0])+'</div><div class="st"><i style="width:'+(s[1]!=null?s[1]:0)+'%;background:'+gmActThemeColor(s[2])+'"></i></div><div class="sv">'+(s[1]!=null?gmEsc(fmtDe(s[1]))+'%':'—')+'</div></div>';}).join('')+'</div>'+
     '<div class="interf">'+icon('info','xs')+' <b>' + _uiT('ui.interferenz') + '</b> '+(L.interf?gmEsc(L.interf):GM_NA)+'</div></div>';}
 function gmModReadinessPro(d){
   var maxAbs=1;d.breakdown.forEach(function(b){if(b[1]!=null&&Math.abs(b[1])>maxAbs)maxAbs=Math.abs(b[1]);});
@@ -8869,9 +8869,19 @@ function gmActSrcLabel(src){
   return {import:'Import',manual:'' + _uiT('ui.manuell_erfasst') + '',orvia_workout:'' + _uiT('ui.orvia_workout') + '',live:'Live-Workout',legacy_local:'' + _uiT('ui.lokal_erfasst') + '',
     garmin:'Garmin',garmin_unofficial:'Garmin',garmin_official:'Garmin',strava:'Strava',apple_health:'' + _uiT('ui.apple_health') + '',health_connect:'' + _uiT('ui.health_connect') + ''}[src]||(src?String(src):'—');
 }
+/* v8-439 · Farbthema der Sportart. EINE Stelle fuer die Zuordnung: js/activity-theme.js;
+   die Werte stehen in styles.css („ORVIA FARBSYSTEM v6"). Hier wird nur noch das Attribut
+   data-activity gesetzt — Bausteine benutzen var(--activity-primary) usw.
+   Vorher (bis v8-437) trug die Story eine eigene Farbtabelle (gmStoryTheme) mit zwei Toenen je
+   Sportart (Text/Kurve); Liste, Start-Auswahl und Dashboard hatten je eine weitere. */
+function gmActThemeId(sportId){try{return (window.ORVIA&&ORVIA.activityTheme)?ORVIA.activityTheme.id(sportId):'brand';}catch(_){return 'brand';}}
+function gmActThemeAttr(sportId){return 'data-activity="'+gmActThemeId(sportId)+'"';}
+/* Farbe EINER bestimmten Sportart fuer Uebersichten mit mehreren Sportarten nebeneinander. */
+function gmActThemeColor(sportId,role){try{return (window.ORVIA&&ORVIA.activityTheme)?ORVIA.activityTheme.color(sportId,role):'var(--orvia-brand-gold)';}catch(_){return 'var(--orvia-brand-gold)';}}
 /* GM-SVG-Visualisierung: rein darstellerische Wahl anhand des kanonischen Sportfeldes. */
 function gmActGlyph(gmSport){
-  var c={Laufen:'var(--ready)',Radfahren:'var(--activity)',Kraft:'var(--gold)',Schwimmen:'var(--cyan)'}[gmSport]||'var(--ready)';
+  /* v8-439: Farbe = Thema der Sportart am umgebenden .activity-visual (data-activity) */
+  var c='var(--activity-primary)';
   if(gmSport==='Kraft'){var bars=[34,52,44,64,50,68,56].map(function(h,i){return '<rect x="'+(16+i*40)+'" y="'+(72-h*0.72).toFixed(0)+'" width="20" height="'+(h*0.72).toFixed(0)+'" rx="5" fill="'+c+'" opacity="'+(0.5+i*0.06).toFixed(2)+'"/>';}).join('');return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none">'+bars+'</svg>';}
   if(gmSport==='Schwimmen'){var lanes=[24,42,60].map(function(y,i){return '<path d="M0 '+y+'' + _uiT('ui.q_37') + ''+(y-9)+' 75 '+y+'' + _uiT('ui.t_150') + ''+y+'' + _uiT('ui.t_225') + ''+y+'' + _uiT('ui.t_300') + ''+y+'" fill="none" stroke="'+c+'" stroke-width="2.6" opacity="'+(0.75-i*0.18).toFixed(2)+'"/>';}).join('');return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none">'+lanes+'</svg>';}
   return '<svg class="act-glyph" viewBox="0 0 300 82" preserveAspectRatio="none"><path d="M18 62 L68 30 L128 42 L176 18 L236 50 L282 26" fill="none" stroke="'+c+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="62" r="5.2" fill="'+c+'"/><circle cx="282" cy="26" r="5.2" fill="#0c1017" stroke="'+c+'" stroke-width="2.4"/></svg>';
@@ -9030,16 +9040,19 @@ function renderGMActivity(){
      Dauer-Vertrag; sonst neutrale Leiste + —. Keine Prozentrechnung über die Liste. */
   if(lvl!=='a'){
     var segs=null;
+    /* v8-439: Farben aus dem Farbsystem (Laufen, Kraft, Rad); „Sonstiges" ist keine Sportart ⇒ neutral.
+       Vorher war „Sonstiges" tuerkis — dieselbe Farbe, die Schwimmen an anderer Stelle trug. */
+    var _distCol=[gmActThemeColor('running'),gmActThemeColor('gym'),gmActThemeColor('cycling'),'var(--orvia-neutral-info)'];
     if(wk&&wk.totals&&wk.totals.completeness&&wk.totals.completeness.duration&&wk.totals.knownDurationMin>0){
       var bs=wk.bySport||{};var tot=wk.totals.knownDurationMin;
       var vRun=(bs.running&&bs.running.knownDurationMin)||0,vKraft=(bs.gym&&bs.gym.knownDurationMin)||0,vRad=(bs.cycling&&bs.cycling.knownDurationMin)||0;
       var vRest=Math.max(0,tot-vRun-vKraft-vRad);
       var pct=function(v){return Math.round(v/tot*100);};
-      segs=[['Laufen',pct(vRun),'var(--ready)'],['Kraft',pct(vKraft),'var(--gold)'],['Rad',pct(vRad),'var(--activity)'],['' + _uiT('ui.sonstiges') + '',pct(vRest),'var(--cyan)']];
+      segs=[['Laufen',pct(vRun),_distCol[0]],['Kraft',pct(vKraft),_distCol[1]],['Rad',pct(vRad),_distCol[2]],['' + _uiT('ui.sonstiges') + '',pct(vRest),_distCol[3]]];
     }
     h+='<div class="card"><div class="ctitle"><div class="l">' + _uiT('ui.sportartenverteilung') + '</div><span class="more">'+(gmActScope==='week'?'Woche':'Monat')+'</span></div>'+
       '<div class="dist-bar">'+(segs?segs.map(function(s){return '<i style="width:'+s[1]+'%;background:'+s[2]+'"></i>';}).join(''):'<i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i><i style="width:25%;background:rgba(255,255,255,.08)"></i>')+'</div>'+
-      '<div class="dist-leg">'+(segs?segs.map(function(s){return '<span><i style="background:'+s[2]+'"></i>'+s[0]+' '+s[1]+'%</span>';}).join(''):['Laufen','Kraft','Rad','' + _uiT('ui.sonstiges') + ''].map(function(n,i){var c=['var(--ready)','var(--gold)','var(--activity)','var(--cyan)'][i];return '<span><i style="background:'+c+'"></i>'+n+' —</span>';}).join(''))+'</div></div>';
+      '<div class="dist-leg">'+(segs?segs.map(function(s){return '<span><i style="background:'+s[2]+'"></i>'+s[0]+' '+s[1]+'%</span>';}).join(''):['Laufen','Kraft','Rad','' + _uiT('ui.sonstiges') + ''].map(function(n,i){var c=_distCol[i];return '<span><i style="background:'+c+'"></i>'+n+' —</span>';}).join(''))+'</div></div>';
   }
   /* 6. Teaser: Bestleistung / Meilenstein — keine produktiven Seiten ⇒ ehrliches NA-Sheet,
      keine Demo-Bestzeit, keine Demo-Meilensteine. */
@@ -9066,7 +9079,7 @@ function renderGMActivity(){
     var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'—')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
     var kp=gmActCardKpis(a,vm);
     return '<article class="activity-card" role="button" tabindex="0" data-aid="'+gmEsc(aid)+'" onclick="gmOpenActivityPage(\''+gmEsc(aid)+'\')" onkeydown="if(event.key===\'Enter\')gmOpenActivityPage(\''+gmEsc(aid)+'\')">'+
-      '<div class="activity-visual" data-sport="'+(gsp||'')+'">'+gmActGlyph(gsp||'Laufen')+'</div>'+
+      '<div class="activity-visual" '+gmActThemeAttr(a.sportId)+' data-sport="'+(gsp||'')+'">'+gmActGlyph(gsp||'Laufen')+'</div>'+
       '<div class="activity-body"><div class="activity-row"><div><h3>'+gmEsc(title)+'</h3><p>'+gmEsc(dl)+' · '+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+'</p></div>'+
       (a.status==='completed'?'<span class="session-state done">' + _uiT('ui.abgeschlossen') + '</span>':'<span class="session-state">—</span>')+'</div>'+
       '<div class="activity-metrics">'+kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div></div></article>';
@@ -9084,24 +9097,29 @@ function gmSetActivityFilter(f){gmActFilter=f;gmActLimit=GM_ACT_PAGE;renderGMAct
 /* GM7.7: sportgerechte Stream-Definitionen. „Tempo"/„Geschwindigkeit" sind reine
    Einheitenumrechnungen DERSELBEN gemessenen Geschwindigkeit (m/s) — keine neue Groesse,
    keine Modellannahme: Laufen/Gehen min/km, Rad km/h, Schwimmen min/100 m, sonst m/s. */
+/* v8-439: Alle Messreihen einer Aktivitaet tragen EINE Farbe — die der Sportart (data-activity
+   der Seite). Vorher je Messgroesse eine andere (Tempo violett, HF gruen, Leistung gelb,
+   Kadenz als CSS-Farbwort „cyan" = grelles #00FFFF, Hoehe blau): Gruen/Gelb sind Zustandsfarben,
+   und die Seite sah je Diagramm wie eine andere App aus. Die Beschriftung unterscheidet die Reihen. */
+var GM_ACT_CHART_COLOR='var(--activity-primary)';
 function gmActStreamDefs(sportId){
   var paceSports={running:1,hiking:1,walking:1,trail_running:1};
   var speedDef;
   /* Tempo konventionell als mm:ss lesen (nicht als Dezimalminuten) — reine Formatierung. */
   var paceFmt=function(v){if(v==null||!isFinite(v))return null;var m=Math.floor(v),s=Math.round((v-m)*60);if(s===60){m++;s=0;}return m+':'+String(s).padStart(2,'0');};
-  if(paceSports[sportId])speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_km') + '',unit:'/km',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.3?(1000/v/60):null;}};
-  else if(sportId==='cycling')speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_km_h') + '',unit:' km/h',color:'sleep',hb:true,dec:1,conv:function(v){return v*3.6;}};
-  else if(sportId==='swimming')speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_100_m') + '',unit:'/100 m',color:'sleep',hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.1?(100/v/60):null;}};
-  else speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_m_s') + '',unit:' m/s',color:'sleep',hb:true,dec:1,conv:null};
+  if(paceSports[sportId])speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_km') + '',unit:'/km',color:GM_ACT_CHART_COLOR,hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.3?(1000/v/60):null;}};
+  else if(sportId==='cycling')speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_km_h') + '',unit:' km/h',color:GM_ACT_CHART_COLOR,hb:true,dec:1,conv:function(v){return v*3.6;}};
+  else if(sportId==='swimming')speedDef={key:'speed',label:'' + _uiT('ui.tempo_min_100_m') + '',unit:'/100 m',color:GM_ACT_CHART_COLOR,hb:false,dec:2,fmt:paceFmt,conv:function(v){return v>0.1?(100/v/60):null;}};
+  else speedDef={key:'speed',label:'' + _uiT('ui.geschwindigkeit_m_s') + '',unit:' m/s',color:GM_ACT_CHART_COLOR,hb:true,dec:1,conv:null};
   return [
-    {key:'heart_rate',label:'' + _uiT('ui.herzfrequenz_bpm') + '',unit:' bpm',color:'ready',hb:false,dec:0,conv:null},
+    {key:'heart_rate',label:'' + _uiT('ui.herzfrequenz_bpm') + '',unit:' bpm',color:GM_ACT_CHART_COLOR,hb:false,dec:0,conv:null},
     speedDef,
     /* v8-424: Leistung (Garmin directPower) — nur wenn die Messreihe wirklich vorliegt. */
-    {key:'power',label:'' + _uiT('ui.leistung_w') + '',unit:' W',color:'attention',hb:true,dec:0,conv:null},
+    {key:'power',label:'' + _uiT('ui.leistung_w') + '',unit:' W',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null},
     (sportId==='cycling'
-      ?{key:'cadence',label:'' + _uiT('ui.trittfrequenz_rpm') + '',unit:' rpm',color:'cyan',hb:true,dec:0,conv:null}
-      :{key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:'cyan',hb:true,dec:0,conv:null}),
-    {key:'elevation',label:'' + _uiT('ui.hoehe_m') + '',unit:' m',color:'activity',hb:null,dec:0,conv:null}
+      ?{key:'cadence',label:'' + _uiT('ui.trittfrequenz_rpm') + '',unit:' rpm',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null}
+      :{key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null}),
+    {key:'elevation',label:'' + _uiT('ui.hoehe_m') + '',unit:' m',color:GM_ACT_CHART_COLOR,hb:null,dec:0,conv:null}
   ];
 }
 /* GM7.9: Sportfamilien-Aufloesung fuer sportgerechte Detail-/Story-Darstellung.
@@ -9293,16 +9311,16 @@ function gmActMountRouteMap(pg,route,vm){
     if(!pg||!route||route.length<2||!RM||!RM.enabled||!RM.enabled())return false;
     if(!RM.cfg||RM.cfg().detail!==true)return false;      /* Schalter in map-config.js (detail) — seit v8-435 an */
     var el=pg.querySelector('.route-map');if(!el)return false;
-    var th=(typeof gmStoryTheme==='function')?gmStoryTheme(gmActFamily(vm&&vm.sportId)):null;
     var keep=el.innerHTML;
-    var ok=RM.mount(el,route,{cls:'detail',width:4,color:(th&&(th.hi||th.acc))||null,pad:GM_ACT_MAP_PAD});
+    /* v8-439: keine Farbe mitgeben — die Strecke nimmt var(--activity-primary) der Seite (data-activity) */
+    var ok=RM.mount(el,route,{cls:'detail',width:5,pad:GM_ACT_MAP_PAD});
     /* v8-435: Laeuft gerade die 5-Minuten-Pause nach einem Kachelfehler, meldet die Karte ihr
        Scheitern schon WAEHREND des Einsetzens — noch bevor unten jemand zuhoert. Dann sofort
        die bisherige Zeichnung (vorher blieb ein leeres Kartenfeld stehen). */
     if(ok&&el.querySelector('.rmx.tiles-failed'))ok=false;
     if(ok){
       el.classList.add('has-rmx');
-      gmActBindRouteMapOpen(el,route,vm,th);
+      gmActBindRouteMapOpen(el,route,vm);
       /* Kacheln nicht ladbar (offline, Kontingent) ⇒ exakt die bisherige Zeichnung zurueck */
       el.addEventListener('orvia:rmx-failed',function(){try{el.innerHTML=keep;el.classList.remove('has-rmx');el.classList.remove('can-open');el.removeAttribute('role');el.removeAttribute('tabindex');el.removeAttribute('aria-label');}catch(_){ }},{once:true});
     }else el.innerHTML=keep;
@@ -9312,7 +9330,7 @@ function gmActMountRouteMap(pg,route,vm){
 /* v8-435 (Gian 5.10.): Tippen auf das Kartenfeld oeffnet die Kartenansicht zum Umsehen
    (route-map-view.js: verschieben, zoomen). Nur solange im Feld wirklich die Karte steht —
    faellt sie auf die bisherige Zeichnung zurueck, ist das Feld wieder ein Bild wie zuvor. */
-function gmActBindRouteMapOpen(el,route,vm,th){
+function gmActBindRouteMapOpen(el,route,vm){
   try{
     var V=window.ORVIA&&ORVIA.routeMapView;
     if(!el||!V||typeof V.open!=='function')return false;
@@ -9320,7 +9338,7 @@ function gmActBindRouteMapOpen(el,route,vm,th){
     el.insertAdjacentHTML('beforeend','<span class="rmx-open" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg></span>');
     var go=function(){
       if(!el.classList.contains('can-open'))return;
-      V.open(route,{color:(th&&(th.hi||th.acc))||null,title:(vm&&(vm.title||vm.sportLabel))||'',
+      V.open(route,{activity:gmActThemeId(vm&&vm.sportId),title:(vm&&(vm.title||vm.sportLabel))||'',
         /* Kacheln des Felds als sofortige Unterlage (kommen aus dem Zwischenspeicher) */
         seed:{w:el.clientWidth,h:el.clientHeight,pad:GM_ACT_MAP_PAD},
         sub:[vm&&vm.distanceLabel,vm&&vm.durationLabel].filter(Boolean).join(' · '),
@@ -9444,7 +9462,10 @@ function gmOpenActivityPage(aid){
      Produzierter Wert, bislang nicht dargestellt; nur zeigen wenn vorhanden. */
   var _actTl=(a&&a.metrics&&a.metrics.training_load!=null&&isFinite(a.metrics.training_load))?Math.round(a.metrics.training_load):null;
   if(_actTl!=null)kcells.push([String(_actTl),'' + _uiT('ui.belastung_garmin') + '']);
-  h+='<div class="detail-kpis">'+kcells.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>';
+  /* v8-439: EINE Kennzahl traegt die Farbe der Sportart (Distanz; bei Kraft das Volumen) — alle
+     anderen bleiben neutral. Ohne Wert („—") keine Farbe. */
+  var _keyLbl=(_fam==='gym')?'VOLUMEN':'DISTANZ';
+  h+='<div class="detail-kpis">'+kcells.map(function(c){return '<div'+((c[1]===_keyLbl&&c[0]!=='—')?' class="key"':'')+'><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>';
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ORVIA-Workouts ist
      nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze. Eine
      vorhandene Korrektur bleibt sichtbar (vorher → nachher, manuell). */
@@ -9584,6 +9605,8 @@ function gmOpenActivityPage(aid){
     if(run||splits)h+='<div class="card"><div class="ctitle"><div class="l">'+(splitsCanon?'' + _uiT('ui.runden_') + '':'Kilometer-' + _uiT('ui.splits') + '')+'</div>'+(splits?'<span class="more">'+splits.length+'</span>':'')+'</div><div class="split-list">'+srows+'</div>'+_splitNote+'</div>';
   }
   h+='<div class="tabspacer"></div>';
+  /* v8-439: Farbthema der Sportart fuer die ganze Seite (Strecke, Messreihen, Kennzeichen) */
+  pg.setAttribute('data-activity',gmActThemeId(vm.sportId));
   pg.innerHTML=h;
   pg.classList.add('on');
   gmActMountRouteMap(pg,route,vm);
@@ -9597,7 +9620,7 @@ function gmOpenActivityPage(aid){
         var el=document.getElementById(c.id);if(!el)return;
         var avg=c.vals.reduce(function(a,b){return a+b;},0)/c.vals.length;
         var times=c.vals.map(function(_,i){var p=Math.round(i/(c.vals.length-1)*100);return (i===0)?'Start':(i===c.vals.length-1?'Ende':(p+'%'));});
-        ORVIA.charts.richChart(el,{label:c.label,series:c.vals,times:times,unit:c.unit,color:c.color,baseline:Math.round(avg*100)/100,higherBetter:c.hb!==false,dec:c.dec,fmtValue:c.fmt||undefined});
+        ORVIA.charts.richChart(el,{label:c.label,series:c.vals,times:times,unit:c.unit,color:c.color,baseline:Math.round(avg*100)/100,higherBetter:c.hb!==false,dec:c.dec,fmtValue:c.fmt||undefined,neutralMarks:true});
       });
     }
   }catch(_){ }
@@ -9780,10 +9803,14 @@ var GM_SPORT_ICON_EXTRA={
 function gmSportTileIcon(n,c){if(GM_SPORT_ICON_EXTRA[n])return '<svg class="ic '+(c||'')+'" viewBox="0 0 24 24">'+GM_SPORT_ICON_EXTRA[n]+'</svg>';return icon(n,c);}
 /* ---------- Training-Start-Sheet (GM-Einstieg; nur bestehende produktive Start-Handler) ---------- */
 var _gmStartCtx={mode:null,sport:null};
-/* S3c (v14 Schnellstart): die Sport-Kacheln des Start-Sheets als EINE Liste — auch der
+/* v8-439: Laufen, Kraft, Rad und Schwimmen tragen hier dieselbe Farbe wie ueberall (Farbsystem v6,
+   = ORVIA.activityTheme.color(sportId); ein Test haelt beides gleich). Die Zeile bleibt reine
+   Daten in EINER Zeile (plan_v14_s3c_test wertet sie ohne die App aus). Fussball/Mobility haben
+   noch kein Farbthema und behalten ihre Kachelfarbe aus v8-312.
+   S3c (v14 Schnellstart): die Sport-Kacheln des Start-Sheets als EINE Liste — auch der
    Schnellzugriff (quick-actions.js) liest sie, damit Reihenfolge, Icon und Farbe je
    Sportart nur an einer Stelle stehen. */
-var GM_START_SPORTS=[['Laufen','run','var(--ready)'],['Krafttraining','dumbbell','var(--gold)'],['Radfahren','activity','var(--activity)'],['Schwimmen','drop','var(--cyan)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
+var GM_START_SPORTS=[['Laufen','run','var(--run-primary)'],['Krafttraining','dumbbell','var(--strength-primary)'],['Radfahren','activity','var(--bike-primary)'],['Schwimmen','drop','var(--swim-primary)'],['Fußball','ball','var(--team)'],['Mobility','stretch','var(--recovery)'],['Eigenes','plus','var(--muted)']];
 var GM_SPORT_ID_TO_START={running:'Laufen',gym:'Krafttraining',strength:'Krafttraining',cycling:'Radfahren',swimming:'Schwimmen',football:'Fußball',mobility:'Mobility'};
 /* Kacheln fuer den Schnellzugriff: die AKTIVEN Sportarten des Profils (Hauptsport zuerst),
    hoechstens `max`, nur solche, die das Start-Sheet kennt. Rein, ohne DOM. */
@@ -9971,20 +9998,7 @@ function gmStoryMarkSeen(aid){
    Ø-Badge, sportartspezifische Seitensets ueber gmActFamily. Fehlt eine
    Datenquelle, entfaellt die betreffende Seite ersatzlos.
    ------------------------------------------------------------ */
-/* Warmer Verlaufs-Akzent je Sportfamilie (reine Darstellung). */
-function gmStoryTheme(fam){
-  var T={
-    /* hi (v8-431): leuchtende Diagrammfarbe — die Akzentfarbe ist fuer Text gemacht und
-       wirkt als Kurve auf dunklem Grund matt; die Kurve braucht mehr Saettigung/Helligkeit. */
-    pace:    {acc:'#FF8A4C',soft:'rgba(255,138,76,.30)',hi:'#FF9B52'},
-    cycling: {acc:'#5AA0F0',soft:'rgba(90,160,240,.30)',hi:'#4FB0FF'},
-    swimming:{acc:'#3ED6C4',soft:'rgba(62,214,196,.28)',hi:'#35E6D2'},
-    gym:     {acc:'#DCC79A',soft:'rgba(220,199,154,.28)',hi:'#F0D28A'},
-    rowing:  {acc:'#7C9CFF',soft:'rgba(124,156,255,.28)',hi:'#7FA2FF'},
-    other:   {acc:'#43D693',soft:'rgba(67,214,147,.28)',hi:'#3FE89A'}
-  };
-  return T[fam]||T.other;
-}
+/* Farbthema der Sportart: gmActThemeId/-Attr/-Color stehen im Aktivitaets-Block weiter oben (v8-439). */
 /* Dot-Matrix-Flaechenchart (SVG) aus einer ECHTEN Messreihe: Spaltenmittelwerte
    (reine Aggregation derselben Samples), Punkte wachsen von links nach rechts,
    Ø-Linie mit Badge, Min/Max der Reihe als Achsenlabels. Keine Interpolation,
@@ -10133,14 +10147,13 @@ function gmStoryPages(a){
   if(!vm)return [];
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var fam=gmActFamily(vm.sportId);
-  var th=gmStoryTheme(fam);
-  var accCss='--acc:'+th.acc+';--accsoft:'+th.soft+';--acchi:'+(th.hi||th.acc);
+  var actAttr=gmActThemeAttr(vm.sportId);   /* v8-439: Farbthema der Sportart — Werte in styles.css */
   var pages=[];
   /* Legacy-Sessions tragen ein synthetisches T00:00 — keine gemessene Uhrzeit. */
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
   var title=vm.title||vm.sportLabel||'' + _uiT('ui.training') + '';
   var top='<div class="wst-top"><b>'+gmEsc(title)+'</b><span>'+gmEsc(dl)+(vm.source?' · '+gmEsc(gmActSrcLabel(vm.source)):'')+'</span></div>';
-  var page=function(mid,footHtml,cls){return '<div class="wst-bg" style="'+accCss+'"></div><div class="wst-in'+(cls?' '+cls:'')+'" style="'+accCss+'">'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
+  var page=function(mid,footHtml,cls){return '<div class="wst-bg" '+actAttr+'></div><div class="wst-in'+(cls?' '+cls:'')+'" '+actAttr+'>'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
   var foot=function(hl,sub,src){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+(src?'<div class="wst-hsrc">'+gmEsc(src)+'</div>':'')+'</div>';};
   /* v8-432: Quelle der Messung klein unter den Zahlen — statt erklaerender Saetze. */
   var srcLine=(vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null;if(srcLine==='—')srcLine=null;
@@ -10204,13 +10217,13 @@ function gmStoryPages(a){
          (--sat, 54–59 px) nach unten — der Innenrand der Strecke muss mitgehen, sonst liegt
          die Strecke auf der Datumszeile (Gians Bild vom 5.10.). */
       var _sat=0;try{var _pb=document.createElement('div');_pb.style.cssText='position:fixed;left:0;top:0;width:0;height:var(--sat,0px);visibility:hidden;pointer-events:none';document.body.appendChild(_pb);_sat=_pb.offsetHeight||0;document.body.removeChild(_pb);}catch(_){_sat=0;}
-      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:4.5,tiles:_mapOn,
+      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:5,tiles:_mapOn,
         pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(_mh*0.17),l:44}});
       if(_map){
         var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
         var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);}catch(_){ }
-        coverPage='<div class="wst-bg" style="'+accCss+'"></div><div class="wst-mapbg" style="'+accCss+'">'+_map+'</div>'+
-          '<div class="wst-in wst-coverpg" style="'+accCss+'">'+top+
+        coverPage='<div class="wst-bg" '+actAttr+'></div><div class="wst-mapbg" '+actAttr+'>'+_map+'</div>'+
+          '<div class="wst-in wst-coverpg" '+actAttr+'>'+top+
           '<div class="wst-hero">'+
             (_dm?'<div class="wst-heronum"><b>'+gmEsc(_dm[1])+'</b>'+(_dm[2]?'<span>'+gmEsc(_dm[2])+'</span>':'')+'</div>':'')+
             (_kp.length?'<div class="wst-herostats">'+_kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>':'')+
@@ -10253,15 +10266,13 @@ function gmStoryPages(a){
       }
     }catch(_){ }
     if(distPB){
-      var GOLD2='#DCC79A',GOLDSOFT2='rgba(220,199,154,.35)';
       var _fs3=function(sec){var m3=Math.floor(sec/60),s3=Math.round(sec%60);return m3+':'+String(s3).padStart(2,'0');};
-      pages.push('<div class="wst-bg pr" style="--acc:'+GOLD2+';--accsoft:'+GOLDSOFT2+'"></div><div class="wst-in" style="--acc:'+GOLD2+';--accsoft:'+GOLDSOFT2+'">'+top+
+      pages.push('<div class="wst-bg pr" data-activity="brand"></div><div class="wst-in" data-activity="brand">'+top+
         '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>' + _uiT('ui.neue_bestzeit_gemessen') + '</span></div><div class="wst-prval">'+gmEsc(fmtDe(distPB.targetKm))+' km in '+gmEsc(_fs3(distPB.sec))+'</div></div>'+
         foot('' + _uiT('ui.deine_schnellste_gemessene') + ''+em(fmtDe(distPB.targetKm)+' km')+'' + _uiT('ui.strecke') + ''+(distPB.method==='stream_window'?'' + _uiT('ui.aus_den_messreihen_deiner_uhr') + '':distPB.method==='lap_window'?'' + _uiT('ui.aus_den_runden_deiner_uhr') + '':'' + _uiT('ui.aus_dieser_aktivitaet') + '')+'.','' + _uiT('ui.gemessen_ueber') + ''+fmtDe(distPB.km)+'' + _uiT('ui.km_keine_schaetzung') + '')+'</div>');
     }
     var pb=distPB?null:gmActPersonalBest(a,vm,fam);
     if(pb){
-      var GOLD='#DCC79A',GOLDSOFT='rgba(220,199,154,.35)';
       var prTitle=(pb.cur.kind==='speed')?'' + _uiT('ui.neue_bestleistung') + '':'' + _uiT('ui.neue_bestzeit') + '';
       var curTxt=(pb.cur.kind==='speed')?(fmtDe(Math.round(pb.cur.metric*10)/10)+pb.cur.unit):(fmtPace(pb.cur.metric)+pb.cur.unit);
       var prevTxt=(pb.cur.kind==='speed')?(fmtDe(Math.round(pb.bestOther*10)/10)+pb.cur.unit):(fmtPace(pb.bestOther)+pb.cur.unit);
@@ -10273,7 +10284,7 @@ function gmStoryPages(a){
         var dSec=Math.max(0,Math.round(pb.bestOther-pb.cur.metric));
         prSub=fmtPace(dSec)+' schneller pro '+(pb.cur.kind==='pace100'?'100 m':'km')+'' + _uiT('ui.als_deine_bisherige_bestzeit') + ''+prevTxt+')';
       }
-      pages.push('<div class="wst-bg pr" style="--acc:'+GOLD+';--accsoft:'+GOLDSOFT+'"></div><div class="wst-in" style="--acc:'+GOLD+';--accsoft:'+GOLDSOFT+'">'+top+
+      pages.push('<div class="wst-bg pr" data-activity="brand"></div><div class="wst-in" data-activity="brand">'+top+
         '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>'+prTitle+'</span></div><div class="wst-prval">'+gmEsc(curTxt)+'</div></div>'+
         foot(em(prTitle)+'!',prSub)+'</div>');
     }
@@ -10341,7 +10352,8 @@ function gmStoryPages(a){
   }
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
-  if(vm.distanceLabel)cells.push([vm.distanceLabel,'' + _uiT('ui.distanz_') + '']);
+  /* v8-439: dritter Wert 1 = Hauptkennzahl in der Farbe der Sportart (Distanz bzw. Kraft-Volumen) */
+  if(vm.distanceLabel)cells.push([vm.distanceLabel,'' + _uiT('ui.distanz_') + '',1]);
   if(durTxt)cells.push([durTxt,'Dauer']);
   if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','' + _uiT('ui.geschwindigkeit_') + '']);}
   else if(vm.paceLabel)cells.push([vm.paceLabel,'' + _uiT('ui.tempo_') + '']);
@@ -10352,7 +10364,7 @@ function gmStoryPages(a){
   if(gym){
     if(gym.exCount!=null)cells.push([String(gym.exCount),'' + _uiT('ui.uebungen__') + '']);
     if(gym.setCount!=null)cells.push([String(gym.setCount),'' + _uiT('ui.saetze__') + '']);
-    if(gym.volumeKg!=null)cells.push([gmKg(gym.volumeKg)+' kg','Volumen']);
+    if(gym.volumeKg!=null)cells.push([gmKg(gym.volumeKg)+' kg','Volumen',1]);
   }
   var cad=null;try{var cs2=st&&st.cadence;if(Array.isArray(cs2)){var sm2=0,nn=0;cs2.forEach(function(v){if(typeof v==='number'&&isFinite(v)){sm2+=v;nn++;}});cad=nn?Math.round(sm2/nn):null;}}catch(_){ }
   if(cad!=null&&fam==='pace')cells.push([cad+' spm','' + _uiT('ui.schrittfrequenz') + '']);
@@ -10362,7 +10374,7 @@ function gmStoryPages(a){
   if(rpe0!=null)cells.push(['' + _uiT('ui.rpe') + ''+rpe0,'Belastung']);
   if(cells.length>=2){
     pages.push(page('<div class="wst-kick">' + _uiT('ui.deine_zahlen') + '</div><div class="wst-grid">'+cells.slice(0,8).map(function(c,i){
-      return '<div class="wst-cell" style="animation-delay:'+(120+i*80)+'ms"><b>'+gmEsc(String(c[0]))+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>',
+      return '<div class="wst-cell'+(c[2]?' key':'')+'" style="animation-delay:'+(120+i*80)+'ms"><b>'+gmEsc(String(c[0]))+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>',
       foot('' + _uiT('ui.alles_aus_deiner_einheit') + '','' + _uiT('ui.werte_unveraendert_aus_der_aktivitaetsquelle') + '')));
   }
   /* ---------- 7) Debrief: nur bestehende produktive Bewertung ---------- */
@@ -11281,7 +11293,8 @@ function renderGMAnalysis(){
       var ser=[];var okAll=true;
       for(var o=5;o>=0;o--){var v=null;try{v=weekRunKm(o);}catch(_){ }if(v==null){okAll=false;break;}ser.push(v);}
       if(okAll){var _avgV=Math.round(ser.reduce(function(a,b){return a+b;},0)/(ser.length||1)*10)/10;
-        ORVIA.charts.richChart(el3,{label:'km',series:ser,times:['−5','−4','−3','−2','−1','akt. (angebrochen)'],unit:' km',color:'ready',baseline:_avgV,higherBetter:true,dec:0});}
+        /* v8-439: Laufkilometer in der Farbe des Laufens (vorher die Zustandsfarbe Gruen) */
+        ORVIA.charts.richChart(el3,{label:'km',series:ser,times:['−5','−4','−3','−2','−1','akt. (angebrochen)'],unit:' km',color:gmActThemeColor('running'),baseline:_avgV,higherBetter:true,dec:0});}
     }
   }catch(_){ }
   /* Fokuszustand nach Segmentwechsel erhalten */
