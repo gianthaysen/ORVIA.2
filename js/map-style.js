@@ -18,6 +18,22 @@
      · Gold: nur die groessten Ortsnamen (Staedte) tragen einen Hauch Champagner. KEIN
        warmer Ton auf Strassen — Blaugrau Richtung Gold verschoben wird Oliv, und genau das
        soll weg. Die uebrige Gold-Ebene (Bedienelemente, Kartenrand) liegt in styles.css.
+   V2.1 (Gians Auftrag 6.10. nachmittags, nach v8-441 auf dem iPhone): „weiterhin zu dunkel,
+   Gebaeude und Nebenstrassen verschwinden teilweise, Gold faktisch nicht sichtbar, wirkt wie
+   Dark Map + Strecke". Zielwerte von Gian; gemessen und nur dort angepasst, wo sie das Ziel
+   verfehlen:
+     · Alles eine Stufe heller, die Strassen staerker als der Grund (Kontrast zum Land:
+       Haupt 1,87 → 2,31, Verbindung 1,61 → 1,83, Neben 1,41 → 1,53).
+     · Natur: Vorgabe #111A22 laege im Farbton wieder 6° Richtung Gruen ⇒ #111A24 (exakt der
+       Farbton des Landes — dieselbe Regel wie in V2).
+     · Gebaeude: mit der Vorgabe #182430 haetten sie sich vom bebauten Grund kaum staerker
+       abgehoben als in V2 (1,09 statt 1,07) ⇒ #1A2734 (1,14); dazu frueher voll deckend.
+       Nebenstrassen: Farbe nach Vorgabe, zusaetzlich etwas breiter (duenne Linien verlieren
+       am Bildschirm mehr Kontrast als ihre Farbe verspricht).
+     · Gold ist jetzt im normalen Kartenbild zu sehen: Namen wichtiger Orte in Champagner-
+       Gold (#C8B77E, siehe GOLD_PLACE) und eine warme Unterlage unter Hauptstrassen (roadWarm).
+     · Wasser und Natur sind gleich hell (Kontrast 1,01) — eine Insel im Meer waere ohne
+       Rand nicht zu sehen. Deshalb eine eigene Uferlinie (Ebene shore).
    Reihenfolge der Sichtbarkeit:
      Strecke › grosse Ortsnamen › Hauptstrassen › Verbindungsstrassen › Nebenstrassen ›
      Gebaeude › Natur.
@@ -37,29 +53,41 @@
 
   /* EINE Stelle fuer die Kartenfarben (Vorgabe vom 6.10.; Abweichungen sind begruendet). */
   var PALETTE = {
-    bg: '#080D14',          /* Flaeche hinter der Karte, bevor Daten da sind */
-    land: '#0B1118',
-    urban: '#0E151D',       /* bebaute Flaeche: Stadt hebt sich leicht vom Umland ab */
-    nature: '#10171F',      /* Wald, Wiese, Park: Farbton des Landes, nur heller — siehe oben */
-    water: '#081724',
-    shore: '#152634',       /* Uferlinie: Wasserton, etwas heller — Kuesten und Seen bleiben lesbar */
-    boundary: '#202B36',
-    building: '#141C25',
-    path: '#19232D',        /* Fuss- und Feldwege: zwischen Land und Nebenstrasse */
-    rail: '#19232D',
-    roadMinor: '#24303C',
-    roadSecondary: '#2B3947',
-    roadMajor: '#344352',
-    labelMinor: '#687583',
-    labelMajor: '#AEB7C1',
-    labelCity: '#B9B6AD',   /* Hauch Champagner: Helligkeit wie labelMajor, Farbton des ORVIA-Golds, kaum Saettigung */
-    halo: '#0B1118'
+    bg: '#09111A',          /* Flaeche hinter der Karte, bevor Daten da sind */
+    land: '#0E1721',
+    urban: '#111C27',       /* bebaute Flaeche: Stadt hebt sich leicht vom Umland ab */
+    nature: '#111A24',      /* Wald, Wiese, Park: Farbton des Landes, nur heller — siehe oben */
+    water: '#0A1B29',
+    shore: '#22405A',       /* Uferlinie: Wasserton, deutlich heller — Kuesten, Inseln und Seen bekommen eine Form */
+    boundary: '#25313D',
+    building: '#1A2734',
+    path: '#1F2B37',        /* Fuss- und Feldwege: zwischen Land und Nebenstrasse */
+    rail: '#1F2B37',
+    roadMinor: '#2B3947',
+    roadSecondary: '#344555',
+    roadMajor: '#415466',
+    /* Warme Unterlage unter Hauptstrassen — die leise Gold-Spur im Strassennetz. Ein fester, deckender
+       Bronze-Ton statt halbtransparentem Gold, aus zwei gemessenen Gruenden (Vorschau auf echten Daten):
+         · Gold mit 10–14 % ueber Navy ergibt ein NEUTRALES Grau (41,47,49) — Gelb und Blau heben sich
+           auf; warm wirkt daran nichts. Ab ~16 % kippt der Farbton ins Gruenliche (Oliv).
+         · Halbtransparente Linien ueberlagern sich an jeder Kreuzung doppelt: der Anteil gruenstichiger
+           Bildpunkte stieg dabei auf das 7,5-Fache.
+       Deshalb: Helligkeit zwischen Gebaeude und Nebenstrasse, ein Fuenftel der Saettigung des Golds,
+       Farbton von 86° (Gold) auf 63° Richtung Orange gedreht — weg vom Oliv. Rot > Gruen > Blau. */
+    roadWarm: '#3A322B',
+    labelMinor: '#768392',
+    labelMajor: '#B8C1CB',
+    labelCity: '#C8B77E',   /* Champagner-Gold fuer Staedtenamen — die Signatur der Karte (= --map-gold-label in styles.css) */
+    halo: '#0E1721'
   };
   var SRC = 'orvia';
   var MAJOR = ['motorway', 'trunk', 'primary'];
   var SECONDARY = ['secondary', 'tertiary'];
   var MINOR = ['minor', 'service'];
   var PATHS = ['path', 'track'];
+  /* Welche Ortsnamen tragen Gold? Grossstaedte (class city) UND bedeutende Staedte, die in den Kartendaten als
+     „town" gefuehrt sind (rank < 11 — z. B. Flensburg: town, rank 7). Kleinstaedte ringsum (rank ≥ 11) bleiben neutral. */
+  var GOLD_PLACE = ['any', ['==', ['get', 'class'], 'city'], ['<', ['coalesce', ['get', 'rank'], 99], 11]];
   var NAME = ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']];
 
   function inClass(list) { return ['match', ['get', 'class'], list, true, false]; }
@@ -96,14 +124,19 @@
       fill('nature-cover', 'landcover', inClass(['wood', 'grass', 'wetland']), P.nature),
       fill('nature-use', 'landuse', inClass(['cemetery', 'pitch', 'playground', 'stadium', 'track', 'park']), P.nature, { minzoom: 9 }),
       fill('nature-park', 'park', null, P.nature, { minzoom: 8 }),
-      fill('water', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.water, { 'fill-outline-color': P.shore }),
+      fill('water', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.water),
+      /* Uferlinie als eigene Linie (der Flaechenrand allein ist nur ein Haarstrich): Inseln, Kuesten, Seen */
+      line('shore', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shore, width([[4, 0.5], [10, 0.9], [14, 1.2], [18, 1.6]]), { 'line-opacity': 0.9 }),
       line('waterway', 'waterway', ['!=', ['get', 'brunnel'], 'tunnel'], P.water, width([[10, 0.6], [14, 1.6], [18, 6]]), { minzoom: 10 }),
       /* Staats- und Landesgrenzen, sehr leise (keine Gemeindegrenzen — die waeren in der Stadt nur Unruhe) */
       line('boundary', 'boundary', ['all', ['<=', ['get', 'admin_level'], 4], ['!=', ['get', 'maritime'], 1]], P.boundary, width([[3, 0.6], [10, 1.2]]), { minzoom: 3, 'line-dasharray': [3, 2] }),
-      fill('building', 'building', null, P.building, { minzoom: 13, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.55, 14, 1] }),
+      fill('building', 'building', null, P.building, { minzoom: 13, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.7, 13.6, 1] }),
+      /* warme Unterlage der Hauptstrassen (Gold-Signatur): je Seite bis 0,75 px breiter als die Strasse, liegt
+         unter ALLEN Strassen — Nebenstrassen muenden sauber ein */
+      line('road-major-warm', 'transportation', inClass(MAJOR), P.roadWarm, width([[9, 1.8], [10, 2.1], [12, 3.3], [14, 5.1], [16, 10], [18, 23.5]]), { minzoom: 9 }),
       /* Wege und Strassen — ohne Rand, eine Farbe je Rang, drei Raenge */
       line('road-path', 'transportation', inClass(PATHS), P.path, width([[14, 0.7], [16, 1.4], [18, 3]]), { minzoom: 14 }),
-      line('road-minor', 'transportation', inClass(MINOR), P.roadMinor, width([[12, 0.5], [14, 1.6], [16, 5], [18, 14]]), { minzoom: 12 }),
+      line('road-minor', 'transportation', inClass(MINOR), P.roadMinor, width([[12, 0.6], [13, 1], [14, 1.9], [16, 5.4], [18, 14]]), { minzoom: 12 }),
       /* Bahn: nur durchgehende Gleise — Abstell- und Rangiergleise (service) machten Bahnhoefe zu einem Linienknaeuel */
       line('rail', 'transportation', ['all', inClass(['rail', 'transit']), ['!', ['has', 'service']]], P.rail, width([[11, 0.5], [14, 1], [18, 2.4]]), { minzoom: 11 }),
       line('road-secondary', 'transportation', inClass(SECONDARY), P.roadSecondary, width([[9, 0.5], [12, 1.4], [14, 2.6], [16, 6.5], [18, 17]]), { minzoom: 9 }),
@@ -113,8 +146,8 @@
         { minzoom: 14.5, 'symbol-placement': 'line', 'symbol-spacing': 380, 'text-max-angle': 30, 'text-padding': 12 }),
       label('label-place-minor', 'place', inClass(['suburb', 'quarter', 'neighbourhood', 'village', 'hamlet']), P.labelMinor, ['interpolate', ['linear'], ['zoom'], 11, 10, 15, 12], f,
         { minzoom: 11, 'text-letter-spacing': 0.05, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 20] }),
-      /* Staedte mit einem Hauch Champagner, Kleinstaedte im neutralen hellen Ton */
-      label('label-place-major', 'place', inClass(['city', 'town']), ['match', ['get', 'class'], 'city', P.labelCity, P.labelMajor], ['interpolate', ['linear'], ['zoom'], 6, 11, 11, 13, 15, 15.5], f,
+      /* wichtige Orte in Champagner-Gold, kleine Staedte im neutralen hellen Ton */
+      label('label-place-major', 'place', inClass(['city', 'town']), ['case', GOLD_PLACE, P.labelCity, P.labelMajor], ['interpolate', ['linear'], ['zoom'], 6, 11, 11, 13, 15, 15.5], f,
         { minzoom: 4, 'text-padding': 10, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 20] })
     ];
   }
@@ -131,7 +164,7 @@
     return st;
   }
 
-  var api = { VERSION: 'map-style@2', PALETTE: PALETTE, SOURCE: SRC, layers: layers, build: build };
+  var api = { VERSION: 'map-style@3', PALETTE: PALETTE, SOURCE: SRC, layers: layers, build: build };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ORVIA.mapStyle = api;
 })(typeof window !== 'undefined' ? window : globalThis);

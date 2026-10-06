@@ -72,13 +72,22 @@
   --orvia-route-start:var(--orvia-success);--orvia-route-finish:var(--orvia-error);
   /* Karte (v8-440): Flaeche hinter der Karte und Landfarbe — dieselben Werte wie PALETTE in js/map-style.js
      (dort steht der ganze Kartenstil; ein Test haelt beide Stellen gleich) */
-  --orvia-map-bg:#080D14;--orvia-map-land:#0B1118;
+  --orvia-map-bg:#09111A;--orvia-map-land:#0E1721;
   /* Karte V2 (v8-441): ORVIA-Gold als DRITTE, sehr leise Ebene der Karte — nur fuer Bedienelemente
      (gedrueckt / im Fokus / gewaehlt), den untersten Kartenrand und (im Kartenstil selbst) die
      groessten Ortsnamen. NIE fuer Strecke, Start/Ziel, Strassen, Flaechen. */
   --map-gold:var(--orvia-brand-gold);--map-gold-soft:var(--orvia-brand-gold-soft);
-  --map-gold-muted:rgba(216,187,122,0.16);--map-gold-subtle:rgba(216,187,122,0.07);
-  --map-gold-line:rgba(216,187,122,0.28);--map-gold-edge:rgba(216,187,122,0.045);
+  /* Karte V2.1 (v8-442): Gold war zu leise („faktisch nicht sichtbar"). Jetzt im normalen Kartenbild
+     vorhanden, ohne dass ein Knopf gedrueckt werden muss: Namen wichtiger Orte (--map-gold-label, derselbe
+     Wert wie labelCity in js/map-style.js), Rand der Bedienelemente schon in Ruhe (--map-gold-rest),
+     staerkerer Goldhauch im Auslauf der Karte. */
+  --map-gold-light:#E3CB95;--map-gold-label:#C8B77E;
+  --map-gold-muted:rgba(216,187,122,0.20);--map-gold-subtle:rgba(216,187,122,0.10);
+  --map-gold-rest:rgba(216,187,122,0.12);--map-gold-line:rgba(216,187,122,0.32);
+  /* Goldhauch: -edge liegt UEBER der Karte am Bildschirmrand (Kartenansicht, 9 %); -under liegt UNTER der
+     auslaufenden Karte (Kartenfeld, Story) — dort deckt die Karte noch rund ein Drittel, deshalb 13 % fuer
+     dieselbe sichtbare Staerke (~9 %). */
+  --map-gold-edge:rgba(216,187,122,0.09);--map-gold-under:rgba(216,187,122,0.13);
   /* Diagrammflaeche (Story + Aktivitaetsseite) */
   --orvia-chart-surface:#071321;--orvia-chart-border:rgba(130,160,190,.26);--orvia-chart-grid:rgba(130,160,190,.12);
 
@@ -3771,7 +3780,11 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
    Die wenigen Regeln fuer .maplibregl-* ersetzen das Stylesheet der Bibliothek (es wuerde vor
    allem Bedienelemente gestalten, die es hier nicht gibt).
    ============================================================ */
-.rmx-tiles.rmx-gl,.gm-story .wst-mapbg .rmx-tiles.rmx-gl{--rmx-dim:0}
+.rmx-tiles.rmx-gl{--rmx-dim:0}
+/* v8-442: dieselbe Karte in allen drei Ansichten; Unterschiede nur ueber Ausschnitt und Deckkraft. In der Story
+   tritt die Karte minimal zurueck (Schleier 6 %), damit die Strecke dort noch klarer fuehrt. Kartenfeld und
+   Kartenansicht: kein Schleier. */
+.gm-story .wst-mapbg .rmx-tiles.rmx-gl{--rmx-dim:.06}
 .rmx-tiles .rmx-glbox{position:absolute;inset:0;opacity:0;transition:opacity .45s ease}
 .rmx-tiles .rmx-glbox.ok{opacity:1}
 .maplibregl-map{overflow:hidden;position:relative;-webkit-tap-highlight-color:transparent}
@@ -3789,7 +3802,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 /* Band hinter dem Kopf: kuerzer und leichter als ueber Bildkacheln (die eigene Karte ist dunkel und sparsam
    beschriftet). Endet 104 px unter dem sicheren Rand = Kopf (~64 px) + GL_BAND (40 px, route-map-view.js);
    die Strecke beginnt erst darunter. */
-.rmv.rmv-glmode .rmv-dim{--rmx-dim:0;background:radial-gradient(70% 30% at 50% 100%,var(--map-gold-edge),transparent 75%),linear-gradient(180deg,rgba(5,9,16,.88) 0,rgba(5,9,16,.72) calc(var(--sat,0px) + 52px),rgba(5,9,16,0) calc(var(--sat,0px) + 104px),rgba(5,9,16,0) 86%,rgba(5,9,16,.45) 100%)}
+.rmv.rmv-glmode .rmv-dim{--rmx-dim:0;background:radial-gradient(70% 30% at 50% 100%,var(--map-gold-edge),transparent 72%),linear-gradient(180deg,rgba(5,9,16,.88) 0,rgba(5,9,16,.72) calc(var(--sat,0px) + 52px),rgba(5,9,16,0) calc(var(--sat,0px) + 104px),rgba(5,9,16,0) 86%,rgba(5,9,16,.45) 100%)}
 .rmv.rmv-glready .rmv-route{display:none}
 @media (prefers-reduced-motion:reduce){.rmx-tiles .rmx-glbox{transition:none}}
 /* Aktivitaetsseite: Karte fuellt das bestehende Streckenfeld */
@@ -3807,7 +3820,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
    sichtbar. (Die Vorgabe nennt „at 50% 100%"; das passt nur, wo der Rand der Bildschirmrand ist — so
    in der Kartenansicht.)
    Die Abdunklung der Ecken (Vignette) ist entfallen — sie nahm der Karte an den Raendern Struktur. */
-.route-map.has-rmx::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 18% at 50% 82%,var(--map-gold-edge),transparent 100%),radial-gradient(70% 22% at 50% 78%,var(--activity-tint),transparent 100%)}
+.route-map.has-rmx::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 18% at 50% 82%,var(--map-gold-under),transparent 100%),radial-gradient(70% 22% at 50% 78%,var(--activity-tint),transparent 100%)}
 .route-map.has-rmx .rmx{position:absolute;inset:0}
 .route-map.has-rmx .rmx-tiles{
   -webkit-mask-image:linear-gradient(180deg,#000 0,rgba(0,0,0,.96) 45%,rgba(0,0,0,.70) 65%,rgba(0,0,0,.30) 85%,transparent 100%);
@@ -3817,8 +3830,8 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .route-map.can-open{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .route-map.can-open:focus-visible{outline:2px solid var(--map-gold-soft);outline-offset:2px}
 .route-map .rmx-open{position:absolute;top:10px;right:10px;z-index:3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(14,19,27,.90);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;pointer-events:none;transition:border-color .15s ease,color .15s ease}
-/* Gold nur als Rueckmeldung: solange das Feld gedrueckt wird oder den Tastaturfokus hat */
+  background:rgba(14,19,27,.90);border:1px solid var(--map-gold-rest);color:#f3f1ea;pointer-events:none;transition:border-color .15s ease,color .15s ease}
+/* v8-442: in Ruhe ein sehr leiser Goldrand (12 %), Zeichen neutral; gedrueckt / im Tastaturfokus Rand 32 % und Zeichen Gold */
 .route-map.can-open:active .rmx-open,.route-map.can-open:focus-visible .rmx-open{border-color:var(--map-gold-line);color:var(--map-gold)}
 .route-map.has-rmx .rmx-attr{right:8px;left:auto}
 /* ============================================================
@@ -3848,7 +3861,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmv-ttl b{display:block;font-size:17px;font-weight:750;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rmv-ttl span{display:block;margin-top:2px;font-size:12.5px;font-weight:600;color:rgba(232,238,245,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rmv-btn{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;pointer-events:auto;
-  background:rgba(14,19,27,.92);border:1px solid rgba(255,255,255,.16);color:#f3f1ea;font-family:var(--font);
+  background:rgba(14,19,27,.92);border:1px solid var(--map-gold-rest);color:#f3f1ea;font-family:var(--font);
   box-shadow:0 2px 10px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;transition:background .15s ease,transform .12s ease,border-color .2s ease,color .2s ease}
 .rmv-btn:active{transform:scale(.94);background:rgba(28,36,48,.9);border-color:var(--map-gold-line);color:var(--map-gold)}
 .rmv-btn:focus-visible{outline:2px solid var(--map-gold-soft);outline-offset:2px}
@@ -3876,7 +3889,7 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
   -webkit-mask-image:linear-gradient(180deg,transparent 0,transparent calc(var(--sat,0px) + 88px),#000 calc(var(--sat,0px) + 124px),rgba(0,0,0,.96) 52%,rgba(0,0,0,.70) 68%,rgba(0,0,0,.30) 85%,transparent 100%);
   mask-image:linear-gradient(180deg,transparent 0,transparent calc(var(--sat,0px) + 88px),#000 calc(var(--sat,0px) + 124px),rgba(0,0,0,.96) 52%,rgba(0,0,0,.70) 68%,rgba(0,0,0,.30) 85%,transparent 100%)}
 /* derselbe Goldhauch im auslaufenden Teil der Karte wie im Kartenfeld (liegt unter der Karte, endet am Rand bei null) */
-.gm-story .wst-mapbg::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 18% at 50% 82%,var(--map-gold-edge),transparent 100%)}
+.gm-story .wst-mapbg::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 18% at 50% 82%,var(--map-gold-under),transparent 100%)}
 .gm-story .wst-mapbg .gm-route-line{stroke-dasharray:var(--rl);stroke-dashoffset:var(--rl);animation:stDraw 3.2s cubic-bezier(.35,0,.15,1) .15s forwards}
 .gm-story .wst-mapbg .rmx-end{opacity:0;animation:wstDot .4s ease-out 3s forwards}
 .gm-story .wst-in.wst-coverpg .wst-top b,.gm-story .wst-in.wst-coverpg .wst-top span{text-shadow:0 1px 10px rgba(0,0,0,.75)}
