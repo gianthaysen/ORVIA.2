@@ -67,7 +67,7 @@ const PORT = server.address().port, ORIGIN = `http://127.0.0.1:${PORT}`;
 const browser = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium, { executablePath: CHROME });
 
 /* Sollfarben des ORVIA-Stils (rgb) */
-const LAND = [11, 17, 24], ROAD = [52, 67, 82], ROAD_SEC = [43, 57, 71], ROAD_MINOR = [36, 48, 60], NATURE = [16, 23, 31], BUILDING = [20, 28, 37];
+const LAND = [14, 23, 33], ROAD = [65, 84, 102], ROAD_SEC = [52, 69, 85], ROAD_MINOR = [43, 57, 71], NATURE = [17, 26, 36], BUILDING = [26, 39, 52], WARM = [58, 50, 43];
 /* zwei Strassen anderer Raenge, oestlich der Strecke zwischen den Gitterlinien (Karte V2: drei Strassenraenge) */
 const LINES = [{ cls: 'secondary', pts: [[51.4700, 7.2265], [51.4900, 7.2265]] }, { cls: 'minor', pts: [[51.4700, 7.2275], [51.4900, 7.2275]] }];
 const RUN = [255, 154, 92], START = [67, 214, 158], FINISH = [255, 100, 100], BASE = [5, 9, 16];
@@ -142,6 +142,16 @@ async function boot(mode) {
   /* Rest-Gruen: Natur hat den Farbton des Landes — das Verhaeltnis Blau : Gruen ist gleich (± 4 %), in der ersten Fassung lag Natur 12 % daneben */
   const bg = c => c[2] / c[1];
   ok('A6 Wald traegt den Natur-Ton des ORVIA-Stils — kein Gruen (Blau > Gruen) und kein Olivstich: Blau : Gruen wie beim Land (± 4 %)', near(px[2], NATURE, 4) && px[2][2] > px[2][1] && Math.abs(bg(px[2]) / bg(px[1]) - 1) <= 0.04 && Math.abs(bg([16, 25, 29]) / bg(LAND) - 1) > 0.1, JSON.stringify([px[2], +bg(px[2]).toFixed(3), +bg(px[1]).toFixed(3)]));
+  /* Karte V2.1: warme Unterlage der Hauptstrassen ist am Bildschirm vorhanden — und nirgends im Kartenfeld entsteht Oliv.
+     Auswertung der oberen 60 % des Felds (dort deckt die Karte voll). Oliv/Khaki = Gruen > Rot > Blau (gelbgruen);
+     Start-Ring (Gruen > Blau > Rot) und Strecke (Rot > Gruen > Blau, hell) fallen nicht darunter. */
+  { const b64 = (await page.screenshot({ type: 'png' })).toString('base64');
+    const st2 = await page.evaluate(async ([b64, box, dpr, warm]) => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const x0 = Math.round(box[0] * dpr), y0 = Math.round(box[1] * dpr), w = Math.round(box[2] * dpr), h = Math.round(box[3] * 0.6 * dpr); const d = x.getImageData(x0, y0, w, h).data; let n = 0, nWarm = 0, olive = 0;
+      for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], bl = d[i + 2]; n++; if (Math.abs(r - warm[0]) <= 7 && Math.abs(g - warm[1]) <= 7 && Math.abs(bl - warm[2]) <= 7 && r > g && g > bl) nWarm++; if (g > r + 2 && r > bl + 2) olive++; }
+      return { n, nWarm, olive }; }, [b64, f.box, DPR, WARM]);
+    ok('A5c warme Unterlage: entlang der Hauptstrassen liegt der Bronze-Ton (58,50,43) am Bildschirm — als feiner Rand (zwischen 0,2 % und 6 % der Kartenflaeche), nicht als Flaeche', st2.nWarm / st2.n > 0.002 && st2.nWarm / st2.n < 0.06, JSON.stringify(st2));
+    ok('A5d kein Oliv/Khaki im Kartenfeld: kein einziger Bildpunkt mit Gruen > Rot > Blau', st2.olive === 0, JSON.stringify(st2)); }
   /* Uebergang Karte → Inhalt: am unteren Rand des Felds darf kein Sprung stehen (bis v8-440: abgeschnittener Schein, 25 Stufen) */
   { const yb = f.box[1] + f.box[3]; const xs = [f.box[0] + f.box[2] * 0.25, f.box[0] + f.box[2] * 0.5, f.box[0] + f.box[2] * 0.75];
     const e = await B.pixels(xs.map(x => [x, yb - 1.5]).concat(xs.map(x => [x, yb + 2])));
@@ -151,7 +161,7 @@ async function boot(mode) {
     await page.evaluate(() => { document.querySelector('#gmActPage .route-map .rmx').style.visibility = 'hidden'; });
     const mid = await B.pixels([[f.box[0] + f.box[2] * 0.5, f.box[1] + f.box[3] * 0.80], [f.box[0] + 4, f.box[1] + f.box[3] * 0.80]]);
     await page.evaluate(() => { document.querySelector('#gmActPage .route-map .rmx').style.visibility = ''; });
-    ok('A6b im auslaufenden Teil liegt ein leiser, warmer Schein (Gold + Farbe der Sportart): Mitte 8…30 Stufen waermer als der Rand, Zuwachs Rot > Gruen ≥ Blau — kein Gruen', mid[0][0] - mid[1][0] >= 8 && mid[0][0] - mid[1][0] <= 30 && (mid[0][0] - mid[1][0]) > (mid[0][1] - mid[1][1]) && (mid[0][1] - mid[1][1]) >= (mid[0][2] - mid[1][2]), JSON.stringify(mid)); }
+    ok('A6b im auslaufenden Teil liegt ein leiser, warmer Schein (Gold + Farbe der Sportart): Mitte 25…55 Stufen waermer als der Rand (v8-441: 22), Zuwachs Rot > Gruen ≥ Blau — kein Gruen', mid[0][0] - mid[1][0] >= 25 && mid[0][0] - mid[1][0] <= 55 && (mid[0][0] - mid[1][0]) > (mid[0][1] - mid[1][1]) && (mid[0][1] - mid[1][1]) >= (mid[0][2] - mid[1][2]), JSON.stringify(mid)); }
   /* Strecke (SVG) liegt auf derselben Karte: der Start-Ring sitzt auf der Kreuzung 51,4800 / 7,2160 */
   const sr = await page.evaluate(() => { const b = document.querySelector('#gmActPage .route-map .rmx-start').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
   const cross = at(51.4800, 7.2160);
@@ -161,8 +171,9 @@ async function boot(mode) {
   const n0 = B.tiles().length;
   const s1 = await page.evaluate(async () => { gmOpenStory('gl-r1'); await new Promise(r => setTimeout(r, 1900)); try { gmStoryStop(); } catch (_) { }
     const cv = document.querySelector('.gm-story .wst-page.on .wst-mapbg canvas'); if (cv) cv.__mark = 'A';
-    return { gl: !!document.querySelector('.gm-story .wst-page.on .wst-mapbg .rmx-tiles.rmx-gl'), canvas: cv ? [cv.width, cv.clientWidth] : null, ok: !!document.querySelector('.gm-story .wst-page.on .rmx-glbox.ok'), imgs: document.querySelectorAll('.gm-story img.rmx-t').length, stats: ORVIA.routeMapGL.stats() }; });
+    return { gl: !!document.querySelector('.gm-story .wst-page.on .wst-mapbg .rmx-tiles.rmx-gl'), canvas: cv ? [cv.width, cv.clientWidth] : null, ok: !!document.querySelector('.gm-story .wst-page.on .rmx-glbox.ok'), imgs: document.querySelectorAll('.gm-story img.rmx-t').length, stats: ORVIA.routeMapGL.stats(), dim: getComputedStyle(document.querySelector('.gm-story .wst-page.on .wst-mapbg .rmx-tiles'), '::before').backgroundColor }; });
   const n1 = B.tiles().length;
+  ok('B1a dieselbe Karte, in der Story minimal zurueckgenommen: Schleier 6 % (Kartenfeld: 0)', /rgba\(5, 8, 13, 0\.06\)/.test(String(s1.dim)), String(s1.dim));
   ok('B1 Story-Abschluss zeigt die gezeichnete Karte in voller Pixeldichte, ohne Bildkacheln', s1.gl === true && !!s1.canvas && s1.canvas[0] === s1.canvas[1] * DPR && s1.ok === true && s1.imgs === 0, JSON.stringify(s1));
   const s2 = await page.evaluate(async () => { gmStoryNext(); await new Promise(r => setTimeout(r, 400)); try { gmStoryStop(); } catch (_) { } const gone = !document.querySelector('.gm-story .wst-page.on canvas');
     gmStoryPrev(); await new Promise(r => setTimeout(r, 500)); try { gmStoryStop(); } catch (_) { }
@@ -184,7 +195,7 @@ async function boot(mode) {
   ok('C1 die Kartenansicht oeffnet mit der gezeichneten Karte im Vollbild, volle Pixeldichte, Thema der Sportart', !!o && /rmv-glmode/.test(o.cls) && /rmv-glready/.test(o.cls) && o.engine === 'vector' && o.act === 'running' && !!o.canvas && o.canvas[0] === 390 * DPR && o.canvas[1] === 844 * DPR && o.imgs === 0, JSON.stringify(o));
   ok('C2 sobald die Karte steht, zeichnet SIE die Strecke: das Standbild der Strecke und die Bildkachel-Ebene sind aus', !!o && o.routeSvg === 'none' && o.layer === 'none' && o.gl && o.gl.ready === true);
   ok('C3 Ausschnitt beim Oeffnen = „ganze Strecke" (dieselbe Zoomstufe wie die Rechnung, Kamera der Karte eine Stufe darunter)', !!o && Math.abs(o.gl.zoom - (o.fitZ - 1)) < 1e-6, JSON.stringify(o && [o.gl.zoom, o.fitZ]));
-  ok('C3a Gold als Zustand (Karte V2): beim Oeffnen zeigt der Ausschnitt die ganze Strecke ⇒ dieser Knopf traegt Gold (Zeichen #D8BB7A, Rand 28 %); die uebrigen Knoepfe bleiben neutral', !!o && o.fit.on === true && o.fit.col === 'rgb(216, 187, 122)' && o.fit.border === 'rgba(216, 187, 122, 0.28)' && o.plus.col === 'rgb(243, 241, 234)' && o.plus.border === 'rgba(255, 255, 255, 0.16)', JSON.stringify(o && [o.fit, o.plus]));
+  ok('C3a Gold als Zustand: beim Oeffnen zeigt der Ausschnitt die ganze Strecke ⇒ dieser Knopf traegt Gold (Zeichen #D8BB7A, Rand 32 %); die uebrigen Knoepfe haben nur den leisen Goldrand der Ruhe (12 %) und ein neutrales Zeichen', !!o && o.fit.on === true && o.fit.col === 'rgb(216, 187, 122)' && o.fit.border === 'rgba(216, 187, 122, 0.32)' && o.plus.col === 'rgb(243, 241, 234)' && o.plus.border === 'rgba(216, 187, 122, 0.12)', JSON.stringify(o && [o.fit, o.plus]));
   /* Farben am Bildschirm: Stellen ueber die Karte selbst gerechnet (project) UND unabhaengig ueber die Kamera */
   const cam = o.gl, ws = 512 * Math.pow(2, cam.zoom);
   const scr = (lat, lon) => [(lonX(lon) - lonX(cam.lon)) * ws + 195, (latY(lat) - latY(cam.lat)) * ws + 422];
@@ -202,7 +213,7 @@ async function boot(mode) {
   const a1 = await page.evaluate(V);
   await page.click('.rmv-out'); await page.waitForTimeout(600);
   const a2 = await page.evaluate(V);
-  ok('D1a sobald man sich umsieht, ist „ganze Strecke" nicht mehr gewaehlt: Gold weg, Knopf neutral', a1.fit.on === false && a1.fit.col === 'rgb(243, 241, 234)' && a1.fit.border === 'rgba(255, 255, 255, 0.16)', JSON.stringify(a1.fit));
+  ok('D1a sobald man sich umsieht, ist „ganze Strecke" nicht mehr gewaehlt: Zeichen neutral, Rand zurueck auf die Ruhe (12 %)', a1.fit.on === false && a1.fit.col === 'rgb(243, 241, 234)' && a1.fit.border === 'rgba(216, 187, 122, 0.12)', JSON.stringify(a1.fit));
   ok('D1b … und wieder gewaehlt, wenn der Ausschnitt zur ganzen Strecke zurueckkehrt (hier ueber „−")', a2.fit.on === true, JSON.stringify(a2.fit));
   ok('D1 Knoepfe: „+" eine Stufe hinein, „−" wieder heraus', Math.abs(a1.gl.zoom - (z0 + 1)) < 0.01 && Math.abs(a2.gl.zoom - z0) < 0.01, JSON.stringify([z0, a1.gl.zoom, a2.gl.zoom]));
   await page.mouse.move(195, 500); await page.mouse.down(); await page.mouse.move(255, 560, { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(700);
@@ -232,7 +243,7 @@ async function boot(mode) {
     const m = new maplibregl.Map({ container: d, style: st, center: [7.219, 51.4815], zoom: 14.6, attributionControl: false, interactive: false, validateStyle: true });
     m.on('error', e => errs.push(String(e && e.error && e.error.message || e)));
     await new Promise(r => setTimeout(r, 1500)); const n = m.getStyle().layers.length, ver = maplibregl.getVersion(); m.remove(); d.remove(); return { errs, n, ver }; });
-  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (17 Ebenen)', val.errs.length === 0 && val.n === 17, JSON.stringify(val));
+  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (19 Ebenen)', val.errs.length === 0 && val.n === 19, JSON.stringify(val));
   ok('E2 ausgelieferte Bibliothek ist die erwartete Fassung (5.24.0)', val.ver === '5.24.0', val.ver);
   ok('E3 keine Laufzeitfehler im ganzen Durchlauf', B.errs.length === 0, B.errs.slice(0, 3).join(' | '));
   await B.ctx.close();
