@@ -33,7 +33,7 @@
      · Gold ist jetzt im normalen Kartenbild zu sehen: Namen wichtiger Orte in Champagner-
        Gold (#C8B77E, siehe GOLD_PLACE) und eine warme Unterlage unter Hauptstrassen (roadWarm).
      · Wasser und Natur sind gleich hell (Kontrast 1,01) — eine Insel im Meer waere ohne
-       Rand nicht zu sehen. Deshalb eine eigene Uferlinie (Ebene shore).
+       Rand nicht zu sehen. Deshalb ein eigenes Ufer (Ebenen shore-soft + shore; der weiche Saum kam mit v8-443 dazu).
    Reihenfolge der Sichtbarkeit:
      Strecke › grosse Ortsnamen › Hauptstrassen › Verbindungsstrassen › Nebenstrassen ›
      Gebaeude › Natur.
@@ -58,7 +58,8 @@
     urban: '#111C27',       /* bebaute Flaeche: Stadt hebt sich leicht vom Umland ab */
     nature: '#111A24',      /* Wald, Wiese, Park: Farbton des Landes, nur heller — siehe oben */
     water: '#0A1B29',
-    shore: '#22405A',       /* Uferlinie: Wasserton, deutlich heller — Kuesten, Inseln und Seen bekommen eine Form */
+    shore: '#2E4E68',       /* Uferlinie: Wasserton, deutlich heller — Kuesten, Inseln und Seen bekommen eine Form */
+    shoreSoft: '#22405A',   /* weicher Saum unter der Uferlinie (35 %, unscharf): hebt Land und Wasser voneinander ab */
     boundary: '#25313D',
     building: '#1A2734',
     path: '#1F2B37',        /* Fuss- und Feldwege: zwischen Land und Nebenstrasse */
@@ -125,8 +126,11 @@
       fill('nature-use', 'landuse', inClass(['cemetery', 'pitch', 'playground', 'stadium', 'track', 'park']), P.nature, { minzoom: 9 }),
       fill('nature-park', 'park', null, P.nature, { minzoom: 8 }),
       fill('water', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.water),
-      /* Uferlinie als eigene Linie (der Flaechenrand allein ist nur ein Haarstrich): Inseln, Kuesten, Seen */
-      line('shore', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shore, width([[4, 0.5], [10, 0.9], [14, 1.2], [18, 1.6]]), { 'line-opacity': 0.9 }),
+      /* Ufer als eigene Ebenen (der Flaechenrand allein ist nur ein Haarstrich): ein weicher Saum, darauf die Linie.
+         Auf echten Daten an den Watopia-Koordinaten (Zwift) geprueft: mit der Linie allein blieb die Insel im
+         Kartenfeld blass; mit Saum ist die Kueste sofort lesbar. Keine erfundene Geografie — nur der echte Rand. */
+      line('shore-soft', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shoreSoft, width([[4, 2], [10, 5], [14, 7], [18, 9]]), { 'line-opacity': 0.35, 'line-blur': 4 }),
+      line('shore', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shore, width([[4, 0.6], [10, 1.1], [14, 1.4], [18, 1.8]])),
       line('waterway', 'waterway', ['!=', ['get', 'brunnel'], 'tunnel'], P.water, width([[10, 0.6], [14, 1.6], [18, 6]]), { minzoom: 10 }),
       /* Staats- und Landesgrenzen, sehr leise (keine Gemeindegrenzen — die waeren in der Stadt nur Unruhe) */
       line('boundary', 'boundary', ['all', ['<=', ['get', 'admin_level'], 4], ['!=', ['get', 'maritime'], 1]], P.boundary, width([[3, 0.6], [10, 1.2]]), { minzoom: 3, 'line-dasharray': [3, 2] }),

@@ -243,7 +243,7 @@ async function boot(mode) {
     const m = new maplibregl.Map({ container: d, style: st, center: [7.219, 51.4815], zoom: 14.6, attributionControl: false, interactive: false, validateStyle: true });
     m.on('error', e => errs.push(String(e && e.error && e.error.message || e)));
     await new Promise(r => setTimeout(r, 1500)); const n = m.getStyle().layers.length, ver = maplibregl.getVersion(); m.remove(); d.remove(); return { errs, n, ver }; });
-  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (19 Ebenen)', val.errs.length === 0 && val.n === 19, JSON.stringify(val));
+  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (20 Ebenen)', val.errs.length === 0 && val.n === 20, JSON.stringify(val));
   ok('E2 ausgelieferte Bibliothek ist die erwartete Fassung (5.24.0)', val.ver === '5.24.0', val.ver);
   ok('E3 keine Laufzeitfehler im ganzen Durchlauf', B.errs.length === 0, B.errs.slice(0, 3).join(' | '));
   await B.ctx.close();
