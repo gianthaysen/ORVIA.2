@@ -135,7 +135,7 @@ function sandbox() {
   ok('F1 Aktivitaetsseite: Debrief-Karte ohne zusaetzlichen Rand-Wrapper (war doppelt eingerueckt)', /h\+=gmDebriefCardHTML\(_dbM,\{planCta:true,freeText:rate\?rate\.txt:null\}\);/.test(ui) && !/<div style="margin:0 18px 14px">'\+gmDebriefCardHTML/.test(ui));
   ok('F2 Karten tragen ihren Seitenrand selbst (18 px) — die Debrief-Karte ist eine .card', /\.card\{[^}]*margin:0 18px 14px/.test(css) && /var h='<div class="card db-card">/.test(ui));
   ok('F3 im Sheet schliessen Karten buendig mit Tabs und Knoepfen ab', /\.sheet \.sh-block>\.card\{margin-left:0;margin-right:0\}/.test(css));
-  ok('F4 „Story ansehen" ueber die volle Breite, Symbol neben dem Text (war schmal mit Symbol darueber)', /<button class="cta wide-ghost" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory\(/.test(ui));
+  ok('F4 „Story ansehen" ueber die volle Breite, Symbol neben dem Text (war schmal mit Symbol darueber)', /<button class="cta wide-ghost(?: gm-story-cta)?" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory\(/.test(ui));
 }
 console.log('\n' + (fail ? '❌' : '✅') + ' start_hydration_v428: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

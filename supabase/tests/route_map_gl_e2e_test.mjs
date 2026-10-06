@@ -195,7 +195,7 @@ async function boot(mode) {
   ok('C1 die Kartenansicht oeffnet mit der gezeichneten Karte im Vollbild, volle Pixeldichte, Thema der Sportart', !!o && /rmv-glmode/.test(o.cls) && /rmv-glready/.test(o.cls) && o.engine === 'vector' && o.act === 'running' && !!o.canvas && o.canvas[0] === 390 * DPR && o.canvas[1] === 844 * DPR && o.imgs === 0, JSON.stringify(o));
   ok('C2 sobald die Karte steht, zeichnet SIE die Strecke: das Standbild der Strecke und die Bildkachel-Ebene sind aus', !!o && o.routeSvg === 'none' && o.layer === 'none' && o.gl && o.gl.ready === true);
   ok('C3 Ausschnitt beim Oeffnen = „ganze Strecke" (dieselbe Zoomstufe wie die Rechnung, Kamera der Karte eine Stufe darunter)', !!o && Math.abs(o.gl.zoom - (o.fitZ - 1)) < 1e-6, JSON.stringify(o && [o.gl.zoom, o.fitZ]));
-  ok('C3a Gold als Zustand: beim Oeffnen zeigt der Ausschnitt die ganze Strecke ⇒ dieser Knopf traegt Gold (Zeichen #D8BB7A, Rand 32 %); die uebrigen Knoepfe haben nur den leisen Goldrand der Ruhe (12 %) und ein neutrales Zeichen', !!o && o.fit.on === true && o.fit.col === 'rgb(216, 187, 122)' && o.fit.border === 'rgba(216, 187, 122, 0.32)' && o.plus.col === 'rgb(243, 241, 234)' && o.plus.border === 'rgba(216, 187, 122, 0.12)', JSON.stringify(o && [o.fit, o.plus]));
+  ok('C3a Gold als Zustand: beim Oeffnen zeigt der Ausschnitt die ganze Strecke ⇒ dieser Knopf traegt Gold (Zeichen #D8BB7A, Rand 32 %); die uebrigen Knoepfe haben nur den leisen Goldrand der Ruhe (16 %) und ein neutrales Zeichen', !!o && o.fit.on === true && o.fit.col === 'rgb(216, 187, 122)' && o.fit.border === 'rgba(216, 187, 122, 0.32)' && o.plus.col === 'rgb(244, 242, 237)' && o.plus.border === 'rgba(216, 187, 122, 0.16)', JSON.stringify(o && [o.fit, o.plus]));
   /* Farben am Bildschirm: Stellen ueber die Karte selbst gerechnet (project) UND unabhaengig ueber die Kamera */
   const cam = o.gl, ws = 512 * Math.pow(2, cam.zoom);
   const scr = (lat, lon) => [(lonX(lon) - lonX(cam.lon)) * ws + 195, (latY(lat) - latY(cam.lat)) * ws + 422];
@@ -213,7 +213,7 @@ async function boot(mode) {
   const a1 = await page.evaluate(V);
   await page.click('.rmv-out'); await page.waitForTimeout(600);
   const a2 = await page.evaluate(V);
-  ok('D1a sobald man sich umsieht, ist „ganze Strecke" nicht mehr gewaehlt: Zeichen neutral, Rand zurueck auf die Ruhe (12 %)', a1.fit.on === false && a1.fit.col === 'rgb(243, 241, 234)' && a1.fit.border === 'rgba(216, 187, 122, 0.12)', JSON.stringify(a1.fit));
+  ok('D1a sobald man sich umsieht, ist „ganze Strecke" nicht mehr gewaehlt: Zeichen neutral, Rand zurueck auf die Ruhe (16 %)', a1.fit.on === false && a1.fit.col === 'rgb(244, 242, 237)' && a1.fit.border === 'rgba(216, 187, 122, 0.16)', JSON.stringify(a1.fit));
   ok('D1b … und wieder gewaehlt, wenn der Ausschnitt zur ganzen Strecke zurueckkehrt (hier ueber „−")', a2.fit.on === true, JSON.stringify(a2.fit));
   ok('D1 Knoepfe: „+" eine Stufe hinein, „−" wieder heraus', Math.abs(a1.gl.zoom - (z0 + 1)) < 0.01 && Math.abs(a2.gl.zoom - z0) < 0.01, JSON.stringify([z0, a1.gl.zoom, a2.gl.zoom]));
   await page.mouse.move(195, 500); await page.mouse.down(); await page.mouse.move(255, 560, { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(700);
