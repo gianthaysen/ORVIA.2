@@ -187,8 +187,11 @@
      Was das NICHT kann: einen ganzen Abschnitt, den das GPS um 10 m daneben gelegt hat,
      auf die Strasse zurueckschieben (das waere Kartenabgleich ueber einen Routendienst). */
   var SMOOTH_W = [1, 2, 3, 2, 1], SMOOTH_MAX_M = 25, SIMPLIFY_M = 0.7, ROUND_M = 6;
-  /* dunkler Rand unter der Strecke: 3 px breiter als die Linie (5 px Linie ⇒ 8 px Rand, je 1,5 px sichtbar) */
-  var CASE_W = 3;
+  /* EINE Stelle fuer die Masse der Strecke — Story, Kartenfeld und Kartenansicht (Standbild und
+     gezeichnete Karte) nehmen sie von hier. v8-441 (Karte V2): Linie 4,5 px (vorher 5), darunter
+     ein dunkler Rand, 3 px breiter (7,5 px, je 1,5 px sichtbar). Deckkraft des Rands: styles.css
+     .rmx-case bzw. CASE_OPACITY fuer die gezeichnete Karte. */
+  var ROUTE_W = 4.5, CASE_W = 3, CASE_OPACITY = 0.65;
   function smooth(pts) {
     var n = pts.length;
     if (n < 5) return pts.slice();
@@ -291,7 +294,7 @@
        umgebenden data-activity-Bereich (Werte: styles.css „ORVIA FARBSYSTEM v6"). Dieses Modul
        kennt keine Sportart und keine Farbwerte. opts.color bleibt als Einzelfarbe moeglich. */
     var col = opts.color ? esc(opts.color) : 'var(--activity-primary)';
-    var sw = +opts.width || 5;
+    var sw = +opts.width || ROUTE_W;
     var tl = '';
     var cam = (useTiles && c.engine === 'vector') ? O.routeMapGL.camera(v) : null;
     if (cam) {
@@ -393,7 +396,7 @@
 
   O.routeMap = { VERSION: VERSION, cfg: cfg, enabled: function () { return cfg().enabled; },
     lonX: lonX, latY: latY, xLon: xLon, yLat: yLat, haversineM: haversineM,
-    trim: trim, fit: fit, viewAt: viewAt, level: level, valid: valid, smooth: smooth, simplify: simplify, display: display, ROUND_M: ROUND_M,
+    trim: trim, fit: fit, viewAt: viewAt, level: level, valid: valid, smooth: smooth, simplify: simplify, display: display, ROUND_M: ROUND_M, ROUTE_W: ROUTE_W, CASE_W: CASE_W, CASE_OPACITY: CASE_OPACITY,
     project: project, tiles: tiles, tileUrl: tileUrl, pathD: pathD,
     MAX_Z: MAX_Z, MIN_Z: MIN_Z, paused: function () { return _downUntil > _now(); },
     html: html, mount: mount, hydrate: hydrate, _err: _err, _ok: _ok,

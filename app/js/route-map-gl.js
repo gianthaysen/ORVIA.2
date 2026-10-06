@@ -26,6 +26,10 @@
    meldet attach()/viewer() 'tiles' — der Aufrufer zeigt die Strecke ohne Karte und
    versucht es nach der ueblichen Pause erneut (wie bisher).
 
+   v8-441 (Karte V2): Die Strecke der Kartenansicht hat dieselben Masse wie das Standbild
+   (route-map.js: ROUTE_W / CASE_W / CASE_OPACITY) samt weichem dunklem Schatten; Start und
+   Ziel sind gleich gross. atFit() sagt, ob der Ausschnitt genau „ganze Strecke" ist.
+
    Dieses Modul kennt keinen Anbieter: Adressen kommen aus map-config.js (vector.*).
    Datenschutz wie bisher: Der Anbieter sieht IP-Adresse und Kartenausschnitt; mitgeschickt
    wird nur die Herkunft der Seite, nie Konto- oder Aktivitaetsdaten. Die Strecke selbst
@@ -35,7 +39,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map-gl@1';
+  var VERSION = 'route-map-gl@2';
   var MAX_STATIC = 3;          /* so viele stehende Karten bleiben hoechstens im Speicher (je eine Zeichenflaeche) */
   var IDLE_MS = 45000;         /* nicht mehr sichtbare Karten werden danach freigegeben */
   var MAX_RATIO = 3;           /* Pixeldichte der Zeichenflaeche: voll bis zum Dreifachen (iPhone) */
@@ -192,9 +196,9 @@
   }
 
   /* ---------- bewegliche Karte (Kartenansicht) ---------- */
-  /* viewer(box, o) → Steuerung { zoomBy, panBy, fit, resize, state, destroy } oder null.
+  /* viewer(box, o) → Steuerung { zoomBy, panBy, fit, atFit, resize, state, destroy } oder null.
      o: cam {lon,lat,zoom} = „ganze Strecke", minZoom, maxZoom, pts [[lat,lon]…],
-        colors { line, start, finish, base }, widths { line, casing }, onReady(), onFail(kind), onMove() */
+        colors { line, start, finish, base }, widths { line, casing, casingOpacity }, onReady(), onFail(kind), onMove() */
   function viewer(box, o) {
     o = o || {};
     if (!box || !o.cam || !usable()) return null;
@@ -210,6 +214,14 @@
       panBy: function (dx, dy) { try { if (st.map) st.map.panBy([dx, dy], { duration: 160 }); } catch (_) {} },
       fit: function (cam) { if (cam) st.cam = cam; try { if (st.map) st.map.easeTo({ center: [st.cam.lon, st.cam.lat], zoom: st.cam.zoom, duration: 320 }); } catch (_) {} },
       limits: function (minZ, maxZ) { try { if (st.map) { st.map.setMinZoom(minZ); st.map.setMaxZoom(maxZ); } } catch (_) {} },
+      /* zeigt der Ausschnitt gerade genau „ganze Strecke"? (fuer den Zustand des Knopfs in der Kartenansicht) */
+      atFit: function () {
+        try {
+          if (!st.map) return false;
+          var c = st.cam, p = st.map.project([c.lon, c.lat]), el = st.map.getContainer();
+          return Math.abs(st.map.getZoom() - c.zoom) < 0.02 && Math.abs(p.x - el.clientWidth / 2) < 2 && Math.abs(p.y - el.clientHeight / 2) < 2;
+        } catch (_) { return false; }
+      },
       resize: function () { try { if (st.map) st.map.resize(); } catch (_) {} },
       state: function () {
         try { if (!st.map) return null; var c = st.map.getCenter(); return { lon: c.lng, lat: c.lat, zoom: st.map.getZoom(), ready: st.ready, moving: st.map.isMoving() }; } catch (_) { return null; }
@@ -239,13 +251,18 @@
               { type: 'Feature', properties: { k: 's' }, geometry: { type: 'Point', coordinates: coords[0] } },
               { type: 'Feature', properties: { k: 'e' }, geometry: { type: 'Point', coordinates: coords[coords.length - 1] } }] } });
             var lay = { 'line-cap': 'round', 'line-join': 'round' };
-            st.map.addLayer({ id: 'route-case', type: 'line', source: 'route', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': 0.62, 'line-width': W.casing || 8 } });
-            st.map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: lay, paint: { 'line-color': C.line || '#D8BB7A', 'line-width': W.line || 5 } });
-            /* Start = offener Ring, Ziel = gefuellter Punkt (wie im Standbild; Masse so, dass der aeussere Rand gleich ist) */
+            /* v8-441 (Karte V2): dieselbe Strecke wie im Standbild (route-map.js / styles.css) — weicher dunkler
+               Schatten, dunkler Rand, Linie in der Farbe der Sportart. Kein farbiges Leuchten. */
+            var wl = +W.line || 4.5, wc = +W.casing || 7.5;
+            st.map.addLayer({ id: 'route-shadow', type: 'line', source: 'route', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': 0.3, 'line-width': wc + 3, 'line-blur': 4, 'line-translate': [0, 1] } });
+            st.map.addLayer({ id: 'route-case', type: 'line', source: 'route', layout: lay, paint: { 'line-color': '#000000', 'line-opacity': (+W.casingOpacity > 0) ? +W.casingOpacity : 0.65, 'line-width': wc } });
+            st.map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: lay, paint: { 'line-color': C.line || '#D8BB7A', 'line-width': wl } });
+            /* Start = offener Ring, Ziel = gefuellter Punkt — dieselben Masse wie im Standbild: Ring innen 5 / aussen 8 px,
+               Punkt 3,5 px + 2 px Rand (die Karte zeichnet den Rand AUSSEN an den Radius, das SVG mittig auf die Linie) */
             st.map.addLayer({ id: 'route-start', type: 'circle', source: 'route-ends', filter: ['==', ['get', 'k'], 's'],
-              paint: { 'circle-radius': 5.5, 'circle-color': C.base || '#050910', 'circle-stroke-color': C.start || '#43D69E', 'circle-stroke-width': 3 } });
+              paint: { 'circle-radius': 5, 'circle-color': C.base || '#050910', 'circle-stroke-color': C.start || '#43D69E', 'circle-stroke-width': 3 } });
             st.map.addLayer({ id: 'route-end', type: 'circle', source: 'route-ends', filter: ['==', ['get', 'k'], 'e'],
-              paint: { 'circle-radius': 4, 'circle-color': C.finish || '#FF6464', 'circle-stroke-color': C.base || '#050910', 'circle-stroke-width': 2 } });
+              paint: { 'circle-radius': 3.5, 'circle-color': C.finish || '#FF6464', 'circle-stroke-color': C.base || '#050910', 'circle-stroke-width': 2 } });
           } catch (err) { fail('engine'); return; }
           st.ready = true;
           try { if (o.onReady) o.onReady(); } catch (_) {}

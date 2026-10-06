@@ -140,7 +140,7 @@ for (const [id, theme, name, keyLbl, hasRoute] of CASES) {
   ok(n + 'd alle Messreihen der Seite in der Farbe der Sportart (' + p.lines.length + ' Reihen); Hoechst-/Tiefstwert neutral, nicht gruen/rot', p.lines.length >= 1 && p.lines.every(l => has(l, rgb)) && p.marks.length === p.lines.length * 2 && p.marks.every(m => has(m, '173, 181, 193')), JSON.stringify([p.lines, p.marks.slice(0, 2)]));
   ok(n + 'e Stimmung der Seite: ein Verlauf aus dem Ton der Sportart (kein fester Fremdton)', /radial-gradient/.test(p.bg) && has(p.bg, rgb), String(p.bg).slice(0, 110));
   if (hasRoute) {
-    ok(n + 'f Strecke in der Farbe der Sportart, 5 px, dunkler Rand 8 px', has(p.line, rgb) && Math.abs(p.lineW - 5) < 0.01 && Math.abs(p.caseW - 8) < 0.01, JSON.stringify([p.line, p.lineW, p.caseW]));
+    ok(n + 'f Strecke in der Farbe der Sportart, 4,5 px, dunkler Rand 7,5 px', has(p.line, rgb) && Math.abs(p.lineW - 4.5) < 0.01 && Math.abs(p.caseW - 7.5) < 0.01, JSON.stringify([p.line, p.lineW, p.caseW]));
     ok(n + 'g Start gruen, Ziel rot — Zustandsfarben, nicht die Farbe der Sportart', has(p.start, START) && has(p.end, FINISH), JSON.stringify([p.start, p.end]));
     ok(n + 'h Karte laeuft nach unten aus (Maske auf der Kartenebene)', /linear-gradient/.test(String(p.mask)), String(p.mask).slice(0, 60));
   } else {
@@ -168,7 +168,7 @@ sec('Kartenansicht');
     const rv = document.querySelector('.rmv'); if (!rv) return null; const cs = e => getComputedStyle(e);
     const o = { act: rv.getAttribute('data-activity'), line: cs(rv.querySelector('.rmx-line')).stroke, w: parseFloat(cs(rv.querySelector('.rmx-line')).strokeWidth), cw: parseFloat(cs(rv.querySelector('.rmx-case')).strokeWidth), start: cs(rv.querySelector('.rmx-start')).stroke, end: cs(rv.querySelector('.rmx-end')).fill };
     ORVIA.routeMapView.close(); await new Promise(r => setTimeout(r, 150)); return o; });
-  ok('6a die Kartenansicht traegt das Thema der Aktivitaet (haengt am body) — Strecke blau wie im Feld', !!v && v.act === 'cycling' && has(v.line, RGB.cycling) && Math.abs(v.w - 5) < 0.01 && Math.abs(v.cw - 8) < 0.01, JSON.stringify(v));
+  ok('6a die Kartenansicht traegt das Thema der Aktivitaet (haengt am body) — Strecke blau wie im Feld', !!v && v.act === 'cycling' && has(v.line, RGB.cycling) && Math.abs(v.w - 4.5) < 0.01 && Math.abs(v.cw - 7.5) < 0.01, JSON.stringify(v));
   ok('6b auch dort: Start gruen, Ziel rot', !!v && has(v.start, START) && has(v.end, FINISH));
 }
 

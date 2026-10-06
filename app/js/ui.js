@@ -9313,7 +9313,7 @@ function gmActMountRouteMap(pg,route,vm){
     var el=pg.querySelector('.route-map');if(!el)return false;
     var keep=el.innerHTML;
     /* v8-439: keine Farbe mitgeben — die Strecke nimmt var(--activity-primary) der Seite (data-activity) */
-    var ok=RM.mount(el,route,{cls:'detail',width:5,pad:GM_ACT_MAP_PAD});
+    var ok=RM.mount(el,route,{cls:'detail',pad:GM_ACT_MAP_PAD});
     /* v8-435: Laeuft gerade die 5-Minuten-Pause nach einem Kachelfehler, meldet die Karte ihr
        Scheitern schon WAEHREND des Einsetzens — noch bevor unten jemand zuhoert. Dann sofort
        die bisherige Zeichnung (vorher blieb ein leeres Kartenfeld stehen). */
@@ -10217,7 +10217,7 @@ function gmStoryPages(a){
          (--sat, 54–59 px) nach unten — der Innenrand der Strecke muss mitgehen, sonst liegt
          die Strecke auf der Datumszeile (Gians Bild vom 5.10.). */
       var _sat=0;try{var _pb=document.createElement('div');_pb.style.cssText='position:fixed;left:0;top:0;width:0;height:var(--sat,0px);visibility:hidden;pointer-events:none';document.body.appendChild(_pb);_sat=_pb.offsetHeight||0;document.body.removeChild(_pb);}catch(_){_sat=0;}
-      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,width:5,tiles:_mapOn,
+      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,tiles:_mapOn,
         pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(_mh*0.17),l:44}});
       if(_map){
         var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));

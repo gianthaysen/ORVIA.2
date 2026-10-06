@@ -46,7 +46,7 @@ function layer(name, keys, values, features) {
   return bytes(3, b);
 }
 
-/* gridTile(z,x,y,{ step, wood, building }) → Buffer
+/* gridTile(z,x,y,{ step, wood, building, lines }) → Buffer
    step: Abstand der Gitterlinien in Grad (Vorgabe 0,001°)
    wood / building: [[lat,lon]…] Ring einer Flaeche (optional) */
 export function gridTile(z, x, y, o = {}) {
@@ -59,7 +59,17 @@ export function gridTile(z, x, y, o = {}) {
   const m = Math.max(1, Math.ceil((lon1 - lon0) / step / 400));
   for (let i = k(lon0) - 1; i <= k(lon1) + 1; i++) { if (i % m) continue; const X = tx(i * step); if (X < -B || X > E + B) continue; feats.push(feature(2, [0, 0], geom([[X, -B], [X, E + B]]))); }
   for (let j = k(lat1) - 1; j <= k(lat0) + 1; j++) { if (j % m) continue; const Y = ty(j * step); if (Y < -B || Y > E + B) continue; feats.push(feature(2, [0, 0], geom([[-B, Y], [E + B, Y]]))); }
-  let out = layer('transportation', ['class'], ['primary'], feats);
+  /* zusaetzliche Strassen anderer Raenge (Karte V2: drei Strassenraenge) — o.lines = [{ cls, pts: [[lat,lon]…] }] */
+  const classes = ['primary'];
+  (o.lines || []).forEach(l => {
+    let ci = classes.indexOf(l.cls); if (ci < 0) { classes.push(l.cls); ci = classes.length - 1; }
+    const p = l.pts.map(q => [tx(q[1]), ty(q[0])]);
+    /* nur, wenn die Linie die Kachel (samt Rand) beruehren kann */
+    const xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+    if (Math.max(...xs) < -B || Math.min(...xs) > E + B || Math.max(...ys) < -B || Math.min(...ys) > E + B) return;
+    feats.push(feature(2, [0, ci], geom(p.map(q => [Math.max(-B, Math.min(E + B, q[0])), Math.max(-B, Math.min(E + B, q[1]))]))));
+  });
+  let out = layer('transportation', ['class'], classes, feats);
   const poly = (ring) => { const p = ring.map(q => [tx(q[1]), ty(q[0])]); return p.every(q => q[0] < -B || q[0] > E + B || q[1] < -B || q[1] > E + B) ? null : geom(p, true); };
   if (o.wood) { const g = poly(o.wood); if (g) out = out.concat(layer('landcover', ['class'], ['wood'], [feature(3, [0, 0], g)])); }
   if (o.building) { const g = poly(o.building); if (g) out = out.concat(layer('building', [], [], [feature(3, [], g)])); }

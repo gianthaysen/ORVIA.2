@@ -189,7 +189,7 @@ async function boot(mode) {
   const z2 = await B.info(); const nAfter = B.tiles();
   ok('C1 Finger doppelt so weit auseinander ⇒ eine Stufe hinein; der Ort zwischen den Fingern bleibt stehen (± 1,5 px)', !!z2 && Math.abs(z2.Z - (f0.Z + 1)) < 0.02 && close1(z2.start, f0.start, 1.5), JSON.stringify([+f0.Z.toFixed(2), +z2.Z.toFixed(2), r1(z2.start), r1(f0.start)]));
   ok('C2 WAEHREND des Zoomens geht keine Anfrage hinaus — erst danach die Kacheln der Endstufe', nDuring === nBefore && Math.abs(during.Z - (f0.Z + 1)) < 0.02 && nAfter > nBefore && nAfter - nBefore <= 6, JSON.stringify({ vorher: nBefore, waehrend: nDuring, danach: nAfter }));
-  ok('C3 Strichstaerke bleibt gleich (5 px), Strecke liegt in der neuen Stufe auf der Karte (± 1,5 px)', Math.abs(z2.strokeW - 5) < 0.01 && Math.abs(during.strokeW - 5) < 0.01 && z2.covers === true && z2.loaded === z2.cur && close1(z2.start, z2.cross, 1.5) && z2.z === f0.z + 1, JSON.stringify([r1(z2.start), r1(z2.cross), z2.z]));
+  ok('C3 Strichstaerke bleibt gleich (4,5 px), Strecke liegt in der neuen Stufe auf der Karte (± 1,5 px)', Math.abs(z2.strokeW - 4.5) < 0.01 && Math.abs(during.strokeW - 4.5) < 0.01 && z2.covers === true && z2.loaded === z2.cur && close1(z2.start, z2.cross, 1.5) && z2.z === f0.z + 1, JSON.stringify([r1(z2.start), r1(z2.cross), z2.z]));
   ok('C4 Strecke ist auf dem Bildschirm doppelt so gross — der Pfad selbst wurde dafuer NICHT neu geschrieben (nur transformiert)', Math.abs(z2.lineW / f0.lineW - 2) < 0.04 && z2.d === o.d && during.d === o.d && z2.gT !== f0.gT, (z2.lineW / f0.lineW).toFixed(3));
 
   sec('Schwung');
@@ -288,17 +288,19 @@ async function boot(mode) {
     const go = async sat => { document.documentElement.style.setProperty('--sat', sat); gmOpenStory('map-r1'); await W(700);
       const pg = document.querySelector('.gm-story .wst-page.on'), top = pg.querySelector('.wst-top span').getBoundingClientRect(), ln = pg.querySelector('.rmx-line').getBBox(), rb = pg.querySelector('.rmx').getBoundingClientRect();
       const img = pg.querySelector('.rmx-t'), cs = img ? getComputedStyle(img).filter : '', dim = getComputedStyle(pg.querySelector('.rmx-tiles'), '::before').backgroundColor;
-      const band = getComputedStyle(pg.querySelector('.rmx-tiles'), '::after').backgroundImage;
-      const r = { headBottom: top.bottom, routeTop: rb.top + ln.y - 4.5, gap: rb.top + ln.y - 4.5 - top.bottom, routeH: ln.height, filter: cs, dim: dim, band: band }; gmStoryClose(); await W(250); return r; };
+      const tl = pg.querySelector('.rmx-tiles'), band = getComputedStyle(tl, '::after').backgroundImage, after = getComputedStyle(tl, '::after').content, mask = getComputedStyle(tl).maskImage || getComputedStyle(tl).webkitMaskImage || '';
+      const r = { headBottom: top.bottom, routeTop: rb.top + ln.y - 4.5, gap: rb.top + ln.y - 4.5 - top.bottom, routeH: ln.height, filter: cs, dim: dim, band: band, after: after, mask: mask }; gmStoryClose(); await W(250); return r; };
     out.s0 = await go('0px'); out.s59 = await go('59px'); document.documentElement.style.removeProperty('--sat'); return out; });
   sec('Story');
   ok('H1 Strecke haelt Abstand zur Datumszeile — ohne sicheren Rand UND mit 59 px (iPhone mit Dynamic Island)', S.s0.gap >= 16 && S.s59.gap >= 16 && Math.abs(S.s59.gap - S.s0.gap) <= 2 && S.s59.headBottom - S.s0.headBottom > 50, JSON.stringify({ ohne: +S.s0.gap.toFixed(1), mit59: +S.s59.gap.toFixed(1), kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)] }));
   ok('H2 … und die Strecke bleibt gross genug (≥ 200 px hoch)', S.s59.routeH >= 200 && S.s0.routeH >= 200, JSON.stringify([+S.s0.routeH.toFixed(0), +S.s59.routeH.toFixed(0)]));
   ok('H3 kein Filter auf dem Kachelbild (der Kartenstil liefert das Bild), Schleier der Story 0,18', S.s0.filter === 'none' && /rgba\(5, 8, 13, 0\.18\)/.test(S.s0.dim), JSON.stringify([S.s0.filter, S.s0.dim]));
-  { /* Band des Kopfes: bis wohin ist es fast deckend (≥ 0,86), wo ist es ausgelaufen (0,05)? — aus den berechneten Stopps */
+  { /* v8-441 (Karte V2): statt eines dunklen Bandes blendet die KARTE hinter dem Kopf aus (Maske). Bis wohin ist sie ganz weg,
+       ab wo voll da? — aus den berechneten Stopps der Maske (px ab Oberkante) */
     const px = s => (s.match(/(\d+(?:\.\d+)?)px/g) || []).map(parseFloat);
-    const a = px(S.s0.band), b = px(S.s59.band);
-    ok('H3a Kopfband der Story deckt die Datumszeile (Ortsnamen der Karte scheinen nicht durch) und geht mit dem sicheren Rand mit', a.length >= 3 && b.length >= 3 && a[0] === 0 && a[1] >= S.s0.headBottom && b[1] >= S.s59.headBottom && Math.abs((b[1] - a[1]) - 59) < 0.5 && a[2] > a[1] && /rgba\(5, 8, 13, 0\.92\)/.test(S.s0.band) && /rgba\(5, 8, 13, 0\.86\)/.test(S.s0.band), JSON.stringify({ fastDeckendBis: [a[1], b[1]], kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)], ausgelaufenBei: [a[2], b[2]] })); }
+    const a = px(S.s0.mask), b = px(S.s59.mask);
+    ok('H3a Story: hinter Titel und Datumszeile ist die Karte ganz ausgeblendet (kein Ortsname, keine Linie scheint durch) — geht mit dem sicheren Rand mit; kein dunkles Band mehr', a.length >= 3 && b.length >= 3 && a[0] === 0 && a[1] >= S.s0.headBottom && b[1] >= S.s59.headBottom && Math.abs((b[1] - a[1]) - 59) < 0.5 && a[2] > a[1] && /^linear-gradient\(rgba\(0, 0, 0, 0\) 0px, rgba\(0, 0, 0, 0\) /.test(S.s0.mask) && (S.s0.after === 'none' || S.s0.band === 'none'), JSON.stringify({ karteWegBis: [a[1], b[1]], kopfUnten: [+S.s0.headBottom.toFixed(0), +S.s59.headBottom.toFixed(0)], vollDaAb: [a[2], b[2]], after: S.s0.after }));
+    ok('H3b … und wo die Strecke beginnt, ist die Karte wieder voll da (Strecke liegt nicht im ausgeblendeten Bereich)', S.s0.routeTop >= a[2] - 2 && S.s59.routeTop >= b[2] - 2, JSON.stringify({ streckeOben: [+S.s0.routeTop.toFixed(0), +S.s59.routeTop.toFixed(0)], vollDaAb: [a[2], b[2]] })); }
   ok('H4 keine Laufzeitfehler', B.errs.length === 0, B.errs.slice(0, 2).join(' | '));
   await B.ctx.close();
 }

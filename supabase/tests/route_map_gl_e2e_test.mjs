@@ -67,7 +67,9 @@ const PORT = server.address().port, ORIGIN = `http://127.0.0.1:${PORT}`;
 const browser = await (await import('./_pw-chrome.mjs')).launchOrSkip(chromium, { executablePath: CHROME });
 
 /* Sollfarben des ORVIA-Stils (rgb) */
-const LAND = [13, 20, 28], ROAD = [43, 55, 68], NATURE = [16, 25, 29], BUILDING = [18, 26, 35];
+const LAND = [11, 17, 24], ROAD = [52, 67, 82], ROAD_SEC = [43, 57, 71], ROAD_MINOR = [36, 48, 60], NATURE = [16, 23, 31], BUILDING = [20, 28, 37];
+/* zwei Strassen anderer Raenge, oestlich der Strecke zwischen den Gitterlinien (Karte V2: drei Strassenraenge) */
+const LINES = [{ cls: 'secondary', pts: [[51.4700, 7.2265], [51.4900, 7.2265]] }, { cls: 'minor', pts: [[51.4700, 7.2275], [51.4900, 7.2275]] }];
 const RUN = [255, 154, 92], START = [67, 214, 158], FINISH = [255, 100, 100], BASE = [5, 9, 16];
 const near = (a, b, t) => !!a && Math.abs(a[0] - b[0]) <= t && Math.abs(a[1] - b[1]) <= t && Math.abs(a[2] - b[2]) <= t;
 const lonX = lon => (lon + 180) / 360, latY = lat => { const s = Math.sin(lat * Math.PI / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
@@ -87,7 +89,7 @@ async function boot(mode) {
   await ctx.route('**api.maptiler.com/**', r => { const u = new URL(r.request().url()); reqs.push({ path: u.pathname, key: u.searchParams.get('key'), ref: r.request().headers()['referer'] || '' });
     if (/logo\.svg/.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="12"/>' });
     const v = /^\/tiles\/v3\/(\d+)\/(\d+)\/(\d+)\.pbf$/.exec(u.pathname);
-    if (v) return st.fail ? r.fulfill({ status: 403, body: 'no' }) : r.fulfill({ contentType: 'application/x-protobuf', body: gridTile(+v[1], +v[2], +v[3], { step: 0.001, wood: WOOD, building: HOUSE }) });
+    if (v) return st.fail ? r.fulfill({ status: 403, body: 'no' }) : r.fulfill({ contentType: 'application/x-protobuf', body: gridTile(+v[1], +v[2], +v[3], { step: 0.001, wood: WOOD, building: HOUSE, lines: LINES }) });
     if (/^\/fonts\//.test(u.pathname)) return r.fulfill({ contentType: 'application/x-protobuf', body: Buffer.alloc(0) });
     if (/^\/maps\//.test(u.pathname)) return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" preserveAspectRatio="none"><rect width="512" height="512" fill="rgb(44,44,44)"/></svg>' });
     return r.fulfill({ status: 404, body: 'nf' }); });
@@ -132,11 +134,24 @@ async function boot(mode) {
   ok('A4 Quellenhinweis des Anbieters bleibt sichtbar; kein Schleier ueber der eigenen Karte', /MapTiler/.test(f.attr) && /OpenStreetMap/.test(f.attr) && /rgba\(5, 8, 13, 0\)|rgba\(0, 0, 0, 0\)/.test(String(f.dim)), JSON.stringify([f.attr, f.dim]));
   /* Lage: unabhaengig gerechnete Bildschirmstellen (Ausschnitt der Strecke aus route-map.fit) */
   const at = (lat, lon) => [f.box[0] + lonX(lon) * f.view.world - f.view.ox, f.box[1] + latY(lat) * f.view.world - f.view.oy];
-  const P = { road: at(51.4835, 7.2120), land: at(51.4835, 7.2125), wood: at(51.48275, 7.22225), road2: at(51.4840, 7.21275) };
-  const px = await B.pixels([P.road, P.land, P.wood, P.road2]);
+  const P = { road: at(51.4835, 7.2120), land: at(51.4835, 7.2125), wood: at(51.48275, 7.22225), road2: at(51.4840, 7.21275), sec: at(51.4825, 7.2265), minor: at(51.4825, 7.2275) };
+  const px = await B.pixels([P.road, P.land, P.wood, P.road2, P.sec, P.minor]);
   ok('A5 Lage der Karte: an der unabhaengig gerechneten Stelle einer Gitterstrasse (Laenge 7,2120°) liegt Strassenfarbe, 0,0005° daneben Landfarbe', near(px[0], ROAD, 7) && near(px[1], LAND, 5), JSON.stringify([P.road.map(v => +v.toFixed(1)), px[0], px[1]]));
   ok('A5a … ebenso auf einer waagerechten Gitterstrasse (Breite 51,4840°) — beide Achsen stimmen', near(px[3], ROAD, 7), JSON.stringify([P.road2.map(v => +v.toFixed(1)), px[3]]));
-  ok('A6 Wald traegt den Natur-Ton des ORVIA-Stils — kein Gruen (Blau ≥ Gruen)', near(px[2], NATURE, 5) && px[2][2] >= px[2][1], JSON.stringify(px[2]));
+  ok('A5b drei Strassenraenge am Bildschirm: Verbindungsstrasse und Nebenstrasse je in ihrem Ton — Haupt > Verbindung > Neben > Land (Helligkeit)', near(px[4], ROAD_SEC, 7) && near(px[5], ROAD_MINOR, 7) && px[0][1] > px[4][1] + 5 && px[4][1] > px[5][1] + 5 && px[5][1] > px[1][1] + 20, JSON.stringify([px[0], px[4], px[5], px[1]]));
+  /* Rest-Gruen: Natur hat den Farbton des Landes — das Verhaeltnis Blau : Gruen ist gleich (± 4 %), in der ersten Fassung lag Natur 12 % daneben */
+  const bg = c => c[2] / c[1];
+  ok('A6 Wald traegt den Natur-Ton des ORVIA-Stils — kein Gruen (Blau > Gruen) und kein Olivstich: Blau : Gruen wie beim Land (± 4 %)', near(px[2], NATURE, 4) && px[2][2] > px[2][1] && Math.abs(bg(px[2]) / bg(px[1]) - 1) <= 0.04 && Math.abs(bg([16, 25, 29]) / bg(LAND) - 1) > 0.1, JSON.stringify([px[2], +bg(px[2]).toFixed(3), +bg(px[1]).toFixed(3)]));
+  /* Uebergang Karte → Inhalt: am unteren Rand des Felds darf kein Sprung stehen (bis v8-440: abgeschnittener Schein, 25 Stufen) */
+  { const yb = f.box[1] + f.box[3]; const xs = [f.box[0] + f.box[2] * 0.25, f.box[0] + f.box[2] * 0.5, f.box[0] + f.box[2] * 0.75];
+    const e = await B.pixels(xs.map(x => [x, yb - 1.5]).concat(xs.map(x => [x, yb + 2])));
+    const step = Math.max(...[0, 1, 2].map(i => Math.max(...[0, 1, 2].map(c => Math.abs(e[i][c] - e[i + 3][c])))));
+    ok('A6a Uebergang Karte → Inhalt ohne Kante: unterste Zeile des Kartenfelds und die Seite darunter unterscheiden sich um hoechstens 3 Helligkeitsstufen (drei Stellen)', step <= 3, JSON.stringify([e.slice(0, 3), e.slice(3), step]));
+    /* der Schein allein (Karte und Strecke fuer die Messung ausgeblendet) */
+    await page.evaluate(() => { document.querySelector('#gmActPage .route-map .rmx').style.visibility = 'hidden'; });
+    const mid = await B.pixels([[f.box[0] + f.box[2] * 0.5, f.box[1] + f.box[3] * 0.80], [f.box[0] + 4, f.box[1] + f.box[3] * 0.80]]);
+    await page.evaluate(() => { document.querySelector('#gmActPage .route-map .rmx').style.visibility = ''; });
+    ok('A6b im auslaufenden Teil liegt ein leiser, warmer Schein (Gold + Farbe der Sportart): Mitte 8…30 Stufen waermer als der Rand, Zuwachs Rot > Gruen ≥ Blau — kein Gruen', mid[0][0] - mid[1][0] >= 8 && mid[0][0] - mid[1][0] <= 30 && (mid[0][0] - mid[1][0]) > (mid[0][1] - mid[1][1]) && (mid[0][1] - mid[1][1]) >= (mid[0][2] - mid[1][2]), JSON.stringify(mid)); }
   /* Strecke (SVG) liegt auf derselben Karte: der Start-Ring sitzt auf der Kreuzung 51,4800 / 7,2160 */
   const sr = await page.evaluate(() => { const b = document.querySelector('#gmActPage .route-map .rmx-start').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
   const cross = at(51.4800, 7.2160);
@@ -163,18 +178,20 @@ async function boot(mode) {
   await page.mouse.click(fb[0] + fb[2] / 2, fb[1] + fb[3] / 2); await page.waitForTimeout(2000);
   const V = `(() => { const el = document.querySelector('.rmv'); if (!el) return null; const st = ORVIA.routeMapView.stats(), cv = el.querySelector('.rmv-gl canvas');
     return { cls: el.className, act: el.getAttribute('data-activity'), engine: st.engine, gl: st.gl, fitZ: st.fitZ, canvas: cv ? [cv.width, cv.height] : null, routeSvg: getComputedStyle(el.querySelector('.rmv-route')).display, layer: getComputedStyle(el.querySelector('.rmv-layer')).display,
-      note: getComputedStyle(el.querySelector('.rmv-note')).display, attr: !!el.querySelector('.rmx-attr'), focus: document.activeElement && document.activeElement.className, imgs: el.querySelectorAll('img.rmx-t').length, failed: st.failed }; })()`;
+      note: getComputedStyle(el.querySelector('.rmv-note')).display, attr: !!el.querySelector('.rmx-attr'), focus: document.activeElement && document.activeElement.className, imgs: el.querySelectorAll('img.rmx-t').length, failed: st.failed,
+      fit: (b => ({ on: b.classList.contains('on'), col: getComputedStyle(b).color, border: getComputedStyle(b).borderTopColor }))(el.querySelector('.rmv-fit')), plus: (b => ({ col: getComputedStyle(b).color, border: getComputedStyle(b).borderTopColor }))(el.querySelector('.rmv-in')) }; })()`;
   const o = await page.evaluate(V);
   ok('C1 die Kartenansicht oeffnet mit der gezeichneten Karte im Vollbild, volle Pixeldichte, Thema der Sportart', !!o && /rmv-glmode/.test(o.cls) && /rmv-glready/.test(o.cls) && o.engine === 'vector' && o.act === 'running' && !!o.canvas && o.canvas[0] === 390 * DPR && o.canvas[1] === 844 * DPR && o.imgs === 0, JSON.stringify(o));
   ok('C2 sobald die Karte steht, zeichnet SIE die Strecke: das Standbild der Strecke und die Bildkachel-Ebene sind aus', !!o && o.routeSvg === 'none' && o.layer === 'none' && o.gl && o.gl.ready === true);
   ok('C3 Ausschnitt beim Oeffnen = „ganze Strecke" (dieselbe Zoomstufe wie die Rechnung, Kamera der Karte eine Stufe darunter)', !!o && Math.abs(o.gl.zoom - (o.fitZ - 1)) < 1e-6, JSON.stringify(o && [o.gl.zoom, o.fitZ]));
+  ok('C3a Gold als Zustand (Karte V2): beim Oeffnen zeigt der Ausschnitt die ganze Strecke ⇒ dieser Knopf traegt Gold (Zeichen #D8BB7A, Rand 28 %); die uebrigen Knoepfe bleiben neutral', !!o && o.fit.on === true && o.fit.col === 'rgb(216, 187, 122)' && o.fit.border === 'rgba(216, 187, 122, 0.28)' && o.plus.col === 'rgb(243, 241, 234)' && o.plus.border === 'rgba(255, 255, 255, 0.16)', JSON.stringify(o && [o.fit, o.plus]));
   /* Farben am Bildschirm: Stellen ueber die Karte selbst gerechnet (project) UND unabhaengig ueber die Kamera */
   const cam = o.gl, ws = 512 * Math.pow(2, cam.zoom);
   const scr = (lat, lon) => [(lonX(lon) - lonX(cam.lon)) * ws + 195, (latY(lat) - latY(cam.lat)) * ws + 422];
   const own = await page.evaluate(() => { const g = ORVIA.routeMapView._gl(); return { line: g.project(51.4850, 7.2210), start: g.project(51.4800, 7.2160), end: g.project(51.4797, 7.2160) }; });
   const me = { line: scr(51.4850, 7.2210), start: scr(51.4800, 7.2160) };
   ok('C4 Lage: Karte und unabhaengige Rechnung liefern dieselbe Bildschirmstelle (± 0,05 px)', Math.abs(own.line[0] - me.line[0]) < 0.05 && Math.abs(own.line[1] - me.line[1]) < 0.05 && Math.abs(own.start[0] - me.start[0]) < 0.05, JSON.stringify([own.line.map(v => +v.toFixed(2)), me.line.map(v => +v.toFixed(2))]));
-  const vp = await B.pixels([me.line, [me.line[0], me.line[1] - 3.3], me.start, [me.start[0] - 7, me.start[1]], own.end, scr(51.4842, 7.2220), scr(51.4842, 7.2225), scr(51.4804, 7.2175), scr(51.48275, 7.22225)]);
+  const vp = await B.pixels([me.line, [me.line[0], me.line[1] - 3.0], me.start, [me.start[0] - 6.5, me.start[1]], own.end, scr(51.4842, 7.2220), scr(51.4842, 7.2225), scr(51.4804, 7.2175), scr(51.48275, 7.22225)]);
   ok('C5 Strecke in der Farbe der Sportart (Laufen #FF9A5C), daneben der dunkle Rand — kein Leuchten', near(vp[0], RUN, 4) && vp[1][0] < 60 && vp[1][1] < 50, JSON.stringify([vp[0], vp[1]]));
   ok('C6 Start = gruener Ring um dunkle Mitte, Ziel = roter Punkt (Zustandsfarben)', near(vp[2], BASE, 6) && near(vp[3], START, 12) && near(vp[4], FINISH, 6), JSON.stringify([vp[2], vp[3], vp[4]]));
   ok('C7 Karte unter der Strecke: Strasse, Land, Gebaeude und Wald in den Farben des ORVIA-Stils an den gerechneten Stellen', near(vp[5], ROAD, 7) && near(vp[6], LAND, 5) && near(vp[7], BUILDING, 5) && near(vp[8], NATURE, 5), JSON.stringify(vp.slice(5)));
@@ -185,6 +202,8 @@ async function boot(mode) {
   const a1 = await page.evaluate(V);
   await page.click('.rmv-out'); await page.waitForTimeout(600);
   const a2 = await page.evaluate(V);
+  ok('D1a sobald man sich umsieht, ist „ganze Strecke" nicht mehr gewaehlt: Gold weg, Knopf neutral', a1.fit.on === false && a1.fit.col === 'rgb(243, 241, 234)' && a1.fit.border === 'rgba(255, 255, 255, 0.16)', JSON.stringify(a1.fit));
+  ok('D1b … und wieder gewaehlt, wenn der Ausschnitt zur ganzen Strecke zurueckkehrt (hier ueber „−")', a2.fit.on === true, JSON.stringify(a2.fit));
   ok('D1 Knoepfe: „+" eine Stufe hinein, „−" wieder heraus', Math.abs(a1.gl.zoom - (z0 + 1)) < 0.01 && Math.abs(a2.gl.zoom - z0) < 0.01, JSON.stringify([z0, a1.gl.zoom, a2.gl.zoom]));
   await page.mouse.move(195, 500); await page.mouse.down(); await page.mouse.move(255, 560, { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(700);
   const a3 = await page.evaluate(V);
@@ -194,6 +213,7 @@ async function boot(mode) {
   ok('D3 Mausrad zoomt hinein', a4.gl.zoom > z0 + 0.05, String(a4.gl.zoom));
   await page.click('.rmv-fit'); await page.waitForTimeout(700);
   const a5 = await page.evaluate(V);
+  ok('D4a nach dem Verschieben neutral, nach „Ganze Strecke" wieder Gold', a3.fit.on === false && a4.fit.on === false && a5.fit.on === true && a5.fit.col === 'rgb(216, 187, 122)', JSON.stringify([a3.fit.on, a4.fit.on, a5.fit]));
   ok('D4 „Ganze Strecke" stellt den Ausgangsausschnitt wieder her', Math.abs(a5.gl.zoom - z0) < 1e-3 && Math.abs(a5.gl.lon - cam.lon) < 1e-6 && Math.abs(a5.gl.lat - cam.lat) < 1e-6, JSON.stringify([a5.gl.zoom, a5.gl.lon]));
   await page.keyboard.press('+'); await page.waitForTimeout(500); const k1 = await page.evaluate(V);
   await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(450); const k2 = await page.evaluate(V);
@@ -212,7 +232,7 @@ async function boot(mode) {
     const m = new maplibregl.Map({ container: d, style: st, center: [7.219, 51.4815], zoom: 14.6, attributionControl: false, interactive: false, validateStyle: true });
     m.on('error', e => errs.push(String(e && e.error && e.error.message || e)));
     await new Promise(r => setTimeout(r, 1500)); const n = m.getStyle().layers.length, ver = maplibregl.getVersion(); m.remove(); d.remove(); return { errs, n, ver }; });
-  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (14 Ebenen)', val.errs.length === 0 && val.n === 14, JSON.stringify(val));
+  ok('E1 die Bibliothek nimmt den ORVIA-Stil mit eingeschalteter Pruefung ohne jede Beanstandung an (17 Ebenen)', val.errs.length === 0 && val.n === 17, JSON.stringify(val));
   ok('E2 ausgelieferte Bibliothek ist die erwartete Fassung (5.24.0)', val.ver === '5.24.0', val.ver);
   ok('E3 keine Laufzeitfehler im ganzen Durchlauf', B.errs.length === 0, B.errs.slice(0, 3).join(' | '));
   await B.ctx.close();
