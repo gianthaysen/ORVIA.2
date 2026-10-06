@@ -58,9 +58,12 @@ function routeSVG(pts, opts) {
   var last = pts.length - 1;
   return '<svg class="rmap" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
     (opts.noBg ? '' : '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="16" fill="#0b121d"/>') +
-    '<path d="' + d + '" fill="none" stroke="url(#orviaMarkGrad)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" filter="drop-shadow(0 0 5px rgba(201,174,124,.45))"/>' +
-    '<circle cx="' + px(0) + '" cy="' + py(0) + '" r="4.5" fill="#34c77b"/>' +
-    '<circle cx="' + px(last) + '" cy="' + py(last) + '" r="4.5" fill="#e5556a"/></svg>';
+    /* v8-439: Strecke in der Farbe der Sportart (data-activity des umgebenden Bereichs; ohne Bereich
+       ORVIA-Gold), Start gruen / Ziel rot aus dem Farbsystem (styles.css). Vorher immer ein goldener
+       Verlauf mit Schein — auch dort, wo dieselbe Strecke mit Karte orange oder blau ist. */
+    '<path d="' + d + '" fill="none" stroke="var(--activity-primary,#D8BB7A)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<circle cx="' + px(0) + '" cy="' + py(0) + '" r="4.5" fill="var(--orvia-route-start,#43D69E)"/>' +
+    '<circle cx="' + px(last) + '" cy="' + py(last) + '" r="4.5" fill="var(--orvia-route-finish,#FF6464)"/></svg>';
 }
 
 /* GM7.8: geschlossener Legacy-Typsatz der DB-Sessions (deutsche Schluessel) -> kanonische

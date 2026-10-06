@@ -13,8 +13,14 @@ function confidenceLevel(){
 }
 function confChip(level){return '<span class="conf conf-'+level.c+'">Confidence: '+level.l+'</span>';}
 
-/* ---- Werte des gewählten Tages + Kontext ---- */
-function intelCtx(){
+/* ---- Werte des gewählten Tages + Kontext ----
+   F01 (Metaanalyse 05.10.2026): zwei Schichten, damit Eingang und Ausgang der
+   Tagesentscheidung nicht dieselbe Funktion sind.
+   · intelFeatures() — NEUTRALE Merkmale (Schlaf, HRV, Ruhepuls, Volumen, Beschwerde,
+     Krankheit). Fragt die Tagesentscheidung nie ab; getDecision() baut daraus.
+   · intelCtx()      — Merkmale + Zustand der fertigen Tagesentscheidung. Nur diese
+     Schicht darf Handlungstexte (Tipps, Empfehlungen) speisen. */
+function intelFeatures(){
   var e=DB[cur]||{},m=e.morning||{},ev=e.eve||{};
   var ctx=(typeof recoveryCtx==='function')?recoveryCtx(cur):{};
   var sleepH=m.sleepMin!=null?m.sleepMin/60:null;
@@ -31,12 +37,45 @@ function intelCtx(){
      issueMax) und konnte „Guter Tag für Qualität" gegen die Tagesentscheidung
      ausspielen (Live-Widerspruch bei Readiness 84 % + Krankheitssymptomen). */
   var illness=!!m.ill;
-  var decisionState=null;
-  try{if(typeof todayStr==='function'&&cur===todayStr()&&typeof currentDecision==='function'){var _d=currentDecision();decisionState=(_d&&_d.state)||null;}}catch(e){}
+  /* Ohne Uhr gilt der Tag als heute: lieber eine Freigabe zu wenig als eine zu viel. */
+  var isToday=(typeof todayStr==='function')?(cur===todayStr()):true;
   return{m:m,ev:ev,ctx:ctx,sleepH:sleepH,rhrDev:rhrDev,hrvDevPct:hrvDevPct,
     weekKm:wk,targetKm:target,issueMax:issueMax,issueLabels:issueLabels,ready:ready,
     energy:ev.energy!=null?ev.energy:null,sleepDebt:ctx.sleepDebtH,
-    illness:illness,decisionState:decisionState};
+    illness:illness,isToday:isToday};
+}
+/* Rang der Tagesentscheidung: je höher, desto vorsichtiger. Die Zustände selbst
+   vergibt ausschließlich Calc.buildTrainingDecision (Feld `dayState`). */
+var DECISION_RANK={GREEN:0,YELLOW:1,ORANGE:2,RED:3};
+function intelCtx(){
+  var c=intelFeatures();
+  /* F01: Das Feld heißt `dayState`. Gelesen wurde `state` — das gab IMMER null, und
+     null galt als Freigabe. Jetzt zählt nur ein bekannter Zustand; alles andere
+     (kein Check-in, Pause, Aufbau läuft, fremde Form) bleibt null = „unbekannt". */
+  var st=null;
+  if(c.isToday){
+    try{
+      var _d=(typeof currentDecision==='function')?currentDecision():null;
+      if(_d&&typeof _d.dayState==='string'&&Object.prototype.hasOwnProperty.call(DECISION_RANK,_d.dayState))st=_d.dayState;
+    }catch(e){st=null;}   // keine Entscheidung lesbar = unbekannt, nie Freigabe
+  }
+  c.decisionState=st;
+  return c;
+}
+/* Darf eine Karte heute von sich aus „normal trainieren" sagen? Nur mit GRÜNER
+   Entscheidung. Vergangene Tage haben keine Tagesentscheidung — dort bleibt die
+   Einordnung historisch (wie vor F01). */
+function decisionAllowsRelease(c){return !c.isToday||c.decisionState==='GREEN';}
+function decisionWord(st){return (typeof DECISION_WORD!=='undefined'&&DECISION_WORD&&DECISION_WORD[st])||null;}
+/* Eine Empfehlung einer Nebenkarte bleibt nur stehen, wenn sie mindestens so
+   vorsichtig ist wie die Tagesentscheidung (cardRank ≥ Rang der Entscheidung).
+   Sonst verweist die Karte auf die Entscheidung statt ihr zu widersprechen. */
+function recUnderDecision(c,cardRank,rec,pendingText){
+  if(!c.isToday)return rec;
+  if(c.decisionState==null)return cardRank>0?rec:pendingText;
+  if(cardRank>=DECISION_RANK[c.decisionState])return rec;
+  var w=decisionWord(c.decisionState);
+  return 'Heute gilt die Tagesentscheidung'+(w?' „'+w+'"':'')+' — keine eigenmächtige Intensität.';
 }
 
 /* ============ BASELINES ============ */
@@ -72,7 +111,8 @@ function recoveryDebt(){
   score=Math.round(Math.min(100,score));
   var st=score>=70?{l:'kritisch',c:'r'}:score>=45?{l:'erhöht',c:'r'}:score>=22?{l:'moderat',c:'y'}:{l:'niedrig',c:'g'};
   var rec=score>=45?'Keine zusätzliche Intensität — Erholung priorisieren.':score>=22?'Belastung halten, keine zweite harte Einheit.':'Normale Steuerung möglich.';
-  if(score<22&&ctx.decisionState&&ctx.decisionState!=='GREEN')rec='Heute gilt die Tagesentscheidung ('+ctx.decisionState+') — keine eigenmächtige Intensität.';   // P3: kein Widerspruch zur SSoT
+  /* F01: Rang des eigenen Textes — 2 = keine Intensität, 0,5 = Belastung halten, 0 = Freigabe. */
+  rec=recUnderDecision(ctx,score>=45?2:score>=22?0.5:0,rec,'Aus diesen Werten kein Defizit — maßgeblich ist die Tagesentscheidung.');
   return{score:score,state:st,why:why,rec:rec};
 }
 function renderRecoveryDebt(){
@@ -86,8 +126,10 @@ function renderRecoveryDebt(){
 }
 
 /* ============ RISK ============ */
-function riskCard(){
-  var ctx=intelCtx(),score=0,why=[];
+/* Reine Risiko-Zahl aus neutralen Merkmalen — Eingang der Tagesentscheidung
+   (components.riskRaw). Enthält bewusst KEINE Empfehlung. */
+function riskScore(ctx){
+  var score=0,why=[];
   if(ctx.issueMax>=5){score+=40;why.push('Beschwerde '+ctx.issueMax+'/10');}else if(ctx.issueMax>=3){score+=22;why.push('Beschwerde erhöht');}else if(ctx.issueMax>=1){score+=8;}
   if(ctx.sleepDebt!=null&&ctx.sleepDebt>=4){score+=18;why.push('Schlafdefizit');}else if(ctx.sleepDebt>=2){score+=8;}
   if(ctx.hrvDevPct!=null&&ctx.hrvDevPct<=-8){score+=18;why.push('HRV deutlich unter Schnitt');}else if(ctx.hrvDevPct<=-3){score+=8;}
@@ -96,9 +138,15 @@ function riskCard(){
   if(ctx.illness){score+=20;why.push('Krankheitssymptome');}   // P3: Krankheit sichtbar, konsistent zur Entscheidung
   score=Math.round(Math.min(100,score));
   var st=score>=65?{l:'kritisch',c:'r'}:score>=40?{l:'hoch',c:'r'}:score>=20?{l:'moderat',c:'y'}:{l:'niedrig',c:'g'};
+  return{score:score,state:st,why:why};
+}
+function riskCard(){
+  var ctx=intelCtx(),r=riskScore(ctx),score=r.score;
   var rec=score>=65?'Keine belastende Einheit. Bei Warnsignalen abklären lassen.':score>=40?'Keine Intensität — maximal Easy Z2 oder Alternative.':score>=20?'Easy möglich, Intensität nur nach gutem Warm-up.':'Training wie geplant vertretbar.';
-  if(score<20&&ctx.decisionState&&ctx.decisionState!=='GREEN')rec='Heute gilt die Tagesentscheidung ('+ctx.decisionState+') — keine eigenmächtige Intensität.';   // P3: kein Widerspruch zur SSoT
-  return{score:score,state:st,why:why,rec:rec};
+  /* F01: Rang des eigenen Textes — 3 = keine Belastung, 2 = keine Intensität,
+     0,5 = Intensität nach Warm-up (schwächer als „Reduzieren"), 0 = Freigabe. */
+  rec=recUnderDecision(ctx,score>=65?3:score>=40?2:score>=20?0.5:0,rec,'Aus diesen Werten kein erhöhtes Risiko — maßgeblich ist die Tagesentscheidung.');
+  return{score:score,state:r.state,why:r.why,rec:rec};
 }
 function renderRisk(){
   var el=document.getElementById('riskBox');if(!el)return;
@@ -126,9 +174,10 @@ function tipEngine(){
      Krankheit noch relevante Beschwerde vorliegt UND die finale Tagesentscheidung
      (buildTrainingDecision) nicht dagegen steht. Insights ERKLÄREN die Entscheidung,
      sie treffen keine eigene. */
-  var safeForQuality=!c.illness&&c.issueMax<3&&(c.decisionState==null||c.decisionState==='GREEN');
+  /* F01: „kein Zustand" ist heute KEINE Freigabe mehr (vorher: decisionState==null → erlaubt). */
+  var safeForQuality=!c.illness&&c.issueMax<3&&decisionAllowsRelease(c);
   if(c.illness)add(4,'Krankheitssymptome — Belastung reduzieren','Du hast heute Krankheitssymptome gemeldet'+(c.ready!=null?' (Readiness '+c.ready+'% zählt Krankheit nicht mit)':'')+'.','Folge der Tagesentscheidung: reduziert oder Ersatztraining, keine Intensität.');
-  else if(c.decisionState&&c.decisionState!=='GREEN')add(3,'Tagesentscheidung beachten','Die finale Tagesentscheidung steht heute auf '+c.decisionState+'.','Belastung entsprechend der Tagesentscheidung wählen.');
+  else if(c.decisionState&&c.decisionState!=='GREEN')add(3,'Tagesentscheidung beachten','Die Tagesentscheidung lautet heute'+(decisionWord(c.decisionState)?' „'+decisionWord(c.decisionState)+'"':' nicht „Trainieren"')+'.','Belastung entsprechend der Tagesentscheidung wählen.');
   if(safeForQuality&&c.ready!=null&&c.ready>80&&c.issueMax<=1&&(c.m.sleepQ!=null&&c.m.sleepQ>=7))add(1,'Guter Tag für Qualität','Readiness '+c.ready+'%, Beschwerde niedrig, Schlafqualität gut.','Geplante Einheit möglich.');
   // Long-Run-Vorbereitung: heute Abend & morgen Sonntag (Plan-Long-Run)
   var hr=new Date().getHours();var tmr=new Date(cur+'T12:00');tmr.setDate(tmr.getDate()+1);

@@ -4,8 +4,14 @@
    Gians Auftrag 5.10.: Die Strecke soll nicht mehr als Linie im Nichts schweben —
    darunter gehoert eine echte, extrem zurueckgenommene dunkle Karte.
 
-   Bewusst KEINE Kartenbibliothek (MapLibre GL waeren ~800 KB + WebGL fuer ein Bild,
-   das sich nie bewegt): Die Karte ist ein STANDBILD aus fertigen Rasterkacheln
+   v8-440: Die Karte selbst zeichnet jetzt in der Regel das Geraet (route-map-gl.js, Stil in
+   map-style.js) — eigene ORVIA-Farben, scharf in jeder Pixeldichte. Dieses Modul bleibt
+   zustaendig fuer Ausschnitt, Projektion und die STRECKE (SVG darueber) und setzt fuer die
+   Karte nur einen Halter mit der Kamera ins Markup. Was im Folgenden ueber Bildkacheln
+   steht, gilt weiter fuer den Rueckfall (kein WebGL) und den Schalter engine:'raster'.
+
+   Bis v8-439 bewusst KEINE Kartenbibliothek (MapLibre GL waeren ~800 KB + WebGL fuer ein Bild,
+   das sich nie bewegt): Die Karte war ein STANDBILD aus fertigen Rasterkacheln
    (512er-Kacheln im ueblichen z/x/y-Schema, doppelte Aufloesung), die hier selbst zum Ausschnitt gelegt
    werden; die Strecke liegt als eigenes SVG in derselben Projektion (Web-Mercator)
    darueber. Damit: kein Zoom, keine Bedienelemente, pixelgenau zur Seite passend,
@@ -28,7 +34,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map@5';
+  var VERSION = 'route-map@6';
   var BASE = 256;                 /* Bezugsraster der Zoomstufe Z (Welt = 256 · 2^Z CSS-px) */
   var MAX_Z = 16.6, MIN_Z = 3;    /* nie bis auf Hausnummern hinein, nie die halbe Welt */
   /* v8-433 — Anfragen sparen (abgerechnet wird je Kachel):
@@ -42,6 +48,8 @@
   var Z_BIAS = 0.35;
   var KEEP_MAX = 96;
 
+  /* Zeichnet das Geraet die Karte selbst? (Einstellung engine:'vector', WebGL vorhanden, nicht ausgefallen) */
+  function glOn() { try { return !!(O.routeMapGL && O.routeMapGL.usable()); } catch (e) { return false; } }
   function cfg() {
     var c = root.ORVIA_MAP_CONFIG || {};
     var key = String(c.key || '').trim();
@@ -53,12 +61,15 @@
     if (!c.url && !tl[ts] && tl[ts === 512 ? 256 : 512]) ts = (ts === 512) ? 256 : 512;
     var url = c.url ? String(c.url) : (tl[ts] ? String(tl[ts]) : null);
     var needKey = !!url && url.indexOf('{key}') >= 0;
+    /* v8-440: Wird die Karte auf dem Geraet gezeichnet (route-map-gl.js), braucht es keine Bildkacheln */
+    var gl = glOn();
     return {
+      engine: gl ? 'vector' : 'raster',
       provider: c.provider || null, key: key, style: String(c.style || ''), url: url, tileSize: ts,
       /* Wo die Karte erscheint: Story ja; Aktivitaetsseite erst, wenn die Optik abgestimmt ist. */
       story: c.story !== false, detail: c.detail === true,
       /* an nur mit Vorlage — und mit Schluessel, wenn die Vorlage einen verlangt */
-      enabled: c.enabled !== false && !!url && (!needKey || !!key),
+      enabled: c.enabled !== false && ((!!url && (!needKey || !!key)) || gl),
       attribution: c.attribution ? String(c.attribution) : '© OpenStreetMap contributors',
       logo: c.logo ? String(c.logo) : null
     };
@@ -176,6 +187,8 @@
      Was das NICHT kann: einen ganzen Abschnitt, den das GPS um 10 m daneben gelegt hat,
      auf die Strasse zurueckschieben (das waere Kartenabgleich ueber einen Routendienst). */
   var SMOOTH_W = [1, 2, 3, 2, 1], SMOOTH_MAX_M = 25, SIMPLIFY_M = 0.7, ROUND_M = 6;
+  /* dunkler Rand unter der Strecke: 3 px breiter als die Linie (5 px Linie ⇒ 8 px Rand, je 1,5 px sichtbar) */
+  var CASE_W = 3;
   function smooth(pts) {
     var n = pts.length;
     if (n < 5) return pts.slice();
@@ -274,10 +287,18 @@
     /* Ausschnitt aus den Rohpunkten (die geglaettete Linie liegt immer innerhalb), gezeichnet wird die Anzeige-Strecke */
     var d = pathD(simplify(smooth(pts)), v, { round: ROUND_M });
     var a = project(pts[0][0], pts[0][1], v), b = project(pts[pts.length - 1][0], pts[pts.length - 1][1], v);
-    var col = opts.color ? esc(opts.color) : 'var(--acchi,var(--acc,#DCC79A))';
-    var sw = +opts.width || 4;
+    /* v8-439: Die Strecke traegt die Farbe der Sportart — var(--activity-primary) aus dem
+       umgebenden data-activity-Bereich (Werte: styles.css „ORVIA FARBSYSTEM v6"). Dieses Modul
+       kennt keine Sportart und keine Farbwerte. opts.color bleibt als Einzelfarbe moeglich. */
+    var col = opts.color ? esc(opts.color) : 'var(--activity-primary)';
+    var sw = +opts.width || 5;
     var tl = '';
-    if (useTiles) {
+    var cam = (useTiles && c.engine === 'vector') ? O.routeMapGL.camera(v) : null;
+    if (cam) {
+      /* v8-440: nur ein Halter mit der Kamera — hydrate() setzt die auf dem Geraet gezeichnete Karte
+         hinein (route-map-gl.js). Die Strecke darueber bleibt dieses SVG, dieselbe Projektion. */
+      tl = '<div class="rmx-tiles rmx-gl" data-rmx-gl="' + cam.lon.toFixed(7) + ',' + cam.lat.toFixed(7) + ',' + cam.zoom.toFixed(4) + '"></div>';
+    } else if (useTiles) {
       tl = '<div class="rmx-tiles">' + tiles(v).map(function (t) {
         /* KEIN src im Markup: erst hydrate() laedt — und nimmt Bilder, die in dieser Sitzung
            schon geladen wurden, aus dem Speicher statt sie erneut anzufragen. */
@@ -290,7 +311,7 @@
       '<svg class="rmx-route" viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">' +
         /* dunkler Rand unter der Strecke — zeichnet sich MIT der Strecke (sonst stuende die
            ganze Form schon da, bevor die Linie sie abfaehrt) */
-        '<path class="rmx-case' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke-width="' + (sw + 4) + '" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<path class="rmx-case' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke-width="' + (sw + CASE_W) + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         '<path class="rmx-line' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         /* Start = offener Ring, Ziel = gefuellter Punkt: bei Rundkursen liegen beide
            uebereinander und bleiben trotzdem beide lesbar. */
@@ -316,10 +337,27 @@
     try {
       if (!root || !root.querySelectorAll) return res;
       var list = root.querySelectorAll('img[data-rmx-src]');
+      var gls = root.querySelectorAll('.rmx-tiles[data-rmx-gl]');
       /* Anbieter gerade nicht erreichbar ⇒ gar nicht erst anfragen; Karte aus, Strecke bleibt. */
       if (_downUntil > _now()) {
         for (var d = 0; d < list.length; d++) if (list[d].closest && !list[d].classList.contains('rmx-logo')) _markFailed(list[d].closest('.rmx'));
-        res.skipped = list.length; return res;
+        for (var d2 = 0; d2 < gls.length; d2++) _markFailed(gls[d2].closest('.rmx'));
+        res.skipped = list.length + gls.length; return res;
+      }
+      /* v8-440: auf dem Geraet gezeichnete Karte in ihre Halter setzen (wiederverwendet, was schon gezeichnet ist) */
+      for (var g = 0; g < gls.length; g++) {
+        (function (holder) {
+          var p = String(holder.getAttribute('data-rmx-gl') || '').split(',');
+          var cam = { lon: +p[0], lat: +p[1], zoom: +p[2] };
+          var boxEl = holder.closest ? holder.closest('.rmx') : null;
+          var ok = isFinite(cam.lon) && isFinite(cam.lat) && isFinite(cam.zoom) && O.routeMapGL && O.routeMapGL.attach(holder, cam, {
+            onFail: function (kind) {
+              /* Kartendaten kommen nicht ⇒ dieselbe 5-Minuten-Pause wie bei Bildkacheln */
+              if (kind === 'tiles') { _fails++; _downUntil = _now() + DOWN_MS; }
+              _markFailed(boxEl);
+            } });
+          if (ok) { res.gl = (res.gl || 0) + 1; } else _markFailed(boxEl);
+        })(gls[g]);
       }
       for (var i = 0; i < list.length; i++) {
         (function (ph) {

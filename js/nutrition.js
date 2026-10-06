@@ -189,6 +189,9 @@ function renderNutritionToday() {
   }
   var dt = { rest: 'Ruhetag', easy: '' + _nutT('nut.lockerer_tag') + '', quality: '' + _nutT('nut.intensiver_tag') + '', long: 'Long-Run-Tag', strength: 'Krafttag' }[t.dayType] || '';
   var eaWarn = (t.ea < 32 && t.burn >= 250 && t.goal === 'fatloss') ? '<div class="nut-warn">' + _nutT('nut.energieverfuegbarkeit_niedrig', { ea: t.ea }) + '</div>' : '';
+  /* F03: Kohlenhydrate sind der Rest nach Energieziel, Protein und Fett. Liegt er an einem
+     harten Tag unter dem Richtwert, wird das gesagt. */
+  var carbNote = (t.hard && t.carbsBelowGuide) ? '<div class="nut-warn">' + _nutT('nut.carbs_below_guide', { guide: t.carbsGuide }) + '</div>' : '';
   var wk = nutWeekly();
   el.innerHTML = '<div class="card nutcard"><h2><svg class="ic"><use href="#i-nutrition"/></svg>' + _nutT('nut.energie_amp_ernaehrung') + '<span class="nut-day">' + escH(dt) + '</span>' +
     '<button class="iconbtn" style="margin-left:auto" aria-label="' + _nutT('nut.ernaehrung_konfigurieren') + '" onclick="openNutritionEditor()"><svg class="ic sm"><use href="#i-gear"/></svg></button></h2>' +
@@ -197,7 +200,7 @@ function renderNutritionToday() {
       macroCell('' + _nutT('nut.protein') + '', t.protein, t.protein * 4, 'p') +
       macroCell('Carbs', t.carbs, t.carbs * 4, 'c') +
       macroCell('Fett', t.fat, t.fat * 9, 'f') +
-    '</div>' + eaWarn +
+    '</div>' + eaWarn + carbNote +
     '<div class="nut-rec">' + escH(nutRecommendation(t.dayType)) + '</div>' +
     (function () { var f = (typeof fuelingToday === 'function') ? fuelingToday() : null; if (!f) return ''; return '<div class="nut-fuel"><div class="nf-h">' + escH(f.title) + '</div><ul>' + f.lines.map(function (x) { return '<li>' + escH(x) + '</li>'; }).join('') + '</ul></div>'; })() +
     /* Bugfix (2026-08-05, Nutzer-Feedback): zwei unabhaengige Kennzahlen (Protein-

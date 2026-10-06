@@ -5,7 +5,7 @@
    Einlauf-Animation mit prefers-reduced-motion-Guard.
    REINE Darstellung: keine Datenberechnung, keine Engine-Logik.
    Nutzung: ORVIA.charts.richChart(mountEl, {label, series, times,
-   unit, color, baseline, higherBetter, dec, min, max, h, shadeTo}).
+   unit, color, baseline, higherBetter, dec, min, max, h, shadeTo, neutralMarks}).
    ============================================================ */
 (function(root){
   root.ORVIA = root.ORVIA || {};
@@ -59,7 +59,12 @@ function richChart(mount,cfg){
   let xl='';[0,Math.floor((n-1)/2),n-1].forEach(i=>{xl+=`<text class="g-lbl" text-anchor="${i===0?'start':i===n-1?'end':'middle'}" x="${X(i).toFixed(1)}" y="${H-7}">${cfg.times[i]}</text>`;});
   let shade='';if(cfg.shadeTo!=null)shade=`<rect class="g-shade" x="${X(0).toFixed(1)}" y="${pT}" width="${(X(cfg.shadeTo)-X(0)).toFixed(1)}" height="${(H-pT-pB).toFixed(1)}"/>`;
   const iMax=s.indexOf(Math.max(...s)),iMin=s.indexOf(Math.min(...s));
-  let mm='';[[iMax,cfg.higherBetter?'var(--ready)':'var(--crit)'],[iMin,cfg.higherBetter?'var(--crit)':'var(--ready)']].forEach(([i,c])=>{mm+=`<circle class="g-mm" cx="${X(i).toFixed(1)}" cy="${Y(s[i]).toFixed(1)}" r="3.4" stroke="${c}"/>`;});
+  /* v8-439 (additiv): cfg.neutralMarks — Hoechst-/Tiefstwert neutral markieren statt gruen/rot.
+     Fuer Messreihen einer Aktivitaet (Herzfrequenz, Tempo, Hoehe) ist „hoch = gut" keine Aussage;
+     Gruen/Rot bleiben den Zustaenden vorbehalten. Ohne die Angabe unveraendert. */
+  const mmHi=cfg.neutralMarks?'var(--orvia-text-secondary,#ADB5C1)':(cfg.higherBetter?'var(--ready)':'var(--crit)');
+  const mmLo=cfg.neutralMarks?'var(--orvia-text-secondary,#ADB5C1)':(cfg.higherBetter?'var(--crit)':'var(--ready)');
+  let mm='';[[iMax,mmHi],[iMin,mmLo]].forEach(([i,c])=>{mm+=`<circle class="g-mm" cx="${X(i).toFixed(1)}" cy="${Y(s[i]).toFixed(1)}" r="3.4" stroke="${c}"/>`;});
   let baseEls='';if(cfg.baseline!=null){const by=Y(cfg.baseline);baseEls=`<line class="g-base" x1="${pL}" x2="${W-pR}" y1="${by.toFixed(1)}" y2="${by.toFixed(1)}"/><rect class="avgpill" x="${pL}" y="${(by-8).toFixed(1)}" width="17" height="15" rx="5"/><text class="avgtxt" x="${(pL+8.5).toFixed(1)}" y="${(by+3).toFixed(1)}" text-anchor="middle">Ø</text>`;}
   const areaD=dLine+` L${X(n-1).toFixed(1)} ${(H-pB).toFixed(1)} L${pL} ${(H-pB).toFixed(1)} Z`;
   mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${cfg.label} Verlauf">
@@ -79,7 +84,7 @@ function richChart(mount,cfg){
   let curF=null,raf=null,moveRaf=0;
   function hiPath(f){const lo=Math.max(0,f-1.1),hi2=Math.min(n-1,f+1.1);let d='';for(let k=0;k<=10;k++){const p=splineAt(pts,lo+(hi2-lo)*k/10);d+=(k?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}return d;}
   function place(f){const p=splineAt(pts,f);gd.setAttribute('x1',p[0].toFixed(1));gd.setAttribute('x2',p[0].toFixed(1));pt.setAttribute('cx',p[0].toFixed(1));pt.setAttribute('cy',p[1].toFixed(1));halo.setAttribute('cx',p[0].toFixed(1));halo.setAttribute('cy',p[1].toFixed(1));hi.setAttribute('d',hiPath(f));}
-  function readout(i){vEl.textContent=fmt(s[i]);tEl.textContent=cfg.times[i];const dv=s[i]-a;dEl.textContent=(dv>=0?'+':'')+fmt(dv)+' vs Ø';dEl.style.color=(cfg.higherBetter?(dv>=0?'var(--ready)':'var(--crit)'):(dv<=0?'var(--ready)':'var(--crit)'));}
+  function readout(i){vEl.textContent=fmt(s[i]);tEl.textContent=cfg.times[i];const dv=s[i]-a;dEl.textContent=(dv>=0?'+':'')+fmt(dv)+' vs Ø';dEl.style.color=cfg.neutralMarks?'':(cfg.higherBetter?(dv>=0?'var(--ready)':'var(--crit)'):(dv<=0?'var(--ready)':'var(--crit)'));}
   function set(i){idx=Math.max(0,Math.min(n-1,i));cur.style.opacity=1;hi.style.opacity='.95';halo.style.opacity='.3';readout(idx);
     if(RM||curF===null){curF=idx;place(idx);return;}
     const sf=curF,t0=performance.now();cancelAnimationFrame(raf);
