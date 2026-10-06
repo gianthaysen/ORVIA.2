@@ -33,7 +33,11 @@
      · Gold ist jetzt im normalen Kartenbild zu sehen: Namen wichtiger Orte in Champagner-
        Gold (#C8B77E, siehe GOLD_PLACE) und eine warme Unterlage unter Hauptstrassen (roadWarm).
      · Wasser und Natur sind gleich hell (Kontrast 1,01) — eine Insel im Meer waere ohne
-       Rand nicht zu sehen. Deshalb eine eigene Uferlinie (Ebene shore).
+       Rand nicht zu sehen. Deshalb ein eigenes Ufer (Ebenen shore-soft + shore; der weiche Saum kam mit v8-443 dazu).
+   V3 (Gians Auftrag 6.10. abends, „visual refinement V3" — nur Schliff): mehr raeumliche Trennung ohne
+   mehr Helligkeit — Gebaeude bekommen in der Nahansicht eine feine Kante; der Ufersaum liegt jetzt
+   im WASSER (Flachwasser-Saum, line-offset) statt mittig auf der Kuestenlinie, das Land bleibt
+   ruhig und hebt sich klarer ab.
    Reihenfolge der Sichtbarkeit:
      Strecke › grosse Ortsnamen › Hauptstrassen › Verbindungsstrassen › Nebenstrassen ›
      Gebaeude › Natur.
@@ -58,9 +62,11 @@
     urban: '#111C27',       /* bebaute Flaeche: Stadt hebt sich leicht vom Umland ab */
     nature: '#111A24',      /* Wald, Wiese, Park: Farbton des Landes, nur heller — siehe oben */
     water: '#0A1B29',
-    shore: '#22405A',       /* Uferlinie: Wasserton, deutlich heller — Kuesten, Inseln und Seen bekommen eine Form */
+    shore: '#2E4E68',       /* Uferlinie: Wasserton, deutlich heller — Kuesten, Inseln und Seen bekommen eine Form */
+    shoreSoft: '#22405A',   /* weicher Saum unter der Uferlinie (35 %, unscharf): hebt Land und Wasser voneinander ab */
     boundary: '#25313D',
     building: '#1A2734',
+    buildingEdge: '#243344', /* feine Kante der Gebaeude in der Nahansicht (V3): Bloecke bekommen Form, ohne heller zu werden */
     path: '#1F2B37',        /* Fuss- und Feldwege: zwischen Land und Nebenstrasse */
     rail: '#1F2B37',
     roadMinor: '#2B3947',
@@ -125,12 +131,20 @@
       fill('nature-use', 'landuse', inClass(['cemetery', 'pitch', 'playground', 'stadium', 'track', 'park']), P.nature, { minzoom: 9 }),
       fill('nature-park', 'park', null, P.nature, { minzoom: 8 }),
       fill('water', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.water),
-      /* Uferlinie als eigene Linie (der Flaechenrand allein ist nur ein Haarstrich): Inseln, Kuesten, Seen */
-      line('shore', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shore, width([[4, 0.5], [10, 0.9], [14, 1.2], [18, 1.6]]), { 'line-opacity': 0.9 }),
+      /* Ufer als eigene Ebenen (der Flaechenrand allein ist nur ein Haarstrich): ein weicher Saum, darauf die Linie.
+         Auf echten Daten an den Watopia-Koordinaten (Zwift) geprueft: mit der Linie allein blieb die Insel im
+         Kartenfeld blass; mit Saum ist die Kueste sofort lesbar. Keine erfundene Geografie — nur der echte Rand. */
+      /* V3: der Saum liegt im WASSER (line-offset nach innen — die Wasserflaeche ist die Innenseite des Rings, auch um
+         Inseln herum): Flachwasser-Saum. Auf echten Daten gegen „mittig" und „landseitig" verglichen. */
+      line('shore-soft', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shoreSoft, width([[4, 3], [10, 7], [14, 10], [18, 12]]),
+        { 'line-opacity': 0.4, 'line-blur': 5, 'line-offset': width([[4, 1.5], [10, 3.5], [14, 5], [18, 6]]) }),
+      line('shore', 'water', ['!=', ['get', 'brunnel'], 'tunnel'], P.shore, width([[4, 0.6], [10, 1.1], [14, 1.4], [18, 1.8]])),
       line('waterway', 'waterway', ['!=', ['get', 'brunnel'], 'tunnel'], P.water, width([[10, 0.6], [14, 1.6], [18, 6]]), { minzoom: 10 }),
       /* Staats- und Landesgrenzen, sehr leise (keine Gemeindegrenzen — die waeren in der Stadt nur Unruhe) */
       line('boundary', 'boundary', ['all', ['<=', ['get', 'admin_level'], 4], ['!=', ['get', 'maritime'], 1]], P.boundary, width([[3, 0.6], [10, 1.2]]), { minzoom: 3, 'line-dasharray': [3, 2] }),
-      fill('building', 'building', null, P.building, { minzoom: 13, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.7, 13.6, 1] }),
+      /* Kante erst ab Stufe 14,5 sichtbar (darunter = Gebaeudefarbe, also unsichtbar): in der Uebersicht waeren tausende Kanten nur Unruhe */
+      fill('building', 'building', null, P.building, { minzoom: 13, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.7, 13.6, 1],
+        'fill-outline-color': ['interpolate', ['linear'], ['zoom'], 14.5, P.building, 15.5, P.buildingEdge] }),
       /* warme Unterlage der Hauptstrassen (Gold-Signatur): je Seite bis 0,75 px breiter als die Strasse, liegt
          unter ALLEN Strassen — Nebenstrassen muenden sauber ein */
       line('road-major-warm', 'transportation', inClass(MAJOR), P.roadWarm, width([[9, 1.8], [10, 2.1], [12, 3.3], [14, 5.1], [16, 10], [18, 23.5]]), { minzoom: 9 }),
@@ -164,7 +178,7 @@
     return st;
   }
 
-  var api = { VERSION: 'map-style@3', PALETTE: PALETTE, SOURCE: SRC, layers: layers, build: build };
+  var api = { VERSION: 'map-style@4', PALETTE: PALETTE, SOURCE: SRC, layers: layers, build: build };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ORVIA.mapStyle = api;
 })(typeof window !== 'undefined' ? window : globalThis);

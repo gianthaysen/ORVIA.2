@@ -8878,6 +8878,34 @@ function gmActThemeId(sportId){try{return (window.ORVIA&&ORVIA.activityTheme)?OR
 function gmActThemeAttr(sportId){return 'data-activity="'+gmActThemeId(sportId)+'"';}
 /* Farbe EINER bestimmten Sportart fuer Uebersichten mit mehreren Sportarten nebeneinander. */
 function gmActThemeColor(sportId,role){try{return (window.ORVIA&&ORVIA.activityTheme)?ORVIA.activityTheme.color(sportId,role):'var(--orvia-brand-gold)';}catch(_){return 'var(--orvia-brand-gold)';}}
+/* v8-444 (V3): Wellenfeld — der Hero fuer Schwimmen ohne Strecke (Aktivitaetsseite und Story-Abschluss).
+   Reine Zeichnung, KEINE Daten: n ruhige Wellenlinien in Perspektive (oben = fern: eng, flach, leise;
+   unten = nah: weiter, hoeher, kraeftiger). Farbe kommt aus dem Thema der Sportart (CSS: .act-wvg stop),
+   Deckkraft und Verzoegerung je Linie als --wo / --wd.
+   Die Linien laufen seitlich ueber einen Verlauf im Strich aus (nicht ueber eine CSS-Maske am Element:
+   Masken ueber bewegten Zeichnungen sind eine bekannte Quelle fuer Darstellungsfehler der Grafikkarte —
+   im Testbrowser zerfielen die Kacheln darunter in Streifen).
+   id = Name des Verlaufs (muss je Zeichnung im Dokument eindeutig sein); ohne Angabe wird gezaehlt. */
+var _gmActWaveSeq=0;
+function gmActWaves(w,h,n,id){
+  w=+w>0?+w:390;h=+h>0?+h:150;n=Math.max(2,Math.min(12,Math.round(+n)||7));
+  var gid=id?String(id).replace(/[^A-Za-z0-9_-]/g,''):('actWv'+(++_gmActWaveSeq));
+  var out='',N=72,k,i;
+  for(k=0;k<n;k++){
+    var t=k/(n-1),tp=Math.pow(t,1.55);
+    var y0=h*(0.14+0.74*tp),amp=h*(0.016+0.05*tp),per=w/(2.3-0.75*tp),ph=k*1.05,d='';
+    for(i=0;i<=N;i++){
+      var x=w*i/N,env=0.55+0.45*Math.sin(x/w*Math.PI);
+      var y=y0+amp*env*Math.sin(x/per*2*Math.PI+ph);
+      d+=(i?' L':'M')+x.toFixed(1)+','+y.toFixed(1);
+    }
+    out+='<path d="'+d+'" pathLength="1" stroke="url(#'+gid+')" style="--wo:'+(0.2+0.55*tp).toFixed(2)+';--wd:'+(0.08*k).toFixed(2)+'s"/>';
+  }
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true">'+
+    '<defs><linearGradient id="'+gid+'" class="act-wvg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="'+w+'" y2="0">'+
+    '<stop offset="0" stop-opacity="0"/><stop offset="0.16" stop-opacity="1"/><stop offset="0.84" stop-opacity="1"/><stop offset="1" stop-opacity="0"/></linearGradient></defs>'+
+    out+'</svg>';
+}
 /* GM-SVG-Visualisierung: rein darstellerische Wahl anhand des kanonischen Sportfeldes. */
 function gmActGlyph(gmSport){
   /* v8-439: Farbe = Thema der Sportart am umgebenden .activity-visual (data-activity) */
@@ -9377,6 +9405,11 @@ function gmOpenActivityPage(aid){
   if(run||route){
     h+='<div class="route-map">'+(route?((typeof routeSVG==='function')?routeSVG(route):''):'<div class="route-empty">'+icon('activity')+'<div>' + _uiT('ui.keine_gps_route_fuer_diese') + '</div></div>')+'</div>';
   }
+  /* v8-444 (V3): Schwimmen ohne Strecke bekommt im selben Platz einen eigenen Hero (Wellenfeld) statt gar nichts —
+     dieselbe Abfolge Kopf → Hero → Titel wie bei Lauf und Rad. Keine Karte erzwungen, keine Daten erfunden. */
+  else if(gmActThemeId(vm.sportId)==='swimming'){
+    h+='<div class="act-hero act-waves" aria-hidden="true">'+gmActWaves(390,150,7)+'</div>';
+  }
   h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
   /* GM7.5e: Schrittfrequenz war ein hartkodiertes „—", obwohl die kanonische
      Kadenz-Messreihe (canonicalStreams.cadence, echte Garmin-Werte, dieselbe Quelle
@@ -9489,19 +9522,21 @@ function gmOpenActivityPage(aid){
     var _dc=a.metrics&&a.metrics.durationCorrection;
     h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('pen','xs')+'<div>'+
       (_dc?('' + _uiT('ui.dauer_manuell_korrigiert') + ''+(_dc.fromMin!=null?_dc.fromMin+' min':'—')+' → <b>'+_dc.toMin+' min</b>. '):'')+
-      '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" style="font-weight:700">' + _uiT('ui.dauer_korrigieren') + '</a>'+
+      '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" class="gm-inline-link" style="font-weight:700">' + _uiT('ui.dauer_korrigieren') + '</a>'+
       (_dc?'':'' + _uiT('ui.z_b_wenn_die_app') + '')+'</div></div>';
   }
+  /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen).
+     v8-444 (V3): steht jetzt VOR den Korrekturwegen — sie ist die Hauptaktion der Seite, das Loeschen nicht.
+     Eigene Klasse gm-story-cta (Goldrand, Stern in Gold: Gold kennzeichnet, was ORVIA beitraegt). */
+  try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
+    h+='<div style="margin:0 18px 12px"><button class="cta wide-ghost gm-story-cta" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
   /* v8-310b · Drei Korrekturwege bleiben sichtbar getrennt: Link loesen
      behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
      Tombstone-Pfad. Keine Schaltflaeche tut beides. */
   var _aidCorr=a.clientRecordId||a.id;
-  h+='<div style="margin:0 18px 14px">'+
+  h+='<div class="gm-corr" style="margin:0 18px 14px">'+
     (vm.planLink?'<button class="cta wide-ghost" style="width:100%;margin-bottom:8px" onclick="unlinkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(String(vm.planLink))+'\')">Vom Wochenplan lösen</button>':'')+
     '<button class="cta wide-ghost danger-btn" style="width:100%" onclick="deleteActivityCanonical(\''+gmEsc(String(_aidCorr))+'\')">Aktivität löschen</button></div>';
-  /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen). */
-  try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
-    h+='<div style="margin:0 18px 14px"><button class="cta wide-ghost" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
   /* S5a (v14): Debrief als Zustand aus dem kanonischen Record (gmDebriefModel) —
      Soll/Ist-Zeilen + Mitnahmen nur aus Record-Feldern; freie Einheit behaelt den
      bisherigen Bewertungstext (rateActivity) als Einordnung. */
@@ -10225,6 +10260,8 @@ function gmStoryPages(a){
         coverPage='<div class="wst-bg" '+actAttr+'></div><div class="wst-mapbg" '+actAttr+'>'+_map+'</div>'+
           '<div class="wst-in wst-coverpg" '+actAttr+'>'+top+
           '<div class="wst-hero">'+
+            /* v8-444 (V3): die Hauptzahl ist benannt wie jede andere (Distanz bzw. Dauer) */
+            (_dm?'<div class="wst-kick">'+gmEsc(vm.distanceLabel?_uiT('ui.distanz_'):'Dauer')+'</div>':'')+
             (_dm?'<div class="wst-heronum"><b>'+gmEsc(_dm[1])+'</b>'+(_dm[2]?'<span>'+gmEsc(_dm[2])+'</span>':'')+'</div>':'')+
             (_kp.length?'<div class="wst-herostats">'+_kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>':'')+
           '</div></div>';
@@ -10245,7 +10282,9 @@ function gmStoryPages(a){
     cover=bigV?'<div class="wst-bignum'+(String(bigV[0]).length>6?' long':'')+'"><b>'+gmStoryBigVal(bigV[0])+'</b><span>'+gmEsc(bigV[1])+'</span></div>':'';
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
-  pages.push(coverPage||page('<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub)));
+  /* v8-444 (V3): Schwimmen ohne Strecke — das Wellenfeld liegt hinter der grossen Zahl (Hero ohne Karte). */
+  var _waves=(!coverPage&&!route&&gmActThemeId(vm.sportId)==='swimming')?'<div class="wst-waves act-waves" aria-hidden="true">'+gmActWaves(390,300,9)+'</div>':'';
+  pages.push(coverPage||page(_waves+'<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub),_waves?'wst-wavepg':''));
   /* ---------- 1b) Neue Bestzeit — zwei kanonische Wege, EINE Rangfolge:
      (1) DISTANZ-Bestzeit aus dem kanonischen Bestzeitenmodell (bestTimes().meas):
          stammt eine gemessene 1/5/10-km-Bestzeit aus GENAU dieser Aktivitaet,

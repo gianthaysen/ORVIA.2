@@ -83,7 +83,7 @@
      staerkerer Goldhauch im Auslauf der Karte. */
   --map-gold-light:#E3CB95;--map-gold-label:#C8B77E;
   --map-gold-muted:rgba(216,187,122,0.20);--map-gold-subtle:rgba(216,187,122,0.10);
-  --map-gold-rest:rgba(216,187,122,0.12);--map-gold-line:rgba(216,187,122,0.32);
+  --map-gold-rest:rgba(216,187,122,0.16);--map-gold-line:rgba(216,187,122,0.32);
   /* Goldhauch: -edge liegt UEBER der Karte am Bildschirmrand (Kartenansicht, 9 %); -under liegt UNTER der
      auslaufenden Karte (Kartenfeld, Story) — dort deckt die Karte noch rund ein Drittel, deshalb 13 % fuer
      dieselbe sichtbare Staerke (~9 %). */
@@ -4892,3 +4892,154 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
 #gmActPage[data-activity] .plan-kicker{color:var(--activity-primary)}
 #gmActPage[data-activity] .splitbar{background:linear-gradient(90deg,var(--activity-secondary),var(--activity-primary))}
 #gmActPage[data-activity] .detail-kpis div.key b{color:var(--activity-primary)}
+
+/* ============================================================
+   v8-444 · ORVIA V3 — Feinschliff der Gestaltungssprache
+   ------------------------------------------------------------
+   Gians Auftrag 6.10. abends („visual refinement V3"): kein Umbau, keine Logik — aus „dunkle Sport-App
+   mit farbiger Strecke" soll erkennbar EIN System werden. Dieser Block steht bewusst am Ende und
+   ueberschreibt aeltere Einzelregeln; er enthaelt die ganze V3-Sprache an einer Stelle.
+
+   Die Regel dahinter (ergaenzt das Farbsystem v6):
+     Farbe der Sportart  = die DATEN der Einheit (Strecke, Kurve, Hauptkennzahl, Kennzeichen).
+     Gold                = was ORVIA beitraegt: Rahmen und Bedienung (Raender, Haarlinien, Fortschritt)
+                           und ORVIAs eigene Stimme (Story, Debrief). Nie eine Datenfarbe.
+     Neutral             = alles andere.
+   Bausteine:
+     · Bedienelemente (Zurueck, Schliessen, Kartenknoepfe, Oeffnen-Zeichen): EINE Flaeche, EIN Rand.
+     · Tafeln (Kennzahl-Kacheln, Karten, Diagramm-Tafel): EIN Material — leichter Verlauf, helle Oberkante,
+       weicher Schatten nach unten. Keine Unschaerfe-Flaechen (kosten auf dem iPhone Bilder).
+     · Gold-Haarlinie: 1 px, laeuft zu beiden Seiten aus — trennt Kopf, Hero und Inhalt.
+     · Kennzeichen-Strich: kurzer Strich vor Abschnittsnamen (Seite: Farbe der Sportart; Story: Gold).
+   ============================================================ */
+:root{
+  --orvia-gold-10:rgba(216,187,122,0.10);--orvia-gold-16:rgba(216,187,122,0.16);--orvia-gold-24:rgba(216,187,122,0.24);
+  --orvia-hairline:linear-gradient(90deg,transparent 0,var(--orvia-gold-24) 22%,var(--orvia-gold-24) 78%,transparent 100%);
+  --orvia-panel-bg:linear-gradient(180deg,rgba(255,255,255,.045) 0,rgba(255,255,255,.012) 100%);
+  --orvia-panel-border:rgba(150,172,198,.15);
+  --orvia-panel-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 14px 30px -18px rgba(0,0,0,.8);
+  --orvia-ctl-bg:linear-gradient(180deg,rgba(32,40,52,.95) 0,rgba(12,17,25,.95) 100%);
+  --orvia-ctl-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 6px 16px -6px rgba(0,0,0,.75);
+}
+
+/* ---------- 1) Bedienelemente: eine Flaeche, ein Rand ---------- */
+#gmActPage .backbtn,.gm-story .wst-x,.rmv-btn,.route-map .rmx-open{
+  background:var(--orvia-ctl-bg);border:1px solid var(--map-gold-rest);box-shadow:var(--orvia-ctl-shadow);color:var(--orvia-text-primary)}
+#gmActPage .backbtn,.gm-story .wst-x{transition:border-color .15s ease,color .15s ease,transform .12s ease}
+#gmActPage .backbtn:active,.gm-story .wst-x:active{transform:scale(.94);border-color:var(--map-gold-line);color:var(--map-gold)}
+#gmActPage .backbtn:focus-visible,.gm-story .wst-x:focus-visible{outline:2px solid var(--map-gold-soft);outline-offset:2px}
+.gm-story .wst-x{width:36px;height:36px;top:calc(var(--sat) + 23px)}
+
+/* ---------- 2) Aktivitaetsseite: Kopf, Titel, Kennzahlen, Knoepfe, Karten als ein Guss ---------- */
+#gmActPage .page-head::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--orvia-hairline);opacity:.75;pointer-events:none}
+#gmActPage .page-head h2{letter-spacing:-.03em}
+#gmActPage .page-head p{color:var(--orvia-text-secondary)}
+#gmActPage .detail-title{padding:20px 18px 16px}
+#gmActPage .plan-kicker{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.16em}
+#gmActPage .plan-kicker::before{content:"";flex:none;width:14px;height:1.5px;border-radius:1px;background:currentColor}
+#gmActPage .detail-title h1{font-size:25px;font-weight:820;letter-spacing:-.028em;line-height:1.12;margin-top:7px}
+#gmActPage .detail-title p{color:var(--orvia-text-tertiary);line-height:1.45;margin-top:7px}
+#gmActPage .detail-kpis{gap:9px;padding-bottom:16px}
+#gmActPage .detail-kpis div{padding:14px 6px 12px;border-radius:15px;background:var(--orvia-panel-bg),var(--orvia-surface-1);
+  border:1px solid var(--orvia-panel-border);box-shadow:var(--orvia-panel-shadow)}
+#gmActPage .detail-kpis b{font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+#gmActPage .detail-kpis span{color:var(--orvia-text-tertiary);letter-spacing:.09em}
+/* Hauptaktion der Seite: die Story (ORVIAs Beitrag ⇒ Goldrand, Stern in Gold) */
+#gmActPage .gm-story-cta{background:var(--orvia-panel-bg),var(--orvia-surface-2);border:1px solid var(--orvia-gold-24);box-shadow:var(--orvia-panel-shadow);
+  color:var(--orvia-text-primary);letter-spacing:-.005em;transition:border-color .15s ease,transform .12s ease}
+#gmActPage .gm-story-cta .ic{color:var(--orvia-brand-gold)}
+#gmActPage .gm-story-cta:active{transform:scale(.985);border-color:var(--map-gold-line)}
+/* Korrekturwege: vorhanden, aber leise — sie sind nicht die Hauptaktion */
+#gmActPage .gm-corr .cta{padding:12px 14px;font-size:13px;font-weight:700;background:transparent;border:1px solid var(--orvia-border-subtle);color:var(--orvia-text-secondary)}
+#gmActPage .gm-corr .cta:active{border-color:var(--orvia-border-strong);color:var(--orvia-text-primary)}
+/* Karten der Seite: dasselbe Material wie die Kennzahl-Kacheln */
+#gmActPage .card{background:var(--orvia-panel-bg),var(--orvia-surface-1);border-color:var(--orvia-panel-border);box-shadow:var(--orvia-panel-shadow)}
+/* Textlink in der Seite (z. B. „Dauer korrigieren"): kein Browser-Blau — heller Text, goldene Unterstreichung */
+#gmActPage .gm-inline-link{color:var(--orvia-text-primary);text-decoration:underline;text-decoration-color:var(--orvia-gold-24);text-decoration-thickness:1px;text-underline-offset:3px}
+/* ORVIAs eigene Stimme traegt Gold: der Stern am Debrief */
+#gmActPage .db-card .ctitle .l .ic,#gmActPage .coach-card h3 .ic{color:var(--orvia-brand-gold)}
+
+/* ---------- 3) Schwimmen ohne Strecke: Wellenfeld als Hero ---------- */
+.act-waves svg{display:block;width:100%;height:100%;overflow:visible}
+/* Deckkraft je Linie als stroke-opacity (opacity braeuchte je Linie eine eigene Zwischenflaeche).
+   Das Wellenfeld liegt auf einer EIGENEN Ebene (translateZ / translate3d unten): das Zeichnen der Linien loest dann kein
+   Neuzeichnen der Seite aus. Im Testbrowser (Grafik per Software) zerfielen ohne eigene Ebene die Kennzahl-Kacheln
+   darunter in Streifen — gemessen 42 Helligkeitsstufen Streuung zwischen sechs gleichen Kacheln, mit eigener Ebene 0.
+   Ein Test haelt das fest (visual_v3_e2e). */
+.act-wvg stop{stop-color:var(--activity-primary)}
+.act-waves path{fill:none;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+  stroke-opacity:var(--wo,.4);stroke-dasharray:1;stroke-dashoffset:1;animation:actWave 1.9s cubic-bezier(.3,0,.2,1) var(--wd,0s) forwards}
+.act-waves path:last-child{stroke-width:1.7}
+@keyframes actWave{to{stroke-dashoffset:0}}
+/* Seite: im Platz der Karte. KEINE Maske (siehe gmActWaves in ui.js): die Linien laufen seitlich im Strich aus,
+   nach oben ueber ihre Deckkraft; der Schein darunter endet von selbst vor allen Raendern. */
+#gmActPage .act-hero{position:relative;height:150px;overflow:hidden;transform:translateZ(0)}
+#gmActPage .act-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 46% at 50% 54%,var(--activity-tint-strong),transparent 100%),radial-gradient(56% 16% at 50% 82%,var(--orvia-gold-10),transparent 100%)}
+#gmActPage .act-hero svg{position:relative}
+/* Story: hinter der grossen Zahl, ueber die ganze Seitenbreite */
+.gm-story .wst-in.wst-wavepg .wst-mid{position:relative;overflow:visible}
+.gm-story .wst-waves{position:absolute;left:-22px;right:-22px;top:50%;height:min(46vh,340px);transform:translate3d(0,-46%,0);z-index:0;pointer-events:none}
+.gm-story .wst-waves::before{content:"";position:absolute;inset:0;background:radial-gradient(50% 46% at 50% 56%,var(--activity-tint-strong),transparent 100%)}
+.gm-story .wst-waves svg{position:relative}
+.gm-story .wst-in.wst-wavepg .wst-kick,.gm-story .wst-in.wst-wavepg .wst-bignum{position:relative;z-index:1}
+/* die Zahl steht auf einem weichen dunklen Grund — die Linien laufen dahinter aus, nicht durch die Ziffern */
+.gm-story .wst-in.wst-wavepg .wst-bignum::before{content:"";position:absolute;left:50%;top:50%;width:118%;height:190%;transform:translate(-50%,-50%);z-index:-1;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(5,9,16,.78) 0,rgba(5,9,16,.5) 55%,transparent 100%)}
+
+/* ---------- 4) Story: Fortschritt, Kopf, Hero, Kennzahlen ---------- */
+/* Fortschritt: feiner, mit goldener Spitze am laufenden Abschnitt (Gold = ORVIAs Rahmen) */
+.gm-story .wst-bars{left:16px;right:16px;gap:4px}
+.gm-story .wst-bars i{height:2.5px;border-radius:3px;background:rgba(255,255,255,.14)}
+.gm-story .wst-bars i b{border-radius:3px;background:rgba(244,242,237,.92)}
+.gm-story .wst-bars i.act b{background:linear-gradient(90deg,rgba(244,242,237,.92) 0,rgba(244,242,237,.92) 58%,var(--map-gold-light) 100%)}
+/* Kopf: Titel traegt, Datum tritt zurueck */
+.gm-story .wst-top{gap:3px}
+.gm-story .wst-top b{font-size:16px;font-weight:820;letter-spacing:-.018em}
+.gm-story .wst-top span{color:var(--orvia-text-secondary);font-weight:600;letter-spacing:.005em}
+/* Grund: Stimmung der Sportart von oben (wie bisher), dazu ein leiser Goldton von unten */
+.gm-story .wst-bg:not(.pr){background:
+  radial-gradient(120% 30% at 50% 108%,var(--orvia-gold-10) 0%,transparent 72%),
+  radial-gradient(90% 45% at 50% 0%,var(--activity-tint-strong) 0%,var(--activity-tint) 45%,transparent 75%),
+  var(--orvia-bg-base)}
+/* Abschnittsname: Gold-Strich davor */
+.gm-story .wst-kick:not(.pr){display:flex;align-items:center;gap:9px;color:var(--orvia-text-secondary);letter-spacing:.18em}
+.gm-story .wst-kick:not(.pr)::before{content:"";flex:none;width:16px;height:1px;background:var(--orvia-brand-gold);opacity:.8}
+.gm-story .wst-kick.ctr:not(.pr){justify-content:center}
+/* Hero: benannt wie jede andere Zahl (Abschnittsname mit Gold-Strich darueber) */
+.gm-story .wst-hero .wst-kick{margin-bottom:10px;animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .12s both}
+/* Hero: Gold-Haarlinie statt grauer Linie ueber den Kennzahlen; Einheit als Zusatz, nicht als zweite Zahl */
+.gm-story .wst-herostats{border-top:none;background:var(--orvia-hairline) top left/100% 1px no-repeat;margin-top:24px;padding-top:18px}
+.gm-story .wst-herostats span{color:var(--orvia-text-tertiary);letter-spacing:.16em}
+.gm-story .wst-heronum span{color:var(--orvia-text-secondary);font-size:17px;letter-spacing:.2em}
+.gm-story .wst-bignum span{color:var(--orvia-text-secondary);letter-spacing:.22em}
+/* Kennzahl-Kacheln der Story: dasselbe Material wie auf der Seite */
+.gm-story .wst-cell,.gm-story .wst-ex{background:var(--orvia-panel-bg),var(--orvia-surface-1);border:1px solid var(--orvia-panel-border);box-shadow:var(--orvia-panel-shadow)}
+.gm-story .wst-cell span{color:var(--orvia-text-tertiary);letter-spacing:.12em;margin-top:5px}
+.gm-story .wst-hsrc{color:var(--orvia-text-tertiary);letter-spacing:.14em}
+
+/* ---------- 5) Diagramm-Tafel: Messinstrument statt Kasten ---------- */
+/* Tafel: tieferes Material, helle Oberkante, Gold-Haarlinie als einziges Schmuckelement */
+.gm-story .wst-dotwrap{border:1px solid rgba(150,172,198,.17);background:linear-gradient(180deg,#0D1C2D 0,#081421 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 24px 48px -24px rgba(0,0,0,.9)}
+.gm-story .wst-dotwrap::before{content:"";position:absolute;top:-1px;left:18%;right:18%;height:1px;background:var(--orvia-hairline);pointer-events:none}
+/* Zeichenflaeche: Rahmen fast unsichtbar, leichte Tiefe nach innen */
+.gm-story .wst-plot{border-color:rgba(130,160,190,.10);box-shadow:inset 0 0 26px rgba(2,6,12,.45)}
+/* Raster: feine Punkte; senkrechte Linien treten zurueck (waagerecht liest man Werte, senkrecht nichts) */
+.gm-story .wst-grid line{stroke-dasharray:1 5;stroke-linecap:round}
+.gm-story .wst-grid line[y1="0"]{opacity:.45}
+/* Kurve: etwas feiner; Schein breiter und weicher statt hart */
+.gm-story .wst-line{stroke-width:2.2}
+.gm-story .wst-glow{stroke-width:8}
+.gm-story .wst-halo{-webkit-filter:blur(5px);filter:blur(5px);opacity:.8}
+/* Max/Min: ruhiger — Wert in Sekundaerfarbe, Bezugslinie leiser */
+.gm-story .wst-ref{color:var(--orvia-text-secondary);font-size:10.5px;font-weight:650;letter-spacing:.01em}
+.gm-story .wst-ref i{width:4px;height:4px;background:var(--orvia-text-tertiary)}
+.gm-story .wst-ref u{background:repeating-linear-gradient(90deg,rgba(125,155,190,.36) 0 3px,transparent 3px 7px)}
+/* Ø: Linie nicht mehr fast weiss; Schild als kleines Instrument (dunkles Material, feiner Rand) */
+.gm-story .wst-avgline{background:repeating-linear-gradient(90deg,rgba(240,244,248,.58) 0 5px,transparent 5px 9px)}
+.gm-story .wst-avgpill i{width:5px;height:5px;background:var(--orvia-text-primary)}
+.gm-story .wst-avgpill b{border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(20,30,44,.97) 0,rgba(8,16,27,.97) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 14px -6px rgba(0,0,0,.8);font-weight:700}
+
+@media (prefers-reduced-motion:reduce){.act-waves path{animation:none;stroke-dashoffset:0}.gm-story .wst-hero .wst-kick{animation:none;opacity:1;transform:none}}
