@@ -47,7 +47,7 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'route-map-view@3';
+  var VERSION = 'route-map-view@4';
   var Z_OUT = 3;            /* so viele Stufen weiter heraus als „ganze Strecke" */
   var Z_MAX = 18;           /* stufenlose Obergrenze (Welt = 256 · 2^Z) ⇒ 512er-Kachelstufe hoechstens 17 */
   var KEEP_MAX = 32;        /* Kachelbilder im Sitzungsspeicher dieser Ansicht (ein Bild ≈ 4 MB entpackt — auf dem Handy bewusst knapp;
@@ -146,16 +146,16 @@
           '<div class="rmv-layer"><div class="rmv-tiles"></div></div>' +
           '<div class="rmv-dim"></div>' +
           '<svg class="rmv-route" aria-hidden="true"><g class="rmv-g">' +
-            '<path class="rmx-case" fill="none" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-            '<path class="rmx-line" fill="none" stroke="var(--activity-primary)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-          '</g><circle class="rmx-start" r="7"/><circle class="rmx-end" r="5"/></svg>' +
+            '<path class="rmx-case" fill="none" stroke-width="' + (R.ROUTE_W + R.CASE_W) + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+            '<path class="rmx-line" fill="none" stroke="var(--activity-primary)" stroke-width="' + R.ROUTE_W + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+          '</g><circle class="rmx-start" r="6.5"/><circle class="rmx-end" r="4.5"/></svg>' +
         '</div>' +
         '<div class="rmv-top"><div class="rmv-ttl"><b>' + esc(opts.title || '') + '</b><span>' + esc(opts.sub || '') + '</span></div>' +
           '<button type="button" class="rmv-btn rmv-close" aria-label="' + esc(L.close || 'Schließen') + '">' + ICON.x + '</button></div>' +
         '<div class="rmv-ctl">' +
           '<button type="button" class="rmv-btn rmv-in" aria-label="' + esc(L.zoomIn || '+') + '">' + ICON.plus + '</button>' +
           '<button type="button" class="rmv-btn rmv-out" aria-label="' + esc(L.zoomOut || '−') + '">' + ICON.minus + '</button>' +
-          '<button type="button" class="rmv-btn rmv-fit" aria-label="' + esc(L.fit || 'Strecke') + '">' + ICON.fit + '</button>' +
+          '<button type="button" class="rmv-btn rmv-fit on" aria-label="' + esc(L.fit || 'Strecke') + '">' + ICON.fit + '</button>' +
         '</div>' +
         '<div class="rmv-note" role="status">' + esc(L.unavailable || '') + '</div>' +
         (c.enabled ? '<div class="rmx-attr">' + (c.logo ? '<img class="rmx-logo" alt="" referrerpolicy="strict-origin" src="' + esc(c.logo) + '">' : '') + '<span>' + esc(c.attribution) + '</span></div>' : '');
@@ -179,7 +179,7 @@
         start: el.querySelector('.rmx-start'), end: el.querySelector('.rmx-end'),
         pts: pts, raw: raw, pad: pad, fit: fit, lim: limits(fit.Z), L: copy(fit), C: copy(fit), R0: copy(fit),
         ptrs: {}, n: 0, raf: 0, settleT: 0, anim: 0, lastCheck: 0, tiles: {}, failed: false, moved: 0, down: null, lastTap: null, trail: [],
-        gl: null, glBox: el.querySelector('.rmv-gl'),
+        gl: null, glBox: el.querySelector('.rmv-gl'), fitBtn: el.querySelector('.rmv-fit'), fitOn: true,
         prevFocus: doc.activeElement, prevOverflow: doc.documentElement.style.overflow };
       try { doc.documentElement.style.overflow = 'hidden'; } catch (e) {}
       /* Pfad EINMAL in der Bezugsansicht (zwei Nachkommastellen: bleibt auch 100-fach vergroessert genau) */
@@ -214,8 +214,9 @@
         cam: G.cameraAt(st.fit.cx, st.fit.cy, st.fit.Z), minZoom: st.lim.min - 1, maxZoom: st.lim.max - 1, pts: st.pts,
         /* Farben aus dem Farbsystem (styles.css): Strecke = Thema der Sportart am Element, Start/Ziel = Zustandsfarben */
         colors: { line: val('--activity-primary', null), start: val('--orvia-route-start', null), finish: val('--orvia-route-finish', null), base: val('--orvia-bg-base', null) },
-        widths: { line: 5, casing: 8 },
-        onReady: function () { if (S === st) el.classList.add('rmv-glready'); },
+        widths: { line: RM().ROUTE_W, casing: RM().ROUTE_W + RM().CASE_W, casingOpacity: RM().CASE_OPACITY },
+        onMove: function () { if (S === st) syncFit(); },
+        onReady: function () { if (S === st) { el.classList.add('rmv-glready'); syncFit(); } },
         onFail: function (kind) {
           if (S !== st) return;
           if (kind === 'engine') { startRaster(st, null); return; }
@@ -327,8 +328,22 @@
     for (k in S.tiles) if (!S.tiles[k].cur) { var x = S.tiles[k].img; if (x.parentNode) x.parentNode.removeChild(x); delete S.tiles[k]; }
   }
 
+  /* v8-441: Der Knopf „ganze Strecke" zeigt an, ob der Ausschnitt gerade genau die ganze Strecke ist
+     (Klasse .on ⇒ Gold, styles.css). Gezeichnete Karte: route-map-gl.js weiss es; Bildkacheln: Vergleich
+     der Ansicht mit S.fit (Mittelpunkt auf 2 px, Zoomstufe auf 0,02 genau). */
+  function syncFit() {
+    if (!S || !S.fitBtn) return;
+    var on;
+    if (S.gl) on = !!S.gl.atFit();
+    else { var wd = world(S.fit.Z); on = Math.abs(S.C.Z - S.fit.Z) < 0.02 && Math.abs(S.C.cx - S.fit.cx) * wd < 2 && Math.abs(S.C.cy - S.fit.cy) * wd < 2; }
+    if (on === S.fitOn) return;
+    S.fitOn = on;
+    try { S.fitBtn.classList.toggle('on', on); } catch (e) {}
+  }
+
   function apply() {
     if (!S) return;
+    if (!S.gl) syncFit();
     var d = delta(S.L, S.C);
     S.layer.style.transform = 'translate3d(' + d.tx.toFixed(2) + 'px,' + d.ty.toFixed(2) + 'px,0) scale(' + d.s.toFixed(5) + ')';
     /* Strecke: Gemessen kostet das Neuzeichnen des Pfads je Bild mehr als alles andere. Beim
