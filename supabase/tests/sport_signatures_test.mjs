@@ -43,7 +43,8 @@ sec('A · Abdeckung');
   const minus = SG.audit(IDS.filter(x => x !== 'golf'));
   ok('A4 eine aus dem Katalog entfernte Sportart wird als verwaister Eintrag gemeldet', minus.ok === false && J(minus.orphan) === J(['golf']));
   const collapsed = IDS.filter(id => TD.normSport(id) === 'other' && id !== 'other');
-  ok('A5 Sportarten, die normSport auf „other" legt (' + collapsed.length + '), behalten ihre eigene Signatur', collapsed.length === 8 && collapsed.every(id => SG.get(id).sportId === id && SG.get(id).status !== 'fallback'), collapsed.join(','));
+  /* v8-447: bis v8-446 legte normSport acht Katalog-Sportarten auf „other"; jetzt keine mehr. */
+  ok('A5 keine Katalog-Sportart faellt in normSport auf „other" — und jede behaelt ihre eigene Signatur', collapsed.length === 0 && IDS.filter(id => id !== 'other').every(id => SG.get(id).sportId === id && SG.get(id).status !== 'fallback'), collapsed.join(','));
   ok('A6 Anzeigenamen und Schreibweisen fuehren zur richtigen Sportart; Unbekanntes und Leeres zum dokumentierten Rueckfall',
     SG.get('Laufen').sportId === 'running' && SG.get('Krafttraining').sportId === 'gym' && SG.get(' RADFAHREN ').sportId === 'cycling' && SG.get('soccer').sportId === 'football'
     && SG.get('unterwasserrugby').sportId === 'other' && SG.get(null).sportId === 'other' && SG.get('').sportId === 'other');

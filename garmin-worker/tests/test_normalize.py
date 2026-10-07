@@ -224,7 +224,12 @@ def test_sport_mapping_canonical_ids():
         "basketball": "basketball",
         "rowing": "rowing", "indoor_rowing": "rowing",
         "multi_sport": "triathlon",
-        "ice_hockey": "other", "yoga": "other", "": "other",
+        # v8-447: Katalog-Sportarten fallen nicht mehr auf "other"
+        "yoga": "yoga", "volleyball": "volleyball", "rugby": "rugby",
+        "badminton": "badminton", "golf": "golf", "hyrox": "hyrox",
+        "rock_climbing": "climbing", "bouldering": "climbing", "indoor_climbing": "climbing",
+        # wirklich Unbekanntes bleibt "other" (ice_hockey ist NICHT das Katalog-"Hockey")
+        "ice_hockey": "other", "quidditch": "other", "": "other",
     }
     for type_key, expected in cases.items():
         assert map_sport(type_key) == expected, type_key

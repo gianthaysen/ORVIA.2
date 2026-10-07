@@ -57,7 +57,7 @@ def source_type_for(metric_id: str) -> str:
 
 # ---------------------------------------------------------------------------
 # Sport-Mapping Garmin typeKey -> kanonische ORVIA sport_ids
-# (KEINE neuen Sport-IDs erfinden — Katalog aus training-domain.js)
+# (KEINE neuen Sport-IDs erfinden — Katalog: onboarding-sports-logic.js SPORT_CATALOG)
 # ---------------------------------------------------------------------------
 
 SPORT_MAP: dict[str, str] = {
@@ -84,6 +84,24 @@ SPORT_MAP: dict[str, str] = {
     "rowing": "rowing",
     "indoor_rowing": "rowing",
     "multi_sport": "triathlon",
+    # v8-447 · Katalog = 24 Sportarten (app/js/onboarding/onboarding-sports-logic.js).
+    # Die folgenden fielen bis v8-446 auf "other", obwohl ORVIA sie kennt. Aufgenommen
+    # sind nur Typen, die GENAU so heissen wie die ORVIA-Sportart, plus die drei
+    # Kletter-Typen. Ob Garmin jeden dieser Schluessel so liefert, ist am echten Abruf
+    # nicht bestaetigt (get_activity_types im Mitschnitt-Skript klaert das) — ein
+    # Schluessel, den Garmin nicht kennt, trifft schlicht nie. Der Garmin-Typ wird
+    # seit v8-447 IMMER erhalten (metrics.garmin.type_key); eine fehlende Zeile hier
+    # ist deshalb nachtraeglich korrigierbar, nichts geht verloren.
+    "yoga": "yoga",
+    "volleyball": "volleyball",
+    "rugby": "rugby",
+    "badminton": "badminton",
+    "golf": "golf",
+    "rock_climbing": "climbing",
+    "bouldering": "climbing",
+    "indoor_climbing": "climbing",
+    "hyrox": "hyrox",
+    "mobility": "mobility",
 }
 
 

@@ -501,9 +501,12 @@ const review = (rule, over) => Object.assign({
   ok('C1 Coverage == realer 24er-Onboarding-Katalog (inkl. der acht zuvor fehlenden Sportarten)',
     onboarding.length === 24 && JSON.stringify(matrixSports) === JSON.stringify(onboarding) &&
     ['volleyball', 'hockey', 'rugby', 'badminton', 'golf', 'climbing', 'yoga', 'hyrox'].every(s => !!CM.COVERAGE[s]));
-  ok('C2 Activity-Support ≠ Produktkatalog (getrennte Sichten, code-deckungsgleich)',
+  /* v8-447: seit ACTIVITY_SPORTS alle 24 Katalog-Sportarten enthaelt, ist jede auch als Aktivitaet
+     erfassbar OHNE auf 'other' zu fallen (bis v8-446: volleyball & sieben weitere = false). */
+  ok('C2 Activity-Support code-deckungsgleich mit ACTIVITY_SPORTS — und seit v8-447 gleich dem Produktkatalog',
     matrixSports.every(s => CM.COVERAGE[s].activityTrackingSupported === (TD.ACTIVITY_SPORTS.indexOf(s) >= 0)) &&
-    CM.COVERAGE.volleyball.onboardingSelectable === true && CM.COVERAGE.volleyball.activityTrackingSupported === false);
+    CM.COVERAGE.volleyball.onboardingSelectable === true && CM.COVERAGE.volleyball.activityTrackingSupported === true &&
+    matrixSports.every(s => CM.COVERAGE[s].activityTrackingSupported === true));
   ok('C3 profileSchema == reale sportFollowupSchema; positionRoleModel == POSITIONS; catalogPlanningFlag == Katalog',
     matrixSports.every(s => CM.COVERAGE[s].profileSchema === (PM.sportFollowupSchema(s) != null)) &&
     matrixSports.every(s => CM.COVERAGE[s].positionRoleModel === !!TD.POSITIONS[s]) &&

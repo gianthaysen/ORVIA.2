@@ -393,8 +393,12 @@ function activityDetailViewModel(a) {
   var id = a.clientRecordId || a.id || null;
   var sportId = a.sportId || null;
   var startedAt = a.startedAt || null;
-  var date = startedAt ? startedAt.slice(0, 10) : null;
-  var time = (startedAt && startedAt.length >= 16) ? startedAt.slice(11, 16) : (m.time || null);
+  /* v8-447: Datum und Uhrzeit als ORTSZEIT (js/activity-time.js) — nicht mehr aus dem UTC-Text
+     geschnitten (lag im Sommer zwei Stunden zu frueh, zwischen 0 und 2 Uhr am Vortag). */
+  var _AT = window.ORVIA && ORVIA.activityTime;
+  var _lp = _AT ? _AT.localParts(a) : null;
+  var date = _lp ? _lp.date : (startedAt ? startedAt.slice(0, 10) : null);
+  var time = (_lp && _lp.time) ? _lp.time : ((!_lp && startedAt && startedAt.length >= 16) ? startedAt.slice(11, 16) : (m.time || null));
   var dm = (an && typeof an.activityDetailModel === 'function') ? an.activityDetailModel(sportId, s, a.durationSeconds, m) : null;
   var vm = {
     id: id, sportId: sportId, sportLabel: cfg ? cfg.sportLabel(sportId) : sportId,
@@ -475,17 +479,26 @@ function activityDetailViewModel(a) {
       if (vm.caloriesKcal == null && rKcal != null) vm.caloriesKcal = rKcal;
       if (!vm.canonicalStreams && rec.metrics && rec.metrics.streams && typeof rec.metrics.streams === 'object') {
         vm.canonicalStreams = rec.metrics.streams;
+        vm.streamOwner = rec;   /* v8-447: die Bedeutung der Messreihen haengt am Datensatz, der sie traegt */
         vm.canonicalStreamUnits = (rec.metrics.stream_units && typeof rec.metrics.stream_units === 'object') ? rec.metrics.stream_units : null;
       }
       vm.recording = {
         id: rec.id || null, source: rec.source || null,
         startedAt: rec.startedAt || null,
-        time: (rec.startedAt && rec.startedAt.length >= 16) ? rec.startedAt.slice(11, 16) : null,
+        time: (function () { var p = _AT ? _AT.localParts(rec) : null; return p ? p.time : ((rec.startedAt && rec.startedAt.length >= 16) ? rec.startedAt.slice(11, 16) : null); })(),
         durationSeconds: rec.durationSeconds != null ? rec.durationSeconds : null,
         durationLabel: (an && rec.durationSeconds != null) ? an.fmtDurationSeconds(rec.durationSeconds) : null,
         avgHr: rAvg, maxHr: rMax, caloriesKcal: rKcal
       };
     }
+  } catch (e) {}
+  /* v8-447: Kadenz mit Bedeutung (Schritte / Umdrehungen / Zuege je Minute) aus EINER Stelle
+     (js/activity-streams.js). status 'unverified' = Altimport, dessen Wert nicht sicher die
+     Schrittfrequenz ist — die Oberflaeche zeigt dann keinen Wert. */
+  vm.cadence = null;
+  try {
+    var _AS = window.ORVIA && ORVIA.activityStreams;
+    if (_AS && vm.canonicalStreams) vm.cadence = _AS.cadence(vm.streamOwner || a);
   } catch (e) {}
   ['title', 'distanceLabel', 'paceLabel', 'elevationM', 'avgHr', 'maxHr', 'caloriesKcal'].forEach(function (k) { vm.missing[k] = (vm[k] == null || vm[k] === ''); });
   try {

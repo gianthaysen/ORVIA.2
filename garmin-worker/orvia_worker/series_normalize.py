@@ -41,6 +41,28 @@ def _downsample(seq: list, maxn: int) -> list:
     return ds
 
 
+def _sample_indices(n: int, maxn: int) -> list[int]:
+    """Indizes einer gleichmaessigen Ausduennung auf hoechstens maxn Punkte; erster und
+    letzter Punkt bleiben. EINE Indexliste fuer ALLE Messreihen einer Aktivitaet — nur so
+    gehoert Punkt i in jeder Reihe zum selben Messzeitpunkt.
+
+    v8-447 (Befund): _downsample() haengt das Ende nach einem WERT-Vergleich an
+    (`ds[-1] != seq[-1]`). Stimmt der letzte ausgeduennte Wert zufaellig mit dem echten
+    Ende ueberein (im Mitschnitt: Hoehe), fehlt dieser Reihe ein Punkt — die Reihen
+    liefen am Ende um eine Stelle auseinander. Hier entscheidet der INDEX."""
+    if n <= 0:
+        return []
+    if n <= maxn:
+        return list(range(n))
+    step = math.ceil(n / maxn)
+    idx = list(range(0, n, step))
+    if idx[-1] != n - 1:
+        idx.append(n - 1)
+    if len(idx) > maxn:
+        idx = idx[:maxn - 1] + [n - 1]
+    return idx
+
+
 def _iso_ms(s: str):
     if not isinstance(s, str) or "T" not in s:
         return None
@@ -57,7 +79,7 @@ def _iso_ms(s: str):
 # ---------------------------------------------------------------------------
 
 def parse_activity_details(raw: Any) -> dict:
-    out = {"hasRoute": False, "route": [], "streams": {}, "stream_units": {},
+    out = {"hasRoute": False, "route": [], "streams": {}, "stream_units": {}, "stream_meta": {},
            "splits": None, "hasSplits": False, "hasStreams": False}
     if not isinstance(raw, dict):
         return out
@@ -78,42 +100,80 @@ def parse_activity_details(raw: Any) -> dict:
 
     # --- Streams aus metricDescriptors + activityDetailMetrics ---
     desc = {}
+    desc_unit = {}
     for md in raw.get("metricDescriptors") or []:
         if isinstance(md, dict) and "key" in md and "metricsIndex" in md:
             desc[md["key"]] = md["metricsIndex"]
+            u = md.get("unit")
+            if isinstance(u, dict) and isinstance(u.get("key"), str):
+                desc_unit[md["key"]] = u["key"]
     rows = raw.get("activityDetailMetrics") or []
-    # kanonischer Name → (Descriptor-Key(s), Einheit)
-    STREAMS = [
-        ("heart_rate", ("directHeartRate",), "bpm"),
-        ("cadence", ("directRunCadence", "directDoubleCadence"), "spm"),
-        # v8-424: Rad — Trittfrequenz und Leistung. Schluesselnamen nach der Garmin-
-        # Detailantwort fuer Radaktivitaeten (directBikeCadence / directPower). Im Repo
-        # liegt bisher nur ein LAUF-Fixture: fehlt der Schluessel in der Antwort,
-        # entsteht schlicht keine Serie (kein Fehler, nichts erfunden).
-        ("cadence", ("directBikeCadence",), "rpm"),
-        ("power", ("directPower",), "W"),
-        ("elevation", ("directElevation", "directCorrectedElevation"), "m"),
-        ("speed", ("directSpeed",), "mps"),
-        ("distance", ("sumDistance",), "m"),
-    ]
-    for name, keys, unit in STREAMS:
-        idx = None
-        for k in keys:
-            if k in desc:
-                idx = desc[k]
-                break
+    keep = _sample_indices(len(rows), STREAM_MAX)
+
+    def column(key):
+        idx = desc.get(key)
         if idx is None:
-            continue
+            return None
         vals = []
         for r in rows:
             m = r.get("metrics") if isinstance(r, dict) else None
-            if isinstance(m, list) and idx < len(m):
-                vals.append(_num(m[idx]))
-        if name in out["streams"]:
-            continue  # erste passende Definition gewinnt (z. B. Lauf- vor Rad-Kadenz)
-        if any(v is not None for v in vals):
-            out["streams"][name] = _downsample(vals, STREAM_MAX)
-            out["stream_units"][name] = unit
+            vals.append(_num(m[idx]) if isinstance(m, list) and idx < len(m) else None)
+        return vals if any(v is not None for v in vals) else None
+
+    def emit(name, vals, unit, kind, source):
+        out["streams"][name] = [vals[i] for i in keep]
+        out["stream_units"][name] = unit
+        meta = {"kind": kind, "unit": unit, "source": source}
+        gu = desc_unit.get(source)
+        if gu:
+            meta["garmin_unit"] = gu
+        out["stream_meta"][name] = meta
+
+    # kanonischer Name → (Descriptor-Key(s), Einheit, Bedeutung)
+    SIMPLE = [
+        ("heart_rate", ("directHeartRate",), "bpm", "heart_rate_bpm"),
+        ("power", ("directPower",), "W", "power_w"),
+        ("elevation", ("directElevation", "directCorrectedElevation"), "m", "elevation_m"),
+        ("speed", ("directSpeed",), "mps", "speed_mps"),
+        ("distance", ("sumDistance",), "m", "distance_m"),
+    ]
+    for name, keys, unit, kind in SIMPLE:
+        for k in keys:
+            vals = column(k)
+            if vals is not None:
+                emit(name, vals, unit, kind, k)
+                break
+
+    # --- Kadenz: EINE Reihe, aber mit Bedeutung -------------------------------
+    # v8-447 (Befund): bis Details-Version 2 wurde fuer Laeufe `directRunCadence`
+    # gelesen und als "spm" gespeichert. Im echten Mitschnitt steht dort 80,
+    # in `directDoubleCadence` 161 und in `directFractionalCadence` 0.5 —
+    # directRunCadence ist die Frequenz EINES Beins (ganzzahlig), Fractional ihr
+    # Nachkommaanteil, Double die Schrittfrequenz beider Beine: 2 × (80 + 0.5) = 161.
+    # Reihenfolge: Schrittfrequenz, wie Garmin sie liefert (Double). Fehlt sie,
+    # wird sie aus Run + Fractional GEBILDET und als abgeleitet gekennzeichnet —
+    # nie eine pauschale Verdopplung eines Wertes unbekannter Bedeutung.
+    # Rad (directBikeCadence, rpm) ist eine andere Groesse und laeuft durch keine
+    # dieser Regeln. Der Feldname der Rad-Reihe ist weiter eine Annahme (kein
+    # Rad-Mitschnitt im Repo): fehlt er in der Antwort, entsteht keine Reihe.
+    double = column("directDoubleCadence")
+    run = column("directRunCadence")
+    bike = column("directBikeCadence")
+    if double is not None:
+        emit("cadence", double, "spm", "running_cadence_spm", "directDoubleCadence")
+    elif run is not None:
+        frac = column("directFractionalCadence")
+        vals = []
+        for i, v in enumerate(run):
+            if v is None:
+                vals.append(None)
+            else:
+                f = frac[i] if (frac is not None and i < len(frac) and frac[i] is not None) else 0.0
+                vals.append(round(2 * (v + f)))
+        emit("cadence", vals, "spm", "running_cadence_spm", "directRunCadence")
+        out["stream_meta"]["cadence"]["derived"] = "2*(directRunCadence+directFractionalCadence)"
+    elif bike is not None:
+        emit("cadence", bike, "rpm", "cycling_cadence_rpm", "directBikeCadence")
     out["hasStreams"] = bool(out["streams"])
 
     # --- Splits/Laps: in get_activity_details NICHT enthalten → keine Erfindung ---
@@ -134,6 +194,9 @@ def build_activity_metrics(existing: Any, details: dict, max_route_points: int =
     if details.get("hasStreams"):
         out["streams"] = details["streams"]
         out["stream_units"] = details.get("stream_units", {})
+        # v8-447: Bedeutung jeder Messreihe (kind / unit / Quellfeld). Wird mit den Reihen
+        # ERSETZT, nie mit einem aelteren Stand gemischt.
+        out["stream_meta"] = details.get("stream_meta", {})
     if details.get("hasSplits"):
         out["splits"] = details["splits"]
     return out

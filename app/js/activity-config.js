@@ -201,6 +201,8 @@
   function normalizeServerActivity(r) {
     r = r || {};
     var sportId = r.sport_id || 'other';
+    /* v8-447: 'other' + erhaltener Rohtyp ⇒ Katalog-Sportart (eine Stelle: activityNormalize.upgradeSport) */
+    if (AN() && typeof AN().upgradeSport === 'function') sportId = AN().upgradeSport(sportId, r.metrics);
     /* Batch 3b.1b: Summary über DIESELBE zentrale Normalisierung wie
        activityNormalize.normalizeActivityRecord (Garmin snake_case → camelCase),
        damit beide Serverpfade byte-identische kanonische Felder liefern. */

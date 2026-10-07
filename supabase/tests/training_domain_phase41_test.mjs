@@ -74,8 +74,9 @@ const run = async () => {
   ok('normSport: Gym/Krafttraining/Strength → gym', T.normSport('Gym') === 'gym' && T.normSport('Krafttraining') === 'gym' && T.normSport('Strength') === 'gym');
   ok('normSport: Laufen/run → running; Rad/Radfahren → cycling', T.normSport('Laufen') === 'running' && T.normSport('run') === 'running' && T.normSport('Rad') === 'cycling' && T.normSport('Radfahren') === 'cycling');
   // TEIL A: kein 'athletics'-Raten mehr. Unbekannt → strict null / sicher 'other'.
-  ok('normSportStrict: unbekannt → null (KEIN athletics)', T.normSportStrict('Yoga') === null && T.normSportStrict('quidditch') === null);
-  ok('normSport: unbekannt → other (NICHT athletics), null → null', T.normSport('Yoga') === 'other' && T.normSport('Quidditch') === 'other' && T.normSport(null) === null);
+  /* v8-447: Yoga ist eine Katalog-Sportart und faellt nicht mehr auf 'other' (bis v8-446 pruefte diese Zeile das Gegenteil). */
+  ok('normSportStrict: unbekannt → null (KEIN athletics); Katalog-Sportart Yoga → yoga', T.normSportStrict('Yoga') === 'yoga' && T.normSportStrict('quidditch') === null);
+  ok('normSport: unbekannt → other (NICHT athletics), null → null; Yoga → yoga', T.normSport('Yoga') === 'yoga' && T.normSport('Quidditch') === 'other' && T.normSport(null) === null);
   ok('neue kanonische IDs: Basketball/Rudern/Wandern/Gehen', T.normSport('Basketball') === 'basketball' && T.normSport('Rudern') === 'rowing' && T.normSport('Wandern') === 'hiking' && T.normSport('Gehen') === 'walking');
   ok('Padel/Paddel → padel; Leichtathletik → athletics', T.normSport('Padel') === 'padel' && T.normSport('Paddel') === 'padel' && T.normSport('Leichtathletik') === 'athletics');
   ok('KEINE Eingabe wird fälschlich zu athletics', ['Wandern', 'Rudern', 'Gehen', 'Basketball', 'Yoga', 'Quidditch'].every(v => T.normSport(v) !== 'athletics'));
