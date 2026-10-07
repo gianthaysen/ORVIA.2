@@ -1,5 +1,13 @@
 # Handoff · Garmin-Worker: Zeitachse für Aktivitäts-Streams
 
+> **Status: IMPLEMENTED in v8-447** (Worker Details-Vertrag 3) — mit einer bewussten Abweichung
+> von Schritt 1 unten: `streams.time` ist die **verstrichene** Zeit aus `directTimestamp`
+> (Ersatzquelle `sumElapsedDuration`), **nicht** `sumDuration`. Grund: `sumDuration` ist die
+> Timer-Zeit ohne Pausen; ein Bestzeit-Fenster über eine Pause hinweg würde damit schneller
+> erscheinen, als es gelaufen wurde. Die Timer-, Bewegungs- und verstrichene Dauer stehen als
+> Einzelwerte in `metrics.garmin`. Bestehende Aktivitäten erhalten die Zeitachse durch das einmalige
+> Nachladen (höchstens 10 je Sync-Lauf). Einzelheiten: `GARMIN-CAPABILITY-MATRIX.md`, Abschnitt 5.
+
 **Datum:** 2026-08-04 · **Ziel:** sekundengenaue Bestzeiten (`stream_window`) aktivieren
 
 ## Ausgangslage

@@ -187,7 +187,9 @@ def test_time_axis_is_the_real_recording_time_not_an_even_spread():
     assert t[-1] == round((ts[-1] - ts[0]) / 1000)              # Ende = echte verstrichene Zeit
     even = [round(i * t[-1] / (len(t) - 1)) for i in range(len(t))]
     assert t != even                                            # eine gleichmaessige Achse waere falsch
-    assert out["sampling"] == {"rows": len(DETAILS["activityDetailMetrics"]), "kept": len(t)}
+    assert out["sampling"] == {"rows": len(DETAILS["activityDetailMetrics"]), "kept": len(t), "total": 5527}
+    # 5527 aufgezeichnet → 1855 von Garmin geliefert → rund 270 gespeichert: jede Stufe steht da
+    assert out["sampling"]["total"] > out["sampling"]["rows"] > out["sampling"]["kept"]
 
 
 def test_time_axis_is_not_invented_when_garmin_gives_none():
@@ -227,7 +229,10 @@ def test_moving_elapsed_and_timer_duration_are_kept_apart():
     g = m["garmin"]
     assert g["type_key"] == "running" and g["start_local"] == "2026-07-12T08:30:00"   # Herkunft bleibt
     assert (g["moving_duration_s"], g["timer_duration_s"], g["elapsed_duration_s"]) == (d["moving_s"], d["timer_s"], d["elapsed_s"])
-    assert g["stream_rows"] == 1855 and g["stream_kept"] == len(out["streams"]["time"])
+    assert g["stream_rows"] == 1855 and g["stream_kept"] == len(out["streams"]["time"]) and g["stream_total"] == 5527
+    nototal = S.parse_activity_details({k: v for k, v in DETAILS.items() if k != "totalMetricsCount"})
+    assert "total" not in nototal["sampling"]                   # nicht geliefert → nicht behauptet
+    assert "stream_total" not in S.build_activity_metrics({"garmin": {"stream_total": 9}}, nototal)["garmin"]
 
 
 # ---- B5 · Zusatzabrufe ------------------------------------------------------
@@ -520,3 +525,139 @@ def test_enabled_extra_that_the_api_cannot_serve_does_not_break_the_sync(fake_db
     assert res["ok"] is True, res["errors"]
     run = next(a for a in fake_db.tables["activities"] if a["source_record_id"] == "19788811001")["metrics"]
     assert run["ext"]["extras"] == {"splits": "failed"} and "time" in run["streams"]
+
+
+# ---- B9 · Darstellungsrauschen (32-Bit-Zahlen im JSON) ------------------------
+
+import struct  # noqa: E402
+
+
+def _f32(x):
+    return struct.unpack("f", struct.pack("f", x))[0]
+
+
+def test_compact_removes_float_noise_without_changing_the_measurement():
+    """Am echten Mitschnitt: jede gespeicherte Zahl ist dieselbe 32-Bit-Messung wie in der
+    Antwort — nur kuerzer geschrieben (46.79999923706055 → 46.8)."""
+    idx = {m["key"]: m["metricsIndex"] for m in DETAILS["metricDescriptors"]}
+    out = S.parse_activity_details(DETAILS)
+    keep = S._sample_indices(len(DETAILS["activityDetailMetrics"]), S.STREAM_MAX)
+    for name, key in (("speed", "directSpeed"), ("distance", "sumDistance"), ("elevation", "directElevation"),
+                      ("heart_rate", "directHeartRate"), ("cadence", "directDoubleCadence")):
+        raw = [DETAILS["activityDetailMetrics"][i]["metrics"][idx[key]] for i in keep]
+        got = out["streams"][name]
+        assert len(raw) == len(got)
+        assert all((a is None) == (b is None) and (a is None or _f32(a) == _f32(b)) for a, b in zip(raw, got)), name
+    assert out["streams"]["elevation"][1] == 46.8 and out["streams"]["speed"][0] == 2.706
+    assert all(isinstance(v, int) for v in out["streams"]["heart_rate"] if v is not None)
+    before = len(json.dumps([DETAILS["activityDetailMetrics"][i]["metrics"][idx["directSpeed"]] for i in keep]))
+    assert len(json.dumps(out["streams"]["speed"])) < before * 0.5        # Platz: weniger als die Haelfte
+
+
+def test_compact_leaves_real_precision_alone():
+    assert S._compact([3.14159265358979, 2.71828182845905]) == [3.14159265358979, 2.71828182845905]
+    assert S._compact([1.5, None, 2.25]) == [1.5, None, 2.25]            # 2 Stellen reichen exakt
+    assert S._compact([None, None]) == [None, None] and S._compact([]) == []
+    assert S._compact([1e39, 2.0]) == [1e39, 2.0]                        # passt in keine 32-Bit-Zahl: unveraendert
+    mixed = S._compact([_f32(46.8), 3.14159265358979])                   # eine einzige echte Zahl haelt die Reihe roh
+    assert mixed[0] == _f32(46.8)
+    assert S._compact([161.0, 159.0]) == [161, 159] and S._compact([0.5, 161.0]) == [0.5, 161.0]
+
+
+def test_row_size_stays_bounded():
+    """Eine voll angereicherte Aktivitaet (Strecke, sechs Reihen, Zeitachse, Herkunft) ist mit
+    v8-447 kleiner als vorher ohne Zeitachse (≈ 25 000 Zeichen)."""
+    m = S.build_activity_metrics({}, S.parse_activity_details(DETAILS))
+    size = len(json.dumps(m, separators=(",", ":")))
+    assert size < 18000, size
+
+
+# ---- B10 · Nachladen darf nicht steckenbleiben --------------------------------
+
+def test_permanent_failures_are_parked_so_the_rest_of_the_history_still_loads():
+    """Zehn bei Garmin geloeschte Aktivitaeten am Anfang der Reihenfolge haetten das Nachladen
+    des gesamten uebrigen Bestands fuer immer blockiert (Auswahl = die ersten `limit`)."""
+    async def run():
+        db = FakeDb(); uid = "f1"
+        v2 = {"detailsFetchedAt": "2026-01-01T00:00:00+00:00", "detailsVersion": 2, "streams": {"cadence": [80, 81]}}
+        await db.insert("activities", [
+            {"user_id": uid, "source": "garmin", "source_record_id": f"gone{i}", "sport_id": "running",
+             "started_at": f"2026-09-{10 + i:02d}T06:00:00+00:00", "metrics": dict(v2, corrections={"duration": {"manual": 1, "at": "x"}})}
+            for i in range(3)] + [
+            {"user_id": uid, "source": "garmin", "source_record_id": "ok1", "sport_id": "running",
+             "started_at": "2026-08-01T06:00:00+00:00", "metrics": dict(v2)}])
+
+        def get(aid):
+            if aid.startswith("gone"):
+                raise KeyError("404")                      # dauerhaft
+            return DETAILS
+        for n in (1, 2, 3):
+            res = await detail_sync.sync_activity_details(db, uid, get, limit=3)
+            assert res["selected"] == ["gone2", "gone1", "gone0"] and res["updated"] == 0, n   # ok1 kommt nicht dran
+        rows = {r["source_record_id"]: r["metrics"] for r in await db.select("activities", {"user_id": uid})}
+        assert rows["gone0"]["detailsFailCount"] == 3 and rows["gone0"]["streams"] == {"cadence": [80, 81]}
+        assert rows["gone0"]["corrections"] == {"duration": {"manual": 1, "at": "x"}}          # nichts sonst angefasst
+        res = await detail_sync.sync_activity_details(db, uid, get, limit=3)
+        assert res["selected"] == ["ok1"] and res["updated"] == 1                              # jetzt ist der Weg frei
+        res = await detail_sync.sync_activity_details(db, uid, get, limit=3)
+        assert res["selected"] == []                                                           # zurueckgestellt, kein Dauerfeuer
+    asyncio.run(run())
+
+
+def test_parked_activity_is_retried_after_a_week_and_success_clears_the_counter():
+    from datetime import datetime, timedelta, timezone
+    old = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+    recent = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    assert detail_sync._parked({"detailsFailCount": 3, "detailsFailedAt": recent}) is True
+    assert detail_sync._parked({"detailsFailCount": 3, "detailsFailedAt": old}) is False
+    assert detail_sync._parked({"detailsFailCount": 2, "detailsFailedAt": recent}) is False
+    assert detail_sync._parked({"detailsFailCount": 9, "detailsFailedAt": "kaputt"}) is False   # lieber erneut versuchen
+    assert detail_sync._parked(None) is False and detail_sync._parked({"detailsFailCount": "x"}) is False
+
+    async def run():
+        db = FakeDb(); uid = "f2"
+        await db.insert("activities", [{"user_id": uid, "source": "garmin", "source_record_id": "P1", "sport_id": "running",
+                                        "metrics": {"detailsFailCount": 3, "detailsFailedAt": old}}])
+        res = await detail_sync.sync_activity_details(db, uid, lambda aid: DETAILS, limit=3)
+        assert res["updated"] == 1
+        m = (await db.select("activities", {"user_id": uid}))[0]["metrics"]
+        assert "detailsFailCount" not in m and "detailsFailedAt" not in m and m["detailsVersion"] == 3
+    asyncio.run(run())
+
+
+def test_rate_limit_does_not_park_anything():
+    from orvia_worker.providers.base import RateLimited
+
+    async def run():
+        db = FakeDb(); uid = "f3"
+        await db.insert("activities", [{"user_id": uid, "source": "garmin", "source_record_id": "R1", "sport_id": "running", "metrics": {}}])
+
+        def get(aid):
+            raise RateLimited("429")
+        for _ in range(5):
+            res = await detail_sync.sync_activity_details(db, uid, get, limit=3, max_retries=1)
+            assert res["failed"] == ["R1"]
+        m = (await db.select("activities", {"user_id": uid}))[0]["metrics"]
+        assert "detailsFailCount" not in m                                # voruebergehend zaehlt nicht
+        res = await detail_sync.sync_activity_details(db, uid, lambda aid: DETAILS, limit=3)
+        assert res["updated"] == 1
+    asyncio.run(run())
+
+
+def test_provenance_completes_blocks_that_the_detail_reload_created_first():
+    """Zeile ausserhalb des Sync-Fensters: erst laedt das Nachladen Details (legt garmin/ext an),
+    spaeter traegt der weite Rueckblick den Listeneintrag nach — beides muss zusammenfinden."""
+    async def run():
+        db = FakeDb(); uid = "p5"
+        await db.insert("activities", [{
+            "user_id": uid, "source": "garmin", "source_record_id": "4711", "sport_id": "running",
+            "metrics": {"garmin": {"moving_duration_s": 5509.0, "stream_rows": 1855},
+                        "ext": {"v": 1, "series": {"directGroundContactTime": {"values": [245]}}}}}])
+        res = await detail_sync.patch_provenance(db, uid, [normalize.normalize_activity(_entry(hasPolyline=True))])
+        assert res["patched"] == 1
+        m = (await db.select("activities", {"user_id": uid}))[0]["metrics"]
+        assert m["garmin"]["moving_duration_s"] == 5509.0 and m["garmin"]["type_key"] == "running" and m["garmin"]["utc_offset_s"] == 7200
+        assert m["ext"]["series"] == {"directGroundContactTime": {"values": [245]}}             # Details bleiben
+        assert m["ext"]["fields"]["movingDuration"] == 3301.0 and m["ext"]["unrecognized"] == ["hasPolyline"]   # Liste ergaenzt
+        assert (await detail_sync.patch_provenance(db, uid, [normalize.normalize_activity(_entry(hasPolyline=True))]))["patched"] == 0
+    asyncio.run(run())

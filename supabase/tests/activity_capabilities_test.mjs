@@ -57,7 +57,7 @@ sec('B · Gruppen entstehen nur aus gelieferten Feldern');
   ok('B6 Laufdynamik: Kennwerte + Reihen', c.groups.running_dynamics.available && c.groups.running_dynamics.values.avgGroundContactTime === 248 && J(c.groups.running_dynamics.series) === J(['directGroundContactTime']));
   ok('B7 nichts erfunden: keine Leistung, keine Runden, kein Schwimmen, keine Kraft', !c.groups.power.available && !c.groups.power_summary.available && !c.groups.laps.available && !c.groups.swim.available && !c.groups.strength.available && !c.groups.power_zones.available);
   ok('B8 Luecken-Liste nennt genau das fuer die Sportart Erwartbare, das fehlt', J(c.missing) === J(['laps']), J(c.missing));
-  ok('B9 Garmin-Typ, Abtastung, Rohblock-Bericht', c.garminType === 'trail_running' && J(c.sampling) === J({ rows: 1855, kept: 6 }) && c.raw.fields === 8 && c.raw.series === 1 && J(c.raw.unrecognized) === J(['hasPolyline', 'pr']));
+  ok('B9 Garmin-Typ, Abtastung, Rohblock-Bericht', c.garminType === 'trail_running' && J(c.sampling) === J({ rows: 1855, kept: 6, total: null }) && c.raw.fields === 8 && c.raw.series === 1 && J(c.raw.unrecognized) === J(['hasPolyline', 'pr']));
 
   const ride = CAP.of({ sportId: 'cycling', source: 'garmin', metrics: { detailsVersion: 3,
     streams: { time: T, power: [200, 210, 220, 215, 205, 190], cadence: [90, 92, 93, 91, 92, 94] }, stream_meta: { cadence: { kind: 'cycling_cadence_rpm', unit: 'rpm' } },
@@ -123,6 +123,21 @@ sec('E · Gleichstand mit dem Worker');
     ok('E2 jeder hier benutzte Reihenname steht in SERIES_KNOWN (' + usedS.length + ')', seriesKnown.size >= 15 && usedS.every(k => seriesKnown.has(k)), J(usedS.filter(k => !seriesKnown.has(k))));
     const ver = /DETAILS_CONTRACT_VERSION = (\d+)/.exec(fs.readFileSync(dsPath, 'utf8'));
     ok('E3 Details-Version gleich der des Workers', ver && Number(ver[1]) === CAP.DETAILS_VERSION_CURRENT, ver && ver[1]);
+  }
+  {
+    const npPath = new URL(_ROOT + 'garmin-worker/orvia_worker/normalize.py', import.meta.url);
+    if (_exApp(npPath)) {
+      const np = fs.readFileSync(npPath, 'utf8');
+      const a = np.indexOf('SPORT_MAP: dict[str, str] = {'), b = np.indexOf('\n}\n', a);
+      const pairs = [...np.slice(a, b).matchAll(/^\s*"([a-z0-9_]+)":\s*"([a-z_]+)",/gm)].map(m => [m[1], m[2]]);
+      await imp('js/training-domain.js');
+      const TD = globalThis.ORVIA.trainingDomain || (await imp('js/training-domain.js'));
+      const cat = (TD.ACTIVITY_SPORTS || []).map(x => (x && x.id) || x);
+      const targets = new Set(pairs.map(p => p[1]));
+      const unreached = cat.filter(x => !targets.has(x)).sort();
+      ok('E5 Garmin-Typen des Workers zeigen nur auf Katalog-Sportarten (' + pairs.length + ' Typen → ' + targets.size + ' Sportarten)', pairs.length >= 50 && cat.length === 24 && [...targets].every(t => cat.includes(t) && t !== 'other'), J([...targets].filter(t => !cat.includes(t))));
+      ok('E6 ohne eigenen Garmin-Typ sind genau: athletics, other', J(unreached) === J(['athletics', 'other']), J(unreached));
+    }
   }
   ok('E4 Erwartungsliste nur fuer Katalog-Sportarten und nur bekannte Gruppen', (() => {
     const T2 = fs.readFileSync(new URL(_APPREL + 'js/training-domain.js', import.meta.url), 'utf8');

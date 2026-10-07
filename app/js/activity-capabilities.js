@@ -155,7 +155,8 @@
       garminType: (typeof g.type_key === 'string' && g.type_key) ? g.type_key : null,
       detailsVersion: num(m.detailsVersion),
       extLoaded: !!ext,
-      sampling: (num(g.stream_rows) !== null) ? { rows: g.stream_rows, kept: num(g.stream_kept) } : null,
+      /* aufgezeichnet (total) → von Garmin geliefert (rows) → gespeichert (kept) */
+      sampling: (num(g.stream_rows) !== null) ? { rows: g.stream_rows, kept: num(g.stream_kept), total: num(g.stream_total) } : null,
       groups: groups,
       expected: expected.slice(),
       missing: missing,

@@ -103,6 +103,30 @@ SPORT_MAP: dict[str, str] = {
     "indoor_climbing": "climbing",
     "hyrox": "hyrox",
     "mobility": "mobility",
+    # v8-447 (D) · Untertypen der vorhandenen Sportarten. Bis hierher fiel z. B. ein auf der
+    # Bahn aufgezeichneter Lauf auf "other", weil nur drei Lauf-Typen eingetragen waren.
+    # Namen nach Garmins Typliste — NICHT am Abruf belegt (im Repo liegt kein echter
+    # Listeneintrag). Ein falscher Name trifft nie; ein fehlender zeigt sich im
+    # Feldzensus als Zeile "typ | other | <schluessel>".
+    "track_running": "running",
+    "street_running": "running",
+    "indoor_running": "running",
+    "virtual_run": "running",
+    "ultra_run": "running",
+    "obstacle_run": "running",
+    "cyclocross": "cycling",
+    "track_cycling": "cycling",
+    "recumbent_cycling": "cycling",
+    "downhill_biking": "cycling",
+    "bmx": "cycling",
+    "e_bike_fitness": "cycling",
+    "e_bike_mountain": "cycling",
+    "casual_walking": "walking",
+    "speed_walking": "walking",
+    "field_hockey": "hockey",
+    "tennis_v2": "tennis",
+    "rowing_v2": "rowing",
+    "triathlon": "triathlon",
 }
 
 

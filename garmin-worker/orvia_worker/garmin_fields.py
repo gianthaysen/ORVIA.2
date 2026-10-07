@@ -456,6 +456,92 @@ def series_plan(keys: Any) -> dict:
     return {"keep": keep, "unparsed": unparsed[:NAMES_MAX]}
 
 
+# --- Kanonische Felder: was an einen FESTEN Platz der Zeile kommt --------------
+# Quelle der Faehigkeits-Matrix (docs/GARMIN-CAPABILITY-MATRIX.md, Teil A). Jede Zeile
+# beschreibt, was der Code tut — nicht, was wuenschenswert waere. Ein Test haelt die
+# Rohnamen mit dem Parser gleich.
+#   ep        list = get_activities_by_date · details = get_activity_details
+#   shown     wird in der App angezeigt / benutzt
+#   lossy     geht beim Import etwas verloren (und was)
+#   ready     taugt als Grundlage fuer Highlights / Bestwerte
+def _c(field, sports, ep, raw, evidence, stored, shown, shape, unit, norm, lossy, ready, note=None):
+    return {"field": field, "sports": sports, "ep": ep, "raw": raw, "evidence": evidence, "stored": stored,
+            "shown": shown, "shape": shape, "unit": unit, "norm": norm, "lossy": lossy, "ready": ready, "note": note}
+
+
+CANONICAL: list[dict] = [
+    # ---- Listeneintrag ---------------------------------------------------------
+    _c("Start (UTC)", ALL, "list", "startTimeGMT", "library", "activities.started_at", "ja", "summary", "UTC",
+       "keine", "nein", "ja"),
+    _c("Start (Ortszeit)", ALL, "list", "startTimeLocal", "library", "metrics.garmin.start_local", "ja", "summary",
+       "Wandzeit", "keine", "nein", "ja", "neu in v8-447; bis v8-446 verworfen"),
+    _c("UTC-Versatz", ALL, "list", "startTimeLocal − startTimeGMT", "library", "metrics.garmin.utc_offset_s", "nein",
+       "summary", "s", "Differenz der zwei gelieferten Zeiten", "nein", "ja", "nur in Viertelstunden, sonst kein Wert"),
+    _c("Sportart", ALL, "list", "activityType.typeKey", "library", "activities.sport_id", "ja", "summary", "enum",
+       "SPORT_MAP (viele → eine)", "ja: Untertyp", "ja"),
+    _c("Garmin-Typ", ALL, "list", "activityType.typeKey", "library", "metrics.garmin.type_key", "nein", "summary",
+       "enum", "Kleinschreibung", "nein", "ja", "neu in v8-447: Bahn / Freiwasser, Trail / Laufband, Rolle / Strasse"),
+    _c("Garmin-Obertyp", ALL, "list", "activityType.parentTypeId", "library", "metrics.garmin.parent_type_id", "nein",
+       "summary", "enum-Nr.", "keine", "nein", "nein"),
+    _c("Dauer (Timer)", ALL, "list", "duration", "library", "activities.duration_seconds", "ja", "summary", "s",
+       "auf ganze Sekunden gerundet", "ja: < 1 s", "ja", "Rohwert zusaetzlich in metrics.ext.fields.duration"),
+    _c("Distanz", ALL, "list", "distance", "library", "summary.distance_m", "ja", "summary", "m", "keine", "nein", "ja"),
+    _c("Ø Herzfrequenz", ALL, "list", "averageHR", "library", "summary.avg_hr", "ja", "summary", "bpm", "keine", "nein", "ja"),
+    _c("Max. Herzfrequenz", ALL, "list", "maxHR", "library", "summary.max_hr", "ja", "summary", "bpm", "keine", "nein", "ja"),
+    _c("Kalorien", ALL, "list", "calories", "library", "summary.calories_kcal", "ja", "summary", "kcal", "keine", "nein", "nein"),
+    _c("Hoehenmeter", ALL, "list", "elevationGain", "library", "summary.elevation_gain_m", "ja", "summary", "m", "keine", "nein", "ja"),
+    _c("Ø Geschwindigkeit", ALL, "list", "averageSpeed", "library", "summary.avg_speed_mps", "ja", "summary", "m/s", "keine", "nein", "ja"),
+    _c("Ø Leistung", ("cycling", "running"), "list", "avgPower", "library", "summary.avg_power_w", "ja", "summary", "W", "keine", "nein", "nach Mitschnitt"),
+    _c("Max. Leistung", ("cycling", "running"), "list", "maxPower", "library", "summary.max_power_w", "ja", "summary", "W", "keine", "nein", "nach Mitschnitt"),
+    _c("Normalisierte Leistung", ("cycling", "running"), "list", "normPower", "library", "summary.norm_power_w", "ja", "summary", "W", "keine", "nein", "nach Mitschnitt"),
+    _c("Trainingsbelastung", ALL, "list", "activityTrainingLoad", "library", "metrics.training_load", "ja", "summary",
+       "Garmin-Last", "keine", "nein", "nein"),
+    _c("Titel", ALL, "list", "activityName", "library", "summary.name", "ja", "summary", "Text", "keine", "nein", "nein",
+       "frei geschriebener Text des Nutzers — bleibt in summary, nie im Rohblock"),
+    # ---- Detailantwort: Messreihen ---------------------------------------------
+    _c("Zeitachse", ALL, "details", "directTimestamp", "fixture", "metrics.streams.time", "indirekt (Bestzeiten)", "series",
+       "s seit Beginn", "ms GMT → Sekunden seit der ersten Zeile", "ja: Ausduennung", "ja",
+       "neu in v8-447; Ersatzquelle sumElapsedDuration; nur lueckenlos und monoton"),
+    _c("Herzfrequenz", ALL, "details", "directHeartRate", "fixture", "metrics.streams.heart_rate", "ja", "series", "bpm",
+       "keine", "ja: Ausduennung", "ja"),
+    _c("Geschwindigkeit", ALL, "details", "directSpeed", "fixture", "metrics.streams.speed", "ja", "series", "m/s",
+       "keine", "ja: Ausduennung", "ja"),
+    _c("Distanz (kumulativ)", ALL, "details", "sumDistance", "fixture", "metrics.streams.distance", "indirekt (Bestzeiten)",
+       "series", "m", "keine", "ja: Ausduennung", "ja"),
+    _c("Hoehe", ALL, "details", "directElevation | directCorrectedElevation", "fixture", "metrics.streams.elevation", "ja",
+       "series", "m", "keine", "ja: Ausduennung", "ja"),
+    _c("Schrittfrequenz", ("running",), "details", "directDoubleCadence", "fixture", "metrics.streams.cadence", "ja",
+       "series", "spm", "keine (kind running_cadence_spm)", "ja: Ausduennung", "ja",
+       "bis v8-446 wurde directRunCadence (ein Bein) gelesen — halber Wert"),
+    _c("Schrittfrequenz (Ersatz)", ("running",), "details", "directRunCadence + directFractionalCadence", "fixture",
+       "metrics.streams.cadence", "ja", "series", "spm", "2 × (Run + Fractional), markiert als derived",
+       "ja: Ausduennung", "ja", "nur wenn directDoubleCadence fehlt"),
+    _c("Trittfrequenz", ("cycling",), "details", "directBikeCadence", "assumed", "metrics.streams.cadence", "ja", "series",
+       "rpm", "keine (kind cycling_cadence_rpm)", "ja: Ausduennung", "nach Mitschnitt", "Name unbelegt — kein Rad-Mitschnitt"),
+    _c("Leistung", ("cycling", "running"), "details", "directPower", "assumed", "metrics.streams.power", "ja", "series", "W",
+       "keine", "ja: Ausduennung", "nach Mitschnitt", "Name unbelegt; fuer 1–15-s-Bestwerte reicht die Aufloesung nicht"),
+    _c("Strecke", ALL, "details", "geoPolylineDTO.polyline[].lat/lon", "fixture", "metrics.route", "ja", "series", "Grad",
+       "auf hoechstens 600 Punkte reduziert", "ja: Zeit, Hoehe und Tempo je Punkt", "ja"),
+    # ---- Detailantwort: Summen der Aufzeichnung --------------------------------
+    _c("Bewegungszeit", ALL, "details", "sumMovingDuration (letzte Zeile)", "fixture", "metrics.garmin.moving_duration_s",
+       "nein", "summary", "s", "auf 0,1 s gerundet", "nein", "ja", "neu in v8-447; Listenfeld movingDuration zusaetzlich im Rohblock"),
+    _c("Verstrichene Zeit", ALL, "details", "sumElapsedDuration (letzte Zeile)", "fixture", "metrics.garmin.elapsed_duration_s",
+       "nein", "summary", "s", "auf 0,1 s gerundet", "nein", "ja", "neu in v8-447"),
+    _c("Timer-Zeit", ALL, "details", "sumDuration (letzte Zeile)", "fixture", "metrics.garmin.timer_duration_s", "nein",
+       "summary", "s", "auf 0,1 s gerundet", "nein", "ja", "neu in v8-447"),
+    _c("Abtastung", ALL, "details", "totalMetricsCount / Zeilenzahl", "fixture",
+       "metrics.garmin.stream_total / stream_rows / stream_kept", "nein", "summary", "Anzahl", "keine", "nein", "nein",
+       "aufgezeichnet → von Garmin geliefert → gespeichert"),
+]
+
+# Welche Reihen der Detailantwort die kanonischen Messreihen speisen (Gleichstand mit dem Parser).
+CANONICAL_SERIES_KEYS = frozenset((
+    "directTimestamp", "directHeartRate", "directSpeed", "sumDistance", "directElevation",
+    "directCorrectedElevation", "directDoubleCadence", "directRunCadence", "directFractionalCadence",
+    "directBikeCadence", "directPower", "sumMovingDuration", "sumElapsedDuration", "sumDuration",
+))
+
+
 # --- Zusatzabrufe (Runden, Zonen, Saetze): Struktur erhalten -------------------
 
 LIST_MAX = 400

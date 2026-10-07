@@ -40,9 +40,13 @@ def backfill_activity_details(
     selected = select_activities_needing_details(candidate_ids, already_detailed, limit)
     details: dict[str, Any] = {}
     failed: list[str] = []
+    # v8-447: voruebergehende Fehler (Rate-Limit, Dienst nicht erreichbar) getrennt melden —
+    # nur ein DAUERHAFTER Fehler darf eine Aktivitaet beim Nachladen zurueckstellen.
+    failed_transient: list[str] = []
     for aid in selected:
         raw = None
         attempt = 0
+        transient = False
         while True:
             try:
                 raw = fetch_details(aid)
@@ -51,6 +55,7 @@ def backfill_activity_details(
                 attempt += 1
                 if attempt > max_retries:
                     raw = None
+                    transient = True
                     break
                 if on_rate_limit is not None:
                     on_rate_limit(attempt)
@@ -61,6 +66,8 @@ def backfill_activity_details(
                 break
         if raw is None:
             failed.append(aid)
+            if transient:
+                failed_transient.append(aid)
             continue
         details[aid] = parse_activity_details(raw)
-    return {"selected": selected, "details": details, "failed": failed}
+    return {"selected": selected, "details": details, "failed": failed, "failed_transient": failed_transient}

@@ -100,9 +100,41 @@ def _neg_ts(started_at: Any) -> float:
         return float("inf")
 
 
+# v8-447 · Dauerhaft fehlschlagende Aktivitaeten (bei Garmin geloescht, Antwort unlesbar)
+# duerfen das Nachladen nicht blockieren: die Auswahl nimmt je Lauf die ersten `limit`
+# Kandidaten — zehn Dauerfehler am Anfang haetten den ganzen uebrigen Bestand fuer immer
+# ausgesperrt. Nach DETAIL_FAIL_MAX dauerhaften Fehlern wird eine Aktivitaet zurueckgestellt
+# und nur noch alle DETAIL_FAIL_RETRY_DAYS Tage erneut versucht. Voruebergehende Fehler
+# (Rate-Limit, Dienst nicht erreichbar) zaehlen NICHT. Ein Erfolg loescht den Zaehler.
+DETAIL_FAIL_MAX = 3
+DETAIL_FAIL_RETRY_DAYS = 7
+
+
+def _parked(metrics: Any, now: datetime | None = None) -> bool:
+    """True, wenn die Aktivitaet wegen wiederholter Dauerfehler gerade zurueckgestellt ist."""
+    if not isinstance(metrics, dict):
+        return False
+    try:
+        n = int(metrics.get("detailsFailCount") or 0)
+    except (TypeError, ValueError):
+        return False
+    if n < DETAIL_FAIL_MAX:
+        return False
+    try:
+        at = datetime.fromisoformat(str(metrics.get("detailsFailedAt")).replace("Z", "+00:00"))
+        if at.tzinfo is None:
+            at = at.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return False                       # ohne lesbaren Zeitpunkt lieber erneut versuchen
+    now = now or datetime.now(timezone.utc)
+    return (now - at).total_seconds() < DETAIL_FAIL_RETRY_DAYS * 86400
+
+
 def _needs_details(act: Any) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
+    if _parked(metrics):
+        return False
     if not _details_complete(metrics):
         return True
     try:
@@ -214,16 +246,20 @@ async def patch_provenance(db, user_id: str, acts: Any) -> dict:
             cur = row.get("metrics") if isinstance(row.get("metrics"), dict) else {}
             patch: dict[str, Any] = {}
             merged = dict(cur)
+            # Das Nachladen der Details kann beide Bloecke schon angelegt haben (garmin: Dauern,
+            # Abtastung · ext: Zusatzreihen), bevor der Listeneintrag sie fuellt. Deshalb je
+            # Block: fehlt er, wird er uebernommen; ist er da, werden nur die FEHLENDEN
+            # Schluessel ergaenzt. Ein vorhandener Wert wird nie ersetzt.
             for k in _PROVENANCE_KEYS:
-                if k in am and k not in cur:
+                if not isinstance(am.get(k), dict):
+                    continue
+                if isinstance(cur.get(k), dict):
+                    block = dict(cur[k])
+                    for kk, vv in am[k].items():
+                        block.setdefault(kk, vv)
+                    merged[k] = block
+                elif k not in cur:
                     merged[k] = am[k]
-            # Details koennen den Herkunftsblock schon angelegt haben (Dauern, Abtastung),
-            # bevor der Listeneintrag ihn fuellt: dann nur die fehlenden Schluessel ergaenzen.
-            if isinstance(cur.get("garmin"), dict):
-                g = dict(cur["garmin"])
-                for k, v in am["garmin"].items():
-                    g.setdefault(k, v)
-                merged["garmin"] = g
             if merged != cur:
                 patch["metrics"] = merged
             new_sport = getattr(act, "sport_id", None)
@@ -276,6 +312,8 @@ async def sync_activity_details(
         # gemergten Abruf setzen — nie bei einem Fehlschlag (siehe `failed`).
         merged["detailsFetchedAt"] = datetime.now(timezone.utc).isoformat()
         merged["detailsVersion"] = DETAILS_CONTRACT_VERSION
+        merged.pop("detailsFailCount", None)        # Erfolg: Fehlerzaehler weg
+        merged.pop("detailsFailedAt", None)
         # v8-447 · Zusatzabrufe (nur wenn eingeschaltet). Jeder fuer sich abgesichert: ein
         # Fehler markiert genau diesen Abruf als "failed" und bricht nichts ab.
         if get_extra is not None:
@@ -311,6 +349,27 @@ async def sync_activity_details(
             {"metrics": merged},
         )
         updated += 1
+    # Dauerfehler vermerken (nur Zaehler + Zeitpunkt; alle uebrigen Felder der Zeile bleiben,
+    # frisch gelesen — der Client kann inzwischen geschrieben haben).
+    transient = set(plan.get("failed_transient") or ())
+    for aid in plan["failed"]:
+        if aid in transient:
+            continue
+        try:
+            flt = {"user_id": user_id, "source": "garmin", "source_record_id": aid}
+            fresh = await db.select("activities", flt)
+            if not fresh:
+                continue
+            fm = dict(fresh[0].get("metrics")) if isinstance(fresh[0].get("metrics"), dict) else {}
+            try:
+                n = int(fm.get("detailsFailCount") or 0)
+            except (TypeError, ValueError):
+                n = 0
+            fm["detailsFailCount"] = n + 1
+            fm["detailsFailedAt"] = datetime.now(timezone.utc).isoformat()
+            await db.update("activities", flt, {"metrics": fm})
+        except Exception:  # noqa: BLE001 — Buchfuehrung darf den Sync nie abbrechen
+            continue
     return {"selected": plan["selected"], "updated": updated, "failed": plan["failed"], "extras": extras_count}
 
 

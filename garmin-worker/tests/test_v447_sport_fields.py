@@ -167,3 +167,35 @@ def test_known_tables_are_consistent():
     # kein bekanntes Feld wird vom Privatschutz verschluckt
     assert [k for k in keys if GF._is_private(k, 1.0)] == []
     assert [k for k in GF.SERIES_KNOWN_BY_KEY if GF._is_private(k)] == []
+
+
+# ---- C5 · Sportarten-Zuordnung (Garmin-Typ → Katalog) ------------------------
+
+import re  # noqa: E402
+
+CATALOG_24 = {"gym", "running", "cycling", "swimming", "triathlon", "football", "handball", "padel", "tennis",
+              "athletics", "basketball", "rowing", "hiking", "walking", "mobility", "other", "volleyball", "hockey",
+              "rugby", "badminton", "golf", "climbing", "yoga", "hyrox"}
+# (Gleichstand dieser Liste mit der App: supabase/tests/activity_capabilities_test.mjs, E5.)
+# Katalog-Sportarten OHNE eigenen Garmin-Typ — bewusst: Leichtathletik zeichnet Garmin als
+# Lauf auf (track_running → running); "other" ist der Rueckfall selbst.
+NO_GARMIN_TYPE = {"athletics", "other"}
+
+
+def test_every_garmin_type_maps_into_the_catalog_and_every_sport_is_reachable():
+    assert set(normalize.SPORT_MAP.values()) <= CATALOG_24 - {"other"}
+    reachable = set(normalize.SPORT_MAP.values())
+    assert CATALOG_24 - reachable == NO_GARMIN_TYPE                  # 22 von 24 haben mindestens einen Garmin-Typ
+    assert all(k == k.strip().lower() and re.fullmatch(r"[a-z0-9_]+", k) for k in normalize.SPORT_MAP)
+
+
+def test_subtypes_no_longer_fall_to_other_and_keep_their_garmin_type():
+    for key, sport in (("track_running", "running"), ("street_running", "running"), ("virtual_run", "running"),
+                       ("cyclocross", "cycling"), ("e_bike_mountain", "cycling"), ("speed_walking", "walking"),
+                       ("field_hockey", "hockey"), ("tennis_v2", "tennis"), ("TRACK_RUNNING ", "running")):
+        act = normalize.normalize_activity({"activityId": 1, "activityType": {"typeKey": key}, "startTimeGMT": "2026-07-12 06:30:00"})
+        assert act.sport_id == sport, key
+        assert act.metrics["garmin"]["type_key"] == key.strip().lower()   # der Untertyp bleibt lesbar
+    for key in ("ice_hockey", "american_football", "hiit", "pilates", "quidditch"):
+        act = normalize.normalize_activity({"activityId": 1, "activityType": {"typeKey": key}, "startTimeGMT": "2026-07-12 06:30:00"})
+        assert act.sport_id == "other" and act.metrics["source_sport_raw"] == key and act.metrics["garmin"]["type_key"] == key

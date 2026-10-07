@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime
 import math
+import struct
 from typing import Any
 
 from .activity_details import reduce_route
@@ -39,6 +40,39 @@ def _downsample(seq: list, maxn: int) -> list:
     if len(ds) > maxn:
         ds = ds[:maxn - 1] + [seq[-1]]
     return ds
+
+
+def _f32(x: float) -> float:
+    return struct.unpack("f", struct.pack("f", x))[0]
+
+
+def _compact(vals: list) -> list:
+    """v8-447 · Darstellungsrauschen entfernen, ohne Messinformation zu verlieren.
+
+    Garmin liefert die Messwerte als 32-Bit-Gleitkommazahlen; im JSON stehen sie auf
+    64 Bit aufgeblaeht (46.8 → 46.79999923706055, 2.706 → 2.7060000896453857). Das sind
+    keine zusaetzlichen Nachkommastellen, nur die Darstellung derselben 32-Bit-Zahl — sie
+    machten aber rund ein Drittel der gespeicherten Zeile aus (der lokale Speicher der App
+    lag bei 160 Aktivitaeten bei etwa 4 MB).
+
+    Regel: gesucht wird die kleinste Stellenzahl d (0…3), bei der JEDER Wert der Reihe,
+    auf d Stellen gerundet, wieder exakt dieselbe 32-Bit-Zahl ergibt. Nur dann wird
+    gerundet — die gespeicherte Zahl ist dann dieselbe Messung, kuerzer geschrieben.
+    Trifft das fuer keine Stellenzahl zu (echte 64-Bit-Werte), bleibt die Reihe unveraendert.
+    """
+    nn = [v for v in vals if v is not None]
+    if not nn:
+        return vals
+    for d in (0, 1, 2, 3):
+        try:
+            same = all(_f32(round(v, d)) == _f32(v) for v in nn)
+        except (OverflowError, struct.error):
+            same = False
+        if same:
+            if d == 0:
+                return [None if v is None else int(round(v)) for v in vals]
+            return [None if v is None else round(v, d) for v in vals]
+    return vals
 
 
 def _sample_indices(n: int, maxn: int) -> list[int]:
@@ -122,7 +156,7 @@ def parse_activity_details(raw: Any) -> dict:
         return vals if any(v is not None for v in vals) else None
 
     def emit(name, vals, unit, kind, source):
-        out["streams"][name] = [vals[i] for i in keep]
+        out["streams"][name] = _compact([vals[i] for i in keep])
         out["stream_units"][name] = unit
         meta = {"kind": kind, "unit": unit, "source": source}
         gu = desc_unit.get(source)
@@ -220,6 +254,12 @@ def parse_activity_details(raw: Any) -> dict:
             out["durations"][name] = v
     if rows:
         out["sampling"] = {"rows": len(rows), "kept": len(keep)}
+        # Garmin duennt selbst aus: die Antwort nennt, wie viele Messzeilen die Aufzeichnung
+        # insgesamt hat (totalMetricsCount) — im echten Mitschnitt 5527 aufgezeichnet,
+        # 1855 geliefert. Der Wert wird nur uebernommen, nie geschaetzt.
+        total = raw.get("totalMetricsCount")
+        if isinstance(total, int) and not isinstance(total, bool) and total >= len(rows):
+            out["sampling"]["total"] = total
 
     # --- Zusatzreihen je Sportart (v8-447, Commit C) ----------------------------
     # Was Garmin ueber die kanonischen Reihen hinaus liefert (Laufdynamik, Pedalwerte,
@@ -232,7 +272,7 @@ def parse_activity_details(raw: Any) -> dict:
         vals = column(key)
         if vals is None:
             continue
-        entry = {"values": [vals[i] for i in keep]}
+        entry = {"values": _compact([vals[i] for i in keep])}
         gu = desc_unit.get(key)
         if gu:
             entry["garmin_unit"] = gu
@@ -275,6 +315,10 @@ def build_activity_metrics(existing: Any, details: dict, max_route_points: int =
         if smp:
             g["stream_rows"] = smp.get("rows")
             g["stream_kept"] = smp.get("kept")
+            if smp.get("total") is not None:
+                g["stream_total"] = smp["total"]
+            else:
+                g.pop("stream_total", None)
         out["garmin"] = g
     # v8-447 (C): Zusatzreihen und der Namensbericht gehoeren in den grossen Block metrics.ext
     # (nur Server). Mit jedem Nachladen ERSETZT — wie die kanonischen Reihen.

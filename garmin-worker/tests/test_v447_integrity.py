@@ -110,7 +110,12 @@ def test_streams_stay_index_aligned():
     assert keep[0] == 0 and keep[-1] == n - 1 and len(keep) <= S.STREAM_MAX and keep == sorted(set(keep))
     for name, key in (("heart_rate", "directHeartRate"), ("elevation", "directElevation"), ("distance", "sumDistance"), ("cadence", "directDoubleCadence")):
         col = _col(DETAILS, key)
-        assert out["streams"][name] == [col[i] for i in keep], name      # Punkt i = Messzeile keep[i], in jeder Reihe
+        # Punkt i = Messzeile keep[i], in jeder Reihe. Verglichen wird die 32-Bit-Messung
+        # (46.79999923706055 wird als 46.8 gespeichert — dieselbe Zahl, siehe _compact).
+        want = [col[i] for i in keep]
+        got = out["streams"][name]
+        assert len(got) == len(want), name
+        assert all((a is None) == (b is None) and (a is None or S._f32(a) == S._f32(b)) for a, b in zip(want, got)), name
 
 
 def test_sample_indices_edges():
