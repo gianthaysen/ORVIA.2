@@ -77,20 +77,20 @@
     rowing: entry({ activityTrackingSupported: true }),
     triathlon: entry({ activityTrackingSupported: true, profileSchema: true }),
     athletics: entry({ activityTrackingSupported: true }),
-    volleyball: entry({}),
-    hockey: entry({}),
-    rugby: entry({}),
-    badminton: entry({}),
-    golf: entry({}),
+    volleyball: entry({ activityTrackingSupported: true }),
+    hockey: entry({ activityTrackingSupported: true }),
+    rugby: entry({ activityTrackingSupported: true }),
+    badminton: entry({ activityTrackingSupported: true }),
+    golf: entry({ activityTrackingSupported: true }),
     hiking: entry({ activityTrackingSupported: true }),
     walking: entry({ activityTrackingSupported: true }),
-    climbing: entry({}),
-    yoga: entry({}),
+    climbing: entry({ activityTrackingSupported: true }),
+    yoga: entry({ activityTrackingSupported: true }),
     /* mobility ist auswählbarer Produkteintrag UND fachlich als MODALITÄT
        klassifiziert (ergänzende Bewegungsform, kein eigenständiger
        Wettkampfsport im Zielmodell). */
     mobility: entry({ activityTrackingSupported: true, modalityClassification: true }),
-    hyrox: entry({}),
+    hyrox: entry({ activityTrackingSupported: true }),
     other: entry({ activityTrackingSupported: true, catalogPlanningFlag: false })
   };
 

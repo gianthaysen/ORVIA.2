@@ -556,6 +556,24 @@
      Insights). Idempotent über (source, source_record_id); Tombstones gewinnen
      (gelöschte tauchen nicht wieder auf); LOKALE pending-Datensätze werden nie
      überschrieben (Outbox-Vorrang). Rückgabe: {merged, updated, skipped}. */
+  /* v8-447 · Schluessel in metrics, die NUR auf dem Server liegen und nie in den lokalen
+     Speicher wandern. `ext` ist der grosse Garmin-Rohblock (Felder unter Garmin-Namen,
+     Runden, Zonen, Saetze). Der lokale Speicher liegt bei rund 160 Aktivitaeten schon bei
+     etwa 4 MB; laeuft er voll, schlaegt writeAll still fehl und ALLE lokalen Aenderungen
+     gehen verloren. Gelesen wird `ext` aus der Serverliste (activity.js, _serverActivities).
+     Kein Datenverlust: Garmin-Zeilen werden nur ueber updateFields mit den clientgefuehrten
+     Schluesseln zurueckgeschrieben (activity-sync OWNED_METRIC_KEYS) — der Serverstand von
+     `ext` bleibt dabei unberuehrt. */
+  var SERVER_ONLY_METRIC_KEYS = ['ext'];
+  function dropServerOnly(m) {
+    if (!m || typeof m !== 'object') return m;
+    var hit = false, i;
+    for (i = 0; i < SERVER_ONLY_METRIC_KEYS.length; i++) if (Object.prototype.hasOwnProperty.call(m, SERVER_ONLY_METRIC_KEYS[i])) hit = true;
+    if (!hit) return m;
+    var out = {};
+    Object.keys(m).forEach(function (k) { if (SERVER_ONLY_METRIC_KEYS.indexOf(k) < 0) out[k] = m[k]; });
+    return out;
+  }
   function mergeServerActivities(rows) {
     rows = Array.isArray(rows) ? rows : [];
     var all = readAll();
@@ -595,6 +613,7 @@
            ändert nichts. */
         var _localMetrics = ex.metrics;
         if (n.metrics && Object.keys(n.metrics).length) ex.metrics = Object.assign({}, ex.metrics || {}, n.metrics);
+        ex.metrics = dropServerOnly(ex.metrics);   /* v8-447: metrics.ext bleibt auf dem Server */
         ex.status = n.status || ex.status; ex.syncStatus = 'synced'; ex.updatedAt = now();
         /* v8-445: Manuelle Korrekturen (Quelle / manuell / wirksam). Je Kennzahl gilt der
            juengere Satz — traegt dieses Geraet den juengeren (oder der Server gar keinen),
@@ -606,6 +625,16 @@
           var localNewer = exNew !== ex;
           var exEff = _E.applyEffective(exNew);
           if (exEff !== ex) { ex.durationSeconds = exEff.durationSeconds; ex.summary = exEff.summary; ex.metrics = exEff.metrics; }
+          /* v8-447: traegt dieses Geraet eine Korrektur, die der Server gar nicht (mehr) hat,
+             wurde nichts „uebernommen" — localNewer blieb false und die Korrektur lag nur hier.
+             Fehlt sie dem Server oder ist seine aelter, wird sie erneut gesendet. */
+          if (!localNewer) {
+            var _lc = _localMetrics && _localMetrics[_E.KEY], _sc = n.metrics && n.metrics[_E.KEY];
+            if (_lc && typeof _lc === 'object') Object.keys(_lc).forEach(function (mk) {
+              var l = _lc[mk], s = (_sc && typeof _sc === 'object') ? _sc[mk] : null;
+              if (l && l.at && (!s || String(l.at) > String(s.at || ''))) localNewer = true;
+            });
+          }
           if (localNewer) ex.syncStatus = 'pending';
         }
         /* v8-421: Server-client_record_id uebernehmen, wenn der lokale Eintrag nur eine
@@ -623,7 +652,7 @@
           linkedActivityId: n.linkedActivityId || null, linkKind: n.linkKind || null,
           startedAt: n.startedAt, endedAt: n.endedAt, durationSeconds: n.durationSeconds,
           status: n.status || 'completed', summary: n.summary || {},
-          metrics: n.metrics || {},   // Batch 2b: Server-metrics erhalten (vorher hart {})
+          metrics: dropServerOnly(n.metrics || {}),   // Batch 2b: Server-metrics erhalten (vorher hart {}); v8-447: ohne metrics.ext
           workoutSnapshot: null, syncStatus: 'synced', createdAt: now(), updatedAt: now()
         });
         byKey['id ' + n.id] = all.length - 1; byKey['crid ' + all[all.length - 1].clientRecordId] = all.length - 1;
@@ -646,7 +675,7 @@
     recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,
-    mergeServerActivities: mergeServerActivities,
+    mergeServerActivities: mergeServerActivities, SERVER_ONLY_METRIC_KEYS: SERVER_ONLY_METRIC_KEYS.slice(),
     deleteActivity: deleteActivity, isTombstoned: isTombstoned, tombstones: tombstones,
     pendingDeletes: pendingDeletes, removeTombstone: removeTombstone, markDeleteSynced: markDeleteSynced,
     snapshotExercises: snapshotExercises, clearForUserSwitch: clearForUserSwitch

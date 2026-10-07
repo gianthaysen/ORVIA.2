@@ -98,11 +98,25 @@
     rudern: 'rowing', rowing: 'rowing',
     wandern: 'hiking', hiking: 'hiking',
     gehen: 'walking', walking: 'walking', spazieren: 'walking',
+    /* v8-447: die acht Katalog-Sportarten, die bis v8-446 auf 'other' fielen (Katalog =
+       onboardingSportsLogic.SPORT_CATALOG, 24 Eintraege). Garmin-Typen stehen dabei, soweit sie
+       gleich heissen oder im Worker (normalize.py SPORT_MAP) so abgebildet werden. */
+    volleyball: 'volleyball', beachvolleyball: 'volleyball',
+    hockey: 'hockey', feldhockey: 'hockey',
+    rugby: 'rugby',
+    badminton: 'badminton', federball: 'badminton',
+    golf: 'golf',
+    climbing: 'climbing', klettern: 'climbing', bouldern: 'climbing', bouldering: 'climbing', rock_climbing: 'climbing', indoor_climbing: 'climbing',
+    yoga: 'yoga',
+    hyrox: 'hyrox',
     andere: 'other', sonstige: 'other', sonstiges: 'other', other: 'other'
   };
   // Aktivitäts-Sportarten = trainierbare SPORTS + erfassbare Zusatzsportarten (decken sich mit
   // onboardingSportsLogic.SPORT_CATALOG). sport_key ist freier Text (kein DB-CHECK), daher sicher.
-  const ACTIVITY_SPORTS = D.SPORTS.concat(['basketball', 'rowing', 'hiking', 'walking', 'mobility', 'other']);
+  /* v8-447: + die acht uebrigen Katalog-Sportarten ⇒ 24 = Katalog. 'other' ist damit nur noch der
+     Rueckfall fuer wirklich Unbekanntes (sport_coverage_alias_test haelt Katalog und diese Liste gleich). */
+  const ACTIVITY_SPORTS = D.SPORTS.concat(['basketball', 'rowing', 'hiking', 'walking', 'mobility', 'other',
+    'volleyball', 'hockey', 'rugby', 'badminton', 'golf', 'climbing', 'yoga', 'hyrox']);
   // STRIKT: bekannte Sportart → kanonische ID, sonst null. KEIN Raten (früher fälschlich 'athletics').
   function normSportStrict(v) { if (v == null) return null; const s = String(v).trim().toLowerCase(); if (SPORT_ALIASES[s]) return SPORT_ALIASES[s]; return ACTIVITY_SPORTS.indexOf(s) >= 0 ? s : null; }
   // SICHER: wie strikt, aber unbekannt → neutral 'other' (gültiger Aktivitäts-Key, fabriziert keine

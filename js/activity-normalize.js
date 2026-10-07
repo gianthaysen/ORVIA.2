@@ -271,11 +271,26 @@
 
   // Kanonische Aktivität (defensiv). source/sourceRecordId tragen die Idempotenz
   // (Upsert-Schlüssel: user_id, source, source_record_id) — keine Doppel-Activities.
+  /* v8-447: 'other' ist nur der Rueckfall fuer Unbekanntes. Traegt die Zeile ihren Rohtyp
+     (metrics.source_sport_raw — von Worker und Server-RPC gesetzt, wenn sie 'other' vergeben;
+     metrics.garmin.type_key — seit v8-447 immer) und ist dieser Rohtyp HEUTE eine Katalog-
+     Sportart, gilt sie. So werden Altzeilen (Yoga, Hyrox, Volleyball …) richtig, ohne dass
+     gespeicherte Daten angefasst werden. */
+  function upgradeSport(sportId, metrics) {
+    if (sportId !== 'other' || !metrics || typeof metrics !== 'object') return sportId;
+    var g = (metrics.garmin && typeof metrics.garmin === 'object') ? metrics.garmin : null;
+    var rawType = (typeof metrics.source_sport_raw === 'string' && metrics.source_sport_raw) || (g && typeof g.type_key === 'string' && g.type_key) || null;
+    if (!rawType) return sportId;
+    var td = root.ORVIA && root.ORVIA.trainingDomain;
+    var c = (td && typeof td.normSportStrict === 'function') ? td.normSportStrict(rawType) : null;
+    return (c && c !== 'other') ? c : sportId;
+  }
+
   function normalizeActivityRecord(raw) {
     raw = raw || {};
     var seconds = durationSecondsOf(raw);
     var plaus = durationPlausibility(seconds);
-    var sportId = raw.sportId || raw.sport_id || null;
+    var sportId = upgradeSport(raw.sportId || raw.sport_id || null, raw.metrics);
     var rawSummary = (raw.summary && typeof raw.summary === 'object' && !Array.isArray(raw.summary)) ? raw.summary : {};
     var rec = {
       id: raw.id || null,
@@ -366,7 +381,8 @@
     activityDistancePace: activityDistancePace,
     activityDetailModel: activityDetailModel,
     summarizeWorkout: summarizeWorkout,
-    activityRowFromSession: activityRowFromSession
+    activityRowFromSession: activityRowFromSession,
+    upgradeSport: upgradeSport
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ORVIA = root.ORVIA || {}; root.ORVIA.activityNormalize = api;

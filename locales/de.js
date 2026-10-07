@@ -2648,6 +2648,10 @@
     'ui.jetzt_synchronisieren': 'Jetzt synchronisieren',
     'ui.json_export_ueber_die_sicherung': 'JSON-Export über die Sicherung',
     'ui.kadenz_spm': 'Kadenz (spm)',
+    /* v8-447: Bedeutung der Kadenz je Sportart; Hinweis fuer Altimporte */
+    'ui.zugfrequenz_spm': 'Zugfrequenz (Züge/min)',
+    'ui.schlagfrequenz_spm': 'Schlagfrequenz (Schläge/min)',
+    'ui.kadenz_altimport': 'Schrittfrequenz: Diese Einheit stammt aus einem älteren Import, der die Frequenz eines Beins gelesen haben kann. ORVIA zeigt deshalb keinen Wert und lädt die Messreihe neu von Garmin.',
     'ui.kalorien_die_du_heute_durch': 'Kalorien, die du heute durch Bewegung zusätzlich verbraucht hast.',
     'ui.kann_entfallen_wenn_sehr_muede': 'Kann entfallen, wenn sehr müde.',
     'ui.kanonischer_wochenvertrag_mo_so': 'Kanonischer Wochenvertrag · Mo–So',

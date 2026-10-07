@@ -9170,7 +9170,15 @@ function gmSetActivityFilter(f){gmActFilter=f;gmActLimit=GM_ACT_PAGE;renderGMAct
    Kadenz als CSS-Farbwort „cyan" = grelles #00FFFF, Hoehe blau): Gruen/Gelb sind Zustandsfarben,
    und die Seite sah je Diagramm wie eine andere App aus. Die Beschriftung unterscheidet die Reihen. */
 var GM_ACT_CHART_COLOR='var(--activity-primary)';
-function gmActStreamDefs(sportId){
+/* v8-447: zweites Argument = vm.cadence (js/activity-streams.js). Die Kadenz-Kurve wird nach
+   der BEDEUTUNG der Messreihe beschriftet (Schritte / Umdrehungen / Zuege je Minute); ist die
+   Bedeutung nicht gesichert (Altimport), gibt es keine Kurve. Ohne zweites Argument: wie bisher. */
+function gmActCadenceDef(cad){
+  var L={running_cadence_spm:['ui.kadenz_spm',' spm'],cycling_cadence_rpm:['ui.trittfrequenz_rpm',' rpm'],swim_stroke_rate:['ui.zugfrequenz_spm',' Züge/min'],rowing_stroke_rate:['ui.schlagfrequenz_spm',' Schläge/min']}[cad&&cad.kind];
+  if(!cad||cad.status!=='ok'||!L)return null;
+  return {key:'cadence',label:_uiT(L[0]),unit:L[1],color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null};
+}
+function gmActStreamDefs(sportId,cad){
   var paceSports={running:1,hiking:1,walking:1,trail_running:1};
   var speedDef;
   /* Tempo konventionell als mm:ss lesen (nicht als Dezimalminuten) — reine Formatierung. */
@@ -9184,11 +9192,11 @@ function gmActStreamDefs(sportId){
     speedDef,
     /* v8-424: Leistung (Garmin directPower) — nur wenn die Messreihe wirklich vorliegt. */
     {key:'power',label:'' + _uiT('ui.leistung_w') + '',unit:' W',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null},
-    (sportId==='cycling'
+    (cad!==undefined?gmActCadenceDef(cad):(sportId==='cycling'
       ?{key:'cadence',label:'' + _uiT('ui.trittfrequenz_rpm') + '',unit:' rpm',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null}
-      :{key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null}),
+      :{key:'cadence',label:'' + _uiT('ui.kadenz_spm') + '',unit:' spm',color:GM_ACT_CHART_COLOR,hb:true,dec:0,conv:null})),
     {key:'elevation',label:'' + _uiT('ui.hoehe_m') + '',unit:' m',color:GM_ACT_CHART_COLOR,hb:null,dec:0,conv:null}
-  ];
+  ].filter(Boolean);
 }
 /* GM7.9: Sportfamilien-Aufloesung fuer sportgerechte Detail-/Story-Darstellung.
    Reine Klassifikation der vorhandenen Sport-ID — keine Datenlogik. */
@@ -9456,7 +9464,11 @@ function gmOpenActivityPage(aid){
      wie die Kadenz-Kurve weiter unten) bereits vorliegt. Reiner arithmetischer
      Mittelwert der ECHTEN Samples — keine Interpolation, keine Umrechnung, keine
      Erfindung; ohne Serie bleibt der Slot ehrlich „—". */
-  var _cadAvg=(function(){try{var c=vm.canonicalStreams&&vm.canonicalStreams.cadence;if(!Array.isArray(c))return null;var sum=0,n=0;for(var i=0;i<c.length;i++){var v=c[i];if(typeof v==='number'&&isFinite(v)){sum+=v;n++;}}return n?Math.round(sum/n):null;}catch(_){return null;}})();
+  /* v8-447: Mittelwert nur, wenn die Messreihe gesichert die SCHRITTfrequenz ist (vm.cadence,
+     js/activity-streams.js). Bis v8-446 stand hier der Mittelwert von directRunCadence — die
+     Frequenz EINES Beins (≈ 80) als „spm". Altimporte: kein Wert, Hinweis bei den Messreihen. */
+  var _cad=vm.cadence||null;
+  var _cadAvg=(_cad&&_cad.status==='ok'&&_cad.kind==='running_cadence_spm')?_cad.avg:null;
   /* GM7.9: KPI-Zellen je Sportfamilie — Struktur bleibt (6 Zellen, GM-Raster), Inhalte
      sportgerecht: Krafttraining zeigt keine leere Distanz-/Tempo-Zelle mehr, sondern
      Uebungen/Saetze/Volumen (reine Summen der ECHTEN Saetze); Rad Geschwindigkeit statt
@@ -9521,6 +9533,9 @@ function gmOpenActivityPage(aid){
       [_cadAvg!=null?_cadAvg+' spm':'—','SCHRITTFREQUENZ'],
       [(vm.elevationM!=null?vm.elevationM+' m':'—'),'HÖHENMETER']
     ];
+    /* v8-447: gespeichert, aber bisher nicht gezeigt — nur wenn die Quelle sie liefert */
+    if(vm.maxHr!=null)kcells.push([vm.maxHr+' bpm','MAX. HERZFREQUENZ']);
+    if(vm.caloriesKcal!=null)kcells.push([fmtDe(vm.caloriesKcal)+' kcal','KALORIEN']);
   }else{
     kcells=[
       [vm.durationLabel||'—','DAUER'],
@@ -9660,7 +9675,7 @@ function gmOpenActivityPage(aid){
        Einheitenumrechnung derselben Geschwindigkeitsmessung (1000/v in min/km), keine
        neue Groesse — deshalb sportgerecht beschriftet statt roher m/s. */
     var _st=vm.canonicalStreams||null;
-    var _curveDefs=gmActStreamDefs(vm.sportId);
+    var _curveDefs=gmActStreamDefs(vm.sportId,vm.cadence||null);
     var _slots=_st?_curveDefs.map(function(c,i){
       var arr=_st[c.key];if(!Array.isArray(arr))return '';
       var pts=[];for(var q=0;q<arr.length;q++){var v=arr[q];if(typeof v==='number'&&isFinite(v))pts.push(c.conv?c.conv(v):v);}
@@ -9669,7 +9684,8 @@ function gmOpenActivityPage(aid){
       return '<div style="margin-top:12px"><div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:2px">'+gmEsc(c.label)+'</div><div class="oc2" id="gmActStream'+i+'"></div></div>';
     }).join(''):'';
     if(run||_slots)h+='<div class="card"><div class="ctitle"><div class="l">'+icon('chart')+' Aktivitäts-Messreihen (Garmin)</div><span class="more">'+(_gmActCharts.length?_gmActCharts.length+'' + _uiT('ui.serien') + '':'')+'</span></div>'+
-      (_slots?_slots:'<div class="gm-chart-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' liegt keine kanonische Messreihe vor. Keine nachgebaute Kurve.</div>')+'</div>';
+      (_slots?_slots:'<div class="gm-chart-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' liegt keine kanonische Messreihe vor. Keine nachgebaute Kurve.</div>')+
+      ((vm.cadence&&vm.cadence.status==='unverified')?'<div class="mini-note gm-cad-note" style="margin:10px 0 0">'+icon('info','xs')+'<div>'+_uiT('ui.kadenz_altimport')+'</div></div>':'')+'</div>';
     /* Splits nur aus echten Splits (kanonische Story-Verknüpfung). */
     var srows='',_splitNote='';
     if(splits){
@@ -10509,7 +10525,8 @@ function gmStoryPages(a){
     if(gym.setCount!=null)cells.push([String(gym.setCount),'' + _uiT('ui.saetze__') + '']);
     if(gym.volumeKg!=null)cells.push([gmKg(gym.volumeKg)+' kg','Volumen',1]);
   }
-  var cad=null;try{var cs2=st&&st.cadence;if(Array.isArray(cs2)){var sm2=0,nn=0;cs2.forEach(function(v){if(typeof v==='number'&&isFinite(v)){sm2+=v;nn++;}});cad=nn?Math.round(sm2/nn):null;}}catch(_){ }
+  /* v8-447: dieselbe Kadenz wie Seite und Kurve (vm.cadence) — nur gesicherte Schrittfrequenz */
+  var cad=(vm.cadence&&vm.cadence.status==='ok'&&vm.cadence.kind==='running_cadence_spm')?vm.cadence.avg:null;
   if(cad!=null&&fam==='pace')cells.push([cad+' spm','' + _uiT('ui.schrittfrequenz') + '']);
   if(vm.elevationM!=null&&(fam==='pace'||fam==='cycling'))cells.push([vm.elevationM+' m','Höhenmeter']);
   if(vm.caloriesKcal!=null)cells.push([fmtDe(vm.caloriesKcal)+' kcal','Energie']);
