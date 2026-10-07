@@ -7235,6 +7235,7 @@ function renderModules(){
 function gmOpenSheet(id){try{_gmLastFocus=document.activeElement;}catch(_){ }
   var sh=document.getElementById(id);var sc=document.getElementById('scrim');
   if(!sh)return;sh.classList.add('on');if(sc)sc.classList.add('on');
+  gmSheetKeyboardBind();
   try{sh.setAttribute('tabindex','-1');sh.focus();}catch(_){ }
   try{if(typeof window!=='undefined'&&!window._gmEscBound){window._gmEscBound=1;
     document.addEventListener('keydown',function(ev){
@@ -7247,7 +7248,38 @@ function gmOpenSheet(id){try{_gmLastFocus=document.activeElement;}catch(_){ }
     });
     var scr0=document.getElementById('scrim');if(scr0&&!scr0._gmBound){scr0._gmBound=1;scr0.addEventListener('click',gmCloseSheets);}
   }}catch(_){ }}
-function gmCloseSheets(){document.querySelectorAll('.sheet.on').forEach(function(s){s.classList.remove('on');});
+/* v8-445: Ein Blatt mit Eingabefeld bleibt UEBER der Bildschirmtastatur. In Mobile Safari
+   verkleinert die Tastatur nur den sichtbaren Ausschnitt (visualViewport), nicht die Seite —
+   ein unten verankertes Blatt liegt dann dahinter. Solange in einem offenen Blatt getippt
+   wird, wird es um die verdeckte Hoehe angehoben und auf die sichtbare Hoehe begrenzt.
+   Wirkt nur dann (Fokus in einem Eingabefeld des Blatts), sonst bleibt alles wie zuvor. */
+var _gmKbBound=false;
+function gmSheetKeyboardSync(){
+  var vv=window.visualViewport,sh=document.querySelector('.sheet.on'),ae=document.activeElement,inset=0;
+  var typing=!!(sh&&ae&&sh.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName||'')&&!/^(checkbox|radio|range|button|submit|file|color)$/i.test(ae.type||''));
+  if(vv&&typing&&Math.abs((vv.scale||1)-1)<0.02){
+    inset=Math.round(window.innerHeight-(vv.offsetTop+vv.height));
+    if(!(inset>=80))inset=0;                       /* Adressleiste u. ae.: keine Tastatur */
+  }
+  document.querySelectorAll('.sheet.kb-up').forEach(function(x){
+    if(x!==sh||!inset){x.classList.remove('kb-up');x.style.removeProperty('--kb-inset');x.style.removeProperty('--kb-vvh');}});
+  if(sh&&inset){
+    sh.classList.add('kb-up');sh.style.setProperty('--kb-inset',inset+'px');sh.style.setProperty('--kb-vvh',Math.round(vv.height)+'px');
+    try{var r=ae.getBoundingClientRect(),b=sh.getBoundingClientRect();
+      if(r.bottom>b.bottom-12)sh.scrollTop+=r.bottom-(b.bottom-12);else if(r.top<b.top+12)sh.scrollTop-=(b.top+12-r.top);}catch(_){ }
+  }
+  return inset;
+}
+function gmSheetKeyboardBind(){
+  if(_gmKbBound)return;_gmKbBound=true;
+  try{var vv=window.visualViewport;
+    if(vv&&vv.addEventListener){vv.addEventListener('resize',gmSheetKeyboardSync);vv.addEventListener('scroll',gmSheetKeyboardSync);}
+    document.addEventListener('focusin',gmSheetKeyboardSync);
+    document.addEventListener('focusout',function(){setTimeout(gmSheetKeyboardSync,80);});
+  }catch(_){ }
+}
+function gmCloseSheets(){document.querySelectorAll('.sheet.on').forEach(function(s){s.classList.remove('on');s.classList.remove('kb-up');s.style.removeProperty('--kb-inset');s.style.removeProperty('--kb-vvh');});
+  try{var _ae=document.activeElement;if(_ae&&_ae.blur&&/^(INPUT|TEXTAREA)$/.test(_ae.tagName||''))_ae.blur();}catch(_){ }
   var sc=document.getElementById('scrim');if(sc)sc.classList.remove('on');
   try{if(_gmLastFocus&&_gmLastFocus.focus)_gmLastFocus.focus();}catch(_){ }}
 /* Modal-Cleanup: oModal (Legacy) läuft ab jetzt zentral über das GM-Sheet-System. */
@@ -8878,6 +8910,14 @@ function gmActThemeId(sportId){try{return (window.ORVIA&&ORVIA.activityTheme)?OR
 function gmActThemeAttr(sportId){return 'data-activity="'+gmActThemeId(sportId)+'"';}
 /* Farbe EINER bestimmten Sportart fuer Uebersichten mit mehreren Sportarten nebeneinander. */
 function gmActThemeColor(sportId,role){try{return (window.ORVIA&&ORVIA.activityTheme)?ORVIA.activityTheme.color(sportId,role):'var(--orvia-brand-gold)';}catch(_){return 'var(--orvia-brand-gold)';}}
+/* v8-446: Welche Signatur (abstrakte Bildsprache) eine Sportart traegt, steht an EINER Stelle:
+   js/sport-signatures.js. Hier nur die Frage „gibt es fuer diese Sportart heute einen Zeichner?"
+   — Antwort ist der Name des Zeichners ('waves') oder null. Fehlt das Modul (isolierte Tests),
+   gilt der Stand von v8-444: Wellenfeld fuer Schwimmen. */
+function gmActSignatureRenderer(sportId){
+  try{var S=window.ORVIA&&ORVIA.sportSignatures;if(S&&S.renderer)return S.renderer(sportId);}catch(_){ }
+  return gmActThemeId(sportId)==='swimming'?'waves':null;
+}
 /* v8-444 (V3): Wellenfeld — der Hero fuer Schwimmen ohne Strecke (Aktivitaetsseite und Story-Abschluss).
    Reine Zeichnung, KEINE Daten: n ruhige Wellenlinien in Perspektive (oben = fern: eng, flach, leise;
    unten = nah: weiter, hoeher, kraeftiger). Farbe kommt aus dem Thema der Sportart (CSS: .act-wvg stop),
@@ -9407,7 +9447,7 @@ function gmOpenActivityPage(aid){
   }
   /* v8-444 (V3): Schwimmen ohne Strecke bekommt im selben Platz einen eigenen Hero (Wellenfeld) statt gar nichts —
      dieselbe Abfolge Kopf → Hero → Titel wie bei Lauf und Rad. Keine Karte erzwungen, keine Daten erfunden. */
-  else if(gmActThemeId(vm.sportId)==='swimming'){
+  else if(gmActSignatureRenderer(vm.sportId)==='waves'){
     h+='<div class="act-hero act-waves" aria-hidden="true">'+gmActWaves(390,150,7)+'</div>';
   }
   h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
@@ -9518,18 +9558,31 @@ function gmOpenActivityPage(aid){
   }else if(a&&a.linkedActivityId){
     h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('info','xs')+'<div>'+_uiT('ui.rec_ist_gekoppelt')+' <a href="#" onclick="event.preventDefault();gmOpenActivityPage(\''+gmEsc(String(a.linkedActivityId))+'\')" style="font-weight:700">'+_uiT('ui.rec_zum_workout')+'</a></div></div>';
   }
-  if((vm.source==='orvia_workout'||vm.source==='live')&&vm.status!=='active'&&a.durationSeconds!=null){
-    var _dc=a.metrics&&a.metrics.durationCorrection;
-    h+='<div class="mini-note" style="margin:2px 18px 10px">'+icon('pen','xs')+'<div>'+
-      (_dc?('' + _uiT('ui.dauer_manuell_korrigiert') + ''+(_dc.fromMin!=null?_dc.fromMin+' min':'—')+' → <b>'+_dc.toMin+' min</b>. '):'')+
-      '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+gmEsc(a.clientRecordId||a.id)+'\','+Math.round(a.durationSeconds/60)+')" class="gm-inline-link" style="font-weight:700">' + _uiT('ui.dauer_korrigieren') + '</a>'+
-      (_dc?'':'' + _uiT('ui.z_b_wenn_die_app') + '')+'</div></div>';
+  /* v8-445: Quelle / manuell / wirksam (js/activity-effective.js). Die Seite rechnet nichts
+     selbst: ob korrigierbar, was die Quelle war und was gilt, sagt der Resolver. */
+  var _E=window.ORVIA&&ORVIA.activityEffective;
+  if(_E&&_E.isEditable(a,'duration')&&a.durationSeconds!=null){
+    var _dr=_E.resolveMetric(a,'duration');
+    var _aidQ=gmEsc(a.clientRecordId||a.id);
+    if(_dr.corrected){
+      h+='<div class="mini-note gm-dur-note is-corr" style="margin:2px 18px 10px">'+icon('check','xs')+'<div>'+
+        '<b>'+_uiT('ui.dauer_auf_korrigiert',{dur:gmEsc(gmDurFmt(_dr.effectiveValue))})+'</b>'+
+        (_dr.sourceValue!=null?' <span class="gm-dur-src">'+_uiT('ui.dauer_urspruenglich',{dur:gmEsc(gmDurFmt(_dr.sourceValue))})+'</span>':'')+
+        ' <a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+_aidQ+'\')" class="gm-inline-link" style="font-weight:700">'+_uiT('ui.dauer_aendern')+'</a></div></div>';
+    }else{
+      h+='<div class="mini-note gm-dur-note" style="margin:2px 18px 10px">'+icon('pen','xs')+'<div>'+
+        '<a href="#" onclick="event.preventDefault();gmOpenDurationCorrectSheet(\''+_aidQ+'\')" class="gm-inline-link" style="font-weight:700">' + _uiT('ui.dauer_korrigieren') + '</a>'+
+        '' + _uiT('ui.z_b_wenn_die_app') + ''+'</div></div>';
+    }
   }
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen).
      v8-444 (V3): steht jetzt VOR den Korrekturwegen — sie ist die Hauptaktion der Seite, das Loeschen nicht.
-     Eigene Klasse gm-story-cta (Goldrand, Stern in Gold: Gold kennzeichnet, was ORVIA beitraegt). */
+     Eigene Klasse gm-story-cta (Goldrand, Stern in Gold: Gold kennzeichnet, was ORVIA beitraegt).
+     v8-446: heisst fuer den Nutzer „Highlights" (Produktbegriff). Dahinter steht weiter die
+     bestehende Story (gmOpenStory/gmStoryPages) — Namen im Code bleiben, bis die Highlights-Engine
+     (js/engine/highlights.js, vorbereitet) die Folge liefert. */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
-    h+='<div style="margin:0 18px 12px"><button class="cta wide-ghost gm-story-cta" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
+    h+='<div style="margin:0 18px 12px"><button class="cta wide-ghost gm-story-cta" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' '+_uiT('ui.highlights_ansehen')+'</button></div>';}catch(_){ }
   /* v8-310b · Drei Korrekturwege bleiben sichtbar getrennt: Link loesen
      behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
      Tombstone-Pfad. Keine Schaltflaeche tut beides. */
@@ -9773,27 +9826,78 @@ function gmUnlinkRecording(recId,aid){
     try{gmOpenActivityPage(aid);}catch(_){ }
   }).catch(function(e){try{toast(_uiT('ui.rec_loesen_fehler')+': '+String(e&&e.message||e));}catch(_){ }});
 }
-/* P0-Nachtrag 2026-08-05: Dauer-Korrektur-Sheet. Schreibt ueber den Store
-   (Activity + Server-Session + Trainingslast) — das UI rechnet nichts selbst. */
-function gmOpenDurationCorrectSheet(aid,curMin){
+/* v8-445: Dauer korrigieren — Stunden und Minuten, der gemessene Wert bleibt sichtbar,
+   der Knopf nennt, was gespeichert wird. Schreibt ueber den Store (Activity + Server-Session
+   + Trainingslast); das UI rechnet nichts selbst. Das Blatt bleibt ueber der
+   Bildschirmtastatur (gmSheetKeyboardSync). Kein Autofokus: erst lesen, dann tippen. */
+function gmDurFmt(sec){
+  var an=window.ORVIA&&ORVIA.activityNormalize;
+  if(an&&an.fmtDurationSeconds)return an.fmtDurationSeconds(sec,{markImplausible:false,unknownLabel:'—'});
+  return sec!=null?Math.round(sec/60)+' min':'—';
+}
+function gmDurRead(){
+  var hE=document.getElementById('gmDurH'),mE=document.getElementById('gmDurM');
+  if(!hE||!mE)return null;
+  var clean=function(el){var v=String(el.value||'').replace(/[^0-9]/g,'').slice(0,3);if(v!==el.value)el.value=v;return v===''?0:parseInt(v,10);};
+  var hh=clean(hE),mm=clean(mE);
+  return {h:hh,m:mm,total:hh*60+mm,empty:(hE.value===''&&mE.value==='')};
+}
+function gmDurInput(){
+  var r=gmDurRead();if(!r)return;
+  var btn=document.getElementById('gmDurSave'),err=document.getElementById('gmDurErr');
+  var ok=r.total>=1&&r.total<=1440;
+  ['gmDurH','gmDurM'].forEach(function(id){var el=document.getElementById(id);if(!el)return;
+    if(ok||r.empty){el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');}
+    else{el.setAttribute('aria-invalid','true');el.setAttribute('aria-describedby','gmDurErr');}});
+  if(err){if(ok||r.empty){err.hidden=true;err.textContent='';}else{err.hidden=false;err.textContent=_uiT('ui.dauer_bereich');}}
+  if(btn){btn.disabled=!ok;btn.textContent=ok?_uiT('ui.dauer_speichern_als',{dur:gmDurFmt(r.total*60)}):_uiT('ui.speichern');}
+}
+function gmOpenDurationCorrectSheet(aid){
   var sh=document.getElementById('detailSheet');if(!sh)return;
-  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3>' + _uiT('ui.dauer_korrigieren') + '</h3><div class="sh-sub" style="margin:2px 0 0">Aktuell '+curMin+' min</div></div></div>'+
-    '<div class="sh-block"><p>' + _uiT('ui.trainierte_zeit_in_minuten_z') + '</p>'+
-    '<div class="calc-field" style="margin-top:8px"><label>' + _uiT('ui.dauer_min') + '</label><input type="number" id="gmDurCorrIn" inputmode="numeric" min="1" max="1440" value="'+curMin+'" style="width:110px;text-align:right"></div></div>'+
-    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">' + _uiT('ui.abbrechen') + '</button><button class="prim" onclick="gmApplyDurationCorrect(\''+gmEsc(aid)+'\')">' + _uiT('ui.speichern') + '</button></div>';
+  var st=window.ORVIA&&ORVIA.activityStore,E=window.ORVIA&&ORVIA.activityEffective;
+  var a=(st&&st.getActivityById)?st.getActivityById(aid):null;
+  if(!a&&typeof _resolveActivityAny==='function')a=_resolveActivityAny(aid);
+  if(!a||!E){if(typeof toast==='function')toast('' + _uiT('ui.korrektur_nicht_verfuegbar') + '');return;}
+  var r=E.resolveMetric(a,'duration');
+  var cur=r.effectiveValue!=null?Math.round(r.effectiveValue/60):0;
+  var h0=Math.floor(cur/60),m0=cur-h0*60;
+  var q=gmEsc(String(aid));
+  sh.innerHTML='<div class="grab"></div><div class="sh-head"><div class="sh-hic" style="background:var(--surface-2);color:var(--muted)">'+icon('pen')+'</div><div><h3 id="gmDurTitle">' + _uiT('ui.dauer_korrigieren') + '</h3><div class="sh-sub" style="margin:2px 0 0">'+_uiT('ui.dauer_sheet_sub')+'</div></div></div>'+
+    '<div class="dur-edit" role="group" aria-labelledby="gmDurTitle">'+
+      '<label class="dur-f"><span>'+_uiT('ui.dauer_stunden')+'</span><input type="text" id="gmDurH" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="next" value="'+h0+'" oninput="gmDurInput()" onfocus="try{this.select()}catch(_){}" onkeydown="if(event.key===\'Enter\'){event.preventDefault();var n=document.getElementById(\'gmDurM\');if(n)n.focus();}"></label>'+
+      '<label class="dur-f"><span>'+_uiT('ui.dauer_minuten')+'</span><input type="text" id="gmDurM" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" value="'+m0+'" oninput="gmDurInput()" onfocus="try{this.select()}catch(_){}" onkeydown="if(event.key===\'Enter\'){event.preventDefault();gmApplyDurationCorrect(\''+q+'\');}"></label>'+
+    '</div>'+
+    '<div class="dur-err" id="gmDurErr" role="alert" hidden></div>'+
+    (r.sourceValue!=null?'<div class="dur-src">'+_uiT('ui.dauer_urspruenglich_lang',{dur:'<b>'+gmEsc(gmDurFmt(r.sourceValue))+'</b>'})+
+      (r.corrected?' · <a href="#" class="gm-inline-link" onclick="event.preventDefault();gmResetDurationCorrect(\''+q+'\')">'+_uiT('ui.dauer_zuruecksetzen')+'</a>':'')+'</div>':'')+
+    '<div class="sheet-cta"><button class="sec" onclick="gmCloseSheets()">' + _uiT('ui.abbrechen') + '</button><button class="prim" id="gmDurSave" onclick="gmApplyDurationCorrect(\''+q+'\')">' + _uiT('ui.speichern') + '</button></div>';
   gmOpenSheet('detailSheet');
-  try{var inp=document.getElementById('gmDurCorrIn');if(inp){inp.focus();inp.select();}}catch(_){ }
+  gmDurInput();
+}
+function gmDurAfter(aid){
+  try{var st=window.ORVIA&&ORVIA.activityStore;var a=st&&st.getActivityById?st.getActivityById(aid):null;
+    if(a&&window.ORVIA&&ORVIA.workoutUI&&ORVIA.workoutUI.syncDurationMirror)ORVIA.workoutUI.syncDurationMirror(a);}catch(_){ }
+  try{gmOpenActivityPage(aid);}catch(_){ }
+  try{if(typeof renderAkt==='function')renderAkt();}catch(_){ }
 }
 function gmApplyDurationCorrect(aid){
-  var v=null;try{v=parseInt(document.getElementById('gmDurCorrIn').value,10);}catch(_){ }
-  if(!(v>0&&v<=1440)){if(typeof toast==='function')toast('' + _uiT('ui.bitte_eine_dauer_zwischen_1') + '');return;}
+  var r0=gmDurRead();var v=r0?r0.total:null;
+  if(!(v>=1&&v<=1440)){gmDurInput();if(typeof toast==='function')toast('' + _uiT('ui.dauer_bereich') + '');return;}
   var ws=window.ORVIA&&ORVIA.workoutStore;
   if(!ws||!ws.correctFinishedDuration){if(typeof toast==='function')toast('' + _uiT('ui.korrektur_nicht_verfuegbar') + '');return;}
+  var btn=document.getElementById('gmDurSave');if(btn)btn.disabled=true;       /* Doppeltipp */
   ws.correctFinishedDuration(aid,v).then(function(r){
     gmCloseSheets();
-    if(r&&r.success){if(typeof toast==='function')toast('' + _uiT('ui.dauer_korrigiert') + ''+v+' min ✓');
-      try{gmOpenActivityPage(aid);}catch(_){ }
-      try{if(typeof renderAkt==='function')renderAkt();}catch(_){ }}
+    if(r&&r.success){if(typeof toast==='function')toast('✓ '+_uiT('ui.dauer_auf_korrigiert',{dur:gmDurFmt(v*60)}));gmDurAfter(aid);}
+    else{if(typeof toast==='function')toast('' + _uiT('ui.korrektur_fehlgeschlagen') + ''+(r&&r.error&&r.error.message?': '+r.error.message:'.'));}
+  });
+}
+function gmResetDurationCorrect(aid){
+  var ws=window.ORVIA&&ORVIA.workoutStore;
+  if(!ws||!ws.correctFinishedDuration){if(typeof toast==='function')toast('' + _uiT('ui.korrektur_nicht_verfuegbar') + '');return;}
+  ws.correctFinishedDuration(aid,null).then(function(r){
+    gmCloseSheets();
+    if(r&&r.success){if(typeof toast==='function')toast(_uiT('ui.dauer_zurueckgesetzt',{dur:gmDurFmt((r.data&&r.data.toMin!=null)?r.data.toMin*60:null)}));gmDurAfter(aid);}
     else{if(typeof toast==='function')toast('' + _uiT('ui.korrektur_fehlgeschlagen') + ''+(r&&r.error&&r.error.message?': '+r.error.message:'.'));}
   });
 }
@@ -10283,7 +10387,7 @@ function gmStoryPages(a){
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
   /* v8-444 (V3): Schwimmen ohne Strecke — das Wellenfeld liegt hinter der grossen Zahl (Hero ohne Karte). */
-  var _waves=(!coverPage&&!route&&gmActThemeId(vm.sportId)==='swimming')?'<div class="wst-waves act-waves" aria-hidden="true">'+gmActWaves(390,300,9)+'</div>':'';
+  var _waves=(!coverPage&&!route&&gmActSignatureRenderer(vm.sportId)==='waves')?'<div class="wst-waves act-waves" aria-hidden="true">'+gmActWaves(390,300,9)+'</div>':'';
   pages.push(coverPage||page(_waves+'<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub),_waves?'wst-wavepg':''));
   /* ---------- 1b) Neue Bestzeit — zwei kanonische Wege, EINE Rangfolge:
      (1) DISTANZ-Bestzeit aus dem kanonischen Bestzeitenmodell (bestTimes().meas):
@@ -10447,7 +10551,7 @@ function gmStoryRender(){
   var bars='<div class="wst-bars">'+_gmStory.pages.map(function(_,i){
     return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+'"><b></b></i>';}).join('')+'</div>';
   host.innerHTML=bars+
-    '<button class="wst-x" aria-label="Story schließen" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
+    '<button class="wst-x" aria-label="'+_uiT('ui.highlights_schliessen')+'" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
     '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
     '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');

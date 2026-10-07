@@ -53,8 +53,25 @@
         const base = (cur.data[0].metrics && typeof cur.data[0].metrics === 'object') ? cur.data[0].metrics : {};
         const local = patch.metrics;
         const merged = mm.localWins ? Object.assign({}, base, local) : Object.assign({}, base);
+        /* v8-445: additiveKeys werden nie stillschweigend geloescht. Fehlt der Schluessel lokal
+           (Geraet hat die Korrektur des anderen noch nicht gesehen), bleibt der Serverstand.
+           Haben beide einen Eintrag, gewinnt je Kennzahl der juengere (Feld `at`). Eine
+           Ruecknahme ist selbst ein Eintrag (manual: null) und wird deshalb mit uebertragen. */
+        var additive = Array.isArray(mm.additiveKeys) ? mm.additiveKeys : [];
         (Array.isArray(mm.ownedKeys) ? mm.ownedKeys : []).forEach(function (k) {
-          if (Object.prototype.hasOwnProperty.call(local, k)) merged[k] = local[k]; else delete merged[k];
+          var has = Object.prototype.hasOwnProperty.call(local, k);
+          if (additive.indexOf(k) >= 0) {
+            if (!has || !local[k] || typeof local[k] !== 'object') return;
+            var sv = (base[k] && typeof base[k] === 'object') ? base[k] : {};
+            var out = Object.assign({}, sv);
+            Object.keys(local[k]).forEach(function (mk) {
+              var l = local[k][mk], r = sv[mk];
+              if (!r || !l || String(l.at || '') >= String(r.at || '')) out[mk] = l;
+            });
+            merged[k] = out;
+            return;
+          }
+          if (has) merged[k] = local[k]; else delete merged[k];
         });
         send = Object.assign({}, patch, { metrics: merged });
       }

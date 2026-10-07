@@ -12,6 +12,14 @@
   var O = root.ORVIA;
 
   function AN() { return O.activityNormalize; }
+  /* v8-445: Quelle / manuell / wirksam (activity-effective). */
+  var _eff;
+  function EFF() {
+    if (O.activityEffective) return O.activityEffective;
+    if (_eff === undefined) { _eff = null; if (typeof require === 'function') { try { _eff = require('./activity-effective.js'); } catch (err) { _eff = null; } } }
+    return _eff;
+  }
+  function eff(a) { var E = EFF(); return (E && E.applyEffective) ? E.applyEffective(a) : a; }
   function uid() { return (O.user && O.user.id) || 'local'; }
   function key() { return 'orvia_activities_' + uid(); }
   function now() { return new Date().toISOString(); }
@@ -35,7 +43,13 @@
       if (!raw) { _memo = { key: k, raw: null, arr: null }; return []; }
       if (_memo.key !== k || _memo.raw !== raw || !_memo.arr) {
         var parsed = JSON.parse(raw);
-        _memo = { key: k, raw: raw, arr: Array.isArray(parsed) ? parsed : [] };
+        /* v8-445: Der Speicher traegt den WIRKSAMEN Wert. Eintraege, deren Dauer ein
+           frueherer Abgleich auf den Serverwert zurueckgesetzt hat (Korrektur noch in
+           metrics), werden hier beim Lesen richtiggestellt — einmal je Rohtext, ohne
+           Schreibzugriff; der naechste regulaere Schreibvorgang legt es so ab. */
+        var arr0 = Array.isArray(parsed) ? parsed : [];
+        for (var p0 = 0; p0 < arr0.length; p0++) { if (arr0[p0] && typeof arr0[p0] === 'object') arr0[p0] = eff(arr0[p0]); }
+        _memo = { key: k, raw: raw, arr: arr0 };
       }
       var src = _memo.arr, out = new Array(src.length);
       for (var i = 0; i < src.length; i++) { var e = src[i]; out[i] = (e && typeof e === 'object') ? Object.assign({}, e) : e; }
@@ -121,6 +135,7 @@
       createdAt: (existing && existing.createdAt) || now(),
       updatedAt: now()
     };
+    rec = eff(rec);   /* v8-445: erneuter Upsert desselben Workouts behaelt eine manuelle Korrektur (wirksamer Wert) */
     if (idx >= 0) all[idx] = rec; else all.push(rec);   // genau EINE Activity je source+sourceRecordId
     writeAll(all);
     return { ok: true, activity: rec, created: idx < 0 };
@@ -362,18 +377,32 @@
      manuelle Korrektur bleiben unterscheidbar. */
   function correctActivityDuration(id, newMin) {
     if (!(newMin > 0)) return { ok: false, error: 'ungueltige Dauer' };
+    var r = setActivityCorrection(id, 'duration', Math.round(newMin) * 60, { requireCompleted: true });
+    if (!r.ok) return r;
+    return { ok: true, activity: r.activity, fromMin: r.previous && r.previous.effectiveValue != null ? Math.round(r.previous.effectiveValue / 60) : null,
+      sourceMin: r.resolved && r.resolved.sourceValue != null ? Math.round(r.resolved.sourceValue / 60) : null, toMin: Math.round(newMin) };
+  }
+  /* v8-445: EIN Schreibweg fuer manuelle Korrekturen (Quelle / manuell / wirksam,
+     js/activity-effective.js). value == null nimmt die Korrektur zurueck. Der
+     Quellwert bleibt in metrics.corrections stehen; das kanonische Feld traegt
+     danach den wirksamen Wert. metrics wird ERSETZT, nie an Ort und Stelle
+     geaendert (geteilter Merkstand, s. readAll). */
+  function setActivityCorrection(id, metricKey, value, opts) {
+    var E = EFF();
+    if (!E) return { ok: false, error: 'Korrektur nicht verfuegbar' };
     var all = readAll();
     for (var i = 0; i < all.length; i++) {
       var a = all[i];
       if (a.id === id || a.clientRecordId === id) {
-        if (a.status !== 'completed') return { ok: false, error: 'nur abgeschlossene Aktivitaeten' };
-        var fromMin = a.durationSeconds != null ? Math.round(a.durationSeconds / 60) : null;
-        /* v8-428: metrics ERSETZEN statt an Ort und Stelle aendern (geteilter Merkstand, s. readAll) */
-        a.metrics = Object.assign({}, a.metrics || {}, { durationCorrection: { fromMin: fromMin, toMin: Math.round(newMin), at: now(), method: 'manual_correction' } });
-        a.durationSeconds = Math.round(newMin) * 60;
-        a.syncStatus = 'pending'; a.updatedAt = now();
+        if (opts && opts.requireCompleted && a.status !== 'completed') return { ok: false, error: 'nur abgeschlossene Aktivitaeten' };
+        var r = (value == null) ? E.clearManual(a, metricKey) : E.setManual(a, metricKey, value);
+        if (!r.ok) return { ok: false, error: r.error === 'out_of_range' ? 'Wert ausserhalb des zulaessigen Bereichs' : (r.error || 'ungueltiger Wert') };
+        if (r.unchanged) return { ok: true, activity: a, resolved: r.resolved, previous: r.previous, unchanged: true };
+        var n = r.activity;
+        n.syncStatus = 'pending'; n.updatedAt = now();
+        all[i] = n;
         writeAll(all);
-        return { ok: true, activity: a, fromMin: fromMin, toMin: Math.round(newMin) };
+        return { ok: true, activity: n, resolved: r.resolved, previous: r.previous };
       }
     }
     return { ok: false, error: 'Aktivitaet nicht gefunden' };
@@ -564,8 +593,21 @@
            lokale Zusatz-Keys bleiben erhalten (ein partielles Serverobjekt
            löscht nie unbeteiligte lokale Metrics); leeres Serverobjekt
            ändert nichts. */
+        var _localMetrics = ex.metrics;
         if (n.metrics && Object.keys(n.metrics).length) ex.metrics = Object.assign({}, ex.metrics || {}, n.metrics);
         ex.status = n.status || ex.status; ex.syncStatus = 'synced'; ex.updatedAt = now();
+        /* v8-445: Manuelle Korrekturen (Quelle / manuell / wirksam). Je Kennzahl gilt der
+           juengere Satz — traegt dieses Geraet den juengeren (oder der Server gar keinen),
+           bleibt er stehen und wird erneut gesendet. Danach wird der gemischte Eintrag auf
+           den wirksamen Wert gebracht: die Serverspalte darueber ist der Quellwert. */
+        var _E = EFF();
+        if (_E && _E.adoptNewer) {
+          var exNew = _E.adoptNewer(ex, { metrics: _localMetrics });
+          var localNewer = exNew !== ex;
+          var exEff = _E.applyEffective(exNew);
+          if (exEff !== ex) { ex.durationSeconds = exEff.durationSeconds; ex.summary = exEff.summary; ex.metrics = exEff.metrics; }
+          if (localNewer) ex.syncStatus = 'pending';
+        }
         /* v8-421: Server-client_record_id uebernehmen, wenn der lokale Eintrag nur eine
            beim Merge erzeugte Ersatz-ID traegt (fremdes Geraet). Die UI adressiert die
            Einheit ueber die Server-crid — ohne Uebernahme fand der Store sie nicht. */
@@ -600,7 +642,7 @@
     getActivityById: getActivityById, getActivityBySource: getActivityBySource,
     planLinkOf: planLinkOf, unlinkActivityFromPlan: unlinkActivityFromPlan, linkActivityToPlan: linkActivityToPlan,
     ensureLocal: ensureLocal, ensureLocalMany: ensureLocalMany, linkManyToPlan: linkManyToPlan, findIndexByRef: findIndexByRef,
-    correctActivityDuration: correctActivityDuration, repairWorkoutSnapshot: repairWorkoutSnapshot,
+    correctActivityDuration: correctActivityDuration, setActivityCorrection: setActivityCorrection, repairWorkoutSnapshot: repairWorkoutSnapshot,
     recordingFor: recordingFor, setActivityLink: setActivityLink,
     getWorkoutDetailsForActivity: getWorkoutDetailsForActivity,
     listActivities: listActivities, markSynced: markSynced, pendingActivities: pendingActivities,

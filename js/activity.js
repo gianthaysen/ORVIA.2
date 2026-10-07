@@ -561,7 +561,7 @@ function _activityDetailHtml(vm, context) {
   if (vm.caloriesKcal != null) rows.push(_adRow('Kalorien', vm.caloriesKcal + ' kcal'));
   if (vm.source) rows.push(_adRow('Quelle', vm.source));
   var wd = _workoutDetailHtml(vm);
-  var story = vm.storyRef ? '<button class="btn" style="margin-top:12px" onclick="closeActivityDetail();openStory(\'' + escH(vm.storyRef.date) + '\',\'' + escH(vm.storyRef.typ) + '\')">▶ Story ansehen</button>' : '';
+  var story = vm.storyRef ? '<button class="btn" style="margin-top:12px" onclick="closeActivityDetail();openStory(\'' + escH(vm.storyRef.date) + '\',\'' + escH(vm.storyRef.typ) + '\')">▶ Highlights ansehen</button>' : '';
   return '<div class="orvia-modal wcard-modal" role="dialog" aria-modal="true"><div class="wcard">' +
     '<div class="wc-title">' + escH(vm.title || vm.sportLabel || 'Aktivität') + '</div>' +
     '<div class="wc-day">' + escH(vm.sportLabel || '') + '</div>' +

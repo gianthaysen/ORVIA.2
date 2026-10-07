@@ -18,11 +18,22 @@
   var _backoff = {};         // clientRecordId -> { n, until }
   /* v8-424: Schluessel in activities.metrics, die der CLIENT fuehrt (alles andere gehoert
      der Quelle — Worker bzw. aufzeichnendes Geraet — und wird nie von hier ueberschrieben). */
-  var OWNED_METRIC_KEYS = ['plannedSessionId', 'planLinkCorrection', 'durationCorrection'];
+  var OWNED_METRIC_KEYS = ['plannedSessionId', 'planLinkCorrection', 'durationCorrection', 'corrections'];   /* v8-445: + corrections (Quelle / manuell / wirksam) */
+  var ADDITIVE_METRIC_KEYS = ['corrections'];   /* nie implizit loeschen — siehe activityRepository.updateFields */
   function _isConflict(r) { return !!(r && r.error && /identity_conflict/.test(String(r.error.code) + String(r.error.message))); }
+  function _sourceSeconds(a) {
+    var E = O.activityEffective;
+    if (!E || !a || !a.metrics || !(a.metrics.corrections || a.metrics.durationCorrection)) return null;
+    var r = E.resolveMetric(a, 'duration');
+    return r.sourceValue != null ? r.sourceValue : null;
+  }
   function _ownedPatch(a) {
     var p = { metrics: a.metrics || {} };
-    if (a.metrics && a.metrics.durationCorrection && a.durationSeconds != null) p.duration_seconds = a.durationSeconds;   // nur nach manueller Korrektur
+    /* v8-445: Die Serverspalte ist der QUELLWERT, die Korrektur steht in metrics. Bis v8-444
+       schrieb dieser Weg den korrigierten Wert in die Spalte, der Workout-Weg (RPC) rechnete
+       sie aus den Zeitstempeln zurueck — zwei Bedeutungen fuer eine Spalte. Jetzt eine: Quelle. */
+    var sv = _sourceSeconds(a);
+    if (sv != null) p.duration_seconds = sv;
     return p;
   }
   var _isUuid = function (v) { return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v); };
@@ -66,14 +77,14 @@
                Summary; von hier werden nur die lokal gefuehrten Zuordnungsfelder
                nachgetragen — ueber die Server-id, gemerged in den Serverstand. */
             if (!(r && r.success) && _isConflict(r) && _isUuid(a.id) && repo.updateFields) {
-              r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, localWins: false } });
+              r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, additiveKeys: ADDITIVE_METRIC_KEYS, localWins: false } });
             }
           } else if (a.source === 'manual' || a.source === 'import') {
             r = await repo.upsertManual(serverRowFromLocal(a));
           } else if (_isUuid(a.id) && repo.updateFields) {
             /* Server-Quelle (Garmin-Worker u. a.): nie neu anlegen, nie metrics ersetzen —
                nur die lokal gefuehrten Felder in den aktuellen Serverstand mergen. */
-            r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, localWins: false } });
+            r = await repo.updateFields(a.id, _ownedPatch(a), { metricsMerge: { ownedKeys: OWNED_METRIC_KEYS, additiveKeys: ADDITIVE_METRIC_KEYS, localWins: false } });
           } else { skipped++; continue; }                            // legacy_local wird NICHT gepusht
           if (r && r.success) { store.markSynced(a.clientRecordId, r.data && r.data.id); _noteOk(a.clientRecordId); pushed++; }
           else { failed++; _noteFail(a.clientRecordId, nowMs); if (_isConflict(r)) conflicts++; }
@@ -95,7 +106,7 @@
     return {
       client_record_id: a.clientRecordId, sport_id: a.sportId, source: a.source || 'manual',
       source_record_id: a.sourceRecordId, started_at: a.startedAt, ended_at: a.endedAt,
-      duration_seconds: a.durationSeconds, status: a.status || 'completed',
+      duration_seconds: (_sourceSeconds(a) != null ? _sourceSeconds(a) : a.durationSeconds), status: a.status || 'completed',   /* v8-445: Spalte = Quellwert */
       summary: a.summary || {}, metrics: a.metrics || {}
     };
   }

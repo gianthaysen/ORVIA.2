@@ -179,7 +179,7 @@ function openStory(date,typ){
   }catch(_){ }
   var e=DB[date]; if(!e||!e.sessions||!e.sessions[typ])return;
   var s=e.sessions[typ];
-  if(typeof toast==='function')toast('Für diese Einheit liegen keine auswertbaren Daten für eine Story vor.');
+  if(typeof toast==='function')toast('Für diese Einheit liegen keine auswertbaren Daten für Highlights vor.');
   return;
   /* eslint-disable no-unreachable */
   _story={i:0,date:date,typ:typ,cards:buildStoryCards(date,typ,s)};
