@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from . import garmin_fields
 from .providers.base import NormalizedActivity, NormalizedDevice, NormalizedMetric
 from .registry import daily_record_id, load_registry
 
@@ -632,6 +633,16 @@ def normalize_activity(raw: Any) -> NormalizedActivity | None:
     if sport_id == "other":
         # Rohtyp erhalten (Design §6): keine neuen Sport-IDs, aber nichts verlieren.
         metrics["source_sport_raw"] = sport_raw
+    # v8-447 · Herkunft IMMER erhalten — nicht nur, wenn der Typ unbekannt ist. Bis v8-446
+    # ging der Garmin-Typ verloren, sobald er auf eine ORVIA-Sportart passte (Bahn oder
+    # Freiwasser, Laufband oder Trail, Rolle oder Strasse waren danach nicht mehr zu
+    # unterscheiden), ebenso die Ortszeit und jedes der uebrigen Felder des Listeneintrags.
+    #   metrics.garmin  klein: type_key, parent_type_id, start_local, start_gmt, utc_offset_s
+    #   metrics.ext     Rohwerte der Messfelder unter ihrem Garmin-Namen (garmin_fields.py)
+    metrics["garmin"] = _json_safe(garmin_fields.provenance(raw))
+    ext = garmin_fields.ext_block(raw)
+    if len(ext) > 1:
+        metrics["ext"] = _json_safe(ext)
     training_load = raw.get("activityTrainingLoad")
     if training_load is not None:
         metrics["training_load"] = _json_safe(training_load)

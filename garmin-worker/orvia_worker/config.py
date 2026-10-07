@@ -74,6 +74,16 @@ class Settings:
     # solange die Sport- und reps-IDs unbelegt sind (Gate G1), ist der
     # produktive Pfad ohnehin gesperrt.
     strength_push_device_test: bool = False
+    # v8-447 · Details-Nachladen: hoechstens so viele Aktivitaeten je Sync-Lauf (jede ist
+    # ein Garmin-Abruf; mit Zusatzabrufen entsprechend mehr).
+    detail_backfill_limit: int = 10
+    # Zusatzabrufe je Aktivitaet, kommagetrennt aus: activity, splits, typed_splits,
+    # hr_zones, power_zones, exercise_sets. Standard LEER = aus (Antwortformen unbelegt).
+    detail_extras: tuple[str, ...] = ()
+    # Einmaliger Rueckblick fuer den Herkunftsblock (Garmin-Typ, Ortszeit, Rohfelder) bei
+    # bereits importierten Aktivitaeten: so viele Tage zurueck wird die LISTE gelesen
+    # (ein Abruf, keine Einzelabrufe). 0 = nur das normale Sync-Fenster.
+    activity_provenance_backfill_days: int = 0
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -106,6 +116,11 @@ class Settings:
             port=_int_env(env, "PORT", 8000),
             log_level=(env.get("LOG_LEVEL") or "INFO").strip().upper(),
             strength_push_device_test=_bool_env(env, "STRENGTH_PUSH_DEVICE_TEST"),
+            detail_backfill_limit=max(1, _int_env(env, "DETAIL_BACKFILL_LIMIT", 10)),
+            detail_extras=tuple(
+                e.strip().lower() for e in (env.get("DETAIL_EXTRAS") or "").split(",") if e.strip()
+            ),
+            activity_provenance_backfill_days=max(0, _int_env(env, "ACTIVITY_PROVENANCE_BACKFILL_DAYS", 0)),
         )
 
 

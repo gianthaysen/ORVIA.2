@@ -80,7 +80,7 @@ def _iso_ms(s: str):
 
 def parse_activity_details(raw: Any) -> dict:
     out = {"hasRoute": False, "route": [], "streams": {}, "stream_units": {}, "stream_meta": {},
-           "splits": None, "hasSplits": False, "hasStreams": False}
+           "splits": None, "hasSplits": False, "hasStreams": False, "durations": {}, "sampling": {}}
     if not isinstance(raw, dict):
         return out
 
@@ -174,6 +174,51 @@ def parse_activity_details(raw: Any) -> dict:
         out["stream_meta"]["cadence"]["derived"] = "2*(directRunCadence+directFractionalCadence)"
     elif bike is not None:
         emit("cadence", bike, "rpm", "cycling_cadence_rpm", "directBikeCadence")
+
+    # --- Zeitachse (v8-447) ---------------------------------------------------
+    # Bis Details-Version 2 hatten die Messreihen KEINEN Zeitbezug: gespeichert war nur
+    # die Reihenfolge. Die Antwort traegt aber zu jeder Zeile den Zeitpunkt
+    # (directTimestamp, ms GMT) — im echten Mitschnitt mit Abstaenden von 1 s bis 460 s
+    # (Garmin zeichnet nicht gleichmaessig auf). "time" = Sekunden seit der ersten Zeile,
+    # verstrichene Uhrzeit inklusive Pausen. Gleiche Indexliste wie alle anderen Reihen.
+    # Nur wenn JEDE behaltene Zeile einen Zeitpunkt hat und die Achse nicht rueckwaerts
+    # laeuft — eine lueckenhafte Zeitachse waere schlimmer als keine.
+    ts = column("directTimestamp")
+    src_t, secs = None, None
+    if ts is not None:
+        first = next((v for v in ts if v is not None), None)
+        secs = [None if v is None else int(round((v - first) / 1000.0)) for v in ts]
+        src_t = "directTimestamp"
+    else:
+        el = column("sumElapsedDuration")
+        if el is not None:
+            secs = [None if v is None else int(round(v)) for v in el]
+            src_t = "sumElapsedDuration"
+    if secs is not None and out["streams"]:
+        kept = [secs[i] for i in keep]
+        ok = all(v is not None for v in kept) and all(b >= a for a, b in zip(kept, kept[1:]))
+        if ok:
+            out["streams"]["time"] = kept
+            out["stream_units"]["time"] = "s"
+            out["stream_meta"]["time"] = {"kind": "elapsed_s", "unit": "s", "source": src_t}
+            gu = desc_unit.get(src_t)
+            if gu:
+                out["stream_meta"]["time"]["garmin_unit"] = gu
+
+    # --- Dauern aus der letzten Zeile (Summenfelder; Einheit laut Antwort: Sekunde) ---
+    def last(key):
+        col = column(key)
+        if col is None:
+            return None
+        v = next((x for x in reversed(col) if x is not None), None)
+        return None if v is None else round(float(v), 1)
+
+    for name, key in (("timer_s", "sumDuration"), ("moving_s", "sumMovingDuration"), ("elapsed_s", "sumElapsedDuration")):
+        v = last(key)
+        if v is not None:
+            out["durations"][name] = v
+    if rows:
+        out["sampling"] = {"rows": len(rows), "kept": len(keep)}
     out["hasStreams"] = bool(out["streams"])
 
     # --- Splits/Laps: in get_activity_details NICHT enthalten → keine Erfindung ---
@@ -197,6 +242,21 @@ def build_activity_metrics(existing: Any, details: dict, max_route_points: int =
         # v8-447: Bedeutung jeder Messreihe (kind / unit / Quellfeld). Wird mit den Reihen
         # ERSETZT, nie mit einem aelteren Stand gemischt.
         out["stream_meta"] = details.get("stream_meta", {})
+    # v8-447: Bewegungszeit / verstrichene Zeit / Timer-Zeit der Aufzeichnung und wie stark
+    # die Messreihen ausgeduennt wurden — klein, deshalb im Herkunftsblock metrics.garmin.
+    dur, smp = details.get("durations") or {}, details.get("sampling") or {}
+    if dur or smp:
+        g = dict(out.get("garmin")) if isinstance(out.get("garmin"), dict) else {}
+        if dur.get("moving_s") is not None:
+            g["moving_duration_s"] = dur["moving_s"]
+        if dur.get("elapsed_s") is not None:
+            g["elapsed_duration_s"] = dur["elapsed_s"]
+        if dur.get("timer_s") is not None:
+            g["timer_duration_s"] = dur["timer_s"]
+        if smp:
+            g["stream_rows"] = smp.get("rows")
+            g["stream_kept"] = smp.get("kept")
+        out["garmin"] = g
     if details.get("hasSplits"):
         out["splits"] = details["splits"]
     return out

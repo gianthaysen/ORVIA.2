@@ -32,7 +32,7 @@ _MISSING_TABLE_MARKERS = ("does not exist", "42P01", "PGRST205", "could not find
 # GM7.4.1 · Detailvollständigkeitsvertrag: aktuelle Version des Detail-Merge-
 # Kontrakts. Erhöhen, falls sich Feldbedeutung/Parser-Semantik künftig ändert
 # und Altbestand kontrolliert erneut angereichert werden soll.
-DETAILS_CONTRACT_VERSION = 2
+DETAILS_CONTRACT_VERSION = 3
 
 # v8-424 · Version 2 ergaenzt die Leistungs-Messreihe (directPower) und die Rad-
 # Trittfrequenz. Kontrolliert erneut angereichert wird NUR, wo das neue Feld
@@ -40,11 +40,35 @@ DETAILS_CONTRACT_VERSION = 2
 # (jede Nachladung ist ein Garmin-Abruf; begrenzt durch detail_backfill_limit).
 _REENRICH_SPORTS_V2 = ("cycling",)
 
+# v8-447 · Version 3: Schrittfrequenz statt Ein-Bein-Frequenz, Zeitachse, Bedeutung je
+# Messreihe, einheitliche Ausduennung, Bewegungs-/verstrichene Zeit. Das betrifft JEDE
+# Sportart — Zeitachse und Dauern fehlen ueberall, die Laufkadenz ist im Altbestand
+# nicht sicher die Schrittfrequenz. Deshalb wird der gesamte Bestand einmal erneut
+# geladen: neueste zuerst, hoechstens detail_backfill_limit je Lauf (Standard 10).
+# Nachgeladen wird von Garmin — der gespeicherte Altwert wird nie umgerechnet.
+_REENRICH_ALL_BELOW = 3
+
+# Zusatzabrufe je Aktivitaet (Runden, Zonen, Saetze, volle Zusammenfassung). Jeder ist ein
+# weiterer Garmin-Abruf und seine Antwortform ist im Repo NICHT belegt — deshalb sind sie
+# standardmaessig AUS (Einstellung DETAIL_EXTRAS) und werden erst nach einem echten
+# Mitschnitt je Sportart eingeschaltet (scripts/capture_activity_payloads.py).
+#   name → Sportarten, fuer die der Abruf ueberhaupt sinnvoll ist ("*" = alle)
+EXTRAS: dict[str, tuple[str, ...]] = {
+    "activity": ("*",),            # get_activity: volle Zusammenfassung (summaryDTO)
+    "splits": ("*",),              # get_activity_splits: Runden
+    "typed_splits": ("swimming", "running", "cycling"),   # Intervalle / Bahnen
+    "hr_zones": ("*",),            # get_activity_hr_in_timezones
+    "power_zones": ("cycling", "running"),                # get_activity_power_in_timezones
+    "exercise_sets": ("gym",),     # get_activity_exercise_sets
+}
+
 # Schluessel in activities.metrics, die der CLIENT fuehrt (Plan-Zuordnung,
 # Dauerkorrektur). Der Worker liest die Zeile zu Beginn des Laufs und schreibt
 # sie nach den Garmin-Abrufen zurueck — dazwischen kann der Client genau diese
 # Felder gesetzt haben. Sie werden vor dem Schreiben frisch nachgelesen.
-CLIENT_OWNED_METRIC_KEYS = ("plannedSessionId", "planLinkCorrection", "durationCorrection")
+# v8-447: + "corrections" (Quelle / manuell / wirksam, App v8-445) — eine manuelle Korrektur
+# darf durch das Zurueckschreiben der Details nie verloren gehen.
+CLIENT_OWNED_METRIC_KEYS = ("plannedSessionId", "planLinkCorrection", "durationCorrection", "corrections")
 
 
 def _details_complete(metrics: Any) -> bool:
@@ -81,17 +105,145 @@ def _needs_details(act: Any) -> bool:
     metrics = act.get("metrics") if isinstance(act, dict) else None
     if not _details_complete(metrics):
         return True
-    if act.get("sport_id") in _REENRICH_SPORTS_V2:
+    try:
+        return int(metrics.get("detailsVersion") or 1) < _REENRICH_ALL_BELOW
+    except (TypeError, ValueError):
+        return True
+
+
+def extras_for(sport_id: Any, enabled: Any) -> list[str]:
+    """Welche der eingeschalteten Zusatzabrufe fuer diese Sportart gelten (feste Reihenfolge)."""
+    on = [str(e).strip() for e in (enabled or ()) if str(e).strip()]
+    return [name for name in EXTRAS if name in on and ("*" in EXTRAS[name] or sport_id in EXTRAS[name])]
+
+
+def _slim_laps(raw: Any) -> list | None:
+    """Runden in der Form, die die App schon liest (metrics.splits: distance + eine Dauer +
+    averageHR). Nur echte Felder des Rohobjekts; passt die Antwort nicht, entsteht nichts."""
+    cands = []
+    if isinstance(raw, dict):
+        for k in ("lapDTOs", "laps", "splits"):
+            if isinstance(raw.get(k), list):
+                cands.append(raw[k])
+    elif isinstance(raw, list):
+        cands.append(raw)
+    keep = ("distance", "duration", "movingDuration", "elapsedDuration", "averageHR", "maxHR",
+            "averageSpeed", "elevationGain", "lapIndex", "startTimeGMT")
+    for lst in cands:
+        out = []
+        for lap in lst[:200]:
+            if not isinstance(lap, dict):
+                continue
+            num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)  # noqa: E731
+            if not num(lap.get("distance")) or not any(num(lap.get(d)) for d in ("duration", "movingDuration", "elapsedDuration")):
+                continue
+            out.append({k: lap[k] for k in keep if lap.get(k) is not None and not isinstance(lap[k], (dict, list))})
+        if out:
+            return out
+    return None
+
+
+def merge_extras(metrics: dict, sport_id: Any, fetched: dict) -> dict:
+    """Antworten der Zusatzabrufe in metrics.ext ablegen: Form erhalten, nur Messwerte
+    (garmin_fields.keep_structure). `fetched`: name → Rohantwort | None (None = fehlgeschlagen)."""
+    from . import garmin_fields as GF
+    ext = dict(metrics.get("ext")) if isinstance(metrics.get("ext"), dict) else {"v": GF.EXT_VERSION}
+    got = dict(ext.get("extras")) if isinstance(ext.get("extras"), dict) else {}
+    for name, raw in fetched.items():
+        if raw is None:
+            got[name] = "failed"
+            continue
+        if name == "activity" and isinstance(raw, dict):
+            # volle Zusammenfassung: dieselbe Erlaubnisliste wie der Listeneintrag
+            summ = raw.get("summaryDTO") if isinstance(raw.get("summaryDTO"), dict) else raw
+            more = GF.retain_fields(summ)
+            if more:
+                fields = dict(ext.get("fields")) if isinstance(ext.get("fields"), dict) else {}
+                for k, v in more.items():
+                    fields.setdefault(k, v)          # der Listeneintrag bleibt fuehrend
+                ext["fields"] = fields
+            got[name] = "ok"
+            continue
+        kept = GF.keep_structure(raw)
+        if kept in (None, {}, []):
+            got[name] = "empty"
+            continue
+        ext[name] = kept
+        got[name] = "ok"
+        if name == "splits":
+            laps = _slim_laps(raw)
+            if laps:
+                metrics["splits"] = laps
+                metrics["splits_source"] = "garmin_splits"
+    ext["extras"] = got
+    metrics["ext"] = ext
+    return metrics
+
+
+# Schluessel, die der Herkunfts-Nachtrag setzen darf — und NUR, wenn sie noch fehlen.
+_PROVENANCE_KEYS = ("garmin", "ext")
+
+
+async def patch_provenance(db, user_id: str, acts: Any) -> dict:
+    """v8-447 · Herkunftsblock fuer BEREITS importierte Aktivitaeten nachtragen.
+
+    `acts`: normalisierte Listeneintraege (NormalizedActivity) — sie kommen aus demselben
+    Listenabruf, den der Sync ohnehin macht; hier entsteht KEIN zusaetzlicher Garmin-Abruf.
+    Regeln:
+      * ergaenzt wird ausschliesslich metrics.garmin / metrics.ext, und nur wo sie fehlen —
+        kein vorhandener Wert wird ersetzt, keine Messreihe, keine Korrektur beruehrt;
+      * sport_id wird nur von 'other' auf die erkannte Sportart gehoben, und nur wenn die
+        Zeile nachweislich wegen der damals fehlenden Zuordnung 'other' wurde
+        (metrics.source_sport_raw == Garmin-Typ von heute). Eine vom Nutzer gewaehlte
+        Sportart wird nie ueberschrieben;
+      * jede Zeile fuer sich abgesichert — ein Fehler bricht nichts ab.
+    """
+    patched = 0
+    upgraded = 0
+    for act in acts or ():
         try:
-            return int(metrics.get("detailsVersion") or 1) < 2
-        except (TypeError, ValueError):
-            return True
-    return False
+            rid = getattr(act, "source_record_id", None)
+            am = getattr(act, "metrics", None)
+            if not rid or not isinstance(am, dict) or not isinstance(am.get("garmin"), dict):
+                continue
+            flt = {"user_id": user_id, "source": "garmin", "source_record_id": rid}
+            rows = await db.select("activities", flt, limit=1)
+            if not rows:
+                continue
+            row = rows[0]
+            cur = row.get("metrics") if isinstance(row.get("metrics"), dict) else {}
+            patch: dict[str, Any] = {}
+            merged = dict(cur)
+            for k in _PROVENANCE_KEYS:
+                if k in am and k not in cur:
+                    merged[k] = am[k]
+            # Details koennen den Herkunftsblock schon angelegt haben (Dauern, Abtastung),
+            # bevor der Listeneintrag ihn fuellt: dann nur die fehlenden Schluessel ergaenzen.
+            if isinstance(cur.get("garmin"), dict):
+                g = dict(cur["garmin"])
+                for k, v in am["garmin"].items():
+                    g.setdefault(k, v)
+                merged["garmin"] = g
+            if merged != cur:
+                patch["metrics"] = merged
+            new_sport = getattr(act, "sport_id", None)
+            type_key = (am.get("garmin") or {}).get("type_key")
+            if (row.get("sport_id") == "other" and new_sport and new_sport != "other"
+                    and type_key and cur.get("source_sport_raw") == type_key):
+                patch["sport_id"] = new_sport
+                upgraded += 1
+            if patch:
+                await db.update("activities", flt, patch)
+                patched += 1
+        except Exception:  # noqa: BLE001 — Nachtrag darf den Sync nie abbrechen
+            continue
+    return {"patched": patched, "sport_upgraded": upgraded}
 
 
 async def sync_activity_details(
     db, user_id: str, get_details: Callable[[str], Any], *, limit: int, max_retries: int = 2,
     on_rate_limit: Callable[[int], None] | None = None,
+    get_extra: Callable[[str, str], Any] | None = None, extras: Any = None,
 ) -> dict:
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged."""
@@ -116,6 +268,7 @@ async def sync_activity_details(
         on_rate_limit=on_rate_limit,
     )
     updated = 0
+    extras_count = 0
     for aid, parsed in plan["details"].items():
         act = by_id.get(aid) or {}
         merged = build_activity_metrics(act.get("metrics"), parsed)
@@ -123,6 +276,18 @@ async def sync_activity_details(
         # gemergten Abruf setzen — nie bei einem Fehlschlag (siehe `failed`).
         merged["detailsFetchedAt"] = datetime.now(timezone.utc).isoformat()
         merged["detailsVersion"] = DETAILS_CONTRACT_VERSION
+        # v8-447 · Zusatzabrufe (nur wenn eingeschaltet). Jeder fuer sich abgesichert: ein
+        # Fehler markiert genau diesen Abruf als "failed" und bricht nichts ab.
+        if get_extra is not None:
+            fetched: dict[str, Any] = {}
+            for name in extras_for(act.get("sport_id"), extras):
+                try:
+                    fetched[name] = get_extra(name, aid)
+                except Exception:  # noqa: BLE001 — Zusatzdaten duerfen den Sync nie abbrechen
+                    fetched[name] = None
+            if fetched:
+                merged = merge_extras(merged, act.get("sport_id"), fetched)
+                extras_count += sum(1 for v in fetched.values() if v is not None)
         # v8-424: clientgefuehrte Felder frisch nachlesen (siehe CLIENT_OWNED_METRIC_KEYS).
         # Schlaegt das Nachlesen fehl, bleibt der zu Laufbeginn gelesene Stand — der
         # Sync bricht deshalb nie ab.
@@ -146,7 +311,7 @@ async def sync_activity_details(
             {"metrics": merged},
         )
         updated += 1
-    return {"selected": plan["selected"], "updated": updated, "failed": plan["failed"]}
+    return {"selected": plan["selected"], "updated": updated, "failed": plan["failed"], "extras": extras_count}
 
 
 async def sync_day_series(

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -416,6 +416,7 @@ async def sync_user(
         )
         new_count = 0
         linked_count = 0
+        known: list = []
         for act in acts:
             # Kein verlässlicher Unique-Index auf activities (0009 nicht Teil
             # dieses Vertrags) -> deterministisches select-then-insert-Dedupe.
@@ -429,6 +430,7 @@ async def sync_user(
                 limit=1,
             )
             if existing:
+                known.append(act)       # v8-447: Herkunftsblock ggf. nachtragen (unten)
                 continue
             # duration_seconds ist in der DB eine Ganzzahl-Spalte; Garmin
             # liefert Sekunden mit Nachkommastellen (z.B. 3475.136962890625).
@@ -464,6 +466,33 @@ async def sync_user(
                 if linked_to:
                     linked_count += 1
         result["steps"]["activities"] = f"ok:{new_count}/{len(acts)}" + (f" linked:{linked_count}" if linked_count else "")
+        # v8-447 · Herkunft (Garmin-Typ, Ortszeit, Rohfelder) fuer schon importierte
+        # Aktivitaeten nachtragen. Aus dem Listenabruf von eben — kein weiterer Abruf.
+        # Optional ein EINMALIGER weiter Rueckblick (ACTIVITY_PROVENANCE_BACKFILL_DAYS):
+        # ein zusaetzlicher Listenabruf, und nur solange noch Zeilen ohne Block existieren.
+        try:
+            from .detail_sync import patch_provenance
+            prov = await patch_provenance(db, user_id, known)
+            back_days = int(getattr(settings, "activity_provenance_backfill_days", 0) or 0)
+            if back_days > 0:
+                rows = await db.select("activities", {"user_id": user_id, "source": "garmin"})
+                missing = [r for r in rows
+                           if not isinstance((r.get("metrics") or {}).get("garmin"), dict)]
+                if missing:
+                    far_end = (date.fromisoformat(date_strs[0]) - timedelta(days=1)).isoformat()
+                    far_start = (date.fromisoformat(date_strs[-1]) - timedelta(days=back_days)).isoformat()
+                    if far_start <= far_end:
+                        older = await asyncio.to_thread(provider.get_activities, far_start, far_end)
+                        more = await patch_provenance(db, user_id, older)
+                        prov = {k: prov[k] + more[k] for k in prov}
+            if prov["patched"]:
+                result["steps"]["activity_provenance"] = (
+                    f"ok:{prov['patched']}" + (f" sport:{prov['sport_upgraded']}" if prov["sport_upgraded"] else "")
+                )
+        except ProviderError as e:
+            result["errors"].append(f"provenance:{e.code}")
+        except Exception:
+            result["errors"].append("provenance_failed")
     except ProviderError as e:
         result["errors"].append(f"activities:{e.code}")
         result["steps"]["activities"] = "failed"
@@ -479,13 +508,16 @@ async def sync_user(
         from .detail_sync import sync_activity_details, sync_day_series
         limit = int(getattr(settings, "detail_backfill_limit", 10) or 10)
         if hasattr(provider, "get_activity_details"):
+            extras = tuple(getattr(settings, "detail_extras", ()) or ())
+            get_extra = getattr(provider, "get_activity_extra", None) if extras else None
             det = await sync_activity_details(
                 db, user_id,
                 lambda aid: provider.get_activity_details(aid),
-                limit=limit,
+                limit=limit, get_extra=get_extra, extras=extras,
             )
             result["steps"]["activity_details"] = (
                 f"ok:{det['updated']} selected:{len(det['selected'])} failed:{len(det['failed'])}"
+                + (f" extras:{det['extras']}" if det.get("extras") else "")
             )
         tz = getattr(settings, "timezone", None) or "Europe/Berlin"
         ser_total = 0

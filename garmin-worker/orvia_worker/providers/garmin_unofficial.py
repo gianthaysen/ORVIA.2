@@ -387,6 +387,23 @@ class GarminUnofficialProvider:
         api = self._require_api()
         return self._call(api.get_activity_details, activity_id)
 
+    def get_activity_extra(self, name: str, activity_id: Any) -> Any:
+        """v8-447 · Zusatzabruf EINER Aktivitaet (Runden, Zonen, Saetze, volle
+        Zusammenfassung). Read-only. Nur aufgerufen, wenn DETAIL_EXTRAS ihn einschaltet,
+        und nur im selben begrenzten Nachladen wie get_activity_details."""
+        api = self._require_api()
+        method = {
+            "activity": "get_activity",
+            "splits": "get_activity_splits",
+            "typed_splits": "get_activity_typed_splits",
+            "hr_zones": "get_activity_hr_in_timezones",
+            "power_zones": "get_activity_power_in_timezones",
+            "exercise_sets": "get_activity_exercise_sets",
+        }.get(name)
+        if method is None or not hasattr(api, method):
+            raise ValueError(f"Unbekannter Zusatzabruf: {name}")
+        return self._call(getattr(api, method), activity_id)
+
     def get_sleep_raw(self, metric_date: str) -> Any:
         """Roh-Schlafantwort (inkl. sleepLevels/Nachtserien) für die Serien-Pipeline."""
         api = self._require_api()

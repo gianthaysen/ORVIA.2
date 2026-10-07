@@ -31,8 +31,17 @@ def test_details_backfill_updates_only_undetailed_and_idempotent():
     async def run():
         db = FakeDb(); uid = "u1"
         await _seed_activities(db, uid)
+        await db.insert("activities", [
+            {"user_id": uid, "source": "garmin", "source_record_id": "A3",
+             "metrics": {"detailsFetchedAt": "2026-10-01T00:00:00+00:00",
+                         "detailsVersion": detail_sync.DETAILS_CONTRACT_VERSION, "streams": {"heart_rate": [1]}}},
+        ])
         res = await detail_sync.sync_activity_details(db, uid, lambda aid: DETAILS, limit=10)
-        assert res["updated"] == 1 and res["selected"] == ["A1"]     # A2 schon detailliert
+        # A1 nie detailliert → zuerst. A2 traegt den alten Vertrag (v1) → wird EINMAL nachgeladen
+        # (v8-447: Zeitachse, Schrittfrequenz). A3 ist auf dem aktuellen Stand → nie wieder.
+        assert res["updated"] == 2 and res["selected"] == ["A1", "A2"]
+        a3 = (await db.select("activities", {"user_id": uid, "source_record_id": "A3"}))[0]["metrics"]
+        assert a3["streams"] == {"heart_rate": [1]}
         rows = await db.select("activities", {"user_id": uid, "source_record_id": "A1"})
         m = rows[0]["metrics"]
         assert m["hasRoute"] is True and 1 < len(m["route"]) <= 600
@@ -265,7 +274,9 @@ def test_activity_summary_carries_power_only_when_present():
     assert "avg_power_w" not in without.summary and "norm_power_w" not in without.summary
 
 
-def test_cycling_v1_is_reenriched_once_other_sports_are_not():
+def test_rows_below_contract_v3_are_reenriched_once_for_every_sport():
+    """v8-447: Version 3 (Zeitachse, Schrittfrequenz, Dauern) betrifft jede Sportart —
+    bis v8-446 wurden nur Radeinheiten nachgeladen."""
     async def run():
         db = FakeDb(); uid = "u7"
         done_v1 = {"detailsFetchedAt": "2026-01-01T00:00:00+00:00", "detailsVersion": 1, "streams": {"heart_rate": [1, 2]}}
@@ -274,9 +285,11 @@ def test_cycling_v1_is_reenriched_once_other_sports_are_not():
             {"user_id": uid, "source": "garmin", "source_record_id": "L1", "sport_id": "running", "metrics": dict(done_v1)},
         ])
         res = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=10)
-        assert res["selected"] == ["R1"] and res["updated"] == 1          # nur die Radeinheit
+        assert sorted(res["selected"]) == ["L1", "R1"] and res["updated"] == 2
         m = (await db.select("activities", {"user_id": uid, "source_record_id": "R1"}))[0]["metrics"]
-        assert m["detailsVersion"] == 2 and "power" in m["streams"]
+        assert m["detailsVersion"] == detail_sync.DETAILS_CONTRACT_VERSION == 3 and "power" in m["streams"]
+        lm = (await db.select("activities", {"user_id": uid, "source_record_id": "L1"}))[0]["metrics"]
+        assert lm["detailsVersion"] == 3
         res2 = await detail_sync.sync_activity_details(db, uid, lambda aid: _ride_details(), limit=10)
         assert res2["selected"] == []                                      # danach nie wieder
     asyncio.run(run())
