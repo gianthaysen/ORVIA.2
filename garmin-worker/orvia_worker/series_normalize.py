@@ -80,7 +80,8 @@ def _iso_ms(s: str):
 
 def parse_activity_details(raw: Any) -> dict:
     out = {"hasRoute": False, "route": [], "streams": {}, "stream_units": {}, "stream_meta": {},
-           "splits": None, "hasSplits": False, "hasStreams": False, "durations": {}, "sampling": {}}
+           "splits": None, "hasSplits": False, "hasStreams": False, "durations": {}, "sampling": {},
+           "ext_series": {}, "series_unparsed": []}
     if not isinstance(raw, dict):
         return out
 
@@ -219,6 +220,24 @@ def parse_activity_details(raw: Any) -> dict:
             out["durations"][name] = v
     if rows:
         out["sampling"] = {"rows": len(rows), "kept": len(keep)}
+
+    # --- Zusatzreihen je Sportart (v8-447, Commit C) ----------------------------
+    # Was Garmin ueber die kanonischen Reihen hinaus liefert (Laufdynamik, Pedalwerte,
+    # Zugfrequenz …), bleibt unter dem GARMIN-NAMEN mit Garmins Einheit erhalten — gleicher
+    # Index, also gleicher Zeitbezug. Keine Umrechnung, keine Deutung. Reihen, deren Name
+    # weder bekannt ist noch nach einem Messwert aussieht, werden nur dem Namen nach gemeldet.
+    from . import garmin_fields as GF
+    plan = GF.series_plan(desc.keys())
+    for key in plan["keep"]:
+        vals = column(key)
+        if vals is None:
+            continue
+        entry = {"values": [vals[i] for i in keep]}
+        gu = desc_unit.get(key)
+        if gu:
+            entry["garmin_unit"] = gu
+        out["ext_series"][key] = entry
+    out["series_unparsed"] = [k for k in plan["unparsed"]]
     out["hasStreams"] = bool(out["streams"])
 
     # --- Splits/Laps: in get_activity_details NICHT enthalten → keine Erfindung ---
@@ -257,6 +276,21 @@ def build_activity_metrics(existing: Any, details: dict, max_route_points: int =
             g["stream_rows"] = smp.get("rows")
             g["stream_kept"] = smp.get("kept")
         out["garmin"] = g
+    # v8-447 (C): Zusatzreihen und der Namensbericht gehoeren in den grossen Block metrics.ext
+    # (nur Server). Mit jedem Nachladen ERSETZT — wie die kanonischen Reihen.
+    xs, un = details.get("ext_series") or {}, details.get("series_unparsed") or []
+    if details.get("hasStreams") or xs or un:
+        ext = dict(out.get("ext")) if isinstance(out.get("ext"), dict) else {"v": 1}
+        if xs:
+            ext["series"] = xs
+        else:
+            ext.pop("series", None)
+        if un:
+            ext["series_unparsed"] = un
+        else:
+            ext.pop("series_unparsed", None)
+        if len(ext) > 1 or isinstance(out.get("ext"), dict):
+            out["ext"] = ext
     if details.get("hasSplits"):
         out["splits"] = details["splits"]
     return out

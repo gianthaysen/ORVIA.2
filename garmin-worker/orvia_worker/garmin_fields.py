@@ -276,6 +276,26 @@ def retain_structures(raw: Any) -> dict:
     return out
 
 
+NAMES_MAX = 60           # Deckel fuer Namenslisten (ext.unrecognized, ext.series_unparsed)
+
+
+def unretained_names(raw: Any) -> list[str]:
+    """NAMEN der Felder, die Garmin geliefert hat und die NICHT erhalten wurden — ohne Werte.
+    Das ist der Verlustbericht je Aktivitaet: aus ihm laesst sich (per SQL-Zaehlung ueber
+    alle Aktivitaeten) ablesen, welche Felder Garmin je Sportart wirklich liefert, ohne dass
+    jemand Rohantworten oder Zugangsdaten anfassen muss. Private Felder werden auch dem
+    Namen nach nicht aufgefuehrt."""
+    if not isinstance(raw, dict):
+        return []
+    kept_s = set(retain_structures(raw))
+    out = []
+    for key in sorted(k for k in raw if isinstance(k, str)):
+        cls = classify(key, raw[key])
+        if cls == "unrecognized" or (cls == "structure" and key not in kept_s):
+            out.append(key[:64])
+    return out[:NAMES_MAX]
+
+
 def ext_block(raw: Any) -> dict:
     """Groesserer Herkunftsblock fuer metrics.ext (Server + Listen-Zwischenspeicher der App)."""
     out: dict[str, Any] = {"v": EXT_VERSION}
@@ -285,6 +305,9 @@ def ext_block(raw: Any) -> dict:
     structs = retain_structures(raw)
     if structs:
         out["list"] = structs
+    names = unretained_names(raw)
+    if names:
+        out["unrecognized"] = names
     return out
 
 
@@ -351,6 +374,86 @@ def provenance(raw: Any) -> dict:
             out["parent_type_id"] = pt
     out.update(time_provenance(raw))
     return out
+
+
+# --- Messreihen der Detailantwort (metricDescriptors) --------------------------
+# Kanonische Reihen (heart_rate, power, cadence, speed, distance, elevation, time) baut
+# series_normalize. Alles Weitere, was Garmin je Sportart zusaetzlich liefert
+# (Laufdynamik, Pedalwerte, Zugfrequenz …), wurde bis v8-446 verworfen.
+#   SERIES_KNOWN   namentlich bekannte Zusatzreihen mit Belegstufe
+#   SERIES_SKIP    Reihen, die anderswo stehen oder bewusst nicht gespeichert werden
+# Erhalten wird die Reihe unter ihrem GARMIN-NAMEN mit Garmins Einheit, auf demselben
+# Index wie alle anderen Reihen (also mit Zeitbezug) — in metrics.ext.series, nur Server.
+SERIES_KNOWN: list[dict] = [
+    # ---- Laufdynamik -----------------------------------------------------------
+    _f("directGroundContactTime", "ms", "running", ("running",), "assumed"),
+    _f("directVerticalOscillation", "cm", "running", ("running",), "assumed", "Einheit laut Antwort (garmin_unit)"),
+    _f("directStrideLength", "cm", "running", ("running",), "assumed", "Einheit laut Antwort (garmin_unit)"),
+    _f("directVerticalRatio", "%", "running", ("running",), "assumed"),
+    _f("directGroundContactBalanceLeft", "%", "running", ("running",), "assumed"),
+    _f("directGradeAdjustedSpeed", "m/s", "running", ("running",), "assumed"),
+    # ---- Rad -------------------------------------------------------------------
+    _f("directLeftBalance", "%", "cycling", ("cycling",), "assumed"),
+    _f("directLeftTorqueEffectiveness", "%", "cycling", ("cycling",), "assumed"),
+    _f("directRightTorqueEffectiveness", "%", "cycling", ("cycling",), "assumed"),
+    _f("directLeftPedalSmoothness", "%", "cycling", ("cycling",), "assumed"),
+    _f("directRightPedalSmoothness", "%", "cycling", ("cycling",), "assumed"),
+    # ---- Schwimmen / Rudern ----------------------------------------------------
+    _f("directSwimCadence", "strokes/min", "swimming", ("swimming",), "assumed"),
+    _f("directStrokeCadence", "strokes/min", "swimming", ("swimming", "rowing"), "assumed"),
+    _f("directSwolf", "swolf", "swimming", ("swimming",), "assumed"),
+    _f("directStrokes", "count", "swimming", ("swimming", "rowing"), "assumed"),
+    # ---- allgemein -------------------------------------------------------------
+    _f("directAirTemperature", "°C", "environment", ALL, "assumed"),
+    _f("directRespirationRate", "breaths/min", "effect", ALL, "assumed"),
+    _f("directPerformanceCondition", "score", "effect", ("running", "cycling"), "assumed"),
+    _f("directAvailableStamina", "%", "effect", ("running", "cycling"), "assumed"),
+    _f("directPotentialStamina", "%", "effect", ("running", "cycling"), "assumed"),
+]
+SERIES_KNOWN_BY_KEY = {f["key"]: f for f in SERIES_KNOWN}
+
+# Reihen des echten Lauf-Mitschnitts, die bewusst NICHT zusaetzlich gespeichert werden:
+# sie stehen schon als kanonische Reihe da, sind Koordinaten oder kein Trainingsmesswert.
+SERIES_SKIP = frozenset((
+    "directTimestamp", "directLatitude", "directLongitude",                    # Zeitachse / Route
+    "sumDistance", "sumDuration", "sumMovingDuration", "sumElapsedDuration",   # distance / Dauern
+    "directHeartRate", "directPower", "directSpeed",                            # kanonisch
+    "directElevation", "directCorrectedElevation", "directUncorrectedElevation",
+    "directRunCadence", "directDoubleCadence", "directFractionalCadence", "directBikeCadence",
+    "directVerticalSpeed",        # Ableitung der Hoehe
+    "directBodyBattery",          # Tageswert, keine Trainingsmessreihe (steht in user_metrics)
+))
+SERIES_MAX = 8           # Deckel fuer metrics.ext.series
+
+
+def classify_series(key: Any) -> str:
+    """'canonical' | 'known' | 'measured' | 'private' | 'unrecognized' — nach dem NAMEN der Reihe."""
+    if not isinstance(key, str) or not key:
+        return "unrecognized"
+    if key in SERIES_SKIP:
+        return "canonical"
+    if _is_private(key):
+        return "private"
+    if key in SERIES_KNOWN_BY_KEY:
+        return "known"
+    if _looks_measured(key):
+        return "measured"
+    return "unrecognized"
+
+
+def series_plan(keys: Any) -> dict:
+    """Welche Zusatzreihen erhalten werden (bekannte zuerst, dann unbeschriebene Messreihen,
+    hoechstens SERIES_MAX) und welche Namen nur gemeldet werden."""
+    keep: list[str] = []
+    names = sorted({k for k in (keys or ()) if isinstance(k, str)})
+    known = [k for k in names if classify_series(k) == "known"]
+    measured = [k for k in names if classify_series(k) == "measured"]
+    for k in known + measured:
+        if len(keep) < SERIES_MAX:
+            keep.append(k)
+    unparsed = [k[:64] for k in names
+                if classify_series(k) not in ("canonical", "private") and k not in keep]
+    return {"keep": keep, "unparsed": unparsed[:NAMES_MAX]}
 
 
 # --- Zusatzabrufe (Runden, Zonen, Saetze): Struktur erhalten -------------------
