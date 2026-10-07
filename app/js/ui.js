@@ -8910,6 +8910,14 @@ function gmActThemeId(sportId){try{return (window.ORVIA&&ORVIA.activityTheme)?OR
 function gmActThemeAttr(sportId){return 'data-activity="'+gmActThemeId(sportId)+'"';}
 /* Farbe EINER bestimmten Sportart fuer Uebersichten mit mehreren Sportarten nebeneinander. */
 function gmActThemeColor(sportId,role){try{return (window.ORVIA&&ORVIA.activityTheme)?ORVIA.activityTheme.color(sportId,role):'var(--orvia-brand-gold)';}catch(_){return 'var(--orvia-brand-gold)';}}
+/* v8-446: Welche Signatur (abstrakte Bildsprache) eine Sportart traegt, steht an EINER Stelle:
+   js/sport-signatures.js. Hier nur die Frage „gibt es fuer diese Sportart heute einen Zeichner?"
+   — Antwort ist der Name des Zeichners ('waves') oder null. Fehlt das Modul (isolierte Tests),
+   gilt der Stand von v8-444: Wellenfeld fuer Schwimmen. */
+function gmActSignatureRenderer(sportId){
+  try{var S=window.ORVIA&&ORVIA.sportSignatures;if(S&&S.renderer)return S.renderer(sportId);}catch(_){ }
+  return gmActThemeId(sportId)==='swimming'?'waves':null;
+}
 /* v8-444 (V3): Wellenfeld — der Hero fuer Schwimmen ohne Strecke (Aktivitaetsseite und Story-Abschluss).
    Reine Zeichnung, KEINE Daten: n ruhige Wellenlinien in Perspektive (oben = fern: eng, flach, leise;
    unten = nah: weiter, hoeher, kraeftiger). Farbe kommt aus dem Thema der Sportart (CSS: .act-wvg stop),
@@ -9439,7 +9447,7 @@ function gmOpenActivityPage(aid){
   }
   /* v8-444 (V3): Schwimmen ohne Strecke bekommt im selben Platz einen eigenen Hero (Wellenfeld) statt gar nichts —
      dieselbe Abfolge Kopf → Hero → Titel wie bei Lauf und Rad. Keine Karte erzwungen, keine Daten erfunden. */
-  else if(gmActThemeId(vm.sportId)==='swimming'){
+  else if(gmActSignatureRenderer(vm.sportId)==='waves'){
     h+='<div class="act-hero act-waves" aria-hidden="true">'+gmActWaves(390,150,7)+'</div>';
   }
   h+='<div class="detail-title"><div class="plan-kicker">'+gmEsc(vm.sportLabel||'Aktivität')+(vm.planLink?'' + _uiT('ui.plan_ist_verknuepft') + '':'')+'</div><h1>'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1><p>'+gmEsc(gmActSrcLabel(vm.source))+(vm.recording?' + '+gmEsc(gmActSrcLabel(vm.recording.source)):'')+(vm.planLink?'' + _uiT('ui.dem_wochenplan_zugeordnet') + '':(vm.source==='orvia_workout'?'' + _uiT('ui.in_orvia_aufgezeichnet_keine_nachbearbeitung') + '':'' + _uiT('ui.quelle_unveraendert_uebernommen_keine_nachbearbeitung') + ''))+'</p></div>';
@@ -9569,9 +9577,12 @@ function gmOpenActivityPage(aid){
   }
   /* GM7.8: Story jederzeit erneut ansehen (nur wenn genug echte Daten vorliegen).
      v8-444 (V3): steht jetzt VOR den Korrekturwegen — sie ist die Hauptaktion der Seite, das Loeschen nicht.
-     Eigene Klasse gm-story-cta (Goldrand, Stern in Gold: Gold kennzeichnet, was ORVIA beitraegt). */
+     Eigene Klasse gm-story-cta (Goldrand, Stern in Gold: Gold kennzeichnet, was ORVIA beitraegt).
+     v8-446: heisst fuer den Nutzer „Highlights" (Produktbegriff). Dahinter steht weiter die
+     bestehende Story (gmOpenStory/gmStoryPages) — Namen im Code bleiben, bis die Highlights-Engine
+     (js/engine/highlights.js, vorbereitet) die Folge liefert. */
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)
-    h+='<div style="margin:0 18px 12px"><button class="cta wide-ghost gm-story-cta" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' Story ansehen</button></div>';}catch(_){ }
+    h+='<div style="margin:0 18px 12px"><button class="cta wide-ghost gm-story-cta" style="width:100%;flex-direction:row;gap:8px" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+' '+_uiT('ui.highlights_ansehen')+'</button></div>';}catch(_){ }
   /* v8-310b · Drei Korrekturwege bleiben sichtbar getrennt: Link loesen
      behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
      Tombstone-Pfad. Keine Schaltflaeche tut beides. */
@@ -10376,7 +10387,7 @@ function gmStoryPages(a){
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
   /* v8-444 (V3): Schwimmen ohne Strecke — das Wellenfeld liegt hinter der grossen Zahl (Hero ohne Karte). */
-  var _waves=(!coverPage&&!route&&gmActThemeId(vm.sportId)==='swimming')?'<div class="wst-waves act-waves" aria-hidden="true">'+gmActWaves(390,300,9)+'</div>':'';
+  var _waves=(!coverPage&&!route&&gmActSignatureRenderer(vm.sportId)==='waves')?'<div class="wst-waves act-waves" aria-hidden="true">'+gmActWaves(390,300,9)+'</div>':'';
   pages.push(coverPage||page(_waves+'<div class="wst-kick'+(route?'':' ctr')+'">' + _uiT('ui.einheit_abgeschlossen') + '</div>'+cover,foot(hl,sub),_waves?'wst-wavepg':''));
   /* ---------- 1b) Neue Bestzeit — zwei kanonische Wege, EINE Rangfolge:
      (1) DISTANZ-Bestzeit aus dem kanonischen Bestzeitenmodell (bestTimes().meas):
@@ -10540,7 +10551,7 @@ function gmStoryRender(){
   var bars='<div class="wst-bars">'+_gmStory.pages.map(function(_,i){
     return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+'"><b></b></i>';}).join('')+'</div>';
   host.innerHTML=bars+
-    '<button class="wst-x" aria-label="Story schließen" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
+    '<button class="wst-x" aria-label="'+_uiT('ui.highlights_schliessen')+'" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
     '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
     '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');

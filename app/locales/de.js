@@ -2181,6 +2181,9 @@
     'ui.rec_ist_gekoppelt': 'Diese Aufzeichnung ist an ein ORVIA-Workout gekoppelt und zählt dort mit.',
     'ui.rec_zum_workout': 'Zum Workout',
     'ui.dauer_korrigiert': 'Dauer korrigiert: ',
+    /* v8-446: Produktbegriff „Highlights" (vorher „Story") */
+    'ui.highlights_ansehen': 'Highlights ansehen',
+    'ui.highlights_schliessen': 'Highlights schließen',
     /* v8-445: Dauer korrigieren (Quelle / manuell / wirksam) */
     'ui.dauer_auf_korrigiert': 'Dauer auf {dur} korrigiert',
     'ui.dauer_urspruenglich': '· ursprünglich {dur} ·',
