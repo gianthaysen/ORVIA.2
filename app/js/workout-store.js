@@ -695,25 +695,34 @@
     const a = O.activityStore && O.activityStore.getActivityById ? O.activityStore.getActivityById(activityId) : null;
     if (!a) return res(false, null, { message: 'Aktivitaet nicht gefunden' }, 'empty', 'failed');
     if (!(a.source === 'orvia_workout' || a.source === 'live')) return res(false, null, { message: 'nur ORVIA-Workouts korrigierbar' }, 'empty', 'failed');
-    const lr = O.activityStore.correctActivityDuration(a.clientRecordId || a.id, newMin);
+    /* v8-445: newMin == null nimmt die Korrektur zurueck (wirksam = Quellwert). Der Quellwert
+       bleibt in beiden Faellen erhalten (activity-effective: Quelle / manuell / wirksam). */
+    const clearing = newMin == null;
+    const lr = clearing
+      ? O.activityStore.setActivityCorrection(a.clientRecordId || a.id, 'duration', null, { requireCompleted: true })
+      : O.activityStore.correctActivityDuration(a.clientRecordId || a.id, newMin);
     if (!lr.ok) return res(false, null, { message: lr.error }, 'indexeddb', 'failed');
+    const effSec = lr.activity && lr.activity.durationSeconds != null ? lr.activity.durationSeconds : null;
+    const effMin = effSec != null ? Math.round(effSec / 60) : null;
+    const fromMin = clearing ? (lr.previous && lr.previous.effectiveValue != null ? Math.round(lr.previous.effectiveValue / 60) : null) : lr.fromMin;
+    const sourceMin = lr.resolved && lr.resolved.sourceValue != null ? Math.round(lr.resolved.sourceValue / 60) : (lr.sourceMin != null ? lr.sourceMin : null);
     let serverPatched = false, loadPatched = false;
-    if (online() && O.repos && O.repos.workout && a.workoutSessionId) {
+    if (effMin != null && online() && O.repos && O.repos.workout && a.workoutSessionId) {
       try {
-        const u = await O.repos.workout.updateSession(a.workoutSessionId, { duration_min: Math.round(newMin) });
+        const u = await O.repos.workout.updateSession(a.workoutSessionId, { duration_min: effMin });
         serverPatched = !!(u && u.success);
         const g = await O.repos.workout.getSession(a.workoutSessionId);
         if (g && g.success && g.data && g.data.session_rpe != null && O.repos.trainingLoad) {
           const loadKey = 'workout_session:' + (a.workoutSessionId || a.sourceRecordId);
           const ld = await O.repos.trainingLoad.save(g.data.local_date, g.data.sport || 'Gym',
-            { dur: Math.round(newMin), rpe: g.data.session_rpe, source: 'workout', client_session_id: loadKey });
+            { dur: effMin, rpe: g.data.session_rpe, source: 'workout', client_session_id: loadKey });
           loadPatched = !!(ld && ld.success);
         }
       } catch (e) {}
     }
     try { if (O.activitySync && O.activitySync.flushPendingActivities) O.activitySync.flushPendingActivities(); } catch (e) {}
     try { if (typeof window !== 'undefined' && window.dispatchEvent) window.dispatchEvent(new CustomEvent('orvia:activity-updated', { detail: { activityId: a.clientRecordId } })); } catch (e) {}
-    return res(true, { corrected: true, fromMin: lr.fromMin, toMin: lr.toMin, serverPatched: serverPatched, loadPatched: loadPatched }, null,
+    return res(true, { corrected: !clearing, cleared: clearing, fromMin: fromMin, toMin: effMin, sourceMin: sourceMin, serverPatched: serverPatched, loadPatched: loadPatched }, null,
       serverPatched ? 'supabase' : 'indexeddb', serverPatched ? 'synced' : 'pending');
   }
 

@@ -13,6 +13,15 @@
   var MAX_PLAUSIBLE_SECONDS = 8 * 3600;
 
   function num(v) { if (v == null || v === '') return null; var n = (typeof v === 'number') ? v : parseFloat(v); return isFinite(n) ? n : null; }
+  /* v8-445: Quelle / manuell / wirksam (activity-effective). Im Browser ueber das Skript in
+     index.html, unter Node ueber require — fehlt das Modul, bleibt das Verhalten wie zuvor. */
+  var _eff;
+  function EFF() {
+    var e = root.ORVIA && root.ORVIA.activityEffective;
+    if (e) return e;
+    if (_eff === undefined) { _eff = null; if (typeof require === 'function') { try { _eff = require('./activity-effective.js'); } catch (err) { _eff = null; } } }
+    return _eff;
+  }
   function intOrNull(v) { var n = num(v); return n == null ? null : Math.round(n); }
   function iso(v) { if (!v) return null; var d = new Date(v); return isNaN(d.getTime()) ? null : d.toISOString(); }
 
@@ -268,7 +277,7 @@
     var plaus = durationPlausibility(seconds);
     var sportId = raw.sportId || raw.sport_id || null;
     var rawSummary = (raw.summary && typeof raw.summary === 'object' && !Array.isArray(raw.summary)) ? raw.summary : {};
-    return {
+    var rec = {
       id: raw.id || null,
       clientRecordId: raw.clientRecordId || raw.client_record_id || null,   /* v8-421: Geraete-Identitaet mitfuehren */
       userId: raw.userId || raw.user_id || null,
@@ -293,6 +302,16 @@
          nichts erfinden: fehlend ⇒ {}. */
       metrics: (raw.metrics && typeof raw.metrics === 'object') ? raw.metrics : {}
     };
+    /* v8-445: Eine gespeicherte manuelle Korrektur (metrics.corrections, Altform
+       durationCorrection) gilt ab hier — das Objekt traegt den WIRKSAMEN Wert, der
+       Quellwert bleibt in der Korrektur stehen. Die Serverspalte ist der Quellwert
+       (der Server rechnet sie bei Workouts aus den Zeitstempeln neu). */
+    var E = EFF();
+    if (E && E.applyEffective) {
+      var eff = E.applyEffective(rec);
+      if (eff !== rec) { rec = eff; rec.durationState = durationPlausibility(rec.durationSeconds).state; }
+    }
+    return rec;
   }
 
   // Activity-Row aus einer normalisierten Session bauen (für RPC/Upsert). Reine Abbildung.

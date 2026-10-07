@@ -9,6 +9,12 @@
   var O = root.ORVIA;
   function SL() { return O.onboardingSportsLogic; }
   function AN() { return O.activityNormalize; }
+  var _eff;
+  function EFF() {
+    if (O.activityEffective) return O.activityEffective;
+    if (_eff === undefined) { _eff = null; if (typeof require === 'function') { try { _eff = require('./activity-effective.js'); } catch (err) { _eff = null; } } }
+    return _eff;
+  }
   function normSport(v) { return (O.trainingDomain && O.trainingDomain.normSport) ? O.trainingDomain.normSport(v) : String(v || '').toLowerCase(); }
 
   // Gemeinsame Felder ALLER Sportarten.
@@ -202,7 +208,7 @@
     var summary = (an && typeof an.normalizeActivitySummary === 'function')
       ? an.normalizeActivitySummary(r.summary || {}, sportId)
       : (r.summary || {});
-    return {
+    var rec = {
       id: r.id || null, clientRecordId: r.client_record_id || null, userId: r.user_id || null,
       sportId: sportId, source: r.source || 'manual', sourceRecordId: r.source_record_id || null,
       workoutSessionId: r.workout_session_id || null, startedAt: r.started_at || null, endedAt: r.ended_at || null,
@@ -210,6 +216,10 @@
       summary: summary, metrics: r.metrics || {}, workoutSnapshot: null, syncStatus: 'synced', _server: true,
       linkedActivityId: r.linked_activity_id || null, linkKind: r.link_kind || null
     };
+    /* v8-445: wirksamer Wert statt Quellwert (Ursache des Dauer-Fehlers: diese Zeilen
+       haben Vorrang vor dem lokalen Speicher und trugen die unkorrigierte Serverspalte). */
+    var E = EFF();
+    return (E && E.applyEffective) ? E.applyEffective(rec) : rec;
   }
   // Dedup-Schlüssel einer Activity (mehrere stabile Identitäten).
   function activityKeys(a) {
@@ -258,6 +268,25 @@
       var ks = activityKeys(a);
       for (var i = 0; i < ks.length; i++) { if (seen[ks[i]]) return false; }
       ks.forEach(function (k) { seen[k] = true; }); out.push(a); return true;
+    }
+    /* v8-445: Serverzeilen haben Vorrang vor dem lokalen Stand — eine manuelle Korrektur,
+       die dieses Geraet schon traegt, der zwischengespeicherte Serverstand aber noch nicht
+       (gerade erst korrigiert, noch nicht gesendet), gilt trotzdem sofort. Je Kennzahl
+       der juengere Satz; indexiert werden nur lokale Eintraege MIT Korrektur. */
+    var E = EFF();
+    if (E && E.adoptNewer && local.length && server.length) {
+      var lk = null;
+      local.forEach(function (l) {
+        var lm = l && l.metrics;
+        if (lm && (lm.corrections || lm.durationCorrection)) { lk = lk || {}; activityKeys(l).forEach(function (k) { lk[k] = l; }); }
+      });
+      if (lk) server = server.map(function (sv) {
+        var ks = activityKeys(sv), l = null;
+        for (var i = 0; i < ks.length; i++) { if (lk[ks[i]]) { l = lk[ks[i]]; break; } }
+        if (!l) return sv;
+        var m = E.adoptNewer(sv, l);
+        return m === sv ? sv : E.applyEffective(m);
+      });
     }
     server.forEach(add); local.forEach(add); legacy.forEach(add);
     // Leer-Unterdrückung: existiert je Sportart+Tag ein NICHT-leerer Eintrag, werden leere dort verworfen

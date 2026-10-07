@@ -21,12 +21,14 @@ let pass = 0, fail = 0;
 const ok = (n, c, i) => { console.log((c ? '✅' : '❌') + ' ' + n + (i != null ? '  — ' + i : '')); c ? pass++ : fail++; };
 const css = rd('styles.css'), ui = rd('js/ui.js');
 const iV3 = css.indexOf('v8-444 · ORVIA V3');
-const v3 = iV3 > 0 ? css.slice(css.lastIndexOf('/*', iV3)) : '';
+/* Der V3-Block endet am naechsten Versions-Block (v8-445 haengt die Stile des Dauer-Dialogs an). */
+const iNext = iV3 > 0 ? css.indexOf('/* ====', iV3 + 400) : -1;
+const v3 = iV3 > 0 ? css.slice(css.lastIndexOf('/*', iV3), iNext > 0 ? iNext : css.length) : '';
 const rules = v3.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /* ---------- A) Bausteine ---------- */
 {
-  ok('A1 die V3-Sprache steht als EIN Block am Ende von styles.css (nichts danach)', iV3 > 0 && v3.length > 4000 && css.indexOf('/* ====', iV3 + 400) < 0, String(v3.length));
+  ok('A1 die V3-Sprache steht als EIN zusammenhaengender Block in styles.css (danach nur spaetere Versions-Bloecke)', iV3 > 0 && v3.length > 4000 && css.indexOf('v8-444 · ORVIA V3', iV3 + 20) < 0 && (iNext < 0 || /v8-4[4-9]\d · /.test(css.slice(iNext, iNext + 200))), String(v3.length));
   ok('A2 Gold-Stufen nach Vorgabe: 10 %, 16 %, 24 % — und nur diese drei als Bausteine', /--orvia-gold-10:rgba\(216,187,122,0\.10\);--orvia-gold-16:rgba\(216,187,122,0\.16\);--orvia-gold-24:rgba\(216,187,122,0\.24\);/.test(rules) && (rules.match(/--orvia-gold-\d+:/g) || []).length === 3);
   ok('A3 Gold-Haarlinie: 1 Baustein, laeuft zu beiden Seiten aus (0 → 24 % → 24 % → 0)', /--orvia-hairline:linear-gradient\(90deg,transparent 0,var\(--orvia-gold-24\) 22%,var\(--orvia-gold-24\) 78%,transparent 100%\);/.test(rules));
   ok('A4 EIN Material fuer Tafeln (Verlauf, Rand, helle Oberkante + weicher Schatten) und EINES fuer Bedienelemente', /--orvia-panel-bg:linear-gradient\(180deg,rgba\(255,255,255,\.045\) 0,rgba\(255,255,255,\.012\) 100%\);/.test(rules) && /--orvia-panel-border:rgba\(150,172,198,\.15\);/.test(rules) && /--orvia-panel-shadow:inset 0 1px 0 rgba\(255,255,255,\.06\),/.test(rules) && /--orvia-ctl-bg:linear-gradient\(/.test(rules) && /--orvia-ctl-shadow:inset 0 1px 0 rgba\(255,255,255,\.08\),/.test(rules));

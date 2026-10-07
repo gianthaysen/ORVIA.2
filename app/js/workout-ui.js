@@ -50,6 +50,13 @@
   // Unbekannt → „' + T('wo.durationMissing') + '", unplausibel (z. B. über Nacht aktiv) → markiert. NIE still „0 min".
   function durationLabel(s) {
     const AN = O.activityNormalize;
+    /* v8-445: Hat der Nutzer die Dauer dieser Einheit korrigiert, gilt der wirksame Wert
+       der zugehoerigen Aktivitaet — nicht die Differenz der Zeitstempel (Quellwert). */
+    try {
+      const E = O.activityEffective, AS = O.activityStore;
+      const act = (E && AS && s && s.id && AS.getActivityBySource) ? AS.getActivityBySource('orvia_workout', s.id) : null;
+      if (AN && act && E.isCorrected(act, 'duration')) return AN.fmtDurationSeconds(E.getEffectiveMetric(act, 'duration'));
+    } catch (_) {}
     if (AN) { const n = AN.normalizeWorkoutSession(s); return AN.fmtDurationSeconds(n.durationSeconds); }
     return s && s.duration_min != null ? s.duration_min + ' min' : '' + T('wo.durationMissing') + '';
   }
@@ -803,6 +810,44 @@
       if (typeof save === 'function') save();
     } catch (e) { try { console.error('[ssot record]', e); } catch (_) {} }
   }
+  /* v8-445: Der Tagesblock spiegelt ein Workout mit seiner Dauer (dur, Minuten). Nach einer
+     manuellen Korrektur (oder ihrer Ruecknahme) wird der Spiegel auf den WIRKSAMEN Wert der
+     Aktivitaet gebracht — sonst zeigen Bereiche, die den Tagesblock lesen, weiter den alten.
+     Ohne Argument: alle korrigierten Workouts nachziehen (nach einem Abgleich). */
+  O.workoutUI.syncDurationMirror = function (activity) {
+    let changed = 0;
+    try {
+      if (typeof DB === 'undefined' || !DB) return 0;
+      const E = O.activityEffective, AS = O.activityStore;
+      if (!E) return 0;
+      const acts = activity ? [activity] : ((AS && AS.listActivities) ? AS.listActivities({ includeLinked: true }).filter(function (a) { return E.isCorrected(a, 'duration'); }) : []);
+      if (!acts.length) return 0;
+      const want = {};
+      acts.forEach(function (a) {
+        if (!a || a.durationSeconds == null) return;
+        const min = Math.round(a.durationSeconds / 60);
+        [a.workoutSessionId, a.sourceRecordId, a.clientRecordId, a.id].forEach(function (k) { if (k) want[String(k)] = min; });
+      });
+      Object.keys(DB).forEach(function (day) {
+        const e = DB[day]; if (!e || !e.sessions) return;
+        Object.keys(e.sessions).forEach(function (t) {
+          if (t === '_ts') return;
+          const ses = e.sessions[t]; if (!ses || typeof ses !== 'object') return;
+          const refs = [ses.workoutSessionId, ses.clientSessionId, ses.canonicalActivityId];
+          for (let i = 0; i < refs.length; i++) {
+            const r = refs[i];
+            if (r && Object.prototype.hasOwnProperty.call(want, String(r))) {
+              if (ses.dur !== want[String(r)]) { e.sessions[t] = Object.assign({}, ses, { dur: want[String(r)] }); e.sessions._ts = Date.now(); changed++; }
+              return;
+            }
+          }
+        });
+      });
+      if (changed && typeof save === 'function') save();
+    } catch (e) { try { console.error('[duration mirror]', e); } catch (_) {} }
+    return changed;
+  };
+  try { if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('orvia:activities-pulled', function () { O.workoutUI.syncDurationMirror(); }); } catch (_) {}
   O.workoutUI.resume = function () { WS().resumeWorkout(); renderOverlay(); };
 
   // Optionen-Sheet (ersetzt Zahlen-Prompt). Destruktive Aktionen mit zweiter Bestätigung.
