@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE.parent))
 
 import json  # noqa: E402
 
-from orvia_worker import WORKER_BUILD, backfill, best_efforts, detail_sync, garmin_fields as GF, normalize, series_normalize  # noqa: E402
+from orvia_worker import WORKER_BUILD, backfill, best_efforts, detail_sync, garmin_fields as GF, normalize, semantic_checks, series_normalize  # noqa: E402
 
 sys.path.insert(0, str(HERE))
 import census_report as CR  # noqa: E402
@@ -453,7 +453,8 @@ nicht wiederholen. Liegt ein Mitschnitt im Ordner, prüft `tests/test_capture_sc
 | `DETAIL_BACKFILL_LIMIT` | 10 | Aktivitäten je Sync-Lauf, für die Details (nach)geladen werden |
 | `DETAIL_MAXCHART` | 0 (= Standard der Bibliothek, 2000) | wie viele Messzeilen Garmin je Aktivität höchstens liefern soll. Gleicher Abruf, gleiche Anzahl Calls, größere Antwort. Ob Garmin mehr als 2000 bedient, ist **nicht belegt** — ablesbar an `stream_rows` / `stream_total` (Zensus, Art `abtastung`). Gedeckelt auf 30 000. |
 | `DETAIL_EXTRAS` | leer (aus) | kommagetrennt aus: {", ".join(detail_sync.EXTRAS)} |
-| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Endet von selbst, sobald keine Zeile mehr ohne Herkunftsblock ist. |
+| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Erfasst Zeilen **ohne** Herkunftsblock und Zeilen, deren Block unvollständig ist (es fehlt {" oder ".join("`" + k + "`" for k in detail_sync.PROVENANCE_REQUIRED)}). Endet von selbst, sobald keine solche Zeile mehr im Fenster ist. |
+| `DETAIL_REFETCH_RESOLUTION` | aus | lädt Aktivitäten, die schon auf Details-Vertrag {detail_sync.DETAILS_CONTRACT_VERSION} stehen, aber mit kleinerem `maxChartSize` geholt wurden, **einmal** neu (`detailsMaxchart` < `DETAIL_MAXCHART`). Nur zusammen mit `DETAIL_MAXCHART` > 0. Reihenfolge: nie geladene → Altvertrag → Auflösung, je neueste zuerst; dieselbe Grenze `DETAIL_BACKFILL_LIMIT`; Abbruch bei 429/401. Manuelle Korrekturen und Planverknüpfung bleiben erhalten. |
 
 ## 15 · Auswertung und Anzeige sind getrennt
 
@@ -484,9 +485,36 @@ gemessen, der Überhang (`over_m`) steht dabei. Die Zahl ist eine Obergrenze der
 **Kennwerte** (`best_efforts.stats`) — Mittel und Maximum je Reihe aus allen gelieferten Zeilen; `avg` mit Nullen,
 `avg_nz` ohne. Hat Garmin ausgedünnt (`native: false`), ist das Mittel eine Näherung.
 
-**Offen:** Im einzigen Mitschnitt lieferte Garmin 1855 von 5527 aufgezeichneten Zeilen (üblicher Abstand 3 s). Damit sind
-Leistungsfenster unter {best_efforts.APPROX_MIN_SAMPLES * 3} s `insufficient` und alle längeren `approx`. `exact` setzt
-voraus, dass Garmin mit `DETAIL_MAXCHART` alle Zeilen liefert — das ist **nicht belegt** und muss in Produktion gezeigt werden.
+**Auflösung:** Im ersten Mitschnitt lieferte Garmin mit dem Standard 1855 von 5527 aufgezeichneten Zeilen (Abstand 3 s) —
+Leistungsfenster unter {best_efforts.APPROX_MIN_SAMPLES * 3} s wären `insufficient`, alle längeren `approx`. Die Auflösungsprüfung
+vom 11.10.2026 (Gian, Trockenlauf, keine Dateien gespeichert) zeigt für **acht von acht** Aktivitäten: mit `maxChartSize=20000`
+kommen sämtliche gemeldeten Zeilen, Median-Abstand 1 s. In Produktion ist das erst belegt, wenn der Worker mit
+`DETAIL_MAXCHART=20000` gelaufen ist und der Zensus (Art `aufloesung`, `abtastung`) es zeigt.
+
+## 15a · Bedeutungsprüfung
+
+Ob ein Summenwert des Listeneintrags das bedeutet, was sein Name sagt, prüft der Worker gegen **alle gelieferten
+Messzeilen** derselben Aktivität (`orvia_worker/semantic_checks.py`, Version {semantic_checks.SEM_VERSION}). Je Beziehung werden
+mehrere Lesarten gerechnet — zeitgewichtet über die Timer-Zuwächse und je Messzeile, mit und ohne Nullwerte, voller Wert und
+ein Bein (Kadenz), Bahnlänge in Metern und Zentimetern (Becken). Ergebnis je Beziehung: `match` (mit der passenden Lesart),
+`mismatch` oder `n/a`, dazu Hinweise:
+
+| Hinweis | Bedeutung |
+|---|---|
+| `thinned_response` | Garmin hat ausgedünnt — eine Abweichung kann von der Auflösung kommen, nicht von der Bedeutung |
+| `two_definitions` | Bewegungszeit: Liste und Aufzeichnung nutzen verschiedene Stillstands-Schwellen — beide Zahlen sind „richtig“, aber nicht dieselbe Größe |
+| `excludes_zero` | nur die Lesart ohne Nullwerte passt (Stillstand zählt nicht mit) |
+| `list_moving_equals_timer` | Garmins Bewegungszeit ist gleich der Timerzeit — keine eigene Bewegungserkennung |
+| `pool_lengths` | Beckendistanz weicht um ganze Bahnen ab (z. B. Start- oder Wendebahn nicht gezählt) |
+| `distance_end_below_max` | die letzte Messzeile trägt nicht die größte Distanz (Korrektur am Ende der Aufzeichnung) |
+| `half_value` / `near_full` | Kadenz entspricht einem Bein / knapp dem vollen Wert |
+
+Gespeichert wird **nur das Urteil** (`metrics.ext.semantics`, serverseitig) und, bei vollständiger Lieferung, die bestätigte
+Lesart (`metrics.garmin.semantics_ok`). Keine Rohwerte. Die App gibt die Ø-Laufkadenz nur frei, wenn sie so bestätigt ist.
+
+Das Mitschnitt-Skript rechnet dieselbe Prüfung mit der Standard- **und** der vollständigen Antwort und benennt die Ursache
+einer Abweichung: `stable` (gleiches Urteil), `thinning` (verschwindet mit voller Auflösung), `definition` (bleibt — die
+Lesart unterscheidet sich).
 
 ## 16 · Fehlerklassen des Nachladens
 
@@ -511,13 +539,14 @@ Nach {detail_sync.DETAIL_FAIL_MAX} gezählten Fehlern wird eine Aktivität {deta
    Fenster dann mit gemessener statt gleichverteilter Zeit. Deshalb werden in v8-447 keine Rekorde
    festgeschrieben; `activityCapabilities.ledgerEligible` sperrt Zeilen unter Vertrag 3.
 3. **Rohfelder des Listeneintrags im Altbestand** — bestehende Zeilen werden nur innerhalb des
-   Sync-Fensters nachgetragen; für die Zeit davor `ACTIVITY_PROVENANCE_BACKFILL_DAYS` setzen.
+   Sync-Fensters nachgetragen; für die Zeit davor `ACTIVITY_PROVENANCE_BACKFILL_DAYS` setzen. Unvollständige
+   Blöcke zählt der Zensus (Art `herkunft_unvollstaendig`).
 4. **Tageszuordnung manueller Einträge** (Abschnitt 3).
 5. **Zusatzabrufe** sind aus, bis ihre Antwortformen belegt sind (Abschnitt 9).
 6. **Einheiten** `avgStrideLength`, `avgVerticalOscillation`, `avgStrokeDistance`, `totalVolume` sind
    unbelegt — die Werte bleiben roh, eine Anzeige braucht erst den Beleg.
-7. **Ø-Kadenz des Listeneintrags** (`averageRunningCadenceInStepsPerMinute`): ob voller Wert oder ein
-   Bein, ist nicht belegt. Maßgeblich ist die Messreihe.
+7. **Ø-Kadenz des Listeneintrags** (`averageRunningCadenceInStepsPerMinute`): welche Lesart gilt, entscheidet
+   je Aktivität die Bedeutungsprüfung (Abschnitt 15a). Ohne Bestätigung bleibt der Wert gesperrt.
 8. **Serverliste** — die App lädt beim Öffnen bis zu 200 Aktivitäten samt Messreihen. Der Rohblock
    vergrößert diese Antwort. Messreihen und Rohblock erst beim Öffnen einer Einheit zu laden, ist ein
    eigener Schritt.

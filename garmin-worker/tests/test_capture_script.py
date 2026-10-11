@@ -282,20 +282,76 @@ def _sem_payload(**entry_over):
 
 def test_semantic_checks_tell_which_reading_of_a_list_field_is_right():
     sem = CAP.semantic_checks(_sem_payload())
-    assert sem["_delivery"] == {"rows": 600, "total": 600, "complete": True}
-    assert sem["duration"] == {"verdict": "match", "matches": "sumDuration (Timer)"}                  # nicht Bewegungs-, nicht verstrichene Zeit
+    assert sem["_delivery"] == {"rows": 600, "total": 600, "complete": True, "interval_s": 1.0}
+    assert sem["duration"]["verdict"] == "match" and sem["duration"]["matches"] == ["sumDuration (Timer)"]   # nicht Bewegungs-, nicht verstrichene Zeit
     assert sem["movingDuration"]["verdict"] == "match" and sem["elapsedDuration"]["verdict"] == "match"
     assert sem["distance"]["verdict"] == "match" and sem["averageHR"]["verdict"] == "match" and sem["maxHR"]["verdict"] == "match"
-    assert sem["averageRunningCadence"] == {"verdict": "match", "matches": "directDoubleCadence (beide Beine)"}
-    assert sem["averageBikingCadence"] == {"verdict": "match", "matches": "directBikeCadence (ohne Nullen)"}
-    assert sem["avgPower"] == {"verdict": "match", "matches": "directPower (mit Nullen)"}             # 240 × 3/4 = 180
+    cad = sem["averageRunningCadence"]
+    assert cad["verdict"] == "match" and all(m.startswith("directDoubleCadence") for m in cad["matches"])     # beide Beine
+    assert sem["averageBikingCadence"]["matches"] == ["directBikeCadence zeitgewichtet ohne Nullen"]
+    assert sem["avgPower"]["matches"] == ["directPower zeitgewichtet mit Nullen"]                         # 240 × 3/4 = 180
     half = CAP.semantic_checks(_sem_payload(averageRunningCadenceInStepsPerMinute=85.0))
-    assert half["averageRunningCadence"]["matches"] == "directRunCadence (ein Bein)"                   # die Liste traegt den Halbwert
+    assert half["averageRunningCadence"]["matches"] == ["directRunCadence zeitgewichtet ohne Nullen (ein Bein)"]
+    assert any(h.startswith("half_value") for h in half["averageRunningCadence"]["hints"])               # die Liste traegt den Halbwert
     off = CAP.semantic_checks(_sem_payload(distance=2500.0, averageHR=120.0))
-    assert off["distance"] == {"verdict": "mismatch", "matches": None} and off["averageHR"]["verdict"] == "mismatch"
+    assert off["distance"]["verdict"] == "mismatch" and off["distance"]["matches"] is None and off["averageHR"]["verdict"] == "mismatch"
     na = CAP.semantic_checks(_sem_payload(avgPower=None))
     assert na["avgPower"] == {"verdict": "n/a", "matches": None}
     assert CAP.semantic_checks({"list_entry": {}, "details": None}) == {}
     blob = json.dumps(sem)
     for value in ("599.2", "1797", "151.0", "170.0", "180.0"):
-        assert value not in blob                                                                       # Urteile, keine Messwerte
+        assert value not in blob, value                                                                 # keine Rohwerte, nur Urteile und Abweichungen
+
+
+def _thin(payload, keep_every=7):
+    det = payload["details"]
+    rows = det["activityDetailMetrics"]
+    kept = rows[::keep_every]
+    if kept[-1] is not rows[-1]:
+        kept.append(rows[-1])
+    return {**payload, "details": {**det, "activityDetailMetrics": kept}}
+
+
+def test_cause_is_attributed_by_comparing_thinned_and_full_answers():
+    """Garmin duennt ungleichmaessig aus. Ein Mittel je Zeile weicht dann ab, obwohl der Listenwert
+    stimmt — erst die vollstaendige Antwort trennt Ausduennung von anderer Definition."""
+    full = _sem_payload()
+    # ungleichmaessig ausgeduennt: im ersten Drittel jede Zeile, danach jede zehnte (wie Garmin)
+    rows = full["details"]["activityDetailMetrics"]
+    for i, r in enumerate(rows):
+        r["metrics"][6] = 150.0 if i < 200 else 180.0                                  # Schrittfrequenz: erst ruhig, dann schnell
+    tw = (200 * 150.0 + 400 * 180.0) / 600                                              # = 170 (zeitgewichtet ueber alles)
+    full["list_entry"]["averageRunningCadenceInStepsPerMinute"] = tw
+    thin_rows = rows[:200] + rows[200::10]
+    thin = {**full, "details": {**full["details"], "activityDetailMetrics": thin_rows}}
+    d = CAP.semantic_checks(thin)
+    f = CAP.semantic_checks(full, details_override=full["details"])
+    assert d["averageRunningCadence"]["matches"] and all("zeitgewichtet" in m for m in d["averageRunningCadence"]["matches"])
+    assert "directDoubleCadence je Zeile ohne Nullen" not in (d["averageRunningCadence"]["matches"] or [])   # je Zeile waere verzerrt
+    cause = CAP.compare_semantics(d, f)
+    assert cause["averageRunningCadence"]["cause"] == "stable" and cause["averageRunningCadence"]["full"] == "match"
+    # Eine echte Definitionsabweichung bleibt auch vollstaendig bestehen
+    full["list_entry"]["movingDuration"] = 540.0
+    f2 = CAP.semantic_checks(full, details_override=full["details"])
+    c2 = CAP.compare_semantics(CAP.semantic_checks(_thin(full)), f2)
+    assert c2["movingDuration"]["cause"] == "definition"
+    assert any(h.startswith("two_definitions") for h in c2["movingDuration"]["hints"])
+    # Nur ausgeduennt abweichend → Ursache Ausduennung
+    fake_d = {"maxHR": {"verdict": "mismatch"}}
+    fake_f = {"maxHR": {"verdict": "match", "matches": ["Maximum directHeartRate"]}}
+    assert CAP.compare_semantics(fake_d, fake_f)["maxHR"]["cause"] == "thinning"
+
+
+def test_pool_swim_distance_deviation_is_explained_in_pool_lengths():
+    n = 300
+    desc = [{"metricsIndex": i, "key": k} for i, k in enumerate(["directTimestamp", "sumDuration", "sumDistance", "directHeartRate"])]
+    rows = [{"metrics": [1_767_225_600_000 + i * 6000, i * 6.0, (i // 5) * 25.0, 130.0]} for i in range(n)]   # 25-m-Bahnen
+    end = rows[-1]["metrics"][2]
+    entry = {"activityId": 2, "activityType": {"typeKey": "lap_swimming"}, "distance": end + 25.0, "duration": (n - 1) * 6.0,
+             "poolLength": 2500.0, "unitOfPoolLength": {"unitKey": "meter", "factor": 100.0}, "activeLengths": (end + 25.0) / 25.0}
+    sem = CAP.semantic_checks({"list_entry": entry, "details": {"metricDescriptors": desc, "activityDetailMetrics": rows, "totalMetricsCount": n}})
+    dist = sem["distance"]
+    assert dist["verdict"] == "match" and dist["matches"] == ["activeLengths × poolLength als Zentimeter"]   # poolLength steht in cm
+    assert any(h.startswith("pool_lengths: Abweichung = +1 Bahn") for h in dist["hints"])                   # Aufzeichnung endet eine Bahn frueher
+
+

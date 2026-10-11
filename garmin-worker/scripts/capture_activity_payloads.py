@@ -300,74 +300,42 @@ def coverage_report(payload: dict) -> dict:
 # bei mehreren Kandidaten, WELCHER passt (z. B. ob die Listen-Kadenz der volle oder der halbe
 # Wert ist). Daraus werden die Belege in app/js/engine/metric-eligibility.js gebildet.
 
-def _col(details: dict, key: str) -> list[float]:
-    desc = {m.get("key"): m.get("metricsIndex") for m in (details.get("metricDescriptors") or []) if isinstance(m, dict)}
-    idx = desc.get(key)
-    if idx is None:
-        return []
-    out = []
-    for r in details.get("activityDetailMetrics") or []:
-        m = r.get("metrics") if isinstance(r, dict) else None
-        if isinstance(m, list) and idx < len(m) and isinstance(m[idx], (int, float)) and not isinstance(m[idx], bool):
-            out.append(float(m[idx]))
-    return out
-
-
-def _near(a, b, abs_tol, rel_tol) -> bool:
-    return abs(a - b) <= max(abs_tol, rel_tol * max(abs(a), abs(b)))
-
-
-def semantic_checks(payload: dict) -> dict:
-    """{beziehung: {"verdict": match|mismatch|n/a, "matches": kandidat|None}} — ohne Messwerte."""
-    entry, det = payload.get("list_entry"), payload.get("details")
-    out: dict = {}
+def semantic_checks(payload: dict, details_override: dict | None = None) -> dict:
+    """Urteile je Beziehung (orvia_worker.semantic_checks) — fuer die Antwort im Mitschnitt oder
+    fuer `details_override` (die vollstaendige Antwort der Aufloesungspruefung)."""
+    from orvia_worker import semantic_checks as SC
+    entry = payload.get("list_entry")
+    det = details_override if details_override is not None else payload.get("details")
     if not isinstance(entry, dict) or not isinstance(det, dict):
-        return out
-    rows = det.get("activityDetailMetrics") or []
-    total = det.get("totalMetricsCount")
-    out["_delivery"] = {"rows": len(rows), "total": total if isinstance(total, int) else None,
-                        "complete": bool(isinstance(total, int) and len(rows) >= total)}
+        return {}
+    return SC.relations(entry, SC.aggregates(det))
 
-    def num(k):
-        v = entry.get(k)
-        return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
-    def check(name, list_key, candidates, abs_tol, rel_tol):
-        lv = num(list_key)
-        cands = {k: v for k, v in candidates.items() if v is not None}
-        if lv is None or not cands:
-            out[name] = {"verdict": "n/a", "matches": None}
-            return
-        hit = [k for k, v in cands.items() if _near(lv, v, abs_tol, rel_tol)]
-        out[name] = {"verdict": "match" if hit else "mismatch", "matches": hit[0] if len(hit) == 1 else (hit or None)}
-
-    def last(key):
-        c = _col(det, key)
-        return c[-1] if c else None
-
-    def mean(key, nonzero=False):
-        c = [v for v in _col(det, key) if (v > 0 or not nonzero)]
-        return sum(c) / len(c) if c else None
-
-    def mx(key):
-        c = _col(det, key)
-        return max(c) if c else None
-
-    check("duration", "duration", {"sumDuration (Timer)": last("sumDuration"), "sumMovingDuration": last("sumMovingDuration"),
-                                    "sumElapsedDuration": last("sumElapsedDuration")}, 5, 0.01)
-    check("movingDuration", "movingDuration", {"sumMovingDuration": last("sumMovingDuration")}, 5, 0.01)
-    check("elapsedDuration", "elapsedDuration", {"sumElapsedDuration": last("sumElapsedDuration")}, 5, 0.01)
-    check("distance", "distance", {"sumDistance (Ende)": last("sumDistance")}, 20, 0.01)
-    check("averageHR", "averageHR", {"Mittel directHeartRate": mean("directHeartRate")}, 2, 0)
-    check("maxHR", "maxHR", {"Maximum directHeartRate": mx("directHeartRate")}, 3, 0)
-    check("averageRunningCadence", "averageRunningCadenceInStepsPerMinute",
-          {"directDoubleCadence (beide Beine)": mean("directDoubleCadence", True), "directRunCadence (ein Bein)": mean("directRunCadence", True)}, 3, 0)
-    check("averageBikingCadence", "averageBikingCadenceInRevPerMinute",
-          {"directBikeCadence (ohne Nullen)": mean("directBikeCadence", True), "directBikeCadence (mit Nullen)": mean("directBikeCadence")}, 2, 0)
-    check("avgPower", "avgPower", {"directPower (mit Nullen)": mean("directPower"), "directPower (ohne Nullen)": mean("directPower", True)}, 3, 0.02)
-    check("maxPower", "maxPower", {"Maximum directPower": mx("directPower")}, 5, 0.02)
-    check("averageSpeed", "averageSpeed", {"Mittel directSpeed": mean("directSpeed"),
-                                           "Distanz / Timer": (last("sumDistance") / last("sumDuration")) if last("sumDistance") and last("sumDuration") else None}, 0.05, 0.02)
+def compare_semantics(default: dict, full: dict) -> dict:
+    """Gleiche Beziehung, zwei Antworten (ausgeduennt / vollstaendig) — und was daraus folgt.
+      cause = thinning      nur die ausgeduennte Antwort weicht ab: die Ausduennung war die Ursache
+              definition    weicht auch vollstaendig ab: andere Definition (siehe hints der vollen Antwort)
+              stable        beide stimmen
+              n/a           nicht pruefbar"""
+    out: dict = {}
+    for name in sorted(set(default) | set(full)):
+        if name.startswith("_"):
+            continue
+        d, f = default.get(name) or {}, full.get(name) or {}
+        dv, fv = d.get("verdict", "n/a"), f.get("verdict", "n/a")
+        if fv == "n/a" and dv == "n/a":
+            cause = "n/a"
+        elif fv == "match" and dv == "match":
+            cause = "stable"
+        elif fv == "match":
+            cause = "thinning"
+        elif fv == "mismatch":
+            cause = "definition"
+        else:
+            cause = "n/a"
+        out[name] = {"default": dv, "full": fv, "cause": cause, "matches_full": f.get("matches"),
+                     "diff_full": f.get("diff"), "rel_pct_full": f.get("rel_pct"),
+                     "hints": [h for h in (f.get("hints") or []) if not h.startswith("thinned_response")]}
     return out
 
 
@@ -443,7 +411,7 @@ def richness(entry: dict, sport: str) -> int:
     return sum(1 for k in _RICH.get(sport, ()) if entry.get(k) not in (None, "", [], {}))
 
 
-def resolution_probe(api, activity_id, maxcharts=(20000,)) -> list[dict]:
+def resolution_probe(api, activity_id, maxcharts=(20000,), keep_raw: dict | None = None) -> list[dict]:
     """v8-447.1 · Liefert Garmin mit groesserem maxChartSize ALLE aufgezeichneten Zeilen?
     Die offene Frage hinter den Leistungs-Bestwerten. Je Wert EIN zusaetzlicher Abruf; behalten
     werden nur vier Zahlen — keine Messwerte."""
@@ -454,6 +422,8 @@ def resolution_probe(api, activity_id, maxcharts=(20000,)) -> list[dict]:
         except Exception as e:  # noqa: BLE001
             out.append({"maxchart": mc, "error": type(e).__name__})
             continue
+        if keep_raw is not None and isinstance(raw, dict):
+            keep_raw[mc] = raw               # nur im Speicher: fuer die Bedeutungspruefung, nie geschrieben
         rows = raw.get("activityDetailMetrics") if isinstance(raw, dict) else None
         n = len(rows) if isinstance(rows, list) else 0
         total = raw.get("totalMetricsCount") if isinstance(raw, dict) else None
@@ -531,14 +501,23 @@ def main() -> int:
         anon = anonymize_payload(payload, with_gps=args.with_gps)
         anon["_meta"] = {"capture_version": CAPTURE_VERSION, "library": "garminconnect", "library_version": lib_version,
                          "gps": bool(args.with_gps), "calls": sorted(k for k in payload if not k.startswith("_"))}
+        full_raw: dict = {}
         if args.probe_resolution:
-            probe = resolution_probe(api, entry.get("activityId"))
+            probe = resolution_probe(api, entry.get("activityId"), keep_raw=full_raw)
             anon["_meta"]["resolution_probe"] = probe
             print("Aufloesung:", json.dumps(probe))
-        anon["_meta"]["semantic_checks"] = semantic_checks(payload)        # Urteile, keine Messwerte
+        anon["_meta"]["semantic_checks"] = semantic_checks(payload)        # Urteile + Abweichungen, keine Rohwerte
+        if full_raw:
+            # v8-447.1: dieselben Pruefungen auf der VOLLSTAENDIGEN Antwort — erst damit laesst sich
+            # eine Abweichung der Ausduennung oder einer anderen Definition zuordnen.
+            full = semantic_checks(payload, details_override=next(iter(full_raw.values())))
+            anon["_meta"]["semantic_checks_full"] = full
+            anon["_meta"]["semantic_cause"] = compare_semantics(anon["_meta"]["semantic_checks"], full)
         problems = self_check(anon, secrets=(email, email.split("@")[0]), with_gps=args.with_gps)
         report = coverage_report(anon)
         report["semantics"] = anon["_meta"]["semantic_checks"]
+        if "semantic_cause" in anon["_meta"]:
+            report["semantic_cause"] = anon["_meta"]["semantic_cause"]
         print(json.dumps(report, indent=2, ensure_ascii=False))
         if problems:
             print("NICHT GESCHRIEBEN — die Selbstpruefung hat etwas gefunden:")

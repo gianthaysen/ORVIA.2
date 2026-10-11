@@ -47,7 +47,7 @@ Zulässig machen nur die Stufen **fixture, validated, own**. Der einzige echte M
 | `details.distance` | running: fixture | assumed |
 | `details.heart_rate` | running: fixture | assumed |
 | `details.durations` | running: fixture | assumed |
-| `details.running_cadence` | running: fixture | assumed |
+| `details.running_cadence` | running: validated | assumed |
 | `details.cycling_cadence` | — | assumed |
 | `details.power` | — | assumed |
 | `list.swim` | — | assumed |
@@ -58,7 +58,7 @@ Zulässig machen nur die Stufen **fixture, validated, own**. Der einzige echte M
 
 Im Produktions-Zensus **geliefert** heißt nicht **belegt**: der Zensus zeigt, dass Garmin ein Feld schickt — nicht, was es bedeutet.
 Hochgestuft wird eine Zeile erst durch einen Mitschnitt (`fixture`) oder einen dokumentierten Vergleich mit Garmin Connect
-(`validated`, mit Datum in `VALIDATIONS`). Dokumentierte Vergleiche bisher: keine.
+(`validated`, mit Datum in `VALIDATIONS`). Dokumentierte Vergleiche bisher: 1.
 
 ## 4 · Je Sportart — bester Fall
 
@@ -72,7 +72,7 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 | running | Tempo (Ø) | Distanz / Dauer (beide wirksam) | details.durations: ja — Mitschnitt; details.distance: ja — Mitschnitt | ja (Vertrag 3) | wie Dauer und Distanz | erbt die Markierung von Dauer / Distanz | **ja** | — | ja, sobald nachgeladen | nur Lauf, Gehen, Wandern |
 | running | Herzfrequenz (Ø) | `best_efforts.stats.heart_rate.avg` — alle gelieferten Zeilen | details.heart_rate: ja — Mitschnitt | ja (Vertrag 3) | Details-Vertrag 3; weicht höchstens 2 bpm vom Listenwert ab; bei Ausdünnung als Näherung gekennzeichnet | keine Korrektur vorgesehen | **ja** | — | ja, sobald nachgeladen | nicht aus der Anzeige-Reihe |
 | running | Herzfrequenz (Max) | `best_efforts.stats.heart_rate.max` | details.heart_rate: ja — Mitschnitt | ja (Vertrag 3) | nur wenn Garmin alle Zeilen lieferte — ein Maximum aus ausgedünnten Zeilen ist eine Untergrenze | keine Korrektur vorgesehen | **ja** | — | nur mit vollständiger Lieferung | Listenfeld `maxHR` ist nicht belegt |
-| running | Schrittfrequenz (Ø) | `best_efforts.stats.cadence` aus `directDoubleCadence` | details.running_cadence: ja — Mitschnitt | ja (Vertrag 3) | Details-Vertrag 3, Bedeutung der Reihe = `running_cadence_spm` | keine Korrektur vorgesehen | **ja** | — | ja, sobald nachgeladen — Altwerte (Halbwert-Verdacht) nie | Listenfeld der Ø-Kadenz wird nicht benutzt |
+| running | Schrittfrequenz (Ø) | `best_efforts.stats.cadence` aus `directDoubleCadence` | details.running_cadence: ja — gegen Garmin Connect geprüft | ja (Vertrag 3) | Details-Vertrag 3, Bedeutung der Reihe = `running_cadence_spm` | keine Korrektur vorgesehen | **ja** | — | ja, sobald nachgeladen — Altwerte (Halbwert-Verdacht) nie | Listenfeld der Ø-Kadenz wird nicht benutzt |
 | running | Leistung (Ø) | `best_efforts.stats.power` | details.power: nein — angenommen | ja (Vertrag 3) | Details-Vertrag 3 | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | Quellname `directPower` unbelegt |
 | running | Leistungs-Bestwert (alle Fenster) | `best_efforts.power.windows` — Worker, vor der Ausdünnung | details.power: nein — angenommen; details.time: ja — Mitschnitt | ja (Vertrag 3) | Güte `exact`: Garmin lieferte alle Zeilen, sekündliche Aufzeichnung; kein Sensor-Aussetzer im Fenster; Fenster auf verstrichener Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als das Fenster | **nein** | `unverified_semantics` | erst nach Beleg und nur bei vollständiger Lieferung | Fenster: 1 s … 60 min |
 | running | Strecken-Bestzeit (alle Distanzen) | `best_efforts.distance.targets` — Worker, vor der Ausdünnung | details.distance: ja — Mitschnitt; details.time: ja — Mitschnitt | ja (Vertrag 3) | Güte `measured`: zwischen zwei echten Messzeilen, Überhang ≤ 1 % / 10 m; verstrichene Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als die Bestzeit | **ja** | — | ja, sobald nachgeladen | gemessene Obergrenze der wahren Bestzeit — nie zu schnell |
@@ -158,10 +158,98 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 
 ## 8 · Empfehlung für v8-448
 
-Sofort registerfähig, sobald das Nachladen durch ist (heutiger Belegstand):
+Registerfähig bei vollständig gelieferten Daten (heutiger Belegstand; das Nachladen auf Vertrag 3 ist abgeschlossen):
 
 **Ja:** running: Dauer · running: Distanz · running: Tempo (Ø) · running: Herzfrequenz (Ø) · running: Herzfrequenz (Max) · running: Schrittfrequenz (Ø) · running: Strecken-Bestzeit (alle Distanzen)
 
 **Eigene Daten:** Dauer (alle Quellen), Kraft-Volumen (ORVIA-Workout), Distanz und Tempo manueller Einheiten.
 
 **Noch nicht** (53 Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).
+
+## 9 · Freigabe je Kennzahl (Abschluss Gate v8-447.1)
+
+Zwei Fälle je Kennzahl, beide vom Modul geurteilt: **heute** = wie die Daten in Produktion stehen (Details mit Standard-Auflösung
+geladen, Garmin hat ausgedünnt) · **nach Neuladen** = nach `DETAIL_MAXCHART=20000` + `DETAIL_REFETCH_RESOLUTION=1` (vollständige Antwort,
+an 8 Aktivitäten bestätigt).
+
+| Freigabe | Bedeutung |
+|---|---|
+| **FREI** | heute schon registerfähig |
+| **FREI NACH NEULADEN** | registerfähig, sobald die Aktivität mit vollständiger Antwort neu geladen ist |
+| **NICHT FREI** | Grund in Klammern — fehlt ein Beleg, hilft auch das Neuladen nicht |
+
+| Sportart | Kennzahl | Freigabe |
+|---|---|---|
+| running | Dauer | **FREI** |
+| running | Distanz | **FREI** |
+| running | Tempo (Ø) | **FREI** |
+| running | Herzfrequenz (Ø) | **FREI** |
+| running | Herzfrequenz (Max) | **FREI NACH NEULADEN** |
+| running | Schrittfrequenz (Ø) | **FREI NACH NEULADEN** |
+| running | Leistung (Ø) | NICHT FREI (`unverified_semantics`) |
+| running | Leistungs-Bestwert (alle Fenster) | NICHT FREI (`unverified_semantics`) |
+| running | Strecken-Bestzeit (alle Distanzen) | **FREI** |
+| running | Training Effect | NICHT FREI (`unverified_semantics`) |
+| running | Kalorien | NICHT FREI (`unverified_semantics`) |
+| cycling | Dauer | NICHT FREI (`unverified_semantics`) |
+| cycling | Distanz | NICHT FREI (`unverified_semantics`) |
+| cycling | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| cycling | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| cycling | Trittfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| cycling | Leistung (Ø) | NICHT FREI (`unverified_semantics`) |
+| cycling | Leistungs-Bestwert (alle Fenster) | NICHT FREI (`unverified_semantics`) |
+| cycling | Training Effect | NICHT FREI (`unverified_semantics`) |
+| cycling | Kalorien | NICHT FREI (`unverified_semantics`) |
+| cycling | FTP | NICHT FREI (`unsupported_source`) |
+| swimming | Dauer | NICHT FREI (`unverified_semantics`) |
+| swimming | Distanz | NICHT FREI (`unverified_semantics`) |
+| swimming | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| swimming | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| swimming | SWOLF | NICHT FREI (`unverified_semantics`) |
+| swimming | Zugfrequenz | NICHT FREI (`unverified_semantics`) |
+| swimming | Training Effect | NICHT FREI (`unverified_semantics`) |
+| swimming | Kalorien | NICHT FREI (`unverified_semantics`) |
+| gym | Dauer | NICHT FREI (`unverified_semantics`) |
+| gym | Distanz | NICHT FREI (`missing_data`) |
+| gym | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| gym | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| gym | Training Effect | NICHT FREI (`unverified_semantics`) |
+| gym | Kraft-Volumen | NICHT FREI (`unverified_semantics`) |
+| gym | Kalorien | NICHT FREI (`unverified_semantics`) |
+| walking | Dauer | NICHT FREI (`unverified_semantics`) |
+| walking | Distanz | NICHT FREI (`unverified_semantics`) |
+| walking | Tempo (Ø) | NICHT FREI (`unverified_semantics`) |
+| walking | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| walking | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| walking | Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| walking | Training Effect | NICHT FREI (`unverified_semantics`) |
+| walking | Kalorien | NICHT FREI (`unverified_semantics`) |
+| hiking | Dauer | NICHT FREI (`unverified_semantics`) |
+| hiking | Distanz | NICHT FREI (`unverified_semantics`) |
+| hiking | Tempo (Ø) | NICHT FREI (`unverified_semantics`) |
+| hiking | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| hiking | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| hiking | Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| hiking | Training Effect | NICHT FREI (`unverified_semantics`) |
+| hiking | Kalorien | NICHT FREI (`unverified_semantics`) |
+| rowing | Dauer | NICHT FREI (`unverified_semantics`) |
+| rowing | Distanz | NICHT FREI (`unverified_semantics`) |
+| rowing | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
+| rowing | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
+| rowing | Leistung (Ø) | NICHT FREI (`unverified_semantics`) |
+| rowing | Leistungs-Bestwert (alle Fenster) | NICHT FREI (`unverified_semantics`) |
+| rowing | Training Effect | NICHT FREI (`unverified_semantics`) |
+| rowing | Kalorien | NICHT FREI (`unverified_semantics`) |
+| eigene Daten | Dauer (ORVIA-Workout, manuell) | **FREI** — manuell korrigierte Werte zählen mit ihrem wirksamen Wert und bleiben gekennzeichnet |
+| eigene Daten | Kraft-Volumen (ORVIA-Workout) | **FREI** |
+| eigene Daten | Distanz / Tempo (manuelle Einheit) | **FREI** — Bestzeiten nicht (keine Aufzeichnung) |
+
+## 10 · Protokoll des Gates
+
+| Datum | Prüfung | Ergebnis | Folge |
+|---|---|---|---|
+| 2026-10-11 | Nachladen auf Details-Vertrag 3 | 40 von 40 Garmin-Aktivitaeten aktuell, keine Fehler, keine Rueckstellungen | Grund legacy_schema entfaellt fuer den Bestand |
+| 2026-10-11 | Laufkadenz am iPhone gegen Garmin Connect | stimmt | Schrittfrequenz (Lauf): validated |
+| 2026-10-11 | Manuelle Dauer-Korrektur (Kraft, 341 → 75 min) nach Neustart und Sync | bleibt 75 min | Dauer: wirksamer Wert haelt; Korrektur bleibt gekennzeichnet (provenance.manual) |
+| 2026-10-11 | Aufloesungspruefung maxchart=20000 an 8 Aktivitaeten (Mitschnitt-Skript, Probelauf, nichts gespeichert) | alle liefern saemtliche gemeldeten Zeilen, Median-Abstand 1 s | Leistungs-Bestwerte KOENNEN exakt werden — erst nach DETAIL_MAXCHART=20000 und gezieltem Neuladen (DETAIL_REFETCH_RESOLUTION); bis dahin insufficient_resolution |
+| 2026-10-11 | Bedeutungspruefung (Probelauf, ausgeduennte Antwort) | Abweichungen bei Laufkadenz, Beckenschwimm-Distanz und Bewegungszeiten | nicht als Beleg gewertet; Pruefung laeuft jetzt auch auf der vollstaendigen Antwort und im Worker (metrics.ext.semantics) und benennt die Ursache |

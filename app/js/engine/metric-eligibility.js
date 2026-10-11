@@ -74,7 +74,7 @@
     'details.distance':        { running: 'fixture' },
     'details.heart_rate':      { running: 'fixture' },
     'details.durations':       { running: 'fixture' },
-    'details.running_cadence': { running: 'fixture' },
+    'details.running_cadence': { running: 'validated' },     // Mitschnitt + Vergleich in Produktion (VALIDATIONS)
     'details.cycling_cadence': {},
     'details.power':           {},
     'list.swim':               {},
@@ -84,9 +84,25 @@
     'own':                     { '*': 'own' }
   };
   var TRUSTED = { fixture: 1, validated: 1, own: 1 };
-  /* Nachweise fuer 'validated' (Schluessel 'beleg|sportart' → { date, how }). Leer, bis Gian eine
-     Sportart in Produktion gegen Garmin Connect verglichen hat. */
-  var VALIDATIONS = {};
+  /* Nachweise fuer 'validated' (Schluessel 'beleg|sportart' → { date, how }). Nur, was in Produktion
+     tatsaechlich gegen Garmin Connect verglichen wurde — mit Datum und Art des Vergleichs. */
+  var VALIDATIONS = {
+    'details.running_cadence|running': {
+      date: '2026-10-11',
+      how: 'Gian, iPhone: Laufkadenz einer Garmin-Laufeinheit nach Details-Vertrag 3 in ORVIA gegen Garmin Connect verglichen — stimmt ueberein (kein Halbwert mehr). Bedeutung der Quelle directDoubleCadence zusaetzlich im Mitschnitt belegt.'
+    }
+  };
+
+  /* Protokoll des Validierungs-Gates v8-447.1 — was in Produktion bestaetigt wurde und was daraus
+     folgt. Reine Dokumentation (erscheint in PERFORMANCE-DATA-ELIGIBILITY.md); die Urteile oben
+     aendert nur EVIDENCE / VALIDATIONS. */
+  var GATE_LOG = [
+    { date: '2026-10-11', what: 'Nachladen auf Details-Vertrag 3', result: '40 von 40 Garmin-Aktivitaeten aktuell, keine Fehler, keine Rueckstellungen', consequence: 'Grund legacy_schema entfaellt fuer den Bestand' },
+    { date: '2026-10-11', what: 'Laufkadenz am iPhone gegen Garmin Connect', result: 'stimmt', consequence: 'Schrittfrequenz (Lauf): validated' },
+    { date: '2026-10-11', what: 'Manuelle Dauer-Korrektur (Kraft, 341 → 75 min) nach Neustart und Sync', result: 'bleibt 75 min', consequence: 'Dauer: wirksamer Wert haelt; Korrektur bleibt gekennzeichnet (provenance.manual)' },
+    { date: '2026-10-11', what: 'Aufloesungspruefung maxchart=20000 an 8 Aktivitaeten (Mitschnitt-Skript, Probelauf, nichts gespeichert)', result: 'alle liefern saemtliche gemeldeten Zeilen, Median-Abstand 1 s', consequence: 'Leistungs-Bestwerte KOENNEN exakt werden — erst nach DETAIL_MAXCHART=20000 und gezieltem Neuladen (DETAIL_REFETCH_RESOLUTION); bis dahin insufficient_resolution' },
+    { date: '2026-10-11', what: 'Bedeutungspruefung (Probelauf, ausgeduennte Antwort)', result: 'Abweichungen bei Laufkadenz, Beckenschwimm-Distanz und Bewegungszeiten', consequence: 'nicht als Beleg gewertet; Pruefung laeuft jetzt auch auf der vollstaendigen Antwort und im Worker (metrics.ext.semantics) und benennt die Ursache' }
+  ];
 
   var CURRENT = 3;                      // Details-Vertrag (Worker)
   var OWN_SOURCES = { orvia_workout: 1, live: 1, manual: 1 };
@@ -215,12 +231,24 @@
       if (!needEvidence(c, evidenceKey)) return;
       quality(c);
       if (opt.max && c.be.native !== true) { why(c, 'insufficient_resolution'); return; }     // ein Maximum aus ausgeduennten Zeilen ist eine Untergrenze
+      /* v8-447.1 (Gate-Abschluss): fuer diese Kennzahl zeigte die Bedeutungspruefung im Probelauf eine
+         Abweichung zwischen Garmins Summenwert und der Aufzeichnung. Zulaessig erst, wenn der Worker den
+         Summenwert gegen die VOLLSTAENDIGE Aufzeichnung bestaetigt hat (metrics.garmin.semantics_ok).
+         Dann ist der bestaetigte Garmin-Wert die Grundlage, nicht das Mittel der Anzeige-Reihe. */
+      if (opt.confirm) {
+        var ok = obj((obj(c.g.semantics_ok) || {})[opt.confirm]);
+        if (!ok || num(ok.list) === null) {
+          if (c.be.native !== true) { why(c, 'insufficient_resolution'); return; }
+          why(c, 'unverified_semantics'); return;
+        }
+        c.prov.basis = 'Garmin-Summenwert, bestaetigt gegen die vollstaendige Aufzeichnung (' + (ok.reading || '?') + ')';
+      }
       if (opt.corroborate && num(c.sum[opt.corroborate]) !== null && !close(st.avg, c.sum[opt.corroborate], TOL.hrBpm, 0)) why(c, 'unverified_semantics');
     };
   }
   METRICS.heartRate = { sports: null, check: statMetric('heart_rate', 'details.heart_rate', { ownSummary: 'avgHr', corroborate: 'avgHr' }) };
   METRICS.maxHeartRate = { sports: null, check: statMetric('heart_rate', 'details.heart_rate', { ownSummary: 'maxHr', max: true }) };
-  METRICS.runningCadence = { sports: { running: 1 }, check: statMetric('cadence', 'details.running_cadence', { kind: 'running_cadence_spm' }) };
+  METRICS.runningCadence = { sports: { running: 1 }, check: statMetric('cadence', 'details.running_cadence', { kind: 'running_cadence_spm', confirm: 'averageRunningCadence' }) };
   METRICS.cyclingCadence = { sports: { cycling: 1 }, check: statMetric('cadence', 'details.cycling_cadence', { kind: 'cycling_cadence_rpm' }) };
   METRICS.power = { sports: { cycling: 1, running: 1, rowing: 1 }, check: statMetric('power', 'details.power', {}) };
 
@@ -325,7 +353,7 @@
 
   var api = {
     evaluate: evaluate, isMetricLedgerEligible: isMetricLedgerEligible, overview: overview, level: level,
-    METRICS: Object.keys(METRICS), REASONS: REASONS, EVIDENCE: EVIDENCE, TRUSTED: Object.keys(TRUSTED), VALIDATIONS: VALIDATIONS,
+    METRICS: Object.keys(METRICS), REASONS: REASONS, EVIDENCE: EVIDENCE, TRUSTED: Object.keys(TRUSTED), VALIDATIONS: VALIDATIONS, GATE_LOG: GATE_LOG,
     POWER_WINDOWS: POWER_WINDOWS.slice(), DISTANCE_TARGETS: DISTANCE_TARGETS.slice(), TOLERANCES: TOL, DETAILS_VERSION_CURRENT: CURRENT,
     sportsOf: function (metric) { var d = METRICS[metric]; return d ? (d.sports ? Object.keys(d.sports) : null) : undefined; },
     paramOf: function (metric) { var d = METRICS[metric]; return d ? (d.param || null) : undefined; }

@@ -301,6 +301,12 @@ def parse_activity_details(raw: Any) -> dict:
         best["native"] = bool(tot is not None and len(rows) >= tot)
         out["best"] = best
 
+    # --- Kennwerte fuer die Bedeutungspruefung (v8-447.1) -------------------------
+    # Aus ALLEN gelieferten Zeilen, mehrere Lesarten je Groesse (zeitgewichtet / je Zeile, mit /
+    # ohne Nullen). Wird mit den Summenwerten des Listeneintrags verglichen (semantic_checks).
+    from . import semantic_checks as SC
+    out["aggregates"] = SC.aggregates(raw)
+
     # --- Zusatzreihen je Sportart (v8-447, Commit C) ----------------------------
     # Was Garmin ueber die kanonischen Reihen hinaus liefert (Laufdynamik, Pedalwerte,
     # Zugfrequenz …), bleibt unter dem GARMIN-NAMEN mit Garmins Einheit erhalten — gleicher

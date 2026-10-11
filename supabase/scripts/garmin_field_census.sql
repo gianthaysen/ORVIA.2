@@ -21,6 +21,10 @@
 --   nachladen            aktuell · offen_alt · offen_neu · fehler:<Klasse> · zurueckgestellt:<Klasse>
 --   tempo                in den letzten 24 h nachgeladen · Zeitpunkt des letzten Nachladens
 --   abtastung            vollstaendig (Garmin lieferte alle Zeilen) · ausgeduennt · gesamtzahl_unbekannt
+--   aufloesung           mit welchem maxChartSize die Details geladen wurden (standard / maxchart=…)
+--   herkunft_unvollstaendig  Herkunftsblock fehlt oder ohne Garmin-Typ / GMT-Startzeit
+--   bedeutung            Listenwert gegen Aufzeichnung: Beziehung = Urteil [passende Lesart] (Lieferung)
+--   bedeutung_hinweis    Ursache einer Abweichung (z. B. two_definitions, pool_lengths, half_value)
 --   messreihe            kanonische Messreihe ← Garmin-Quelle [Bedeutung]
 --   feld                 erhaltenes Feld des Listeneintrags (metrics.ext.fields)
 --   feld_nicht_erhalten  geliefert, aber nicht gespeichert (nur der Name)
@@ -97,6 +101,50 @@ select 'abtastung', sport_id,
             else 'ausgeduennt' end,
        count(*)
 from x where jsonb_typeof(gm -> 'stream_rows') = 'number' group by 1, 2, 3
+
+-- ---- Aufloesung, mit der die Details geladen wurden (v8-447.1) ----------------
+-- 'standard' = maxChartSize der Bibliothek (2000) bzw. vor v8-447.1 nicht vermerkt
+union all
+select 'aufloesung', sport_id,
+       case when jsonb_typeof(metrics -> 'detailsMaxchart') = 'number' and (metrics ->> 'detailsMaxchart')::numeric > 0
+            then 'maxchart=' || (metrics ->> 'detailsMaxchart') else 'standard' end,
+       count(*)
+from x where cur group by 1, 2, 3
+
+-- ---- Herkunftsblock vorhanden, aber unvollstaendig (v8-447.1) -----------------
+-- Garmin-Typ oder GMT-Startzeit fehlt — z. B. Block nur vom Nachladen der Details angelegt
+union all
+select 'herkunft_unvollstaendig', sport_id,
+       case when gm = '{}'::jsonb then 'kein_block'
+            when coalesce(gm ->> 'type_key', '') = '' and coalesce(gm ->> 'start_gmt', '') = '' then 'ohne_typ_und_zeit'
+            when coalesce(gm ->> 'type_key', '') = '' then 'ohne_typ'
+            else 'ohne_zeit' end,
+       count(*)
+from x where coalesce(gm ->> 'type_key', '') = '' or coalesce(gm ->> 'start_gmt', '') = '' group by 1, 2, 3
+
+-- ---- Bedeutungspruefung: Listenwert gegen Aufzeichnung (v8-447.1) ---------------
+-- name = Beziehung = Urteil [passende Lesart] (Lieferung) — keine Werte
+union all
+select 'bedeutung', sport_id,
+       r.key || ' = ' || coalesce(r.value ->> 'verdict', '?')
+         || coalesce(' [' || (select string_agg(m, '; ' order by m) from jsonb_array_elements_text(
+                                case when jsonb_typeof(r.value -> 'matches') = 'array' then r.value -> 'matches' else '[]'::jsonb end) as m) || ']', '')
+         || ' (' || case when (ext -> 'semantics' -> 'delivery' ->> 'complete') = 'true' then 'vollstaendig' else 'ausgeduennt' end || ')',
+       count(*)
+from x cross join lateral jsonb_each(
+  case when jsonb_typeof(ext -> 'semantics') = 'object' then ext -> 'semantics' else '{}'::jsonb end) as r
+where r.key not in ('v', 'delivery') and jsonb_typeof(r.value) = 'object'
+group by 1, 2, 3
+
+-- ---- Bedeutungspruefung: Hinweise zur Ursache einer Abweichung -----------------
+union all
+select 'bedeutung_hinweis', sport_id, r.key || ': ' || split_part(h, ':', 1), count(*)
+from x cross join lateral jsonb_each(
+  case when jsonb_typeof(ext -> 'semantics') = 'object' then ext -> 'semantics' else '{}'::jsonb end) as r
+cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(r.value -> 'hints') = 'array' then r.value -> 'hints' else '[]'::jsonb end) as h
+where r.key not in ('v', 'delivery')
+group by 1, 2, 3
 
 -- ---- kanonische Messreihen: Quelle und Bedeutung ----------------------------
 union all

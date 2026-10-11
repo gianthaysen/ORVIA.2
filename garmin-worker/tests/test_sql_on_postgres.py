@@ -393,3 +393,21 @@ def test_sport_migrations_before_after_and_rollback(pg):
     pg(file=SQL / "migrations_rollback" / "0050_sport_backfill_catalog_rollback.sql")
     assert snap() == start                                                             # Rueckweg stellt den Ausgang her
     assert pg("select count(*) from public.activities where metrics ? 'sport_backfill';", csv=True).splitlines()[1] == "0"
+
+
+def test_census_reports_resolution_incomplete_provenance_and_semantics(census):
+    """v8-447.1 (Gate-Abschluss): Aufloesung, unvollstaendige Herkunft und Bedeutungspruefung
+    kommen als lesbare Zeilen aus echtem Postgres — und nur als Namen und Zaehlungen."""
+    o = census["observed"]
+    arts = {r[0] for r in census["rows"]}
+    assert {"aufloesung", "herkunft_unvollstaendig"} <= arts
+    assert sum(sum(v.values()) for v in o["aufloesung"].values()) == sum(b.get("details_aktuell", 0) for b in o["basis"].values())
+    assert all(name == "standard" or name.startswith("maxchart=") for v in o["aufloesung"].values() for name in v)
+    hu = o["herkunft_unvollstaendig"]
+    assert sum(sum(v.values()) for v in hu.values()) >= 1                     # z. B. die kaputte Zeile und Zeilen ohne Listeneintrag
+    if "bedeutung" in arts:
+        names = [n for v in o["bedeutung"].values() for n in v]
+        assert all(" = " in n and (n.endswith("(vollstaendig)") or n.endswith("(ausgeduennt)")) for n in names)
+    text = census["text"]
+    for secret in ("10012.3", "3475.1", "2026-07-12", "161.0", "212.0"):
+        assert secret not in text, secret

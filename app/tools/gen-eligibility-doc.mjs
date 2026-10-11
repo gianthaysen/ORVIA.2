@@ -57,7 +57,9 @@ export function referenceActivity(sport, variant) {
   const a = { id: 'ref-' + sport, sportId: sport, source: 'garmin', status: 'completed', durationSeconds: 3600,
     summary: { avgHr: 150, maxHr: 172, caloriesKcal: 700 },
     metrics: { detailsVersion: v === 'legacy' ? 2 : 3, detailsFetchedAt: '2026-10-08T06:00:00Z', streams, stream_meta: v === 'legacy' ? undefined : meta,
-      garmin: { v: 1, type_key: sport === 'swimming' ? 'lap_swimming' : sport, timer_duration_s: 3600, moving_duration_s: 3590, elapsed_duration_s: 3700, stream_rows: 3600, stream_total: 3600 },
+      garmin: { v: 1, type_key: sport === 'swimming' ? 'lap_swimming' : sport, timer_duration_s: 3600, moving_duration_s: 3590, elapsed_duration_s: 3700, stream_rows: 3600, stream_total: 3600,
+        /* Bestaetigung der Summenwerte gibt es nur aus vollstaendiger Lieferung (Worker: semantic_checks.confirmed) */
+        semantics_ok: v === 'best' && sport === 'running' ? { averageRunningCadence: { reading: 'directDoubleCadence zeitgewichtet ohne Nullen', list: 171 } } : undefined },
       best_efforts: v === 'legacy' ? undefined : be, ext: { v: 1, fields } } };
   if (sport !== 'gym') a.summary.distanceM = sport === 'swimming' ? 2000 : 10000;
   if (v === 'legacy') { delete a.metrics.streams.time; delete a.metrics.garmin.timer_duration_s; }
@@ -212,11 +214,45 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 
 ## 8 · Empfehlung für v8-448
 
-Sofort registerfähig, sobald das Nachladen durch ist (heutiger Belegstand):
+Registerfähig bei vollständig gelieferten Daten (heutiger Belegstand; das Nachladen auf Vertrag 3 ist abgeschlossen):
 
 ${(() => { const ok = []; const no = [];
     for (const sport of SPORTS) for (const x of rowsFor(sport, 'best')) (x.r.eligible ? ok : no).push(`${sport}: ${x.label}`);
     return '**Ja:** ' + (ok.join(' · ') || '—') + '\n\n**Eigene Daten:** Dauer (alle Quellen), Kraft-Volumen (ORVIA-Workout), Distanz und Tempo manueller Einheiten.\n\n**Noch nicht** (' + no.length + ' Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).'; })()}
+
+## 9 · Freigabe je Kennzahl (Abschluss Gate v8-447.1)
+
+Zwei Fälle je Kennzahl, beide vom Modul geurteilt: **heute** = wie die Daten in Produktion stehen (Details mit Standard-Auflösung
+geladen, Garmin hat ausgedünnt) · **nach Neuladen** = nach \`DETAIL_MAXCHART=20000\` + \`DETAIL_REFETCH_RESOLUTION=1\` (vollständige Antwort,
+an 8 Aktivitäten bestätigt).
+
+| Freigabe | Bedeutung |
+|---|---|
+| **FREI** | heute schon registerfähig |
+| **FREI NACH NEULADEN** | registerfähig, sobald die Aktivität mit vollständiger Antwort neu geladen ist |
+| **NICHT FREI** | Grund in Klammern — fehlt ein Beleg, hilft auch das Neuladen nicht |
+
+| Sportart | Kennzahl | Freigabe |
+|---|---|---|
+${(() => { const lines = [];
+    for (const sport of SPORTS) {
+      const best = rowsFor(sport, 'best'), thin = rowsFor(sport, 'thinned');
+      best.forEach((x, i) => {
+        const t = thin[i];
+        const status = t && t.r.eligible ? '**FREI**' : x.r.eligible ? '**FREI NACH NEULADEN**' : 'NICHT FREI (`' + x.r.reason + '`)';
+        lines.push('| ' + sport + ' | ' + x.label + ' | ' + status + ' |');
+      });
+    }
+    return lines.join('\n'); })()}
+| eigene Daten | Dauer (ORVIA-Workout, manuell) | **FREI** — manuell korrigierte Werte zählen mit ihrem wirksamen Wert und bleiben gekennzeichnet |
+| eigene Daten | Kraft-Volumen (ORVIA-Workout) | **FREI** |
+| eigene Daten | Distanz / Tempo (manuelle Einheit) | **FREI** — Bestzeiten nicht (keine Aufzeichnung) |
+
+## 10 · Protokoll des Gates
+
+| Datum | Prüfung | Ergebnis | Folge |
+|---|---|---|---|
+${ME.GATE_LOG.map(g => '| ' + g.date + ' | ' + g.what + ' | ' + g.result + ' | ' + g.consequence + ' |').join('\n')}
 `);
   return out.join('\n').trimEnd() + '\n';
 }

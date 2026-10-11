@@ -47,14 +47,16 @@ OBSERVED = HERE.parent / "census" / "observed.json"
 MIN_BASIS = 5          # so viele Aktivitaeten braucht es, bevor „nie gesehen" als ABSENT gilt
 ARTEN = ("basis", "typ", "herkunft", "nachladen", "tempo", "abtastung", "messreihe", "feld", "feld_nicht_erhalten",
          "feld_verworfen", "struktur", "reihe", "reihe_nicht_erhalten", "bestwert", "kennwert", "zusatzabruf",
-         "zusatz_schluessel")
+         "zusatz_schluessel", "aufloesung", "herkunft_unvollstaendig", "bedeutung", "bedeutung_hinweis")
 # Nenner je Art: worauf sich „Abdeckung %" bezieht
 DENOMINATOR = {"feld": "mit_rohfeldern", "feld_nicht_erhalten": "mit_rohfeldern", "feld_verworfen": "mit_rohfeldern",
                "struktur": "mit_rohfeldern", "herkunft": "alle", "typ": "alle", "abtastung": "details_aktuell",
                "messreihe": "details_aktuell", "reihe": "details_aktuell", "reihe_nicht_erhalten": "details_aktuell",
                "bestwert": "details_aktuell", "kennwert": "details_aktuell", "zusatzabruf": "details_aktuell",
-               "zusatz_schluessel": "details_aktuell", "nachladen": "alle", "quelle": "details_aktuell"}
-_SAFE_NAME = re.compile(r"^[A-Za-z0-9_.\-\[\]:<> =(),/äöüÄÖÜß]{1,160}$")
+               "zusatz_schluessel": "details_aktuell", "nachladen": "alle", "quelle": "details_aktuell",
+               "aufloesung": "details_aktuell", "herkunft_unvollstaendig": "alle", "bedeutung": "details_aktuell",
+               "bedeutung_hinweis": "details_aktuell"}
+_SAFE_NAME = re.compile(r"^[A-Za-z0-9_.\-\[\]:<> =(),/;×−+äöüÄÖÜß]{1,300}$")
 
 
 class CensusError(ValueError):
@@ -319,6 +321,15 @@ Sportart, bei denen das Feld vorkam, bezogen auf die Aktivitäten, bei denen es 
     table("feld_verworfen", "13 · Erlaubtes Feld in unerwarteter Form", "Auf der Erlaubnisliste, geliefert, aber nicht als einfacher Wert. **Jeder Eintrag hier ist ein Fehler in unserer Annahme.**")
     table("zusatzabruf", "14 · Zusatzabrufe", "Nur gefüllt, wenn `DETAIL_EXTRAS` gesetzt ist.")
     table("zusatz_schluessel", "15 · Form der Zusatzabrufe", "Schlüssel der Antworten (keine Werte).")
+    table("aufloesung", "15a · Aufloesung der geladenen Details", "`standard` = maxChartSize der Bibliothek (2000) bzw. vor v8-447.1 · "
+          "`maxchart=…` = gezielt neu geladen. Erst mit vollständiger Antwort sind kurze Leistungs-Bestwerte exakt.")
+    table("herkunft_unvollstaendig", "15b · Herkunftsblock unvollständig", "Ohne Garmin-Typ oder GMT-Startzeit. Behebt der weite "
+          "Rückblick (`ACTIVITY_PROVENANCE_BACKFILL_DAYS`).")
+    table("bedeutung", "15c · Bedeutungsprüfung: Listenwert gegen Aufzeichnung", "Beziehung = Urteil [passende Lesart] (Lieferung). "
+          "Nur Urteile aus **vollständiger** Lieferung zählen als Beleg der Bedeutung.")
+    table("bedeutung_hinweis", "15d · Bedeutungsprüfung: Ursache einer Abweichung", "`two_definitions` = Listen- und Aufzeichnungswert "
+          "folgen verschiedenen Definitionen · `pool_lengths` = Abweichung in ganzen Bahnen · `half_value` = Listenwert ist ein Bein · "
+          "`thinned_response` = nur ausgedünnt geprüft.")
 
     out.append("\n## 16 · Annahmen des Codes gegen den Zensus\n")
     out.append(f"**Bestätigt** ({len(v['confirmed'])} Listenfelder, {len(v['series_confirmed'])} Zusatzreihen) — in Produktion gesehen:\n")

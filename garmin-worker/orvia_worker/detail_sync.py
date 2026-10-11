@@ -153,7 +153,26 @@ def _parked(metrics: Any, now: datetime | None = None) -> bool:
     return (now - at).total_seconds() < DETAIL_FAIL_RETRY_DAYS * 86400
 
 
-def _needs_details(act: Any) -> bool:
+def _details_maxchart(metrics: Any) -> int:
+    """Mit welchem maxChartSize die gespeicherten Details geladen wurden (0 = Standard der
+    Bibliothek / vor v8-447.1 — damals nicht vermerkt)."""
+    try:
+        return int((metrics or {}).get("detailsMaxchart") or 0)
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+
+def _needs_resolution_refetch(metrics: Any, refetch_maxchart: int) -> bool:
+    """v8-447.1 · Gezielter erneuter Abruf einer Aktivitaet, die schon auf dem aktuellen Vertrag
+    steht, aber mit kleinerem maxChartSize geladen wurde. Nur wenn ausdruecklich eingeschaltet
+    (refetch_maxchart > 0). Bestwerte, Kennwerte und Bedeutungspruefung werden dabei aus der
+    vollstaendigen Antwort neu gerechnet; die Anzeige-Reihen bleiben gleich gross."""
+    if refetch_maxchart <= 0 or not isinstance(metrics, dict):
+        return False
+    return _details_maxchart(metrics) < refetch_maxchart
+
+
+def _needs_details(act: Any, refetch_maxchart: int = 0) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
     if _parked(metrics):
@@ -161,9 +180,24 @@ def _needs_details(act: Any) -> bool:
     if not _details_complete(metrics):
         return True
     try:
-        return int(metrics.get("detailsVersion") or 1) < _REENRICH_ALL_BELOW
+        if int(metrics.get("detailsVersion") or 1) < _REENRICH_ALL_BELOW:
+            return True
     except (TypeError, ValueError):
         return True
+    return _needs_resolution_refetch(metrics, refetch_maxchart)
+
+
+# Schluessel, ohne die ein Herkunftsblock als UNVOLLSTAENDIG gilt. Das Nachladen der Details
+# legt metrics.garmin mit Dauern und Abtastung an — ohne Garmin-Typ und Ortszeit. Bis
+# v8-447.1 galt eine solche Zeile als „hat Herkunft" und wurde vom weiten Rueckblick nie erfasst.
+PROVENANCE_REQUIRED = ("type_key", "start_gmt")
+
+
+def provenance_incomplete(metrics: Any) -> bool:
+    g = metrics.get("garmin") if isinstance(metrics, dict) else None
+    if not isinstance(g, dict):
+        return True
+    return any(not g.get(k) for k in PROVENANCE_REQUIRED)
 
 
 def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: Any = None) -> list[str]:
@@ -329,7 +363,7 @@ def _parse_ts(value: Any) -> datetime | None:
         return None
 
 
-def backfill_status(rows: Any, now: datetime | None = None) -> dict:
+def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: int = 0) -> dict:
     """v8-447.1 · Stand des Nachladens — nur ZAHLEN, keine Inhalte, keine Kennungen.
 
       total      Garmin-Aktivitaeten
@@ -344,7 +378,8 @@ def backfill_status(rows: Any, now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     out: dict[str, Any] = {"contract": DETAILS_CONTRACT_VERSION, "total": 0, "current": 0, "pending": 0,
                            "legacy": 0, "never": 0, "failing": 0, "deferred": 0, "by_category": {},
-                           "by_sport": {}, "last_processed": None, "processed_24h": 0}
+                           "by_sport": {}, "last_processed": None, "processed_24h": 0,
+                           "resolution_pending": 0, "provenance_incomplete": 0}
     last = None
     for r in rows or ():
         if not isinstance(r, dict):
@@ -355,10 +390,14 @@ def backfill_status(rows: Any, now: datetime | None = None) -> dict:
         out["total"] += 1
         sp["total"] += 1
         complete = _details_complete(m)
+        if provenance_incomplete(m):
+            out["provenance_incomplete"] += 1
         try:
             ver = int(m.get("detailsVersion") or 1) if complete else 0
         except (TypeError, ValueError):
             ver = 0
+        if complete and ver >= DETAILS_CONTRACT_VERSION and _needs_resolution_refetch(m, refetch_maxchart) and not _parked(m, now):
+            out["resolution_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION:
             out["current"] += 1
             sp["current"] += 1
@@ -398,9 +437,15 @@ async def sync_activity_details(
     db, user_id: str, get_details: Callable[[str], Any], *, limit: int, max_retries: int = 2,
     on_rate_limit: Callable[[int], None] | None = None,
     get_extra: Callable[[str, str], Any] | None = None, extras: Any = None,
+    maxchart: int = 0, refetch_resolution: bool = False,
 ) -> dict:
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
-    werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged."""
+    werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged.
+
+    v8-447.1: `maxchart` = mit welchem maxChartSize `get_details` abfragt (wird an der Zeile
+    vermerkt). `refetch_resolution` = Aktivitaeten, die mit kleinerem Wert geladen wurden,
+    gezielt noch einmal laden — erst nach allen nie geladenen und veralteten."""
+    refetch_mc = int(maxchart or 0) if refetch_resolution else 0
     acts = await db.select("activities", {"user_id": user_id, "source": "garmin"})
     # v8-424b · Reihenfolge der Auswahl (vorher: Tabellenreihenfolge, also die aeltesten
     # zuerst). Mit dem einmaligen Nachladen der Radeinheiten haette eine FRISCHE
@@ -409,12 +454,18 @@ async def sync_activity_details(
     #   1. nie detaillierte vor nachzuladenden,
     #   2. innerhalb jeder Gruppe die neuesten zuerst.
     def _prio(a: Any) -> tuple:
-        fresh = 0 if not _details_complete(a.get("metrics")) else 1
-        return (fresh, _neg_ts(a.get("started_at")))
+        m = a.get("metrics")
+        if not _details_complete(m):
+            group = 0                                   # noch nie geladen
+        elif _needs_details(a, 0):
+            group = 1                                   # alter Vertrag
+        else:
+            group = 2                                   # nur Aufloesung nachholen
+        return (group, _neg_ts(a.get("started_at")))
     acts = sorted(acts, key=_prio)
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
     already = [a["source_record_id"] for a in acts
-               if a.get("source_record_id") and not _needs_details(a)]
+               if a.get("source_record_id") and not _needs_details(a, refetch_mc)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
     # v8-447.1 · Die Garmin-Abrufe laufen in einem eigenen Thread. Vorher blockierten sie die
@@ -446,6 +497,34 @@ async def sync_activity_details(
         # gemergten Abruf setzen — nie bei einem Fehlschlag (siehe `failed`).
         merged["detailsFetchedAt"] = datetime.now(timezone.utc).isoformat()
         merged["detailsVersion"] = DETAILS_CONTRACT_VERSION
+        merged["detailsMaxchart"] = int(maxchart or 0)          # v8-447.1: mit welcher Aufloesung geladen
+        # v8-447.1 · Bedeutungspruefung: Summenwerte des Listeneintrags (metrics.ext.fields) gegen
+        # die Kennwerte aus ALLEN gelieferten Zeilen. Nur Urteile und Abweichungen, nur Server.
+        try:
+            from . import semantic_checks as SC
+            fields = ((merged.get("ext") or {}).get("fields")) if isinstance(merged.get("ext"), dict) else None
+            agg = parsed.get("aggregates")
+            if isinstance(fields, dict) and isinstance(agg, dict):
+                rels = SC.relations(fields, agg)
+                sem = SC.compact_for_row(rels)
+                ext = dict(merged["ext"])
+                if sem:
+                    ext["semantics"] = sem
+                else:
+                    ext.pop("semantics", None)
+                merged["ext"] = ext
+                # Klein und auf jedem Geraet (metrics.garmin): welche Summenwerte des Listeneintrags
+                # gegen die VOLLSTAENDIGE Aufzeichnung bestaetigt sind — mit dem bestaetigten Wert.
+                # Nur aus vollstaendiger Lieferung; sonst wird nichts behauptet (und Altes entfernt).
+                g = dict(merged.get("garmin")) if isinstance(merged.get("garmin"), dict) else {}
+                ok = SC.confirmed(fields, rels) if agg.get("complete") else {}
+                if ok:
+                    g["semantics_ok"] = ok
+                else:
+                    g.pop("semantics_ok", None)
+                merged["garmin"] = g
+        except Exception:  # noqa: BLE001 — eine Pruefung darf das Speichern nie verhindern
+            logger.warning("details activity=%s sport=%s semantics=failed", act.get("id"), act.get("sport_id"))
         for k in ("detailsFailCount", "detailsFailedAt", "detailsFailCategory"):
             merged.pop(k, None)                     # Erfolg: Fehlervermerk weg
         # v8-447 · Zusatzabrufe (nur wenn eingeschaltet). Jeder fuer sich abgesichert: ein
@@ -531,7 +610,7 @@ async def sync_activity_details(
     by_cat: dict[str, int] = {}
     for cat in failures.values():
         by_cat[cat] = by_cat.get(cat, 0) + 1
-    status = backfill_status(acts, now)
+    status = backfill_status(acts, now, refetch_mc)
     return {"selected": plan["selected"], "updated": updated, "failed": list(plan["failed"]) + persist_failed,
             "extras": extras_count, "failures": failures, "by_category": by_cat, "aborted": plan.get("aborted"),
             "not_attempted": plan.get("not_attempted") or [], "status": status}

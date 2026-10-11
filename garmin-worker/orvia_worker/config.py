@@ -91,6 +91,12 @@ class Settings:
     # belegt; es laesst sich an metrics.garmin.stream_rows / stream_total ablesen.
     # Gleicher Abruf, gleiche Anzahl Calls, groessere Antwort. Gedeckelt auf 30 000.
     detail_maxchart: int = 0
+    # v8-447.1 · Aktivitaeten, die schon auf dem aktuellen Details-Vertrag stehen, aber mit
+    # kleinerem maxChartSize geladen wurden, gezielt EINMAL neu laden (Bestwerte, Kennwerte und
+    # Bedeutungspruefung aus der vollstaendigen Antwort). Nur zusammen mit DETAIL_MAXCHART > 0.
+    # Gleiche Grenzen wie das Nachladen: DETAIL_BACKFILL_LIMIT je Lauf, Abbruch bei 429.
+    # Standard AUS — ein Deploy loest damit keinen Abruf aus.
+    detail_refetch_resolution: bool = False
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -129,6 +135,7 @@ class Settings:
             ),
             activity_provenance_backfill_days=max(0, _int_env(env, "ACTIVITY_PROVENANCE_BACKFILL_DAYS", 0)),
             detail_maxchart=min(30000, max(0, _int_env(env, "DETAIL_MAXCHART", 0))),
+            detail_refetch_resolution=_bool_env(env, "DETAIL_REFETCH_RESOLUTION"),
         )
 
 

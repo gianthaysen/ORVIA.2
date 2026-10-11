@@ -480,8 +480,10 @@ async def sync_user(
             back_days = int(getattr(settings, "activity_provenance_backfill_days", 0) or 0)
             if back_days > 0:
                 rows = await db.select("activities", {"user_id": user_id, "source": "garmin"})
-                missing = [r for r in rows
-                           if not isinstance((r.get("metrics") or {}).get("garmin"), dict)]
+                # v8-447.1: auch Zeilen mit VORHANDENEM, aber unvollstaendigem Herkunftsblock (vom
+                # Nachladen der Details angelegt: Dauern ja, Garmin-Typ und Ortszeit nein).
+                from .detail_sync import provenance_incomplete
+                missing = [r for r in rows if provenance_incomplete(r.get("metrics"))]
                 if missing:
                     far_end = (date.fromisoformat(date_strs[0]) - timedelta(days=1)).isoformat()
                     far_start = (date.fromisoformat(date_strs[-1]) - timedelta(days=back_days)).isoformat()
@@ -524,6 +526,8 @@ async def sync_user(
             det = await sync_activity_details(
                 db, user_id, fetch,
                 limit=limit, get_extra=get_extra, extras=extras,
+                maxchart=maxchart,
+                refetch_resolution=bool(getattr(settings, "detail_refetch_resolution", False)) and maxchart > 0,
             )
             cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
@@ -542,6 +546,8 @@ async def sync_user(
                 result["steps"]["backfill"] = (
                     f"v{st.get('contract')}:{st.get('current')}/{st.get('total')} pending:{st.get('pending')} "
                     f"failing:{st.get('failing')} deferred:{st.get('deferred')} eta_h>={eta_h}"
+                    + (f" resolution_pending:{st.get('resolution_pending')}" if st.get("resolution_pending") else "")
+                    + (f" provenance_incomplete:{st.get('provenance_incomplete')}" if st.get("provenance_incomplete") else "")
                 )
                 logger.info("backfill contract=%s total=%s current=%s pending=%s (legacy=%s never=%s) "
                             "failing=%s deferred=%s categories=%s processed_24h=%s eta_h>=%s",
