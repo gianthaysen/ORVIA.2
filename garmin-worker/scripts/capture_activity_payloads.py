@@ -32,6 +32,11 @@ AUFRUF (aus garmin-worker/, in einer Umgebung mit Python ≥ 3.12 und garminconn
     python scripts/capture_activity_payloads.py --sports swimming,cycling
     python scripts/capture_activity_payloads.py --activity-id 12345678901
     python scripts/capture_activity_payloads.py --dry-run          # nur Bericht, keine Datei
+    python scripts/capture_activity_payloads.py --sports running,cycling,swimming,gym --probe-resolution
+
+Je Garmin-Typ wird die ergiebigste Einheit der letzten Tage genommen (Rad: mit Leistungsmesser /
+Rolle vor ohne), bei Gleichstand die juengste. --probe-resolution klaert zusaetzlich, ob Garmin mit
+groesserem maxChartSize alle aufgezeichneten Messzeilen liefert (ein Abruf mehr je Aktivitaet).
 
 Hinweis: ein Passwort-Login bei Garmin ist der einzige Schritt mit Sperr-Risiko (429).
 Einmal ausfuehren, nicht in Schleife. Wer gar nicht anmelden will: der Feldzensus per SQL
@@ -287,6 +292,86 @@ def coverage_report(payload: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Bedeutung pruefen: Listenwert gegen Aufzeichnung (v8-447.1)
+# ---------------------------------------------------------------------------
+# Der Zensus zeigt, DASS Garmin ein Feld liefert. Was es BEDEUTET, zeigt nur der Vergleich
+# zweier unabhaengiger Angaben derselben Aktivitaet: der Summenwert des Listeneintrags gegen
+# die Messreihe der Detailantwort. Ergebnis je Beziehung: "match" / "mismatch" / "n/a" — und
+# bei mehreren Kandidaten, WELCHER passt (z. B. ob die Listen-Kadenz der volle oder der halbe
+# Wert ist). Daraus werden die Belege in app/js/engine/metric-eligibility.js gebildet.
+
+def _col(details: dict, key: str) -> list[float]:
+    desc = {m.get("key"): m.get("metricsIndex") for m in (details.get("metricDescriptors") or []) if isinstance(m, dict)}
+    idx = desc.get(key)
+    if idx is None:
+        return []
+    out = []
+    for r in details.get("activityDetailMetrics") or []:
+        m = r.get("metrics") if isinstance(r, dict) else None
+        if isinstance(m, list) and idx < len(m) and isinstance(m[idx], (int, float)) and not isinstance(m[idx], bool):
+            out.append(float(m[idx]))
+    return out
+
+
+def _near(a, b, abs_tol, rel_tol) -> bool:
+    return abs(a - b) <= max(abs_tol, rel_tol * max(abs(a), abs(b)))
+
+
+def semantic_checks(payload: dict) -> dict:
+    """{beziehung: {"verdict": match|mismatch|n/a, "matches": kandidat|None}} — ohne Messwerte."""
+    entry, det = payload.get("list_entry"), payload.get("details")
+    out: dict = {}
+    if not isinstance(entry, dict) or not isinstance(det, dict):
+        return out
+    rows = det.get("activityDetailMetrics") or []
+    total = det.get("totalMetricsCount")
+    out["_delivery"] = {"rows": len(rows), "total": total if isinstance(total, int) else None,
+                        "complete": bool(isinstance(total, int) and len(rows) >= total)}
+
+    def num(k):
+        v = entry.get(k)
+        return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+    def check(name, list_key, candidates, abs_tol, rel_tol):
+        lv = num(list_key)
+        cands = {k: v for k, v in candidates.items() if v is not None}
+        if lv is None or not cands:
+            out[name] = {"verdict": "n/a", "matches": None}
+            return
+        hit = [k for k, v in cands.items() if _near(lv, v, abs_tol, rel_tol)]
+        out[name] = {"verdict": "match" if hit else "mismatch", "matches": hit[0] if len(hit) == 1 else (hit or None)}
+
+    def last(key):
+        c = _col(det, key)
+        return c[-1] if c else None
+
+    def mean(key, nonzero=False):
+        c = [v for v in _col(det, key) if (v > 0 or not nonzero)]
+        return sum(c) / len(c) if c else None
+
+    def mx(key):
+        c = _col(det, key)
+        return max(c) if c else None
+
+    check("duration", "duration", {"sumDuration (Timer)": last("sumDuration"), "sumMovingDuration": last("sumMovingDuration"),
+                                    "sumElapsedDuration": last("sumElapsedDuration")}, 5, 0.01)
+    check("movingDuration", "movingDuration", {"sumMovingDuration": last("sumMovingDuration")}, 5, 0.01)
+    check("elapsedDuration", "elapsedDuration", {"sumElapsedDuration": last("sumElapsedDuration")}, 5, 0.01)
+    check("distance", "distance", {"sumDistance (Ende)": last("sumDistance")}, 20, 0.01)
+    check("averageHR", "averageHR", {"Mittel directHeartRate": mean("directHeartRate")}, 2, 0)
+    check("maxHR", "maxHR", {"Maximum directHeartRate": mx("directHeartRate")}, 3, 0)
+    check("averageRunningCadence", "averageRunningCadenceInStepsPerMinute",
+          {"directDoubleCadence (beide Beine)": mean("directDoubleCadence", True), "directRunCadence (ein Bein)": mean("directRunCadence", True)}, 3, 0)
+    check("averageBikingCadence", "averageBikingCadenceInRevPerMinute",
+          {"directBikeCadence (ohne Nullen)": mean("directBikeCadence", True), "directBikeCadence (mit Nullen)": mean("directBikeCadence")}, 2, 0)
+    check("avgPower", "avgPower", {"directPower (mit Nullen)": mean("directPower"), "directPower (ohne Nullen)": mean("directPower", True)}, 3, 0.02)
+    check("maxPower", "maxPower", {"Maximum directPower": mx("directPower")}, 5, 0.02)
+    check("averageSpeed", "averageSpeed", {"Mittel directSpeed": mean("directSpeed"),
+                                           "Distanz / Timer": (last("sumDistance") / last("sumDuration")) if last("sumDistance") and last("sumDuration") else None}, 0.05, 0.02)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Abruf
 # ---------------------------------------------------------------------------
 
@@ -336,8 +421,53 @@ def pick_activities(entries: list, sports: tuple[str, ...] | None, activity_id: 
         sport = normalize.map_sport(tk)
         if sports and sport not in sports:
             continue
-        seen.setdefault((sport, tk), e)        # je Garmin-Typ einer: Bahn UND Freiwasser, Rolle UND Strasse
+        key = (sport, tk)                      # je Garmin-Typ einer: Bahn UND Freiwasser, Rolle UND Strasse
+        if key not in seen:
+            seen[key] = e
+        elif richness(e, sport) > richness(seen[key], sport):
+            seen[key] = e                      # v8-447.1: die aussagekraeftigere Einheit schlaegt die juengere
     return list(seen.values())
+
+
+# Felder, an denen sich ablesen laesst, ob eine Einheit fuer den Mitschnitt ergiebig ist — nur
+# ihr VORHANDENSEIN zaehlt. Rad: Leistungsmesser / Rolle (der wichtigste Fall fuer ORVIA).
+_RICH = {
+    "cycling": ("avgPower", "normPower", "averageBikingCadenceInRevPerMinute", "aerobicTrainingEffect"),
+    "running": ("averageRunningCadenceInStepsPerMinute", "avgGroundContactTime", "avgStrideLength", "avgPower", "aerobicTrainingEffect"),
+    "swimming": ("poolLength", "activeLengths", "strokes", "averageSwolf", "averageSwimCadenceInStrokesPerMinute"),
+    "gym": ("totalSets", "totalReps", "summarizedExerciseSets", "aerobicTrainingEffect"),
+}
+
+
+def richness(entry: dict, sport: str) -> int:
+    return sum(1 for k in _RICH.get(sport, ()) if entry.get(k) not in (None, "", [], {}))
+
+
+def resolution_probe(api, activity_id, maxcharts=(20000,)) -> list[dict]:
+    """v8-447.1 · Liefert Garmin mit groesserem maxChartSize ALLE aufgezeichneten Zeilen?
+    Die offene Frage hinter den Leistungs-Bestwerten. Je Wert EIN zusaetzlicher Abruf; behalten
+    werden nur vier Zahlen — keine Messwerte."""
+    out = []
+    for mc in maxcharts:
+        try:
+            raw = api.get_activity_details(activity_id, maxchart=mc)
+        except Exception as e:  # noqa: BLE001
+            out.append({"maxchart": mc, "error": type(e).__name__})
+            continue
+        rows = raw.get("activityDetailMetrics") if isinstance(raw, dict) else None
+        n = len(rows) if isinstance(rows, list) else 0
+        total = raw.get("totalMetricsCount") if isinstance(raw, dict) else None
+        desc = {m.get("key"): m.get("metricsIndex") for m in (raw.get("metricDescriptors") or []) if isinstance(m, dict)} if isinstance(raw, dict) else {}
+        interval = None
+        ti = desc.get("directTimestamp")
+        if ti is not None and n > 2:
+            ts = [r["metrics"][ti] for r in rows if isinstance(r, dict) and isinstance(r.get("metrics"), list) and ti < len(r["metrics"])
+                  and isinstance(r["metrics"][ti], (int, float))]
+            gaps = sorted((b - a) / 1000.0 for a, b in zip(ts, ts[1:]) if b > a)
+            interval = gaps[len(gaps) // 2] if gaps else None
+        out.append({"maxchart": mc, "rows": n, "total": total if isinstance(total, int) else None,
+                    "complete": bool(isinstance(total, int) and n >= total), "median_interval_s": interval})
+    return out
 
 
 def fetch_payload(api, entry: dict) -> dict:
@@ -371,6 +501,8 @@ def main() -> int:
     ap.add_argument("--days", type=int, default=120, help="so viele Tage zurueck suchen (Standard 120)")
     ap.add_argument("--with-gps", action="store_true", help="Streckenform behalten (auf 0/0 verschoben). Standard: keine Koordinaten")
     ap.add_argument("--dry-run", action="store_true", help="nur den Bericht drucken, keine Datei schreiben")
+    ap.add_argument("--probe-resolution", action="store_true",
+                    help="je Aktivitaet EIN zusaetzlicher Abruf mit maxchart=20000: liefert Garmin alle Zeilen? (nur Zahlen)")
     ap.add_argument("--out-dir", default=str(OUT_DIR))
     args = ap.parse_args()
     sports = tuple(s.strip().lower() for s in args.sports.split(",") if s.strip()) or None
@@ -399,8 +531,14 @@ def main() -> int:
         anon = anonymize_payload(payload, with_gps=args.with_gps)
         anon["_meta"] = {"capture_version": CAPTURE_VERSION, "library": "garminconnect", "library_version": lib_version,
                          "gps": bool(args.with_gps), "calls": sorted(k for k in payload if not k.startswith("_"))}
+        if args.probe_resolution:
+            probe = resolution_probe(api, entry.get("activityId"))
+            anon["_meta"]["resolution_probe"] = probe
+            print("Aufloesung:", json.dumps(probe))
+        anon["_meta"]["semantic_checks"] = semantic_checks(payload)        # Urteile, keine Messwerte
         problems = self_check(anon, secrets=(email, email.split("@")[0]), with_gps=args.with_gps)
         report = coverage_report(anon)
+        report["semantics"] = anon["_meta"]["semantic_checks"]
         print(json.dumps(report, indent=2, ensure_ascii=False))
         if problems:
             print("NICHT GESCHRIEBEN — die Selbstpruefung hat etwas gefunden:")

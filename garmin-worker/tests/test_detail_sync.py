@@ -59,9 +59,11 @@ def test_details_partial_failure_does_not_abort():
             {"user_id": uid, "source": "garmin", "source_record_id": "B1", "metrics": {}},
             {"user_id": uid, "source": "garmin", "source_record_id": "B2", "metrics": {}},
         ])
+        from orvia_worker.providers.base import NotFound
+
         def get(aid):
             if aid == "B1":
-                raise RateLimited("429")
+                raise NotFound("404")       # betrifft nur B1 (v8-447.1: ein 429 beendet den Lauf)
             return DETAILS
         res = await detail_sync.sync_activity_details(db, uid, get, limit=10, max_retries=1)
         assert res["updated"] == 1 and "B1" in res["failed"]

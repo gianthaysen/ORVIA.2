@@ -260,11 +260,19 @@ def test_extras_are_off_by_default():
 
 def test_extras_follow_the_sport():
     on = ("activity", "splits", "typed_splits", "hr_zones", "power_zones", "exercise_sets")
-    assert detail_sync.extras_for("gym", on) == ["activity", "splits", "hr_zones", "exercise_sets"]
-    assert detail_sync.extras_for("swimming", on) == ["activity", "splits", "typed_splits", "hr_zones"]
-    assert detail_sync.extras_for("cycling", on) == ["activity", "splits", "typed_splits", "hr_zones", "power_zones"]
-    assert detail_sync.extras_for("yoga", on) == ["activity", "splits", "hr_zones"]
-    assert detail_sync.extras_for("running", ("nonsense", "splits")) == ["splits"]
+    hr, hrpw = ("heart_rate", "time"), ("heart_rate", "power", "time")
+    f = detail_sync.extras_for
+    # v8-447.1: je Abruf zaehlt, ob er fuer GENAU diese Aktivitaet etwas liefern kann.
+    assert f("gym", on, streams=hr) == ["activity", "hr_zones", "exercise_sets"]            # keine Runden bei Kraft
+    assert f("swimming", on, type_key="lap_swimming", streams=hr) == ["activity", "splits", "typed_splits", "hr_zones"]
+    assert f("swimming", on, type_key="open_water_swimming", streams=hr) == ["activity", "splits", "hr_zones"]   # Bahnen nur im Becken
+    assert f("cycling", on, streams=hrpw) == ["activity", "splits", "typed_splits", "hr_zones", "power_zones"]
+    assert f("cycling", on, streams=hr) == ["activity", "splits", "typed_splits", "hr_zones"]   # ohne Leistungsreihe keine Leistungszonen
+    assert f("running", on, streams=hrpw) == ["activity", "splits", "typed_splits", "hr_zones"]  # Leistungszonen nur Rad
+    assert f("yoga", on, streams=hr) == ["activity", "hr_zones"]
+    assert f("yoga", on) == ["activity"]                                                    # ohne HF-Reihe keine HF-Zonen
+    assert f("swimming", on, streams=hr) == ["activity", "splits", "hr_zones"]              # Typ unbekannt: im Zweifel kein Abruf
+    assert f("running", ("nonsense", "splits")) == ["splits"]
 
 
 def test_extras_are_stored_as_delivered_and_failures_are_isolated():
@@ -587,9 +595,11 @@ def test_permanent_failures_are_parked_so_the_rest_of_the_history_still_loads():
             {"user_id": uid, "source": "garmin", "source_record_id": "ok1", "sport_id": "running",
              "started_at": "2026-08-01T06:00:00+00:00", "metrics": dict(v2)}])
 
+        from orvia_worker.providers.base import NotFound
+
         def get(aid):
             if aid.startswith("gone"):
-                raise KeyError("404")                      # dauerhaft
+                raise NotFound("404")                      # dauerhaft, betrifft nur diese Aktivitaet
             return DETAILS
         for n in (1, 2, 3):
             res = await detail_sync.sync_activity_details(db, uid, get, limit=3)

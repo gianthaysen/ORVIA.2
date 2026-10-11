@@ -296,6 +296,22 @@ def unretained_names(raw: Any) -> list[str]:
     return out[:NAMES_MAX]
 
 
+def rejected_names(raw: Any) -> list[str]:
+    """v8-447.1 · KEIN STILLER VERLUST: Felder, die auf der Erlaubnisliste stehen, von Garmin
+    mit einem Wert geliefert wurden — und trotzdem NICHT erhalten werden konnten, weil der Wert
+    nicht die erwartete Form hat (verschachtelt statt Zahl, NaN, ueberlanger Text).
+    Das ist ein Befund ueber unsere Annahme zur Form des Feldes, kein Normalfall. Die Namen
+    stehen in der Zeile (metrics.ext.rejected) und im Feldzensus (art = feld_verworfen)."""
+    if not isinstance(raw, dict):
+        return []
+    kept = retain_fields(raw)
+    out = []
+    for key in sorted(k for k in raw if isinstance(k, str)):
+        if key in KNOWN_BY_KEY and raw[key] is not None and key not in kept and not _is_private(key, raw[key]):
+            out.append(key[:64])
+    return out[:NAMES_MAX]
+
+
 def ext_block(raw: Any) -> dict:
     """Groesserer Herkunftsblock fuer metrics.ext (Server + Listen-Zwischenspeicher der App)."""
     out: dict[str, Any] = {"v": EXT_VERSION}
@@ -308,6 +324,9 @@ def ext_block(raw: Any) -> dict:
     names = unretained_names(raw)
     if names:
         out["unrecognized"] = names
+    bad = rejected_names(raw)
+    if bad:
+        out["rejected"] = bad
     return out
 
 

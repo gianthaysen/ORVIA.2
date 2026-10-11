@@ -46,6 +46,21 @@ class ProviderUnavailable(ProviderError):
     code = "PROVIDER_UNAVAILABLE"
 
 
+class NotFound(ProviderError):
+    """v8-447.1 · Garmin kennt die angefragte Ressource nicht (HTTP 404/410) — z. B. eine
+    bei Garmin geloeschte Aktivitaet. DAUERHAFT fuer genau diese Ressource; sagt nichts
+    ueber die Verbindung."""
+
+    code = "NOT_FOUND"
+
+
+class Unsupported(ProviderError):
+    """v8-447.1 · Garmin lehnt genau diese Anfrage ab (HTTP 400/405/406/409/415/422) — die
+    Ressource gibt es, aber nicht in dieser Form. Dauerhaft fuer diese Ressource."""
+
+    code = "UNSUPPORTED"
+
+
 # ---------------------------------------------------------------------------
 # Normalisierte Modelle (provider-neutral)
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Garmin-Fähigkeits-Matrix
 
-**Status: IMPLEMENTED** · Stand v8-447 · Worker Details-Vertrag 3 · Rohblock-Version 1
+**Status: IMPLEMENTED** · Stand Worker v8-447.1 · Details-Vertrag 3 · Rohblock-Version 1
 
 > Diese Datei wird **erzeugt**: `python garmin-worker/scripts/gen_capability_matrix.py`.
 > Die Tabellen stammen aus dem Code des Workers (`garmin_fields.py`, `detail_sync.py`, `normalize.py`).
@@ -12,16 +12,27 @@ Rohwerte bleiben unter ihrem Garmin-Namen, nichts wird erfunden, nichts stillsch
 
 ## 1 · Wie belastbar ist eine Zeile? (Belegstufen)
 
-| Stufe | Bedeutung | Anzahl Zeilen |
+| Stufe | Bedeutung | Zeilen (Teil A–C) |
 |---|---|---|
-| **fixture** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 12 |
-| **library** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | 43 |
-| **assumed** | üblicher Garmin-Connect-Name, hier **nicht** belegt | 67 |
+| **OBSERVED_PRODUCTION** | im Produktions-Zensus für die Sportart gezählt | 0 |
+| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 12 |
+| **LIBRARY_DOCUMENTED** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | 43 |
+| **ASSUMED** | üblicher Garmin-Connect-Name, hier **nicht** belegt | 67 |
+| **ABSENT** | im Zensus nie geliefert, obwohl mindestens 5 passende Aktivitäten vorliegen | 0 |
+
+**Noch kein Produktions-Zensus erhoben.** Jede Zeile steht auf der Stufe aus dem Code; `OBSERVED_PRODUCTION` und `ABSENT` kommen erst mit dem Zensus (Abschnitt 12).
+
+Regeln:
+
+- Eine Zeile wird **nur** `OBSERVED_PRODUCTION`, wenn das Feld im Zensus gezählt wurde — nie, weil Garmin es
+  „können müsste". Die Zahl dahinter (`running 118/120`) nennt Aktivitäten mit dem Feld / Aktivitäten der Sportart.
+- `OBSERVED_PRODUCTION` belegt, dass Garmin das Feld **liefert** — nicht, was es **bedeutet**. Einheit und Bedeutung
+  belegt erst ein Mitschnitt oder der Vergleich mit Garmin Connect (`PERFORMANCE-DATA-ELIGIBILITY.md`).
+- Zu wenige Aktivitäten einer Sportart: die Zeile behält ihre bisherige Stufe. Unklar bleibt unklar.
 
 Im Repo liegt genau **ein** echter Mitschnitt: die Detailantwort **eines Laufs**
 (`garmin-worker/tests/fixtures/garmin/activity_details.json`). Es gibt keinen echten Listeneintrag,
-keinen Rad-, Schwimm- oder Kraft-Mitschnitt und keine Antwort der Zusatzabrufe. Alles
-Sportartspezifische außerhalb der Lauf-Messreihen ist deshalb *library* oder *assumed*.
+keinen Rad-, Schwimm- oder Kraft-Mitschnitt und keine Antwort der Zusatzabrufe.
 Ein angenommener Name, den Garmin nicht liefert, erzeugt schlicht kein Feld — er richtet keinen Schaden an.
 Wie aus Annahmen Belege werden: Abschnitt 12 (Feldzensus, ohne Login) und Abschnitt 13 (Mitschnitt).
 
@@ -121,38 +132,38 @@ Drei Stufen, jede steht in der Zeile (`metrics.garmin`):
 
 | FIELD | SPORT | ENDPOINT | RAW FIELD NAME | RAW AVAILABLE? | IMPORTED? | STORED? | DISPLAYED? | SERIES/SUMMARY | UNITS | NORMALIZATION | LOSSY? | HIGHLIGHT-READY? | NOTES |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Start (UTC) | alle | get_activities_by_date | `startTimeGMT` | laut Bibliothek | ja | `activities.started_at` | ja | summary | UTC | keine | nein | ja | — |
-| Start (Ortszeit) | alle | get_activities_by_date | `startTimeLocal` | laut Bibliothek | ja | `metrics.garmin.start_local` | ja | summary | Wandzeit | keine | nein | ja | neu in v8-447; bis v8-446 verworfen |
-| UTC-Versatz | alle | get_activities_by_date | `startTimeLocal − startTimeGMT` | laut Bibliothek | ja | `metrics.garmin.utc_offset_s` | nein | summary | s | Differenz der zwei gelieferten Zeiten | nein | ja | nur in Viertelstunden, sonst kein Wert |
-| Sportart | alle | get_activities_by_date | `activityType.typeKey` | laut Bibliothek | ja | `activities.sport_id` | ja | summary | enum | SPORT_MAP (viele → eine) | ja: Untertyp | ja | — |
-| Garmin-Typ | alle | get_activities_by_date | `activityType.typeKey` | laut Bibliothek | ja | `metrics.garmin.type_key` | nein | summary | enum | Kleinschreibung | nein | ja | neu in v8-447: Bahn / Freiwasser, Trail / Laufband, Rolle / Strasse |
-| Garmin-Obertyp | alle | get_activities_by_date | `activityType.parentTypeId` | laut Bibliothek | ja | `metrics.garmin.parent_type_id` | nein | summary | enum-Nr. | keine | nein | nein | — |
-| Dauer (Timer) | alle | get_activities_by_date | `duration` | laut Bibliothek | ja | `activities.duration_seconds` | ja | summary | s | auf ganze Sekunden gerundet | ja: < 1 s | ja | Rohwert zusaetzlich in metrics.ext.fields.duration |
-| Distanz | alle | get_activities_by_date | `distance` | laut Bibliothek | ja | `summary.distance_m` | ja | summary | m | keine | nein | ja | — |
-| Ø Herzfrequenz | alle | get_activities_by_date | `averageHR` | laut Bibliothek | ja | `summary.avg_hr` | ja | summary | bpm | keine | nein | ja | — |
-| Max. Herzfrequenz | alle | get_activities_by_date | `maxHR` | laut Bibliothek | ja | `summary.max_hr` | ja | summary | bpm | keine | nein | ja | — |
-| Kalorien | alle | get_activities_by_date | `calories` | laut Bibliothek | ja | `summary.calories_kcal` | ja | summary | kcal | keine | nein | nein | — |
-| Hoehenmeter | alle | get_activities_by_date | `elevationGain` | laut Bibliothek | ja | `summary.elevation_gain_m` | ja | summary | m | keine | nein | ja | — |
-| Ø Geschwindigkeit | alle | get_activities_by_date | `averageSpeed` | laut Bibliothek | ja | `summary.avg_speed_mps` | ja | summary | m/s | keine | nein | ja | — |
-| Ø Leistung | cycling, running | get_activities_by_date | `avgPower` | laut Bibliothek | ja | `summary.avg_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
-| Max. Leistung | cycling, running | get_activities_by_date | `maxPower` | laut Bibliothek | ja | `summary.max_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
-| Normalisierte Leistung | cycling, running | get_activities_by_date | `normPower` | laut Bibliothek | ja | `summary.norm_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
-| Trainingsbelastung | alle | get_activities_by_date | `activityTrainingLoad` | laut Bibliothek | ja | `metrics.training_load` | ja | summary | Garmin-Last | keine | nein | nein | — |
-| Titel | alle | get_activities_by_date | `activityName` | laut Bibliothek | ja | `summary.name` | ja | summary | Text | keine | nein | nein | frei geschriebener Text des Nutzers — bleibt in summary, nie im Rohblock |
-| Zeitachse | alle | get_activity_details | `directTimestamp` | ja (Mitschnitt Lauf) | ja | `metrics.streams.time` | indirekt (Bestzeiten) | series | s seit Beginn | ms GMT → Sekunden seit der ersten Zeile | ja: Ausduennung | ja | neu in v8-447; Ersatzquelle sumElapsedDuration; nur lueckenlos und monoton |
-| Herzfrequenz | alle | get_activity_details | `directHeartRate` | ja (Mitschnitt Lauf) | ja | `metrics.streams.heart_rate` | ja | series | bpm | keine | ja: Ausduennung | ja | — |
-| Geschwindigkeit | alle | get_activity_details | `directSpeed` | ja (Mitschnitt Lauf) | ja | `metrics.streams.speed` | ja | series | m/s | keine | ja: Ausduennung | ja | — |
-| Distanz (kumulativ) | alle | get_activity_details | `sumDistance` | ja (Mitschnitt Lauf) | ja | `metrics.streams.distance` | indirekt (Bestzeiten) | series | m | keine | ja: Ausduennung | ja | — |
-| Hoehe | alle | get_activity_details | `directElevation \| directCorrectedElevation` | ja (Mitschnitt Lauf) | ja | `metrics.streams.elevation` | ja | series | m | keine | ja: Ausduennung | ja | — |
-| Schrittfrequenz | running | get_activity_details | `directDoubleCadence` | ja (Mitschnitt Lauf) | ja | `metrics.streams.cadence` | ja | series | spm | keine (kind running_cadence_spm) | ja: Ausduennung | ja | bis v8-446 wurde directRunCadence (ein Bein) gelesen — halber Wert |
-| Schrittfrequenz (Ersatz) | running | get_activity_details | `directRunCadence + directFractionalCadence` | ja (Mitschnitt Lauf) | ja | `metrics.streams.cadence` | ja | series | spm | 2 × (Run + Fractional), markiert als derived | ja: Ausduennung | ja | nur wenn directDoubleCadence fehlt |
-| Trittfrequenz | cycling | get_activity_details | `directBikeCadence` | unbelegt | ja | `metrics.streams.cadence` | ja | series | rpm | keine (kind cycling_cadence_rpm) | ja: Ausduennung | nach Mitschnitt | Name unbelegt — kein Rad-Mitschnitt |
-| Leistung | cycling, running | get_activity_details | `directPower` | unbelegt | ja | `metrics.streams.power` | ja | series | W | keine | ja: Ausduennung | nach Mitschnitt | Name unbelegt; fuer 1–15-s-Bestwerte reicht die Aufloesung nicht |
-| Strecke | alle | get_activity_details | `geoPolylineDTO.polyline[].lat/lon` | ja (Mitschnitt Lauf) | ja | `metrics.route` | ja | series | Grad | auf hoechstens 600 Punkte reduziert | ja: Zeit, Hoehe und Tempo je Punkt | ja | — |
-| Bewegungszeit | alle | get_activity_details | `sumMovingDuration (letzte Zeile)` | ja (Mitschnitt Lauf) | ja | `metrics.garmin.moving_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447; Listenfeld movingDuration zusaetzlich im Rohblock |
-| Verstrichene Zeit | alle | get_activity_details | `sumElapsedDuration (letzte Zeile)` | ja (Mitschnitt Lauf) | ja | `metrics.garmin.elapsed_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
-| Timer-Zeit | alle | get_activity_details | `sumDuration (letzte Zeile)` | ja (Mitschnitt Lauf) | ja | `metrics.garmin.timer_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
-| Abtastung | alle | get_activity_details | `totalMetricsCount / Zeilenzahl` | ja (Mitschnitt Lauf) | ja | `metrics.garmin.stream_total / stream_rows / stream_kept` | nein | summary | Anzahl | keine | nein | nein | aufgezeichnet → von Garmin geliefert → gespeichert |
+| Start (UTC) | alle | get_activities_by_date | `startTimeGMT` | LIBRARY_DOCUMENTED | ja | `activities.started_at` | ja | summary | UTC | keine | nein | ja | — |
+| Start (Ortszeit) | alle | get_activities_by_date | `startTimeLocal` | LIBRARY_DOCUMENTED | ja | `metrics.garmin.start_local` | ja | summary | Wandzeit | keine | nein | ja | neu in v8-447; bis v8-446 verworfen |
+| UTC-Versatz | alle | get_activities_by_date | `startTimeLocal − startTimeGMT` | LIBRARY_DOCUMENTED | ja | `metrics.garmin.utc_offset_s` | nein | summary | s | Differenz der zwei gelieferten Zeiten | nein | ja | nur in Viertelstunden, sonst kein Wert |
+| Sportart | alle | get_activities_by_date | `activityType.typeKey` | LIBRARY_DOCUMENTED | ja | `activities.sport_id` | ja | summary | enum | SPORT_MAP (viele → eine) | ja: Untertyp | ja | — |
+| Garmin-Typ | alle | get_activities_by_date | `activityType.typeKey` | LIBRARY_DOCUMENTED | ja | `metrics.garmin.type_key` | nein | summary | enum | Kleinschreibung | nein | ja | neu in v8-447: Bahn / Freiwasser, Trail / Laufband, Rolle / Strasse |
+| Garmin-Obertyp | alle | get_activities_by_date | `activityType.parentTypeId` | LIBRARY_DOCUMENTED | ja | `metrics.garmin.parent_type_id` | nein | summary | enum-Nr. | keine | nein | nein | — |
+| Dauer (Timer) | alle | get_activities_by_date | `duration` | LIBRARY_DOCUMENTED | ja | `activities.duration_seconds` | ja | summary | s | auf ganze Sekunden gerundet | ja: < 1 s | ja | Rohwert zusaetzlich in metrics.ext.fields.duration |
+| Distanz | alle | get_activities_by_date | `distance` | LIBRARY_DOCUMENTED | ja | `summary.distance_m` | ja | summary | m | keine | nein | ja | — |
+| Ø Herzfrequenz | alle | get_activities_by_date | `averageHR` | LIBRARY_DOCUMENTED | ja | `summary.avg_hr` | ja | summary | bpm | keine | nein | ja | — |
+| Max. Herzfrequenz | alle | get_activities_by_date | `maxHR` | LIBRARY_DOCUMENTED | ja | `summary.max_hr` | ja | summary | bpm | keine | nein | ja | — |
+| Kalorien | alle | get_activities_by_date | `calories` | LIBRARY_DOCUMENTED | ja | `summary.calories_kcal` | ja | summary | kcal | keine | nein | nein | — |
+| Hoehenmeter | alle | get_activities_by_date | `elevationGain` | LIBRARY_DOCUMENTED | ja | `summary.elevation_gain_m` | ja | summary | m | keine | nein | ja | — |
+| Ø Geschwindigkeit | alle | get_activities_by_date | `averageSpeed` | LIBRARY_DOCUMENTED | ja | `summary.avg_speed_mps` | ja | summary | m/s | keine | nein | ja | — |
+| Ø Leistung | cycling, running | get_activities_by_date | `avgPower` | LIBRARY_DOCUMENTED | ja | `summary.avg_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
+| Max. Leistung | cycling, running | get_activities_by_date | `maxPower` | LIBRARY_DOCUMENTED | ja | `summary.max_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
+| Normalisierte Leistung | cycling, running | get_activities_by_date | `normPower` | LIBRARY_DOCUMENTED | ja | `summary.norm_power_w` | ja | summary | W | keine | nein | nach Mitschnitt | — |
+| Trainingsbelastung | alle | get_activities_by_date | `activityTrainingLoad` | LIBRARY_DOCUMENTED | ja | `metrics.training_load` | ja | summary | Garmin-Last | keine | nein | nein | — |
+| Titel | alle | get_activities_by_date | `activityName` | LIBRARY_DOCUMENTED | ja | `summary.name` | ja | summary | Text | keine | nein | nein | frei geschriebener Text des Nutzers — bleibt in summary, nie im Rohblock |
+| Zeitachse | alle | get_activity_details | `directTimestamp` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.time` | indirekt (Bestzeiten) | series | s seit Beginn | ms GMT → Sekunden seit der ersten Zeile | ja: Ausduennung | ja | neu in v8-447; Ersatzquelle sumElapsedDuration; nur lueckenlos und monoton |
+| Herzfrequenz | alle | get_activity_details | `directHeartRate` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.heart_rate` | ja | series | bpm | keine | ja: Ausduennung | ja | — |
+| Geschwindigkeit | alle | get_activity_details | `directSpeed` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.speed` | ja | series | m/s | keine | ja: Ausduennung | ja | — |
+| Distanz (kumulativ) | alle | get_activity_details | `sumDistance` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.distance` | indirekt (Bestzeiten) | series | m | keine | ja: Ausduennung | ja | — |
+| Hoehe | alle | get_activity_details | `directElevation \| directCorrectedElevation` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.elevation` | ja | series | m | keine | ja: Ausduennung | ja | — |
+| Schrittfrequenz | running | get_activity_details | `directDoubleCadence` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.cadence` | ja | series | spm | keine (kind running_cadence_spm) | ja: Ausduennung | ja | bis v8-446 wurde directRunCadence (ein Bein) gelesen — halber Wert |
+| Schrittfrequenz (Ersatz) | running | get_activity_details | `directRunCadence + directFractionalCadence` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.streams.cadence` | ja | series | spm | 2 × (Run + Fractional), markiert als derived | ja: Ausduennung | ja | nur wenn directDoubleCadence fehlt |
+| Trittfrequenz | cycling | get_activity_details | `directBikeCadence` | ASSUMED | ja | `metrics.streams.cadence` | ja | series | rpm | keine (kind cycling_cadence_rpm) | ja: Ausduennung | nach Mitschnitt | Name unbelegt — kein Rad-Mitschnitt |
+| Leistung | cycling, running | get_activity_details | `directPower` | ASSUMED | ja | `metrics.streams.power` | ja | series | W | keine | ja: Ausduennung | nach Mitschnitt | Name unbelegt; fuer 1–15-s-Bestwerte reicht die Aufloesung nicht |
+| Strecke | alle | get_activity_details | `geoPolylineDTO.polyline[].lat/lon` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.route` | ja | series | Grad | auf hoechstens 600 Punkte reduziert | ja: Zeit, Hoehe und Tempo je Punkt | ja | — |
+| Bewegungszeit | alle | get_activity_details | `sumMovingDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.moving_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447; Listenfeld movingDuration zusaetzlich im Rohblock |
+| Verstrichene Zeit | alle | get_activity_details | `sumElapsedDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.elapsed_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
+| Timer-Zeit | alle | get_activity_details | `sumDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.timer_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
+| Abtastung | alle | get_activity_details | `totalMetricsCount / Zeilenzahl` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.stream_total / stream_rows / stream_kept` | nein | summary | Anzahl | keine | nein | nein | aufgezeichnet → von Garmin geliefert → gespeichert |
 
 ## 7 · Teil B — Rohfelder des Listeneintrags (`metrics.ext.fields`)
 
@@ -163,76 +174,76 @@ Umrechnung. Zusätzlich bleibt jedes weitere skalare Feld erhalten, dessen Name 
 
 | FIELD | SPORT | ENDPOINT | RAW FIELD NAME | RAW AVAILABLE? | IMPORTED? | STORED? | DISPLAYED? | SERIES/SUMMARY | UNITS | NORMALIZATION | LOSSY? | HIGHLIGHT-READY? | NOTES |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Zeit | alle | get_activities_by_date | `duration` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.duration` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | Timer-Dauer; wird in die Spalte duration_seconds uebernommen |
-| Zeit | alle | get_activities_by_date | `movingDuration` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.movingDuration` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zeit | alle | get_activities_by_date | `elapsedDuration` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.elapsedDuration` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `distance` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.distance` | nein | summary | m | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `elevationGain` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.elevationGain` | nein | summary | m | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `elevationLoss` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.elevationLoss` | nein | summary | m | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `minElevation` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.minElevation` | nein | summary | m | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `maxElevation` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.maxElevation` | nein | summary | m | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umfang | alle | get_activities_by_date | `steps` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.steps` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Struktur | alle | get_activities_by_date | `lapCount` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.lapCount` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Tempo | alle | get_activities_by_date | `averageSpeed` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.averageSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Tempo | alle | get_activities_by_date | `maxSpeed` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.maxSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Herz | alle | get_activities_by_date | `averageHR` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.averageHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Herz | alle | get_activities_by_date | `maxHR` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.maxHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Herz | alle | get_activities_by_date | `minHR` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.minHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Energie | alle | get_activities_by_date | `calories` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.calories` | nein | summary | kcal | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Energie | alle | get_activities_by_date | `bmrCalories` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.bmrCalories` | nein | summary | kcal | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `activityTrainingLoad` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.activityTrainingLoad` | nein | summary | garmin_load | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `aerobicTrainingEffect` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.aerobicTrainingEffect` | nein | summary | 0-5 | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `anaerobicTrainingEffect` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.anaerobicTrainingEffect` | nein | summary | 0-5 | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `trainingEffectLabel` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.trainingEffectLabel` | nein | summary | enum | keine (Rohwert) | nein | nach Mitschnitt | Hauptnutzen laut Garmin |
-| Belastung / Wirkung | alle | get_activities_by_date | `aerobicTrainingEffectMessage` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.aerobicTrainingEffectMessage` | nein | summary | enum | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `anaerobicTrainingEffectMessage` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.anaerobicTrainingEffectMessage` | nein | summary | enum | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `moderateIntensityMinutes` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.moderateIntensityMinutes` | nein | summary | min | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activities_by_date | `vigorousIntensityMinutes` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.vigorousIntensityMinutes` | nein | summary | min | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Belastung / Wirkung | running, cycling | get_activities_by_date | `vO2MaxValue` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.vO2MaxValue` | nein | summary | ml/kg/min | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | alle | get_activities_by_date | `hrTimeInZone_1` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_1` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | alle | get_activities_by_date | `hrTimeInZone_2` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_2` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | alle | get_activities_by_date | `hrTimeInZone_3` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_3` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | alle | get_activities_by_date | `hrTimeInZone_4` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_4` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | alle | get_activities_by_date | `hrTimeInZone_5` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_5` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_1` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_1` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_2` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_2` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_3` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_3` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_4` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_4` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_5` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_5` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling | get_activities_by_date | `powerTimeInZone_6` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_6` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Zonen | cycling | get_activities_by_date | `powerTimeInZone_7` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_7` | nein | summary | s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling, running | get_activities_by_date | `avgPower` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.avgPower` | nein | summary | W | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling, running | get_activities_by_date | `maxPower` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.maxPower` | nein | summary | W | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling, running | get_activities_by_date | `normPower` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.normPower` | nein | summary | W | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling | get_activities_by_date | `max20MinPower` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.max20MinPower` | nein | summary | W | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling | get_activities_by_date | `intensityFactor` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.intensityFactor` | nein | summary | ratio | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling | get_activities_by_date | `trainingStressScore` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.trainingStressScore` | nein | summary | tss | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Leistung | cycling | get_activities_by_date | `avgLeftBalance` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgLeftBalance` | nein | summary | % | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Laufdynamik | running | get_activities_by_date | `averageRunningCadenceInStepsPerMinute` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.averageRunningCadenceInStepsPerMinute` | nein | summary | spm | keine (Rohwert) | nein | nach Mitschnitt | Name sagt Schritte/min — ob voller Wert oder ein Bein, ist am Listeneintrag NICHT belegt; die Messreihe (directDoubleCadence) ist der belegte Wert |
-| Laufdynamik | running | get_activities_by_date | `maxRunningCadenceInStepsPerMinute` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.maxRunningCadenceInStepsPerMinute` | nein | summary | spm | keine (Rohwert) | nein | nach Mitschnitt | siehe Durchschnitt |
-| Laufdynamik | running | get_activities_by_date | `avgStrideLength` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgStrideLength` | nein | summary | cm | keine (Rohwert) | nein | nach Mitschnitt | Einheit unbelegt |
-| Laufdynamik | running | get_activities_by_date | `avgGroundContactTime` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgGroundContactTime` | nein | summary | ms | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Laufdynamik | running | get_activities_by_date | `avgVerticalOscillation` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgVerticalOscillation` | nein | summary | cm | keine (Rohwert) | nein | nach Mitschnitt | Einheit unbelegt |
-| Laufdynamik | running | get_activities_by_date | `avgVerticalRatio` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgVerticalRatio` | nein | summary | % | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Laufdynamik | running | get_activities_by_date | `avgGroundContactBalance` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgGroundContactBalance` | nein | summary | % | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Laufdynamik | running | get_activities_by_date | `avgGradeAdjustedSpeed` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgGradeAdjustedSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Rad | cycling | get_activities_by_date | `averageBikingCadenceInRevPerMinute` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.averageBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Rad | cycling | get_activities_by_date | `maxBikingCadenceInRevPerMinute` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.maxBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `poolLength` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.poolLength` | nein | summary | siehe unitOfPoolLength | keine (Rohwert) | nein | nach Mitschnitt | Meter oder Yards |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `unitOfPoolLength` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.unitOfPoolLength` | nein | summary | enum | keine (Rohwert) | nein | nach Mitschnitt | geschachtelt: unitKey |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `activeLengths` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.activeLengths` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `strokes` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.strokes` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `avgStrokes` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgStrokes` | nein | summary | count/length | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwolf` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.averageSwolf` | nein | summary | swolf | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwimCadenceInStrokesPerMinute` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.averageSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `maxSwimCadenceInStrokesPerMinute` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.maxSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `avgStrokeDistance` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.avgStrokeDistance` | nein | summary | cm | keine (Rohwert) | nein | nach Mitschnitt | Einheit unbelegt |
-| Kraft | gym | get_activities_by_date | `totalSets` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.totalSets` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Kraft | gym | get_activities_by_date | `activeSets` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.activeSets` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Kraft | gym | get_activities_by_date | `totalReps` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.totalReps` | nein | summary | count | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Kraft | gym | get_activities_by_date | `totalVolume` | laut Bibliothek | ja, wenn geliefert | `metrics.ext.fields.totalVolume` | nein | summary | g? | keine (Rohwert) | nein | nach Mitschnitt | Einheit unbelegt (Gramm oder Kilogramm) |
-| Umgebung | alle | get_activities_by_date | `minTemperature` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.minTemperature` | nein | summary | °C | keine (Rohwert) | nein | nach Mitschnitt | — |
-| Umgebung | alle | get_activities_by_date | `maxTemperature` | unbelegt | ja, wenn geliefert | `metrics.ext.fields.maxTemperature` | nein | summary | °C | keine (Rohwert) | nein | nach Mitschnitt | — |
+| Zeit | alle | get_activities_by_date | `duration` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.duration` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Timer-Dauer; wird in die Spalte duration_seconds uebernommen |
+| Zeit | alle | get_activities_by_date | `movingDuration` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.movingDuration` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zeit | alle | get_activities_by_date | `elapsedDuration` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.elapsedDuration` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `distance` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.distance` | nein | summary | m | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `elevationGain` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.elevationGain` | nein | summary | m | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `elevationLoss` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.elevationLoss` | nein | summary | m | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `minElevation` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.minElevation` | nein | summary | m | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `maxElevation` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxElevation` | nein | summary | m | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umfang | alle | get_activities_by_date | `steps` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.steps` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Struktur | alle | get_activities_by_date | `lapCount` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.lapCount` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Tempo | alle | get_activities_by_date | `averageSpeed` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.averageSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Tempo | alle | get_activities_by_date | `maxSpeed` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.maxSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Herz | alle | get_activities_by_date | `averageHR` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.averageHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Herz | alle | get_activities_by_date | `maxHR` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.maxHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Herz | alle | get_activities_by_date | `minHR` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.minHR` | nein | summary | bpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Energie | alle | get_activities_by_date | `calories` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.calories` | nein | summary | kcal | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Energie | alle | get_activities_by_date | `bmrCalories` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.bmrCalories` | nein | summary | kcal | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `activityTrainingLoad` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.activityTrainingLoad` | nein | summary | garmin_load | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `aerobicTrainingEffect` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.aerobicTrainingEffect` | nein | summary | 0-5 | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `anaerobicTrainingEffect` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.anaerobicTrainingEffect` | nein | summary | 0-5 | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `trainingEffectLabel` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.trainingEffectLabel` | nein | summary | enum | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Hauptnutzen laut Garmin |
+| Belastung / Wirkung | alle | get_activities_by_date | `aerobicTrainingEffectMessage` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.aerobicTrainingEffectMessage` | nein | summary | enum | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `anaerobicTrainingEffectMessage` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.anaerobicTrainingEffectMessage` | nein | summary | enum | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `moderateIntensityMinutes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.moderateIntensityMinutes` | nein | summary | min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activities_by_date | `vigorousIntensityMinutes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.vigorousIntensityMinutes` | nein | summary | min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | running, cycling | get_activities_by_date | `vO2MaxValue` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.vO2MaxValue` | nein | summary | ml/kg/min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | alle | get_activities_by_date | `hrTimeInZone_1` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_1` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | alle | get_activities_by_date | `hrTimeInZone_2` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_2` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | alle | get_activities_by_date | `hrTimeInZone_3` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_3` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | alle | get_activities_by_date | `hrTimeInZone_4` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_4` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | alle | get_activities_by_date | `hrTimeInZone_5` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.hrTimeInZone_5` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_1` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_1` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_2` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_2` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_3` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_3` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_4` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_4` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling, running | get_activities_by_date | `powerTimeInZone_5` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_5` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling | get_activities_by_date | `powerTimeInZone_6` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_6` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Zonen | cycling | get_activities_by_date | `powerTimeInZone_7` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.powerTimeInZone_7` | nein | summary | s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling, running | get_activities_by_date | `avgPower` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.avgPower` | nein | summary | W | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling, running | get_activities_by_date | `maxPower` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.maxPower` | nein | summary | W | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling, running | get_activities_by_date | `normPower` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.normPower` | nein | summary | W | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling | get_activities_by_date | `max20MinPower` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.max20MinPower` | nein | summary | W | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling | get_activities_by_date | `intensityFactor` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.intensityFactor` | nein | summary | ratio | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling | get_activities_by_date | `trainingStressScore` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.trainingStressScore` | nein | summary | tss | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Leistung | cycling | get_activities_by_date | `avgLeftBalance` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgLeftBalance` | nein | summary | % | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activities_by_date | `averageRunningCadenceInStepsPerMinute` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.averageRunningCadenceInStepsPerMinute` | nein | summary | spm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Name sagt Schritte/min — ob voller Wert oder ein Bein, ist am Listeneintrag NICHT belegt; die Messreihe (directDoubleCadence) ist der belegte Wert |
+| Laufdynamik | running | get_activities_by_date | `maxRunningCadenceInStepsPerMinute` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.maxRunningCadenceInStepsPerMinute` | nein | summary | spm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | siehe Durchschnitt |
+| Laufdynamik | running | get_activities_by_date | `avgStrideLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgStrideLength` | nein | summary | cm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Einheit unbelegt |
+| Laufdynamik | running | get_activities_by_date | `avgGroundContactTime` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgGroundContactTime` | nein | summary | ms | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activities_by_date | `avgVerticalOscillation` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgVerticalOscillation` | nein | summary | cm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Einheit unbelegt |
+| Laufdynamik | running | get_activities_by_date | `avgVerticalRatio` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgVerticalRatio` | nein | summary | % | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activities_by_date | `avgGroundContactBalance` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgGroundContactBalance` | nein | summary | % | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activities_by_date | `avgGradeAdjustedSpeed` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgGradeAdjustedSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activities_by_date | `averageBikingCadenceInRevPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activities_by_date | `maxBikingCadenceInRevPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `poolLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.poolLength` | nein | summary | siehe unitOfPoolLength | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Meter oder Yards |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `unitOfPoolLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.unitOfPoolLength` | nein | summary | enum | keine (Rohwert) | nein | nach Zensus / Mitschnitt | geschachtelt: unitKey |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `activeLengths` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.activeLengths` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `strokes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.strokes` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `avgStrokes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgStrokes` | nein | summary | count/length | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwolf` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageSwolf` | nein | summary | swolf | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwimCadenceInStrokesPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `maxSwimCadenceInStrokesPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `avgStrokeDistance` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgStrokeDistance` | nein | summary | cm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Einheit unbelegt |
+| Kraft | gym | get_activities_by_date | `totalSets` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.totalSets` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Kraft | gym | get_activities_by_date | `activeSets` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.activeSets` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Kraft | gym | get_activities_by_date | `totalReps` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.totalReps` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Kraft | gym | get_activities_by_date | `totalVolume` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.totalVolume` | nein | summary | g? | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Einheit unbelegt (Gramm oder Kilogramm) |
+| Umgebung | alle | get_activities_by_date | `minTemperature` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.minTemperature` | nein | summary | °C | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
+| Umgebung | alle | get_activities_by_date | `maxTemperature` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxTemperature` | nein | summary | °C | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
 
 ## 8 · Teil C — Zusatz-Messreihen der Detailantwort (`metrics.ext.series`)
 
@@ -242,26 +253,26 @@ Messwert aussieht, bleibt ebenfalls erhalten; der Rest wird dem Namen nach verme
 
 | FIELD | SPORT | ENDPOINT | RAW FIELD NAME | RAW AVAILABLE? | IMPORTED? | STORED? | DISPLAYED? | SERIES/SUMMARY | UNITS | NORMALIZATION | LOSSY? | HIGHLIGHT-READY? | NOTES |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Laufdynamik | running | get_activity_details | `directGroundContactTime` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directGroundContactTime` | nein | series | ms (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Laufdynamik | running | get_activity_details | `directVerticalOscillation` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directVerticalOscillation` | nein | series | cm (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | Einheit laut Antwort (garmin_unit) |
-| Laufdynamik | running | get_activity_details | `directStrideLength` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directStrideLength` | nein | series | cm (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | Einheit laut Antwort (garmin_unit) |
-| Laufdynamik | running | get_activity_details | `directVerticalRatio` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directVerticalRatio` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Laufdynamik | running | get_activity_details | `directGroundContactBalanceLeft` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directGroundContactBalanceLeft` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Laufdynamik | running | get_activity_details | `directGradeAdjustedSpeed` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directGradeAdjustedSpeed` | nein | series | m/s (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Rad | cycling | get_activity_details | `directLeftBalance` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directLeftBalance` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Rad | cycling | get_activity_details | `directLeftTorqueEffectiveness` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directLeftTorqueEffectiveness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Rad | cycling | get_activity_details | `directRightTorqueEffectiveness` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directRightTorqueEffectiveness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Rad | cycling | get_activity_details | `directLeftPedalSmoothness` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directLeftPedalSmoothness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Rad | cycling | get_activity_details | `directRightPedalSmoothness` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directRightPedalSmoothness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activity_details | `directSwimCadence` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directSwimCadence` | nein | series | strokes/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activity_details | `directStrokeCadence` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directStrokeCadence` | nein | series | strokes/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activity_details | `directSwolf` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directSwolf` | nein | series | swolf (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activity_details | `directStrokes` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directStrokes` | nein | series | count (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Umgebung | alle | get_activity_details | `directAirTemperature` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directAirTemperature` | nein | series | °C (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Belastung / Wirkung | alle | get_activity_details | `directRespirationRate` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directRespirationRate` | nein | series | breaths/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Belastung / Wirkung | running, cycling | get_activity_details | `directPerformanceCondition` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directPerformanceCondition` | nein | series | score (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Belastung / Wirkung | running, cycling | get_activity_details | `directAvailableStamina` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directAvailableStamina` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
-| Belastung / Wirkung | running, cycling | get_activity_details | `directPotentialStamina` | unbelegt | ja, wenn geliefert | `metrics.ext.series.directPotentialStamina` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Mitschnitt | — |
+| Laufdynamik | running | get_activity_details | `directGroundContactTime` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directGroundContactTime` | nein | series | ms (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activity_details | `directVerticalOscillation` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directVerticalOscillation` | nein | series | cm (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | Einheit laut Antwort (garmin_unit) |
+| Laufdynamik | running | get_activity_details | `directStrideLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directStrideLength` | nein | series | cm (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | Einheit laut Antwort (garmin_unit) |
+| Laufdynamik | running | get_activity_details | `directVerticalRatio` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directVerticalRatio` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activity_details | `directGroundContactBalanceLeft` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directGroundContactBalanceLeft` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Laufdynamik | running | get_activity_details | `directGradeAdjustedSpeed` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directGradeAdjustedSpeed` | nein | series | m/s (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activity_details | `directLeftBalance` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directLeftBalance` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activity_details | `directLeftTorqueEffectiveness` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directLeftTorqueEffectiveness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activity_details | `directRightTorqueEffectiveness` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directRightTorqueEffectiveness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activity_details | `directLeftPedalSmoothness` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directLeftPedalSmoothness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Rad | cycling | get_activity_details | `directRightPedalSmoothness` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directRightPedalSmoothness` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activity_details | `directSwimCadence` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directSwimCadence` | nein | series | strokes/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming, rowing | get_activity_details | `directStrokeCadence` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directStrokeCadence` | nein | series | strokes/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming | get_activity_details | `directSwolf` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directSwolf` | nein | series | swolf (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Schwimmen / Rudern | swimming, rowing | get_activity_details | `directStrokes` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directStrokes` | nein | series | count (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Umgebung | alle | get_activity_details | `directAirTemperature` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directAirTemperature` | nein | series | °C (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | alle | get_activity_details | `directRespirationRate` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directRespirationRate` | nein | series | breaths/min (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | running, cycling | get_activity_details | `directPerformanceCondition` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directPerformanceCondition` | nein | series | score (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | running, cycling | get_activity_details | `directAvailableStamina` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directAvailableStamina` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
+| Belastung / Wirkung | running, cycling | get_activity_details | `directPotentialStamina` | ASSUMED | ja, wenn geliefert | `metrics.ext.series.directPotentialStamina` | nein | series | % (maßgeblich: garmin_unit der Antwort) | keine (Rohwert, gleicher Index wie die Zeitachse) | ja: Ausdünnung | nach Zensus / Mitschnitt | — |
 
 ## 9 · Teil D — Zusatzabrufe je Aktivität
 
@@ -272,12 +283,12 @@ Ein fehlgeschlagener Abruf wird als `failed` vermerkt (`metrics.ext.extras`) und
 
 | FIELD | SPORT | ENDPOINT | RAW FIELD NAME | RAW AVAILABLE? | IMPORTED? | STORED? | DISPLAYED? | SERIES/SUMMARY | UNITS | NORMALIZATION | LOSSY? | HIGHLIGHT-READY? | NOTES |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| volle Zusammenfassung (summaryDTO) | alle | get_activity | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.fields (ergänzt, Listeneintrag bleibt führend)` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
-| Runden | alle | get_activity_splits | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.splits + metrics.splits (schlanke Form)` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
-| Intervalle / Bahnen | swimming, running, cycling | get_activity_typed_splits | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.typed_splits` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
-| Zeit je Herzfrequenz-Zone | alle | get_activity_hr_in_timezones | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.hr_zones` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
-| Zeit je Leistungs-Zone | cycling, running | get_activity_power_in_timezones | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.power_zones` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
-| Sätze (Übung, Wiederholungen, Gewicht) | gym | get_activity_exercise_sets | Antwortform unbelegt | laut Bibliothek (Methode); Form unbelegt | nur mit `DETAIL_EXTRAS` | `metrics.ext.exercise_sets` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS |
+| volle Zusammenfassung (summaryDTO) | alle | get_activity | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.fields (ergänzt, Listeneintrag bleibt führend)` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · keine Zusatzbedingung |
+| Runden | running, cycling, swimming, rowing, hiking, walking, triathlon, athletics, hyrox | get_activity_splits | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.splits + metrics.splits (schlanke Form)` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · keine Zusatzbedingung |
+| Intervalle / Bahnen | swimming, running, cycling | get_activity_typed_splits | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.typed_splits` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · swimming nur bei Garmin-Typ `lap_swimming` |
+| Zeit je Herzfrequenz-Zone | alle | get_activity_hr_in_timezones | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.hr_zones` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · nur wenn die Aufzeichnung die Reihe `heart_rate` hat |
+| Zeit je Leistungs-Zone | cycling | get_activity_power_in_timezones | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.power_zones` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · nur wenn die Aufzeichnung die Reihe `power` hat |
+| Sätze (Übung, Wiederholungen, Gewicht) | gym | get_activity_exercise_sets | Antwortform unbelegt | LIBRARY_DOCUMENTED (Methode); Form ASSUMED | nur mit `DETAIL_EXTRAS` | `metrics.ext.exercise_sets` | nein | structure | — | Form erhalten, nur Messwerte (keep_structure) | ja: private Felder, Koordinaten, Deckel 400 Einträge | nach Mitschnitt | standardmäßig AUS · keine Zusatzbedingung |
 
 ## 10 · Bewusst nicht gespeichert
 
@@ -363,29 +374,37 @@ Datei: `supabase/scripts/garmin_field_census.sql` · Supabase → SQL Editor →
 
 ```sql
 -- ============================================================
--- ORVIA · Feldzensus der Garmin-Aktivitaeten (v8-447)
+-- ORVIA · Feldzensus und Nachlade-Stand der Garmin-Aktivitaeten (v8-447.1)
 -- ------------------------------------------------------------
--- Zweck: zeigt, welche Felder und Messreihen Garmin JE SPORTART wirklich liefert —
--- ohne Mitschnitt, ohne Login, ohne Token. Grundlage ist, was der Worker seit v8-447
--- je Aktivitaet festhaelt (metrics.garmin, metrics.ext).
+-- Zweck: zeigt, welche Felder und Messreihen Garmin JE SPORTART wirklich liefert, wie weit
+-- das Nachladen auf den aktuellen Details-Vertrag ist und wie belastbar die Bestwerte sind —
+-- ohne Mitschnitt, ohne Login, ohne Token. Grundlage ist, was der Worker je Aktivitaet
+-- festhaelt (metrics.garmin, metrics.ext, metrics.best_efforts, Vermerke des Nachladens).
 --
--- NUR LESEND. Das Ergebnis enthaelt ausschliesslich NAMEN und ZAEHLUNGEN:
--- keine Messwerte, keine Zeiten, keine Orte, keine Nutzerkennungen. Es kann
--- unbedenklich kopiert und weitergegeben werden.
+-- NUR LESEND. Das Ergebnis enthaelt ausschliesslich NAMEN und ZAEHLUNGEN (und den Zeitpunkt
+-- des letzten Worker-Laufs): keine Messwerte, keine Trainingszeiten, keine Orte, keine
+-- Nutzer- oder Garmin-Kennungen. Es kann unbedenklich kopiert und weitergegeben werden.
 --
--- Ausfuehren: Supabase → SQL Editor → einfuegen → Run → Ergebnis als CSV kopieren.
--- Sinnvoll, sobald der Worker (railway up) einige Laeufe gemacht hat; die Zeile
--- "details_version" zeigt, wie weit das einmalige Nachladen ist (Ziel: alles auf 3).
+-- Ausfuehren: Supabase → SQL Editor → einfuegen → Run → „Export → CSV" (oder kopieren).
+-- Auswerten:  python garmin-worker/scripts/census_report.py --csv <datei>
+--             schreibt app/docs/GARMIN-FIELD-CENSUS-PROD.md und app/docs/GARMIN-BACKFILL-STATUS.md
 --
 -- Spalte art:
---   typ                  Garmin-Typ → ORVIA-Sportart (prueft die Zuordnung)
---   details_version      Stand des Nachladens (3 = aktuell)
---   zeitachse            Aktivitaeten mit / ohne echte Zeitachse
+--   basis                Nenner je Sportart: alle · mit_herkunft · mit_rohfeldern · details_aktuell
+--   typ                  Garmin-Typ → ORVIA-Sportart (prueft die Zuordnung; „other" = nicht zugeordnet)
+--   herkunft             gefuellte Schluessel des Herkunftsblocks (type_key, start_local, utc_offset_s, Dauern …)
+--   nachladen            aktuell · offen_alt · offen_neu · fehler:<Klasse> · zurueckgestellt:<Klasse>
+--   tempo                in den letzten 24 h nachgeladen · Zeitpunkt des letzten Nachladens
+--   abtastung            vollstaendig (Garmin lieferte alle Zeilen) · ausgeduennt · gesamtzahl_unbekannt
+--   messreihe            kanonische Messreihe ← Garmin-Quelle [Bedeutung]
 --   feld                 erhaltenes Feld des Listeneintrags (metrics.ext.fields)
 --   feld_nicht_erhalten  geliefert, aber nicht gespeichert (nur der Name)
+--   feld_verworfen       auf der Erlaubnisliste, geliefert, aber in unerwarteter Form (nur der Name)
 --   struktur             erhaltener geschachtelter Block des Listeneintrags
 --   reihe                erhaltene Zusatz-Messreihe (metrics.ext.series)
 --   reihe_nicht_erhalten gelieferte Messreihe, die nicht gespeichert wird (nur der Name)
+--   bestwert             Bestwert-Fenster = Guete (exact / approx / insufficient / measured / coarse / too_short)
+--   kennwert             Kennwerte aus allen gelieferten Zeilen (welche Reihen)
 --   zusatzabruf          Ergebnis der Zusatzabrufe (nur wenn DETAIL_EXTRAS gesetzt ist)
 --   zusatz_schluessel    Schluessel in den Antworten der Zusatzabrufe (Form, keine Werte)
 -- ============================================================
@@ -397,59 +416,138 @@ with g as (
 x as (
   select sport_id,
          metrics,
-         case when jsonb_typeof(metrics -> 'ext') = 'object' then metrics -> 'ext' else '{}'::jsonb end as ext
+         case when jsonb_typeof(metrics -> 'ext') = 'object' then metrics -> 'ext' else '{}'::jsonb end as ext,
+         case when jsonb_typeof(metrics -> 'garmin') = 'object' then metrics -> 'garmin' else '{}'::jsonb end as gm,
+         case when jsonb_typeof(metrics -> 'best_efforts') = 'object' then metrics -> 'best_efforts' else '{}'::jsonb end as be,
+         (case when jsonb_typeof(metrics -> 'detailsVersion') = 'number' then (metrics ->> 'detailsVersion')::numeric >= 3 else false end
+            and coalesce(metrics ->> 'detailsFetchedAt', '') <> '') as cur,
+         coalesce(metrics ->> 'detailsFetchedAt', '') <> '' as fetched,
+         case when jsonb_typeof(metrics -> 'detailsFailCount') = 'number' then (metrics ->> 'detailsFailCount')::numeric else 0 end as fails,
+         case when (metrics ->> 'detailsFailedAt') ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}' then (metrics ->> 'detailsFailedAt')::timestamptz end as failed_at,
+         case when (metrics ->> 'detailsFetchedAt') ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}' then (metrics ->> 'detailsFetchedAt')::timestamptz end as fetched_at,
+         coalesce(metrics ->> 'detailsFailCategory', 'UNKNOWN') as fail_cat
   from g
 )
-select 'typ' as art, sport_id,
-       coalesce(metrics -> 'garmin' ->> 'type_key', metrics ->> 'source_sport_raw', '(unbekannt)') as name,
-       count(*) as aktivitaeten
-from x group by 1, 2, 3
-
+-- ---- Nenner ---------------------------------------------------------------
+select 'basis' as art, sport_id, 'alle' as name, count(*) as aktivitaeten from x group by 1, 2, 3
 union all
-select 'details_version', sport_id, coalesce(metrics ->> 'detailsVersion', '(keine Details)'), count(*)
-from x group by 1, 2, 3
-
+select 'basis', sport_id, 'mit_herkunft', count(*) from x where gm ? 'type_key' group by 1, 2, 3
 union all
-select 'zeitachse', sport_id,
-       case when jsonb_typeof(metrics -> 'streams' -> 'time') = 'array' then 'mit' else 'ohne' end, count(*)
+select 'basis', sport_id, 'mit_rohfeldern', count(*) from x where jsonb_typeof(ext -> 'fields') = 'object' group by 1, 2, 3
+union all
+select 'basis', sport_id, 'details_aktuell', count(*) from x where cur group by 1, 2, 3
+
+-- ---- Zuordnung ------------------------------------------------------------
+union all
+select 'typ', sport_id, coalesce(gm ->> 'type_key', metrics ->> 'source_sport_raw', '(unbekannt)'), count(*)
 from x group by 1, 2, 3
 
+-- ---- Herkunftsblock: welche Schluessel der Worker fuellen konnte --------------
+union all
+select 'herkunft', sport_id, k, count(*)
+from x cross join lateral jsonb_object_keys(gm) as k
+group by 1, 2, 3
+
+-- ---- Nachladen ------------------------------------------------------------
+union all
+select 'nachladen', sport_id,
+       case when cur then 'aktuell'
+            when fails >= 3 and failed_at is not null and failed_at > now() - interval '7 days' then 'zurueckgestellt:' || fail_cat
+            when fails > 0 then 'fehler:' || fail_cat
+            when fetched then 'offen_alt'
+            else 'offen_neu' end,
+       count(*)
+from x group by 1, 2, 3
+union all
+select 'tempo', '(alle)', 'nachgeladen_letzte_24h', count(*) from x where cur and fetched_at > now() - interval '24 hours'
+union all
+select 'tempo', '(alle)', 'zuletzt_nachgeladen:' || to_char(max(fetched_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"'), count(*)
+from x where cur and fetched_at is not null having count(*) > 0
+
+-- ---- Abtastung ------------------------------------------------------------
+union all
+select 'abtastung', sport_id,
+       case when gm -> 'stream_total' is null or jsonb_typeof(gm -> 'stream_total') <> 'number' then 'gesamtzahl_unbekannt'
+            when (gm ->> 'stream_rows')::numeric >= (gm ->> 'stream_total')::numeric then 'vollstaendig'
+            else 'ausgeduennt' end,
+       count(*)
+from x where jsonb_typeof(gm -> 'stream_rows') = 'number' group by 1, 2, 3
+
+-- ---- kanonische Messreihen: Quelle und Bedeutung ----------------------------
+union all
+select 'messreihe', sport_id,
+       s.key || ' <- ' || coalesce(s.value ->> 'source', '?') || ' [' || coalesce(s.value ->> 'kind', '?') || ']'
+         || case when s.value ? 'derived' then ' (abgeleitet)' else '' end,
+       count(*)
+from x cross join lateral jsonb_each(
+  case when jsonb_typeof(metrics -> 'stream_meta') = 'object' then metrics -> 'stream_meta' else '{}'::jsonb end) as s
+where jsonb_typeof(s.value) = 'object'
+group by 1, 2, 3
+
+-- ---- Listeneintrag --------------------------------------------------------
 union all
 select 'feld', sport_id, k, count(*)
 from x cross join lateral jsonb_object_keys(
   case when jsonb_typeof(ext -> 'fields') = 'object' then ext -> 'fields' else '{}'::jsonb end) as k
 group by 1, 2, 3
-
 union all
 select 'feld_nicht_erhalten', sport_id, n, count(*)
 from x cross join lateral jsonb_array_elements_text(
   case when jsonb_typeof(ext -> 'unrecognized') = 'array' then ext -> 'unrecognized' else '[]'::jsonb end) as n
 group by 1, 2, 3
-
+union all
+select 'feld_verworfen', sport_id, n, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(ext -> 'rejected') = 'array' then ext -> 'rejected' else '[]'::jsonb end) as n
+group by 1, 2, 3
 union all
 select 'struktur', sport_id, k, count(*)
 from x cross join lateral jsonb_object_keys(
   case when jsonb_typeof(ext -> 'list') = 'object' then ext -> 'list' else '{}'::jsonb end) as k
 group by 1, 2, 3
 
+-- ---- Zusatzreihen ---------------------------------------------------------
 union all
 select 'reihe', sport_id, k, count(*)
 from x cross join lateral jsonb_object_keys(
   case when jsonb_typeof(ext -> 'series') = 'object' then ext -> 'series' else '{}'::jsonb end) as k
 group by 1, 2, 3
-
 union all
 select 'reihe_nicht_erhalten', sport_id, n, count(*)
 from x cross join lateral jsonb_array_elements_text(
   case when jsonb_typeof(ext -> 'series_unparsed') = 'array' then ext -> 'series_unparsed' else '[]'::jsonb end) as n
 group by 1, 2, 3
 
+-- ---- Bestwerte und Kennwerte ------------------------------------------------
+union all
+select 'bestwert', sport_id, 'power:' || w.key || 's = ' || coalesce(w.value ->> 'q', '?'), count(*)
+from x cross join lateral jsonb_each(
+  case when jsonb_typeof(be -> 'power' -> 'windows') = 'object' then be -> 'power' -> 'windows' else '{}'::jsonb end) as w
+group by 1, 2, 3
+union all
+select 'bestwert', sport_id, 'distance:' || w.key || 'm = ' || coalesce(w.value ->> 'q', '?'), count(*)
+from x cross join lateral jsonb_each(
+  case when jsonb_typeof(be -> 'distance' -> 'targets') = 'object' then be -> 'distance' -> 'targets' else '{}'::jsonb end) as w
+group by 1, 2, 3
+union all
+select 'bestwert', sport_id,
+       'power:aufzeichnung = ' || case when be -> 'power' ->> 'native' = 'true' and (be -> 'power' ->> 'interval_s')::numeric <= 1 then 'vollstaendig_sekuendlich'
+                                       when be -> 'power' ->> 'native' = 'true' then 'vollstaendig_nicht_sekuendlich'
+                                       else 'ausgeduennt' end,
+       count(*)
+from x where jsonb_typeof(be -> 'power' -> 'interval_s') = 'number' group by 1, 2, 3
+union all
+select 'kennwert', sport_id, k || case when k = 'cadence' then ' [' || coalesce(be -> 'stats' -> 'cadence' ->> 'kind', '?') || ']' else '' end, count(*)
+from x cross join lateral jsonb_object_keys(
+  case when jsonb_typeof(be -> 'stats') = 'object' then be -> 'stats' else '{}'::jsonb end) as k
+group by 1, 2, 3
+
+-- ---- Zusatzabrufe -----------------------------------------------------------
 union all
 select 'zusatzabruf', sport_id, e.key || ' = ' || e.value, count(*)
 from x cross join lateral jsonb_each_text(
   case when jsonb_typeof(ext -> 'extras') = 'object' then ext -> 'extras' else '{}'::jsonb end) as e
 group by 1, 2, 3
-
 union all
 select 'zusatz_schluessel', sport_id, z.name || '.' || k, count(*)
 from x
@@ -461,7 +559,6 @@ cross join lateral jsonb_object_keys(
     else '{}'::jsonb
   end) as k
 group by 1, 2, 3
-
 union all
 select 'zusatz_schluessel', sport_id, z.name || '.' || t.key || '[].' || k2, count(*)
 from x
@@ -504,10 +601,60 @@ nicht wiederholen. Liegt ein Mitschnitt im Ordner, prüft `tests/test_capture_sc
 | Variable | Standard | Wirkung |
 |---|---|---|
 | `DETAIL_BACKFILL_LIMIT` | 10 | Aktivitäten je Sync-Lauf, für die Details (nach)geladen werden |
+| `DETAIL_MAXCHART` | 0 (= Standard der Bibliothek, 2000) | wie viele Messzeilen Garmin je Aktivität höchstens liefern soll. Gleicher Abruf, gleiche Anzahl Calls, größere Antwort. Ob Garmin mehr als 2000 bedient, ist **nicht belegt** — ablesbar an `stream_rows` / `stream_total` (Zensus, Art `abtastung`). Gedeckelt auf 30 000. |
 | `DETAIL_EXTRAS` | leer (aus) | kommagetrennt aus: activity, splits, typed_splits, hr_zones, power_zones, exercise_sets |
 | `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Endet von selbst, sobald keine Zeile mehr ohne Herkunftsblock ist. |
 
-## 15 · Altlasten und offene Punkte
+## 15 · Auswertung und Anzeige sind getrennt
+
+Grundsatz seit v8-447.1:
+
+| | Grundlage | Zweck |
+|---|---|---|
+| **Auswertung** | alle von Garmin gelieferten Messzeilen, vor der Ausdünnung | Bestwerte, Kennwerte — alles, was später festgeschrieben werden kann |
+| **Anzeige** | `metrics.streams`, höchstens 300 Punkte je Reihe | Diagramme |
+
+Aus einer Anzeige-Reihe wird nie ein Rekord gerechnet. Der Worker rechnet beim Import und legt das Ergebnis
+an die Aktivität (`metrics.best_efforts`); er schreibt keine Rekorde fest und vergleicht nichts über Aktivitäten hinweg.
+
+**Leistung** (`best_efforts.power.windows`) — beste Durchschnittsleistung über 1 s, 5 s, 10 s, 15 s, 30 s, 1 min, 2 min, 5 min, 10 min, 20 min, 30 min, 60 min:
+
+- Fenster `[t, t + D]` auf der **verstrichenen** Zeit. Nie „N Messpunkte", nie Bewegungszeit.
+- Eine **Pause** gehört in das Fenster und zählt 0 W. Bewegungsabschnitte werden nicht zusammengeklebt.
+- **0 W** ist ein Messwert. Eine Zeile **ohne** Leistungswert zählt als 0 W — nicht interpoliert, nicht übersprungen;
+  die betroffene Zeit steht am Fenster (`miss_s`). Das Ergebnis kann dadurch nur zu niedrig werden, nie zu hoch.
+- Güte je Fenster: `exact` (Garmin lieferte alle Zeilen **und** die Uhr zeichnete sekündlich auf — die Zahl ist die
+  Messung) · `approx` (ausgedünnt oder nicht sekündlich, mindestens 8 Abstände im Fenster —
+  Näherung, **kein Rekord**) · `insufficient` (Auflösung reicht nicht — **keine Zahl gespeichert**).
+
+**Strecke** (`best_efforts.distance.targets`, nur running, walking, hiking) — schnellste Zeit über 400 m, 1 km, 5 km, 10 km, 21.0975 km, 42.195 km:
+das kürzeste Stück zwischen zwei **echten** Messzeilen, das die Zieldistanz erreicht. Keine Interpolation; die Zeit ist
+gemessen, der Überhang (`over_m`) steht dabei. Die Zahl ist eine Obergrenze der wahren Bestzeit — nie zu schnell.
+
+**Kennwerte** (`best_efforts.stats`) — Mittel und Maximum je Reihe aus allen gelieferten Zeilen; `avg` mit Nullen,
+`avg_nz` ohne. Hat Garmin ausgedünnt (`native: false`), ist das Mittel eine Näherung.
+
+**Offen:** Im einzigen Mitschnitt lieferte Garmin 1855 von 5527 aufgezeichneten Zeilen (üblicher Abstand 3 s). Damit sind
+Leistungsfenster unter 24 s `insufficient` und alle längeren `approx`. `exact` setzt
+voraus, dass Garmin mit `DETAIL_MAXCHART` alle Zeilen liefert — das ist **nicht belegt** und muss in Produktion gezeigt werden.
+
+## 16 · Fehlerklassen des Nachladens
+
+| Klasse | Auslöser | Folge |
+|---|---|---|
+| `AUTH` | Sitzung ungültig (401) | Lauf endet sofort; Sync gilt als nicht erfolgreich; nichts wird einer Aktivität angelastet |
+| `RATE_LIMIT` | Garmin bremst (429) | wie `AUTH`; der Zeitplaner verlängert die Pause; keine sofortige Wiederholung |
+| `NETWORK` | nicht erreichbar, 5xx, Zeitüberschreitung | zählt nicht; nach 2 in Folge endet der Lauf |
+| `NOT_FOUND` | Garmin kennt die Aktivität nicht (404/410) | zählt |
+| `UNSUPPORTED` | Anfrage abgelehnt (400/405/406/409/415/422) | zählt |
+| `MALFORMED` | Antwort ist keine lesbare Struktur | zählt |
+| `PERSISTENCE` | Speichern in der Datenbank fehlgeschlagen | zählt nicht; nächster Lauf versucht es erneut |
+| `UNKNOWN` | nicht einzuordnen (auch 403) | zählt nur, wenn im selben Lauf eine andere Aktivität gelang |
+
+Nach 3 gezählten Fehlern wird eine Aktivität 7 Tage zurückgestellt
+(`detailsFailCount`, `detailsFailedAt`, `detailsFailCategory`). Ein Erfolg löscht den Vermerk. Stand: `GARMIN-BACKFILL-STATUS.md`.
+
+## 17 · Altlasten und offene Punkte
 
 1. **Kadenz im Altbestand** — nicht umgerechnet, bis zum Nachladen ausgeblendet (Abschnitt 4).
 2. **Bestzeiten können sich ändern**, sobald eine Aktivität ihre echte Zeitachse hat: die App rechnet

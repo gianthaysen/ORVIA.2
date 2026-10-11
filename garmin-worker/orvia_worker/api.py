@@ -172,7 +172,18 @@ def create_app(*, settings, db, crypto, provider_factory, registry=None) -> Fast
 
     @app.get("/healthz")
     async def healthz() -> dict:
-        return {"ok": True}
+        # v8-447.1: ausgerollter Stand, Details-Vertrag und Laufzeit — keine Nutzerdaten, keine
+        # Konfiguration, keine Bibliotheksversionen. `ok` bleibt das einzige Pflichtfeld.
+        import sys
+
+        from . import WORKER_BUILD
+        from .detail_sync import DETAILS_CONTRACT_VERSION
+        return {
+            "ok": True,
+            "worker": WORKER_BUILD,
+            "detailsContract": DETAILS_CONTRACT_VERSION,
+            "python": f"{sys.version_info.major}.{sys.version_info.minor}",
+        }
 
     @app.get("/status")
     async def status(user_id: str = Depends(current_user_id)) -> dict:

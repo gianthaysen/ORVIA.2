@@ -38,6 +38,10 @@ PROVIDER_TYPE = "garmin_unofficial"
 _SCALE_HINT = "smart_scale"
 
 
+class _SkipSeries(Exception):
+    """Intern: die Tagesserien in diesem Lauf auslassen (Sitzung ungueltig / Garmin bremst)."""
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -510,16 +514,50 @@ async def sync_user(
         if hasattr(provider, "get_activity_details"):
             extras = tuple(getattr(settings, "detail_extras", ()) or ())
             get_extra = getattr(provider, "get_activity_extra", None) if extras else None
+            maxchart = int(getattr(settings, "detail_maxchart", 0) or 0)
+            if maxchart > 0:
+                def fetch(aid):
+                    return provider.get_activity_details(aid, maxchart)
+            else:
+                def fetch(aid):
+                    return provider.get_activity_details(aid)
             det = await sync_activity_details(
-                db, user_id,
-                lambda aid: provider.get_activity_details(aid),
+                db, user_id, fetch,
                 limit=limit, get_extra=get_extra, extras=extras,
             )
+            cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
                 f"ok:{det['updated']} selected:{len(det['selected'])} failed:{len(det['failed'])}"
+                + (f" [{cats}]" if cats else "")
+                + (f" aborted:{det['aborted']}" if det.get("aborted") else "")
                 + (f" extras:{det['extras']}" if det.get("extras") else "")
             )
-        tz = getattr(settings, "timezone", None) or "Europe/Berlin"
+            # v8-447.1 · Stand des Nachladens: nur Zahlen, fuer Betrieb und Protokoll.
+            st = det.get("status") or {}
+            if st:
+                from .detail_sync import eta_runs
+                runs = eta_runs(st, limit)
+                interval_min = int(getattr(settings, "sync_interval_minutes", 30) or 30)
+                eta_h = round(runs * interval_min / 60.0, 1) if runs is not None else None
+                result["steps"]["backfill"] = (
+                    f"v{st.get('contract')}:{st.get('current')}/{st.get('total')} pending:{st.get('pending')} "
+                    f"failing:{st.get('failing')} deferred:{st.get('deferred')} eta_h>={eta_h}"
+                )
+                logger.info("backfill contract=%s total=%s current=%s pending=%s (legacy=%s never=%s) "
+                            "failing=%s deferred=%s categories=%s processed_24h=%s eta_h>=%s",
+                            st.get("contract"), st.get("total"), st.get("current"), st.get("pending"),
+                            st.get("legacy"), st.get("never"), st.get("failing"), st.get("deferred"),
+                            st.get("by_category") or {}, st.get("processed_24h"), eta_h)
+            # Sitzung ungueltig oder Garmin bremst: das betrifft jeden weiteren Abruf. Der Lauf
+            # gilt als nicht erfolgreich (der Zeitplaner verlaengert dann die Pause), und die
+            # Tagesserien — weitere Garmin-Abrufe — werden in diesem Lauf nicht mehr geholt.
+            if det.get("aborted") in ("AUTH", "RATE_LIMIT"):
+                result["errors"].append("details:" + ("AUTH_FAILED" if det["aborted"] == "AUTH" else "RATE_LIMITED"))
+                result["steps"]["series"] = "skipped:" + det["aborted"].lower()
+                raise _SkipSeries()
+        # v8-447.1: Zeitzone des NUTZERS (Profil, sonst Standard der Einstellungen). Vorher stand
+        # hier fest "Europe/Berlin" — settings.timezone gibt es nicht, der Rueckfall griff immer.
+        tz = tz_name or settings.default_timezone
         ser_total = 0
         skipped = False
         for d in date_strs:
@@ -533,6 +571,8 @@ async def sync_user(
         result["steps"]["series"] = (
             "skipped:user_metric_series_missing" if skipped else f"ok:{ser_total}"
         )
+    except _SkipSeries:
+        pass
     except ProviderError as e:
         result["errors"].append(f"details:{e.code}")
         result["steps"]["activity_details"] = "failed"

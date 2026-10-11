@@ -15,16 +15,22 @@ KEINE Engine-Berührung; kein Remote-Deploy.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import asyncio
+import logging
+import math
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-from .backfill import backfill_activity_details
+from .backfill import ACTIVITY_SPECIFIC, FAILURE_CATEGORIES, backfill_activity_details
+from .best_efforts import DISTANCE_SPORTS
 from .series_normalize import (
     build_activity_metrics,
     build_series_rows,
     normalize_sleep_series,
     normalize_stress_series,
 )
+
+logger = logging.getLogger("orvia.details")
 
 # Marker für "Tabelle fehlt" (PostgREST/Postgres) — fail-closed statt Loop.
 _MISSING_TABLE_MARKERS = ("does not exist", "42P01", "PGRST205", "could not find the table")
@@ -53,13 +59,30 @@ _REENRICH_ALL_BELOW = 3
 # standardmaessig AUS (Einstellung DETAIL_EXTRAS) und werden erst nach einem echten
 # Mitschnitt je Sportart eingeschaltet (scripts/capture_activity_payloads.py).
 #   name → Sportarten, fuer die der Abruf ueberhaupt sinnvoll ist ("*" = alle)
+#
+# v8-447.1 · Abruf-Regel: ein Zusatzabruf wird nur gemacht, wenn er fuer GENAU diese
+# Aktivitaet etwas liefern kann — jeder Abruf an der inoffiziellen Schnittstelle kostet.
+#   Runden          nur Sportarten mit Strecke oder Bahnen
+#   Intervalle      Lauf/Rad; Schwimmen nur im Becken (Garmin-Typ lap_swimming)
+#   HF-Zonen        nur wenn die Aufzeichnung eine Herzfrequenz-Reihe hat
+#   Leistungszonen  nur Rad UND nur wenn die Aufzeichnung eine Leistungs-Reihe hat
+#   Saetze          nur Kraft
+LAP_SPORTS = ("running", "cycling", "swimming", "rowing", "hiking", "walking", "triathlon", "athletics", "hyrox")
 EXTRAS: dict[str, tuple[str, ...]] = {
     "activity": ("*",),            # get_activity: volle Zusammenfassung (summaryDTO)
-    "splits": ("*",),              # get_activity_splits: Runden
+    "splits": LAP_SPORTS,          # get_activity_splits: Runden
     "typed_splits": ("swimming", "running", "cycling"),   # Intervalle / Bahnen
     "hr_zones": ("*",),            # get_activity_hr_in_timezones
-    "power_zones": ("cycling", "running"),                # get_activity_power_in_timezones
+    "power_zones": ("cycling",),   # get_activity_power_in_timezones
     "exercise_sets": ("gym",),     # get_activity_exercise_sets
+}
+# Zusatzbedingungen je Abruf (alle muessen gelten):
+#   stream     diese Messreihe muss in der Detailantwort vorkommen
+#   type_keys  {sportart: (garmin-typen …)} — fuer diese Sportart nur bei diesen Garmin-Typen
+EXTRA_CONDITIONS: dict[str, dict] = {
+    "hr_zones": {"stream": "heart_rate"},
+    "power_zones": {"stream": "power"},
+    "typed_splits": {"type_keys": {"swimming": ("lap_swimming",)}},
 }
 
 # Schluessel in activities.metrics, die der CLIENT fuehrt (Plan-Zuordnung,
@@ -143,10 +166,25 @@ def _needs_details(act: Any) -> bool:
         return True
 
 
-def extras_for(sport_id: Any, enabled: Any) -> list[str]:
-    """Welche der eingeschalteten Zusatzabrufe fuer diese Sportart gelten (feste Reihenfolge)."""
+def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: Any = None) -> list[str]:
+    """Welche der eingeschalteten Zusatzabrufe fuer diese Aktivitaet gemacht werden (feste
+    Reihenfolge). `type_key` = Garmin-Typ, `streams` = Namen der Messreihen der Detailantwort.
+    Fehlt eine Angabe, die eine Bedingung braucht, gilt die Bedingung als NICHT erfuellt —
+    im Zweifel kein Abruf."""
     on = [str(e).strip() for e in (enabled or ()) if str(e).strip()]
-    return [name for name in EXTRAS if name in on and ("*" in EXTRAS[name] or sport_id in EXTRAS[name])]
+    have = set(streams or ())
+    out = []
+    for name in EXTRAS:
+        if name not in on or not ("*" in EXTRAS[name] or sport_id in EXTRAS[name]):
+            continue
+        cond = EXTRA_CONDITIONS.get(name) or {}
+        if cond.get("stream") and cond["stream"] not in have:
+            continue
+        only = (cond.get("type_keys") or {}).get(sport_id)
+        if only and type_key not in only:
+            continue
+        out.append(name)
+    return out
 
 
 def _slim_laps(raw: Any) -> list | None:
@@ -276,6 +314,86 @@ async def patch_provenance(db, user_id: str, acts: Any) -> dict:
     return {"patched": patched, "sport_upgraded": upgraded}
 
 
+def _fail_count(metrics: Any) -> int:
+    try:
+        return int((metrics or {}).get("detailsFailCount") or 0)
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def backfill_status(rows: Any, now: datetime | None = None) -> dict:
+    """v8-447.1 · Stand des Nachladens — nur ZAHLEN, keine Inhalte, keine Kennungen.
+
+      total      Garmin-Aktivitaeten
+      current    auf dem aktuellen Details-Vertrag
+      pending    noch zu laden (davon `legacy`: alter Vertrag, `never`: noch nie geladen)
+      failing    in `pending`, mit mindestens einem Dauerfehler (wird weiter versucht)
+      deferred   zurueckgestellt (≥ DETAIL_FAIL_MAX Dauerfehler, naechster Versuch in ≤ 7 Tagen)
+      by_category  Fehlerklasse → Anzahl (failing + deferred)
+      by_sport     Sportart → {total, current}
+      last_processed, processed_24h   Tempo
+    """
+    now = now or datetime.now(timezone.utc)
+    out: dict[str, Any] = {"contract": DETAILS_CONTRACT_VERSION, "total": 0, "current": 0, "pending": 0,
+                           "legacy": 0, "never": 0, "failing": 0, "deferred": 0, "by_category": {},
+                           "by_sport": {}, "last_processed": None, "processed_24h": 0}
+    last = None
+    for r in rows or ():
+        if not isinstance(r, dict):
+            continue
+        m = r.get("metrics") if isinstance(r.get("metrics"), dict) else {}
+        sport = str(r.get("sport_id") or "?")
+        sp = out["by_sport"].setdefault(sport, {"total": 0, "current": 0})
+        out["total"] += 1
+        sp["total"] += 1
+        complete = _details_complete(m)
+        try:
+            ver = int(m.get("detailsVersion") or 1) if complete else 0
+        except (TypeError, ValueError):
+            ver = 0
+        if complete and ver >= DETAILS_CONTRACT_VERSION:
+            out["current"] += 1
+            sp["current"] += 1
+            at = _parse_ts(m.get("detailsFetchedAt"))
+            if at is not None:
+                if last is None or at > last:
+                    last = at
+                if (now - at).total_seconds() <= 86400:
+                    out["processed_24h"] += 1
+            continue
+        fails = _fail_count(m)
+        cat = m.get("detailsFailCategory") if m.get("detailsFailCategory") in FAILURE_CATEGORIES else "UNKNOWN"
+        if _parked(m, now):
+            out["deferred"] += 1
+            out["by_category"][cat] = out["by_category"].get(cat, 0) + 1
+            continue
+        out["pending"] += 1
+        out["legacy" if complete else "never"] += 1
+        if fails > 0:
+            out["failing"] += 1
+            out["by_category"][cat] = out["by_category"].get(cat, 0) + 1
+    out["last_processed"] = last.isoformat() if last else None
+    return out
+
+
+def eta_runs(status: dict, limit: int) -> int | None:
+    """Wie viele Sync-Laeufe das Nachladen noch braucht — wenn jeder Lauf `limit` schafft.
+    Untergrenze, keine Zusage: Rate-Limits und Fehler verlaengern es."""
+    try:
+        pending = int(status.get("pending") or 0)
+        return math.ceil(pending / max(1, int(limit)))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
 async def sync_activity_details(
     db, user_id: str, get_details: Callable[[str], Any], *, limit: int, max_retries: int = 2,
     on_rate_limit: Callable[[int], None] | None = None,
@@ -299,28 +417,47 @@ async def sync_activity_details(
                if a.get("source_record_id") and not _needs_details(a)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
-    plan = backfill_activity_details(
+    # v8-447.1 · Die Garmin-Abrufe laufen in einem eigenen Thread. Vorher blockierten sie die
+    # Ereignisschleife des Dienstes (bis zu zehn Abrufe hintereinander, die Bibliothek wartet
+    # bei Serverfehlern zusaetzlich) — der Statusendpunkt antwortete so lange nicht.
+    plan = await asyncio.to_thread(
+        backfill_activity_details,
         candidates, already, get_details, limit=limit, max_retries=max_retries,
         on_rate_limit=on_rate_limit,
     )
+    failures: dict[str, str] = dict(plan.get("failures") or {})
+    persist_failed: list[str] = []
     updated = 0
     extras_count = 0
     for aid, parsed in plan["details"].items():
         act = by_id.get(aid) or {}
+        old_m = act.get("metrics") if isinstance(act.get("metrics"), dict) else {}
         merged = build_activity_metrics(act.get("metrics"), parsed)
+        # v8-447.1: „schnellste Zeit ueber eine Strecke" nur fuer Sportarten, bei denen das eine
+        # klare Bedeutung hat (best_efforts.DISTANCE_SPORTS). Sonst wird der Teil nicht gespeichert.
+        be = merged.get("best_efforts")
+        if isinstance(be, dict) and "distance" in be and act.get("sport_id") not in DISTANCE_SPORTS:
+            be = {k: v for k, v in be.items() if k != "distance"}
+            if any(k in be for k in ("power", "stats")):
+                merged["best_efforts"] = be
+            else:
+                merged.pop("best_efforts", None)
         # GM7.4.1: Abschluss-Marker NUR nach einem tatsächlich erfolgreichen,
         # gemergten Abruf setzen — nie bei einem Fehlschlag (siehe `failed`).
         merged["detailsFetchedAt"] = datetime.now(timezone.utc).isoformat()
         merged["detailsVersion"] = DETAILS_CONTRACT_VERSION
-        merged.pop("detailsFailCount", None)        # Erfolg: Fehlerzaehler weg
-        merged.pop("detailsFailedAt", None)
+        for k in ("detailsFailCount", "detailsFailedAt", "detailsFailCategory"):
+            merged.pop(k, None)                     # Erfolg: Fehlervermerk weg
         # v8-447 · Zusatzabrufe (nur wenn eingeschaltet). Jeder fuer sich abgesichert: ein
         # Fehler markiert genau diesen Abruf als "failed" und bricht nichts ab.
         if get_extra is not None:
             fetched: dict[str, Any] = {}
-            for name in extras_for(act.get("sport_id"), extras):
+            g = merged.get("garmin") if isinstance(merged.get("garmin"), dict) else {}
+            wanted = extras_for(act.get("sport_id"), extras, type_key=g.get("type_key"),
+                                streams=(parsed.get("streams") or {}).keys())
+            for name in wanted:
                 try:
-                    fetched[name] = get_extra(name, aid)
+                    fetched[name] = await asyncio.to_thread(get_extra, name, aid)
                 except Exception:  # noqa: BLE001 — Zusatzdaten duerfen den Sync nie abbrechen
                     fetched[name] = None
             if fetched:
@@ -343,34 +480,61 @@ async def sync_activity_details(
                         merged.pop(k, None)
         except Exception:
             pass
-        await db.update(
-            "activities",
-            {"user_id": user_id, "source": "garmin", "source_record_id": aid},
-            {"metrics": merged},
-        )
-        updated += 1
-    # Dauerfehler vermerken (nur Zaehler + Zeitpunkt; alle uebrigen Felder der Zeile bleiben,
-    # frisch gelesen — der Client kann inzwischen geschrieben haben).
-    transient = set(plan.get("failed_transient") or ())
-    for aid in plan["failed"]:
-        if aid in transient:
-            continue
         try:
-            flt = {"user_id": user_id, "source": "garmin", "source_record_id": aid}
-            fresh = await db.select("activities", flt)
-            if not fresh:
-                continue
-            fm = dict(fresh[0].get("metrics")) if isinstance(fresh[0].get("metrics"), dict) else {}
-            try:
-                n = int(fm.get("detailsFailCount") or 0)
-            except (TypeError, ValueError):
-                n = 0
-            fm["detailsFailCount"] = n + 1
-            fm["detailsFailedAt"] = datetime.now(timezone.utc).isoformat()
-            await db.update("activities", flt, {"metrics": fm})
-        except Exception:  # noqa: BLE001 — Buchfuehrung darf den Sync nie abbrechen
+            await db.update(
+                "activities",
+                {"user_id": user_id, "source": "garmin", "source_record_id": aid},
+                {"metrics": merged},
+            )
+        except Exception:  # noqa: BLE001 — Speichern gescheitert: unsere Seite, nicht die Aktivitaet
+            failures[aid] = "PERSISTENCE"
+            persist_failed.append(aid)
+            logger.warning("details activity=%s sport=%s status=failed category=PERSISTENCE",
+                           act.get("id"), act.get("sport_id"))
             continue
-    return {"selected": plan["selected"], "updated": updated, "failed": plan["failed"], "extras": extras_count}
+        act["metrics"] = merged                       # fuer den Stand am Ende des Laufs
+        updated += 1
+        logger.info("details activity=%s sport=%s version=%s->%s status=ok rows=%s/%s",
+                    act.get("id"), act.get("sport_id"), old_m.get("detailsVersion") or 0, DETAILS_CONTRACT_VERSION,
+                    (parsed.get("sampling") or {}).get("rows"), (parsed.get("sampling") or {}).get("total"))
+
+    # Fehler vermerken. Gezaehlt (und damit irgendwann zurueckgestellt) wird nur, was GENAU
+    # DIESER Aktivitaet anzulasten ist: NOT_FOUND / UNSUPPORTED / MALFORMED immer; UNKNOWN nur,
+    # wenn im selben Lauf eine andere Aktivitaet gelang (sonst kann es alles betreffen).
+    # AUTH, RATE_LIMIT, NETWORK, PERSISTENCE zaehlen nie. Geschrieben werden nur die drei
+    # Vermerk-Schluessel, auf frisch gelesenem Stand — der Client kann inzwischen geschrieben haben.
+    now = datetime.now(timezone.utc)
+    for aid in plan["failed"]:
+        cat = failures.get(aid, "UNKNOWN")
+        act = by_id.get(aid) or {}
+        counts = cat in ACTIVITY_SPECIFIC or (cat == "UNKNOWN" and updated > 0)
+        retry_after = None
+        if counts:
+            try:
+                flt = {"user_id": user_id, "source": "garmin", "source_record_id": aid}
+                fresh = await db.select("activities", flt)
+                if fresh:
+                    fm = dict(fresh[0].get("metrics")) if isinstance(fresh[0].get("metrics"), dict) else {}
+                    n = _fail_count(fm) + 1
+                    fm["detailsFailCount"] = n
+                    fm["detailsFailedAt"] = now.isoformat()
+                    fm["detailsFailCategory"] = cat
+                    await db.update("activities", flt, {"metrics": fm})
+                    act["metrics"] = fm
+                    if n >= DETAIL_FAIL_MAX:
+                        retry_after = (now + timedelta(days=DETAIL_FAIL_RETRY_DAYS)).date().isoformat()
+            except Exception:  # noqa: BLE001 — Buchfuehrung darf den Sync nie abbrechen
+                pass
+        logger.warning("details activity=%s sport=%s status=failed category=%s counted=%s retry_after=%s",
+                       act.get("id"), act.get("sport_id"), cat, counts, retry_after or "-")
+
+    by_cat: dict[str, int] = {}
+    for cat in failures.values():
+        by_cat[cat] = by_cat.get(cat, 0) + 1
+    status = backfill_status(acts, now)
+    return {"selected": plan["selected"], "updated": updated, "failed": list(plan["failed"]) + persist_failed,
+            "extras": extras_count, "failures": failures, "by_category": by_cat, "aborted": plan.get("aborted"),
+            "not_attempted": plan.get("not_attempted") or [], "status": status}
 
 
 async def sync_day_series(

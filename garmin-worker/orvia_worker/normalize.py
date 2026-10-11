@@ -667,6 +667,12 @@ def normalize_activity(raw: Any) -> NormalizedActivity | None:
     ext = garmin_fields.ext_block(raw)
     if len(ext) > 1:
         metrics["ext"] = _json_safe(ext)
+    if ext.get("rejected"):
+        # v8-447.1 · kein stiller Verlust: erlaubtes Feld, geliefert, aber nicht in der
+        # erwarteten Form. Nur Feldnamen — keine Werte, keine Kennung der Aktivitaet.
+        import logging
+        logging.getLogger("orvia.normalize").warning(
+            "garmin-feld verworfen sport=%s typ=%s felder=%s", sport_id, sport_raw, ext["rejected"])
     training_load = raw.get("activityTrainingLoad")
     if training_load is not None:
         metrics["training_load"] = _json_safe(training_load)

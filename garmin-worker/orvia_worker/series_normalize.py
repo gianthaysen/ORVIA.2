@@ -261,6 +261,46 @@ def parse_activity_details(raw: Any) -> dict:
         if isinstance(total, int) and not isinstance(total, bool) and total >= len(rows):
             out["sampling"]["total"] = total
 
+    # --- Bestwerte aus ALLEN gelieferten Zeilen (v8-447.1) ------------------------
+    # Auswertung vor der Ausduennung: die gespeicherten Messreihen (hoechstens 300 Punkte)
+    # sind fuer die Anzeige, nicht fuer Rekorde. Gerechnet wird auf der echten Zeitachse;
+    # jede Zahl traegt ihre Guete (best_efforts.py). Hier wird nichts festgeschrieben und
+    # nichts ueber Aktivitaeten hinweg verglichen.
+    from . import best_efforts as BE
+    best: dict[str, Any] = {}
+    pw = column("directPower")
+    ta = BE.time_axis(ts, column("sumElapsedDuration") if ts is None else None)
+    if ta["ok"]:
+        if pw is not None:
+            got = BE.compact(BE.power_best(ta["t"], pw, rows_total=out["sampling"].get("total")), "windows")
+            if got:
+                best["power"] = got
+        dist = column("sumDistance")
+        if dist is not None:
+            got = BE.compact(BE.distance_best(ta["t"], dist), "targets")
+            if got:
+                best["distance"] = got
+        best["time_source"] = ta["source"]
+    # Kennwerte je Messreihe (Mittel, Maximum) aus allen gelieferten Zeilen — die Kadenz aus
+    # derselben Spalte wie die kanonische Reihe, mit ihrer Bedeutung.
+    stats: dict[str, Any] = {}
+    cad_col, cad_kind = (double, "running_cadence_spm") if double is not None else ((bike, "cycling_cadence_rpm") if (bike is not None and run is None) else (None, None))
+    for name, col in (("heart_rate", column("directHeartRate")), ("power", pw), ("cadence", cad_col), ("speed", column("directSpeed"))):
+        st = BE.series_stats(col) if col is not None else None
+        if st:
+            if name == "cadence":
+                st["kind"] = cad_kind
+            stats[name] = st
+    if stats:
+        best["stats"] = stats
+    if any(k in best for k in ("power", "distance", "stats")):
+        best["v"] = BE.BEST_VERSION
+        best["rows"] = len(rows)
+        tot = out["sampling"].get("total")
+        best["total"] = tot
+        best["native"] = bool(tot is not None and len(rows) >= tot)
+        out["best"] = best
+
     # --- Zusatzreihen je Sportart (v8-447, Commit C) ----------------------------
     # Was Garmin ueber die kanonischen Reihen hinaus liefert (Laufdynamik, Pedalwerte,
     # Zugfrequenz …), bleibt unter dem GARMIN-NAMEN mit Garmins Einheit erhalten — gleicher
@@ -301,6 +341,13 @@ def build_activity_metrics(existing: Any, details: dict, max_route_points: int =
         # v8-447: Bedeutung jeder Messreihe (kind / unit / Quellfeld). Wird mit den Reihen
         # ERSETZT, nie mit einem aelteren Stand gemischt.
         out["stream_meta"] = details.get("stream_meta", {})
+        # v8-447.1: Bestwerte dieser Aufzeichnung — mit den Reihen ERSETZT (oder entfernt).
+        # `distance_sports`: nur fuer diese Sportarten bleibt der Strecken-Teil (Aufrufer).
+        best = details.get("best")
+        if isinstance(best, dict) and best:
+            out["best_efforts"] = best
+        else:
+            out.pop("best_efforts", None)
     # v8-447: Bewegungszeit / verstrichene Zeit / Timer-Zeit der Aufzeichnung und wie stark
     # die Messreihen ausgeduennt wurden — klein, deshalb im Herkunftsblock metrics.garmin.
     dur, smp = details.get("durations") or {}, details.get("sampling") or {}

@@ -47,12 +47,17 @@ def test_backfill_retry_then_success_and_ratelimit_hook():
 
 
 def test_backfill_partial_failure_skips_not_aborts():
+    """Ein Fehler, der NUR diese Aktivitaet betrifft (bei Garmin geloescht), wird uebersprungen.
+    (Bis v8-447 stand hier ein Rate-Limit — nach einem 429 wird seit v8-447.1 aber nicht mehr
+    weitergefragt, siehe test_v4471_validation.py.)"""
+    from orvia_worker.providers.base import NotFound
+
     def fetch(aid):
         if aid == "b":
-            raise RateLimited("429")                      # bleibt fehlerhaft
+            raise NotFound("404")                         # bleibt fehlerhaft
         return DETAILS
 
     res = backfill_activity_details(["a", "b", "c"], [], fetch, limit=5, max_retries=1)
     assert "a" in res["details"] and "c" in res["details"]
     assert "b" not in res["details"]                      # Teilfehler übersprungen
-    assert "b" in res["failed"]
+    assert "b" in res["failed"] and res["failures"] == {"b": "NOT_FOUND"} and res["aborted"] is None

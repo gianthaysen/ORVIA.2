@@ -218,3 +218,84 @@ def test_real_capture_is_clean_parses_and_loses_no_named_measurement(path):
         keys = {m.get("key") for m in det["metricDescriptors"] if isinstance(m, dict)}
         if "directTimestamp" in keys and out["streams"]:
             assert "time" in out["streams"]
+
+
+# ---- v8-447.1 · ergiebigste Einheit und Aufloesungs-Probe -------------------
+
+def test_richer_activity_beats_the_newer_one_within_a_garmin_type():
+    entries = [
+        {"activityId": 9, "activityType": {"typeKey": "road_biking"}},                                     # juengste, ohne Leistung
+        {"activityId": 8, "activityType": {"typeKey": "road_biking"}, "avgPower": 210.0, "normPower": 225.0},
+        {"activityId": 7, "activityType": {"typeKey": "road_biking"}, "avgPower": 190.0},
+        {"activityId": 6, "activityType": {"typeKey": "virtual_ride"}, "avgPower": 230.0},                 # Zwift: eigener Typ
+        {"activityId": 5, "activityType": {"typeKey": "lap_swimming"}},
+        {"activityId": 4, "activityType": {"typeKey": "lap_swimming"}, "poolLength": 25.0, "activeLengths": 40, "averageSwolf": 38.0},
+        {"activityId": 3, "activityType": {"typeKey": "running"}},
+        {"activityId": 2, "activityType": {"typeKey": "running"}},
+    ]
+    got = {e["activityType"]["typeKey"]: e["activityId"] for e in CAP.pick_activities(entries, None, None)}
+    assert got == {"road_biking": 8, "virtual_ride": 6, "lap_swimming": 4, "running": 3}                # Gleichstand: die juengere
+    assert CAP.richness({"avgPower": None, "normPower": 0, "x": 1}, "cycling") == 1                     # 0 ist ein Wert, None nicht
+    assert CAP.richness({"avgPower": 1}, "yoga") == 0
+
+
+def test_resolution_probe_keeps_only_counts():
+    class Api:
+        def __init__(self):
+            self.calls = []
+
+        def get_activity_details(self, aid, maxchart=2000):
+            self.calls.append((aid, maxchart))
+            n = min(maxchart, 5527)
+            return {"totalMetricsCount": 5527,
+                    "metricDescriptors": [{"key": "directTimestamp", "metricsIndex": 0}, {"key": "directPower", "metricsIndex": 1}],
+                    "activityDetailMetrics": [{"metrics": [1_783_874_400_000 + i * 1000, 987.0]} for i in range(n)]}
+    api = Api()
+    probe = CAP.resolution_probe(api, 4711, maxcharts=(2000, 20000))
+    assert api.calls == [(4711, 2000), (4711, 20000)]
+    assert probe == [{"maxchart": 2000, "rows": 2000, "total": 5527, "complete": False, "median_interval_s": 1.0},
+                     {"maxchart": 20000, "rows": 5527, "total": 5527, "complete": True, "median_interval_s": 1.0}]
+    assert "987" not in json.dumps(probe) and "1783874" not in json.dumps(probe)                        # keine Messwerte, keine Zeit
+
+    class Broken:
+        def get_activity_details(self, aid, maxchart=2000):
+            raise RuntimeError("429")
+    assert CAP.resolution_probe(Broken(), 1) == [{"maxchart": 20000, "error": "RuntimeError"}]
+
+
+def _sem_payload(**entry_over):
+    n = 600
+    desc = [{"metricsIndex": i, "key": k} for i, k in enumerate(
+        ["directTimestamp", "sumDuration", "sumMovingDuration", "sumElapsedDuration", "sumDistance", "directHeartRate",
+         "directDoubleCadence", "directRunCadence", "directPower", "directBikeCadence", "directSpeed"])]
+    rows = []
+    for i in range(n):
+        pedalling = i % 4 != 0                                   # jede vierte Zeile rollt (0 W, 0 rpm)
+        rows.append({"metrics": [1_767_225_600_000 + i * 1000, float(i), float(i) * 0.98, float(i) + 60.0, i * 3.0, 150.0 + (i % 3),
+                                 170.0, 85.0, 240.0 if pedalling else 0.0, 90.0 if pedalling else 0.0, 3.0]})
+    entry = {"activityId": 1, "activityType": {"typeKey": "running"}, "duration": 599.2, "movingDuration": 587.0, "elapsedDuration": 659.0,
+             "distance": 1797.0, "averageHR": 151.0, "maxHR": 152.0, "averageRunningCadenceInStepsPerMinute": 170.0,
+             "averageBikingCadenceInRevPerMinute": 90.0, "avgPower": 180.0, "maxPower": 240.0, "averageSpeed": 3.0}
+    entry.update(entry_over)
+    return {"list_entry": entry, "details": {"metricDescriptors": desc, "activityDetailMetrics": rows, "totalMetricsCount": n}}
+
+
+def test_semantic_checks_tell_which_reading_of_a_list_field_is_right():
+    sem = CAP.semantic_checks(_sem_payload())
+    assert sem["_delivery"] == {"rows": 600, "total": 600, "complete": True}
+    assert sem["duration"] == {"verdict": "match", "matches": "sumDuration (Timer)"}                  # nicht Bewegungs-, nicht verstrichene Zeit
+    assert sem["movingDuration"]["verdict"] == "match" and sem["elapsedDuration"]["verdict"] == "match"
+    assert sem["distance"]["verdict"] == "match" and sem["averageHR"]["verdict"] == "match" and sem["maxHR"]["verdict"] == "match"
+    assert sem["averageRunningCadence"] == {"verdict": "match", "matches": "directDoubleCadence (beide Beine)"}
+    assert sem["averageBikingCadence"] == {"verdict": "match", "matches": "directBikeCadence (ohne Nullen)"}
+    assert sem["avgPower"] == {"verdict": "match", "matches": "directPower (mit Nullen)"}             # 240 × 3/4 = 180
+    half = CAP.semantic_checks(_sem_payload(averageRunningCadenceInStepsPerMinute=85.0))
+    assert half["averageRunningCadence"]["matches"] == "directRunCadence (ein Bein)"                   # die Liste traegt den Halbwert
+    off = CAP.semantic_checks(_sem_payload(distance=2500.0, averageHR=120.0))
+    assert off["distance"] == {"verdict": "mismatch", "matches": None} and off["averageHR"]["verdict"] == "mismatch"
+    na = CAP.semantic_checks(_sem_payload(avgPower=None))
+    assert na["avgPower"] == {"verdict": "n/a", "matches": None}
+    assert CAP.semantic_checks({"list_entry": {}, "details": None}) == {}
+    blob = json.dumps(sem)
+    for value in ("599.2", "1797", "151.0", "170.0", "180.0"):
+        assert value not in blob                                                                       # Urteile, keine Messwerte

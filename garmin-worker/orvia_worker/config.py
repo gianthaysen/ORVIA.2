@@ -84,6 +84,13 @@ class Settings:
     # bereits importierten Aktivitaeten: so viele Tage zurueck wird die LISTE gelesen
     # (ein Abruf, keine Einzelabrufe). 0 = nur das normale Sync-Fenster.
     activity_provenance_backfill_days: int = 0
+    # v8-447.1 · Wie viele Messzeilen Garmin je Aktivitaet hoechstens liefern soll
+    # (maxChartSize der Detailabfrage). 0 = Standard der Bibliothek (2000). Im echten
+    # Mitschnitt kamen damit 1855 von 5527 aufgezeichneten Zeilen an — zu grob fuer
+    # Leistungs-Bestwerte unter 30 Sekunden. Ob Garmin einen hoeheren Wert bedient, ist nicht
+    # belegt; es laesst sich an metrics.garmin.stream_rows / stream_total ablesen.
+    # Gleicher Abruf, gleiche Anzahl Calls, groessere Antwort. Gedeckelt auf 30 000.
+    detail_maxchart: int = 0
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -121,6 +128,7 @@ class Settings:
                 e.strip().lower() for e in (env.get("DETAIL_EXTRAS") or "").split(",") if e.strip()
             ),
             activity_provenance_backfill_days=max(0, _int_env(env, "ACTIVITY_PROVENANCE_BACKFILL_DAYS", 0)),
+            detail_maxchart=min(30000, max(0, _int_env(env, "DETAIL_MAXCHART", 0))),
         )
 
 

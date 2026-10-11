@@ -10,6 +10,7 @@ der Rest der Pipeline bleibt unverändert.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Callable
 
 from .. import normalize
@@ -19,9 +20,11 @@ from .base import (
     NormalizedActivity,
     NormalizedDevice,
     NormalizedMetric,
+    NotFound,
     ProviderError,
     ProviderUnavailable,
     RateLimited,
+    Unsupported,
 )
 
 logger = logging.getLogger("orvia.provider.garmin")
@@ -46,14 +49,41 @@ def _map_exception(e: Exception) -> ProviderError:
         return AuthError("Garmin-Authentifizierung fehlgeschlagen")
     if isinstance(e, GarminConnectTooManyRequestsError):
         return RateLimited("Garmin-Rate-Limit erreicht")
-    if isinstance(e, GarminConnectConnectionError):
-        return ProviderUnavailable("Garmin nicht erreichbar")
-    status = getattr(getattr(e, "response", None), "status_code", None)
+    # v8-447.1 · HTTP-Status ZUERST auswerten. Die Bibliothek wirft fuer JEDEN anderen
+    # HTTP-Fehler GarminConnectConnectionError — auch fuer 404. Bis v8-447 wurde daraus
+    # pauschal "nicht erreichbar" (voruebergehend): eine bei Garmin geloeschte Aktivitaet
+    # galt damit als Netzproblem, wurde bei jedem Lauf erneut angefragt und nie zurueckgestellt.
+    status = _http_status(e)
     if status == 401:
         return AuthError("Garmin-Session ungültig")
     if status == 429:
         return RateLimited("Garmin-Rate-Limit erreicht")
+    if status in (404, 410):
+        return NotFound("Garmin kennt die Ressource nicht")
+    if status in (400, 405, 406, 409, 415, 422):
+        return Unsupported(f"Garmin lehnt die Anfrage ab (HTTP {status})")
+    if isinstance(e, GarminConnectConnectionError):
+        return ProviderUnavailable("Garmin nicht erreichbar")
     return ProviderUnavailable(f"Garmin-Abruf fehlgeschlagen ({type(e).__name__})")
+
+
+_STATUS_IN_TEXT = re.compile(r"\b(?:client error|HTTP(?: error)?|status(?:[_ ]code)?)[ =:(]*\(?([1-5]\d\d)\b", re.IGNORECASE)
+
+
+def _http_status(e: BaseException) -> int | None:
+    """HTTP-Status eines Bibliotheksfehlers: aus `.response.status_code` (auch der
+    Ursache), sonst aus dem Text der Bibliothek ("… client error (404): …"). Ohne
+    belastbaren Status: None — dann wird nichts unterstellt."""
+    seen = 0
+    cur: BaseException | None = e
+    while cur is not None and seen < 4:
+        code = getattr(getattr(cur, "response", None), "status_code", None)
+        if isinstance(code, int) and 100 <= code <= 599:
+            return code
+        cur = cur.__cause__ or cur.__context__
+        seen += 1
+    m = _STATUS_IN_TEXT.search(str(e))
+    return int(m.group(1)) if m else None
 
 
 class GarminUnofficialProvider:
@@ -380,11 +410,17 @@ class GarminUnofficialProvider:
             category, raw, provider=self.provider_type, metric_date=metric_date
         )
 
-    def get_activity_details(self, activity_id: Any) -> Any:
-        """Roh-Detailantwort EINER Aktivität (Route/Streams). Read-only; wird nur
-        im bounded, idempotenten Backfill für noch undetaillierte Aktivitäten
-        aufgerufen (sync.py 7b), NICHT bei jedem Sync für den Gesamtbestand."""
+    def get_activity_details(self, activity_id: Any, maxchart: int | None = None) -> Any:
+        """Roh-Detailantwort (Route + Messreihen) EINER Aktivitaet. Read-only.
+
+        `maxchart` (v8-447.1): wie viele Messzeilen Garmin hoechstens liefern soll. Ohne Angabe
+        gilt der Standard der Bibliothek (2000) — im echten Mitschnitt kamen damit 1855 von
+        5527 aufgezeichneten Zeilen an. Ob Garmin einen hoeheren Wert bedient, ist NICHT
+        belegt; die Antwort nennt beide Zahlen (metrics.garmin.stream_rows / stream_total),
+        daran laesst es sich ablesen. Gleicher Abruf, gleiche Anzahl Calls."""
         api = self._require_api()
+        if isinstance(maxchart, int) and not isinstance(maxchart, bool) and maxchart > 0:
+            return self._call(api.get_activity_details, activity_id, maxchart)
         return self._call(api.get_activity_details, activity_id)
 
     def get_activity_extra(self, name: str, activity_id: Any) -> Any:

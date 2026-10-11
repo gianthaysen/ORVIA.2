@@ -18,15 +18,70 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from orvia_worker import detail_sync, garmin_fields as GF, normalize, series_normalize  # noqa: E402
+import json  # noqa: E402
+
+from orvia_worker import WORKER_BUILD, backfill, best_efforts, detail_sync, garmin_fields as GF, normalize, series_normalize  # noqa: E402
+
+sys.path.insert(0, str(HERE))
+import census_report as CR  # noqa: E402
 
 DOC = HERE.parents[1] / "app" / "docs" / "GARMIN-CAPABILITY-MATRIX.md"
+
+
+def load_observed() -> dict | None:
+    """Zahlen des letzten Feldzensus (garmin-worker/census/observed.json) — oder None, wenn
+    noch keiner erhoben wurde. Ohne Zensus bleibt jede Zeile auf der Stufe aus dem Code."""
+    try:
+        data = json.loads(CR.OBSERVED.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) and isinstance(data.get("basis"), dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+OBS = load_observed()
 
 HEAD = ("FIELD", "SPORT", "ENDPOINT", "RAW FIELD NAME", "RAW AVAILABLE?", "IMPORTED?", "STORED?", "DISPLAYED?",
         "SERIES/SUMMARY", "UNITS", "NORMALIZATION", "LOSSY?", "HIGHLIGHT-READY?", "NOTES")
 EP = {"list": "get_activities_by_date", "details": "get_activity_details"}
-AVAIL = {"fixture": "ja (Mitschnitt Lauf)", "library": "laut Bibliothek", "assumed": "unbelegt"}
-READY = {"fixture": "ja", "library": "nach Mitschnitt", "assumed": "nach Mitschnitt"}
+AVAIL = {"fixture": "OBSERVED_FIXTURE (Mitschnitt Lauf)", "library": "LIBRARY_DOCUMENTED", "assumed": "ASSUMED"}
+READY_BY_LABEL = {"OBSERVED_PRODUCTION": "ja, wenn die Bedeutung geprüft ist", "OBSERVED_FIXTURE": "ja",
+                  "LIBRARY_DOCUMENTED": "nach Zensus / Mitschnitt", "ASSUMED": "nach Zensus / Mitschnitt", "ABSENT": "nein"}
+# Kanonische Zeilen (Teil A): woran der Zensus sie belegt — (Art, Name im Zensus)
+CANON_CENSUS = {
+    "Start (UTC)": ("herkunft", "start_gmt"), "Start (Ortszeit)": ("herkunft", "start_local"),
+    "UTC-Versatz": ("herkunft", "utc_offset_s"), "Sportart": ("herkunft", "type_key"), "Garmin-Typ": ("herkunft", "type_key"),
+    "Garmin-Obertyp": ("herkunft", "parent_type_id"), "Dauer (Timer)": ("feld", "duration"), "Distanz": ("feld", "distance"),
+    "Ø Herzfrequenz": ("feld", "averageHR"), "Max. Herzfrequenz": ("feld", "maxHR"), "Kalorien": ("feld", "calories"),
+    "Hoehenmeter": ("feld", "elevationGain"), "Ø Geschwindigkeit": ("feld", "averageSpeed"), "Ø Leistung": ("feld", "avgPower"),
+    "Max. Leistung": ("feld", "maxPower"), "Normalisierte Leistung": ("feld", "normPower"),
+    "Trainingsbelastung": ("feld", "activityTrainingLoad"),
+    "Zeitachse": ("quelle", "directTimestamp"), "Herzfrequenz": ("quelle", "directHeartRate"),
+    "Geschwindigkeit": ("quelle", "directSpeed"), "Distanz (kumulativ)": ("quelle", "sumDistance"),
+    "Hoehe": ("quelle", "directElevation"), "Schrittfrequenz": ("quelle", "directDoubleCadence"),
+    "Schrittfrequenz (Ersatz)": ("quelle", "directRunCadence"), "Trittfrequenz": ("quelle", "directBikeCadence"),
+    "Leistung": ("quelle", "directPower"), "Bewegungszeit": ("herkunft", "moving_duration_s"),
+    "Verstrichene Zeit": ("herkunft", "elapsed_duration_s"), "Timer-Zeit": ("herkunft", "timer_duration_s"),
+    "Abtastung": ("herkunft", "stream_rows"),
+}
+
+
+def _evidence(key: str, sports, base: str, art: str) -> tuple[str, str]:
+    """(Text fuer RAW AVAILABLE?, Text fuer HIGHLIGHT-READY?) — nach Zensus, sonst nach Code."""
+    if OBS is None:
+        label = CR.BASE_LABEL[base]
+        return (AVAIL[base], READY_BY_LABEL[label])
+    r = CR.evidence_label(key, sports, base, OBS, art)
+    label = r["label"]
+    if label == "OBSERVED_PRODUCTION":
+        seen = ", ".join(f"{sp} {n}/{r['basis'].get(sp, '?')}" for sp, n in sorted(r["seen"].items()))
+        text = f"OBSERVED_PRODUCTION ({seen})"
+        if base == "fixture":
+            text += " + Mitschnitt"
+    elif label == "ABSENT":
+        text = "ABSENT (" + ", ".join(f"{sp} 0/{n}" for sp, n in sorted(r["basis"].items())) + ")"
+    else:
+        text = AVAIL[base] + (f" — {r['note']}" if r.get("note") else "")
+    return (text, READY_BY_LABEL[label])
 GROUP = {"time": "Zeit", "volume": "Umfang", "structure": "Struktur", "speed": "Tempo", "heart": "Herz",
          "energy": "Energie", "effect": "Belastung / Wirkung", "zones": "Zonen", "power": "Leistung",
          "running": "Laufdynamik", "cycling": "Rad", "swimming": "Schwimmen / Rudern", "strength": "Kraft",
@@ -71,28 +126,63 @@ def _sports(s) -> str:
 
 
 def rows_canonical() -> list[tuple]:
-    return [(c["field"], _sports(c["sports"]), EP[c["ep"]], f"`{c['raw']}`", AVAIL[c["evidence"]], "ja", f"`{c['stored']}`",
-             c["shown"], c["shape"], c["unit"], c["norm"], c["lossy"], c["ready"], c["note"]) for c in GF.CANONICAL]
+    out = []
+    for c in GF.CANONICAL:
+        art, key = CANON_CENSUS.get(c["field"], (None, None))
+        avail, ready = _evidence(key, c["sports"], c["evidence"], art) if art else (AVAIL[c["evidence"]], None)
+        # „ready" aus dem Code gilt nur, solange der Zensus nichts anderes sagt (ABSENT → nein)
+        ready_txt = "nein" if (ready == "nein" and OBS is not None and art) else c["ready"]
+        out.append((c["field"], _sports(c["sports"]), EP[c["ep"]], f"`{c['raw']}`", avail, "ja", f"`{c['stored']}`",
+                    c["shown"], c["shape"], c["unit"], c["norm"], c["lossy"], ready_txt, c["note"]))
+    return out
 
 
 def rows_known() -> list[tuple]:
-    return [(GROUP[f["group"]], _sports(f["sports"]), EP["list"], f"`{f['key']}`", AVAIL[f["evidence"]], "ja, wenn geliefert",
-             f"`metrics.ext.fields.{f['key']}`", "nein", "summary", f["unit"], "keine (Rohwert)", "nein", READY[f["evidence"]], f["note"])
-            for f in GF.KNOWN]
+    out = []
+    for f in GF.KNOWN:
+        avail, ready = _evidence(f["key"], f["sports"], f["evidence"], "feld")
+        out.append((GROUP[f["group"]], _sports(f["sports"]), EP["list"], f"`{f['key']}`", avail, "ja, wenn geliefert",
+                    f"`metrics.ext.fields.{f['key']}`", "nein", "summary", f["unit"], "keine (Rohwert)", "nein", ready, f["note"]))
+    return out
 
 
 def rows_series() -> list[tuple]:
-    return [(GROUP[f["group"]], _sports(f["sports"]), EP["details"], f"`{f['key']}`", AVAIL[f["evidence"]], "ja, wenn geliefert",
-             f"`metrics.ext.series.{f['key']}`", "nein", "series", f["unit"] + " (maßgeblich: garmin_unit der Antwort)",
-             "keine (Rohwert, gleicher Index wie die Zeitachse)", "ja: Ausdünnung", READY[f["evidence"]], f["note"])
-            for f in GF.SERIES_KNOWN]
+    out = []
+    for f in GF.SERIES_KNOWN:
+        avail, ready = _evidence(f["key"], f["sports"], f["evidence"], "reihe")
+        out.append((GROUP[f["group"]], _sports(f["sports"]), EP["details"], f"`{f['key']}`", avail, "ja, wenn geliefert",
+                    f"`metrics.ext.series.{f['key']}`", "nein", "series", f["unit"] + " (maßgeblich: garmin_unit der Antwort)",
+                    "keine (Rohwert, gleicher Index wie die Zeitachse)", "ja: Ausdünnung", ready, f["note"]))
+    return out
+
+
+def _extra_condition(name: str) -> str:
+    cond = detail_sync.EXTRA_CONDITIONS.get(name) or {}
+    parts = []
+    if cond.get("stream"):
+        parts.append(f"nur wenn die Aufzeichnung die Reihe `{cond['stream']}` hat")
+    for sport, keys in (cond.get("type_keys") or {}).items():
+        parts.append(f"{sport} nur bei Garmin-Typ " + ", ".join(f"`{k}`" for k in keys))
+    return "; ".join(parts) or "keine Zusatzbedingung"
 
 
 def rows_extras() -> list[tuple]:
-    return [(EXTRA_WHAT[name], _sports(sports), EXTRA_METHOD[name], "Antwortform unbelegt", AVAIL["library"] + " (Methode); Form unbelegt",
+    return [(EXTRA_WHAT[name], _sports(sports), EXTRA_METHOD[name], "Antwortform unbelegt", "LIBRARY_DOCUMENTED (Methode); Form ASSUMED",
              "nur mit `DETAIL_EXTRAS`", f"`{EXTRA_STORE[name]}`", "nein", "structure", "—",
              "Form erhalten, nur Messwerte (keep_structure)", "ja: private Felder, Koordinaten, Deckel 400 Einträge", "nach Mitschnitt",
-             "standardmäßig AUS") for name, sports in detail_sync.EXTRAS.items()]
+             "standardmäßig AUS · " + _extra_condition(name)) for name, sports in detail_sync.EXTRAS.items()]
+
+
+def label_counts() -> dict:
+    """Wie viele Zeilen (Teil A–C) auf welcher Belegstufe stehen."""
+    counts = {"OBSERVED_PRODUCTION": 0, "OBSERVED_FIXTURE": 0, "LIBRARY_DOCUMENTED": 0, "ASSUMED": 0, "ABSENT": 0}
+    for rows in (rows_canonical(), rows_known(), rows_series()):
+        for r in rows:
+            for label in counts:
+                if r[4].startswith(label):
+                    counts[label] += 1
+                    break
+    return counts
 
 
 def sport_map_table() -> str:
@@ -118,14 +208,20 @@ def census_sql() -> str:
 
 
 def render() -> str:
-    n_fix = sum(1 for c in GF.CANONICAL if c["evidence"] == "fixture")
-    n_lib = sum(1 for f in GF.KNOWN if f["evidence"] == "library") + sum(1 for c in GF.CANONICAL if c["evidence"] == "library")
-    n_ass = (sum(1 for f in GF.KNOWN if f["evidence"] == "assumed") + len(GF.SERIES_KNOWN)
-             + sum(1 for c in GF.CANONICAL if c["evidence"] == "assumed"))
+    lc = label_counts()
     reach = sorted(set(normalize.SPORT_MAP.values()))
+    if OBS is None:
+        census_state = ("**Noch kein Produktions-Zensus erhoben.** Jede Zeile steht auf der Stufe aus dem Code; "
+                        "`OBSERVED_PRODUCTION` und `ABSENT` kommen erst mit dem Zensus (Abschnitt 12).")
+    else:
+        n_act = sum(int(b.get("alle", 0)) for b in OBS["basis"].values())
+        census_state = (f"**Zensus vom {OBS.get('date')}** (Worker {OBS.get('worker') or 'unbekannt'}, {n_act} Garmin-Aktivitäten, "
+                        f"Sportarten: {', '.join(sorted(OBS['basis']))}). Einzelheiten: `GARMIN-FIELD-CENSUS-PROD.md`.")
+    windows = ", ".join((f"{w} s" if w < 60 else f"{w // 60} min") for w in best_efforts.POWER_WINDOWS_S)
+    targets = ", ".join((f"{int(t)} m" if t < 1000 else f"{t / 1000:g} km") for t in best_efforts.DISTANCE_TARGETS_M)
     parts = [f"""# Garmin-Fähigkeits-Matrix
 
-**Status: IMPLEMENTED** · Stand v8-447 · Worker Details-Vertrag {detail_sync.DETAILS_CONTRACT_VERSION} · Rohblock-Version {GF.EXT_VERSION}
+**Status: IMPLEMENTED** · Stand Worker {WORKER_BUILD} · Details-Vertrag {detail_sync.DETAILS_CONTRACT_VERSION} · Rohblock-Version {GF.EXT_VERSION}
 
 > Diese Datei wird **erzeugt**: `python garmin-worker/scripts/gen_capability_matrix.py`.
 > Die Tabellen stammen aus dem Code des Workers (`garmin_fields.py`, `detail_sync.py`, `normalize.py`).
@@ -137,16 +233,27 @@ Rohwerte bleiben unter ihrem Garmin-Namen, nichts wird erfunden, nichts stillsch
 
 ## 1 · Wie belastbar ist eine Zeile? (Belegstufen)
 
-| Stufe | Bedeutung | Anzahl Zeilen |
+| Stufe | Bedeutung | Zeilen (Teil A–C) |
 |---|---|---|
-| **fixture** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | {n_fix} |
-| **library** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | {n_lib} |
-| **assumed** | üblicher Garmin-Connect-Name, hier **nicht** belegt | {n_ass} |
+| **OBSERVED_PRODUCTION** | im Produktions-Zensus für die Sportart gezählt | {lc['OBSERVED_PRODUCTION']} |
+| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | {lc['OBSERVED_FIXTURE']} |
+| **LIBRARY_DOCUMENTED** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | {lc['LIBRARY_DOCUMENTED']} |
+| **ASSUMED** | üblicher Garmin-Connect-Name, hier **nicht** belegt | {lc['ASSUMED']} |
+| **ABSENT** | im Zensus nie geliefert, obwohl mindestens {CR.MIN_BASIS} passende Aktivitäten vorliegen | {lc['ABSENT']} |
+
+{census_state}
+
+Regeln:
+
+- Eine Zeile wird **nur** `OBSERVED_PRODUCTION`, wenn das Feld im Zensus gezählt wurde — nie, weil Garmin es
+  „können müsste". Die Zahl dahinter (`running 118/120`) nennt Aktivitäten mit dem Feld / Aktivitäten der Sportart.
+- `OBSERVED_PRODUCTION` belegt, dass Garmin das Feld **liefert** — nicht, was es **bedeutet**. Einheit und Bedeutung
+  belegt erst ein Mitschnitt oder der Vergleich mit Garmin Connect (`PERFORMANCE-DATA-ELIGIBILITY.md`).
+- Zu wenige Aktivitäten einer Sportart: die Zeile behält ihre bisherige Stufe. Unklar bleibt unklar.
 
 Im Repo liegt genau **ein** echter Mitschnitt: die Detailantwort **eines Laufs**
 (`garmin-worker/tests/fixtures/garmin/activity_details.json`). Es gibt keinen echten Listeneintrag,
-keinen Rad-, Schwimm- oder Kraft-Mitschnitt und keine Antwort der Zusatzabrufe. Alles
-Sportartspezifische außerhalb der Lauf-Messreihen ist deshalb *library* oder *assumed*.
+keinen Rad-, Schwimm- oder Kraft-Mitschnitt und keine Antwort der Zusatzabrufe.
 Ein angenommener Name, den Garmin nicht liefert, erzeugt schlicht kein Feld — er richtet keinen Schaden an.
 Wie aus Annahmen Belege werden: Abschnitt 12 (Feldzensus, ohne Login) und Abschnitt 13 (Mitschnitt).
 
@@ -344,10 +451,60 @@ nicht wiederholen. Liegt ein Mitschnitt im Ordner, prüft `tests/test_capture_sc
 | Variable | Standard | Wirkung |
 |---|---|---|
 | `DETAIL_BACKFILL_LIMIT` | 10 | Aktivitäten je Sync-Lauf, für die Details (nach)geladen werden |
+| `DETAIL_MAXCHART` | 0 (= Standard der Bibliothek, 2000) | wie viele Messzeilen Garmin je Aktivität höchstens liefern soll. Gleicher Abruf, gleiche Anzahl Calls, größere Antwort. Ob Garmin mehr als 2000 bedient, ist **nicht belegt** — ablesbar an `stream_rows` / `stream_total` (Zensus, Art `abtastung`). Gedeckelt auf 30 000. |
 | `DETAIL_EXTRAS` | leer (aus) | kommagetrennt aus: {", ".join(detail_sync.EXTRAS)} |
 | `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Endet von selbst, sobald keine Zeile mehr ohne Herkunftsblock ist. |
 
-## 15 · Altlasten und offene Punkte
+## 15 · Auswertung und Anzeige sind getrennt
+
+Grundsatz seit v8-447.1:
+
+| | Grundlage | Zweck |
+|---|---|---|
+| **Auswertung** | alle von Garmin gelieferten Messzeilen, vor der Ausdünnung | Bestwerte, Kennwerte — alles, was später festgeschrieben werden kann |
+| **Anzeige** | `metrics.streams`, höchstens {series_normalize.STREAM_MAX} Punkte je Reihe | Diagramme |
+
+Aus einer Anzeige-Reihe wird nie ein Rekord gerechnet. Der Worker rechnet beim Import und legt das Ergebnis
+an die Aktivität (`metrics.best_efforts`); er schreibt keine Rekorde fest und vergleicht nichts über Aktivitäten hinweg.
+
+**Leistung** (`best_efforts.power.windows`) — beste Durchschnittsleistung über {windows}:
+
+- Fenster `[t, t + D]` auf der **verstrichenen** Zeit. Nie „N Messpunkte", nie Bewegungszeit.
+- Eine **Pause** gehört in das Fenster und zählt 0 W. Bewegungsabschnitte werden nicht zusammengeklebt.
+- **0 W** ist ein Messwert. Eine Zeile **ohne** Leistungswert zählt als 0 W — nicht interpoliert, nicht übersprungen;
+  die betroffene Zeit steht am Fenster (`miss_s`). Das Ergebnis kann dadurch nur zu niedrig werden, nie zu hoch.
+- Güte je Fenster: `exact` (Garmin lieferte alle Zeilen **und** die Uhr zeichnete sekündlich auf — die Zahl ist die
+  Messung) · `approx` (ausgedünnt oder nicht sekündlich, mindestens {best_efforts.APPROX_MIN_SAMPLES} Abstände im Fenster —
+  Näherung, **kein Rekord**) · `insufficient` (Auflösung reicht nicht — **keine Zahl gespeichert**).
+
+**Strecke** (`best_efforts.distance.targets`, nur {", ".join(best_efforts.DISTANCE_SPORTS)}) — schnellste Zeit über {targets}:
+das kürzeste Stück zwischen zwei **echten** Messzeilen, das die Zieldistanz erreicht. Keine Interpolation; die Zeit ist
+gemessen, der Überhang (`over_m`) steht dabei. Die Zahl ist eine Obergrenze der wahren Bestzeit — nie zu schnell.
+
+**Kennwerte** (`best_efforts.stats`) — Mittel und Maximum je Reihe aus allen gelieferten Zeilen; `avg` mit Nullen,
+`avg_nz` ohne. Hat Garmin ausgedünnt (`native: false`), ist das Mittel eine Näherung.
+
+**Offen:** Im einzigen Mitschnitt lieferte Garmin 1855 von 5527 aufgezeichneten Zeilen (üblicher Abstand 3 s). Damit sind
+Leistungsfenster unter {best_efforts.APPROX_MIN_SAMPLES * 3} s `insufficient` und alle längeren `approx`. `exact` setzt
+voraus, dass Garmin mit `DETAIL_MAXCHART` alle Zeilen liefert — das ist **nicht belegt** und muss in Produktion gezeigt werden.
+
+## 16 · Fehlerklassen des Nachladens
+
+| Klasse | Auslöser | Folge |
+|---|---|---|
+| `AUTH` | Sitzung ungültig (401) | Lauf endet sofort; Sync gilt als nicht erfolgreich; nichts wird einer Aktivität angelastet |
+| `RATE_LIMIT` | Garmin bremst (429) | wie `AUTH`; der Zeitplaner verlängert die Pause; keine sofortige Wiederholung |
+| `NETWORK` | nicht erreichbar, 5xx, Zeitüberschreitung | zählt nicht; nach {backfill.NETWORK_ABORT_AFTER} in Folge endet der Lauf |
+| `NOT_FOUND` | Garmin kennt die Aktivität nicht (404/410) | zählt |
+| `UNSUPPORTED` | Anfrage abgelehnt (400/405/406/409/415/422) | zählt |
+| `MALFORMED` | Antwort ist keine lesbare Struktur | zählt |
+| `PERSISTENCE` | Speichern in der Datenbank fehlgeschlagen | zählt nicht; nächster Lauf versucht es erneut |
+| `UNKNOWN` | nicht einzuordnen (auch 403) | zählt nur, wenn im selben Lauf eine andere Aktivität gelang |
+
+Nach {detail_sync.DETAIL_FAIL_MAX} gezählten Fehlern wird eine Aktivität {detail_sync.DETAIL_FAIL_RETRY_DAYS} Tage zurückgestellt
+(`detailsFailCount`, `detailsFailedAt`, `detailsFailCategory`). Ein Erfolg löscht den Vermerk. Stand: `GARMIN-BACKFILL-STATUS.md`.
+
+## 17 · Altlasten und offene Punkte
 
 1. **Kadenz im Altbestand** — nicht umgerechnet, bis zum Nachladen ausgeblendet (Abschnitt 4).
 2. **Bestzeiten können sich ändern**, sobald eine Aktivität ihre echte Zeitachse hat: die App rechnet

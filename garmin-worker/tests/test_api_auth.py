@@ -50,7 +50,16 @@ def _request(client, method, path, body, headers=None):
 def test_healthz_needs_no_auth(client):
     r = client.get("/healthz")
     assert r.status_code == 200
-    assert r.json() == {"ok": True}
+    body = r.json()
+    assert body["ok"] is True
+    # v8-447.1: der Healthcheck nennt den ausgerollten Stand — und sonst nichts.
+    import sys
+
+    from orvia_worker import WORKER_BUILD
+    from orvia_worker.detail_sync import DETAILS_CONTRACT_VERSION
+    assert body == {"ok": True, "worker": WORKER_BUILD, "detailsContract": DETAILS_CONTRACT_VERSION,
+                    "python": f"{sys.version_info.major}.{sys.version_info.minor}"}
+    assert WORKER_BUILD.startswith("v8-")
 
 
 @pytest.mark.parametrize("method,path,body", PROTECTED)
