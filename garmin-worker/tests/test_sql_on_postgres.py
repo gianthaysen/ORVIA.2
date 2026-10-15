@@ -411,3 +411,124 @@ def test_census_reports_resolution_incomplete_provenance_and_semantics(census):
     text = census["text"]
     for secret in ("10012.3", "3475.1", "2026-07-12", "161.0", "212.0"):
         assert secret not in text, secret
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v8-447.3 · Herkunft: Status im Zensus = Python, Probelauf, Rueckweg
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _prov_cases():
+    """(sport, started_at, metrics vorher, Listeneintrag oder None) — wie in Produktion."""
+    from orvia_worker import provenance as PV  # noqa: F401
+    det = {"detailsVersion": 3, "detailsMaxchart": 20000, "streams": {"time": [0, 1]},
+           "garmin": {"moving_duration_s": 3500.0, "stream_rows": 3600, "stream_total": 3600},
+           "ext": {"v": 1, "series": {"directVerticalRatio": [1.0]}}}
+    def m(**over):
+        x = json.loads(json.dumps(det))
+        for k, v in over.items():
+            x[k] = v
+        return x
+    corr = {"duration": {"manual": 4500, "source": 20460, "at": "2026-10-11T08:00:00Z"}}
+    return [
+        ("running", "2026-07-16T16:03:00+00:00", m(), _entry(activityId=1, startTimeLocal="2026-07-16 18:03:00", startTimeGMT="2026-07-16 16:03:00")),
+        ("gym", "2026-07-15T05:10:00+00:00", m(corrections=corr, plannedSessionId="ps-1"),
+         _entry(activityId=2, activityType={"typeKey": "strength_training"}, startTimeLocal="2026-07-15 07:10:00", startTimeGMT="2026-07-15 05:10:00")),
+        ("cycling", "2026-09-01T17:00:00+00:00", m(), _entry(activityId=3, activityType={"typeKey": "virtual_ride", "parentTypeId": 2},
+                                                             startTimeLocal="2026-09-01 19:00:00", startTimeGMT="2026-09-01 17:00:00")),
+        ("swimming", "2026-09-03T05:00:00+00:00", m(), _entry(activityId=4, activityType={"typeKey": "lap_swimming"}, startTimeLocal=None,
+                                                              startTimeGMT="2026-09-03 05:00:00")),          # ohne Ortszeit
+        ("running", "2026-09-20T06:00:00+00:00", m(), None),                                                    # nicht gelistet
+        ("running", "2026-09-21T04:00:00+00:00", m(), _entry(activityId=6, startTimeLocal="2026-09-21 08:00:00", startTimeGMT="2026-09-21 06:00:00")),  # 2 h daneben
+        ("swimming", "2026-10-12T06:00:00+00:00",                                                              # schon vollstaendig
+         m(garmin={"type_key": "lap_swimming", "start_gmt": "2026-10-12T06:00:00Z", "start_local": "2026-10-12T08:00:00", "utc_offset_s": 7200, "v": 1}), None),
+        ("running", "2026-10-13T06:00:00+00:00", {}, None),                                                     # gar kein Block, nicht gelistet
+    ]
+
+
+def test_provenance_status_backfill_dryrun_and_rollback_on_postgres(pg):
+    from orvia_worker import provenance as PV
+    cases = _prov_cases()
+    before = []
+    entries = []
+    for i, (sport, started, metrics, entry) in enumerate(cases):
+        rid = str(1000 + i)
+        before.append({"user_id": "u", "source": "garmin", "source_record_id": rid, "sport_id": sport,
+                       "started_at": started, "metrics": metrics})
+        if entry is not None:
+            e = dict(entry, activityId=1000 + i)
+            if e.get("startTimeLocal") is None:
+                e.pop("startTimeLocal")
+            entries.append(e)
+
+    def lister(a, b):
+        out = []
+        for e in entries:
+            d = (e.get("startTimeLocal") or e["startTimeGMT"])[:10]
+            if a <= d <= b:
+                out.append(normalize.normalize_activity(json.loads(json.dumps(e))))
+        return out
+
+    db = FakeDb()
+    asyncio.run(db.insert("activities", json.loads(json.dumps(before))))
+    res = asyncio.run(PV.backfill(db, "u", lister, mode="apply", now="2026-10-15T09:00:00+00:00"))
+    after = {r["source_record_id"]: r for r in db.tables["activities"]}
+    py_status = {rid: PV.status(r["metrics"])["status"] for rid, r in after.items()}
+    assert sorted(py_status.values()) == sorted(["complete", "complete", "complete", "unavailable", "unavailable",
+                                                  "inconsistent", "complete", "unavailable"]), py_status
+    assert res["candidates"] == 7 and res["not_listed"] == 2
+
+    pg("""drop table if exists public.activities;
+          create table public.activities (id serial primary key, user_id text, source text, sport_id text,
+                                          started_at timestamptz, metrics jsonb not null default '{}'::jsonb);""")
+    pg("\n".join(f"insert into public.activities (user_id, source, sport_id, started_at, metrics) values "
+                 f"('u','garmin','{r['sport_id']}','{r['started_at']}',{_q(r['metrics'])});" for r in before)
+       + "insert into public.activities (user_id, source, sport_id, metrics) values ('u','manual','running','{\"garmin\":{}}');")
+
+    def dry():
+        out = {}
+        for line in pg(file=SQL / "scripts" / "provenance_backfill_dryrun.sql", csv=True).splitlines()[1:]:
+            art, sport, name, n = line.split(",")
+            out[(art, sport, name)] = int(n)
+        return out
+    d0 = dry()
+    assert sum(n for (a, _, _), n in d0.items() if a == "status") == len(before)              # manual zaehlt nicht
+    assert sum(n for (a, _, nm), n in d0.items() if a == "status" and nm == "partial") == 7
+    assert d0[("status", "swimming", "complete")] == 1
+    assert d0[("kandidat", "gym", "mit_korrektur")] == 1 and d0[("kandidat", "gym", "mit_planverknuepfung")] == 1
+    assert d0[("kandidat", "running", "kein_block")] == 1
+    assert d0[("abrufe", "(alle)", "zeitfenster")] == len(PV.windows([__import__("datetime").date.fromisoformat(r["started_at"][:10])
+                                                                         for r in before if PV.needs_backfill(r["metrics"])]))
+
+    # Stand nach dem Backfill (so schreibt ihn der Worker) → Zensus zaehlt wie Python
+    for r in before:
+        pg(f"update public.activities set metrics = {_q(after[r['source_record_id']]['metrics'])} "
+           f"where source = 'garmin' and started_at = '{r['started_at']}';")
+    text = pg(file=SQL / "scripts" / "garmin_field_census.sql", csv=True)
+    rows = CR.parse_rows(text)
+    sql_status = {}
+    for art, sport, name, n in rows:
+        if art == "herkunft_status":
+            sql_status[name] = sql_status.get(name, 0) + n
+    want = {}
+    for s in py_status.values():
+        want[s] = want.get(s, 0) + 1
+    assert sql_status == want
+    names = {(a, nm) for a, _, nm, _ in rows if a.startswith("herkunft_")}
+    assert ("herkunft_luecke", "nicht_gelistet") in names and ("herkunft_luecke", "widerspruch:started_at") in names
+    assert ("herkunft_luecke", "nicht_geliefert:start_local") in names
+    assert ("herkunft_nachgetragen", "garmin.type_key") in names and ("herkunft_nachgetragen", "ext.fields") in names
+    for secret in ("2026-07-16", "ps-1", "virtual_ride:", "4500"):
+        assert secret not in text, secret
+    d1 = dry()
+    assert sum(n for (a, _, nm), n in d1.items() if a == "status" and nm == "partial") == 0
+    assert sum(n for (a, _, nm), n in d1.items() if a == "nachgetragen") == 5          # vier vollstaendig + der Widerspruch (ergaenzt, aber markiert)
+
+    # Rueckweg: exakt der Stand vor dem Backfill
+    pg(file=SQL / "scripts" / "provenance_backfill_rollback.sql")
+    back = pg("select metrics::text from public.activities where source = 'garmin' order by id;", csv=True).splitlines()[1:]
+    got = [json.loads(json.loads('"' + x.strip('"').replace('""', '\\"') + '"')) if x.startswith('"') else json.loads(x) for x in back]
+    assert got == [r["metrics"] for r in before]
+    # ein zweiter Rueckweg aendert nichts
+    pg(file=SQL / "scripts" / "provenance_backfill_rollback.sql")
+    back2 = pg("select metrics::text from public.activities where source = 'garmin' order by id;", csv=True).splitlines()[1:]
+    assert back2 == back

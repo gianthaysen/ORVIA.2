@@ -46,7 +46,8 @@ CORR = {"duration": {"manual": 4500, "source": 1199, "unit": "s", "at": "2026-10
 
 def _v3_row(rid, started, *, maxchart=None, extra=None):
     m = {"detailsFetchedAt": "2026-10-09T10:00:00+00:00", "detailsVersion": 3,
-         "garmin": {"v": 1, "type_key": "virtual_ride", "start_gmt": "2026-10-01T06:00:00Z", "stream_rows": 400, "stream_total": 1200},
+         "garmin": {"v": 1, "type_key": "virtual_ride", "start_gmt": "2026-10-01T06:00:00Z", "start_local": "2026-10-01T08:00:00",
+                    "utc_offset_s": 7200, "stream_rows": 400, "stream_total": 1200},
          "ext": {"v": 1, "fields": {"avgPower": 201.7, "maxPower": 600.0, "averageHR": 140.0, "duration": 1199.0}},
          "streams": {"power": [1, 2]}}
     if maxchart is not None:
@@ -63,7 +64,10 @@ def test_incomplete_provenance_block_is_recognised():
     assert pi({"garmin": {"moving_duration_s": 3301, "stream_rows": 1855}})            # vom Nachladen angelegt: unvollstaendig
     assert pi({"garmin": {"type_key": "running"}})                                       # Ortszeit/GMT fehlt
     assert pi({"garmin": {"type_key": "", "start_gmt": "2026-07-12T06:30:00Z"}})
-    assert not pi({"garmin": {"type_key": "running", "start_gmt": "2026-07-12T06:30:00Z", "moving_duration_s": 1}})
+    # v8-447.3: vollstaendig = Typ, UTC-Zeit, Ortszeit und Versatz (provenance.REQUIRED)
+    assert pi({"garmin": {"type_key": "running", "start_gmt": "2026-07-12T06:30:00Z", "moving_duration_s": 1}})
+    assert not pi({"garmin": {"type_key": "running", "start_gmt": "2026-07-12T06:30:00Z", "start_local": "2026-07-12T08:30:00",
+                              "utc_offset_s": 7200, "moving_duration_s": 1}})
 
 
 def test_wide_lookback_now_picks_up_rows_with_an_incomplete_block(fake_db, test_crypto, test_settings, fake_garmin_api):

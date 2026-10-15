@@ -36,6 +36,16 @@ def _bool_env(env: dict, name: str) -> bool:
     return (env.get(name) or "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def _mode_env(env: dict, name: str) -> str:
+    """'dry' → nur zaehlen; ausdrueckliche Zustimmung → 'apply'; alles andere → 'off'."""
+    raw = (env.get(name) or "").strip().lower()
+    if raw in ("dry", "dry-run", "dryrun"):
+        return "dry"
+    if raw in ("1", "true", "yes", "on", "apply"):
+        return "apply"
+    return "off"
+
+
 def _parse_legacy_keys(raw: str) -> dict[int, str]:
     """Parst "1:key,2:key" zu {1: key, 2: key}."""
     out: dict[int, str] = {}
@@ -97,6 +107,15 @@ class Settings:
     # Gleiche Grenzen wie das Nachladen: DETAIL_BACKFILL_LIMIT je Lauf, Abbruch bei 429.
     # Standard AUS — ein Deploy loest damit keinen Abruf aus.
     detail_refetch_resolution: bool = False
+    # v8-447.3 · Metadaten-Backfill der Garmin-Herkunft (Typ, UTC- und Ortszeit, Rohfelder) aus der
+    # Aktivitaets-LISTE — keine Detailabrufe, keine Messreihen. 'off' (Standard) | 'dry' (nur zaehlen,
+    # nichts schreiben; Ergebnis im Sync-Protokoll) | 'apply'. Nur Zeilen mit Status 'partial';
+    # hoechstens provenance.MAX_WINDOWS_PER_RUN Listenabrufe je Lauf; Abbruch bei 401/429.
+    provenance_backfill: str = "off"
+    # v8-447.3 · Aktivitaeten auf Vertrag 3, deren Bedeutungspruefung fehlt, weil beim Laden der
+    # Details die Rohfelder des Listeneintrags noch nicht in der Zeile standen (metrics.ext.fields),
+    # EINMAL neu laden. Erst NACH dem Metadaten-Backfill sinnvoll. Standard AUS.
+    detail_refetch_semantics: bool = False
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -136,6 +155,8 @@ class Settings:
             activity_provenance_backfill_days=max(0, _int_env(env, "ACTIVITY_PROVENANCE_BACKFILL_DAYS", 0)),
             detail_maxchart=min(30000, max(0, _int_env(env, "DETAIL_MAXCHART", 0))),
             detail_refetch_resolution=_bool_env(env, "DETAIL_REFETCH_RESOLUTION"),
+            provenance_backfill=_mode_env(env, "PROVENANCE_BACKFILL"),
+            detail_refetch_semantics=_bool_env(env, "DETAIL_REFETCH_SEMANTICS"),
         )
 
 

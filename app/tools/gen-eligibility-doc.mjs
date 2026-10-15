@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
-   ORVIA · Generator fuer app/docs/PERFORMANCE-DATA-ELIGIBILITY.md (v8-447.1)
+   ORVIA · Generator fuer app/docs/PERFORMANCE-DATA-ELIGIBILITY.md (v8-447.3)
 
    Die Spalten „ledger eligible?" und „reason" werden NICHT von Hand geschrieben: sie sind
    das Urteil von app/js/engine/metric-eligibility.js fuer eine Bezugs-Aktivitaet je Sportart
@@ -30,6 +30,9 @@ const T = [0, 60, 120, 180, 240, 300];
 const windows = q => Object.fromEntries(ME.POWER_WINDOWS.map(w => [String(w), { w: 250, at: 10, q }]));
 const targets = () => Object.fromEntries(ME.DISTANCE_TARGETS.map(t => [String(t), { s: Math.round(t * 0.3), over_m: 2, at: 0, q: 'measured' }]));
 
+/* Varianten: best (alles belegt und bestaetigt) · backfilled (Herkunft + Rohfelder da, Bedeutungspruefung
+   noch nicht gelaufen) · prod (Stand 15.10.2026 fuer 40 von 41: volle Aufloesung, aber kein Typ, keine
+   Startzeiten, keine Rohfelder) · thinned (ausgeduennt) · legacy (Vertrag < 3) · own (eigene Daten) */
 export function referenceActivity(sport, variant) {
   const v = variant || 'best';
   if (v === 'own') {
@@ -49,6 +52,8 @@ export function referenceActivity(sport, variant) {
   if (cad) stats.cadence = { n: 3600, avg: 171, max: 180, kind: cad.meta.kind };
   if (hasPower) stats.power = { n: 3600, avg: 250, max: 620 };
   const be = { v: 1, rows: 3600, total: 3600, native: v !== 'thinned', time_source: 'directTimestamp', stats };
+  const prov = v === 'prod' ? {} : { type_key: sport === 'swimming' ? 'lap_swimming' : sport, start_gmt: '2026-10-08T06:00:00Z',
+    start_local: '2026-10-08T08:00:00', utc_offset_s: 7200 };
   if (hasPower) be.power = { v: 1, basis: 'elapsed', status: 'ok', native: v !== 'thinned', interval_s: v === 'thinned' ? 3 : 1, windows: windows(v === 'thinned' ? 'approx' : 'exact') };
   if (ME.sportsOf('distanceBest').includes(sport)) be.distance = { v: 1, basis: 'elapsed', status: 'ok', targets: targets() };
   const fields = { duration: 3600, distance: 10000, averageHR: 150, maxHR: 172, calories: 700, aerobicTrainingEffect: 3.2 };
@@ -57,10 +62,10 @@ export function referenceActivity(sport, variant) {
   const a = { id: 'ref-' + sport, sportId: sport, source: 'garmin', status: 'completed', durationSeconds: 3600,
     summary: { avgHr: 150, maxHr: 172, caloriesKcal: 700 },
     metrics: { detailsVersion: v === 'legacy' ? 2 : 3, detailsFetchedAt: '2026-10-08T06:00:00Z', streams, stream_meta: v === 'legacy' ? undefined : meta,
-      garmin: { v: 1, type_key: sport === 'swimming' ? 'lap_swimming' : sport, timer_duration_s: 3600, moving_duration_s: 3590, elapsed_duration_s: 3700, stream_rows: 3600, stream_total: 3600,
+      garmin: { v: 1, ...prov, timer_duration_s: 3600, moving_duration_s: 3590, elapsed_duration_s: 3700, stream_rows: 3600, stream_total: 3600,
         /* Bestaetigung der Summenwerte gibt es nur aus vollstaendiger Lieferung (Worker: semantic_checks.confirmed) */
         semantics_ok: v === 'best' && sport === 'running' ? { averageRunningCadence: { reading: 'directDoubleCadence zeitgewichtet ohne Nullen', list: 171 } } : undefined },
-      best_efforts: v === 'legacy' ? undefined : be, ext: { v: 1, fields } } };
+      best_efforts: v === 'legacy' ? undefined : be, ext: v === 'prod' ? { v: 1, series: {} } : { v: 1, fields } } };
   if (sport !== 'gym') a.summary.distanceM = sport === 'swimming' ? 2000 : 10000;
   if (v === 'legacy') { delete a.metrics.streams.time; delete a.metrics.garmin.timer_duration_s; }
   return a;
@@ -99,7 +104,8 @@ const DOC = {
 };
 const REASON_DE = { missing_data: 'Wert oder Grundlage fehlt', legacy_schema: 'noch nicht nachgeladen', unverified_semantics: 'Bedeutung der Quelle nicht belegt',
   insufficient_resolution: 'Auflösung reicht nicht', invalid_time_axis: 'Zeitachse fehlt / ungültig', unsupported_source: 'Quelle kann das nicht tragen',
-  unsupported_sport: 'gibt es für die Sportart nicht', manual_override_conflict: 'manuelle Korrektur widerspricht der Aufzeichnung', not_completed: 'nicht abgeschlossen', unknown_metric: 'unbekannt' };
+  unsupported_sport: 'gibt es für die Sportart nicht', manual_override_conflict: 'manuelle Korrektur widerspricht der Aufzeichnung', not_completed: 'nicht abgeschlossen',
+  unverified_context: 'kontextgebundene Auswertung verlangt, Kontext nicht belegt', unknown_metric: 'unbekannt' };
 const EV_DE = { fixture: 'ja — Mitschnitt', validated: 'ja — gegen Garmin Connect geprüft', own: 'eigene Daten', observed: 'geliefert, Bedeutung offen', library: 'nur Bibliothek', assumed: 'nein — angenommen' };
 
 const SPORTS = ['running', 'cycling', 'swimming', 'gym', 'walking', 'hiking', 'rowing'];
@@ -124,7 +130,7 @@ function rowsFor(sport, variant) {
 export function render() {
   const out = [`# Performance-Daten: Was darf ins Leistungsregister?
 
-**Status: SPEZIFIKATION + VORBEREITETER CODE** · Stand v8-447.1 · Grundlage für v8-448 (Athlete Performance Ledger)
+**Status: SPEZIFIKATION + VORBEREITETER CODE** · Stand v8-447.3 · Grundlage für v8-448 (Athlete Performance Ledger)
 
 > Diese Datei wird **erzeugt**: \`node app/tools/gen-eligibility-doc.mjs\`. Die Spalten *ledger eligible?* und *reason*
 > sind das Urteil von \`app/js/engine/metric-eligibility.js\` — nicht von Hand geschrieben. Ein Test vergleicht Datei und Code.
@@ -220,26 +226,31 @@ ${(() => { const ok = []; const no = [];
     for (const sport of SPORTS) for (const x of rowsFor(sport, 'best')) (x.r.eligible ? ok : no).push(`${sport}: ${x.label}`);
     return '**Ja:** ' + (ok.join(' · ') || '—') + '\n\n**Eigene Daten:** Dauer (alle Quellen), Kraft-Volumen (ORVIA-Workout), Distanz und Tempo manueller Einheiten.\n\n**Noch nicht** (' + no.length + ' Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).'; })()}
 
-## 9 · Freigabe je Kennzahl (Abschluss Gate v8-447.1)
+## 9 · Freigabe je Kennzahl (finales Gate v8-447.3)
 
-Zwei Fälle je Kennzahl, beide vom Modul geurteilt: **heute** = wie die Daten in Produktion stehen (Details mit Standard-Auflösung
-geladen, Garmin hat ausgedünnt) · **nach Neuladen** = nach \`DETAIL_MAXCHART=20000\` + \`DETAIL_REFETCH_RESOLUTION=1\` (vollständige Antwort,
-an 8 Aktivitäten bestätigt).
+Drei Stände je Kennzahl, alle vom Modul geurteilt (Bezugs-Aktivität wie Abschnitt 4):
+
+- **heute** — Stand 15.10.2026 für 40 von 41 Garmin-Aktivitäten: vollständige Auflösung (maxchart=20000), aber ohne Garmin-Typ,
+  ohne Startzeiten, ohne Rohfelder des Listeneintrags.
+- **nach Herkunfts-Backfill** — \`PROVENANCE_BACKFILL=apply\`: Typ, UTC-/Ortszeit, Versatz und Rohfelder ergänzt (nur Liste, keine Detailabrufe).
+- **nach Neuprüfung** — \`DETAIL_REFETCH_SEMANTICS=1\`: Details einmal neu geladen, damit die Bedeutungsprüfung mit den nun vorhandenen
+  Rohfeldern läuft (nur dafür nötig: sie braucht alle Messzeilen).
 
 | Freigabe | Bedeutung |
 |---|---|
-| **FREI** | heute schon registerfähig |
-| **FREI NACH NEULADEN** | registerfähig, sobald die Aktivität mit vollständiger Antwort neu geladen ist |
-| **NICHT FREI** | Grund in Klammern — fehlt ein Beleg, hilft auch das Neuladen nicht |
+| **FREI** | heute registerfähig |
+| **FREI NACH HERKUNFTS-BACKFILL** | registerfähig, sobald der Metadaten-Backfill gelaufen ist |
+| **FREI NACH NEUPRÜFUNG** | zusätzlich erst nach dem einmaligen Neuladen für die Bedeutungsprüfung |
+| **NICHT FREI** | Grund in Klammern — es fehlt ein Beleg; Backfill und Neuladen ändern daran nichts |
 
 | Sportart | Kennzahl | Freigabe |
 |---|---|---|
 ${(() => { const lines = [];
     for (const sport of SPORTS) {
-      const best = rowsFor(sport, 'best'), thin = rowsFor(sport, 'thinned');
+      const best = rowsFor(sport, 'best'), mid = rowsFor(sport, 'backfilled'), now = rowsFor(sport, 'prod');
       best.forEach((x, i) => {
-        const t = thin[i];
-        const status = t && t.r.eligible ? '**FREI**' : x.r.eligible ? '**FREI NACH NEULADEN**' : 'NICHT FREI (`' + x.r.reason + '`)';
+        const status = now[i].r.eligible ? '**FREI**' : mid[i].r.eligible ? '**FREI NACH HERKUNFTS-BACKFILL**'
+          : x.r.eligible ? '**FREI NACH NEUPRÜFUNG**' : 'NICHT FREI (`' + x.r.reason + '`)';
         lines.push('| ' + sport + ' | ' + x.label + ' | ' + status + ' |');
       });
     }
@@ -248,7 +259,41 @@ ${(() => { const lines = [];
 | eigene Daten | Kraft-Volumen (ORVIA-Workout) | **FREI** |
 | eigene Daten | Distanz / Tempo (manuelle Einheit) | **FREI** — Bestzeiten nicht (keine Aufzeichnung) |
 
-## 10 · Protokoll des Gates
+Eine unvollständige Herkunft sperrt **keine** Kennzahl pauschal: Dauer, Distanz, Tempo, Herzfrequenz und Strecken-Bestzeit des Laufs
+brauchen weder Typ noch Ortszeit. Gesperrt wird nur, was den Kontext oder die Rohfelder wirklich braucht.
+
+## 10 · Kontext: Laufband, Rolle, Becken, Freiwasser
+
+Kontext kommt **nur** aus Garmins Typ (\`metrics.garmin.type_key\`) und nur, wenn der Name ihn ausdrücklich nennt. Ein generischer Typ
+(\`running\`, \`cycling\`) oder ein fehlender Typ = **unbelegt** (nicht „draußen"). Kein Raten aus GPS — auch virtuelle Fahrten haben eine
+Strecke —, aus dem Titel oder der Uhrzeit. Kontextgebundene Auswertungen fragen mit \`opts.environment\` und bekommen sonst \`unverified_context\`.
+
+| Garmin-Typ | Kontext |
+|---|---|
+${Object.entries(ME.CONTEXT).map(([k, v]) => '| `' + k + '` | ' + v + ' |').join('\n')}
+| alle anderen / keiner | unbelegt |
+
+| Fall | Urteil |
+|---|---|
+${(() => {
+    const withType = (sport, tk) => { const a = referenceActivity(sport, 'best'); a.metrics.garmin.type_key = tk; if (!tk) delete a.metrics.garmin.type_key; return a; };
+    const E = { evidence: { 'list.swim': { swimming: 'fixture' }, 'details.power': { cycling: 'fixture' }, 'details.time': { cycling: 'fixture' } } };
+    const cases = [
+      ['Lauf `running`: 5-km-Bestzeit', withType('running', 'running'), 'distanceBest', { targetM: 5000 }],
+      ['Lauf ohne Garmin-Typ: 5-km-Bestzeit', withType('running', null), 'distanceBest', { targetM: 5000 }],
+      ['Lauf `treadmill_running`: 5-km-Bestzeit', withType('running', 'treadmill_running'), 'distanceBest', { targetM: 5000 }],
+      ['Lauf `running`: 5-km-Bestzeit **draußen** verlangt', withType('running', 'running'), 'distanceBest', { targetM: 5000, environment: 'outdoor' }],
+      ['Lauf `trail_running`: 5-km-Bestzeit **draußen** verlangt', withType('running', 'trail_running'), 'distanceBest', { targetM: 5000, environment: 'outdoor' }],
+      ['Rad `virtual_ride`: 20-min-Leistung **draußen** verlangt (Beleg Leistung angenommen)', withType('cycling', 'virtual_ride'), 'powerBest', Object.assign({ windowS: 1200, environment: 'outdoor' }, E)],
+      ['Rad `road_biking`: 20-min-Leistung **draußen** verlangt (Beleg Leistung angenommen)', withType('cycling', 'road_biking'), 'powerBest', Object.assign({ windowS: 1200, environment: 'outdoor' }, E)],
+      ['Schwimmen `lap_swimming`: SWOLF (Beleg angenommen)', withType('swimming', 'lap_swimming'), 'swolf', E],
+      ['Schwimmen `open_water_swimming`: SWOLF', withType('swimming', 'open_water_swimming'), 'swolf', E],
+      ['Schwimmen ohne Garmin-Typ: SWOLF', withType('swimming', null), 'swolf', E]
+    ];
+    return cases.map(([label, a, metric, opts]) => { const r = ME.evaluate(a, metric, opts);
+      return '| ' + label + ' | ' + (r.eligible ? '**ja**' : 'nein (`' + r.reason + '`)') + ' |'; }).join('\n'); })()}
+
+## 11 · Protokoll der Gates
 
 | Datum | Prüfung | Ergebnis | Folge |
 |---|---|---|---|

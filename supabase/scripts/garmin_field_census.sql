@@ -1,5 +1,5 @@
 -- ============================================================
--- ORVIA · Feldzensus und Nachlade-Stand der Garmin-Aktivitaeten (v8-447.1)
+-- ORVIA · Feldzensus und Nachlade-Stand der Garmin-Aktivitaeten (v8-447.3)
 -- ------------------------------------------------------------
 -- Zweck: zeigt, welche Felder und Messreihen Garmin JE SPORTART wirklich liefert, wie weit
 -- das Nachladen auf den aktuellen Details-Vertrag ist und wie belastbar die Bestwerte sind —
@@ -23,6 +23,10 @@
 --   abtastung            vollstaendig (Garmin lieferte alle Zeilen) · ausgeduennt · gesamtzahl_unbekannt
 --   aufloesung           mit welchem maxChartSize die Details geladen wurden (standard / maxchart=…)
 --   herkunft_unvollstaendig  Herkunftsblock fehlt oder ohne Garmin-Typ / GMT-Startzeit
+--   herkunft_status      complete · partial · unavailable · inconsistent (v8-447.3, wie provenance.status)
+--   herkunft_luecke      ohne_typ_und_utc · ohne_typ · ohne_utc · ohne_ortszeit · nicht_gelistet ·
+--                        nicht_geliefert:<schluessel> · widerspruch:<schluessel>
+--   herkunft_nachgetragen  vom Metadaten-Backfill ergaenzt: zeilen · garmin.<schluessel> · ext.<schluessel>
 --   bedeutung            Listenwert gegen Aufzeichnung: Beziehung = Urteil [passende Lesart] (Lieferung)
 --   bedeutung_hinweis    Ursache einer Abweichung (z. B. two_definitions, pool_lengths, half_value)
 --   messreihe            kanonische Messreihe ← Garmin-Quelle [Bedeutung]
@@ -121,6 +125,67 @@ select 'herkunft_unvollstaendig', sport_id,
             else 'ohne_zeit' end,
        count(*)
 from x where coalesce(gm ->> 'type_key', '') = '' or coalesce(gm ->> 'start_gmt', '') = '' group by 1, 2, 3
+
+-- ---- Herkunft: Status je Zeile (v8-447.3, gleiche Regel wie orvia_worker/provenance.status) ----
+-- complete      Typ, UTC-Start, Ortszeit-Start und Versatz vorhanden, kein Widerspruch
+-- partial       es fehlt etwas, das noch nicht gegen die Garmin-Liste geprueft ist (Backfill-Kandidat)
+-- unavailable   was fehlt, hat Garmin beim Pruefen nachweislich nicht geliefert
+-- inconsistent  Liste und Zeile widersprechen sich (nichts ersetzt; prov_conflicts)
+union all
+select 'herkunft_status', sport_id, p.st, count(*)
+from x cross join lateral (
+  select case
+    when jsonb_typeof(gm -> 'prov_conflicts') = 'array' and jsonb_array_length(gm -> 'prov_conflicts') > 0 then 'inconsistent'
+    when cardinality(mi.missing) = 0 then 'complete'
+    when mi.missing <@ coalesce(array(select jsonb_array_elements_text(
+           case when jsonb_typeof(gm -> 'prov_unavailable') = 'array' then gm -> 'prov_unavailable' else '[]'::jsonb end)), '{}')
+      then 'unavailable'
+    else 'partial' end as st
+  from (select array(select k from unnest(array['type_key', 'start_gmt', 'start_local', 'utc_offset_s']) as k
+                     where coalesce(gm ->> k, '') = '') as missing) mi
+) p
+group by 1, 2, 3
+
+-- ---- Herkunft: welche Luecke (v8-447.3) ----------------------------------------
+-- ohne_typ_und_utc · ohne_typ · ohne_utc · ohne_ortszeit (Typ und UTC da, Ortszeit/Versatz fehlen)
+-- nicht_gelistet (die Garmin-Liste fuer den Tag enthielt die Aktivitaet nicht)
+-- nicht_geliefert:<schluessel> (Garmin lieferte den Schluessel nicht) · widerspruch:<schluessel>
+union all
+select 'herkunft_luecke', sport_id,
+       case when coalesce(gm ->> 'type_key', '') = '' and coalesce(gm ->> 'start_gmt', '') = '' then 'ohne_typ_und_utc'
+            when coalesce(gm ->> 'type_key', '') = '' then 'ohne_typ'
+            when coalesce(gm ->> 'start_gmt', '') = '' then 'ohne_utc'
+            else 'ohne_ortszeit' end,
+       count(*)
+from x where coalesce(gm ->> 'type_key', '') = '' or coalesce(gm ->> 'start_gmt', '') = ''
+          or coalesce(gm ->> 'start_local', '') = '' or coalesce(gm ->> 'utc_offset_s', '') = ''
+group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'nicht_gelistet', count(*) from x where gm -> 'prov_not_listed' = 'true'::jsonb group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'nicht_geliefert:' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_unavailable') = 'array' then gm -> 'prov_unavailable' else '[]'::jsonb end) as k
+group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'widerspruch:' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_conflicts') = 'array' then gm -> 'prov_conflicts' else '[]'::jsonb end) as k
+group by 1, 2, 3
+
+-- ---- Herkunft: vom Metadaten-Backfill ergaenzt (v8-447.3) — zeigt die behobenen Faelle ----
+union all
+select 'herkunft_nachgetragen', sport_id, 'zeilen', count(*) from x where jsonb_typeof(gm -> 'prov_backfill') = 'object' group by 1, 2, 3
+union all
+select 'herkunft_nachgetragen', sport_id, 'garmin.' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_backfill' -> 'garmin') = 'array' then gm -> 'prov_backfill' -> 'garmin' else '[]'::jsonb end) as k
+group by 1, 2, 3
+union all
+select 'herkunft_nachgetragen', sport_id, 'ext.' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_backfill' -> 'ext') = 'array' then gm -> 'prov_backfill' -> 'ext' else '[]'::jsonb end) as k
+group by 1, 2, 3
 
 -- ---- Bedeutungspruefung: Listenwert gegen Aufzeichnung (v8-447.1) ---------------
 -- name = Beziehung = Urteil [passende Lesart] (Lieferung) — keine Werte

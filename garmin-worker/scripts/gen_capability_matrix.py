@@ -20,7 +20,7 @@ sys.path.insert(0, str(HERE.parent))
 
 import json  # noqa: E402
 
-from orvia_worker import WORKER_BUILD, backfill, best_efforts, detail_sync, garmin_fields as GF, normalize, semantic_checks, series_normalize  # noqa: E402
+from orvia_worker import WORKER_BUILD, backfill, best_efforts, detail_sync, garmin_fields as GF, normalize, provenance, semantic_checks, series_normalize  # noqa: E402
 
 sys.path.insert(0, str(HERE))
 import census_report as CR  # noqa: E402
@@ -453,7 +453,9 @@ nicht wiederholen. Liegt ein Mitschnitt im Ordner, prüft `tests/test_capture_sc
 | `DETAIL_BACKFILL_LIMIT` | 10 | Aktivitäten je Sync-Lauf, für die Details (nach)geladen werden |
 | `DETAIL_MAXCHART` | 0 (= Standard der Bibliothek, 2000) | wie viele Messzeilen Garmin je Aktivität höchstens liefern soll. Gleicher Abruf, gleiche Anzahl Calls, größere Antwort. Ob Garmin mehr als 2000 bedient, ist **nicht belegt** — ablesbar an `stream_rows` / `stream_total` (Zensus, Art `abtastung`). Gedeckelt auf 30 000. |
 | `DETAIL_EXTRAS` | leer (aus) | kommagetrennt aus: {", ".join(detail_sync.EXTRAS)} |
-| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Erfasst Zeilen **ohne** Herkunftsblock und Zeilen, deren Block unvollständig ist (es fehlt {" oder ".join("`" + k + "`" for k in detail_sync.PROVENANCE_REQUIRED)}). Endet von selbst, sobald keine solche Zeile mehr im Fenster ist. |
+| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | **abgelöst durch `PROVENANCE_BACKFILL`** (wird ignoriert, sobald jener an ist). Fester Rückblick: so viele Tage zurück wird die Liste gelesen, solange eine Zeile mit Status `partial` existiert. |
+| `PROVENANCE_BACKFILL` | `off` | v8-447.3 · Metadaten-Backfill der Herkunft aus der **Liste** (Abschnitt 15b) — keine Detailabrufe. `dry` = nur zählen, nichts schreiben (Ergebnis im Sync-Schritt `provenance_backfill`); `apply` = schreiben. Nur Zeilen mit Status `partial`; höchstens {provenance.MAX_WINDOWS_PER_RUN} Listenabrufe je Lauf; Abbruch bei 401/429 (dann auch keine Detail- und Tagesabrufe in dem Lauf). |
+| `DETAIL_REFETCH_SEMANTICS` | aus | v8-447.3 · lädt Aktivitäten auf Vertrag {detail_sync.DETAILS_CONTRACT_VERSION}, deren Bedeutungsprüfung nie lief (Rohfelder kamen erst später, Marker `detailsSemantics` fehlt), **einmal** neu. Erst **nach** dem Metadaten-Backfill sinnvoll. Gleiche Grenzen wie `DETAIL_REFETCH_RESOLUTION`. |
 | `DETAIL_REFETCH_RESOLUTION` | aus | lädt Aktivitäten, die schon auf Details-Vertrag {detail_sync.DETAILS_CONTRACT_VERSION} stehen, aber mit kleinerem `maxChartSize` geholt wurden, **einmal** neu (`detailsMaxchart` < `DETAIL_MAXCHART`). Nur zusammen mit `DETAIL_MAXCHART` > 0. Reihenfolge: nie geladene → Altvertrag → Auflösung, je neueste zuerst; dieselbe Grenze `DETAIL_BACKFILL_LIMIT`; Abbruch bei 429/401. Manuelle Korrekturen und Planverknüpfung bleiben erhalten. |
 
 ## 15 · Auswertung und Anzeige sind getrennt
@@ -516,6 +518,37 @@ Das Mitschnitt-Skript rechnet dieselbe Prüfung mit der Standard- **und** der vo
 einer Abweichung: `stable` (gleiches Urteil), `thinning` (verschwindet mit voller Auflösung), `definition` (bleibt — die
 Lesart unterscheidet sich).
 
+## 15b · Herkunft (v8-447.3)
+
+Typ und Startzeiten liefert **nur der Listeneintrag**; die Detailantwort enthält
+`activityId, measurementCount, metricsCount, totalMetricsCount, metricDescriptors, activityDetailMetrics, geoPolylineDTO,
+heartRateDTOs, pendingData, detailsAvailable` — weder Typ noch Startzeit (Test `test_detail_response_carries_neither_type_nor_start_time`).
+
+**Befund 15.10.2026:** 40 von 41 Aktivitäten ohne Typ und Zeit. Ursache im Code nachgestellt
+(`test_root_cause_detail_backfill_creates_block_without_type_and_time_and_window_never_reaches_it`): bis v8-446 schrieb der Import
+keinen Herkunftsblock; das Nachladen der Details (alle Zeilen, ohne Fenster) legte `metrics.garmin` mit Dauern und Abtastung an; der
+Herkunfts-Nachtrag sieht nur die Liste des Sync-Fensters — im Dauerbetrieb [vorgestern, heute]. Ältere Zeilen wurden nie ergänzt.
+
+Modell — **ein** Block, `metrics.garmin` (kein zweiter):
+
+| Schlüssel | Bedeutung |
+|---|---|
+| `type_key` | Garmins Typ (`activityType.typeKey`), z. B. `virtual_ride`, `treadmill_running`, `lap_swimming` — der konkrete Typ. Einen eigenen „Subtyp" liefert die Liste nicht; es wird keiner erfunden. |
+| `parent_type_id` | Garmins übergeordneter Typ als Zahl, roh (kein Name: die Zuordnung Zahl → Name ist nicht belegt) |
+| `start_gmt` / `start_local` | Startzeit UTC / Wandzeit am Ort, wie geliefert |
+| `utc_offset_s` | nur aus genau diesen beiden gebildet (Sommer-/Winterzeit steckt darin); kein fester Versatz |
+| `v` | Version der Normalisierung |
+| `prov_status` | {" · ".join("`" + x + "`" for x in provenance.STATUSES)} |
+| `prov_unavailable` / `prov_not_listed` | Garmin lieferte den Schlüssel nicht / die Liste enthielt die Aktivität nicht |
+| `prov_conflicts` | Widerspruch (z. B. `started_at` > {provenance.START_TOLERANCE_S} s neben Garmins UTC-Zeit) — nichts ersetzt |
+| `prov_backfill` | was der Backfill ergänzt hat (Rückweg: `supabase/scripts/provenance_backfill_rollback.sql`) |
+
+Kanonische Sportart = `activities.sport_id`, Quelle = `activities.source`. Vollständig = {", ".join("`" + k + "`" for k in provenance.REQUIRED)}.
+
+Backfill-Regeln: nur fehlende Schlüssel; nie `sport_id`, `started_at`, `duration_seconds`, `summary`, Messreihen, Bestwerte,
+`corrections`, `plannedSessionId`; jede Zeile direkt vor dem Schreiben frisch gelesen; das Nachladen der Details übernimmt
+inzwischen geschriebene Herkunft (`carry_forward`). Probelauf ohne Garmin: `supabase/scripts/provenance_backfill_dryrun.sql`.
+
 ## 16 · Fehlerklassen des Nachladens
 
 | Klasse | Auslöser | Folge |
@@ -538,9 +571,8 @@ Nach {detail_sync.DETAIL_FAIL_MAX} gezählten Fehlern wird eine Aktivität {deta
 2. **Bestzeiten können sich ändern**, sobald eine Aktivität ihre echte Zeitachse hat: die App rechnet
    Fenster dann mit gemessener statt gleichverteilter Zeit. Deshalb werden in v8-447 keine Rekorde
    festgeschrieben; `activityCapabilities.ledgerEligible` sperrt Zeilen unter Vertrag 3.
-3. **Rohfelder des Listeneintrags im Altbestand** — bestehende Zeilen werden nur innerhalb des
-   Sync-Fensters nachgetragen; für die Zeit davor `ACTIVITY_PROVENANCE_BACKFILL_DAYS` setzen. Unvollständige
-   Blöcke zählt der Zensus (Art `herkunft_unvollstaendig`).
+3. **Herkunft und Rohfelder im Altbestand** — Metadaten-Backfill `PROVENANCE_BACKFILL` (Abschnitt 15b);
+   der Zensus zählt `herkunft_status`, `herkunft_luecke`, `herkunft_nachgetragen`.
 4. **Tageszuordnung manueller Einträge** (Abschnitt 3).
 5. **Zusatzabrufe** sind aus, bis ihre Antwortformen belegt sind (Abschnitt 9).
 6. **Einheiten** `avgStrideLength`, `avgVerticalOscillation`, `avgStrokeDistance`, `totalVolume` sind

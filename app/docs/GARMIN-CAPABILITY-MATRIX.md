@@ -1,6 +1,6 @@
 # Garmin-Fähigkeits-Matrix
 
-**Status: IMPLEMENTED** · Stand Worker v8-447.2 · Details-Vertrag 3 · Rohblock-Version 1
+**Status: IMPLEMENTED** · Stand Worker v8-447.3 · Details-Vertrag 3 · Rohblock-Version 1
 
 > Diese Datei wird **erzeugt**: `python garmin-worker/scripts/gen_capability_matrix.py`.
 > Die Tabellen stammen aus dem Code des Workers (`garmin_fields.py`, `detail_sync.py`, `normalize.py`).
@@ -374,7 +374,7 @@ Datei: `supabase/scripts/garmin_field_census.sql` · Supabase → SQL Editor →
 
 ```sql
 -- ============================================================
--- ORVIA · Feldzensus und Nachlade-Stand der Garmin-Aktivitaeten (v8-447.1)
+-- ORVIA · Feldzensus und Nachlade-Stand der Garmin-Aktivitaeten (v8-447.3)
 -- ------------------------------------------------------------
 -- Zweck: zeigt, welche Felder und Messreihen Garmin JE SPORTART wirklich liefert, wie weit
 -- das Nachladen auf den aktuellen Details-Vertrag ist und wie belastbar die Bestwerte sind —
@@ -398,6 +398,10 @@ Datei: `supabase/scripts/garmin_field_census.sql` · Supabase → SQL Editor →
 --   abtastung            vollstaendig (Garmin lieferte alle Zeilen) · ausgeduennt · gesamtzahl_unbekannt
 --   aufloesung           mit welchem maxChartSize die Details geladen wurden (standard / maxchart=…)
 --   herkunft_unvollstaendig  Herkunftsblock fehlt oder ohne Garmin-Typ / GMT-Startzeit
+--   herkunft_status      complete · partial · unavailable · inconsistent (v8-447.3, wie provenance.status)
+--   herkunft_luecke      ohne_typ_und_utc · ohne_typ · ohne_utc · ohne_ortszeit · nicht_gelistet ·
+--                        nicht_geliefert:<schluessel> · widerspruch:<schluessel>
+--   herkunft_nachgetragen  vom Metadaten-Backfill ergaenzt: zeilen · garmin.<schluessel> · ext.<schluessel>
 --   bedeutung            Listenwert gegen Aufzeichnung: Beziehung = Urteil [passende Lesart] (Lieferung)
 --   bedeutung_hinweis    Ursache einer Abweichung (z. B. two_definitions, pool_lengths, half_value)
 --   messreihe            kanonische Messreihe ← Garmin-Quelle [Bedeutung]
@@ -496,6 +500,67 @@ select 'herkunft_unvollstaendig', sport_id,
             else 'ohne_zeit' end,
        count(*)
 from x where coalesce(gm ->> 'type_key', '') = '' or coalesce(gm ->> 'start_gmt', '') = '' group by 1, 2, 3
+
+-- ---- Herkunft: Status je Zeile (v8-447.3, gleiche Regel wie orvia_worker/provenance.status) ----
+-- complete      Typ, UTC-Start, Ortszeit-Start und Versatz vorhanden, kein Widerspruch
+-- partial       es fehlt etwas, das noch nicht gegen die Garmin-Liste geprueft ist (Backfill-Kandidat)
+-- unavailable   was fehlt, hat Garmin beim Pruefen nachweislich nicht geliefert
+-- inconsistent  Liste und Zeile widersprechen sich (nichts ersetzt; prov_conflicts)
+union all
+select 'herkunft_status', sport_id, p.st, count(*)
+from x cross join lateral (
+  select case
+    when jsonb_typeof(gm -> 'prov_conflicts') = 'array' and jsonb_array_length(gm -> 'prov_conflicts') > 0 then 'inconsistent'
+    when cardinality(mi.missing) = 0 then 'complete'
+    when mi.missing <@ coalesce(array(select jsonb_array_elements_text(
+           case when jsonb_typeof(gm -> 'prov_unavailable') = 'array' then gm -> 'prov_unavailable' else '[]'::jsonb end)), '{}')
+      then 'unavailable'
+    else 'partial' end as st
+  from (select array(select k from unnest(array['type_key', 'start_gmt', 'start_local', 'utc_offset_s']) as k
+                     where coalesce(gm ->> k, '') = '') as missing) mi
+) p
+group by 1, 2, 3
+
+-- ---- Herkunft: welche Luecke (v8-447.3) ----------------------------------------
+-- ohne_typ_und_utc · ohne_typ · ohne_utc · ohne_ortszeit (Typ und UTC da, Ortszeit/Versatz fehlen)
+-- nicht_gelistet (die Garmin-Liste fuer den Tag enthielt die Aktivitaet nicht)
+-- nicht_geliefert:<schluessel> (Garmin lieferte den Schluessel nicht) · widerspruch:<schluessel>
+union all
+select 'herkunft_luecke', sport_id,
+       case when coalesce(gm ->> 'type_key', '') = '' and coalesce(gm ->> 'start_gmt', '') = '' then 'ohne_typ_und_utc'
+            when coalesce(gm ->> 'type_key', '') = '' then 'ohne_typ'
+            when coalesce(gm ->> 'start_gmt', '') = '' then 'ohne_utc'
+            else 'ohne_ortszeit' end,
+       count(*)
+from x where coalesce(gm ->> 'type_key', '') = '' or coalesce(gm ->> 'start_gmt', '') = ''
+          or coalesce(gm ->> 'start_local', '') = '' or coalesce(gm ->> 'utc_offset_s', '') = ''
+group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'nicht_gelistet', count(*) from x where gm -> 'prov_not_listed' = 'true'::jsonb group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'nicht_geliefert:' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_unavailable') = 'array' then gm -> 'prov_unavailable' else '[]'::jsonb end) as k
+group by 1, 2, 3
+union all
+select 'herkunft_luecke', sport_id, 'widerspruch:' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_conflicts') = 'array' then gm -> 'prov_conflicts' else '[]'::jsonb end) as k
+group by 1, 2, 3
+
+-- ---- Herkunft: vom Metadaten-Backfill ergaenzt (v8-447.3) — zeigt die behobenen Faelle ----
+union all
+select 'herkunft_nachgetragen', sport_id, 'zeilen', count(*) from x where jsonb_typeof(gm -> 'prov_backfill') = 'object' group by 1, 2, 3
+union all
+select 'herkunft_nachgetragen', sport_id, 'garmin.' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_backfill' -> 'garmin') = 'array' then gm -> 'prov_backfill' -> 'garmin' else '[]'::jsonb end) as k
+group by 1, 2, 3
+union all
+select 'herkunft_nachgetragen', sport_id, 'ext.' || k, count(*)
+from x cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(gm -> 'prov_backfill' -> 'ext') = 'array' then gm -> 'prov_backfill' -> 'ext' else '[]'::jsonb end) as k
+group by 1, 2, 3
 
 -- ---- Bedeutungspruefung: Listenwert gegen Aufzeichnung (v8-447.1) ---------------
 -- name = Beziehung = Urteil [passende Lesart] (Lieferung) — keine Werte
@@ -651,7 +716,9 @@ nicht wiederholen. Liegt ein Mitschnitt im Ordner, prüft `tests/test_capture_sc
 | `DETAIL_BACKFILL_LIMIT` | 10 | Aktivitäten je Sync-Lauf, für die Details (nach)geladen werden |
 | `DETAIL_MAXCHART` | 0 (= Standard der Bibliothek, 2000) | wie viele Messzeilen Garmin je Aktivität höchstens liefern soll. Gleicher Abruf, gleiche Anzahl Calls, größere Antwort. Ob Garmin mehr als 2000 bedient, ist **nicht belegt** — ablesbar an `stream_rows` / `stream_total` (Zensus, Art `abtastung`). Gedeckelt auf 30 000. |
 | `DETAIL_EXTRAS` | leer (aus) | kommagetrennt aus: activity, splits, typed_splits, hr_zones, power_zones, exercise_sets |
-| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | einmaliger Rückblick: so viele Tage zurück wird die **Liste** gelesen (ein Abruf), um Garmin-Typ, Ortszeit und Rohfelder bei Altzeilen nachzutragen. Erfasst Zeilen **ohne** Herkunftsblock und Zeilen, deren Block unvollständig ist (es fehlt `type_key` oder `start_gmt`). Endet von selbst, sobald keine solche Zeile mehr im Fenster ist. |
+| `ACTIVITY_PROVENANCE_BACKFILL_DAYS` | 0 | **abgelöst durch `PROVENANCE_BACKFILL`** (wird ignoriert, sobald jener an ist). Fester Rückblick: so viele Tage zurück wird die Liste gelesen, solange eine Zeile mit Status `partial` existiert. |
+| `PROVENANCE_BACKFILL` | `off` | v8-447.3 · Metadaten-Backfill der Herkunft aus der **Liste** (Abschnitt 15b) — keine Detailabrufe. `dry` = nur zählen, nichts schreiben (Ergebnis im Sync-Schritt `provenance_backfill`); `apply` = schreiben. Nur Zeilen mit Status `partial`; höchstens 6 Listenabrufe je Lauf; Abbruch bei 401/429 (dann auch keine Detail- und Tagesabrufe in dem Lauf). |
+| `DETAIL_REFETCH_SEMANTICS` | aus | v8-447.3 · lädt Aktivitäten auf Vertrag 3, deren Bedeutungsprüfung nie lief (Rohfelder kamen erst später, Marker `detailsSemantics` fehlt), **einmal** neu. Erst **nach** dem Metadaten-Backfill sinnvoll. Gleiche Grenzen wie `DETAIL_REFETCH_RESOLUTION`. |
 | `DETAIL_REFETCH_RESOLUTION` | aus | lädt Aktivitäten, die schon auf Details-Vertrag 3 stehen, aber mit kleinerem `maxChartSize` geholt wurden, **einmal** neu (`detailsMaxchart` < `DETAIL_MAXCHART`). Nur zusammen mit `DETAIL_MAXCHART` > 0. Reihenfolge: nie geladene → Altvertrag → Auflösung, je neueste zuerst; dieselbe Grenze `DETAIL_BACKFILL_LIMIT`; Abbruch bei 429/401. Manuelle Korrekturen und Planverknüpfung bleiben erhalten. |
 
 ## 15 · Auswertung und Anzeige sind getrennt
@@ -714,6 +781,37 @@ Das Mitschnitt-Skript rechnet dieselbe Prüfung mit der Standard- **und** der vo
 einer Abweichung: `stable` (gleiches Urteil), `thinning` (verschwindet mit voller Auflösung), `definition` (bleibt — die
 Lesart unterscheidet sich).
 
+## 15b · Herkunft (v8-447.3)
+
+Typ und Startzeiten liefert **nur der Listeneintrag**; die Detailantwort enthält
+`activityId, measurementCount, metricsCount, totalMetricsCount, metricDescriptors, activityDetailMetrics, geoPolylineDTO,
+heartRateDTOs, pendingData, detailsAvailable` — weder Typ noch Startzeit (Test `test_detail_response_carries_neither_type_nor_start_time`).
+
+**Befund 15.10.2026:** 40 von 41 Aktivitäten ohne Typ und Zeit. Ursache im Code nachgestellt
+(`test_root_cause_detail_backfill_creates_block_without_type_and_time_and_window_never_reaches_it`): bis v8-446 schrieb der Import
+keinen Herkunftsblock; das Nachladen der Details (alle Zeilen, ohne Fenster) legte `metrics.garmin` mit Dauern und Abtastung an; der
+Herkunfts-Nachtrag sieht nur die Liste des Sync-Fensters — im Dauerbetrieb [vorgestern, heute]. Ältere Zeilen wurden nie ergänzt.
+
+Modell — **ein** Block, `metrics.garmin` (kein zweiter):
+
+| Schlüssel | Bedeutung |
+|---|---|
+| `type_key` | Garmins Typ (`activityType.typeKey`), z. B. `virtual_ride`, `treadmill_running`, `lap_swimming` — der konkrete Typ. Einen eigenen „Subtyp" liefert die Liste nicht; es wird keiner erfunden. |
+| `parent_type_id` | Garmins übergeordneter Typ als Zahl, roh (kein Name: die Zuordnung Zahl → Name ist nicht belegt) |
+| `start_gmt` / `start_local` | Startzeit UTC / Wandzeit am Ort, wie geliefert |
+| `utc_offset_s` | nur aus genau diesen beiden gebildet (Sommer-/Winterzeit steckt darin); kein fester Versatz |
+| `v` | Version der Normalisierung |
+| `prov_status` | `complete` · `partial` · `unavailable` · `inconsistent` |
+| `prov_unavailable` / `prov_not_listed` | Garmin lieferte den Schlüssel nicht / die Liste enthielt die Aktivität nicht |
+| `prov_conflicts` | Widerspruch (z. B. `started_at` > 120 s neben Garmins UTC-Zeit) — nichts ersetzt |
+| `prov_backfill` | was der Backfill ergänzt hat (Rückweg: `supabase/scripts/provenance_backfill_rollback.sql`) |
+
+Kanonische Sportart = `activities.sport_id`, Quelle = `activities.source`. Vollständig = `type_key`, `start_gmt`, `start_local`, `utc_offset_s`.
+
+Backfill-Regeln: nur fehlende Schlüssel; nie `sport_id`, `started_at`, `duration_seconds`, `summary`, Messreihen, Bestwerte,
+`corrections`, `plannedSessionId`; jede Zeile direkt vor dem Schreiben frisch gelesen; das Nachladen der Details übernimmt
+inzwischen geschriebene Herkunft (`carry_forward`). Probelauf ohne Garmin: `supabase/scripts/provenance_backfill_dryrun.sql`.
+
 ## 16 · Fehlerklassen des Nachladens
 
 | Klasse | Auslöser | Folge |
@@ -736,9 +834,8 @@ Nach 3 gezählten Fehlern wird eine Aktivität 7 Tage zurückgestellt
 2. **Bestzeiten können sich ändern**, sobald eine Aktivität ihre echte Zeitachse hat: die App rechnet
    Fenster dann mit gemessener statt gleichverteilter Zeit. Deshalb werden in v8-447 keine Rekorde
    festgeschrieben; `activityCapabilities.ledgerEligible` sperrt Zeilen unter Vertrag 3.
-3. **Rohfelder des Listeneintrags im Altbestand** — bestehende Zeilen werden nur innerhalb des
-   Sync-Fensters nachgetragen; für die Zeit davor `ACTIVITY_PROVENANCE_BACKFILL_DAYS` setzen. Unvollständige
-   Blöcke zählt der Zensus (Art `herkunft_unvollstaendig`).
+3. **Herkunft und Rohfelder im Altbestand** — Metadaten-Backfill `PROVENANCE_BACKFILL` (Abschnitt 15b);
+   der Zensus zählt `herkunft_status`, `herkunft_luecke`, `herkunft_nachgetragen`.
 4. **Tageszuordnung manueller Einträge** (Abschnitt 3).
 5. **Zusatzabrufe** sind aus, bis ihre Antwortformen belegt sind (Abschnitt 9).
 6. **Einheiten** `avgStrideLength`, `avgVerticalOscillation`, `avgStrokeDistance`, `totalVolume` sind

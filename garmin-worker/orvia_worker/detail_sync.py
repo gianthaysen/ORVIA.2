@@ -172,7 +172,18 @@ def _needs_resolution_refetch(metrics: Any, refetch_maxchart: int) -> bool:
     return _details_maxchart(metrics) < refetch_maxchart
 
 
-def _needs_details(act: Any, refetch_maxchart: int = 0) -> bool:
+def _needs_semantics(metrics: Any) -> bool:
+    """v8-447.3 · Details aktuell, Rohfelder des Listeneintrags vorhanden (metrics.ext.fields), aber
+    die Bedeutungspruefung lief nie (Marker detailsSemantics fehlt) — z. B. weil die Rohfelder erst
+    durch den Metadaten-Backfill in die Zeile kamen. Die Pruefung braucht ALLE Messzeilen, die nur
+    die Detailantwort liefert; deshalb ist hier ein erneuter Abruf noetig."""
+    if not isinstance(metrics, dict) or metrics.get("detailsSemantics") is not None:
+        return False
+    ext = metrics.get("ext")
+    return isinstance(ext, dict) and isinstance(ext.get("fields"), dict) and bool(ext.get("fields"))
+
+
+def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool = False) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
     if _parked(metrics):
@@ -184,20 +195,23 @@ def _needs_details(act: Any, refetch_maxchart: int = 0) -> bool:
             return True
     except (TypeError, ValueError):
         return True
+    if refetch_semantics and _needs_semantics(metrics):
+        return True
     return _needs_resolution_refetch(metrics, refetch_maxchart)
 
 
 # Schluessel, ohne die ein Herkunftsblock als UNVOLLSTAENDIG gilt. Das Nachladen der Details
 # legt metrics.garmin mit Dauern und Abtastung an — ohne Garmin-Typ und Ortszeit. Bis
 # v8-447.1 galt eine solche Zeile als „hat Herkunft" und wurde vom weiten Rueckblick nie erfasst.
-PROVENANCE_REQUIRED = ("type_key", "start_gmt")
+# v8-447.3: dieselbe Definition wie der Metadaten-Backfill (provenance.REQUIRED) — Typ, UTC-Zeit,
+# Ortszeit, Versatz. Unvollstaendig = Status 'partial' (noch nicht gegen die Liste geprueft);
+# 'unavailable' (Garmin liefert es nachweislich nicht) und 'inconsistent' sind Endzustaende.
+from .provenance import REQUIRED as PROVENANCE_REQUIRED  # noqa: E402
 
 
 def provenance_incomplete(metrics: Any) -> bool:
-    g = metrics.get("garmin") if isinstance(metrics, dict) else None
-    if not isinstance(g, dict):
-        return True
-    return any(not g.get(k) for k in PROVENANCE_REQUIRED)
+    from .provenance import needs_backfill
+    return needs_backfill(metrics)
 
 
 def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: Any = None) -> list[str]:
@@ -363,7 +377,8 @@ def _parse_ts(value: Any) -> datetime | None:
         return None
 
 
-def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: int = 0) -> dict:
+def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: int = 0,
+                    refetch_semantics: bool = False) -> dict:
     """v8-447.1 · Stand des Nachladens — nur ZAHLEN, keine Inhalte, keine Kennungen.
 
       total      Garmin-Aktivitaeten
@@ -379,7 +394,8 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
     out: dict[str, Any] = {"contract": DETAILS_CONTRACT_VERSION, "total": 0, "current": 0, "pending": 0,
                            "legacy": 0, "never": 0, "failing": 0, "deferred": 0, "by_category": {},
                            "by_sport": {}, "last_processed": None, "processed_24h": 0,
-                           "resolution_pending": 0, "provenance_incomplete": 0}
+                           "resolution_pending": 0, "provenance_incomplete": 0, "semantics_pending": 0,
+                           "provenance": {k: 0 for k in ("complete", "partial", "unavailable", "inconsistent")}}
     last = None
     for r in rows or ():
         if not isinstance(r, dict):
@@ -390,7 +406,10 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
         out["total"] += 1
         sp["total"] += 1
         complete = _details_complete(m)
-        if provenance_incomplete(m):
+        from .provenance import status as _prov_status
+        pst = _prov_status(m)["status"]
+        out["provenance"][pst] += 1
+        if pst == "partial":
             out["provenance_incomplete"] += 1
         try:
             ver = int(m.get("detailsVersion") or 1) if complete else 0
@@ -398,6 +417,8 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
             ver = 0
         if complete and ver >= DETAILS_CONTRACT_VERSION and _needs_resolution_refetch(m, refetch_maxchart) and not _parked(m, now):
             out["resolution_pending"] += 1
+        if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_semantics and _needs_semantics(m) and not _parked(m, now):
+            out["semantics_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION:
             out["current"] += 1
             sp["current"] += 1
@@ -437,7 +458,7 @@ async def sync_activity_details(
     db, user_id: str, get_details: Callable[[str], Any], *, limit: int, max_retries: int = 2,
     on_rate_limit: Callable[[int], None] | None = None,
     get_extra: Callable[[str, str], Any] | None = None, extras: Any = None,
-    maxchart: int = 0, refetch_resolution: bool = False,
+    maxchart: int = 0, refetch_resolution: bool = False, refetch_semantics: bool = False,
 ) -> dict:
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged.
@@ -446,6 +467,7 @@ async def sync_activity_details(
     vermerkt). `refetch_resolution` = Aktivitaeten, die mit kleinerem Wert geladen wurden,
     gezielt noch einmal laden — erst nach allen nie geladenen und veralteten."""
     refetch_mc = int(maxchart or 0) if refetch_resolution else 0
+    refetch_sem = bool(refetch_semantics)
     acts = await db.select("activities", {"user_id": user_id, "source": "garmin"})
     # v8-424b · Reihenfolge der Auswahl (vorher: Tabellenreihenfolge, also die aeltesten
     # zuerst). Mit dem einmaligen Nachladen der Radeinheiten haette eine FRISCHE
@@ -460,12 +482,12 @@ async def sync_activity_details(
         elif _needs_details(a, 0):
             group = 1                                   # alter Vertrag
         else:
-            group = 2                                   # nur Aufloesung nachholen
+            group = 2                                   # nur Aufloesung / Bedeutungspruefung nachholen
         return (group, _neg_ts(a.get("started_at")))
     acts = sorted(acts, key=_prio)
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
     already = [a["source_record_id"] for a in acts
-               if a.get("source_record_id") and not _needs_details(a, refetch_mc)]
+               if a.get("source_record_id") and not _needs_details(a, refetch_mc, refetch_sem)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
     # v8-447.1 · Die Garmin-Abrufe laufen in einem eigenen Thread. Vorher blockierten sie die
@@ -506,6 +528,7 @@ async def sync_activity_details(
             agg = parsed.get("aggregates")
             if isinstance(fields, dict) and isinstance(agg, dict):
                 rels = SC.relations(fields, agg)
+                merged["detailsSemantics"] = SC.SEM_VERSION     # v8-447.3: Pruefung ist gelaufen
                 sem = SC.compact_for_row(rels)
                 ext = dict(merged["ext"])
                 if sem:
@@ -557,6 +580,10 @@ async def sync_activity_details(
                         merged[k] = fm[k]
                     else:
                         merged.pop(k, None)
+                # v8-447.3: Herkunft, die inzwischen in der Zeile steht (Backfill, anderer Lauf),
+                # nie mit dem Stand vom Laufbeginn ueberschreiben — nur ergaenzen.
+                from .provenance import carry_forward
+                merged = carry_forward(merged, fm)
         except Exception:
             pass
         try:
@@ -610,7 +637,7 @@ async def sync_activity_details(
     by_cat: dict[str, int] = {}
     for cat in failures.values():
         by_cat[cat] = by_cat.get(cat, 0) + 1
-    status = backfill_status(acts, now, refetch_mc)
+    status = backfill_status(acts, now, refetch_mc, refetch_sem)
     return {"selected": plan["selected"], "updated": updated, "failed": list(plan["failed"]) + persist_failed,
             "extras": extras_count, "failures": failures, "by_category": by_cat, "aborted": plan.get("aborted"),
             "not_attempted": plan.get("not_attempted") or [], "status": status}

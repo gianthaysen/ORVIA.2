@@ -1,6 +1,6 @@
 # Performance-Daten: Was darf ins Leistungsregister?
 
-**Status: SPEZIFIKATION + VORBEREITETER CODE** · Stand v8-447.1 · Grundlage für v8-448 (Athlete Performance Ledger)
+**Status: SPEZIFIKATION + VORBEREITETER CODE** · Stand v8-447.3 · Grundlage für v8-448 (Athlete Performance Ledger)
 
 > Diese Datei wird **erzeugt**: `node app/tools/gen-eligibility-doc.mjs`. Die Spalten *ledger eligible?* und *reason*
 > sind das Urteil von `app/js/engine/metric-eligibility.js` — nicht von Hand geschrieben. Ein Test vergleicht Datei und Code.
@@ -35,6 +35,7 @@ Sonst: nicht zulässig, mit Grund. „Wahrscheinlich richtig" gibt es nicht.
 | `unsupported_sport` | gibt es für die Sportart nicht |
 | `manual_override_conflict` | manuelle Korrektur widerspricht der Aufzeichnung |
 | `not_completed` | nicht abgeschlossen |
+| `unverified_context` | kontextgebundene Auswertung verlangt, Kontext nicht belegt |
 | `unknown_metric` | unbekannt |
 
 ## 3 · Belege heute
@@ -166,17 +167,22 @@ Registerfähig bei vollständig gelieferten Daten (heutiger Belegstand; das Nach
 
 **Noch nicht** (53 Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).
 
-## 9 · Freigabe je Kennzahl (Abschluss Gate v8-447.1)
+## 9 · Freigabe je Kennzahl (finales Gate v8-447.3)
 
-Zwei Fälle je Kennzahl, beide vom Modul geurteilt: **heute** = wie die Daten in Produktion stehen (Details mit Standard-Auflösung
-geladen, Garmin hat ausgedünnt) · **nach Neuladen** = nach `DETAIL_MAXCHART=20000` + `DETAIL_REFETCH_RESOLUTION=1` (vollständige Antwort,
-an 8 Aktivitäten bestätigt).
+Drei Stände je Kennzahl, alle vom Modul geurteilt (Bezugs-Aktivität wie Abschnitt 4):
+
+- **heute** — Stand 15.10.2026 für 40 von 41 Garmin-Aktivitäten: vollständige Auflösung (maxchart=20000), aber ohne Garmin-Typ,
+  ohne Startzeiten, ohne Rohfelder des Listeneintrags.
+- **nach Herkunfts-Backfill** — `PROVENANCE_BACKFILL=apply`: Typ, UTC-/Ortszeit, Versatz und Rohfelder ergänzt (nur Liste, keine Detailabrufe).
+- **nach Neuprüfung** — `DETAIL_REFETCH_SEMANTICS=1`: Details einmal neu geladen, damit die Bedeutungsprüfung mit den nun vorhandenen
+  Rohfeldern läuft (nur dafür nötig: sie braucht alle Messzeilen).
 
 | Freigabe | Bedeutung |
 |---|---|
-| **FREI** | heute schon registerfähig |
-| **FREI NACH NEULADEN** | registerfähig, sobald die Aktivität mit vollständiger Antwort neu geladen ist |
-| **NICHT FREI** | Grund in Klammern — fehlt ein Beleg, hilft auch das Neuladen nicht |
+| **FREI** | heute registerfähig |
+| **FREI NACH HERKUNFTS-BACKFILL** | registerfähig, sobald der Metadaten-Backfill gelaufen ist |
+| **FREI NACH NEUPRÜFUNG** | zusätzlich erst nach dem einmaligen Neuladen für die Bedeutungsprüfung |
+| **NICHT FREI** | Grund in Klammern — es fehlt ein Beleg; Backfill und Neuladen ändern daran nichts |
 
 | Sportart | Kennzahl | Freigabe |
 |---|---|---|
@@ -184,8 +190,8 @@ an 8 Aktivitäten bestätigt).
 | running | Distanz | **FREI** |
 | running | Tempo (Ø) | **FREI** |
 | running | Herzfrequenz (Ø) | **FREI** |
-| running | Herzfrequenz (Max) | **FREI NACH NEULADEN** |
-| running | Schrittfrequenz (Ø) | **FREI NACH NEULADEN** |
+| running | Herzfrequenz (Max) | **FREI** |
+| running | Schrittfrequenz (Ø) | **FREI NACH NEUPRÜFUNG** |
 | running | Leistung (Ø) | NICHT FREI (`unverified_semantics`) |
 | running | Leistungs-Bestwert (alle Fenster) | NICHT FREI (`unverified_semantics`) |
 | running | Strecken-Bestzeit (alle Distanzen) | **FREI** |
@@ -244,7 +250,50 @@ an 8 Aktivitäten bestätigt).
 | eigene Daten | Kraft-Volumen (ORVIA-Workout) | **FREI** |
 | eigene Daten | Distanz / Tempo (manuelle Einheit) | **FREI** — Bestzeiten nicht (keine Aufzeichnung) |
 
-## 10 · Protokoll des Gates
+Eine unvollständige Herkunft sperrt **keine** Kennzahl pauschal: Dauer, Distanz, Tempo, Herzfrequenz und Strecken-Bestzeit des Laufs
+brauchen weder Typ noch Ortszeit. Gesperrt wird nur, was den Kontext oder die Rohfelder wirklich braucht.
+
+## 10 · Kontext: Laufband, Rolle, Becken, Freiwasser
+
+Kontext kommt **nur** aus Garmins Typ (`metrics.garmin.type_key`) und nur, wenn der Name ihn ausdrücklich nennt. Ein generischer Typ
+(`running`, `cycling`) oder ein fehlender Typ = **unbelegt** (nicht „draußen"). Kein Raten aus GPS — auch virtuelle Fahrten haben eine
+Strecke —, aus dem Titel oder der Uhrzeit. Kontextgebundene Auswertungen fragen mit `opts.environment` und bekommen sonst `unverified_context`.
+
+| Garmin-Typ | Kontext |
+|---|---|
+| `treadmill_running` | indoor |
+| `indoor_running` | indoor |
+| `indoor_cycling` | indoor |
+| `indoor_rowing` | indoor |
+| `indoor_cardio` | indoor |
+| `indoor_climbing` | indoor |
+| `virtual_ride` | virtual |
+| `virtual_run` | virtual |
+| `lap_swimming` | pool |
+| `open_water_swimming` | open_water |
+| `trail_running` | outdoor |
+| `street_running` | outdoor |
+| `road_biking` | outdoor |
+| `gravel_cycling` | outdoor |
+| `mountain_biking` | outdoor |
+| `cyclocross` | outdoor |
+| `downhill_biking` | outdoor |
+| alle anderen / keiner | unbelegt |
+
+| Fall | Urteil |
+|---|---|
+| Lauf `running`: 5-km-Bestzeit | **ja** |
+| Lauf ohne Garmin-Typ: 5-km-Bestzeit | **ja** |
+| Lauf `treadmill_running`: 5-km-Bestzeit | nein (`unsupported_source`) |
+| Lauf `running`: 5-km-Bestzeit **draußen** verlangt | nein (`unverified_context`) |
+| Lauf `trail_running`: 5-km-Bestzeit **draußen** verlangt | **ja** |
+| Rad `virtual_ride`: 20-min-Leistung **draußen** verlangt (Beleg Leistung angenommen) | nein (`unverified_context`) |
+| Rad `road_biking`: 20-min-Leistung **draußen** verlangt (Beleg Leistung angenommen) | **ja** |
+| Schwimmen `lap_swimming`: SWOLF (Beleg angenommen) | **ja** |
+| Schwimmen `open_water_swimming`: SWOLF | nein (`unsupported_source`) |
+| Schwimmen ohne Garmin-Typ: SWOLF | nein (`missing_data`) |
+
+## 11 · Protokoll der Gates
 
 | Datum | Prüfung | Ergebnis | Folge |
 |---|---|---|---|
@@ -253,3 +302,5 @@ an 8 Aktivitäten bestätigt).
 | 2026-10-11 | Manuelle Dauer-Korrektur (Kraft, 341 → 75 min) nach Neustart und Sync | bleibt 75 min | Dauer: wirksamer Wert haelt; Korrektur bleibt gekennzeichnet (provenance.manual) |
 | 2026-10-11 | Aufloesungspruefung maxchart=20000 an 8 Aktivitaeten (Mitschnitt-Skript, Probelauf, nichts gespeichert) | alle liefern saemtliche gemeldeten Zeilen, Median-Abstand 1 s | Leistungs-Bestwerte KOENNEN exakt werden — erst nach DETAIL_MAXCHART=20000 und gezieltem Neuladen (DETAIL_REFETCH_RESOLUTION); bis dahin insufficient_resolution |
 | 2026-10-11 | Bedeutungspruefung (Probelauf, ausgeduennte Antwort) | Abweichungen bei Laufkadenz, Beckenschwimm-Distanz und Bewegungszeiten | nicht als Beleg gewertet; Pruefung laeuft jetzt auch auf der vollstaendigen Antwort und im Worker (metrics.ext.semantics) und benennt die Ursache |
+| 2026-10-15 | Neuladen mit maxchart=20000 (Worker v8-447.2, DETAIL_REFETCH_RESOLUTION danach aus) | 41 von 41 Garmin-Aktivitaeten: Vertrag 3, maxchart=20000, vollstaendige Abtastung | insufficient_resolution entfaellt fuer den Bestand; Max-HF frei; Leistungs-Bestwerte nur noch am fehlenden Bedeutungsbeleg gesperrt |
+| 2026-10-15 | Feldzensus Herkunft | 40 von 41 mit unvollstaendiger Herkunft (ohne Typ und Zeit): 15 Lauf, 12 Rad, 8 Kraft, 5 Schwimmen | Ursache: Herkunft kam nur aus dem Listeneintrag im Sync-Fenster (2 Tage), der Block stammte vom Nachladen der Details. Metadaten-Backfill v8-447.3 (nur Liste). Ohne Rohfelder lief keine Bedeutungspruefung → Oe-Laufkadenz erst nach Backfill + Neupruefung |

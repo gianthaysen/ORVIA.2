@@ -1,5 +1,5 @@
 /* ============================================================
-   ORVIA · metric-eligibility (v8-447.1) — darf DIESE Kennzahl DIESER Aktivitaet in eine
+   ORVIA · metric-eligibility (v8-447.3) — darf DIESE Kennzahl DIESER Aktivitaet in eine
    Auswertung, die historisch festgeschrieben wird (Bestwerte, Fortschritt, Ziele, Highlights)?
 
    STAND: VORBEREITET. Von der App nicht geladen (nicht in index.html, nicht im Offline-
@@ -35,7 +35,18 @@
      manual_override_conflict  ein manuell korrigierter Wert widerspricht der Aufzeichnung, aus der
                              die Kennzahl stammt
      not_completed           Einheit nicht abgeschlossen
+     unverified_context      eine kontextgebundene Auswertung (opts.environment, z. B. nur 'outdoor') ist
+                             verlangt, aber der Kontext ist nicht belegt oder ein anderer
      unknown_metric
+
+   v8-447.3 · Herkunft und Kontext. Eine unvollstaendige Garmin-Herkunft sperrt KEINE Kennzahl pauschal —
+   jede Kennzahl prueft nur, was sie braucht. Kontext (Laufband, Rolle/virtuell, Becken, Freiwasser) kommt
+   AUSSCHLIESSLICH aus Garmins Typ (metrics.garmin.type_key), und nur, wenn der Typname ihn ausdruecklich
+   nennt (CONTEXT). Ein generischer Typ ('running', 'cycling') oder ein fehlender Typ heisst: Kontext
+   unbelegt — nicht „draussen". Kein Raten aus GPS (auch virtuelle Fahrten haben eine Strecke), Titel oder Uhrzeit.
+     provenance.context = { environment, typeKey, basis, origin }
+       environment  'indoor' | 'virtual' | 'pool' | 'open_water' | 'outdoor' | null (unbelegt)
+       origin       Herkunftsstatus der Zeile: complete | partial | unavailable | inconsistent | null (keine Garmin-Zeile)
 
    Rein: kein DOM, kein Speicher, kein Netz.
    ============================================================ */
@@ -101,8 +112,23 @@
     { date: '2026-10-11', what: 'Laufkadenz am iPhone gegen Garmin Connect', result: 'stimmt', consequence: 'Schrittfrequenz (Lauf): validated' },
     { date: '2026-10-11', what: 'Manuelle Dauer-Korrektur (Kraft, 341 → 75 min) nach Neustart und Sync', result: 'bleibt 75 min', consequence: 'Dauer: wirksamer Wert haelt; Korrektur bleibt gekennzeichnet (provenance.manual)' },
     { date: '2026-10-11', what: 'Aufloesungspruefung maxchart=20000 an 8 Aktivitaeten (Mitschnitt-Skript, Probelauf, nichts gespeichert)', result: 'alle liefern saemtliche gemeldeten Zeilen, Median-Abstand 1 s', consequence: 'Leistungs-Bestwerte KOENNEN exakt werden — erst nach DETAIL_MAXCHART=20000 und gezieltem Neuladen (DETAIL_REFETCH_RESOLUTION); bis dahin insufficient_resolution' },
-    { date: '2026-10-11', what: 'Bedeutungspruefung (Probelauf, ausgeduennte Antwort)', result: 'Abweichungen bei Laufkadenz, Beckenschwimm-Distanz und Bewegungszeiten', consequence: 'nicht als Beleg gewertet; Pruefung laeuft jetzt auch auf der vollstaendigen Antwort und im Worker (metrics.ext.semantics) und benennt die Ursache' }
+    { date: '2026-10-11', what: 'Bedeutungspruefung (Probelauf, ausgeduennte Antwort)', result: 'Abweichungen bei Laufkadenz, Beckenschwimm-Distanz und Bewegungszeiten', consequence: 'nicht als Beleg gewertet; Pruefung laeuft jetzt auch auf der vollstaendigen Antwort und im Worker (metrics.ext.semantics) und benennt die Ursache' },
+    { date: '2026-10-15', what: 'Neuladen mit maxchart=20000 (Worker v8-447.2, DETAIL_REFETCH_RESOLUTION danach aus)', result: '41 von 41 Garmin-Aktivitaeten: Vertrag 3, maxchart=20000, vollstaendige Abtastung', consequence: 'insufficient_resolution entfaellt fuer den Bestand; Max-HF frei; Leistungs-Bestwerte nur noch am fehlenden Bedeutungsbeleg gesperrt' },
+    { date: '2026-10-15', what: 'Feldzensus Herkunft', result: '40 von 41 mit unvollstaendiger Herkunft (ohne Typ und Zeit): 15 Lauf, 12 Rad, 8 Kraft, 5 Schwimmen', consequence: 'Ursache: Herkunft kam nur aus dem Listeneintrag im Sync-Fenster (2 Tage), der Block stammte vom Nachladen der Details. Metadaten-Backfill v8-447.3 (nur Liste). Ohne Rohfelder lief keine Bedeutungspruefung → Oe-Laufkadenz erst nach Backfill + Neupruefung' }
   ];
+
+  /* v8-447.3 · Kontext NUR aus Typnamen, die ihn ausdruecklich nennen. Alles andere: null (unbelegt). */
+  var CONTEXT = {
+    treadmill_running: 'indoor', indoor_running: 'indoor', indoor_cycling: 'indoor', indoor_rowing: 'indoor',
+    indoor_cardio: 'indoor', indoor_climbing: 'indoor',
+    virtual_ride: 'virtual', virtual_run: 'virtual',
+    lap_swimming: 'pool', open_water_swimming: 'open_water',
+    trail_running: 'outdoor', street_running: 'outdoor', road_biking: 'outdoor', gravel_cycling: 'outdoor',
+    mountain_biking: 'outdoor', cyclocross: 'outdoor', downhill_biking: 'outdoor'
+  };
+  /* Distanz ohne echte Fortbewegung (Laufband: Beschleunigungssensor/Kalibrierung; virtuell: Modell) */
+  var NO_REAL_DISTANCE = { indoor: 1, virtual: 1 };
+  var PROV_REQUIRED = ['type_key', 'start_gmt', 'start_local', 'utc_offset_s'];
 
   var CURRENT = 3;                      // Details-Vertrag (Worker)
   var OWN_SOURCES = { orvia_workout: 1, live: 1, manual: 1 };
@@ -117,6 +143,30 @@
     return e[sportId] || e['*'] || 'assumed';
   }
 
+  /* ---- Herkunft und Kontext (v8-447.3) ------------------------------ */
+  function present(v) { return v !== null && v !== undefined && !(typeof v === 'string' && !v.trim()); }
+  /* Gleiche Regel wie der Worker (orvia_worker/provenance.status) und der Zensus. */
+  function provenanceStatus(a) {
+    var x = obj(a) || {};
+    if (x.source !== 'garmin') return null;
+    var g = obj((obj(x.metrics) || {}).garmin) || {};
+    var missing = PROV_REQUIRED.filter(function (k) { return !present(g[k]); });
+    var conflicts = Array.isArray(g.prov_conflicts) ? g.prov_conflicts : [];
+    var unavailable = Array.isArray(g.prov_unavailable) ? g.prov_unavailable : [];
+    if (conflicts.length) return 'inconsistent';
+    if (!missing.length) return 'complete';
+    if (missing.every(function (k) { return unavailable.indexOf(k) >= 0; })) return 'unavailable';
+    return 'partial';
+  }
+  function contextOf(a) {
+    var x = obj(a) || {};
+    var g = obj((obj(x.metrics) || {}).garmin) || {};
+    var tk = (typeof g.type_key === 'string' && g.type_key) ? g.type_key : null;
+    var env = tk && CONTEXT[tk] ? CONTEXT[tk] : null;
+    return { environment: env, typeKey: tk, basis: env ? 'garmin.type_key = ' + tk : (tk ? 'garmin.type_key = ' + tk + ' (nennt keinen Kontext)' : 'kein Garmin-Typ'),
+             origin: provenanceStatus(x) };
+  }
+
   /* ---- Bausteine ---------------------------------------------------- */
   function ctxOf(owner, opts) {
     var a = obj(owner) || {}, m = obj(a.metrics) || {};
@@ -125,7 +175,7 @@
       a: a, m: m, opts: opts || {}, sport: a.sportId || null, source: a.source || null,
       cap: C ? C.of(a) : null, S: S, E: E,
       g: obj(m.garmin) || {}, be: obj(m.best_efforts) || {}, sum: obj(a.summary) || {},
-      reasons: [], prov: { source: a.source || null, manual: false, basis: null, quality: null, evidence: {} }
+      reasons: [], prov: { source: a.source || null, manual: false, basis: null, quality: null, evidence: {}, context: contextOf(a) }
     };
   }
   function why(c, code) { if (c.reasons.indexOf(code) < 0) c.reasons.push(code); }
@@ -275,6 +325,9 @@
     if (!garminCurrent(c)) return;
     var item = obj((obj((obj(c.be.distance) || {}).targets) || {})[String(t)]);
     c.prov.basis = 'best_efforts.distance.targets.' + t + ' (gemessene Obergrenze)';
+    /* v8-447.3: Laufband / virtuell — die Distanz ist geschaetzt bzw. modelliert, keine Strecke. Nur wenn der
+       Garmin-Typ es BELEGT. Fehlt der Typ oder ist er generisch, sperrt das die Bestzeit nicht (Kontext null). */
+    if (NO_REAL_DISTANCE[c.prov.context.environment]) { why(c, 'unsupported_source'); return; }
     if (!item || item.q === 'too_short' || num(item.s) === null) { why(c, 'missing_data'); return; }
     if (item.q !== 'measured') { why(c, 'insufficient_resolution'); return; }
     c.prov.quality = 'exact';
@@ -288,7 +341,9 @@
     return function (c) {
       if (c.source !== 'garmin') { why(c, 'unsupported_source'); return; }
       if (!garminCurrent(c)) return;
-      if (c.g.type_key !== 'lap_swimming') { why(c, 'unsupported_source'); return; }           // nur Becken (Freiwasser: keine Bahnen)
+      /* nur Becken (Freiwasser: keine Bahnen). v8-447.3: fehlt der Typ, ist der Kontext unbelegt → missing_data */
+      if (!c.prov.context.typeKey) { why(c, 'missing_data'); return; }
+      if (c.prov.context.environment !== 'pool') { why(c, 'unsupported_source'); return; }
       var ext = obj(c.m.ext), f = ext ? obj(ext.fields) : null;
       c.prov.basis = 'ext.fields.' + field;
       if (!f || num(f.poolLength) === null || num(f[field]) === null) { why(c, 'missing_data'); return; }
@@ -332,6 +387,8 @@
     if (c.a.status && c.a.status !== 'completed') why(c, 'not_completed');
     if (def.sports && !def.sports[c.sport]) why(c, 'unsupported_sport');
     else { try { def.check(c); } catch (e) { why(c, 'missing_data'); } }
+    /* v8-447.3 · kontextgebundene Auswertung (z. B. „Bestwert draussen"): nur mit BELEGTEM Kontext */
+    if (c.opts.environment && c.prov.context.environment !== c.opts.environment) why(c, 'unverified_context');
     return { eligible: c.reasons.length === 0, reason: c.reasons.length ? c.reasons[0] : null, reasons: c.reasons, provenance: c.prov };
   }
   function isMetricLedgerEligible(owner, metric, opts) { return evaluate(owner, metric, opts).eligible; }
@@ -349,10 +406,11 @@
   }
 
   var REASONS = ['missing_data', 'legacy_schema', 'unverified_semantics', 'insufficient_resolution', 'invalid_time_axis',
-    'unsupported_source', 'unsupported_sport', 'manual_override_conflict', 'not_completed', 'unknown_metric'];
+    'unsupported_source', 'unsupported_sport', 'manual_override_conflict', 'not_completed', 'unverified_context', 'unknown_metric'];
 
   var api = {
     evaluate: evaluate, isMetricLedgerEligible: isMetricLedgerEligible, overview: overview, level: level,
+    contextOf: contextOf, provenanceStatus: provenanceStatus, CONTEXT: CONTEXT, PROVENANCE_REQUIRED: PROV_REQUIRED.slice(),
     METRICS: Object.keys(METRICS), REASONS: REASONS, EVIDENCE: EVIDENCE, TRUSTED: Object.keys(TRUSTED), VALIDATIONS: VALIDATIONS, GATE_LOG: GATE_LOG,
     POWER_WINDOWS: POWER_WINDOWS.slice(), DISTANCE_TARGETS: DISTANCE_TARGETS.slice(), TOLERANCES: TOL, DETAILS_VERSION_CURRENT: CURRENT,
     sportsOf: function (metric) { var d = METRICS[metric]; return d ? (d.sports ? Object.keys(d.sports) : null) : undefined; },

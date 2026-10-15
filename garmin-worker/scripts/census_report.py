@@ -47,7 +47,8 @@ OBSERVED = HERE.parent / "census" / "observed.json"
 MIN_BASIS = 5          # so viele Aktivitaeten braucht es, bevor „nie gesehen" als ABSENT gilt
 ARTEN = ("basis", "typ", "herkunft", "nachladen", "tempo", "abtastung", "messreihe", "feld", "feld_nicht_erhalten",
          "feld_verworfen", "struktur", "reihe", "reihe_nicht_erhalten", "bestwert", "kennwert", "zusatzabruf",
-         "zusatz_schluessel", "aufloesung", "herkunft_unvollstaendig", "bedeutung", "bedeutung_hinweis")
+         "zusatz_schluessel", "aufloesung", "herkunft_unvollstaendig", "bedeutung", "bedeutung_hinweis",
+         "herkunft_status", "herkunft_luecke", "herkunft_nachgetragen")
 # Nenner je Art: worauf sich „Abdeckung %" bezieht
 DENOMINATOR = {"feld": "mit_rohfeldern", "feld_nicht_erhalten": "mit_rohfeldern", "feld_verworfen": "mit_rohfeldern",
                "struktur": "mit_rohfeldern", "herkunft": "alle", "typ": "alle", "abtastung": "details_aktuell",
@@ -55,7 +56,8 @@ DENOMINATOR = {"feld": "mit_rohfeldern", "feld_nicht_erhalten": "mit_rohfeldern"
                "bestwert": "details_aktuell", "kennwert": "details_aktuell", "zusatzabruf": "details_aktuell",
                "zusatz_schluessel": "details_aktuell", "nachladen": "alle", "quelle": "details_aktuell",
                "aufloesung": "details_aktuell", "herkunft_unvollstaendig": "alle", "bedeutung": "details_aktuell",
-               "bedeutung_hinweis": "details_aktuell"}
+               "bedeutung_hinweis": "details_aktuell", "herkunft_status": "alle", "herkunft_luecke": "alle",
+               "herkunft_nachgetragen": "alle"}
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9_.\-\[\]:<> =(),/;×−+äöüÄÖÜß]{1,300}$")
 
 
@@ -323,8 +325,13 @@ Sportart, bei denen das Feld vorkam, bezogen auf die Aktivitäten, bei denen es 
     table("zusatz_schluessel", "15 · Form der Zusatzabrufe", "Schlüssel der Antworten (keine Werte).")
     table("aufloesung", "15a · Aufloesung der geladenen Details", "`standard` = maxChartSize der Bibliothek (2000) bzw. vor v8-447.1 · "
           "`maxchart=…` = gezielt neu geladen. Erst mit vollständiger Antwort sind kurze Leistungs-Bestwerte exakt.")
-    table("herkunft_unvollstaendig", "15b · Herkunftsblock unvollständig", "Ohne Garmin-Typ oder GMT-Startzeit. Behebt der weite "
-          "Rückblick (`ACTIVITY_PROVENANCE_BACKFILL_DAYS`).")
+    table("herkunft_unvollstaendig", "15b · Herkunftsblock unvollständig", "Ohne Garmin-Typ oder GMT-Startzeit (Zählung wie v8-447.1, "
+          "zum Vorher/Nachher-Vergleich). Behebt der Metadaten-Backfill (`PROVENANCE_BACKFILL`).")
+    table("herkunft_status", "15b.1 · Herkunft: Status je Aktivität", "`complete` · `partial` (noch nicht gegen die Liste geprüft) · "
+          "`unavailable` (Garmin liefert es nachweislich nicht) · `inconsistent` (Widerspruch, nichts ersetzt).")
+    table("herkunft_luecke", "15b.2 · Herkunft: welche Lücke", "`ohne_typ_und_utc` · `ohne_typ` · `ohne_utc` · `ohne_ortszeit` · "
+          "`nicht_gelistet` · `nicht_geliefert:<Schlüssel>` · `widerspruch:<Schlüssel>`.")
+    table("herkunft_nachgetragen", "15b.3 · Herkunft: vom Backfill ergänzt", "Die tatsächlich behobenen Fälle: Zeilen und ergänzte Schlüssel.")
     table("bedeutung", "15c · Bedeutungsprüfung: Listenwert gegen Aufzeichnung", "Beziehung = Urteil [passende Lesart] (Lieferung). "
           "Nur Urteile aus **vollständiger** Lieferung zählen als Beleg der Bedeutung.")
     table("bedeutung_hinweis", "15d · Bedeutungsprüfung: Ursache einer Abweichung", "`two_definitions` = Listen- und Aufzeichnungswert "

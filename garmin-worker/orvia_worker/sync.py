@@ -414,6 +414,7 @@ async def sync_user(
     result["steps"]["anomalies"] = f"ok:{anomaly_count}"
 
     # -- 7) Aktivitäten -------------------------------------------------------
+    prov_abort = None
     try:
         acts = await asyncio.to_thread(
             provider.get_activities, date_strs[0], date_strs[-1]
@@ -478,6 +479,9 @@ async def sync_user(
             from .detail_sync import patch_provenance
             prov = await patch_provenance(db, user_id, known)
             back_days = int(getattr(settings, "activity_provenance_backfill_days", 0) or 0)
+            # v8-447.3: der gezielte Metadaten-Backfill (PROVENANCE_BACKFILL) ersetzt den festen Rueckblick.
+            if str(getattr(settings, "provenance_backfill", "off") or "off") in ("dry", "apply"):
+                back_days = 0
             if back_days > 0:
                 rows = await db.select("activities", {"user_id": user_id, "source": "garmin"})
                 # v8-447.1: auch Zeilen mit VORHANDENEM, aber unvollstaendigem Herkunftsblock (vom
@@ -499,6 +503,21 @@ async def sync_user(
             result["errors"].append(f"provenance:{e.code}")
         except Exception:
             result["errors"].append("provenance_failed")
+        # v8-447.3 · Metadaten-Backfill der Herkunft (nur Liste, keine Details). Standard AUS;
+        # 'dry' zaehlt nur. Bricht bei 401/429 ab — dann auch keine Detail- und Tagesabrufe.
+        mode = str(getattr(settings, "provenance_backfill", "off") or "off")
+        if mode in ("dry", "apply"):
+            try:
+                from . import provenance as PV
+                pres = await PV.backfill(db, user_id,
+                                         lambda a, b: provider.get_activities(a, b),
+                                         mode=mode)
+                result["steps"]["provenance_backfill"] = PV.summary_line(pres)
+                if pres.get("aborted") in ("AUTH", "RATE_LIMIT"):
+                    prov_abort = pres["aborted"]
+                    result["errors"].append("provenance_backfill:" + ("AUTH_FAILED" if prov_abort == "AUTH" else "RATE_LIMITED"))
+            except Exception:
+                result["errors"].append("provenance_backfill_failed")
     except ProviderError as e:
         result["errors"].append(f"activities:{e.code}")
         result["steps"]["activities"] = "failed"
@@ -512,6 +531,11 @@ async def sync_user(
     # unberührt. Bricht den übrigen Sync nie ab.
     try:
         from .detail_sync import sync_activity_details, sync_day_series
+        if prov_abort:
+            # Garmin bremst bzw. Sitzung ungueltig (Metadaten-Backfill): keine weiteren Abrufe.
+            result["steps"]["activity_details"] = "skipped:" + prov_abort.lower()
+            result["steps"]["series"] = "skipped:" + prov_abort.lower()
+            raise _SkipSeries()
         limit = int(getattr(settings, "detail_backfill_limit", 10) or 10)
         if hasattr(provider, "get_activity_details"):
             extras = tuple(getattr(settings, "detail_extras", ()) or ())
@@ -528,6 +552,7 @@ async def sync_user(
                 limit=limit, get_extra=get_extra, extras=extras,
                 maxchart=maxchart,
                 refetch_resolution=bool(getattr(settings, "detail_refetch_resolution", False)) and maxchart > 0,
+                refetch_semantics=bool(getattr(settings, "detail_refetch_semantics", False)),
             )
             cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
@@ -548,6 +573,7 @@ async def sync_user(
                     f"failing:{st.get('failing')} deferred:{st.get('deferred')} eta_h>={eta_h}"
                     + (f" resolution_pending:{st.get('resolution_pending')}" if st.get("resolution_pending") else "")
                     + (f" provenance_incomplete:{st.get('provenance_incomplete')}" if st.get("provenance_incomplete") else "")
+                    + (f" semantics_pending:{st.get('semantics_pending')}" if st.get("semantics_pending") else "")
                 )
                 logger.info("backfill contract=%s total=%s current=%s pending=%s (legacy=%s never=%s) "
                             "failing=%s deferred=%s categories=%s processed_24h=%s eta_h>=%s",
