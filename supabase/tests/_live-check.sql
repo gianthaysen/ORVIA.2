@@ -1,6 +1,6 @@
 -- ============================================================
 -- ORVIA · Live-Schema-Abgleich  (ERZEUGT — nicht von Hand ändern)
--- Quelle: supabase/migrations/ (49 Dateien)
+-- Quelle: supabase/migrations/ (50 Dateien)
 -- Neu erzeugen: node app/tools/gen-live-check.mjs
 -- ============================================================
 -- Diese Abfrage beantwortet die eine Frage, die `public.schema_migrations`
@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 51 Tabellen + 70 Spalten + 65 Indizes + 20 RLS = 206 Prüfungen.
+-- Umfang: 56 Tabellen + 70 Spalten + 69 Indizes + 25 RLS = 220 Prüfungen.
 -- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
 -- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
@@ -38,6 +38,11 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0036','tabelle','oauth_tokens',''),
   ('0041','tabelle','onboarding_step_log',''),
   ('0002','tabelle','orvia_migrations',''),
+  ('0051','tabelle','performance_ledger_dirty',''),
+  ('0051','tabelle','performance_ledger_entries',''),
+  ('0051','tabelle','performance_ledger_log',''),
+  ('0051','tabelle','performance_milestones',''),
+  ('0051','tabelle','performance_record_events',''),
   ('0019','tabelle','profile_metric_settings',''),
   ('0036','tabelle','profiles',''),
   ('0019','tabelle','provider_credentials',''),
@@ -162,6 +167,10 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0037','index','goal_shadow_log_user_time_idx',''),
   ('0019','index','metric_anomalies_open_idx',''),
   ('0041','index','onboarding_step_log_user_time_idx',''),
+  ('0051','index','ple_activity_idx',''),
+  ('0051','index','ple_metric_idx',''),
+  ('0051','index','pll_user_idx',''),
+  ('0051','index','pre_metric_idx',''),
   ('0019','index','profile_metric_settings_uniq',''),
   ('0019','index','provider_credentials_uniq',''),
   ('0017','index','readiness_baselines_metric_uniq',''),
@@ -211,6 +220,11 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0037','rls','goal_shadow_log',''),
   ('0036','rls','oauth_tokens',''),
   ('0041','rls','onboarding_step_log',''),
+  ('0051','rls','performance_ledger_dirty',''),
+  ('0051','rls','performance_ledger_entries',''),
+  ('0051','rls','performance_ledger_log',''),
+  ('0051','rls','performance_milestones',''),
+  ('0051','rls','performance_record_events',''),
   ('0036','rls','profiles',''),
   ('0002','rls','readiness_components',''),
   ('0036','rls','schema_migrations',''),

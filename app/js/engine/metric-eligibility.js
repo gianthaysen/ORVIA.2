@@ -16,7 +16,11 @@
      gestuetzt      wo es zwei unabhaengige Angaben gibt, stimmen sie ueberein
    Alles andere: nicht zulaessig, mit Grund. „Wahrscheinlich richtig" gibt es nicht.
 
-   Antwort:  { eligible, reason, reasons[], provenance }
+   Antwort:  { eligible, reason, reasons[], provenance, value, unit }
+     value/unit  v8-448A: der Wert der Kennzahl auf GENAU der Grundlage, die geprueft wurde (wirksam, also nach
+                 manueller Korrektur) — nur wenn eligible. Ist er nicht lesbar, ist die Kennzahl nicht zulaessig
+                 (missing_data); ein Ersatz- oder Schaetzwert wird nie geliefert. Das Leistungsregister liest den
+                 Wert NUR hier, damit Urteil und Zahl nie auseinanderlaufen.
      reason      erster (wichtigster) Grund oder null
      provenance  { source, manual, basis, quality, evidence }
                    manual   true, wenn ein manuell korrigierter Wert eingeht — der wirksame Wert
@@ -158,8 +162,29 @@
     if (missing.every(function (k) { return unavailable.indexOf(k) >= 0; })) return 'unavailable';
     return 'partial';
   }
+  /* v8-448A · Eigene Daten: der Nutzer hat den Kontext selbst EINGEGEBEN (Formular der Sportart) — das ist ein
+     Beleg eigener Art (Belegstufe own), kein Raten. Nur ausdrueckliche Werte; alles andere bleibt unbelegt. */
+  var OWN_CONTEXT = [
+    ['environment', { indoor: 'indoor', outdoor: 'outdoor', pool: 'pool', open_water: 'open_water' }],
+    ['runType', { treadmill: 'indoor', trail: 'outdoor' }],
+    ['walkingType', { treadmill: 'indoor' }],
+    ['rideType', { indoor: 'indoor', gravel: 'outdoor', mtb: 'outdoor' }],
+    ['swimType', { open_water: 'open_water' }]
+  ];
+  function ownContext(x) {
+    var s = obj(x.summary) || {};
+    for (var i = 0; i < OWN_CONTEXT.length; i++) {
+      var k = OWN_CONTEXT[i][0], v = s[k];
+      if (typeof v === 'string' && OWN_CONTEXT[i][1][v]) return { environment: OWN_CONTEXT[i][1][v], basis: 'Nutzerangabe summary.' + k + ' = ' + v };
+    }
+    return null;
+  }
   function contextOf(a) {
     var x = obj(a) || {};
+    if (x.source !== 'garmin' && OWN_SOURCES[x.source]) {
+      var oc = ownContext(x);
+      return { environment: oc ? oc.environment : null, typeKey: null, basis: oc ? oc.basis : 'keine Kontextangabe', origin: null };
+    }
     var g = obj((obj(x.metrics) || {}).garmin) || {};
     var tk = (typeof g.type_key === 'string' && g.type_key) ? g.type_key : null;
     var env = tk && CONTEXT[tk] ? CONTEXT[tk] : null;
@@ -380,6 +405,33 @@
      Tagesmessung (user_metrics.ftp_watts), nicht aus der Aufzeichnung. */
   METRICS.ftp = { sports: null, check: function (c) { c.prov.basis = null; why(c, 'unsupported_source'); } };
 
+  /* v8-448A · Wert je Kennzahl — dieselbe Grundlage wie die Pruefung oben (provenance.basis). [wert, einheit] */
+  function eff(c, key, fallback) {
+    try { if (c.E && c.E.getEffectiveMetric) { var v = c.E.getEffectiveMetric(c.a, key); if (num(v) !== null) return v; } } catch (e) {}
+    return fallback;
+  }
+  function stat(c, key, field) { var st = obj((obj(c.be.stats) || {})[key]); return st ? num(st[field]) : null; }
+  function fieldOf(c, f) { var ext = obj(c.m.ext), fs = ext ? obj(ext.fields) : null; return fs ? num(fs[f]) : null; }
+  function ownOr(c, sumKey, streamKey, field) { return c.source === 'garmin' ? stat(c, streamKey, field) : num(c.sum[sumKey]); }
+  var VALUE = {
+    duration: function (c) { return [eff(c, 'duration', num(c.a.durationSeconds)), 's']; },
+    distance: function (c) { return [eff(c, 'distance', distanceM(c)), 'm']; },
+    pace: function (c) { var d = eff(c, 'duration', num(c.a.durationSeconds)), m = eff(c, 'distance', distanceM(c)); return [(d && m) ? d / (m / 1000) : null, 's/km']; },
+    heartRate: function (c) { return [ownOr(c, 'avgHr', 'heart_rate', 'avg'), 'bpm']; },
+    maxHeartRate: function (c) { return [ownOr(c, 'maxHr', 'heart_rate', 'max'), 'bpm']; },
+    runningCadence: function (c) { var ok = obj((obj(c.g.semantics_ok) || {}).averageRunningCadence); return [ok ? num(ok.list) : null, 'spm']; },
+    cyclingCadence: function (c) { return [stat(c, 'cadence', 'avg'), 'rpm']; },
+    power: function (c) { return [stat(c, 'power', 'avg'), 'W']; },
+    powerBest: function (c) { var it = obj((obj((obj(c.be.power) || {}).windows) || {})[String(c.opts.windowS)]); return [it ? num(it.w) : null, 'W']; },
+    distanceBest: function (c) { var it = obj((obj((obj(c.be.distance) || {}).targets) || {})[String(c.opts.targetM)]); return [it ? num(it.s) : null, 's']; },
+    swolf: function (c) { return [fieldOf(c, 'averageSwolf'), 'swolf']; },
+    strokeRate: function (c) { return [fieldOf(c, 'averageSwimCadenceInStrokesPerMinute'), 'spm']; },
+    trainingEffect: function (c) { return [fieldOf(c, 'aerobicTrainingEffect'), 'te']; },
+    strengthVolume: function (c) { return [c.source === 'garmin' ? null : num(c.sum.totalVolumeKg), 'kg']; },   // Garmin-Einheit unbelegt: nie ein Wert
+    calories: function (c) { return [num(c.sum.caloriesKcal), 'kcal']; },
+    ftp: function () { return [null, 'W']; }
+  };
+
   function evaluate(owner, metric, opts) {
     var c = ctxOf(owner, opts);
     var def = METRICS[metric];
@@ -389,7 +441,14 @@
     else { try { def.check(c); } catch (e) { why(c, 'missing_data'); } }
     /* v8-447.3 · kontextgebundene Auswertung (z. B. „Bestwert draussen"): nur mit BELEGTEM Kontext */
     if (c.opts.environment && c.prov.context.environment !== c.opts.environment) why(c, 'unverified_context');
-    return { eligible: c.reasons.length === 0, reason: c.reasons.length ? c.reasons[0] : null, reasons: c.reasons, provenance: c.prov };
+    var value = null, unit = null;
+    if (!c.reasons.length) {
+      var vu = null;
+      try { vu = VALUE[metric] ? VALUE[metric](c) : null; } catch (e) { vu = null; }
+      value = vu ? num(vu[0]) : null; unit = vu ? vu[1] : null;
+      if (value === null || value < 0) { why(c, 'missing_data'); value = null; }          // kein lesbarer Wert = nicht zulaessig, nie geschaetzt
+    }
+    return { eligible: c.reasons.length === 0, reason: c.reasons.length ? c.reasons[0] : null, reasons: c.reasons, provenance: c.prov, value: value, unit: unit };
   }
   function isMetricLedgerEligible(owner, metric, opts) { return evaluate(owner, metric, opts).eligible; }
 
