@@ -369,8 +369,18 @@
       state.activities[id] = { fp: fp, sport: a.sportId, entries: entries };
       (cur ? updated : added).push(id);
     });
+    /* opts.partial: die Eingabe ist NICHT der vollstaendige Bestand (z. B. die App hat nur die letzten 200
+       Aktivitaeten geladen). Dann gilt Fehlen nicht als Loeschung — entfernt wird nur, was ausdruecklich
+       geloescht ist (opts.isDeleted / deletedAt / _tombstone in der Eingabe). Ohne diese Angabe wuerde eine
+       gekuerzte Liste aeltere Rekorde stillschweigend loeschen. */
+    var explicitDeleted = {};
+    if (o.partial) (Array.isArray(activities) ? activities : []).forEach(function (a) {
+      if (obj(a) && a.id && (a.deletedAt || a._tombstone || (typeof o.isDeleted === 'function' && o.isDeleted(a)))) explicitDeleted[String(a.id)] = true;
+    });
+    (o.deletedIds || []).forEach(function (id) { explicitDeleted[String(id)] = true; });
     Object.keys(state.activities).forEach(function (id) {
       if (present[id]) return;
+      if (o.partial && !explicitDeleted[id]) return;
       state.activities[id].entries.forEach(function (e) { affected[e.metricKey] = true; });
       delete state.activities[id];
       removed.push(id);

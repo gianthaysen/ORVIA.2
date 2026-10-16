@@ -15,6 +15,9 @@
      4. Zwischenspeicher schreiben; Aenderungen in EINER Server-Transaktion speichern
    Fehler beim Speichern lassen die Berechnung gelten und versuchen es beim naechsten Mal erneut
    (pending). Abhaengigkeiten werden hereingegeben (Tests) oder aus window.ORVIA genommen.
+   VOLLSTAENDIGKEIT: refresh() muss den GANZEN Bestand des Nutzers bekommen — oder opts.partial = true und
+   ausdrueckliche Loeschungen (opts.deletedIds / Tombstones). Die Serverliste der App ist heute auf 200
+   Aktivitaeten begrenzt; ohne partial wuerden aeltere Eintraege als geloescht gelten.
    ============================================================ */
 (function (root) {
   'use strict';

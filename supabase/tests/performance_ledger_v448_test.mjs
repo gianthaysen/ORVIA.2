@@ -131,6 +131,10 @@ sec('D · Gleichstand, Korrektur, Loeschung, Reimport, manuell');
   const del = upd(s1, B_RUNS.filter(r => r.id !== 'r5'));
   ok('D8 Loeschung: Rekord faellt auf den vorherigen Bestwert (24:05) zurueck', L.currentBest(del.state.events[K5]).value === 1445 && del.changes.removed.join() === 'r5');
   ok('D9 … mit Protokoll activity_removed, keine Einträge der geloeschten Aktivitaet', del.changes.log.some(l => l.reason === 'activity_removed' && l.beforeBest === 1419 && l.afterBest === 1445) && !del.state.activities.r5);
+  const part = upd(s1, B_RUNS.slice(3), { partial: true });
+  ok('D8b unvollstaendige Eingabe (nur juengste Aktivitaeten geladen): nichts wird als geloescht behandelt', part.changes.removed.length === 0 && Object.keys(part.state.activities).length === 5 && J(part.state.events) === J(s1.events));
+  const partDel = upd(s1, B_RUNS.slice(3, 4), { partial: true, deletedIds: ['r5'] });
+  ok('D8c unvollstaendige Eingabe + ausdrueckliche Loeschung: nur die geloeschte faellt weg', partDel.changes.removed.join() === 'r5' && Object.keys(partDel.state.activities).length === 4);
   const tomb = upd(s1, B_RUNS, { isDeleted: a => a.id === 'r4' });
   ok('D10 Tombstone (lokal geloescht) zaehlt wie geloescht', !tomb.state.activities.r4 && tomb.changes.removed.includes('r4'));
   const reimp = B_RUNS.map(clone); reimp[4].metrics.best_efforts.distance.targets['5000'].s = 23 * 60 + 30;   // Garmin liefert neu (feinere Aufloesung)
