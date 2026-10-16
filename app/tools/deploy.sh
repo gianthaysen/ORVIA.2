@@ -46,6 +46,14 @@ if [ "$soll" = "$ist" ]; then
   exit 0
 fi
 
+# v8-450 · Eine Build-Nummer = genau ein Inhalt. Am 16.10. gingen zwei verschiedene Staende als orvia-v8-449 live;
+# sw.js war byte-gleich, der Browser sah kein Update und lieferte weiter alte Module aus seinem Cache.
+LIVE_BUILD=$(git show origin/main:sw.js 2>/dev/null | grep -o "orvia-v8-[0-9]*" | head -1)
+[ "$LIVE_BUILD" != "$BUILD" ] || ende "$BUILD ist schon live — mit ANDEREM Inhalt. Build-Nummer anheben (app/sw.js const C und app/index.html orvia-build), node app/tools/gen-sw-rev.mjs, Suite, Commit."
+META_BUILD=$(grep -o 'name="orvia-build" content="[^"]*"' app/index.html | grep -o 'orvia-v8-[0-9]*')
+[ "$META_BUILD" = "$BUILD" ] || ende "Build-Nummer uneinheitlich: sw.js $BUILD, index.html ${META_BUILD:-fehlt}."
+node app/tools/gen-sw-rev.mjs --check >/dev/null || ende "Inhaltskennung REV in app/sw.js passt nicht zum Inhalt — node app/tools/gen-sw-rev.mjs, Suite, Commit."
+
 # ---- 2 · Deploy; der Rueckweg ist ab hier garantiert ----
 GESTASHT=0; MARK_KOPIE=""
 zurueck() {

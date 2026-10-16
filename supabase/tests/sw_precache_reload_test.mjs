@@ -71,7 +71,8 @@ sec('E · Versions-Query (v8-417, Safari ignoriert cache:reload)');
   const fn = new Function('self', 'caches', 'Request', 'Response', 'fetch', sw);
   fn(g.self, g.caches, g.Request, g.Response, g.fetch);
   let done; g.handlers.install({ waitUntil: p => { done = p; } }); await done;
-  const C = (sw.match(/const C = '([^']+)'/) || [])[1];
+  /* v8-450: Cache-Name = Build + '-' + Inhaltskennung (CACHE) */
+  const C = (sw.match(/const C = '([^']+)'/) || [])[1] + '-' + (sw.match(/const REV = '([^']+)'/) || [])[1];
   ok('E1 jede Vorbefuellung geht mit ?v=<Cache-Name> und cache:reload ins Netz', fetched.length > 100 && fetched.every(r => r.url.indexOf('?v=' + C) > 0 && r.cache === 'reload'));
   ok('E2 abgelegt wird unter dem PLAIN-Schluessel (ohne Query), Antwort des versionierten Requests', put.length === fetched.length && put.every(([k, tag]) => k.indexOf('?') < 0 && tag === k + '?v=' + C));
   ok('E3 styles.css/js/ui.js dabei, skipWaiting danach', put.some(([k]) => k === './styles.css') && put.some(([k]) => k === './js/ui.js') && g.skipped === true);

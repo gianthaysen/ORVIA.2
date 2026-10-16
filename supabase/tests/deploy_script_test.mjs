@@ -31,5 +31,9 @@ ok('A8 Upload-Satz wie bisher: index, styles, sw, manifest, js, assets, locales 
 ok('A9 nichts zu committen bricht nicht ab', /if git diff --cached --quiet; then[\s\S]{0,160}else[\s\S]{0,260}git push origin deploy:main \|\| ende/.test(code));
 ok('A10 Ordner werden gespiegelt (rsync --delete; ohne rsync loeschen + kopieren)', /rsync -a --delete "\$1\/" "\$2\/"; else rm -rf "\$2" && cp -R "\$1" "\$2"/.test(code));
 ok('A11 am Ende die bestehende Abnahme (deploy-verify.sh)', /bash app\/tools\/deploy-verify\.sh\s*$/.test(code.trim()));
+/* v8-450 · eine Build-Nummer = genau ein Inhalt (zwei verschiedene Auslieferungen als orvia-v8-449 → alte Module aus dem SW-Cache) */
+const iUniq = code.indexOf('[ "$LIVE_BUILD" != "$BUILD" ] || ende'), iMeta = code.indexOf('[ "$META_BUILD" = "$BUILD" ] || ende'), iRev = code.indexOf('node app/tools/gen-sw-rev.mjs --check');
+ok('A12 Build-Nummer schon live mit anderem Inhalt → Abbruch (nach „schon live?", vor jedem Push)', iUniq > iLive && iUniq < iPush && /git show origin\/main:sw\.js/.test(code));
+ok('A13 Build-Nummer in sw.js und index.html gleich, Inhaltskennung REV aktuell — sonst Abbruch vor dem Push', iMeta > iLive && iMeta < iPush && iRev > iLive && iRev < iPush);
 console.log('\n' + (fail ? '❌' : '✅') + ' deploy_script: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
