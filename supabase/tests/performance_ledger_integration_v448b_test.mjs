@@ -252,7 +252,7 @@ sec('I · Auslieferung');
   const order = ['js/engine/feature-flags.js', 'js/engine/metric-eligibility.js', 'js/engine/performance-ledger.js', 'js/engine/records-bridge.js', 'js/repos/performanceLedgerRepository.js', 'js/performance-ledger-store.js', 'js/screens/performance-ledger-view.js'];
   const pos = order.map(f => html.indexOf('<script src="' + f + '"></script>'));
   ok('I1 Bausteine in index.html, in Abhaengigkeitsreihenfolge, je einmal', pos.every((p, i) => p > 0 && (i === 0 || p > pos[i - 1])) && order.every(f => html.split(f).length === 2), J(pos));
-  ok('I2 alle im Offline-Speicher, Build v8-448', order.every(f => sw.includes("'./" + f + "'")) && /const C = 'orvia-v8-448'/.test(sw) && /content="orvia-v8-448"/.test(html));
+  ok('I2 alle im Offline-Speicher, Build >= v8-448, index = sw', order.every(f => sw.includes("'./" + f + "'")) && (() => { const v = (sw.match(/const C = 'orvia-v8-(\d+)'/) || [])[1]; return +v >= 448 && html.includes('content="orvia-v8-' + v + '"'); })());
   const ui = rd('js/ui.js');
   ok('I3 Einstieg in die Ansicht nur bei Bruecke ≠ off', /recordsBridge\.mode\(\)!=='off'\)h\+='<button type="button" class="bt-row plv-entry"/.test(ui));
   ok('I4 Route prueft das Flag selbst (Direktaufruf zeigt nichts)', /if\(!V\|\|!S\|\|!S\.enabled\(\)\)return h\+/.test(ui));

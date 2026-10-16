@@ -59,13 +59,18 @@
      EINE Quelle fuer Aktivitaetsdetail (activity.js) und Bestzeiten.
      Ausschliesslich echte Felder des Rohobjekts — keine Interpolation,
      keine erfundene Runde. */
-  function normalizeSplits(raw) {
+  /* opts.elapsed (v8-448C, Bestzeiten): Rundenzeit = verstrichene Zeit (elapsedDuration) vor der Timer-Zeit —
+     sonst fehlen angehaltene Pausen und das Fenster waere zu schnell. Die Anzeige der Runden (activity.js) ruft
+     ohne opts auf und zeigt weiter die Timer-Zeit wie Garmin Connect. */
+  function normalizeSplits(raw, opts) {
     if (!Array.isArray(raw) || !raw.length) return null;
+    var el = !!(opts && opts.elapsed);
     var out = [];
     raw.forEach(function (r) {
       if (!r || typeof r !== 'object') return;
       var distM = num(r.distance) != null ? num(r.distance) : num(r.distanceInMeters);
-      var sec = num(r.duration) != null ? num(r.duration)
+      var sec = (el && num(r.elapsedDuration) != null) ? num(r.elapsedDuration)
+        : num(r.duration) != null ? num(r.duration)
         : (num(r.elapsedDuration) != null ? num(r.elapsedDuration) : num(r.movingDuration));
       if (distM == null || sec == null || sec <= 0) return;
       out.push({
@@ -173,7 +178,8 @@
      WAS HIER PASSIERT: Liegt eine kumulative Distanzreihe und die Gesamtdauer der
      Aktivitaet vor, wird die Zeit GLEICHMAESSIG auf die Samples verteilt.
 
-     WARUM DAS DEN „NIE BESCHOENIGEN"-VERTRAG NICHT BRICHT: Verteilt wird die
+     WARUM DAS DEN „NIE BESCHOENIGEN"-VERTRAG NICHT BRICHT (seit v8-448C wirklich: totalTimeOf = verstrichene
+     Zeit; vorher war es bei Garmin die Timer-Dauer OHNE Pausen): Verteilt wird die
      VOLLSTAENDIGE Aktivitaetsdauer, also inklusive aller Pausen-/Stehzeiten. Jedes
      Teilfenster traegt dadurch seinen Anteil an dieser Zeit mit — die berechnete
      Zeit ist im Zweifel zu LANGSAM, nie zu schnell. Ein so ermittelter Wert bleibt
@@ -209,6 +215,30 @@
     return null;
   }
 
+  /* v8-448C · GESAMTZEIT EINER AKTIVITAET = VERSTRICHENE ZEIT (inkl. Pausen).
+     Befund Echtdaten (16.10.2026): durationSeconds ist bei Garmin die TIMER-Dauer — angehaltene Pausen fehlen.
+     Der 5-km-Lauf vom 13.08. hatte 23:38 Timer, aber 33:17 verstrichen (9:39 Pause); der 10-km-Lauf vom 15.07.
+     57:55 Timer, 1:13:18 verstrichen. 'activity_total' wies damit 23:39 als 5-km-Bestzeit aus — eine Zeit, die es
+     am Stueck nie gab. Die Messreihen-Fenster ('stream_window', Zeitachse = verstrichene Sekunden) und das
+     Register rechnen bereits mit verstrichener Zeit; jetzt auch die Gesamtaktivitaet und die Ersatzachse.
+     Reihenfolge: manuell korrigierte Dauer (Nutzerangabe, activity-effective) → Garmin elapsed_duration_s → die
+     Dauer der Zeile (eigene Eingaben: es gibt keine Aufzeichnung, die Angabe IST die Zeit). basis benennt es. */
+  function totalTimeOf(a) {
+    var d = num(a && a.durationSeconds);
+    try {
+      var E = O.activityEffective;
+      if (E && E.isCorrected && E.isCorrected(a, 'duration')) {
+        var v = num(E.resolveMetric(a, 'duration').effectiveValue);
+        if (v != null && v > 0) return { sec: v, basis: 'manual' };
+      }
+    } catch (e) {}
+    var g = a && a.metrics && a.metrics.garmin;
+    var el = g ? num(g.elapsed_duration_s) : null;
+    if (el != null && el > 0 && (d == null || el >= d - 1)) return { sec: el, basis: 'elapsed' };
+    if (d != null && d > 0) return { sec: d, basis: (a && a.source === 'garmin') ? 'timer' : 'duration' };
+    return null;
+  }
+
   function distanceKm(a) {
     var s = (a && a.summary) || {};
     var m = num(s.distance_m) != null ? num(s.distance_m) : num(s.distanceM);
@@ -236,14 +266,14 @@
       if (a.status && a.status !== 'completed') return;
       if (isTomb) { try { if (isTomb(a)) return; } catch (e) {} }
       res.scanned++;
-      var splits = normalizeSplits(a.metrics && a.metrics.splits);
+      var splits = normalizeSplits(a.metrics && a.metrics.splits, { elapsed: true });
       if (splits) res.withSplits++;
       /* Sekundengenaues Stream-Fenster — nur mit ECHTER Zeitachse (siehe
          bestWindowFromStreams). Rundenfenster bleibt der Rueckfall. */
       var id = a.clientRecordId || a.id || a.sourceRecordId || null;
       var day = a.startedAt ? String(a.startedAt).slice(0, 10) : null;
       var totalKm = distanceKm(a);
-      var totalSec = num(a.durationSeconds);
+      var tt = totalTimeOf(a), totalSec = tt ? tt.sec : null;
       var sDist = null, sTime = null, sMethod = 'stream_window';
       try {
         var strm = a.metrics && a.metrics.streams;
@@ -285,7 +315,7 @@
             && totalKm + 1e-9 >= t.km && totalKm <= t.km * (1 + slack) + 1e-9) {
           if (!cand || totalSec < cand.sec) {
             cand = { sec: Math.round(totalSec), km: Math.round(totalKm * 100) / 100,
-                     laps: null, fromLap: null, method: 'activity_total' };
+                     laps: null, fromLap: null, method: 'activity_total', timeBasis: tt.basis };
           }
         }
         if (!cand) return;
@@ -318,7 +348,7 @@
     measuredBests: measuredBests, measuredBestsLegacy: measuredBestsLegacy, measuredAllBests: measuredAllBests,
     normalizeSplits: normalizeSplits, bestWindow: bestWindow,
     bestWindowFromStreams: bestWindowFromStreams, streamTimeAxis: streamTimeAxis,
-    measuredRunBests: measuredRunBests
+    measuredRunBests: measuredRunBests, totalTimeOf: totalTimeOf
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.runBests = api;

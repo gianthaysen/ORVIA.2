@@ -193,7 +193,7 @@ sec('G · Dokument und Auslieferung');
   ok('G4 v8-448B: Modul ausgeliefert (index.html + Offline-Speicher) — genutzt nur vom Leistungsregister hinter dem Flag performance_ledger', html.includes('js/engine/metric-eligibility.js') && sw.includes('./js/engine/metric-eligibility.js'));
   const src = rd('js/engine/metric-eligibility.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok('G5 rein: kein DOM, kein Speicher, kein Netz', !/document\.|localStorage|fetch\(|XMLHttpRequest/.test(src));
-  ok('G6 Build v8-448 (Leistungsregister eingebunden, Flag aus)', /const C = 'orvia-v8-448'/.test(sw));
+  ok('G6 Build >= v8-448 (Leistungsregister eingebunden, Flag aus)', +((sw.match(/const C = 'orvia-v8-(\d+)'/) || [])[1]) >= 448);
 }
 
 console.log('\n' + (fail ? '❌' : '✅') + ' metric_eligibility_v4471: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

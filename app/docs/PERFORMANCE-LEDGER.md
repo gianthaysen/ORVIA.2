@@ -144,3 +144,19 @@ ausdrücklich gelöscht wurde (Tombstone). Nicht geladen heißt nie gelöscht.
 5. **Prüfen:** Profil → Bestzeiten → „Leistungsentwicklung"; Herkunft je Rekord; Tabelle `performance_ledger_log`; zweites Gerät / Neustart (Zwischenspeicher).
 6. **Rücknahme** jederzeit: Flag aus (sofort wirksam) → bisherige Anzeigen wie vor dem Einschalten; Daten bleiben unberührt.
 7. Erst nach mehreren Tagen ohne Abweichung: weitere Konten.
+
+## 10 · Echtdaten-Abgleich (v8-448C, Probelauf 16.10.2026)
+
+65 Aktivitäten (41 Garmin, 24 ORVIA-Workout; 2 gekoppelte Kraft-Aufzeichnungen), 15 Läufe, alle Vertrag 3 mit voller Auflösung.
+Werkzeug: `app/tools/ledger-reconcile-console.js` (nur lesen, in der Konsole), `dryRun().report.legacyComparison` nennt je Distanz die Ursache.
+
+| Distanz | bisher | Register | Ursache | fachlich richtig |
+|---|---|---|---|---|
+| 1 km | 4:24 (29.07., Anzeige-Reihe 273 Punkte) | 4:21 (29.07., alle 2175 Messzeilen) | dieselbe Aktivität, gröbere Reihe | Register |
+| 5 km | 23:39 (13.08., Gesamtaktivität) | 29:11 (06.09., im Halbmarathon) | bisher **Timer-Dauer** 1418 s ohne 9:39 angehaltene Pause; verstrichen 1997 s | Register |
+| 10 km | 57:55 (15.07., Gesamtaktivität) | 1:01:49 (06.09.) | bisher Timer-Dauer 3475 s ohne 15:23 Pause; verstrichen 4398 s | Register |
+| Halbmarathon | 2:21:08 (06.09., 296 Punkte) | 2:20:47 (06.09., alle 8533 Messzeilen) | dieselbe Aktivität, gröbere Reihe | Register |
+
+Behoben (run-bests, gilt auch bei ausgeschaltetem Flag): Gesamtzeit einer Aktivität = verstrichene Zeit (`totalTimeOf`:
+manuelle Korrektur → Garmin `elapsed_duration_s` → Dauer der Zeile), Rundenfenster für Bestzeiten mit verstrichener Rundenzeit.
+Die Profil-Bestzeiten (pb-sync) übernehmen das beim nächsten Abgleich von selbst.
