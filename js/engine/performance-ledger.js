@@ -35,7 +35,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var CALC_VERSION = 'ledger@1';
+  var CALC_VERSION = 'ledger@2';   // v8-449.1: Zeitkategorie (aktiv / verstrichen / Wettkampf) — alte Zwischenspeicher verfallen
 
   function req(name, path) {
     if (O[name]) return O[name];
@@ -67,7 +67,16 @@
     DEFS.push(Object.assign({ id: sport + '.' + id, sport: sport, kind: kind, better: KIND_BETTER[kind], metric: metric,
                               opts: opts || {}, label: label, byContext: true }, extra || {}));
   }
-  RUN_TARGETS.forEach(function (t) { def('running', 'fastest_' + t[0] + 'm', 'fastest_time', 'distanceBest', { targetM: t[0] }, t[1], { targetM: t[0] }); });
+  /* v8-449.1 · ZEITKATEGORIE (timing) je Zeit-Rekord — eigene Kennzahl, eigene Historie, nie miteinander verglichen:
+       active   aktive Trainingsbestzeit: Timer laeuft, angehaltene Pausen (manuell oder Auto-Pause) zaehlen nicht
+       elapsed  Bestzeit einschliesslich Pausen: verstrichene Zeit zwischen Start und Ende des Distanzfensters
+       race     Wettkampfbestzeit: nur bestaetigte Wettkampfergebnisse (RACE_DEFS, vorbereitet)
+     pair verbindet die Kategorien derselben Strecke fuer die Anzeige (Aktiv | Gesamtzeit). */
+  RUN_TARGETS.forEach(function (t) {
+    var base = 'running.fastest_' + t[0] + 'm';
+    def('running', 'fastest_' + t[0] + 'm_active', 'fastest_time', 'distanceBestActive', { targetM: t[0] }, t[1], { targetM: t[0], timing: 'active', pair: base });
+    def('running', 'fastest_' + t[0] + 'm', 'fastest_time', 'distanceBest', { targetM: t[0] }, t[1], { targetM: t[0], timing: 'elapsed', pair: base });
+  });
   def('running', 'longest_distance', 'longest_distance', 'distance', null, 'Längster Lauf');
   def('running', 'longest_duration', 'longest_duration', 'duration', null, 'Längste Laufzeit');
   ['walking', 'hiking'].forEach(function (s) {
@@ -85,9 +94,20 @@
   def('gym', 'longest_duration', 'longest_duration', 'duration', null, 'Längstes Krafttraining', { byContext: false });
   DURATION_ONLY.forEach(function (s) { def(s, 'longest_duration', 'longest_duration', 'duration', null, 'Längste Einheit', { byContext: false }); });
 
+  /* Wettkampfbestzeiten (vorbereitet): nur fuer Aktivitaeten, die der Nutzer als Wettkampfergebnis bestaetigt hat
+     (opts.raceIds). Nicht in DEFS — sonst entstuende fuer jeden Lauf ein gesperrter Eintrag „kein Wettkampf". */
+  var RACE_DEFS = RUN_TARGETS.map(function (t) {
+    return { id: 'running.race_' + t[0] + 'm', sport: 'running', kind: 'fastest_time', better: 'lower', metric: 'raceResult', opts: { targetM: t[0] },
+             label: t[1], byContext: true, targetM: t[0], timing: 'race', pair: 'running.fastest_' + t[0] + 'm' };
+  });
   var DEF_BY_ID = {};
-  DEFS.forEach(function (d) { DEF_BY_ID[d.id] = d; });
+  DEFS.concat(RACE_DEFS).forEach(function (d) { DEF_BY_ID[d.id] = d; });
   function defsFor(sport) { return DEFS.filter(function (d) { return d.sport === sport; }); }
+  function isRace(a, o) {
+    var ids = o && o.raceIds; if (!ids || !a) return false;
+    var has = function (x) { return x != null && (Array.isArray(ids) ? ids.indexOf(String(x)) >= 0 : !!ids[String(x)]); };
+    return has(a.id) || has(a.clientRecordId);
+  }
 
   /* Vergleichsgenauigkeit je Einheit: gleich ist, was auf dieser Stufe gleich ist. */
   var PRECISION = { s: 0.1, m: 1, kg: 0.1, W: 1, bpm: 1, spm: 0.1, 's/km': 0.1 };
@@ -168,7 +188,7 @@
   function ruleSignature() {
     var M = ME();
     return fnv(stable({ calc: CALC_VERSION, ev: M ? M.EVIDENCE : null, cur: M ? M.DETAILS_VERSION_CURRENT : null,
-                            ctx: M ? M.CONTEXT : null, defs: DEFS.map(function (d) { return [d.id, d.metric, d.opts, d.kind, d.byContext]; }) }));
+                            ctx: M ? M.CONTEXT : null, defs: DEFS.concat(RACE_DEFS).map(function (d) { return [d.id, d.metric, d.opts, d.kind, d.byContext, d.timing || null]; }) }));
   }
   function fingerprint(a, sig) {
     var m = obj(a.metrics) || {};
@@ -256,17 +276,20 @@
     var o = opts || {}, M = ME();
     if (!M || !obj(a) || !a.id) return [];
     var t = timeOf(a, o.timeZone);
-    return defsFor(a.sportId).map(function (d) {
-      var r = M.evaluate(a, d.metric, d.opts);
+    var race = isRace(a, o);
+    return defsFor(a.sportId).concat(race ? RACE_DEFS.filter(function (d) { return d.sport === a.sportId; }) : []).map(function (d) {
+      var r = M.evaluate(a, d.metric, d.timing === 'race' ? Object.assign({ raceConfirmed: true }, d.opts) : d.opts);
       var cls = contextClass(a, d);
       var p = r.provenance || {};
       return {
-        activityId: String(a.id), sport: a.sportId, metricKey: metricKey(d, cls), defId: d.id, contextClass: cls,
+        activityId: String(a.id), sport: a.sportId, metricKey: metricKey(d, cls), defId: d.id, contextClass: cls, timeCategory: d.timing || null,
         value: r.eligible ? r.value : null, unit: r.unit || null, better: d.better,
         recordedAt: t.recordedAt, utc: t.utc, utcBasis: t.utcBasis, localDate: t.localDate, localTime: t.localTime, timeBasis: t.timeBasis, orderKey: t.orderKey,
         source: a.source || null,
         provenance: { basis: p.basis || null, manual: !!p.manual, quality: p.quality || null, evidence: p.evidence || {},
-                      context: p.context ? { environment: p.context.environment, typeKey: p.context.typeKey, origin: p.context.origin, basis: p.context.basis } : null },
+                      context: p.context ? { environment: p.context.environment, typeKey: p.context.typeKey, origin: p.context.origin, basis: p.context.basis } : null,
+                      measure: p.measure || null, distanceM: num(p.distanceM), pauses: p.pauses || null, candidates: p.candidates || null,
+                      raceConfirmedBy: p.raceConfirmedBy || null },
         eligibility: r.eligible ? 'eligible' : 'blocked', reason: r.eligible ? null : r.reason, reasons: r.reasons || [],
         validation: validationOf(r), calcVersion: CALC_VERSION
       };
@@ -291,7 +314,7 @@
       if (!isBetter && !isEqual) return;
       var ev = { seq: ++seq, metricKey: key, type: best === null ? 'first' : (isBetter ? 'improved' : 'equalled'),
                  value: e.value, unit: e.unit, activityId: e.activityId, recordedAt: e.recordedAt, utc: e.utc || null, localDate: e.localDate,
-                 manual: !!(e.provenance && e.provenance.manual), validation: e.validation, contextClass: e.contextClass,
+                 manual: !!(e.provenance && e.provenance.manual), validation: e.validation, contextClass: e.contextClass, timeCategory: pk.def ? (pk.def.timing || null) : null,
                  previousValue: null, previousActivityId: null, previousLocalDate: null, improvement: null, improvementPct: null,
                  daysSincePrevious: null, calcVersion: CALC_VERSION };
       if (best !== null) {
@@ -422,7 +445,7 @@
     });
     list.forEach(function (a) {
       var id = String(a.id); present[id] = true;
-      var fp = fingerprint(a, sig) + (o.timeZone ? '|' + o.timeZone : '');
+      var fp = fingerprint(a, sig) + (o.timeZone ? '|' + o.timeZone : '') + (isRace(a, o) ? '|race' : '');
       var cur = state.activities[id];
       if (cur && cur.fp === fp) return;
       var entries = entriesFor(a, o);
@@ -528,7 +551,9 @@
     var p = e.provenance || {};
     return { activityId: e.activityId, source: e.source, basis: p.basis || null, quality: p.quality || null, validation: e.validation,
              manual: !!p.manual, context: p.context || null, precision: PRECISION[e.unit] || 0.01, unit: e.unit,
-             utc: e.utc || null, utcBasis: e.utcBasis || null, localDate: e.localDate, localTime: e.localTime, timeBasis: e.timeBasis };
+             utc: e.utc || null, utcBasis: e.utcBasis || null, localDate: e.localDate, localTime: e.localTime, timeBasis: e.timeBasis,
+             timeCategory: e.timeCategory || null, measure: p.measure || null, distanceM: p.distanceM == null ? null : p.distanceM,
+             pauses: p.pauses || null, raceConfirmedBy: p.raceConfirmedBy || null };
   }
   /* opts.declared: { metricKey: { value, label, source:'manual', measuredAt } } — vom Nutzer ANGEGEBENE Bestwerte
      (Profil, auch aus der Zeit vor ORVIA). Sie sind keine Messung und gehen nie in die Historie ein; die Ansicht
@@ -546,7 +571,7 @@
       var s = sports[d.sport] || (sports[d.sport] = { sport: d.sport, records: [], coverageFrom: cov[d.sport] ? cov[d.sport].from : null });
       var dec = o.declared && o.declared[k] && num(o.declared[k].value) !== null ? o.declared[k] : null;
       var decBetter = dec && best ? (d.better === 'lower' ? quant(dec.value, best.unit) < quant(best.value, best.unit) : quant(dec.value, best.unit) > quant(best.value, best.unit)) : false;
-      s.records.push({ metricKey: k, defId: d.id, label: d.label, kind: d.kind, better: d.better, contextClass: pk.contextClass,
+      s.records.push({ metricKey: k, defId: d.id, label: d.label, kind: d.kind, better: d.better, contextClass: pk.contextClass, timing: d.timing || null, pair: d.pair || null,
                        unit: best ? best.unit : null, best: best, previous: last ? { value: last.previousValue, localDate: last.previousLocalDate, activityId: last.previousActivityId } : null,
                        improvement: last ? last.improvement : null, improvementPct: last ? last.improvementPct : null,
                        improvements: improvements.length, firstValue: evs[0] ? evs[0].value : null, firstDate: evs[0] ? evs[0].localDate : null,
@@ -554,17 +579,25 @@
                        history: evs, scope: 'orvia', coverageFrom: s.coverageFrom, provenance: provenanceOf(state, best),
                        declared: dec ? { value: dec.value, label: dec.label || null, measuredAt: dec.measuredAt || null, betterThanOrvia: decBetter } : null });
     });
-    var order = DEFS.map(function (d) { return d.id; });
+    var order = DEFS.concat(RACE_DEFS).map(function (d) { return d.id; });
     var sportOrder = [];
     DEFS.forEach(function (d) { if (sportOrder.indexOf(d.sport) < 0) sportOrder.push(d.sport); });
     Object.keys(vol).forEach(function (sp) { if (!sports[sp] && vol[sp].some(function (m) { return m.distanceM > 0; })) sports[sp] = { sport: sp, records: [], coverageFrom: cov[sp] ? cov[sp].from : null }; });
     var list = Object.keys(sports).sort(function (x, y) { return sportOrder.indexOf(x) - sportOrder.indexOf(y); }).map(function (k) {
       var sp = sports[k];
       sp.records.sort(function (x, y) { return order.indexOf(x.defId) - order.indexOf(y.defId) || (x.contextClass < y.contextClass ? -1 : 1); });
+      /* v8-449.1: eine Strecke mit zwei Zeitkategorien ist EIN Rekord im Ueberblick — gezaehlt wird die Hauptkategorie
+         (aktiv, sonst einschliesslich Pausen); sonst stuende jede Verbesserung doppelt da. */
+      var primary = {}, prim = [];
+      sp.records.forEach(function (r) {
+        var g = (r.pair && (r.timing === 'active' || r.timing === 'elapsed')) ? r.pair + '@' + r.contextClass : r.metricKey;
+        if (!primary[g] || (r.timing === 'active' && primary[g].timing !== 'active')) primary[g] = r;
+      });
+      Object.keys(primary).forEach(function (g) { prim.push(primary[g]); });
       var lastImp = null;
-      sp.records.forEach(function (r) { r.history.forEach(function (e) { if (e.type === 'improved' && (!lastImp || (e.utc || '') > (lastImp.utc || ''))) lastImp = e; }); });
+      prim.forEach(function (r) { r.history.forEach(function (e) { if (e.type === 'improved' && (!lastImp || (e.utc || '') > (lastImp.utc || ''))) lastImp = e; }); });
       sp.volume = vol[k] || [];
-      sp.overview = { records: sp.records.length, improvements: sp.records.reduce(function (n, r) { return n + r.improvements; }, 0),
+      sp.overview = { records: prim.length, improvements: prim.reduce(function (n, r) { return n + r.improvements; }, 0),
                       lastImprovement: lastImp ? { metricKey: lastImp.metricKey, localDate: lastImp.localDate, value: lastImp.value } : null,
                       activities: cov[k] ? cov[k].activities : 0 };
       return sp;
@@ -580,7 +613,7 @@
     ids.forEach(function (id) {
       var a = state.activities[id]; if (!a) return;
       a.entries.forEach(function (e) {
-        entries.push({ activity_id: e.activityId, sport_id: e.sport, metric_key: e.metricKey, def_id: e.defId, context_class: e.contextClass,
+        entries.push({ activity_id: e.activityId, sport_id: e.sport, metric_key: e.metricKey, def_id: e.defId, context_class: e.contextClass, time_category: e.timeCategory || null,
                        value: e.value, unit: e.unit || '', better: e.better, recorded_at: e.recordedAt, local_date: e.localDate, order_key: e.orderKey,
                        source: e.source || 'unknown', provenance: e.provenance, eligibility_status: e.eligibility, eligibility_reason: e.reason,
                        validation_status: e.validation, calc_version: e.calcVersion, input_fingerprint: a.fp });
@@ -590,7 +623,7 @@
     var events = [];
     keys.forEach(function (k) {
       (state.events[k] || []).forEach(function (ev) {
-        events.push({ metric_key: k, seq: ev.seq, event_type: ev.type, activity_id: ev.activityId, value: ev.value, unit: ev.unit || '',
+        events.push({ metric_key: k, time_category: ev.timeCategory || null, seq: ev.seq, event_type: ev.type, activity_id: ev.activityId, value: ev.value, unit: ev.unit || '',
                       recorded_at: ev.recordedAt, local_date: ev.localDate, previous_value: ev.previousValue, previous_activity_id: ev.previousActivityId,
                       previous_local_date: ev.previousLocalDate, improvement: ev.improvement, improvement_pct: ev.improvementPct,
                       days_since_previous: ev.daysSincePrevious, manual: ev.manual, calc_version: ev.calcVersion });
@@ -616,7 +649,8 @@
         a.entries.map(function (e) {
           var p = e.provenance || {}, c = p.context || {};
           return e.eligibility === 'eligible'
-            ? [e.metricKey, e.value, e.unit, null, e.validation, p.manual ? 1 : 0, p.basis || null, p.quality || null, c.environment || null, c.basis || null, c.origin || null, c.typeKey || null]
+            ? [e.metricKey, e.value, e.unit, null, e.validation, p.manual ? 1 : 0, p.basis || null, p.quality || null, c.environment || null, c.basis || null, c.origin || null, c.typeKey || null,
+               p.measure || null, num(p.distanceM), p.pauses ? [num(p.pauses.count), num(p.pauses.pausedS), num(p.pauses.conflicts)] : null, p.raceConfirmedBy || null]
             : [e.metricKey, null, e.unit, e.reason, e.validation];
         }), a.u || null];
     });
@@ -632,10 +666,12 @@
         st.activities[id] = { fp: x[0], sport: x[1], u: x[4] || null, entries: (x[3] || []).map(function (c) {
           var pk = parseMetricKey(c[0]), dd = pk.def || {};
           var elig = c[1] !== null;
-          return { activityId: id, sport: x[1], metricKey: c[0], defId: pk.defId, contextClass: pk.contextClass, value: c[1], unit: c[2], better: dd.better || null,
+          return { activityId: id, sport: x[1], metricKey: c[0], defId: pk.defId, contextClass: pk.contextClass, timeCategory: dd.timing || null, value: c[1], unit: c[2], better: dd.better || null,
                    recordedAt: t[0], localDate: t[1], localTime: t[2], timeBasis: t[3], orderKey: t[4], source: t[5], utc: t[6] || null, utcBasis: t[7] || null,
                    provenance: elig ? { manual: c[5] === 1, basis: c[6], quality: c[7], evidence: null, cached: true,
-                                        context: { environment: c[8], basis: c[9], origin: c[10], typeKey: c[11] } } : { cached: true, manual: false },
+                                        context: { environment: c[8], basis: c[9], origin: c[10], typeKey: c[11] },
+                                        measure: c[12] || null, distanceM: c[13] == null ? null : c[13],
+                                        pauses: c[14] ? { count: c[14][0], pausedS: c[14][1], conflicts: c[14][2] } : null, raceConfirmedBy: c[15] || null } : { cached: true, manual: false },
                    eligibility: elig ? 'eligible' : 'blocked', reason: elig ? null : c[3], reasons: elig ? [] : [c[3]],
                    validation: c[4], calcVersion: CALC_VERSION };
         }) };
@@ -663,7 +699,7 @@
   }
 
   var api = {
-    CALC_VERSION: CALC_VERSION, DEFS: DEFS, MILESTONES: MILESTONES, KIND_BETTER: KIND_BETTER, PRECISION: PRECISION,
+    CALC_VERSION: CALC_VERSION, DEFS: DEFS, RACE_DEFS: RACE_DEFS, MILESTONES: MILESTONES, TIMINGS: ['active', 'elapsed', 'race'], KIND_BETTER: KIND_BETTER, PRECISION: PRECISION,
     defsFor: defsFor, defById: function (id) { return DEF_BY_ID[id] || null; }, metricKey: metricKey, parseMetricKey: parseMetricKey,
     contextClass: contextClass, canonical: canonical, fingerprint: fingerprint, ruleSignature: ruleSignature,
     entriesFor: entriesFor, history: history, currentBest: currentBest, milestones: milestones,

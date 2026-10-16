@@ -5079,6 +5079,9 @@ function bestTimes(){
   if(t1==null&&t5==null&&t10==null&&t21==null&&t42==null)return null;
   return {t1:t1,t5:t5,t10:t10,t21:t21,t42:t42,real:{k1:rb.k1!=null,k5:rb.k5!=null,k10:rb.k10!=null,k21:rb.k21!=null,k42:rb.k42!=null},
     src:src,estFrom:estFrom,meas:meas||null,
+    /* v8-449.1: aktive Trainingsbestzeiten (Timer) — NUR Anzeige. t1…t42 bleiben die Bestzeiten einschliesslich
+       Pausen bzw. die Schaetzung: daraus rechnen Prognose, Ziel-Engine und Zonen (nie aus der aktiven Zeit). */
+    active:(meas&&meas.active)||{},
     estPace:est?est.pace:null,estDist:est?est.dist:null,n:runs.length};
 }
 /* Einheitliche Quellenetiketten fuer alle Bestzeiten-Renderer — EINE Formulierung,
@@ -12257,6 +12260,11 @@ function gmProfBestTimes(){
   ];
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var h=gmPPageHead('Bestzeiten','' + _uiT('ui.persoenliche_rekorde_je_distanz') + '')+'<div style="padding:0 18px">';
+  /* v8-449.1 · Laufen: zwei Zeitbegriffe. Standard „Aktiv" (Timer, Pausen nicht enthalten), umschaltbar auf
+     „Gesamtzeit" (einschliesslich Pausen). Gilt fuer alle Laufdistanzen gleichzeitig. */
+  var _btAct=(b&&b.active)||{},_btMode=(window._gmBtMode==='elapsed')?'elapsed':'active';
+  var _btHasAct=['k1','k5','k10','k21'].some(function(k){return _btAct[k]&&_btAct[k].sec!=null;});
+  if(_btHasAct)h+='<div class="bt-mode" role="group" aria-label="'+gmEsc(_uiT('bt.mode_label'))+'"><button type="button" aria-pressed="'+(_btMode==='active')+'" onclick="gmSetBtMode(\'active\')">'+_uiT('bt.mode_active')+'</button><button type="button" aria-pressed="'+(_btMode==='elapsed')+'" onclick="gmSetBtMode(\'elapsed\')">'+_uiT('bt.mode_elapsed')+'</button></div>';
   /* v8-448B: Einstieg ins Leistungsregister — erscheint NUR mit Flag performance_ledger. */
   try{if(window.ORVIA&&ORVIA.recordsBridge&&ORVIA.recordsBridge.mode()!=='off')h+='<button type="button" class="bt-row plv-entry" onclick="gmOpenProfPage(\'performanceLedger\')"><div class="bt-b"><b>'+_uiT('ledger.entry.title')+'</b><span>'+_uiT('ledger.entry.sub')+'</span></div>'+icon('chev')+'</button>';}catch(_){ }
   _gmBtSlots=[];
@@ -12267,19 +12275,58 @@ function gmProfBestTimes(){
     var sub=r.t==null?GM_NA:(r.ms?((GM_BT_SRC[m&&m.method]||GM_NA)+(m&&m.km!=null?' ('+(typeof fmtDe==='function'?fmtDe(m.km):m.km)+' km)':'')):r.k?gmBtSrcLabel(b,r.k):(r.real?'' + _uiT('ui.eingetragene_bestleistung') + '':'' + _uiT('ui.geschaetzt_riegel_modell_keine_messung') + ''));
     var subFull=sub+(lvl==='p'&&r.t!=null&&m&&m.laps?' · '+m.laps+(m.laps===1?'' + _uiT('ui.runde_') + '':'' + _uiT('ui.runden') + ''):'');
     var timeTxt=(r.t!=null?r.t:'—');
+    /* v8-449.1: Laufzeilen mit beiden Zeitbegriffen. Gemessene Bestzeit einschliesslich Pausen = r.t nur, wenn
+       sie echt ist (b.real); eine Schaetzung bleibt Schaetzung und steht nie neben einer aktiven Zeit. */
+    var a2=(!r.ms&&r.k)?(_btAct[r.k]||null):null,contReal=!!(b&&b.real&&b.real[r.k]&&m),alt=null,cat=null,hint=false,actTxt=null,src=null;
+    if(a2&&a2.sec!=null){
+      actTxt=_fsec(a2.sec);
+      var paused=a2.pausedS>0;
+      var _dd=function(d){var p=String(d||'').slice(0,10).split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:String(d||'');};
+      var differ=contReal&&Math.round(m.sec)!==Math.round(a2.sec);
+      if(_btMode==='active'){
+        timeTxt=actTxt;cat=_uiT('bt.active_label');subFull=cat;
+        src=gmBtActSrc(a2)+(a2.date?' · '+_dd(a2.date):'');
+        if(differ)alt=_uiT('bt.incl_pauses',{t:_fsec(m.sec)});
+        hint=paused;
+      }else if(contReal){
+        cat=_uiT('bt.elapsed_label');subFull=cat;src=sub+(m.date?' · '+_dd(m.date):'');
+        if(differ)alt=_uiT('bt.active_short',{t:actTxt});
+      }
+    }
     _gmBtSlots.push({dist:r.d+' '+r.u,time:timeTxt,sub:subFull,
       date:(m&&m.date)?((typeof fmtDate==='function')?fmtDate(m.date):m.date):null,
-      meas:m||null,imp:null,has:(r.t!=null)});
-    h+='<button type="button" class="bt-row'+(r.t!=null?'':' bt-empty')+'" onclick="gmOpenBtRowSheet('+i+')"><div class="bt-dist"><b>'+r.d+'</b><span>'+r.u+'</span></div><div class="bt-b"><div class="bt-time">'+gmEsc(timeTxt)+'</div><div class="bt-sub">'+gmEsc(subFull)+'</div></div><div class="bt-imp">'+icon('chev','sm')+'</div></button>';
+      meas:m||null,imp:null,has:(r.t!=null||!!actTxt),active:a2,cont:contReal?m:null,cat:cat});
+    if(src)_gmBtSlots[_gmBtSlots.length-1].sub=subFull+' · '+src;
+    h+='<button type="button" class="bt-row'+((r.t!=null||actTxt)?'':' bt-empty')+'" onclick="gmOpenBtRowSheet('+i+')"><div class="bt-dist"><b>'+r.d+'</b><span>'+r.u+'</span></div><div class="bt-b"><div class="bt-time">'+gmEsc(timeTxt)+'</div><div class="bt-sub">'+gmEsc(subFull)+'</div>'+(src?'<div class="bt-from">'+gmEsc(src)+'</div>':'')+(alt?'<div class="bt-alt">'+gmEsc(alt)+'</div>':'')+(hint?'<div class="bt-hint">'+gmEsc(_uiT('bt.pause_hint'))+'</div>':'')+'</div><div class="bt-imp">'+icon('chev','sm')+'</div></button>';
   });
   h+='<div class="mini-note">'+icon('info','xs')+'<div>' + _uiT('ui.gemessene_bestzeiten_stammen_aus_zusammenhaengenden') + '</div></div></div><div class="tabspacer"></div>';
   return h;
 }
 /* Bestzeiten-Detailsheet: konsumiert exakt die Werte der angetippten Zeile. */
+/* v8-449.1 · Umschalter Aktiv | Gesamtzeit (nur fuer diese Sitzung; Standard Aktiv). */
+function gmSetBtMode(m){window._gmBtMode=(m==='elapsed')?'elapsed':'active';try{gmOpenProfPage('bestTimes');}catch(_){ }}
+/* Messgrundlage einer aktiven Bestzeit in Klartext (keine Garmin-Feldnamen). */
+function gmBtActSrc(a){
+  if(!a)return GM_NA;
+  if(a.method==='activity_timer')return _uiT(a.timeBasis==='duration'?'bt.src_own_total':(a.timeBasis==='manual'?'bt.src_manual_total':'bt.src_timer_total'),{km:(typeof fmtDe==='function'?fmtDe(a.km):a.km)});
+  /* aus einem Teilstueck auf verstrichener Zeit (Obergrenze): dieselbe Quellenangabe wie die bisherige Bestzeit */
+  if(GM_BT_SRC[a.method])return GM_BT_SRC[a.method]+((a.method==='lap_window'||a.method==='activity_total')&&a.km!=null?' ('+(typeof fmtDe==='function'?fmtDe(a.km):a.km)+' km)':'');
+  if(a.method==='ledger')return a.measure==='activity_timer'?_uiT('bt.src_timer_total',{km:(typeof fmtDe==='function'?fmtDe(a.km):a.km)}):(a.measure==='timer_window'?_uiT('bt.src_timer_window'):(a.measure==='own_total'?_uiT('bt.src_own_total',{km:(typeof fmtDe==='function'?fmtDe(a.km):a.km)}):_uiT('bt.src_window')));
+  return _uiT('bt.src_window');
+}
 function gmOpenBtRowSheet(i){
   var s=_gmBtSlots[i];if(!s)return;
   var sh=document.getElementById('detailSheet');if(!sh)return;
   var kv=[['' + _uiT('ui.disziplin_distanz') + '',s.dist],['Leistung',s.has?s.time:GM_NA],['' + _uiT('ui.datum_') + '',s.date!=null?s.date:GM_NA]];
+  /* v8-449.1: beide Zeitbegriffe nebeneinander, jeweils mit Datum und Grundlage */
+  if(s.active&&s.active.sec!=null){
+    var _f=function(x){var h2=Math.floor(x/3600),m2=Math.floor((x%3600)/60),s2=Math.round(x%60);return h2?(h2+':'+String(m2).padStart(2,'0')+':'+String(s2).padStart(2,'0')):(m2+':'+String(s2).padStart(2,'0'));};
+    kv=[['' + _uiT('ui.disziplin_distanz') + '',s.dist],
+        [_uiT('bt.active_label'),_f(s.active.sec)+(s.active.date?' · '+((typeof fmtDate==='function')?fmtDate(s.active.date):s.active.date):'')],
+        [_uiT('bt.active_basis'),gmBtActSrc(s.active)]];
+    if(s.cont)kv.push([_uiT('bt.elapsed_label'),_f(s.cont.sec)+(s.cont.date?' · '+((typeof fmtDate==='function')?fmtDate(s.cont.date):s.cont.date):'')]);
+    kv.push([_uiT('bt.pause_status'),s.active.pausedS>0?_uiT('bt.pause_yes',{t:Math.round(s.active.pausedS/60)}):_uiT('bt.pause_none')]);
+  }
   /* KF-021: bei gemessenen Werten die tatsaechlich gemessene Strecke ausweisen —
      5 km aus einem 5,12-km-Fenster ist eine Obergrenze, keine exakte 5-km-Zeit. */
   if(s.meas&&s.meas.km!=null)kv.push(['' + _uiT('ui.gemessene_strecke') + '',(typeof fmtDe==='function'?fmtDe(s.meas.km):s.meas.km)+' km']);

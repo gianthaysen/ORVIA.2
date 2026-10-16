@@ -10,7 +10,10 @@
      'on'       Register geladen: fuer jede Groesse, die das Register kennt, gilt NUR das Register.
 
    Ueberschneidungen und Regel (keine zwei Rechnungen fuer denselben Rekord):
-     Laufbestzeiten 1 km / 5 km / 10 km / HM / Marathon (run-bests k1…k42)  → Register (Kontext standard)
+     Laufbestzeiten 1 km / 5 km / 10 km / HM / Marathon (run-bests k1…k42)  → Register (Kontext standard),
+                                                                              einschliesslich Pausen (…m@standard)
+     aktive Trainingsbestzeiten (run-bests active.k1…k42, v8-449.1)          → Register (…m_active@standard);
+                                                                              nur Anzeige — pb-sync/Prognose lesen k1…k42
      „Laengster Lauf / Radeinheit / Schwimmeinheit" (achievements maxSingle)  → nur freigegebene Distanzen,
                                                                               Kontextklasse standard
      Summen (Wochenumfang, Gesamtkilometer)                                   → nur freigegebene Distanzen,
@@ -24,7 +27,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'records-bridge@2';
+  var VERSION = 'records-bridge@3';
   var RUN_KEYS = { k1: 1000, k5: 5000, k10: 10000, k21: 21098, k42: 42195 };
   var DIST_SPORTS = { running: 1, cycling: 1, swimming: 1, walking: 1, hiking: 1, rowing: 1 };
 
@@ -37,14 +40,28 @@
     } catch (e) { return 'off'; }
   }
 
-  /* run-bests-Ergebnis (Laufen) → Werte aus dem Register. Form bleibt gleich; method 'ledger'. */
+  /* run-bests-Ergebnis (Laufen) → Werte aus dem Register. Form bleibt gleich; method 'ledger'.
+     v8-449.1 · zwei Zeitkategorien, getrennt wie im Register:
+       out[k]         Bestzeit EINSCHLIESSLICH Pausen (verstrichen, „am Stueck") — Prognosen, Zonen, pb-sync lesen nur das
+       out.active[k]  aktive Trainingsbestzeit (Timer) — Anzeige, nie Grundlage einer Wettkampfprognose */
+  function entryOut(ev, t, timing) {
+    return ev ? { sec: ev.value, km: t / 1000, laps: null, fromLap: null, method: 'ledger', targetKm: t / 1000, timing: timing,
+                  activityId: ev.activityId, date: ev.localDate, validation: ev.validation || null, manual: !!ev.manual } : null;
+  }
   function overlay(res) {
     if (!res || res.sport !== 'running' || mode() !== 'on') return res;
-    var S = store(), out = Object.assign({}, res, { source: 'ledger' });
+    var S = store(), out = Object.assign({}, res, { source: 'ledger', active: {} });
     Object.keys(RUN_KEYS).forEach(function (k) {
-      var t = RUN_KEYS[k], ev = S.bestOf('running.fastest_' + t + 'm@standard');
-      out[k] = ev ? { sec: ev.value, km: t / 1000, laps: null, fromLap: null, method: 'ledger', targetKm: t / 1000,
-                      activityId: ev.activityId, date: ev.localDate, validation: ev.validation || null, manual: !!ev.manual } : null;
+      var t = RUN_KEYS[k];
+      out[k] = entryOut(S.bestOf('running.fastest_' + t + 'm@standard'), t, 'elapsed');
+      var ae = entryOut(S.bestOf('running.fastest_' + t + 'm_active@standard'), t, 'active');
+      if (ae) {
+        var en = S.entryOf ? S.entryOf(ae.activityId, 'running.fastest_' + t + 'm_active') : null, pv = (en && en.provenance) || {};
+        ae.measure = pv.measure || null;
+        ae.km = pv.distanceM ? Math.round(pv.distanceM / 10) / 100 : ae.km;
+        ae.pausedS = (pv.measure === 'activity_timer' || pv.measure === 'timer_window') && pv.pauses && pv.pauses.pausedS > 0 ? pv.pauses.pausedS : null;
+      }
+      out.active[k] = ae;
     });
     return out;
   }
@@ -105,7 +122,26 @@
                  register: lb ? { sec: lb.value, date: lb.localDate, activityId: lb.activityId } : null,
                  bisherImRegister: en ? { eligibility: en.eligibility, value: en.value, contextClass: en.contextClass, reason: en.reason || null } : null });
     });
-    return { running: out, legacyScanned: legacy ? legacy.scanned : 0, note: 'bisher = run-bests auf der geladenen Liste (hoechstens 200 Aktivitaeten); Register = vollstaendiger Bestand' };
+    /* v8-449.1 · aktive Trainingsbestzeiten: bisherige Rechnung (run-bests active) gegen das Register (…_active) */
+    var act = [];
+    Object.keys(RUN_KEYS).forEach(function (k) {
+      var t = RUN_KEYS[k], ev = state && state.events['running.fastest_' + t + 'm_active@standard'];
+      var lb = ev && L ? L.currentBest(ev) : null, lg = legacy && legacy.active && legacy.active[k];
+      var sid = lg ? serverIdOf(lg.activityId) : null;
+      var en = (lg && L && L.entryOf && state) ? L.entryOf(state, sid, 'running.fastest_' + t + 'm_active') : null;
+      var verdict = !lg && !lb ? 'beide_leer' : !lb ? 'nur_bisher' : !lg ? 'nur_register' : Math.abs(lg.sec - lb.value) < 1 ? 'gleich' : 'abweichend', cause = null;
+      if (lg && verdict !== 'gleich') {
+        if (!en) cause = 'nicht_im_register';
+        else if (en.eligibility !== 'eligible') cause = 'gesperrt:' + (en.reason || '?');
+        else if (en.contextClass !== 'standard') cause = 'anderer_kontext:' + en.contextClass;
+        else if (lb && String(lb.activityId) === String(sid) && lb.value < lg.sec) cause = 'genauer';
+        else cause = 'anderer_wert';
+      }
+      act.push({ key: k, verdict: verdict, cause: cause,
+                 bisher: lg ? { sec: lg.sec, date: lg.date, method: lg.method, km: lg.km, activityId: sid, legacyId: lg.activityId } : null,
+                 register: lb ? { sec: lb.value, date: lb.localDate, activityId: lb.activityId, measure: (L.entryOf(state, lb.activityId, 'running.fastest_' + t + 'm_active') || {}).provenance ? L.entryOf(state, lb.activityId, 'running.fastest_' + t + 'm_active').provenance.measure : null } : null });
+    });
+    return { running: out, runningActive: act, legacyScanned: legacy ? legacy.scanned : 0, note: 'bisher = run-bests auf der geladenen Liste (hoechstens 200 Aktivitaeten); Register = vollstaendiger Bestand' };
   }
 
   var api = { VERSION: VERSION, RUN_KEYS: RUN_KEYS, mode: mode, overlay: overlay, distanceOf: distanceOf, compareWithLegacy: compareWithLegacy };
