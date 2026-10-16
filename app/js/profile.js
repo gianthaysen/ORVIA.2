@@ -274,6 +274,8 @@ try{window.addEventListener('orvia:auth-ready',function(){setTimeout(_goalShadow
 function _pbSyncFromActivities(){
   try{
     var O=window.ORVIA; if(!O||!O.pbSync||!O.runBests||!O.runBests.measuredAllBests||!O.activityStore||!O.activityStore.listActivities)return null;
+    /* v8-448B: Register an, aber noch nicht geladen → nichts schreiben (kein Hin-und-her im Profil). */
+    try{ if(O.recordsBridge&&O.recordsBridge.mode()==='pending')return null; }catch(e){}
     if(typeof PROFILE==='undefined'||!PROFILE)return null;
     var acts=O.activityStore.listActivities()||[];
     var meas=O.runBests.measuredAllBests(acts,{isTombstoned:O.activityStore.isTombstoned||null});
@@ -292,6 +294,7 @@ try{
   window.addEventListener('orvia:auth-ready',function(){setTimeout(_pbSyncFromActivities,800);});
   window.addEventListener('orvia:activities-pulled',function(){setTimeout(_pbSyncFromActivities,200);});
   window.addEventListener('orvia:activity-updated',function(){setTimeout(_pbSyncFromActivities,200);});
+  window.addEventListener('orvia:ledger-updated',function(){setTimeout(_pbSyncFromActivities,200);});
 }catch(e){}
 function _goalShadowId(){
   try{ if(window.crypto&&crypto.randomUUID)return 'gs_'+crypto.randomUUID(); }catch(e){}

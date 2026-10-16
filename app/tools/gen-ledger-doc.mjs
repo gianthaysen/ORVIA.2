@@ -42,7 +42,7 @@ function verdict(d, variant) {
 export function render() {
   const out = [`# Athlete Performance Ledger
 
-**Status: IMPLEMENTIERT, VORBEREITET (nicht ausgeliefert, Flag \`performance_ledger\` aus)** · Rechenversion \`${L.CALC_VERSION}\` · v8-448A
+**Status: IMPLEMENTIERT, INTEGRIERT HINTER FLAG (\`performance_ledger\`, Standard aus, keine sichtbare Änderung)** · Rechenversion \`${L.CALC_VERSION}\` · v8-448B
 
 > Erzeugt: \`node app/tools/gen-ledger-doc.mjs\`. Definitionen und Freigaben kommen aus dem Code
 > (\`app/js/engine/performance-ledger.js\`, \`app/js/engine/metric-eligibility.js\`); ein Test vergleicht Datei und Code.
@@ -55,10 +55,11 @@ export function render() {
 | Urteil + Wert | \`app/js/engine/metric-eligibility.js\` | einzige Stelle, die entscheidet, ob ein Wert zählt — und welcher (\`evaluate().value\`) |
 | Wirksamer Wert | \`app/js/activity-effective.js\` | manuelle Korrekturen (z. B. 341 → 75 min) |
 | Doppelte | \`app/js/activity-config.js\` \`attachRecordings\` | gekoppelte Uhr-Aufzeichnung ist keine eigene Einheit |
-| Nachführen | \`app/js/performance-ledger-store.js\` | Flag (fail-closed), Zwischenspeicher je Nutzer, Speichern in Teilen |
+| Nachführen | \`app/js/performance-ledger-store.js\` | Flag (fail-closed, je Sitzung fest), vollständiger Bestand (Index + Änderungen), IndexedDB-Zwischenspeicher je Nutzer, Speichern in Teilen, Probelauf \`dryRun()\` |
+| Umschalten | \`app/js/engine/records-bridge.js\` | einzige Stelle, die entscheidet, ob run-bests / pb-sync / achievements aus dem Register lesen (\`off\` · \`pending\` · \`on\`) |
 | Speichern | \`app/js/repos/performanceLedgerRepository.js\` | RPC \`orvia_ledger_apply\` (eine Transaktion) |
 | Datenbank | \`supabase/migrations/0051_performance_ledger.sql\` | Tabellen, RLS, Konsistenzregeln, „neu zu berechnen", Flag-Name |
-| Ansicht | \`app/js/screens/performance-ledger-view.js\` | „Leistungsentwicklung", Leerzustand, Verlauf, Meilensteine, Wartendes |
+| Ansicht | \`app/js/screens/performance-ledger-view.js\` | „Leistungsentwicklung": Bestwerte, Verlauf, Verbesserungen, Sportart-Überblick, Monatsumfang, Meilensteine, Herkunft je Rekord, Wartendes |
 
 ## 2 · Regeln
 
@@ -66,7 +67,7 @@ export function render() {
 - **Kennzahl** = \`<sportart>.<rekord>@<kontextklasse>\`. Kontextklassen: \`standard\` (nicht als indoor/virtuell belegt), \`indoor\`, \`virtual\`, \`pool\`, \`open_water\`.
   Verschiedene Klassen werden **nie** verglichen (Rolle ≠ Straße, Laufband ≠ draußen, Becken ≠ Freiwasser). Kontext kommt aus dem Garmin-Typ
   oder — bei eigenen Daten — aus der Eingabe des Nutzers; nie aus GPS, Titel oder Uhrzeit.
-- **Historie** je Kennzahl aus allen freigegebenen Einträgen, sortiert nach der **Ortszeit der Aktivität** (nie Importzeit):
+- **Historie** je Kennzahl aus allen freigegebenen Einträgen, sortiert nach dem **UTC-Zeitpunkt der Aktivität** (nie Importzeit; angezeigt in Ortszeit):
   \`first\` · \`improved\` (echt besser auf der Genauigkeitsstufe der Einheit: ${Object.entries(L.PRECISION).map(([u, p]) => u + ' ' + p).join(', ')}) · \`equalled\` (gleich; der frühere Halter bleibt).
   Jede Verbesserung trägt Vorgänger, Verbesserung (absolut, %), Tage seit dem Vorgänger, Datum.
 - **Neuberechnung** immer vollständig für genau die betroffenen Kennzahlen → Nachimport älterer Einheiten, Korrektur, Löschung und
@@ -108,21 +109,45 @@ nicht belegt): Garmin-Distanz/-Dauer bei Rad, Schwimmen, Gehen, Wandern, Rudern,
 Garmin Connect die Belegstufe hebt (\`EVIDENCE\` in metric-eligibility.js), werden diese Kennzahlen ohne Codeänderung am Register frei und die Historie
 wird rückwirkend rekonstruiert.
 
-## 6 · Verhältnis zu bestehenden Auswertungen
+## 6 · Zeit
 
-| Bestehend (live, unverändert) | Was es tut | Mit dem Register |
-|---|---|---|
-| \`run-bests.js\` + \`engine/pb-sync.js\` | aktuelle Bestzeit je Distanz aus Runden/Anzeige-Messreihe, ins Profil (Zonen, Prognose) | wird durch die Register-Historie ersetzt (Worker-Bestwerte vor der Ausdünnung, Eligibility, Kontext); bis dahin bleibt es die Quelle des Profils |
-| \`achievements.js\` | Medaillen/Leitern aus der kanonischen Liste, ohne Eligibility | liest künftig die Register-Meilensteine; keine zweite Meilenstein-Logik |
-| \`engine/highlights.js\` (vorbereitet) | Highlight-Kandidaten | bekommt Rekord-Ereignisse aus dem Register als belegte Kandidaten |
+- **Reihenfolge** = UTC-Zeitpunkt: \`garmin.start_gmt\` → \`startedAt\` mit Zonenangabe → Wanduhrzeit, umgerechnet mit der Zeitzone des Nutzers.
+  Herbst-Umstellung (doppelte Stunde): erste Stunde. Frühjahrs-Lücke: nach vorn verschoben. Die Grundlage steht je Eintrag (\`utcBasis\`).
+- **Anzeige** = Ortszeit der Aktivität (Kalendertag, Monat). Eine Reise über Zeitzonen ändert die Reihenfolge nicht.
 
-Bis zur Umstellung (v8-448B) gibt es damit **ein** Register und zwei alte Anzeigen, die unverändert weiterlaufen; nichts davon schreibt ins Register.
+## 7 · Verhältnis zu bestehenden Auswertungen (records-bridge)
 
-## 7 · Einschalten (v8-448B, nicht Teil dieses Schritts)
+| Bestehend | Flag aus (\`off\`) | Flag an, Register lädt (\`pending\`) | Register bereit (\`on\`) |
+|---|---|---|---|
+| \`run-bests.js\` Lauf 1 km … Marathon | unverändert | unverändert angezeigt | **nur** Register (Kontext standard) |
+| \`run-bests.js\` Rad / Schwimmen | unverändert | unverändert | unverändert (kennt das Register nicht) |
+| \`engine/pb-sync.js\` → Profil | unverändert | **pausiert** (kein Hin-und-her) | aus Register-Bestzeiten |
+| \`achievements.js\` Einzelmaxima | unverändert | unverändert | nur freigegebene Distanzen, Kontext standard |
+| \`achievements.js\` Summen | unverändert | unverändert | nur freigegebene Distanzen, alle Kontexte |
+| \`engine/highlights.js\` (vorbereitet) | — | — | bekommt künftig Rekord-Ereignisse als belegte Kandidaten |
 
-1. Migration 0051 einspielen (vorher lokal geprüft: \`supabase/tests/performance_ledger_db_v448_test.mjs\`). Rückweg: \`supabase/migrations_rollback/0051_performance_ledger_rollback.sql\`.
-2. Module in \`index.html\` und den Offline-Speicher; Ansicht einhängen; Build anheben (\`performance_ledger\` steht seit v8-448A in \`KNOWN\` von \`engine/feature-flags.js\`, = CHECK der Migration).
-3. Flag je Konto per service_role setzen. Erst dann rechnet und speichert das Register — beim ersten Lauf vollständig, danach inkrementell.
+Kein Rekord wird an zwei Stellen gerechnet: was das Register kennt, kommt bei \`on\` nur aus dem Register.
+
+## 8 · Vollständiger Bestand
+
+Die App lädt sonst nur die jüngsten 200 Aktivitäten. Das Register liest einen schlanken Index über **alle** Aktivitäten (Schlüssel-Blättern,
+je 1000), holt nur geänderte Zeilen (\`updated_at\`) mit genau den Feldern der Prüfung und gilt erst dann als vollständig, wenn jede Seite gelesen wurde.
+Eine Aktivität gilt nur als gelöscht, wenn (a) der Index vollständig ist **und** die Gegenprobe ihre Abwesenheit bestätigt, oder (b) sie lokal
+ausdrücklich gelöscht wurde (Tombstone). Nicht geladen heißt nie gelöscht.
+
+## 9 · Freigabeplan (nicht Teil dieses Schritts — jeder Schritt durch Gian)
+
+1. **App ausliefern, Flag aus** (Build ≥ v8-448). Erwartung: keine sichtbare Änderung; run-bests, Profil-Bestzeiten und Medaillen identisch.
+2. **Echtdaten-Probelauf, schreibt nichts, braucht keine Migration:** angemeldet in der Desktop-Konsole
+   \`await ORVIA.performanceLedgerStore.dryRun()\` → \`report.meta\` (\`complete: true\`, \`indexed\` = Anzahl Aktivitäten),
+   \`report.records\`, \`report.waiting\`, \`report.legacyComparison.running\` (je Distanz \`gleich\` / \`abweichend\` / \`nur_bisher\` / \`nur_register\`).
+   Jede Abweichung erklären, bevor es weitergeht (typisch: Laufband-Einheit, gesperrte Distanz, Einheit außerhalb der 200 geladenen).
+3. **Migration 0051** im SQL-Editor (vorher lokal geprüft: \`supabase/tests/performance_ledger_db_v448_test.mjs\`).
+   Rückweg: \`supabase/migrations_rollback/0051_performance_ledger_rollback.sql\`.
+4. **Flag nur für das eigene Konto** (service_role, Befehl im Kopf der Migration). Erster Lauf vollständig, danach inkrementell.
+5. **Prüfen:** Profil → Bestzeiten → „Leistungsentwicklung"; Herkunft je Rekord; Tabelle \`performance_ledger_log\`; zweites Gerät / Neustart (Zwischenspeicher).
+6. **Rücknahme** jederzeit: Flag aus (sofort wirksam) → bisherige Anzeigen wie vor dem Einschalten; Daten bleiben unberührt.
+7. Erst nach mehreren Tagen ohne Abweichung: weitere Konten.
 `);
   return out.join('\n').trimEnd() + '\n';
 }

@@ -1,8 +1,9 @@
 /* ============================================================
    ORVIA · performance-ledger (v8-448A) — Athlete Performance Ledger, rechnender Kern.
 
-   STAND: VORBEREITET. Von der App nicht geladen, hinter dem Flag `performance_ledger` (fail-closed,
-   serverseitig, Migration 0051). Kein Rekord erscheint irgendwo, bevor das Flag an ist.
+   STAND v8-448B: von der App geladen, hinter dem Flag `performance_ledger` (fail-closed, serverseitig,
+   Migration 0051, Standard AUS). Kein Rekord erscheint irgendwo, bevor das Flag an ist; die bisherigen
+   Anzeigen schalten ueber engine/records-bridge.js kontrolliert um.
 
    WAS ES IST: ein chronologisches Leistungsregister. Je Aktivitaet und Rekorddefinition entsteht ein
    EINTRAG (Wert, Einheit, Zeitpunkt, Herkunft, Urteil). Aus den Eintraegen einer Kennzahl wird die
@@ -118,6 +119,13 @@
       seen[a.id] = true;
       out.push(a);
     });
+    /* v8-448B: Teilbestand (nur geaenderte Aktivitaeten geladen). Eine Aufzeichnung, deren Primaerdatensatz
+       auf dem Server existiert (opts.knownIds), ist keine eigene Einheit — auch wenn der Primaerdatensatz
+       in DIESER Lieferung fehlt. */
+    if (o.knownIds) {
+      var known = o.knownIds;
+      out = out.filter(function (a) { return !(a.linkedActivityId && a.linkedActivityId !== a.id && (known[a.linkedActivityId] || false)); });
+    }
     var C = CFG();
     if (C && typeof C.attachRecordings === 'function') {
       /* auf KOPIEN: attachRecordings haengt die Aufzeichnung an den Primaerdatensatz (a.recording) */
@@ -180,11 +188,57 @@
 
   /* ---- Zeitpunkt ---------------------------------------------------------------------------
      Reihenfolge = tatsaechlicher Aktivitaetszeitpunkt (Ortszeit der Einheit), NIE der Importzeitpunkt. */
+  /* v8-448B · Reihenfolge = eindeutiger UTC-Zeitpunkt; Darstellung = Kalenderzeit am Ort.
+     Zeitpunkt, in dieser Reihenfolge:
+       1. metrics.garmin.start_gmt   (Garmins UTC-Zeit, unabhaengig von Reise und Sommerzeit)
+       2. startedAt mit Zonenangabe   (echter Zeitpunkt: Garmin, ORVIA-Workout, live)
+       3. Wandzeit ohne Zone (manuell eingegeben) → in der Zeitzone des Nutzers in UTC umgerechnet;
+          Sommer-/Winterzeit ueber Intl (keine feste Verschiebung). Die doppelte Stunde bei der
+          Rueckstellung wird der ersten Stunde (Sommerzeit) zugeordnet, eine uebersprungene Uhrzeit
+          (Vorstellung) nach vorn verschoben — beides deterministisch und im Test festgehalten. */
+  var ISO_RX = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/;
+  var _dtf = {};
+  function zoneOffsetMs(ms, tz) {
+    var f = _dtf[tz] || (_dtf[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    var p = {}; f.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    var asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
+    return asUtc - Math.floor(ms / 1000) * 1000;
+  }
+  function wallToInstant(text, tz) {
+    var m = ISO_RX.exec(String(text || '')); if (!m) return null;
+    var guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    if (!tz) return guess;
+    try {
+      var o1 = zoneOffsetMs(guess - 3 * 3600000, tz), o2 = zoneOffsetMs(guess + 3 * 3600000, tz);   // Versatz vor/nach einer Umstellung
+      var c1 = guess - o1, c2 = guess - o2;
+      var ok1 = zoneOffsetMs(c1, tz) === o1, ok2 = zoneOffsetMs(c2, tz) === o2;
+      if (ok1 && ok2) return Math.min(c1, c2);          // doppelte Stunde: die fruehere (erste) Stunde
+      if (ok1) return c1; if (ok2) return c2;
+      return guess - Math.max(o1, o2) + Math.abs(o2 - o1); // uebersprungene Uhrzeit: nach vorn verschoben
+    } catch (e) { return guess; }
+  }
+  function instantOf(a, tz) {
+    var g = obj((obj(a.metrics) || {}).garmin) || {};
+    var t = Date.parse(g.start_gmt || '');
+    if (isFinite(t)) return { ms: t, basis: 'garmin.start_gmt' };
+    var s = a.startedAt ? String(a.startedAt) : '';
+    var T = TIME();
+    var wall = T && T.kind ? T.kind(a) === 'wall' : !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s);
+    if (s && !wall) { t = Date.parse(s); if (isFinite(t)) return { ms: t, basis: 'startedAt' }; }
+    if (s && wall) {
+      var zone = tz || (T && T.defaultTimezone ? T.defaultTimezone() : null);
+      t = wallToInstant(s.replace(/Z$/, ''), zone);
+      if (t !== null && isFinite(t)) return { ms: t, basis: 'wall_clock@' + (zone || 'UTC') };
+    }
+    return { ms: null, basis: 'unknown' };
+  }
   function timeOf(a, tz) {
     var T = TIME(), p = T ? T.localParts(a, tz) : { date: a.startedAt ? String(a.startedAt).slice(0, 10) : null, time: null, basis: 'utc_fallback' };
     var date = p.date || null, time = p.time || null;
-    return { recordedAt: a.startedAt || null, localDate: date, localTime: time, timeBasis: p.basis || null,
-             orderKey: (date || '9999-99-99') + 'T' + (time || '00:00') + '|' + String(a.startedAt || '') + '|' + String(a.id) };
+    var inst = instantOf(a, tz);
+    var utc = inst.ms !== null ? new Date(inst.ms).toISOString() : null;
+    return { recordedAt: a.startedAt || null, utc: utc, utcBasis: inst.basis, localDate: date, localTime: time, timeBasis: p.basis || null,
+             orderKey: (utc || '9999-12-31T23:59:59.999Z') + '|' + String(a.id) };
   }
 
   /* ---- Eintraege einer Aktivitaet ------------------------------------------------------------
@@ -209,7 +263,7 @@
       return {
         activityId: String(a.id), sport: a.sportId, metricKey: metricKey(d, cls), defId: d.id, contextClass: cls,
         value: r.eligible ? r.value : null, unit: r.unit || null, better: d.better,
-        recordedAt: t.recordedAt, localDate: t.localDate, localTime: t.localTime, timeBasis: t.timeBasis, orderKey: t.orderKey,
+        recordedAt: t.recordedAt, utc: t.utc, utcBasis: t.utcBasis, localDate: t.localDate, localTime: t.localTime, timeBasis: t.timeBasis, orderKey: t.orderKey,
         source: a.source || null,
         provenance: { basis: p.basis || null, manual: !!p.manual, quality: p.quality || null, evidence: p.evidence || {},
                       context: p.context ? { environment: p.context.environment, typeKey: p.context.typeKey, origin: p.context.origin, basis: p.context.basis } : null },
@@ -236,7 +290,7 @@
       var isEqual = best !== null && v === bv;
       if (!isBetter && !isEqual) return;
       var ev = { seq: ++seq, metricKey: key, type: best === null ? 'first' : (isBetter ? 'improved' : 'equalled'),
-                 value: e.value, unit: e.unit, activityId: e.activityId, recordedAt: e.recordedAt, localDate: e.localDate,
+                 value: e.value, unit: e.unit, activityId: e.activityId, recordedAt: e.recordedAt, utc: e.utc || null, localDate: e.localDate,
                  manual: !!(e.provenance && e.provenance.manual), validation: e.validation, contextClass: e.contextClass,
                  previousValue: null, previousActivityId: null, previousLocalDate: null, improvement: null, improvementPct: null,
                  daysSincePrevious: null, calcVersion: CALC_VERSION };
@@ -298,7 +352,8 @@
     var all = (entries || []);
     MILESTONES.forEach(function (ms) {
       if (ms.kind === 'first_distance') {
-        var hit = sortChrono(all.filter(function (e) { return e.defId === ms.defId && e.eligibility === 'eligible' && e.value >= ms.threshold; }))[0];
+        /* v8-448B: nur Kontextklasse standard — gleiche Grundlage wie der Rekord „Laengster Lauf" (kein Laufband-„erster Halbmarathon") */
+        var hit = sortChrono(all.filter(function (e) { return e.defId === ms.defId && e.eligibility === 'eligible' && e.contextClass === 'standard' && e.value >= ms.threshold; }))[0];
         if (hit) out.push({ key: ms.id, milestoneId: ms.id, kind: ms.kind, label: ms.label, activityId: hit.activityId, localDate: hit.localDate,
                             recordedAt: hit.recordedAt, value: hit.value, unit: hit.unit, detail: { threshold: ms.threshold, contextClass: hit.contextClass }, calcVersion: CALC_VERSION });
       } else if (ms.kind === 'month_distance') {
@@ -358,6 +413,13 @@
                                          events: Object.assign({}, prev.events), milestones: prev.milestones || [] };
     var list = canonical(activities, o);
     var present = {}, added = [], updated = [], removed = [], affected = {};
+    /* Was geliefert, aber NICHT als eigene Einheit gezaehlt wird (gekoppelte Aufzeichnung), faellt aus dem
+       Register — auch im Teilbestand. Geloeschte zaehlen unten ueber explicitDeleted. */
+    var kept = {}; list.forEach(function (a) { kept[String(a.id)] = true; });
+    var notOwnUnit = {};
+    (Array.isArray(activities) ? activities : []).forEach(function (a) {
+      if (obj(a) && a.id && !kept[String(a.id)] && !(a.deletedAt || a._tombstone || (typeof o.isDeleted === 'function' && o.isDeleted(a)))) notOwnUnit[String(a.id)] = true;
+    });
     list.forEach(function (a) {
       var id = String(a.id); present[id] = true;
       var fp = fingerprint(a, sig) + (o.timeZone ? '|' + o.timeZone : '');
@@ -366,7 +428,7 @@
       var entries = entriesFor(a, o);
       (cur ? cur.entries : []).forEach(function (e) { affected[e.metricKey] = true; });
       entries.forEach(function (e) { affected[e.metricKey] = true; });
-      state.activities[id] = { fp: fp, sport: a.sportId, entries: entries };
+      state.activities[id] = { fp: fp, sport: a.sportId, entries: entries, u: a.updatedAt || null };
       (cur ? updated : added).push(id);
     });
     /* opts.partial: die Eingabe ist NICHT der vollstaendige Bestand (z. B. die App hat nur die letzten 200
@@ -378,6 +440,7 @@
       if (obj(a) && a.id && (a.deletedAt || a._tombstone || (typeof o.isDeleted === 'function' && o.isDeleted(a)))) explicitDeleted[String(a.id)] = true;
     });
     (o.deletedIds || []).forEach(function (id) { explicitDeleted[String(id)] = true; });
+    Object.keys(notOwnUnit).forEach(function (id) { explicitDeleted[id] = true; });
     Object.keys(state.activities).forEach(function (id) {
       if (present[id]) return;
       if (o.partial && !explicitDeleted[id]) return;
@@ -440,8 +503,40 @@
     });
     return Object.keys(by).sort().map(function (k) { return by[k]; });
   }
-  function readModel(state) {
+  /* Monatliche Distanz je Sportart aus FREIGEGEBENEN Werten (alle Kontextklassen) — langfristige Entwicklung.
+     Gesperrte Distanzen zaehlen nicht mit; der Monat ist dann eine Untergrenze (lowerBound). */
+  function volumeByMonth(state) {
+    var by = {};
+    Object.keys(state.activities).forEach(function (id) {
+      state.activities[id].entries.forEach(function (e) {
+        if (!/\.longest_distance$/.test(e.defId) || !e.localDate) return;
+        var sp = by[e.sport] || (by[e.sport] = {}), mk = e.localDate.slice(0, 7);
+        var m = sp[mk] || (sp[mk] = { month: mk, distanceM: 0, activities: 0, blocked: 0 });
+        if (e.eligibility === 'eligible') { m.distanceM += e.value; m.activities++; } else m.blocked++;
+      });
+    });
+    var out = {};
+    Object.keys(by).forEach(function (sp) {
+      out[sp] = Object.keys(by[sp]).sort().map(function (mk) { var m = by[sp][mk]; return { month: mk, distanceM: Math.round(m.distanceM), activities: m.activities, lowerBound: m.blocked > 0 }; });
+    });
+    return out;
+  }
+  /* Herkunft eines Bestwerts — alles, was die Ansicht zum Nachvollziehen braucht. */
+  function provenanceOf(state, ev) {
+    var e = ev ? entryOf(state, ev.activityId, parseMetricKey(ev.metricKey).defId) : null;
+    if (!e) return null;
+    var p = e.provenance || {};
+    return { activityId: e.activityId, source: e.source, basis: p.basis || null, quality: p.quality || null, validation: e.validation,
+             manual: !!p.manual, context: p.context || null, precision: PRECISION[e.unit] || 0.01, unit: e.unit,
+             utc: e.utc || null, utcBasis: e.utcBasis || null, localDate: e.localDate, localTime: e.localTime, timeBasis: e.timeBasis };
+  }
+  /* opts.declared: { metricKey: { value, label, source:'manual', measuredAt } } — vom Nutzer ANGEGEBENE Bestwerte
+     (Profil, auch aus der Zeit vor ORVIA). Sie sind keine Messung und gehen nie in die Historie ein; die Ansicht
+     stellt sie daneben, um ORVIA-Bestwert und angegebenen Allzeitwert zu unterscheiden. */
+  function readModel(state, opts) {
+    var o = opts || {};
     var cov = coverage(state);
+    var vol = volumeByMonth(state);
     var sports = {};
     Object.keys(state.events).sort().forEach(function (k) {
       var pk = parseMetricKey(k), d = pk.def; if (!d) return;
@@ -449,21 +544,33 @@
       var improvements = evs.filter(function (e) { return e.type === 'improved'; });
       var last = improvements[improvements.length - 1] || null;
       var s = sports[d.sport] || (sports[d.sport] = { sport: d.sport, records: [], coverageFrom: cov[d.sport] ? cov[d.sport].from : null });
+      var dec = o.declared && o.declared[k] && num(o.declared[k].value) !== null ? o.declared[k] : null;
+      var decBetter = dec && best ? (d.better === 'lower' ? quant(dec.value, best.unit) < quant(best.value, best.unit) : quant(dec.value, best.unit) > quant(best.value, best.unit)) : false;
       s.records.push({ metricKey: k, defId: d.id, label: d.label, kind: d.kind, better: d.better, contextClass: pk.contextClass,
                        unit: best ? best.unit : null, best: best, previous: last ? { value: last.previousValue, localDate: last.previousLocalDate, activityId: last.previousActivityId } : null,
                        improvement: last ? last.improvement : null, improvementPct: last ? last.improvementPct : null,
+                       improvements: improvements.length, firstValue: evs[0] ? evs[0].value : null, firstDate: evs[0] ? evs[0].localDate : null,
                        equalledSinceBest: evs.length - 1 - evs.lastIndexOf(best),
-                       history: evs, scope: 'orvia', coverageFrom: s.coverageFrom });
+                       history: evs, scope: 'orvia', coverageFrom: s.coverageFrom, provenance: provenanceOf(state, best),
+                       declared: dec ? { value: dec.value, label: dec.label || null, measuredAt: dec.measuredAt || null, betterThanOrvia: decBetter } : null });
     });
     var order = DEFS.map(function (d) { return d.id; });
     var sportOrder = [];
     DEFS.forEach(function (d) { if (sportOrder.indexOf(d.sport) < 0) sportOrder.push(d.sport); });
+    Object.keys(vol).forEach(function (sp) { if (!sports[sp] && vol[sp].some(function (m) { return m.distanceM > 0; })) sports[sp] = { sport: sp, records: [], coverageFrom: cov[sp] ? cov[sp].from : null }; });
     var list = Object.keys(sports).sort(function (x, y) { return sportOrder.indexOf(x) - sportOrder.indexOf(y); }).map(function (k) {
-      sports[k].records.sort(function (x, y) { return order.indexOf(x.defId) - order.indexOf(y.defId) || (x.contextClass < y.contextClass ? -1 : 1); });
-      return sports[k];
+      var sp = sports[k];
+      sp.records.sort(function (x, y) { return order.indexOf(x.defId) - order.indexOf(y.defId) || (x.contextClass < y.contextClass ? -1 : 1); });
+      var lastImp = null;
+      sp.records.forEach(function (r) { r.history.forEach(function (e) { if (e.type === 'improved' && (!lastImp || (e.utc || '') > (lastImp.utc || ''))) lastImp = e; }); });
+      sp.volume = vol[k] || [];
+      sp.overview = { records: sp.records.length, improvements: sp.records.reduce(function (n, r) { return n + r.improvements; }, 0),
+                      lastImprovement: lastImp ? { metricKey: lastImp.metricKey, localDate: lastImp.localDate, value: lastImp.value } : null,
+                      activities: cov[k] ? cov[k].activities : 0 };
+      return sp;
     });
     return { calcVersion: state.calcVersion, sports: list, milestones: state.milestones.slice(), waiting: waiting(state), coverage: cov,
-             empty: list.length === 0 };
+             empty: list.every(function (x) { return !x.records.length; }) };
   }
 
   /* Zeilen fuer die Tabellen aus Migration 0051 (user_id setzt der Server aus auth.uid()). */
@@ -505,8 +612,13 @@
     var acts = {};
     Object.keys(state.activities).forEach(function (id) {
       var a = state.activities[id], e0 = a.entries[0] || {};
-      acts[id] = [a.fp, a.sport, [e0.recordedAt || null, e0.localDate || null, e0.localTime || null, e0.timeBasis || null, e0.orderKey || null, e0.source || null],
-        a.entries.map(function (e) { return [e.metricKey, e.value, e.unit, e.reason, e.validation, e.provenance && e.provenance.manual ? 1 : 0]; })];
+      acts[id] = [a.fp, a.sport, [e0.recordedAt || null, e0.localDate || null, e0.localTime || null, e0.timeBasis || null, e0.orderKey || null, e0.source || null, e0.utc || null, e0.utcBasis || null],
+        a.entries.map(function (e) {
+          var p = e.provenance || {}, c = p.context || {};
+          return e.eligibility === 'eligible'
+            ? [e.metricKey, e.value, e.unit, null, e.validation, p.manual ? 1 : 0, p.basis || null, p.quality || null, c.environment || null, c.basis || null, c.origin || null, c.typeKey || null]
+            : [e.metricKey, null, e.unit, e.reason, e.validation];
+        }), a.u || null];
     });
     return JSON.stringify({ v: CALC_VERSION, r: state.rules, a: acts });
   }
@@ -517,20 +629,37 @@
       var st = emptyState();
       Object.keys(d.a).forEach(function (id) {
         var x = d.a[id], t = x[2] || [];
-        st.activities[id] = { fp: x[0], sport: x[1], entries: (x[3] || []).map(function (c) {
+        st.activities[id] = { fp: x[0], sport: x[1], u: x[4] || null, entries: (x[3] || []).map(function (c) {
           var pk = parseMetricKey(c[0]), dd = pk.def || {};
+          var elig = c[1] !== null;
           return { activityId: id, sport: x[1], metricKey: c[0], defId: pk.defId, contextClass: pk.contextClass, value: c[1], unit: c[2], better: dd.better || null,
-                   recordedAt: t[0], localDate: t[1], localTime: t[2], timeBasis: t[3], orderKey: t[4], source: t[5],
-                   provenance: { cached: true, manual: c[5] === 1 }, eligibility: c[1] === null ? 'blocked' : 'eligible', reason: c[3], reasons: c[3] ? [c[3]] : [],
+                   recordedAt: t[0], localDate: t[1], localTime: t[2], timeBasis: t[3], orderKey: t[4], source: t[5], utc: t[6] || null, utcBasis: t[7] || null,
+                   provenance: elig ? { manual: c[5] === 1, basis: c[6], quality: c[7], evidence: null, cached: true,
+                                        context: { environment: c[8], basis: c[9], origin: c[10], typeKey: c[11] } } : { cached: true, manual: false },
+                   eligibility: elig ? 'eligible' : 'blocked', reason: elig ? null : c[3], reasons: elig ? [] : [c[3]],
                    validation: c[4], calcVersion: CALC_VERSION };
         }) };
       });
       var entries = allEntries(st), keys = {};
       entries.forEach(function (e) { keys[e.metricKey] = true; });
-      Object.keys(keys).sort().forEach(function (k) { var h = history(entries, k); if (h.length) st.events[k] = h; });
-      st.milestones = milestones(entries, st.events);
+      var grouped = groupByKey(entries);
+      Object.keys(keys).sort().forEach(function (k) { var h = history(grouped[k] || [], k); if (h.length) st.events[k] = h; });
+      st.milestones = milestones(allEntries(st, milestoneKeys(st)), st.events);
       return st;
     } catch (e) { return null; }
+  }
+
+  /* v8-448B · Lesezugriffe fuer Bruecke und Ansicht */
+  function entryOf(state, activityId, defId) {
+    var a = state && state.activities[String(activityId)];
+    if (!a) return null;
+    for (var i = 0; i < a.entries.length; i++) if (a.entries[i].defId === defId) return a.entries[i];
+    return null;
+  }
+  function updatedAtMap(state) {
+    var out = {};
+    Object.keys(state.activities).forEach(function (id) { out[id] = state.activities[id].u || null; });
+    return out;
   }
 
   var api = {
@@ -539,7 +668,7 @@
     contextClass: contextClass, canonical: canonical, fingerprint: fingerprint, ruleSignature: ruleSignature,
     entriesFor: entriesFor, history: history, currentBest: currentBest, milestones: milestones,
     emptyState: emptyState, update: update, readModel: readModel, rows: rows, serialize: serialize, deserialize: deserialize,
-    allEntries: allEntries
+    allEntries: allEntries, entryOf: entryOf, updatedAtMap: updatedAtMap, instantOf: instantOf, wallToInstant: wallToInstant
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.performanceLedger = api;

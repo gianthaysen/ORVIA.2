@@ -83,6 +83,12 @@
      bereits dedupliziert). Nur abgeschlossene Einheiten zaehlen. */
   function computeAchievements(activities, opts) {
     opts = opts || {};
+    /* v8-448B · Leistungsregister (engine/records-bridge.js): ist es an und geladen, zaehlen fuer Distanzen NUR
+       freigegebene Werte — Einzelbestwerte nur in der Kontextklasse standard (kein Laufband-„laengster Lauf",
+       keine Rolle als laengste Radeinheit), Summen in jeder Klasse. Flag aus: unveraendert. */
+    var B = O.recordsBridge;
+    var distOf = typeof opts.distanceOf === 'function' ? opts.distanceOf
+      : (B && typeof B.mode === 'function' && B.mode() === 'on' ? B.distanceOf : null);
     var acts = (Array.isArray(activities) ? activities : []).filter(function (a) {
       return a && (!a.status || a.status === 'completed') && dayOf(a);
     });
@@ -91,13 +97,14 @@
     acts.forEach(function (a) {
       var sp = normSport(a.sportId);
       var day = dayOf(a);
-      var km = distanceKm(a);
-      (per[sp] = per[sp] || []).push({ day: day, km: km });
+      var km = distanceKm(a), kmSum = km;
+      if (distOf) { var dd = distOf(a); if (dd && dd.handled) { km = dd.single; kmSum = dd.sum; if (dd.day) day = dd.day; } }
+      (per[sp] = per[sp] || []).push({ day: day, km: km, kmSum: kmSum });
       var wk = weekKey(day);
       if (wk) {
         var w = weeks[wk] = weeks[wk] || { count: 0, km: {} };
         w.count++;
-        if (km != null) w.km[sp] = (w.km[sp] || 0) + km;
+        if (kmSum != null) w.km[sp] = (w.km[sp] || 0) + kmSum;
       }
     });
 
@@ -110,10 +117,10 @@
       /* Kumulierte Distanz einer Sportart. Datum einer Stufe = Tag, an dem die Summe
          sie ERSTMALS erreicht hat (chronologisch aufsummiert, keine Rueckdatierung). */
       if (l.metric === 'sumAll') {
-        var rows2 = (per[l.sport] || []).filter(function (x) { return x.km != null; })
+        var rows2 = (per[l.sport] || []).filter(function (x) { return x.kmSum != null; })
           .slice().sort(function (a, b) { return a.day < b.day ? -1 : 1; });
         var run2 = 0, marks = [];
-        rows2.forEach(function (x) { run2 += x.km; marks.push({ day: x.day, sum: run2 }); });
+        rows2.forEach(function (x) { run2 += x.kmSum; marks.push({ day: x.day, sum: run2 }); });
         return { value: Math.round(run2 * 10) / 10,
           dateForStep: function (s) {
             for (var i = 0; i < marks.length; i++) if (marks[i].sum + 1e-9 >= s) return marks[i].day;
@@ -193,8 +200,9 @@
       return (b.progress - a.progress);
     });
     return { milestones: milestones, medals: medals,
-      activityCount: acts.length,
-      provenance: 'Gemessen aus deinen abgeschlossenen Aktivitäten — reine Arithmetik, keine Schätzung.' };
+      activityCount: acts.length, source: distOf ? 'ledger' : 'activities',
+      provenance: distOf ? 'Aus dem Leistungsregister: nur geprüfte Distanzen, Einzelbestwerte ohne Laufband/Rolle.'
+        : 'Gemessen aus deinen abgeschlossenen Aktivitäten — reine Arithmetik, keine Schätzung.' };
   }
 
   var api = { LADDERS: LADDERS, computeAchievements: computeAchievements, weekKey: weekKey };

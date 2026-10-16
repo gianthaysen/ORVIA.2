@@ -2,8 +2,9 @@
    ORVIA · metric-eligibility (v8-447.3) — darf DIESE Kennzahl DIESER Aktivitaet in eine
    Auswertung, die historisch festgeschrieben wird (Bestwerte, Fortschritt, Ziele, Highlights)?
 
-   STAND: VORBEREITET. Von der App nicht geladen (nicht in index.html, nicht im Offline-
-   Zwischenspeicher), an kein Leistungsregister angeschlossen. Grundlage fuer v8-448.
+   STAND v8-448B: von der App geladen (index.html, Offline-Zwischenspeicher) und einzige Pruefinstanz des
+   Leistungsregisters (performance-ledger.js). Wirkt nur, wenn das Flag `performance_ledger` an ist —
+   sonst ruft niemand evaluate() auf (keine sichtbare Aenderung).
 
    Warum je KENNZAHL und nicht je Aktivitaet: activityCapabilities.ledgerEligible() sperrt eine
    ganze Einheit. Eine Einheit kann aber eine belastbare Distanz und eine unbelegte Kadenz

@@ -130,11 +130,12 @@ function rowsFor(sport, variant) {
 export function render() {
   const out = [`# Performance-Daten: Was darf ins Leistungsregister?
 
-**Status: SPEZIFIKATION + VORBEREITETER CODE** · Stand v8-447.3 · Grundlage für v8-448 (Athlete Performance Ledger)
+**Status: IMPLEMENTIERT, AUSGELIEFERT HINTER FLAG (\`performance_ledger\`, Standard aus)** · Stand v8-448B · Prüfinstanz des Athlete Performance Ledger
 
 > Diese Datei wird **erzeugt**: \`node app/tools/gen-eligibility-doc.mjs\`. Die Spalten *ledger eligible?* und *reason*
 > sind das Urteil von \`app/js/engine/metric-eligibility.js\` — nicht von Hand geschrieben. Ein Test vergleicht Datei und Code.
-> Das Modul ist **vorbereitet**: von der App nicht geladen, an kein Register angeschlossen.
+> Das Modul wird seit v8-448B von der App geladen und ist die **einzige** Prüfinstanz des Leistungsregisters.
+> Es wirkt erst, wenn das Flag \`performance_ledger\` für ein Konto an ist; bis dahin ruft es niemand auf.
 
 ## 1 · Die Frage
 

@@ -12257,6 +12257,8 @@ function gmProfBestTimes(){
   ];
   var lvl=(typeof gmLevel==='function')?gmLevel():'f';
   var h=gmPPageHead('Bestzeiten','' + _uiT('ui.persoenliche_rekorde_je_distanz') + '')+'<div style="padding:0 18px">';
+  /* v8-448B: Einstieg ins Leistungsregister — erscheint NUR mit Flag performance_ledger. */
+  try{if(window.ORVIA&&ORVIA.recordsBridge&&ORVIA.recordsBridge.mode()!=='off')h+='<button type="button" class="bt-row plv-entry" onclick="gmOpenProfPage(\'performanceLedger\')"><div class="bt-b"><b>'+_uiT('ledger.entry.title')+'</b><span>'+_uiT('ledger.entry.sub')+'</span></div>'+icon('chev')+'</button>';}catch(_){ }
   _gmBtSlots=[];
   rows.forEach(function(r,i){
     /* KF-021: Quelle und Messdistanz kommen aus bestTimes().src/.meas — die Zeile
@@ -12583,8 +12585,24 @@ var GM_PROF_ROUTES={
   strength:function(){return gmProfStrengthPage();},
   /* G1 (2026-08-07): Leistungsdaten. Ohne diese Seite bleiben Intensitaet,
      Zielprognose, Wochenkilometer und Tagesziele bei „—". */
-  performance:function(){return gmProfPerformance();}
+  performance:function(){return gmProfPerformance();},
+  /* v8-448B: Leistungsentwicklung (Leistungsregister) — nur mit Flag performance_ledger erreichbar. */
+  performanceLedger:function(){return gmProfPerformanceLedger();}
 };
+function gmProfPerformanceLedger(){
+  var O=window.ORVIA,V=O&&O.performanceLedgerView,S=O&&O.performanceLedgerStore;
+  var h=gmPPageHead(_uiT('ledger.title'),_uiT('ledger.pageSub'));
+  if(!V||!S||!S.enabled())return h+'<div class="mini-note" style="margin:0 18px">'+icon('info','xs')+'<div>'+_uiT('ledger.unavailable')+'</div></div>';
+  try{V.ensureStyle();}catch(_){ }
+  var m=null;try{m=S.model();}catch(_){m=null;}
+  if(!m){try{S.sync();}catch(_){ }
+    return h+'<div class="plv"><div class="plv-empty" role="status"><div class="plv-empty-mark" aria-hidden="true"></div><h3>'+_uiT('ledger.loading.title')+'</h3><p>'+_uiT('ledger.loading.text')+'</p></div></div>';}
+  return h+V.render(m,{noHead:true,onOpenActivity:'gmOpenActivityFromLedger'});
+}
+function gmOpenActivityFromLedger(id){try{gmCloseProfPage();}catch(_){ }try{gmOpenActivityPage(id);}catch(_){ }}
+try{window.addEventListener('orvia:ledger-updated',function(){
+  try{if(_gmProfRoute==='performanceLedger'||_gmProfRoute==='bestTimes')gmOpenProfPage(_gmProfRoute);}catch(_){ }
+});}catch(_){ }
 function gmOpenProfPage(route){
   var pg=document.getElementById('gmProfPage');if(!pg)return;
   var v=GM_PROF_ROUTES[route];if(!v)return;

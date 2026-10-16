@@ -50,7 +50,7 @@ const empty = L.readModel(L.emptyState());
 const page = m => `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/styles.css"><style>body{background:#09111A;margin:0}</style></head><body>
 <div id="root"></div>
-<script src="/js/training-domain.js"></script><script src="/js/activity-theme.js"></script><script src="/js/engine/performance-ledger.js"></script>
+<script src="/js/i18n.js"></script><script src="/locales/de.js"></script><script src="/js/training-domain.js"></script><script src="/js/activity-theme.js"></script><script src="/js/engine/performance-ledger.js"></script>
 <script src="/js/screens/performance-ledger-view.js"></script>
 <script>window.ORVIA.performanceLedgerView.mount(document.getElementById('root'), ${JSON.stringify(m)});</script></body></html>`;
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png' };

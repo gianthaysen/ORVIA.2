@@ -265,8 +265,8 @@ sec('H · Zwischenspeicher, Zeilen, Skalierung');
 sec('I · Vorbereitet, nicht ausgeliefert');
 {
   const html = rd('index.html'), sw = rd('sw.js');
-  ok('I1 nicht in index.html, nicht im Offline-Zwischenspeicher', !/performance-ledger/.test(html) && !/performance-ledger/.test(sw));
-  ok('I2 Build unveraendert v8-447', /const C = 'orvia-v8-447'/.test(sw));
+  ok('I1 v8-448B: ausgeliefert (index.html + Offline-Speicher), wirksam nur mit Flag', /performance-ledger\.js/.test(html) && /performance-ledger\.js/.test(sw));
+  ok('I2 Build v8-448', /const C = 'orvia-v8-448'/.test(sw));
   const src = rd('js/engine/performance-ledger.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok('I3 rein: kein DOM, kein Speicher, kein Netz, keine Uhr', !/document\.|localStorage|fetch\(|XMLHttpRequest|Date\.now\(|new Date\(\)/.test(src));
   const DOC = await import(new URL(_APPREL + 'tools/gen-ledger-doc.mjs', import.meta.url));
