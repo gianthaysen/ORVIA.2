@@ -26,7 +26,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'feature-flags@4';
+  var VERSION = 'feature-flags@5';   // v8-448A: performance_ledger in KNOWN
   var TABLE = 'user_feature_flags';
   var TTL_MS = 5 * 60 * 1000;
 
@@ -41,7 +41,10 @@
        Quelle tauschen, Form behalten — siehe ui.js goalOf(). */
     'goal_plan_input',
     /* B-09 (0040): Krankheit/Verletzung/verpasste Kernreize im gelesenen Plan. */
-    'absence_replanner'];
+    'absence_replanner',
+    /* v8-448A (0051): Athlete Performance Ledger. Standard AUS (keine Zeile = aus); die Module
+       sind noch nicht ausgeliefert — das Flag allein schaltet nichts ein. */
+    'performance_ledger'];
 
   /* state: flag -> { enabled, at, source, reason, cohort } */
   var _state = {};

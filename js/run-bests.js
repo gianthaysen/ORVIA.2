@@ -219,7 +219,7 @@
   /* Gemessene Bestzeiten ueber alle kanonischen Laufaktivitaeten.
      activities: Ergebnis von ORVIA.activityStore.listActivities()
      opts.isTombstoned: optionale Praedikatsfunktion des Stores */
-  function measuredBests(activities, opts) {
+  function measuredBestsLegacy(activities, opts) {
     opts = opts || {};
     var sport = opts.sport || 'running';
     var targets = Array.isArray(opts.targets) ? opts.targets : (SPORT_TARGETS[sport] || []);
@@ -295,6 +295,15 @@
     });
     return res;
   }
+  /* v8-448B · Umstellung auf das Leistungsregister (engine/records-bridge.js). Flag aus = exakt die bisherige
+     Rechnung. Flag an + Register geladen = Laufbestzeiten k1…k42 NUR aus dem Register (eine Rechnung je Rekord).
+     opts.legacy erzwingt die bisherige Rechnung (Vergleich im Probelauf). */
+  function measuredBests(activities, opts) {
+    var r = measuredBestsLegacy(activities, opts);
+    if (opts && opts.legacy) return r;
+    var B = O.recordsBridge;
+    try { return (B && typeof B.overlay === 'function') ? B.overlay(r) : r; } catch (e) { return r; }
+  }
   /* Bisheriger Vertrag (Laufen) — unveraendert fuer bestTimes() in ui.js; kennt jetzt zusaetzlich k21/k42. */
   function measuredRunBests(activities, opts) { return measuredBests(activities, Object.assign({}, opts || {}, { sport: 'running' })); }
   /* Alle Sportfamilien auf einmal: { running: {...}, cycling: {...}, swimming: {...} }. */
@@ -306,7 +315,7 @@
 
   var api = {
     TARGETS: TARGETS, SPORT_TARGETS: SPORT_TARGETS, SLACK: SLACK, sportFamily: sportFamily,
-    measuredBests: measuredBests, measuredAllBests: measuredAllBests,
+    measuredBests: measuredBests, measuredBestsLegacy: measuredBestsLegacy, measuredAllBests: measuredAllBests,
     normalizeSplits: normalizeSplits, bestWindow: bestWindow,
     bestWindowFromStreams: bestWindowFromStreams, streamTimeAxis: streamTimeAxis,
     measuredRunBests: measuredRunBests

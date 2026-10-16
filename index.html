@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="ORVIA">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#08090B">
-<meta name="orvia-build" content="orvia-v8-447">
+<meta name="orvia-build" content="orvia-v8-448">
 <link rel="manifest" href="manifest.webmanifest">
 <!-- ============ ORVIA BRAND · icons & meta ============ -->
 <title>ORVIA · Performance OS</title>
@@ -738,6 +738,15 @@
 <!-- Phase 8.4 (2026-08-06): serverseitiger Schaltkanal. Fail-closed — ohne
      ausdrueckliche Freigabe ist alles aus. -->
 <script src="js/engine/feature-flags.js"></script>
+<!-- v8-448B: Athlete Performance Ledger. Hinter dem Flag performance_ledger (fail-closed): ohne
+     ausdrueckliche Freigabe rechnet, speichert und zeigt keiner dieser Bausteine etwas; run-bests,
+     pb-sync und achievements arbeiten dann exakt wie bisher (engine/records-bridge.js, Modus off). -->
+<script src="js/engine/metric-eligibility.js"></script>
+<script src="js/engine/performance-ledger.js"></script>
+<script src="js/engine/records-bridge.js"></script>
+<script src="js/repos/performanceLedgerRepository.js"></script>
+<script src="js/performance-ledger-store.js"></script>
+<script src="js/screens/performance-ledger-view.js"></script>
 <!-- Phase 8.4 (2026-08-06): flag-gesteuerter Aktivierungspfad. Rechnet aus, WAS der
      neue Plan waere, und verweigert, sobald ein manueller Override verloren ginge.
      Ohne Freigabe (Standard) bleibt der Legacy-Pfad unveraendert. -->
