@@ -24,7 +24,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'records-bridge@1';
+  var VERSION = 'records-bridge@2';
   var RUN_KEYS = { k1: 1000, k5: 5000, k10: 10000, k21: 21098, k42: 42195 };
   var DIST_SPORTS = { running: 1, cycling: 1, swimming: 1, walking: 1, hiking: 1, rowing: 1 };
 
@@ -61,19 +61,49 @@
     return { single: ok && e.contextClass === 'standard' ? e.value / 1000 : null, sum: ok ? e.value / 1000 : null, day: e.localDate || null, handled: true };
   }
 
-  /* Vergleich fuer den Echtdaten-Probelauf: bisherige Bestzeiten (run-bests, ohne Register) gegen das Register. */
+  /* Vergleich fuer den Echtdaten-Probelauf: bisherige Bestzeiten (run-bests, ohne Register) gegen das Register.
+     v8-448C: je Distanz auch die URSACHE einer Abweichung — aus dem Registereintrag genau der Aktivitaet, die bisher den
+     Rekord hielt (Kennung auf die Server-Kennung aufgeloest: run-bests nennt clientRecordId vor id).
+       gleich              gleicher Wert (< 1 s)
+       genauer             dieselbe Aktivitaet; das Register rechnet auf ALLEN Messzeilen (Worker), bisher auf der
+                           Anzeige-Reihe (hoechstens 300 Punkte) — das engste Fenster aus mehr Zeilen kann nur kuerzer sein
+       gesperrt:<grund>    die bisherige Aktivitaet traegt fuer diese Distanz keinen freigegebenen Wert (Grund der Eligibility)
+       anderer_kontext:<k> freigegeben, aber in einer anderen Kontextklasse (z. B. indoor) — wird nie mit standard verglichen
+       nicht_im_register   die bisherige Aktivitaet kennt das Register nicht (nur lokal, geloescht, gekoppelt)
+       anderer_wert        freigegeben, standard, aber anderer Wert (bisherige Methode rechnet anders, z. B. Timer-Dauer)
+       nur_register / nur_bisher / beide_leer */
   function compareWithLegacy(state, activities) {
     var L = O.performanceLedger, RB = O.runBests;
     var acts = activities;
     try { if (!acts && O.activityStore && O.activityStore.listActivities) acts = O.activityStore.listActivities() || []; } catch (e) { acts = []; }
-    var legacy = (RB && RB.measuredBestsLegacy) ? RB.measuredBestsLegacy(acts || [], { sport: 'running', isTombstoned: (O.activityStore && O.activityStore.isTombstoned) || null }) : null;
+    acts = acts || [];
+    var legacy = (RB && RB.measuredBestsLegacy) ? RB.measuredBestsLegacy(acts, { sport: 'running', isTombstoned: (O.activityStore && O.activityStore.isTombstoned) || null }) : null;
+    function serverIdOf(legacyId) {
+      for (var i = 0; i < acts.length; i++) { var a = acts[i]; if (a && (a.clientRecordId || a.id || a.sourceRecordId) === legacyId) return a.id || null; }
+      return legacyId || null;
+    }
     var out = [];
     Object.keys(RUN_KEYS).forEach(function (k) {
-      var ev = state && state.events['running.fastest_' + RUN_KEYS[k] + 'm@standard'];
+      var t = RUN_KEYS[k], ev = state && state.events['running.fastest_' + t + 'm@standard'];
       var lb = ev && L ? L.currentBest(ev) : null, lg = legacy && legacy[k];
-      var verdict = !lg && !lb ? 'beide_leer' : !lb ? 'nur_bisher' : !lg ? 'nur_register' : Math.abs(lg.sec - lb.value) < 1 ? 'gleich' : 'abweichend';
-      out.push({ key: k, bisher: lg ? { sec: lg.sec, date: lg.date, method: lg.method, activityId: lg.activityId } : null,
-                 register: lb ? { sec: lb.value, date: lb.localDate, activityId: lb.activityId } : null, verdict: verdict });
+      var sid = lg ? serverIdOf(lg.activityId) : null;
+      var en = (lg && L && L.entryOf && state) ? L.entryOf(state, sid, 'running.fastest_' + t + 'm') : null;
+      var verdict, cause = null;
+      if (!lg && !lb) verdict = 'beide_leer';
+      else if (!lb) verdict = 'nur_bisher';
+      else if (!lg) verdict = 'nur_register';
+      else verdict = Math.abs(lg.sec - lb.value) < 1 ? 'gleich' : 'abweichend';
+      if (lg && verdict !== 'gleich') {
+        if (!en) cause = 'nicht_im_register';
+        else if (en.eligibility !== 'eligible') cause = 'gesperrt:' + (en.reason || (en.reasons || []).join('+') || '?');
+        else if (en.contextClass !== 'standard') cause = 'anderer_kontext:' + en.contextClass;
+        else if (lb && String(lb.activityId) === String(sid) && lb.value < lg.sec) cause = 'genauer';
+        else cause = 'anderer_wert';
+      }
+      out.push({ key: k, verdict: verdict, cause: cause,
+                 bisher: lg ? { sec: lg.sec, date: lg.date, method: lg.method, km: lg.km, activityId: sid, legacyId: lg.activityId } : null,
+                 register: lb ? { sec: lb.value, date: lb.localDate, activityId: lb.activityId } : null,
+                 bisherImRegister: en ? { eligibility: en.eligibility, value: en.value, contextClass: en.contextClass, reason: en.reason || null } : null });
     });
     return { running: out, legacyScanned: legacy ? legacy.scanned : 0, note: 'bisher = run-bests auf der geladenen Liste (hoechstens 200 Aktivitaeten); Register = vollstaendiger Bestand' };
   }
