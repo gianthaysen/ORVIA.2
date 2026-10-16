@@ -280,6 +280,12 @@ def parse_activity_details(raw: Any) -> dict:
             got = BE.compact(BE.distance_best(ta["t"], dist), "targets")
             if got:
                 best["distance"] = got
+            # v8-449.1 · aktive Zeit: dieselben Zeilen, Timer-Summe (sumDuration) statt verstrichener Zeit.
+            # Der Befund steht IMMER an der Zeile (auch ohne Zahl), damit ein erneuter Abruf nicht endlos
+            # wiederholt wird und die App „keine Timer-Spalte" von „nie geprueft" unterscheiden kann.
+            tmr = column("sumDuration")
+            act = BE.distance_best_active(tmr, ta["t"], dist) if tmr is not None else {"v": BE.BEST_VERSION, "basis": "timer", "status": "no_timer_column", "targets": {}}
+            best["distance_active"] = act if act.get("status") == "ok" else {k: act[k] for k in ("v", "basis", "status") if k in act}
         best["time_source"] = ta["source"]
     # Kennwerte je Messreihe (Mittel, Maximum) aus allen gelieferten Zeilen — die Kadenz aus
     # derselben Spalte wie die kanonische Reihe, mit ihrer Bedeutung.

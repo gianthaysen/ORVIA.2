@@ -42,7 +42,7 @@ function verdict(d, variant) {
 export function render() {
   const out = [`# Athlete Performance Ledger
 
-**Status: IMPLEMENTIERT, INTEGRIERT HINTER FLAG (\`performance_ledger\`, Standard aus, keine sichtbare Änderung)** · Rechenversion \`${L.CALC_VERSION}\` · v8-448B
+**Status: IMPLEMENTIERT, INTEGRIERT HINTER FLAG (\`performance_ledger\`, Standard aus, keine sichtbare Änderung)** · Rechenversion \`${L.CALC_VERSION}\` · v8-449.1
 
 > Erzeugt: \`node app/tools/gen-ledger-doc.mjs\`. Definitionen und Freigaben kommen aus dem Code
 > (\`app/js/engine/performance-ledger.js\`, \`app/js/engine/metric-eligibility.js\`); ein Test vergleicht Datei und Code.
@@ -119,14 +119,15 @@ wird rückwirkend rekonstruiert.
 
 | Bestehend | Flag aus (\`off\`) | Flag an, Register lädt (\`pending\`) | Register bereit (\`on\`) |
 |---|---|---|---|
-| \`run-bests.js\` Lauf 1 km … Marathon | unverändert | unverändert angezeigt | **nur** Register (Kontext standard) |
+| \`run-bests.js\` Lauf 1 km … Marathon, einschließlich Pausen (\`k1…k42\`) | bisherige Rechnung | unverändert angezeigt | **nur** Register (\`…m@standard\`) |
+| \`run-bests.js\` Lauf, aktive Trainingsbestzeit (\`active.k1…k42\`) | bisherige Rechnung (Timer der ganzen Aktivität, Teilstücke als Obergrenze) | unverändert angezeigt | **nur** Register (\`…m_active@standard\`) |
 | \`run-bests.js\` Rad / Schwimmen | unverändert | unverändert | unverändert (kennt das Register nicht) |
-| \`engine/pb-sync.js\` → Profil | unverändert | **pausiert** (kein Hin-und-her) | aus Register-Bestzeiten |
+| \`engine/pb-sync.js\` → Profil, Zonen, Prognose | Bestzeit **einschließlich Pausen** | **pausiert** (kein Hin-und-her) | Register, **einschließlich Pausen** — nie die aktive |
 | \`achievements.js\` Einzelmaxima | unverändert | unverändert | nur freigegebene Distanzen, Kontext standard |
 | \`achievements.js\` Summen | unverändert | unverändert | nur freigegebene Distanzen, alle Kontexte |
 | \`engine/highlights.js\` (vorbereitet) | — | — | bekommt künftig Rekord-Ereignisse als belegte Kandidaten |
 
-Kein Rekord wird an zwei Stellen gerechnet: was das Register kennt, kommt bei \`on\` nur aus dem Register.
+Kein Rekord wird an zwei Stellen gerechnet: was das Register kennt, kommt bei \`on\` nur aus dem Register. Jede Bestzeit trägt ihre Zeitkategorie (\`timing\`).
 
 ## 8 · Vollständiger Bestand
 
@@ -164,6 +165,29 @@ Werkzeug: \`app/tools/ledger-reconcile-console.js\` (nur lesen, in der Konsole),
 Behoben (run-bests, gilt auch bei ausgeschaltetem Flag): Gesamtzeit einer Aktivität = verstrichene Zeit (\`totalTimeOf\`:
 manuelle Korrektur → Garmin \`elapsed_duration_s\` → Dauer der Zeile), Rundenfenster für Bestzeiten mit verstrichener Rundenzeit.
 Die Profil-Bestzeiten (pb-sync) übernehmen das beim nächsten Abgleich von selbst.
+
+## 11 · Zeitkategorien (v8-449.1)
+
+Produktentscheidung (Gian, 16.10.2026): eine bewusst pausierte Trainingsleistung zählt als **aktive Trainingsbestzeit**; sie wird aber nie als
+durchgehende Leistung oder Wettkampfergebnis ausgegeben. Drei Kategorien, je eigene Kennzahl und eigene Historie, nie miteinander verglichen:
+
+| Kategorie | Kennzahl | Zeit | Grundlage | wofür |
+|---|---|---|---|---|
+| aktive Trainingsbestzeit | \`running.fastest_<m>m_active@<kontext>\` | Timer läuft (manuelle **und** Auto-Pause ausgeschlossen — die Detailantwort unterscheidet sie nicht) | kleinster von: Timer-Fenster aus allen Messzeilen (Worker v8-449.1, \`best_efforts.distance_active\`) · Timer-Summe und Distanz der **letzten Messzeile**, wenn die ganze Aktivität die Zielstrecke trifft (Überhang ≤ 10 m / 1 %) · Teilstück auf verstrichener Zeit (Obergrenze) | Standardanzeige, Trainingsanalyse |
+| Bestzeit einschließlich Pausen | \`running.fastest_<m>m@<kontext>\` | verstrichene Zeit vom Anfang bis zum Ende des Teilstücks | \`best_efforts.distance\` (alle Messzeilen) | Prognosen, Zonen, Ziel-Engine, pb-sync |
+| Wettkampfbestzeit (vorbereitet) | \`running.race_<m>m@<kontext>\` | ganze Aktivität, verstrichen | nur vom Nutzer im Ziel **bestätigte** Ergebnisse (\`goal.result.activityId\`) | Wettkampfhistorie |
+
+Nicht verwendet: Bewegungszeit (Garmins Schätzung), Timer-Ereignisse (nicht geliefert), Interpolation. Wächst die Distanz bei **stehendem** Timer
+(Strecke im angehaltenen Zustand), trennt der Worker die Reihe; die Gesamtzeit der Aktivität zählt dann nicht (Grund \`pause_conflict\`).
+Eigene Daten (manuell, ORVIA-Workout): nur aktive Trainingsbestzeit, nur als ganze Einheit, gekennzeichnet „deine Angabe".
+
+Echtdaten (15 Läufe): aktive 5 km **23:38** (13.08., Timer der ganzen Aktivität, 5,006 km, 9:39 angehalten) · einschließlich Pausen **29:11** (06.09.);
+aktive 10 km **57:55** (15.07., 10,041 km, 15:23 angehalten) · einschließlich Pausen **1:01:49**; 1 km 4:21 und Halbmarathon 2:20:47 in beiden Kategorien gleich.
+Der Listenwert der Dauer (1419 s, ganzzahlig gerundet) und die Timer-Summe der letzten Messzeile (1418 s) unterscheiden sich um eine Sekunde; verwendet wird
+die Zeile, aus der auch die Distanz stammt.
+
+Exakte aktive Teilstücke (z. B. 5 km aus einem 7-km-Lauf mit Pause) brauchen die Timer-Summe **je Messzeile** — die rechnet erst der Worker v8-449.1
+(\`best_efforts.distance_active\`); für den Bestand einmaliger Neuabruf mit \`DETAIL_REFETCH_ACTIVE=1\`. Bis dahin: Gesamtzeit oder Obergrenze, je Wert benannt.
 `);
   return out.join('\n').trimEnd() + '\n';
 }

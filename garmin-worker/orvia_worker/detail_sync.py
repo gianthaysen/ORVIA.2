@@ -183,7 +183,18 @@ def _needs_semantics(metrics: Any) -> bool:
     return isinstance(ext, dict) and isinstance(ext.get("fields"), dict) and bool(ext.get("fields"))
 
 
-def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool = False) -> bool:
+def _needs_active(act: Any) -> bool:
+    """v8-449.1 · Details aktuell, Strecken-Bestwerte (verstrichene Zeit) vorhanden, aber noch kein Befund zur
+    AKTIVEN Zeit (best_efforts.distance_active) — die Timer-Summe je Messzeile liefert nur die Detailantwort.
+    Nach dem erneuten Abruf steht der Befund immer an der Zeile (auch 'no_timer_column'): kein Endlosabruf."""
+    if not isinstance(act, dict) or act.get("sport_id") not in DISTANCE_SPORTS:
+        return False
+    m = act.get("metrics")
+    be = m.get("best_efforts") if isinstance(m, dict) else None
+    return isinstance(be, dict) and isinstance(be.get("distance"), dict) and "distance_active" not in be
+
+
+def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool = False, refetch_active: bool = False) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
     if _parked(metrics):
@@ -196,6 +207,8 @@ def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool 
     except (TypeError, ValueError):
         return True
     if refetch_semantics and _needs_semantics(metrics):
+        return True
+    if refetch_active and _needs_active(act):
         return True
     return _needs_resolution_refetch(metrics, refetch_maxchart)
 
@@ -378,7 +391,7 @@ def _parse_ts(value: Any) -> datetime | None:
 
 
 def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: int = 0,
-                    refetch_semantics: bool = False) -> dict:
+                    refetch_semantics: bool = False, refetch_active: bool = False) -> dict:
     """v8-447.1 · Stand des Nachladens — nur ZAHLEN, keine Inhalte, keine Kennungen.
 
       total      Garmin-Aktivitaeten
@@ -394,7 +407,7 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
     out: dict[str, Any] = {"contract": DETAILS_CONTRACT_VERSION, "total": 0, "current": 0, "pending": 0,
                            "legacy": 0, "never": 0, "failing": 0, "deferred": 0, "by_category": {},
                            "by_sport": {}, "last_processed": None, "processed_24h": 0,
-                           "resolution_pending": 0, "provenance_incomplete": 0, "semantics_pending": 0,
+                           "resolution_pending": 0, "provenance_incomplete": 0, "semantics_pending": 0, "active_pending": 0,
                            "provenance": {k: 0 for k in ("complete", "partial", "unavailable", "inconsistent")}}
     last = None
     for r in rows or ():
@@ -419,6 +432,8 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
             out["resolution_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_semantics and _needs_semantics(m) and not _parked(m, now):
             out["semantics_pending"] += 1
+        if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_active and _needs_active(r) and not _parked(m, now):
+            out["active_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION:
             out["current"] += 1
             sp["current"] += 1
@@ -459,6 +474,7 @@ async def sync_activity_details(
     on_rate_limit: Callable[[int], None] | None = None,
     get_extra: Callable[[str, str], Any] | None = None, extras: Any = None,
     maxchart: int = 0, refetch_resolution: bool = False, refetch_semantics: bool = False,
+    refetch_active: bool = False,
 ) -> dict:
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged.
@@ -468,6 +484,7 @@ async def sync_activity_details(
     gezielt noch einmal laden — erst nach allen nie geladenen und veralteten."""
     refetch_mc = int(maxchart or 0) if refetch_resolution else 0
     refetch_sem = bool(refetch_semantics)
+    refetch_act = bool(refetch_active)
     acts = await db.select("activities", {"user_id": user_id, "source": "garmin"})
     # v8-424b · Reihenfolge der Auswahl (vorher: Tabellenreihenfolge, also die aeltesten
     # zuerst). Mit dem einmaligen Nachladen der Radeinheiten haette eine FRISCHE
@@ -487,7 +504,7 @@ async def sync_activity_details(
     acts = sorted(acts, key=_prio)
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
     already = [a["source_record_id"] for a in acts
-               if a.get("source_record_id") and not _needs_details(a, refetch_mc, refetch_sem)]
+               if a.get("source_record_id") and not _needs_details(a, refetch_mc, refetch_sem, refetch_act)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
     # v8-447.1 · Die Garmin-Abrufe laufen in einem eigenen Thread. Vorher blockierten sie die
@@ -509,8 +526,8 @@ async def sync_activity_details(
         # v8-447.1: „schnellste Zeit ueber eine Strecke" nur fuer Sportarten, bei denen das eine
         # klare Bedeutung hat (best_efforts.DISTANCE_SPORTS). Sonst wird der Teil nicht gespeichert.
         be = merged.get("best_efforts")
-        if isinstance(be, dict) and "distance" in be and act.get("sport_id") not in DISTANCE_SPORTS:
-            be = {k: v for k, v in be.items() if k != "distance"}
+        if isinstance(be, dict) and ("distance" in be or "distance_active" in be) and act.get("sport_id") not in DISTANCE_SPORTS:
+            be = {k: v for k, v in be.items() if k not in ("distance", "distance_active")}
             if any(k in be for k in ("power", "stats")):
                 merged["best_efforts"] = be
             else:
@@ -637,7 +654,7 @@ async def sync_activity_details(
     by_cat: dict[str, int] = {}
     for cat in failures.values():
         by_cat[cat] = by_cat.get(cat, 0) + 1
-    status = backfill_status(acts, now, refetch_mc, refetch_sem)
+    status = backfill_status(acts, now, refetch_mc, refetch_sem, refetch_act)
     return {"selected": plan["selected"], "updated": updated, "failed": list(plan["failed"]) + persist_failed,
             "extras": extras_count, "failures": failures, "by_category": by_cat, "aborted": plan.get("aborted"),
             "not_attempted": plan.get("not_attempted") or [], "status": status}

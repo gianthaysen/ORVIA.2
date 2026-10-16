@@ -40,6 +40,8 @@
      manual_override_conflict  ein manuell korrigierter Wert widerspricht der Aufzeichnung, aus der
                              die Kennzahl stammt
      not_completed           Einheit nicht abgeschlossen
+     pause_conflict          v8-449.1: die Zielstrecke ist nur ueber eine Stelle erreichbar, an der die Distanz bei
+                             STEHENDEM Timer wuchs (Strecke im angehaltenen Zustand) — kein aktiver Wert
      unverified_context      eine kontextgebundene Auswertung (opts.environment, z. B. nur 'outdoor') ist
                              verlangt, aber der Kontext ist nicht belegt oder ein anderer
      unknown_metric
@@ -351,6 +353,7 @@
     if (!garminCurrent(c)) return;
     var item = obj((obj((obj(c.be.distance) || {}).targets) || {})[String(t)]);
     c.prov.basis = 'best_efforts.distance.targets.' + t + ' (gemessene Obergrenze)';
+    c.prov.timeCategory = 'elapsed'; c.prov.measure = 'elapsed_window';
     /* v8-447.3: Laufband / virtuell — die Distanz ist geschaetzt bzw. modelliert, keine Strecke. Nur wenn der
        Garmin-Typ es BELEGT. Fehlt der Typ oder ist er generisch, sperrt das die Bestzeit nicht (Kontext null). */
     if (NO_REAL_DISTANCE[c.prov.context.environment]) { why(c, 'unsupported_source'); return; }
@@ -361,6 +364,109 @@
     needEvidence(c, 'details.distance'); needEvidence(c, 'details.time');
     if (corrected(c, 'duration') && num(c.a.durationSeconds) !== null && c.a.durationSeconds < item.s) { c.prov.manual = true; why(c, 'manual_override_conflict'); }
     if (corrected(c, 'distance') && distanceM(c) !== null && distanceM(c) < t) { c.prov.manual = true; why(c, 'manual_override_conflict'); }
+  } };
+
+  /* ---- v8-449.1 · AKTIVE Trainingsbestzeit (Timer) und Wettkampf --------------------------------------
+     Zwei Zeitbegriffe, nie gegeneinander verglichen:
+       distanceBest        verstrichene Zeit (Pausen zaehlen mit) — „am Stueck", Grundlage fuer Prognosen
+       distanceBestActive  aktive Zeit (Timer laeuft; manuelle UND Auto-Pause ausgeschlossen — Garmin
+                           unterscheidet sie in der Detailantwort nicht)
+     Kandidaten der aktiven Zeit, der kleinste zaehlt — jeder ist eine Obergrenze der wahren aktiven Zeit:
+       A timer_window    Worker: Timer-Differenz zwischen zwei echten Messzeilen (best_efforts.distance_active,
+                         alle Zeilen; Strecke bei stehendem Timer trennt die Reihe)
+       B activity_timer  ganze Aktivitaet, nur wenn ihre (freigegebene) Distanz die Zielstrecke trifft
+                         (Ueberhang ≤ 10 m / 1 %, wie im Worker): Garmin-Timer-Summe metrics.garmin.timer_duration_s.
+                         Gekennzeichnet als Gesamtzeit — nie als exaktes 5,000-km-Fenster.
+       C elapsed_window  das verstrichene Fenster (distanceBest): enthaelt die aktive Zeit, ist also auch fuer sie
+                         eine gueltige Obergrenze
+     Keine Bewegungszeit (movingDuration ist Garmins Schaetzung), keine Interpolation, keine Timer-Ereignisse. */
+  var OVER_ABS_M = 10, OVER_REL = 0.01;
+  function overOk(d, t) { return d >= t && d <= t + Math.max(OVER_ABS_M, OVER_REL * t) + 1e-9; }
+  METRICS.distanceBestActive = { sports: FOOT, param: 'targetM', check: function (c) {
+    var t = c.opts.targetM;
+    if (DISTANCE_TARGETS.indexOf(t) < 0) { why(c, 'unknown_metric'); return; }
+    if (NO_REAL_DISTANCE[c.prov.context.environment]) { why(c, 'unsupported_source'); return; }
+    c.prov.timeCategory = 'active';
+    if (c.source !== 'garmin') {
+      /* eigene Daten: es gibt keine Aufzeichnung — die Angabe des Nutzers IST die aktive Zeit seiner Einheit.
+         Nur als ganze Einheit (keine Teilstrecken aus einer Gesamtangabe). */
+      if (!OWN_SOURCES[c.source]) { why(c, 'unsupported_source'); return; }
+      var od = eff(c, 'distance', distanceM(c)), ot = eff(c, 'duration', num(c.a.durationSeconds));
+      c.prov.basis = 'summary (Angabe: ganze Einheit)';
+      if (od === null || ot === null || ot <= 0) { why(c, 'missing_data'); return; }
+      if (!overOk(od, t)) { why(c, 'missing_data'); return; }
+      needEvidence(c, 'own');
+      c.active = { v: ot, kind: 'own_total', basis: 'summary (Angabe: ganze Einheit, ' + Math.round(od) + ' m)', quality: 'activity_total', distanceM: od };
+      c.prov.quality = 'activity_total'; c.prov.measure = 'own_total'; c.prov.distanceM = od;
+      return;
+    }
+    if (!garminCurrent(c)) return;
+    if (!needEvidence(c, 'details.distance') | !needEvidence(c, 'details.durations')) return;
+    var cands = [];
+    var da = obj(c.be.distance_active), it = da ? obj((obj(da.targets) || {})[String(t)]) : null;
+    if (da && da.status === 'ok' && it && it.q === 'measured' && num(it.s) !== null) {
+      cands.push({ v: it.s, kind: 'timer_window', basis: 'best_efforts.distance_active.targets.' + t + ' (Timer, alle Messzeilen)', quality: 'exact' });
+    }
+    var conflict = !!(da && num(da.conflicts) !== null && da.conflicts > 0);
+    /* B: Zeit UND Strecke aus DERSELBEN Messzeile — der letzten der Detailantwort (Timer-Summe sumDuration →
+       garmin.timer_duration_s, Distanz-Summe sumDistance → letzter Punkt von streams.distance; der Worker behaelt die
+       letzte Zeile immer). Die Listenwerte (duration, distance) koennen um Sekundenbruchteile/Meter abweichen und werden
+       nicht mit den Zeilenwerten gemischt. Die Distanz muss zudem als Ganzes freigegeben sein (Liste ↔ Messreihe). */
+    var dE = evaluate(c.a, 'distance', {}), tE = evaluate(c.a, 'duration', {});
+    var timer = num(c.g.timer_duration_s), el = num(c.g.elapsed_duration_s), rowEnd = lastNum((obj(c.m.streams) || {}).distance);
+    var corrDur = corrected(c, 'duration'), corrDist = corrected(c, 'distance');
+    if (!conflict && dE.eligible && tE.eligible) {
+      if (corrDur || corrDist) {
+        /* Nutzerangabe: wirksame Dauer und wirksame Distanz gehoeren zusammen (beide aus activity-effective) */
+        if (overOk(dE.value, t)) cands.push({ v: tE.value, kind: 'activity_timer', basis: 'Korrektur (wirksam, ganze Aktivitaet ' + Math.round(dE.value) + ' m)', quality: 'activity_total', manual: true, distanceM: dE.value });
+      } else if (timer !== null && rowEnd !== null && overOk(rowEnd, t) && (el === null || timer <= el + TOL.durationS)) {
+        cands.push({ v: timer, kind: 'activity_timer', basis: 'letzte Messzeile: Timer-Summe und Distanz-Summe (ganze Aktivitaet, ' + Math.round(rowEnd) + ' m)', quality: 'activity_total', distanceM: rowEnd });
+      }
+    }
+    var eE = evaluate(c.a, 'distanceBest', { targetM: t });
+    if (eE.eligible) cands.push({ v: eE.value, kind: 'elapsed_window', basis: 'best_efforts.distance.targets.' + t + ' (verstrichene Zeit — Obergrenze der aktiven)', quality: 'exact' });
+    if (!cands.length) {
+      if (conflict && it && it.q === 'split_by_conflict') { why(c, 'pause_conflict'); return; }
+      why(c, (it && it.q === 'coarse') ? 'insufficient_resolution' : 'missing_data');
+      return;
+    }
+    cands.sort(function (x, y) { return x.v - y.v || (x.kind === 'timer_window' ? -1 : 1); });
+    var b = cands[0];
+    c.active = b;
+    c.prov.basis = b.basis; c.prov.quality = b.quality; c.prov.measure = b.kind;
+    if (b.distanceM) c.prov.distanceM = b.distanceM;
+    if (b.manual) c.prov.manual = true;
+    c.prov.candidates = cands.map(function (x) { return { kind: x.kind, value: x.v }; });
+    if (da && da.status === 'ok') c.prov.pauses = { count: num(da.pauses), pausedS: num(da.paused_s), conflicts: num(da.conflicts) || 0 };
+    else if (timer !== null && el !== null) c.prov.pauses = { count: null, pausedS: Math.max(0, Math.round((el - timer) * 10) / 10), conflicts: null };
+    if (corrDur && b.kind !== 'activity_timer' && num(c.a.durationSeconds) !== null && c.a.durationSeconds < b.v) { c.prov.manual = true; why(c, 'manual_override_conflict'); }
+  } };
+
+  /* Wettkampfbestzeit (vorbereitet): NUR fuer eine Aktivitaet, die der Nutzer als Wettkampfergebnis BESTAETIGT hat
+     (opts.raceConfirmed) — nie aus der Sportart oder dem Datum geraten. Wert = ganze Aktivitaet, verstrichene Zeit
+     (Garmin elapsed_duration_s; eigene Daten: die Angabe), Distanz trifft die Wettkampfstrecke. */
+  METRICS.raceResult = { sports: FOOT, param: 'targetM', check: function (c) {
+    var t = c.opts.targetM;
+    if (DISTANCE_TARGETS.indexOf(t) < 0) { why(c, 'unknown_metric'); return; }
+    c.prov.timeCategory = 'race';
+    if (c.opts.raceConfirmed !== true) { why(c, 'unsupported_source'); return; }
+    c.prov.raceConfirmedBy = 'user';
+    if (NO_REAL_DISTANCE[c.prov.context.environment]) { why(c, 'unsupported_source'); return; }
+    var dE = evaluate(c.a, 'distance', {});
+    if (!dE.eligible) { dE.reasons.forEach(function (x) { why(c, x); }); return; }
+    if (!overOk(dE.value, t)) { why(c, 'missing_data'); return; }
+    if (c.source === 'garmin') {
+      if (!garminCurrent(c) || !needEvidence(c, 'details.durations')) return;
+      var el = num(c.g.elapsed_duration_s);
+      if (el === null) { why(c, 'missing_data'); return; }
+      c.race = el; c.prov.basis = 'garmin.elapsed_duration_s (ganze Aktivitaet, von dir als Wettkampf bestaetigt)';
+    } else {
+      if (!OWN_SOURCES[c.source]) { why(c, 'unsupported_source'); return; }
+      var ot = eff(c, 'duration', num(c.a.durationSeconds));
+      if (ot === null) { why(c, 'missing_data'); return; }
+      needEvidence(c, 'own'); c.race = ot; c.prov.basis = 'summary (Angabe, von dir als Wettkampf bestaetigt)';
+    }
+    c.prov.quality = 'activity_total'; c.prov.measure = 'race_total'; c.prov.distanceM = dE.value;
   } };
 
   function swimField(field) {
@@ -425,6 +531,8 @@
     power: function (c) { return [stat(c, 'power', 'avg'), 'W']; },
     powerBest: function (c) { var it = obj((obj((obj(c.be.power) || {}).windows) || {})[String(c.opts.windowS)]); return [it ? num(it.w) : null, 'W']; },
     distanceBest: function (c) { var it = obj((obj((obj(c.be.distance) || {}).targets) || {})[String(c.opts.targetM)]); return [it ? num(it.s) : null, 's']; },
+    distanceBestActive: function (c) { return [c.active ? num(c.active.v) : null, 's']; },
+    raceResult: function (c) { return [num(c.race), 's']; },
     swolf: function (c) { return [fieldOf(c, 'averageSwolf'), 'swolf']; },
     strokeRate: function (c) { return [fieldOf(c, 'averageSwimCadenceInStrokesPerMinute'), 'spm']; },
     trainingEffect: function (c) { return [fieldOf(c, 'aerobicTrainingEffect'), 'te']; },
@@ -466,7 +574,7 @@
   }
 
   var REASONS = ['missing_data', 'legacy_schema', 'unverified_semantics', 'insufficient_resolution', 'invalid_time_axis',
-    'unsupported_source', 'unsupported_sport', 'manual_override_conflict', 'not_completed', 'unverified_context', 'unknown_metric'];
+    'unsupported_source', 'unsupported_sport', 'manual_override_conflict', 'not_completed', 'unverified_context', 'pause_conflict', 'unknown_metric'];
 
   var api = {
     evaluate: evaluate, isMetricLedgerEligible: isMetricLedgerEligible, overview: overview, level: level,

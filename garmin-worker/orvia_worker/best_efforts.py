@@ -304,6 +304,98 @@ def distance_best(times_s: Any, distance_m: Any, *, targets=DISTANCE_TARGETS_M) 
 
 
 # ---------------------------------------------------------------------------
+# Strecke auf der TIMER-Achse (v8-449.1 · aktive Trainingsbestzeit)
+# ---------------------------------------------------------------------------
+# Die Detailantwort traegt je Messzeile drei Summenfelder: sumElapsedDuration (verstrichen, mit
+# Pausen), sumDuration (Timer: laeuft nur, solange die Uhr nicht angehalten ist — manuell ODER
+# Auto-Pause; die Antwort unterscheidet die beiden nicht) und sumMovingDuration (Bewegung, Garmins
+# eigene Schaetzung). Die aktive Zeit eines Distanzfensters ist die Differenz der TIMER-Summe an
+# zwei echten Messzeilen; die Distanz ist dieselbe Reihe sumDistance wie bei der verstrichenen Zeit.
+# Beide Werte stammen aus DERSELBEN Zeile — keine Zusammensetzung aus fremden Zeitachsen, keine
+# Interpolation, keine erfundenen Timer-Ereignisse. Bewegungszeit wird NICHT verwendet.
+#
+# Pause zwischen zwei Zeilen: verstrichen waechst um mehr als der Timer (Differenz > PAUSE_MIN_S).
+# Ein angehaltener Timer zaehlt keine Strecke — waechst die Distanz ueber eine Pause dennoch mehr
+# als zu Fuss in der aktiven Zeit des Abschnitts moeglich, ist das ein WIDERSPRUCH (Strecke im
+# angehaltenen Zustand). Dort wird die Messreihe GETRENNT: kein Fenster ueberspannt die Stelle.
+PAUSE_MIN_S = 1.5             # so viel mehr verstrichene als Timer-Zeit zwischen zwei Zeilen = Pause
+PAUSE_SPEED_MAX_MPS = 12.0    # zu Fuss physikalisch nicht erreichbar (43 km/h) — darueber: Widerspruch
+PAUSE_DIST_TOL_M = 5.0        # GPS-Sprung beim Wiederanlaufen
+
+
+def distance_best_active(timer_s: Any, elapsed_s: Any, distance_m: Any, *, targets=DISTANCE_TARGETS_M) -> dict:
+    """Schnellste AKTIVE Zeit je Zieldistanz: Timer-Differenz zwischen zwei echten Messzeilen.
+    Gleiche Fenstersuche wie distance_best; Zeitachse = sumDuration statt verstrichener Zeit."""
+    out: dict[str, Any] = {"v": BEST_VERSION, "basis": "timer", "status": "no_data", "targets": {}}
+    if not (isinstance(timer_s, list) and isinstance(elapsed_s, list) and isinstance(distance_m, list)):
+        return out
+    if not (len(timer_s) == len(elapsed_s) == len(distance_m)):
+        return out
+    rows = [(float(t), float(e), float(d)) for t, e, d in zip(timer_s, elapsed_s, distance_m)
+            if _num(t) is not None and _num(e) is not None and _num(d) is not None]
+    if len(rows) < 2:
+        out["status"] = "no_timer_axis"
+        return out
+    pauses, paused_s, conflicts, conflict_m = 0, 0.0, 0, 0.0
+    cut = [False] * len(rows)                  # cut[i]: zwischen Zeile i-1 und i darf kein Fenster liegen
+    for i in range(1, len(rows)):
+        (t0, e0, d0), (t1, e1, d1) = rows[i - 1], rows[i]
+        dt, de, dd = t1 - t0, e1 - e0, d1 - d0
+        if dt < -1e-9:
+            out["status"] = "invalid_timer_axis"           # Timer laeuft rueckwaerts
+            return out
+        if dd < -1e-6:
+            out["status"] = "invalid_distance_axis"
+            return out
+        if dt > de + 1.0:
+            out["status"] = "invalid_timer_axis"           # Timer schneller als die Uhrzeit: keine Timer-Bedeutung
+            return out
+        if de - dt > PAUSE_MIN_S:
+            pauses += 1
+            paused_s += de - dt
+            if dd > PAUSE_DIST_TOL_M + PAUSE_SPEED_MAX_MPS * max(dt, 0.0):
+                conflicts += 1
+                conflict_m += dd
+                cut[i] = True
+    ts = [r[0] for r in rows]
+    ds = [r[2] for r in rows]
+    n = len(rows)
+    seg = [0] * n                              # Abschnittsnummer je Zeile (nach jedem Widerspruch eine neue)
+    for i in range(1, n):
+        seg[i] = seg[i - 1] + (1 if cut[i] else 0)
+    out.update({"status": "ok", "rows": n, "total_m": round(ds[-1] - ds[0], 1), "timer_s": round(ts[-1] - ts[0], 1),
+                "pauses": pauses, "paused_s": round(paused_s, 1), "pause_kind": "unknown"})
+    if conflicts:
+        out["conflicts"] = conflicts
+        out["conflict_m"] = round(conflict_m, 1)
+    for target in targets:
+        key = str(int(round(target)))
+        best = None
+        j = 0
+        for i in range(n):
+            if j < i + 1:
+                j = i + 1
+            while j < n and seg[j] == seg[i] and ds[j] - ds[i] < target - 1e-6:
+                j += 1
+            if j >= n:
+                break
+            if seg[j] != seg[i]:
+                continue                        # Ziel erst jenseits eines Widerspruchs erreichbar: kein Fenster ab i
+            sec = ts[j] - ts[i]
+            if sec <= 0:
+                continue
+            if best is None or sec < best[0] - 1e-9:
+                best = (sec, ds[j] - ds[i] - target, ts[i])
+        if best is None:
+            out["targets"][key] = {"q": "too_short" if not conflicts else "split_by_conflict"}
+            continue
+        sec, over, at = best
+        q = "measured" if over <= max(OVER_MAX_ABS_M, OVER_MAX_REL * target) + 1e-9 else "coarse"
+        out["targets"][key] = {"s": round(sec, 1), "over_m": round(over, 1), "at": int(round(at - ts[0])), "q": q}
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Kennwerte einer Messreihe — aus allen gelieferten Zeilen
 # ---------------------------------------------------------------------------
 

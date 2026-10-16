@@ -19,6 +19,13 @@
 --   insert into public.user_feature_flags (user_id, flag, enabled, reason)
 --   select id, 'performance_ledger', true, 'v8-448' from auth.users where email = '<mail>'
 --   on conflict (user_id, flag) do update set enabled = true, reason = excluded.reason;
+-- v8-449.1 (VOR dem ersten produktiven Einspielen ergaenzt — 0051 lief nur auf Wegwerf-Datenbanken der Tests):
+--   time_category je Eintrag und Rekordereignis: 'active' (aktive Trainingsbestzeit, Timer) | 'elapsed' (einschliesslich
+--   Pausen) | 'race' (bestaetigtes Wettkampfergebnis) | null (keine Zeit-Kennzahl). Die Kategorie steckt auch im
+--   metric_key ('running.fastest_5000m_active@standard' vs. 'running.fastest_5000m@standard') — eigene Historie je
+--   Kategorie, ple_uniq/pre_uniq trennen sie damit schon. Die Spalte macht sie abfragbar und prueft den Wertebereich.
+--   Wer eine fruehere Fassung von 0051 eingespielt hat: der Block „add column if not exists" weiter unten ergaenzt die
+--   Spalten additiv; die Rechenversion steigt auf ledger@2, alte Zeilen (ledger@1) bleiben unberuehrt und unbenutzt.
 -- Idempotent. Rueckweg: migrations_rollback/0051_performance_ledger_rollback.sql
 -- ============================================================
 
@@ -32,6 +39,7 @@ create table if not exists public.performance_ledger_entries (
   metric_key          text not null,                       -- '<sportart>.<rekord>@<kontextklasse>'
   def_id              text not null,
   context_class       text not null,
+  time_category       text,                                -- v8-449.1: active | elapsed | race | null
   value               double precision,                    -- null = gesperrt
   unit                text not null default '',
   better              text not null,
@@ -53,6 +61,14 @@ create table if not exists public.performance_ledger_entries (
   constraint ple_reason_chk check ((eligibility_status = 'blocked') = (eligibility_reason is not null)),
   constraint ple_uniq unique (user_id, activity_id, metric_key, calc_version)
 );
+alter table public.performance_ledger_entries add column if not exists time_category text;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'ple_timecat_chk') then
+    alter table public.performance_ledger_entries add constraint ple_timecat_chk
+      check (time_category is null or time_category in ('active', 'elapsed', 'race'));
+  end if;
+end $$;
 create index if not exists ple_metric_idx on public.performance_ledger_entries (user_id, calc_version, metric_key, order_key)
   where eligibility_status = 'eligible';
 create index if not exists ple_activity_idx on public.performance_ledger_entries (user_id, activity_id);
@@ -61,6 +77,7 @@ create table if not exists public.performance_record_events (
   id                    uuid primary key default gen_random_uuid(),
   user_id               uuid not null references auth.users(id) on delete cascade,
   metric_key            text not null,
+  time_category         text,                              -- v8-449.1: active | elapsed | race | null
   calc_version          text not null,
   seq                   integer not null,
   event_type            text not null,
@@ -82,6 +99,14 @@ create table if not exists public.performance_record_events (
   constraint pre_first_chk check ((event_type = 'first') = (previous_value is null)),
   constraint pre_uniq unique (user_id, metric_key, calc_version, seq)
 );
+alter table public.performance_record_events add column if not exists time_category text;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'pre_timecat_chk') then
+    alter table public.performance_record_events add constraint pre_timecat_chk
+      check (time_category is null or time_category in ('active', 'elapsed', 'race'));
+  end if;
+end $$;
 create index if not exists pre_metric_idx on public.performance_record_events (user_id, calc_version, metric_key, seq);
 
 create table if not exists public.performance_milestones (
@@ -201,9 +226,9 @@ begin
   delete from public.performance_ledger_entries
    where user_id = uid and calc_version = p_calc_version and activity_id = any(coalesce(p_activity_ids, '{}'));
 
-  insert into public.performance_ledger_entries (user_id, activity_id, sport_id, metric_key, def_id, context_class, value, unit, better,
+  insert into public.performance_ledger_entries (user_id, activity_id, sport_id, metric_key, def_id, context_class, time_category, value, unit, better,
       recorded_at, local_date, order_key, source, provenance, eligibility_status, eligibility_reason, validation_status, calc_version, input_fingerprint)
-  select uid, (e ->> 'activity_id')::uuid, e ->> 'sport_id', e ->> 'metric_key', e ->> 'def_id', e ->> 'context_class',
+  select uid, (e ->> 'activity_id')::uuid, e ->> 'sport_id', e ->> 'metric_key', e ->> 'def_id', e ->> 'context_class', e ->> 'time_category',
          (e ->> 'value')::double precision, coalesce(e ->> 'unit', ''), e ->> 'better', e ->> 'recorded_at', (e ->> 'local_date')::date,
          e ->> 'order_key', coalesce(e ->> 'source', 'unknown'), coalesce(e -> 'provenance', '{}'::jsonb), e ->> 'eligibility_status',
          e ->> 'eligibility_reason', e ->> 'validation_status', p_calc_version, e ->> 'input_fingerprint'
@@ -213,9 +238,9 @@ begin
   if coalesce(array_length(p_metric_keys, 1), 0) > 0 then
     delete from public.performance_record_events
      where user_id = uid and calc_version = p_calc_version and metric_key = any(p_metric_keys);
-    insert into public.performance_record_events (user_id, metric_key, calc_version, seq, event_type, activity_id, value, unit, recorded_at,
+    insert into public.performance_record_events (user_id, metric_key, time_category, calc_version, seq, event_type, activity_id, value, unit, recorded_at,
         local_date, previous_value, previous_activity_id, previous_local_date, improvement, improvement_pct, days_since_previous, manual)
-    select uid, v ->> 'metric_key', p_calc_version, (v ->> 'seq')::int, v ->> 'event_type', (v ->> 'activity_id')::uuid,
+    select uid, v ->> 'metric_key', v ->> 'time_category', p_calc_version, (v ->> 'seq')::int, v ->> 'event_type', (v ->> 'activity_id')::uuid,
            (v ->> 'value')::double precision, coalesce(v ->> 'unit', ''), v ->> 'recorded_at', (v ->> 'local_date')::date,
            (v ->> 'previous_value')::double precision, (v ->> 'previous_activity_id')::uuid, (v ->> 'previous_local_date')::date,
            (v ->> 'improvement')::double precision, (v ->> 'improvement_pct')::double precision, (v ->> 'days_since_previous')::int,

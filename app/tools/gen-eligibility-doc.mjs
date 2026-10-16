@@ -95,6 +95,12 @@ const DOC = {
   distanceBest: { label: 'Strecken-Bestzeit', source: '`best_efforts.distance.targets` — Worker, vor der Ausdünnung',
     cond: 'Güte `measured`: zwischen zwei echten Messzeilen, Überhang ≤ 1 % / 10 m; verstrichene Zeit', manual: 'Konflikt, wenn die korrigierte Dauer kürzer ist als die Bestzeit',
     safe: 'ja, sobald nachgeladen', note: 'gemessene Obergrenze der wahren Bestzeit — nie zu schnell' },
+  distanceBestActive: { label: 'Aktive Strecken-Bestzeit', source: 'kleinster von: `best_efforts.distance_active.targets` (Timer-Achse, Worker v8-449.1) · ganze Aktivität mit `garmin.timer_duration_s`, wenn ihre Distanz die Zielstrecke trifft · verstrichenes Fenster als Obergrenze',
+    cond: 'Timer = Garmin `sumDuration` (manuelle und Auto-Pause ausgeschlossen, nicht unterscheidbar); ganze Aktivität nur bei Überhang ≤ 10 m / 1 %; Strecke bei stehendem Timer = `pause_conflict`', manual: 'korrigierte Dauer zählt als Gesamtzeit der Aktivität (manuell markiert)',
+    safe: 'ja — Messgrundlage je Wert benannt', note: 'aktive Trainingsbestzeit, nie mit der Bestzeit einschließlich Pausen verglichen; keine Bewegungszeit' },
+  raceResult: { label: 'Wettkampf-Bestzeit', source: 'ganze Aktivität, verstrichene Zeit (`garmin.elapsed_duration_s`; eigene Daten: Angabe)',
+    cond: 'nur, wenn du die Aktivität als Wettkampfergebnis bestätigt hast; Distanz trifft die Wettkampfstrecke (≤ 10 m / 1 %)', manual: 'wirksame Dauer bei eigenen Daten',
+    safe: 'vorbereitet — nur bestätigte Ergebnisse', note: 'nie aus Sportart oder Datum geraten' },
   swolf: { label: 'SWOLF', source: '`ext.fields.averageSwolf`', cond: 'Garmin-Typ `lap_swimming`, Bahnlänge bekannt', manual: 'keine Korrektur vorgesehen', safe: 'erst nach Beleg', note: 'alle Schwimm-Felder unbelegt' },
   strokeRate: { label: 'Zugfrequenz', source: '`ext.fields.averageSwimCadenceInStrokesPerMinute`', cond: 'Garmin-Typ `lap_swimming`, Bahnlänge bekannt', manual: 'keine Korrektur vorgesehen', safe: 'erst nach Beleg', note: 'eigene Größe — nie in der Reihe `cadence`' },
   trainingEffect: { label: 'Training Effect', source: '`ext.fields.aerobicTrainingEffect`', cond: 'Feld geliefert', manual: 'keine Korrektur vorgesehen', safe: 'erst nach Beleg', note: 'nur im Rohblock (Serverliste)' },
@@ -105,7 +111,7 @@ const DOC = {
 const REASON_DE = { missing_data: 'Wert oder Grundlage fehlt', legacy_schema: 'noch nicht nachgeladen', unverified_semantics: 'Bedeutung der Quelle nicht belegt',
   insufficient_resolution: 'Auflösung reicht nicht', invalid_time_axis: 'Zeitachse fehlt / ungültig', unsupported_source: 'Quelle kann das nicht tragen',
   unsupported_sport: 'gibt es für die Sportart nicht', manual_override_conflict: 'manuelle Korrektur widerspricht der Aufzeichnung', not_completed: 'nicht abgeschlossen',
-  unverified_context: 'kontextgebundene Auswertung verlangt, Kontext nicht belegt', unknown_metric: 'unbekannt' };
+  unverified_context: 'kontextgebundene Auswertung verlangt, Kontext nicht belegt', pause_conflict: 'Strecke bei angehaltenem Timer', unknown_metric: 'unbekannt' };
 const EV_DE = { fixture: 'ja — Mitschnitt', validated: 'ja — gegen Garmin Connect geprüft', own: 'eigene Daten', observed: 'geliefert, Bedeutung offen', library: 'nur Bibliothek', assumed: 'nein — angenommen' };
 
 const SPORTS = ['running', 'cycling', 'swimming', 'gym', 'walking', 'hiking', 'rowing'];
@@ -130,7 +136,7 @@ function rowsFor(sport, variant) {
 export function render() {
   const out = [`# Performance-Daten: Was darf ins Leistungsregister?
 
-**Status: IMPLEMENTIERT, AUSGELIEFERT HINTER FLAG (\`performance_ledger\`, Standard aus)** · Stand v8-448B · Prüfinstanz des Athlete Performance Ledger
+**Status: IMPLEMENTIERT, AUSGELIEFERT HINTER FLAG (\`performance_ledger\`, Standard aus)** · Stand v8-449.1 · Prüfinstanz des Athlete Performance Ledger
 
 > Diese Datei wird **erzeugt**: \`node app/tools/gen-eligibility-doc.mjs\`. Die Spalten *ledger eligible?* und *reason*
 > sind das Urteil von \`app/js/engine/metric-eligibility.js\` — nicht von Hand geschrieben. Ein Test vergleicht Datei und Code.

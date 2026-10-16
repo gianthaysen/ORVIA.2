@@ -241,7 +241,7 @@ sec('H · Zwischenspeicher, Zeilen, Skalierung');
   const st = upd(null, B_RUNS).state;
   const back = L.deserialize(L.serialize(st));
   ok('H1 Zwischenspeicher: Ereignisse werden identisch wiederhergestellt', back && J(back.events) === J(st.events) && J(back.milestones) === J(st.milestones));
-  ok('H2 fremde Rechenversion im Speicher → verworfen (Neuberechnung)', L.deserialize(L.serialize(st).replace('"ledger@1"', '"ledger@0"')) === null);
+  ok('H2 fremde Rechenversion im Speicher → verworfen (Neuberechnung)', L.deserialize(L.serialize(st).replace('"' + L.CALC_VERSION + '"', '"ledger@0"')) === null);
   const rows = L.rows(st);
   ok('H3 Zeilen: Eintraege, Ereignisse, Meilensteine mit Spalten der Migration 0051', rows.entries.length === 5 * L.defsFor('running').length && rows.events.length >= 4
      && ['activity_id', 'metric_key', 'value', 'unit', 'eligibility_status', 'validation_status', 'calc_version', 'input_fingerprint', 'order_key'].every(k => k in rows.entries[0]));

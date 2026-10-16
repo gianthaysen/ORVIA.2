@@ -69,7 +69,7 @@
     try {
       /* Schluessel-Blaettern (id > letzte id) statt Seitenzahl: ein Einfuegen waehrend des Lesens verschiebt keine Seite. */
       for (let i = 0; i < maxPages; i++) {
-        let q = b.sb().from('activities').select('id,updated_at,linked_activity_id,status').eq('user_id', b.currentUserId());
+        let q = b.sb().from('activities').select('id,updated_at,linked_activity_id,status,client_record_id').eq('user_id', b.currentUserId());
         if (last) q = q.gt('id', last);
         const { data, error } = await q.order('id', { ascending: true }).limit(page);
         if (error) return b.fail('query_failed', error.message, { data: { rows, complete: false } });

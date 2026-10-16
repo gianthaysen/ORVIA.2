@@ -85,6 +85,7 @@
       normalize: d.normalize || function (r) { return (O.activityConfig && O.activityConfig.normalizeServerActivity) ? O.activityConfig.normalizeServerActivity(r) : r; },
       tombstones: d.tombstones || function () { try { return (O.activityStore && O.activityStore.tombstones) ? (O.activityStore.tombstones() || []) : []; } catch (e) { return []; } },
       declared: d.declared || declaredFromProfile,
+      raceIds: d.raceIds || confirmedRaceIds,
       now: d.now || function () { return Date.now(); },
       uid: d.uid || function () { return (O.user && O.user.id) || null; },
       emit: d.emit || function (name, detail) { try { root.dispatchEvent(new CustomEvent(name, { detail: detail })); } catch (e) {} },
@@ -107,6 +108,15 @@
       }
       return typeof f.isEnabled === 'function' && f.isEnabled(FLAG) === true;
     } catch (e) { return false; }
+  }
+
+  /* v8-449.1 · Wettkampfbestzeiten: NUR Aktivitaeten, die der Nutzer im Ziel als Wettkampfergebnis BESTAETIGT hat
+     (goal.result.activityId). Die automatische Zuordnung eines Laufs zum Wettkampftag (race-result.match) zaehlt nicht. */
+  function confirmedRaceIds() {
+    try {
+      var gl = typeof root.listGoals === 'function' ? (root.listGoals() || []) : [];
+      return gl.filter(function (g) { return g && g.result && g.result.activityId; }).map(function (g) { return String(g.result.activityId); });
+    } catch (e) { return []; }
   }
 
   /* Angegebene Bestzeiten aus dem Profil (manuell, auch vor ORVIA) → declared je Kennzahl */
@@ -156,7 +166,7 @@
     var uid = adoptUser(x);
     if (!uid) return { ok: false, code: 'no_user' };
     var prev = _state || await load(x, uid);
-    var res = x.ledger.update(prev, activities, Object.assign({ timeZone: x.timeZone }, opts || {}));
+    var res = x.ledger.update(prev, activities, Object.assign({ timeZone: x.timeZone, raceIds: x.raceIds() }, opts || {}));
     return finish(x, uid, res, [], { source: 'list' });
   }
 
@@ -172,7 +182,15 @@
     var linkedSet = {}; linked.forEach(function (id) { linkedSet[id] = true; });
     var tomb = {};
     (x.tombstones() || []).forEach(function (t) { var id = t && (t.serverId || t.id); if (id) tomb[String(id)] = true; });   // activityStore: { serverId, clientRecordId, … }
-    var wanted = rows.filter(function (r) { return !linkedSet[r.id] && !tomb[r.id] && (stale || !(r.id in have) || have[r.id] !== r.updated_at); }).map(function (r) { return r.id; });
+    /* v8-449.1: ein neu bestaetigtes (oder zurueckgenommenes) Wettkampfergebnis aendert die Zeile nicht — die Aktivitaet
+       wird trotzdem neu geprueft, sonst erschiene die Wettkampfbestzeit erst nach der naechsten Aenderung. */
+    var raceSet = {}; (x.raceIds() || []).forEach(function (id) { raceSet[String(id)] = true; });
+    var raceChanged = function (r) {
+      if (!prev || !prev.activities[r.id]) return false;
+      var was = /\|race$/.test(prev.activities[r.id].fp || ''), now = !!(raceSet[r.id] || (r.client_record_id && raceSet[r.client_record_id]));
+      return was !== now;
+    };
+    var wanted = rows.filter(function (r) { return !linkedSet[r.id] && !tomb[r.id] && (stale || !(r.id in have) || have[r.id] !== r.updated_at || raceChanged(r)); }).map(function (r) { return r.id; });
     var got = wanted.length ? await x.repo.fetchActivities(wanted) : { success: true, data: [] };
     if (!got || !got.success) return { ok: false, code: 'fetch_failed' };
     var acts = got.data.map(function (r) { var a = x.normalize(r); if (a && !a.updatedAt) a.updatedAt = r.updated_at || null; return a; });
@@ -201,7 +219,7 @@
       var prev = o.dryRun ? null : (_state || await load(x, uid));
       var c = await collect(x, prev);
       if (!c.ok) return c;
-      var res = x.ledger.update(prev, c.acts, { timeZone: x.timeZone, partial: true, deletedIds: c.deleted, knownIds: c.knownIds });
+      var res = x.ledger.update(prev, c.acts, { timeZone: x.timeZone, partial: true, deletedIds: c.deleted, knownIds: c.knownIds, raceIds: x.raceIds() });
       var meta = { source: 'server', complete: c.complete, indexed: c.indexed, fetched: c.fetched, linked: c.linked, deleted: c.deleted.length, rebuilt: res.changes.rebuilt };
       if (o.dryRun) return { ok: true, dryRun: true, meta: meta, model: x.ledger.readModel(res.state, { declared: x.declared() }), state: res.state, changes: res.changes };
       return finish(x, uid, res, [], meta);

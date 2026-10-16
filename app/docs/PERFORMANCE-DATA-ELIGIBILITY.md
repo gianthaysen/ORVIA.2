@@ -1,6 +1,6 @@
 # Performance-Daten: Was darf ins Leistungsregister?
 
-**Status: IMPLEMENTIERT, AUSGELIEFERT HINTER FLAG (`performance_ledger`, Standard aus)** · Stand v8-448B · Prüfinstanz des Athlete Performance Ledger
+**Status: IMPLEMENTIERT, AUSGELIEFERT HINTER FLAG (`performance_ledger`, Standard aus)** · Stand v8-449.1 · Prüfinstanz des Athlete Performance Ledger
 
 > Diese Datei wird **erzeugt**: `node app/tools/gen-eligibility-doc.mjs`. Die Spalten *ledger eligible?* und *reason*
 > sind das Urteil von `app/js/engine/metric-eligibility.js` — nicht von Hand geschrieben. Ein Test vergleicht Datei und Code.
@@ -37,6 +37,7 @@ Sonst: nicht zulässig, mit Grund. „Wahrscheinlich richtig" gibt es nicht.
 | `manual_override_conflict` | manuelle Korrektur widerspricht der Aufzeichnung |
 | `not_completed` | nicht abgeschlossen |
 | `unverified_context` | kontextgebundene Auswertung verlangt, Kontext nicht belegt |
+| `pause_conflict` | Strecke bei angehaltenem Timer |
 | `unknown_metric` | unbekannt |
 
 ## 3 · Belege heute
@@ -78,6 +79,8 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 | running | Leistung (Ø) | `best_efforts.stats.power` | details.power: nein — angenommen | ja (Vertrag 3) | Details-Vertrag 3 | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | Quellname `directPower` unbelegt |
 | running | Leistungs-Bestwert (alle Fenster) | `best_efforts.power.windows` — Worker, vor der Ausdünnung | details.power: nein — angenommen; details.time: ja — Mitschnitt | ja (Vertrag 3) | Güte `exact`: Garmin lieferte alle Zeilen, sekündliche Aufzeichnung; kein Sensor-Aussetzer im Fenster; Fenster auf verstrichener Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als das Fenster | **nein** | `unverified_semantics` | erst nach Beleg und nur bei vollständiger Lieferung | Fenster: 1 s … 60 min |
 | running | Strecken-Bestzeit (alle Distanzen) | `best_efforts.distance.targets` — Worker, vor der Ausdünnung | details.distance: ja — Mitschnitt; details.time: ja — Mitschnitt | ja (Vertrag 3) | Güte `measured`: zwischen zwei echten Messzeilen, Überhang ≤ 1 % / 10 m; verstrichene Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als die Bestzeit | **ja** | — | ja, sobald nachgeladen | gemessene Obergrenze der wahren Bestzeit — nie zu schnell |
+| running | Aktive Strecken-Bestzeit (alle Distanzen) | kleinster von: `best_efforts.distance_active.targets` (Timer-Achse, Worker v8-449.1) · ganze Aktivität mit `garmin.timer_duration_s`, wenn ihre Distanz die Zielstrecke trifft · verstrichenes Fenster als Obergrenze | details.distance: ja — Mitschnitt; details.durations: ja — Mitschnitt | ja (Vertrag 3) | Timer = Garmin `sumDuration` (manuelle und Auto-Pause ausgeschlossen, nicht unterscheidbar); ganze Aktivität nur bei Überhang ≤ 10 m / 1 %; Strecke bei stehendem Timer = `pause_conflict` | korrigierte Dauer zählt als Gesamtzeit der Aktivität (manuell markiert) | **ja** | — | ja — Messgrundlage je Wert benannt | aktive Trainingsbestzeit, nie mit der Bestzeit einschließlich Pausen verglichen; keine Bewegungszeit |
+| running | Wettkampf-Bestzeit (alle Distanzen) | ganze Aktivität, verstrichene Zeit (`garmin.elapsed_duration_s`; eigene Daten: Angabe) | — | ja (Vertrag 3) | nur, wenn du die Aktivität als Wettkampfergebnis bestätigt hast; Distanz trifft die Wettkampfstrecke (≤ 10 m / 1 %) | wirksame Dauer bei eigenen Daten | **nein** | `unsupported_source` | vorbereitet — nur bestätigte Ergebnisse | nie aus Sportart oder Datum geraten |
 | running | Training Effect | `ext.fields.aerobicTrainingEffect` | list.training_effect: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | nur im Rohblock (Serverliste) |
 | running | Kalorien | `summary.caloriesKcal` (Garmin-Listenfeld) | list.calories: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | keine Leistungskennzahl |
 | cycling | Dauer | Spalte `duration_seconds` (Garmin: Timer-Dauer des Listeneintrags; ORVIA-Workout: Zeitstempel der Session) | details.durations: nein — angenommen | ja (Vertrag 3) | Garmin: Details-Vertrag 3 und `garmin.timer_duration_s` weicht höchstens 5 s / 1 % ab | wirksamer Wert zählt; bleibt als manuell markiert; Quelle bleibt erhalten | **nein** | `unverified_semantics` | nach Beleg | Bewegungs- und verstrichene Zeit stehen getrennt in `metrics.garmin` |
@@ -111,6 +114,8 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 | walking | Herzfrequenz (Ø) | `best_efforts.stats.heart_rate.avg` — alle gelieferten Zeilen | details.heart_rate: nein — angenommen | ja (Vertrag 3) | Details-Vertrag 3; weicht höchstens 2 bpm vom Listenwert ab; bei Ausdünnung als Näherung gekennzeichnet | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | nach Beleg | nicht aus der Anzeige-Reihe |
 | walking | Herzfrequenz (Max) | `best_efforts.stats.heart_rate.max` | details.heart_rate: nein — angenommen | ja (Vertrag 3) | nur wenn Garmin alle Zeilen lieferte — ein Maximum aus ausgedünnten Zeilen ist eine Untergrenze | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | nur mit vollständiger Lieferung | Listenfeld `maxHR` ist nicht belegt |
 | walking | Strecken-Bestzeit (alle Distanzen) | `best_efforts.distance.targets` — Worker, vor der Ausdünnung | details.distance: nein — angenommen; details.time: nein — angenommen | ja (Vertrag 3) | Güte `measured`: zwischen zwei echten Messzeilen, Überhang ≤ 1 % / 10 m; verstrichene Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als die Bestzeit | **nein** | `unverified_semantics` | nach Beleg | gemessene Obergrenze der wahren Bestzeit — nie zu schnell |
+| walking | Aktive Strecken-Bestzeit (alle Distanzen) | kleinster von: `best_efforts.distance_active.targets` (Timer-Achse, Worker v8-449.1) · ganze Aktivität mit `garmin.timer_duration_s`, wenn ihre Distanz die Zielstrecke trifft · verstrichenes Fenster als Obergrenze | details.distance: nein — angenommen; details.durations: nein — angenommen | ja (Vertrag 3) | Timer = Garmin `sumDuration` (manuelle und Auto-Pause ausgeschlossen, nicht unterscheidbar); ganze Aktivität nur bei Überhang ≤ 10 m / 1 %; Strecke bei stehendem Timer = `pause_conflict` | korrigierte Dauer zählt als Gesamtzeit der Aktivität (manuell markiert) | **nein** | `unverified_semantics` | nach Beleg | aktive Trainingsbestzeit, nie mit der Bestzeit einschließlich Pausen verglichen; keine Bewegungszeit |
+| walking | Wettkampf-Bestzeit (alle Distanzen) | ganze Aktivität, verstrichene Zeit (`garmin.elapsed_duration_s`; eigene Daten: Angabe) | — | ja (Vertrag 3) | nur, wenn du die Aktivität als Wettkampfergebnis bestätigt hast; Distanz trifft die Wettkampfstrecke (≤ 10 m / 1 %) | wirksame Dauer bei eigenen Daten | **nein** | `unsupported_source` | vorbereitet — nur bestätigte Ergebnisse | nie aus Sportart oder Datum geraten |
 | walking | Training Effect | `ext.fields.aerobicTrainingEffect` | list.training_effect: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | nur im Rohblock (Serverliste) |
 | walking | Kalorien | `summary.caloriesKcal` (Garmin-Listenfeld) | list.calories: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | keine Leistungskennzahl |
 | hiking | Dauer | Spalte `duration_seconds` (Garmin: Timer-Dauer des Listeneintrags; ORVIA-Workout: Zeitstempel der Session) | details.durations: nein — angenommen | ja (Vertrag 3) | Garmin: Details-Vertrag 3 und `garmin.timer_duration_s` weicht höchstens 5 s / 1 % ab | wirksamer Wert zählt; bleibt als manuell markiert; Quelle bleibt erhalten | **nein** | `unverified_semantics` | nach Beleg | Bewegungs- und verstrichene Zeit stehen getrennt in `metrics.garmin` |
@@ -119,6 +124,8 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 | hiking | Herzfrequenz (Ø) | `best_efforts.stats.heart_rate.avg` — alle gelieferten Zeilen | details.heart_rate: nein — angenommen | ja (Vertrag 3) | Details-Vertrag 3; weicht höchstens 2 bpm vom Listenwert ab; bei Ausdünnung als Näherung gekennzeichnet | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | nach Beleg | nicht aus der Anzeige-Reihe |
 | hiking | Herzfrequenz (Max) | `best_efforts.stats.heart_rate.max` | details.heart_rate: nein — angenommen | ja (Vertrag 3) | nur wenn Garmin alle Zeilen lieferte — ein Maximum aus ausgedünnten Zeilen ist eine Untergrenze | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | nur mit vollständiger Lieferung | Listenfeld `maxHR` ist nicht belegt |
 | hiking | Strecken-Bestzeit (alle Distanzen) | `best_efforts.distance.targets` — Worker, vor der Ausdünnung | details.distance: nein — angenommen; details.time: nein — angenommen | ja (Vertrag 3) | Güte `measured`: zwischen zwei echten Messzeilen, Überhang ≤ 1 % / 10 m; verstrichene Zeit | Konflikt, wenn die korrigierte Dauer kürzer ist als die Bestzeit | **nein** | `unverified_semantics` | nach Beleg | gemessene Obergrenze der wahren Bestzeit — nie zu schnell |
+| hiking | Aktive Strecken-Bestzeit (alle Distanzen) | kleinster von: `best_efforts.distance_active.targets` (Timer-Achse, Worker v8-449.1) · ganze Aktivität mit `garmin.timer_duration_s`, wenn ihre Distanz die Zielstrecke trifft · verstrichenes Fenster als Obergrenze | details.distance: nein — angenommen; details.durations: nein — angenommen | ja (Vertrag 3) | Timer = Garmin `sumDuration` (manuelle und Auto-Pause ausgeschlossen, nicht unterscheidbar); ganze Aktivität nur bei Überhang ≤ 10 m / 1 %; Strecke bei stehendem Timer = `pause_conflict` | korrigierte Dauer zählt als Gesamtzeit der Aktivität (manuell markiert) | **nein** | `unverified_semantics` | nach Beleg | aktive Trainingsbestzeit, nie mit der Bestzeit einschließlich Pausen verglichen; keine Bewegungszeit |
+| hiking | Wettkampf-Bestzeit (alle Distanzen) | ganze Aktivität, verstrichene Zeit (`garmin.elapsed_duration_s`; eigene Daten: Angabe) | — | ja (Vertrag 3) | nur, wenn du die Aktivität als Wettkampfergebnis bestätigt hast; Distanz trifft die Wettkampfstrecke (≤ 10 m / 1 %) | wirksame Dauer bei eigenen Daten | **nein** | `unsupported_source` | vorbereitet — nur bestätigte Ergebnisse | nie aus Sportart oder Datum geraten |
 | hiking | Training Effect | `ext.fields.aerobicTrainingEffect` | list.training_effect: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | nur im Rohblock (Serverliste) |
 | hiking | Kalorien | `summary.caloriesKcal` (Garmin-Listenfeld) | list.calories: nur Bibliothek | ja (Vertrag 3) | Feld geliefert | keine Korrektur vorgesehen | **nein** | `unverified_semantics` | erst nach Beleg | keine Leistungskennzahl |
 | rowing | Dauer | Spalte `duration_seconds` (Garmin: Timer-Dauer des Listeneintrags; ORVIA-Workout: Zeitstempel der Session) | details.durations: nein — angenommen | ja (Vertrag 3) | Garmin: Details-Vertrag 3 und `garmin.timer_duration_s` weicht höchstens 5 s / 1 % ab | wirksamer Wert zählt; bleibt als manuell markiert; Quelle bleibt erhalten | **nein** | `unverified_semantics` | nach Beleg | Bewegungs- und verstrichene Zeit stehen getrennt in `metrics.garmin` |
@@ -162,11 +169,11 @@ zulässig, fehlt ein Beleg — nicht ein Wert.
 
 Registerfähig bei vollständig gelieferten Daten (heutiger Belegstand; das Nachladen auf Vertrag 3 ist abgeschlossen):
 
-**Ja:** running: Dauer · running: Distanz · running: Tempo (Ø) · running: Herzfrequenz (Ø) · running: Herzfrequenz (Max) · running: Schrittfrequenz (Ø) · running: Strecken-Bestzeit (alle Distanzen)
+**Ja:** running: Dauer · running: Distanz · running: Tempo (Ø) · running: Herzfrequenz (Ø) · running: Herzfrequenz (Max) · running: Schrittfrequenz (Ø) · running: Strecken-Bestzeit (alle Distanzen) · running: Aktive Strecken-Bestzeit (alle Distanzen)
 
 **Eigene Daten:** Dauer (alle Quellen), Kraft-Volumen (ORVIA-Workout), Distanz und Tempo manueller Einheiten.
 
-**Noch nicht** (53 Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).
+**Noch nicht** (58 Zeilen) — fast immer `unverified_semantics`: der Wert ist da, aber seine Bedeutung für diese Sportart ist nicht belegt. Der Weg dorthin: Feldzensus (Lieferung), dann Mitschnitt oder Vergleich mit Garmin Connect (Bedeutung).
 
 ## 9 · Freigabe je Kennzahl (finales Gate v8-447.3)
 
@@ -196,6 +203,8 @@ Drei Stände je Kennzahl, alle vom Modul geurteilt (Bezugs-Aktivität wie Abschn
 | running | Leistung (Ø) | NICHT FREI (`unverified_semantics`) |
 | running | Leistungs-Bestwert (alle Fenster) | NICHT FREI (`unverified_semantics`) |
 | running | Strecken-Bestzeit (alle Distanzen) | **FREI** |
+| running | Aktive Strecken-Bestzeit (alle Distanzen) | **FREI** |
+| running | Wettkampf-Bestzeit (alle Distanzen) | NICHT FREI (`unsupported_source`) |
 | running | Training Effect | NICHT FREI (`unverified_semantics`) |
 | running | Kalorien | NICHT FREI (`unverified_semantics`) |
 | cycling | Dauer | NICHT FREI (`unverified_semantics`) |
@@ -229,6 +238,8 @@ Drei Stände je Kennzahl, alle vom Modul geurteilt (Bezugs-Aktivität wie Abschn
 | walking | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
 | walking | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
 | walking | Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| walking | Aktive Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| walking | Wettkampf-Bestzeit (alle Distanzen) | NICHT FREI (`unsupported_source`) |
 | walking | Training Effect | NICHT FREI (`unverified_semantics`) |
 | walking | Kalorien | NICHT FREI (`unverified_semantics`) |
 | hiking | Dauer | NICHT FREI (`unverified_semantics`) |
@@ -237,6 +248,8 @@ Drei Stände je Kennzahl, alle vom Modul geurteilt (Bezugs-Aktivität wie Abschn
 | hiking | Herzfrequenz (Ø) | NICHT FREI (`unverified_semantics`) |
 | hiking | Herzfrequenz (Max) | NICHT FREI (`unverified_semantics`) |
 | hiking | Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| hiking | Aktive Strecken-Bestzeit (alle Distanzen) | NICHT FREI (`unverified_semantics`) |
+| hiking | Wettkampf-Bestzeit (alle Distanzen) | NICHT FREI (`unsupported_source`) |
 | hiking | Training Effect | NICHT FREI (`unverified_semantics`) |
 | hiking | Kalorien | NICHT FREI (`unverified_semantics`) |
 | rowing | Dauer | NICHT FREI (`unverified_semantics`) |

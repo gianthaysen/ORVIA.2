@@ -113,6 +113,16 @@ ok('M2 echte Zeilen gespeichert (Eintraege, Ereignisse, Protokoll)', c1.split(',
 const best = psql(as(A, `select value || ' ' || previous_value || ' ' || improvement || ' ' || local_date from performance_record_events where metric_key = '${K5}' order by seq desc limit 1`));
 ok('M2b Rekordereignis in der Datenbank: 23:39 nach 24:05, Verbesserung 26 s, Aktivitaetsdatum', best === '1419 1445 26 2026-09-27', best);
 
+/* M2c · v8-449.1 Zeitkategorie */
+const tc = psql(as(A, `select (select string_agg(distinct coalesce(time_category,'-'), ',' order by coalesce(time_category,'-')) from performance_ledger_entries)
+  || '|' || (select count(*) from performance_ledger_entries where metric_key = 'running.fastest_5000m_active@standard' and time_category = 'active')
+  || '|' || (select count(*) from performance_record_events where metric_key = '${K5}' and time_category = 'elapsed')
+  || '|' || (select count(*) from performance_record_events where metric_key = 'running.fastest_5000m_active@standard' and time_category = 'active')`));
+ok('M2c Zeitkategorie gespeichert: aktiv und einschliesslich Pausen getrennt (Eintraege und Ereignisse)', /^-,active,elapsed\|[1-9]\d*\|[1-9]\d*\|[1-9]\d*$/.test(tc), tc);
+const badCat = psql(as(A, `insert into performance_record_events (user_id, metric_key, time_category, calc_version, seq, event_type, activity_id, value)
+  values ('${A}', 'x', 'moving', 'ledger@2', 1, 'first', '${runs[0].id}', 1)`), { expectError: true });
+ok('M2d unbekannte Zeitkategorie abgelehnt (keine Bewegungszeit-Rekorde)', !badCat.ok && /pre_timecat_chk/.test(badCat.err));
+
 /* M3 */
 psql(as(A, apply(A, res.state, ids, keys, true, [])));
 const c2 = cnt();
@@ -161,6 +171,28 @@ const afterRb = psql(`insert into public.user_feature_flags (user_id, flag, enab
 ok('M8b Rueckweg: Flag-Name wieder unbekannt', !afterRb.ok);
 psql(null, { file: MIG });
 ok('M8c erneutes Einspielen nach dem Rueckweg', psql("select count(*) from information_schema.tables where table_name like 'performance_%'") === '5');
+
+/* M9 · v8-449.1: wer die erste Fassung von 0051 (v8-448A, ohne time_category) eingespielt hat, bekommt die Spalten additiv.
+   Die erste Fassung kommt aus Git (der Commit, der die Datei angelegt hat) — ohne Git wird M9 uebersprungen. */
+{
+  const cp = await import('node:child_process'), os = await import('node:os'), path = await import('node:path');
+  const rel = 'supabase/migrations/0051_performance_ledger.sql', cwd = new URL(_ROOT, import.meta.url).pathname;
+  const first = cp.spawnSync('git', ['log', '--diff-filter=A', '--format=%H', '--', rel], { cwd, encoding: 'utf8' });
+  const sha = first.status === 0 ? first.stdout.trim().split('\n').pop() : '';
+  const shown = sha ? cp.spawnSync('git', ['show', sha + ':' + rel], { cwd, encoding: 'utf8' }) : null;
+  if (!shown || shown.status !== 0 || /time_category/.test(shown.stdout)) {
+    console.log('⏭️  M9 uebersprungen (erste Fassung von 0051 nicht aus Git lesbar)');
+  } else {
+    const f = path.join(os.tmpdir(), 'orvia_0051_first_' + process.pid + '.sql'); fs.writeFileSync(f, shown.stdout);
+    psql(null, { file: RB }); psql(null, { file: f });
+    const before = psql("select count(*) from information_schema.columns where table_name = 'performance_ledger_entries' and column_name = 'time_category'");
+    psql(null, { file: MIG });
+    const after = psql("select count(*) from information_schema.columns where table_name in ('performance_ledger_entries','performance_record_events') and column_name = 'time_category'");
+    const chk = psql("select count(*) from pg_constraint where conname in ('ple_timecat_chk','pre_timecat_chk')");
+    ok('M9 erste Fassung 0051 (ohne Zeitkategorie) → aktuelle 0051 ergaenzt Spalten und Pruefungen additiv', before === '0' && after === '2' && chk === '2', before + ' → ' + after + ', ' + chk + ' Pruefungen');
+    try { fs.unlinkSync(f); } catch (e) {}
+  }
+}
 
 console.log('\n' + (fail ? '❌' : '✅') + ' performance_ledger_db_v448: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

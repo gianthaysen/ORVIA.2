@@ -11,7 +11,7 @@
 -- Leeres Ergebnis = Migrationsdateien und Instanz sind deckungsgleich.
 -- Nur Lesezugriffe.
 --
--- Umfang: 56 Tabellen + 70 Spalten + 69 Indizes + 25 RLS = 220 Prüfungen.
+-- Umfang: 56 Tabellen + 72 Spalten + 69 Indizes + 25 RLS = 222 Prüfungen.
 -- 'rls' prüft, dass row level security auf der Tabelle AKTIV ist (aus = offener Zugriff).
 -- Bewusst NICHT geprüft: einzelne Policies, Constraints-Definitionen, Funktionen, Grants.
 -- ============================================================
@@ -81,6 +81,8 @@ with erwartet(migration, art, tabelle, spalte) as (values
   ('0024','spalte','daily_checkins','red_flags'),
   ('0047','spalte','exercises','base_slug'),
   ('0047','spalte','exercises','variant'),
+  ('0051','spalte','performance_ledger_entries','time_category'),
+  ('0051','spalte','performance_record_events','time_category'),
   ('0002','spalte','training_load_daily','client_session_id'),
   ('0035','spalte','training_plan_exercises','target_weight_kg'),
   ('0027','spalte','user_goals','category_data'),

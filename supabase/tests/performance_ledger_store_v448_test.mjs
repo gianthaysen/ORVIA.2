@@ -55,7 +55,7 @@ const runs = [run(1, '2026-08-02', 1510), run(2, '2026-08-16', 1482), run(3, '20
   const d = { flags: on, storage: st, repo, uid: () => 'u1' };
   const r = await S.refresh(runs, { timeZone: 'Europe/Berlin' }, d);
   ok('S3a Flag an: gerechnet, Lesemodell mit Bestwert', r.ok && r.model.sports[0].records.find(x => x.metricKey === 'running.fastest_5000m@standard').best.value === 1419);
-  ok('S3b Zwischenspeicher geschrieben (je Nutzer)', Object.keys(st.m).some(k => /orvia_perf_ledger_ledger@1_u1/.test(k)));
+  ok('S3b Zwischenspeicher geschrieben (je Nutzer)', Object.keys(st.m).some(k => k.includes('orvia_perf_ledger_' + O.performanceLedger.CALC_VERSION + '_u1')));
   const last = repo.calls[repo.calls.length - 1];
   ok('S3c Speichern: zuerst Eintraege, zuletzt Ereignisse + Meilensteine + Protokoll', repo.calls.length === 2 && repo.calls[0].entries.length === 3 * L.defsFor('running').length && repo.calls[0].events.length === 0
      && last.entries.length === 0 && last.events.length > 0 && Array.isArray(last.milestones) && last.log.length > 0 && r.persisted.success);

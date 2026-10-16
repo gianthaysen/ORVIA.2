@@ -1,6 +1,6 @@
 # Garmin-Fähigkeits-Matrix
 
-**Status: IMPLEMENTED** · Stand Worker v8-447.3 · Details-Vertrag 3 · Rohblock-Version 1
+**Status: IMPLEMENTED** · Stand Worker v8-449.1 · Details-Vertrag 3 · Rohblock-Version 1
 
 > Diese Datei wird **erzeugt**: `python garmin-worker/scripts/gen_capability_matrix.py`.
 > Die Tabellen stammen aus dem Code des Workers (`garmin_fields.py`, `detail_sync.py`, `normalize.py`).
@@ -15,7 +15,7 @@ Rohwerte bleiben unter ihrem Garmin-Namen, nichts wird erfunden, nichts stillsch
 | Stufe | Bedeutung | Zeilen (Teil A–C) |
 |---|---|---|
 | **OBSERVED_PRODUCTION** | im Produktions-Zensus für die Sportart gezählt | 0 |
-| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 12 |
+| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 13 |
 | **LIBRARY_DOCUMENTED** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | 43 |
 | **ASSUMED** | üblicher Garmin-Connect-Name, hier **nicht** belegt | 67 |
 | **ABSENT** | im Zensus nie geliefert, obwohl mindestens 5 passende Aktivitäten vorliegen | 0 |
@@ -163,6 +163,7 @@ Drei Stufen, jede steht in der Zeile (`metrics.garmin`):
 | Bewegungszeit | alle | get_activity_details | `sumMovingDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.moving_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447; Listenfeld movingDuration zusaetzlich im Rohblock |
 | Verstrichene Zeit | alle | get_activity_details | `sumElapsedDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.elapsed_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
 | Timer-Zeit | alle | get_activity_details | `sumDuration (letzte Zeile)` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.timer_duration_s` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-447 |
+| Aktive Strecken-Bestwerte | running, walking, hiking | get_activity_details | `sumDuration + sumDistance` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.best_efforts.distance_active` | nein | summary | s | auf 0,1 s gerundet | nein | ja | neu in v8-449.1; Timer-Achse, Pausen ausgeschlossen, Strecke bei stehendem Timer = Widerspruch (Reihe getrennt) |
 | Abtastung | alle | get_activity_details | `totalMetricsCount / Zeilenzahl` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja | `metrics.garmin.stream_total / stream_rows / stream_kept` | nein | summary | Anzahl | keine | nein | nein | aufgezeichnet → von Garmin geliefert → gespeichert |
 
 ## 7 · Teil B — Rohfelder des Listeneintrags (`metrics.ext.fields`)

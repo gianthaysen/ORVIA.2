@@ -267,7 +267,8 @@ def test_distance_bests_only_for_sports_where_they_mean_something():
         m = {r["source_record_id"]: r["metrics"] for r in await db.select("activities", {"user_id": uid})}
         meta = {"v", "time_source", "rows", "total", "native"}
         assert set(m["ride"]["best_efforts"]) == {"power", "stats"} | meta                     # Rad: Leistung ja, Strecke nein
-        assert set(m["run"]["best_efforts"]) == {"power", "distance", "stats"} | meta          # Lauf: beides
+        assert set(m["run"]["best_efforts"]) == {"power", "distance", "distance_active", "stats"} | meta   # Lauf: beides
+        assert m["run"]["best_efforts"]["distance_active"] == {"v": 1, "basis": "timer", "status": "no_timer_column"}   # v8-449.1: Befund steht, auch ohne Zahl
         assert "best_efforts" not in m["yoga"]                                                 # nichts Sinnvolles: nichts gespeichert
         st = m["ride"]["best_efforts"]["stats"]
         assert st["power"] == {"n": 120, "avg": 212.5, "max": 500.0} and st["heart_rate"]["avg"] == 140.0

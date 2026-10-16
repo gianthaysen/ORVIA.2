@@ -122,11 +122,44 @@
       + '<path class="plv-line" pathLength="1" d="' + d + '"/><g role="list">' + pts + '</g></svg>';
   }
 
+  /* v8-449.1 · Zeitdefinition und Messgrundlage in Klartext (keine Garmin-Feldnamen in der Oberflaeche). */
+  function kmTxt(m) { return m == null ? '' : (m / 1000).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function measureLabel(pv) {
+    if (!pv || !pv.measure) return basisLabel(pv && pv.basis);
+    var k = 'ledger.measure.' + pv.measure;
+    return has(k) ? T(k, { km: kmTxt(pv.distanceM) }) : basisLabel(pv.basis);
+  }
+  function pausesLabel(pv) {
+    var p = pv && pv.pauses;
+    if (!p || p.pausedS == null) return T('ledger.pauses.unknown');
+    if (!(p.pausedS > 0)) return T('ledger.pauses.none');
+    return T(p.count != null ? 'ledger.pauses.some' : 'ledger.pauses.some_total', { n: p.count, min: Math.max(1, Math.round(p.pausedS / 60)) });
+  }
+  function pausedActive(rec) {
+    var pv = rec && rec.provenance;
+    return !!(rec && rec.timing === 'active' && pv && (pv.measure === 'activity_timer' || pv.measure === 'timer_window') && pv.pauses && pv.pauses.pausedS > 0);
+  }
   function recordCard(rec, sport, opts3) {
-    var best = rec.best;
+    return '<article class="plv-card" data-metric="' + esc(rec.metricKey) + '">' + cardHead(rec, rec.best) + variantBody(rec, sport, opts3, null) + '</article>';
+  }
+  function cardHead(rec, best) {
     var badges = [];
     if (classLabel(rec.contextClass)) badges.push('<span class="plv-badge">' + esc(classLabel(rec.contextClass)) + '</span>');
     if (best && best.manual) badges.push('<span class="plv-badge plv-badge-manual">' + esc(T('ledger.badge.manual')) + '</span>');
+    if (rec.timing === 'race') badges.push('<span class="plv-badge plv-badge-race">' + esc(T('ledger.race.confirmed')) + '</span>');
+    return '<header class="plv-card-h"><h4>' + esc(rec.label) + '</h4>' + badges.join('') + '</header>';
+  }
+  /* Ein Paar (gleiche Strecke, gleicher Kontext): aktive Trainingsbestzeit und Bestzeit einschliesslich Pausen. Beide
+     Varianten stehen im Dokument; der Umschalter der Sportart blendet eine aus (CSS) — eigene Historie je Kategorie. */
+  function pairCard(g, sport, opts3) {
+    var a = g.active, e = g.elapsed, main = a || e, both = !!(a && e);
+    return '<article class="plv-card plv-pair' + (both ? ' plv-pair-2' : '') + '" data-pair="' + esc(g.key) + '">' + cardHead(main, (a && a.best) || (e && e.best))
+      + (a ? '<div class="plv-variant" data-timing="active" data-metric="' + esc(a.metricKey) + '">' + variantBody(a, sport, opts3, e) + '</div>' : '')
+      + (e ? '<div class="plv-variant" data-timing="elapsed" data-metric="' + esc(e.metricKey) + '">' + variantBody(e, sport, opts3, a) + '</div>' : '')
+      + '</article>';
+  }
+  function variantBody(rec, sport, opts3, other) {
+    var best = rec.best;
     var imp = rec.improvement != null && rec.previous
       ? '<p class="plv-imp"><strong>' + esc(fmtImprovement(rec)) + '</strong> ' + esc(T('ledger.card.over', { prev: fmtValue(rec.previous.value, rec.kind, rec.unit, sport), date: fmtDate(rec.previous.localDate) })) + '</p>'
       : '<p class="plv-imp plv-imp-first">' + esc(rec.equalledSinceBest > 0 ? T('ledger.card.unbeaten', { n: rec.equalledSinceBest }) : T('ledger.card.first')) + '</p>';
@@ -143,24 +176,46 @@
       var rowsP = [
         [T('ledger.prov.activity'), act],
         [T('ledger.prov.source'), esc(sourceLabel(pv.source)) + (ctx.typeKey ? ' <span class="plv-muted">· ' + esc(T('ledger.prov.type', { type: ctx.typeKey })) + '</span>' : '')],
-        [T('ledger.prov.basis'), esc(basisLabel(pv.basis))],
+        [T('ledger.prov.basis'), esc(measureLabel(pv))],
+      ].concat(rec.timing ? [[T('ledger.prov.timeDef'), esc(T('ledger.timedef.' + rec.timing))], [T('ledger.prov.pauses'), esc(rec.timing === 'active' || rec.timing === 'race' ? pausesLabel(pv) : T('ledger.pauses.counted'))]] : []).concat([
         [T('ledger.prov.accuracy'), esc([qualityLabel(pv.quality), pv.precision ? T('ledger.prov.compare', { p: precisionLabel(pv.precision, pv.unit) }) : null].filter(Boolean).join(' · ') || '—')],
         [T('ledger.prov.validation'), esc(validLabel(pv.validation))],
         [T('ledger.prov.context'), esc(classLabel(rec.contextClass) || (rec.contextClass === 'all' ? T('ledger.ctx.all') : T('ledger.ctx.standard'))) + (ctx.basis ? ' <span class="plv-muted">· ' + esc(ctx.basis) + '</span>' : '')],
         [T('ledger.prov.scopeLabel'), esc(T('ledger.prov.scope', { date: fmtDate(rec.coverageFrom) }))]
-      ];
+      ]);
       prov = '<details class="plv-prov"><summary>' + esc(T('ledger.prov.title')) + '</summary><dl>' + rowsP.map(function (r) { return '<div><dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd></div>'; }).join('') + '</dl></details>';
     }
+    var cat = rec.timing ? '<p class="plv-cat">' + esc(T('ledger.timing.' + rec.timing)) + '</p>' : '';
+    var ob = other && other.best;
+    var same = ob && best && Math.round(ob.value * 10) === Math.round(best.value * 10);
+    var alt = (rec.timing && ob && !same) ? '<p class="plv-alt">' + esc(T('ledger.alt.' + other.timing, { v: fmtValue(ob.value, other.kind, other.unit, sport), date: fmtDate(ob.localDate) })) + '</p>' : '';
+    var hint = pausedActive(rec) ? '<p class="plv-hint">' + esc(T('ledger.pause_hint')) + '</p>' : '';
     var decl = rec.declared ? '<p class="plv-decl">' + esc(T(rec.declared.betterThanOrvia ? 'ledger.decl.better' : 'ledger.decl.plain')) + ' '
       + '<strong>' + esc(fmtValue(rec.declared.value, rec.kind, rec.unit, sport)) + '</strong>' + (rec.declared.measuredAt ? ' (' + esc(fmtDate(rec.declared.measuredAt)) + ')' : '')
       + ' <span class="plv-muted">· ' + esc(T('ledger.decl.note')) + '</span></p>' : '';
-    return '<article class="plv-card" data-metric="' + esc(rec.metricKey) + '">'
-      + '<header class="plv-card-h"><h4>' + esc(rec.label) + '</h4>' + badges.join('') + '</header>'
-      + '<div class="plv-hero"><span class="plv-val">' + esc(fmtValue(best && best.value, rec.kind, rec.unit, sport)) + '</span>'
+    return cat + '<div class="plv-hero"><span class="plv-val">' + esc(fmtValue(best && best.value, rec.kind, rec.unit, sport)) + '</span>'
       + '<span class="plv-date">' + esc(fmtDate(best && best.localDate)) + '</span></div>'
-      + imp + decl + chart(rec, sport) + prov
-      + '<details class="plv-hist"><summary>' + esc(T('ledger.hist.title', { n: (rec.history || []).length })) + '</summary><table><thead><tr><th>' + esc(T('ledger.hist.date')) + '</th><th>' + esc(T('ledger.hist.value')) + '</th><th>' + esc(T('ledger.hist.change')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></details>'
-      + '</article>';
+      + imp + alt + hint + decl + chart(rec, sport) + prov
+      + '<details class="plv-hist"><summary>' + esc(T('ledger.hist.title', { n: (rec.history || []).length })) + '</summary><table><thead><tr><th>' + esc(T('ledger.hist.date')) + '</th><th>' + esc(T('ledger.hist.value')) + '</th><th>' + esc(T('ledger.hist.change')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></details>';
+  }
+  /* Gruppen einer Sportart: Paare (aktiv/verstrichen) und Einzelrekorde, Reihenfolge des Rechenkerns. */
+  function groupsOf(records) {
+    var out = [], by = {};
+    records.forEach(function (r) {
+      if (r.pair && (r.timing === 'active' || r.timing === 'elapsed')) {
+        var k = r.pair + '@' + r.contextClass, g = by[k];
+        if (!g) { g = by[k] = { key: k, active: null, elapsed: null }; out.push(g); }
+        g[r.timing] = r;
+      } else out.push({ single: r });
+    });
+    return out;
+  }
+  function setMode(btn, mode) {
+    try {
+      var sec = btn && btn.closest ? btn.closest('.plv-sport') : null; if (!sec) return;
+      sec.setAttribute('data-mode', mode === 'elapsed' ? 'elapsed' : 'active');
+      Array.prototype.forEach.call(sec.querySelectorAll('.plv-mode button'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-mode') === sec.getAttribute('data-mode'))); });
+    } catch (e) {}
   }
 
   /* Sportuebersicht: Zahlen, keine Wertung. */
@@ -199,10 +254,16 @@
         + '<p>' + esc(T('ledger.empty.text')) + '</p></div>');
     }
     (m.sports || []).forEach(function (s) {
-      out.push('<section class="plv-sport" ' + themeAttr(s.sport) + ' aria-label="' + esc(sportLabel(s.sport)) + '">'
+      out.push('<section class="plv-sport" data-mode="active" ' + themeAttr(s.sport) + ' aria-label="' + esc(sportLabel(s.sport)) + '">'
         + '<h3 class="plv-sport-h">' + esc(sportLabel(s.sport)) + (s.coverageFrom ? '<span class="plv-scope">' + esc(T('ledger.scope', { date: fmtDate(s.coverageFrom) })) + '</span>' : '') + '</h3>'
         + overview(s) + volume(s)
-        + (s.records.length ? '<div class="plv-grid">' + s.records.map(function (r) { return recordCard(r, s.sport, o); }).join('') + '</div>' : '') + '</section>');
+        + (s.records.length ? (function () {
+            var gs = groupsOf(s.records), anyPair = gs.some(function (g) { return g.active && g.elapsed; });
+            var tog = anyPair ? '<div class="plv-mode" role="group" aria-label="' + esc(T('ledger.mode.label')) + '">'
+              + '<button type="button" data-mode="active" aria-pressed="true" onclick="ORVIA.performanceLedgerView.setMode(this,\'active\')">' + esc(T('ledger.mode.active')) + '</button>'
+              + '<button type="button" data-mode="elapsed" aria-pressed="false" onclick="ORVIA.performanceLedgerView.setMode(this,\'elapsed\')">' + esc(T('ledger.mode.elapsed')) + '</button></div>' : '';
+            return tog + '<div class="plv-grid">' + gs.map(function (g) { return g.single ? recordCard(g.single, s.sport, o) : pairCard(g, s.sport, o); }).join('') + '</div>';
+          })() : '') + '</section>');
     });
     if ((m.milestones || []).length) {
       out.push('<section class="plv-ms" aria-label="' + esc(T('ledger.ms.title')) + '"><h3 class="plv-sport-h">' + esc(T('ledger.ms.title')) + '</h3><ol>'
@@ -213,13 +274,15 @@
     }
     /* Nur, was auf einen BELEG wartet (Census, Bedeutungspruefung, Nachladen). „Wert fehlt" oder „Quelle kann das nicht"
        ist kein Warten — das bleibt so, bis andere Daten kommen. Je Sportart und Grund eine Zeile. */
-    var WAIT = { unverified_semantics: 1, legacy_schema: 1, insufficient_resolution: 1, unverified_context: 1 };
+    var WAIT = { unverified_semantics: 1, legacy_schema: 1, insufficient_resolution: 1, unverified_context: 1, pause_conflict: 1 };
     var groups = {};
     (m.waiting || []).forEach(function (w) {
       if (!WAIT[w.reason]) return;
       var k = w.sport + '|' + w.reason, g = groups[k] || (groups[k] = { sport: w.sport, reason: w.reason, defs: [], activities: 0 });
       var d = O.performanceLedger && O.performanceLedger.defById ? O.performanceLedger.defById(w.defId) : null;
-      g.defs.push({ label: d ? d.label : w.defId, at: O.performanceLedger ? O.performanceLedger.DEFS.indexOf(d) : 0 }); g.activities = Math.max(g.activities, w.activities);
+      var lb = d ? d.label : w.defId;
+      if (!g.defs.some(function (x) { return x.label === lb; })) g.defs.push({ label: lb, at: O.performanceLedger ? O.performanceLedger.DEFS.indexOf(d) : 0 });
+      g.activities = Math.max(g.activities, w.activities);
     });
     var gl = Object.keys(groups).sort().map(function (k) { return groups[k]; });
     if (gl.length) {
@@ -294,6 +357,15 @@
     '.plv-link{background:none;border:0;padding:0;margin-left:4px;color:var(--orvia-brand-gold-light,#E8D19A);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}',
     '.plv-decl{margin:0 0 6px;font-size:12px;color:var(--orvia-text-secondary,#ADB5C1)}',
     '.plv-decl strong{color:var(--orvia-text-primary,#F4F2ED)}',
+    '.plv-mode{display:inline-flex;gap:2px;padding:3px;margin:0 0 12px;border-radius:999px;border:1px solid rgba(216,187,122,.22);background:rgba(255,255,255,.03)}',
+    '.plv-mode button{appearance:none;border:0;background:none;color:var(--orvia-text-secondary,#ADB5C1);font:inherit;font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;min-height:32px;cursor:pointer}',
+    '.plv-mode button[aria-pressed="true"]{background:rgba(216,187,122,.14);color:var(--orvia-brand-gold-light,#E8D19A)}',
+    '.plv-mode button:focus-visible{outline:2px solid #D8BB7A;outline-offset:2px}',
+    '.plv-sport[data-mode="active"] .plv-pair-2 .plv-variant[data-timing="elapsed"],.plv-sport[data-mode="elapsed"] .plv-pair-2 .plv-variant[data-timing="active"]{display:none}',
+    '.plv-cat{margin:6px 0 0;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--orvia-text-tertiary,#737E8C)}',
+    '.plv-alt{margin:0 0 4px;font-size:12px;color:var(--orvia-text-secondary,#ADB5C1);font-variant-numeric:tabular-nums}',
+    '.plv-hint{margin:0 0 6px;font-size:11px;color:var(--orvia-text-tertiary,#737E8C);line-height:1.4}',
+    '.plv-badge-race{border-color:rgba(216,187,122,.4);color:var(--orvia-brand-gold-light,#E8D19A)}',
     '@keyframes plvIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}',
     '@keyframes plvDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}',
     '.plv-card{animation:plvIn .45s cubic-bezier(.2,.7,.2,1) both}',
@@ -315,7 +387,7 @@
     if (typeof document === 'undefined' || document.getElementById('plv-style')) return;
     var st = document.createElement('style'); st.id = 'plv-style'; st.textContent = CSS; document.head.appendChild(st);
   }
-  var api = { render: render, mount: mount, ensureStyle: ensureStyle, CSS: CSS, fmtValue: fmtValue, fmtTime: fmtTime, fmtImprovement: fmtImprovement, basisLabel: basisLabel };
+  var api = { render: render, mount: mount, ensureStyle: ensureStyle, CSS: CSS, setMode: setMode, groupsOf: groupsOf, fmtValue: fmtValue, fmtTime: fmtTime, fmtImprovement: fmtImprovement, basisLabel: basisLabel };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.performanceLedgerView = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

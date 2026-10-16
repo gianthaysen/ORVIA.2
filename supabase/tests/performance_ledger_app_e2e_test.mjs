@@ -93,13 +93,15 @@ try {
     const dbs = (await indexedDB.databases()).map(d => d.name);
     const bt = gmProfBestTimes(), pl = gmProfPerformanceLedger();
     return { ok: r.ok, pending: r.pending, cached: r.cached, mode: O.recordsBridge.mode(), dbs, calls, entry: /plv-entry/.test(bt), page: pl.length,
-             cards: (pl.match(/class="plv-card"/g) || []).length, herkunft: /Herkunft/.test(pl), open: /gmOpenActivityFromLedger\('00000000-0000-4000-8000-000000000004'\)/.test(pl),
-             best: (O.runBests.measuredRunBests(O.activityStore.listActivities ? O.activityStore.listActivities() : []).k5 || null) };
+             cards: (pl.match(/class="plv-card[ "]/g) || []).length, variants: (pl.match(/data-timing="/g) || []).length, herkunft: /Herkunft/.test(pl), open: /gmOpenActivityFromLedger\('00000000-0000-4000-8000-000000000004'\)/.test(pl),
+             best: (O.runBests.measuredRunBests(O.activityStore.listActivities ? O.activityStore.listActivities() : []).k5 || null),
+             btMode: /class="bt-mode"/.test(bt) && /aria-pressed="true"[^>]*>Aktiv</.test(bt), btAct: /Aktive Trainingsbestzeit/.test(bt), btRows: (bt.match(/bt-row/g) || []).length };
   }, rows);
   ok('B1 Flag an: gerechnet, Bruecke on', B.ok && B.mode === 'on', B.mode);
   ok('B2 Zwischenspeicher in IndexedDB (nicht localStorage)', B.cached === true && B.dbs.includes('orvia-ledger'), B.dbs.join(','));
   ok('B3 Speichern auf dem Server scheitert (0051 fehlt) → bleibt offen, App laeuft weiter', B.pending === true);
-  ok('B4 Einstieg sichtbar, Seite mit Rekordkarten, Herkunft und „Aktivität öffnen"', B.entry && B.cards >= 5 && B.herkunft && B.open, B.cards + ' Karten');
+  ok('B4 Einstieg sichtbar, Seite mit Rekordkarten, Herkunft und „Aktivität öffnen"', B.entry && B.cards >= 5 && B.variants >= 6 && B.herkunft && B.open, B.cards + ' Karten, ' + B.variants + ' Zeitvarianten');
+  ok('B6 Bestzeiten: Umschalter „Aktiv | Gesamtzeit" (Standard Aktiv), aktive Trainingsbestzeit benannt, Zeilenvertrag unveraendert', B.btMode && B.btAct && B.btRows === 7, B.btRows + ' bt-row');
   ok('B5 Laufbestzeiten der App kommen aus dem Register', B.best === null || B.best.method === 'ledger', JSON.stringify(B.best));
 
   await page.evaluate(() => {
@@ -112,7 +114,10 @@ try {
   ok('D1 iPhone-Breite 390 px: Seite sichtbar, kein waagerechtes Scrollen', D.overflow <= 0 && D.pg && D.pg.on && D.pg.vis && D.pg.w <= 0 && D.pg.cards >= 5, JSON.stringify(D));
   if (shots) { await page.screenshot({ path: join(shots, 'ledger-app-390.png'), fullPage: false });
     await page.evaluate(() => { const pg = document.getElementById('gmProfPage'); const d = pg && pg.querySelector('.plv-prov'); if (d) { d.open = true; d.scrollIntoView(); } });
-    await page.screenshot({ path: join(shots, 'ledger-app-390-herkunft.png'), fullPage: false }); }
+    await page.screenshot({ path: join(shots, 'ledger-app-390-herkunft.png'), fullPage: false });
+    await page.evaluate(() => { const pg = document.getElementById('gmProfPage'); try { gmCloseProfPage(); } catch (e) {} gmOpenProfPage('bestTimes'); window.scrollTo(0, 0); });
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: join(shots, 'bestzeiten-390.png'), fullPage: false }); }
 
   /* C · neu laden: aus IndexedDB, nichts neu geladen */
   await page.reload({ waitUntil: 'load' });

@@ -65,6 +65,10 @@
   function normalizeSplits(raw, opts) {
     if (!Array.isArray(raw) || !raw.length) return null;
     var el = !!(opts && opts.elapsed);
+    /* v8-449.1: Rundenzeit fuer Bestzeiten einschliesslich Pausen. opts.requireElapsed: JEDE Runde braucht ihre
+       verstrichene Zeit, sonst keine Rundenfenster (eine Timer-Runde dazwischen waere zu schnell, eine weggelassene
+       wuerde zwei getrennte Abschnitte verketten). */
+    if (el && opts.requireElapsed && raw.some(function (r) { return r && typeof r === 'object' && num(r.elapsedDuration) == null; })) return null;
     var out = [];
     raw.forEach(function (r) {
       if (!r || typeof r !== 'object') return;
@@ -239,6 +243,25 @@
     return null;
   }
 
+  /* v8-449.1 · AKTIVE Gesamtzeit (Timer) einer Aktivitaet: manuell korrigierte Dauer → Garmin-Timer-Summe
+     (metrics.garmin.timer_duration_s; fehlt sie, ist durationSeconds bei Garmin die Timer-Dauer des Listeneintrags)
+     → Angabe der eigenen Einheit. Pausen (manuell oder automatisch) sind nicht enthalten. */
+  function activeTimeOf(a) {
+    try {
+      var E = O.activityEffective;
+      if (E && E.isCorrected && E.isCorrected(a, 'duration')) {
+        var v = num(E.resolveMetric(a, 'duration').effectiveValue);
+        if (v != null && v > 0) return { sec: v, basis: 'manual' };
+      }
+    } catch (e) {}
+    var g = a && a.metrics && a.metrics.garmin, tm = g ? num(g.timer_duration_s) : null, d = num(a && a.durationSeconds);
+    if (a && a.source === 'garmin') return tm != null && tm > 0 ? { sec: tm, basis: 'timer' } : (d != null && d > 0 ? { sec: d, basis: 'timer' } : null);
+    return d != null && d > 0 ? { sec: d, basis: 'duration' } : null;
+  }
+  /* Ganze Aktivitaet als aktive Zeit nur, wenn ihre Distanz die Zielstrecke trifft: Ueberhang ≤ 10 m / 1 %
+     (dieselbe Regel wie Worker und metric-eligibility) — nie die Gesamtdauer eines laengeren Laufs. */
+  function overOk(km, targetKm) { var m = km * 1000, t = targetKm * 1000; return m + 1e-6 >= t && m <= t + Math.max(10, 0.01 * t) + 1e-6; }
+
   function distanceKm(a) {
     var s = (a && a.summary) || {};
     var m = num(s.distance_m) != null ? num(s.distance_m) : num(s.distanceM);
@@ -258,15 +281,19 @@
     /* withStreams/withDerivedTime (2026-08-05): machen nachvollziehbar, WORAUF die
        Auswertung beruht — ohne diese Zaehler liess sich „keine Bestzeit gefunden"
        nicht von „keine auswertbaren Daten vorhanden" unterscheiden. */
-    var res = { sport: sport, scanned: 0, withSplits: 0, withStreams: 0, withDerivedTime: 0, slack: slack };
-    targets.forEach(function (t) { res[t.key] = null; });
+    var res = { sport: sport, scanned: 0, withSplits: 0, withStreams: 0, withDerivedTime: 0, slack: slack, active: {} };
+    targets.forEach(function (t) { res[t.key] = null; res.active[t.key] = null; });
     var list = Array.isArray(activities) ? activities : [];
     list.forEach(function (a) {
       if (sportFamily(a) !== sport) return;
       if (a.status && a.status !== 'completed') return;
       if (isTomb) { try { if (isTomb(a)) return; } catch (e) {} }
       res.scanned++;
-      var splits = normalizeSplits(a.metrics && a.metrics.splits, { elapsed: true });
+      /* Pausen BEKANNT (Garmin: verstrichen > Timer): Runden nur mit verstrichener Zeit. Pausen unbekannt (Altbestand
+         ohne verstrichene Zeit, eigene Daten): wie bisher. */
+      var gm = a.metrics && a.metrics.garmin, elK = gm ? num(gm.elapsed_duration_s) : null, tmK = gm ? num(gm.timer_duration_s) : null;
+      var pausesKnown = elK != null && tmK != null && elK > tmK + 5;
+      var splits = normalizeSplits(a.metrics && a.metrics.splits, { elapsed: true, requireElapsed: pausesKnown });
       if (splits) res.withSplits++;
       /* Sekundengenaues Stream-Fenster — nur mit ECHTER Zeitachse (siehe
          bestWindowFromStreams). Rundenfenster bleibt der Rueckfall. */
@@ -285,7 +312,7 @@
                (siehe uniformTimeAxis — verteilt inkl. Pausen, Ergebnis ist eine
                Obergrenze). Eigene Methode, damit die Oberflaeche die Herkunft
                nicht mit einer Rundenmessung verwechseln kann. */
-            var ut = uniformTimeAxis(strm.distance.length, totalSec);
+            var ut = uniformTimeAxis(strm.distance.length, totalSec);   // totalTimeOf: verstrichene Zeit, wo bekannt
             if (ut) { sDist = strm.distance; sTime = ut; sMethod = 'stream_uniform'; res.withDerivedTime++; }
           }
           if (sDist) res.withStreams++;
@@ -318,8 +345,24 @@
                      laps: null, fromLap: null, method: 'activity_total', timeBasis: tt.basis };
           }
         }
+        /* v8-449.1 · aktive Trainingsbestzeit: jedes Fenster einschliesslich Pausen ist auch eine Obergrenze der aktiven
+           Zeit; dazu die Timer-Gesamtzeit, wenn die ganze Aktivitaet die Zielstrecke trifft. */
+        var act = cand ? Object.assign({}, cand, { timing: 'active', upperBoundFrom: 'elapsed' }) : null;
+        var at = activeTimeOf(a);
+        /* Garmin-Timer-Summe stammt aus der LETZTEN Messzeile — Distanz aus derselben Zeile (letzter Punkt der Reihe) */
+        var rowKm = (at && at.basis === 'timer' && tmK != null && a.metrics && a.metrics.streams && Array.isArray(a.metrics.streams.distance) && a.metrics.streams.distance.length)
+          ? num(a.metrics.streams.distance[a.metrics.streams.distance.length - 1]) : null;
+        var actKm = rowKm != null ? rowKm / 1000 : totalKm;
+        if (at && actKm != null && overOk(actKm, t.km) && (!act || at.sec < act.sec)) {
+          act = { sec: Math.round(at.sec), km: Math.round(actKm * 100) / 100, laps: null, fromLap: null, method: 'activity_timer', timeBasis: at.basis, timing: 'active',
+                  pausedS: (elK != null && tmK != null && elK > tmK) ? Math.round(elK - tmK) : null };
+        }
+        if (act) {
+          act.targetKm = t.km; act.activityId = id; act.date = day;
+          if (!res.active[t.key] || act.sec < res.active[t.key].sec) res.active[t.key] = act;
+        }
         if (!cand) return;
-        cand.targetKm = t.km; cand.activityId = id; cand.date = day;
+        cand.targetKm = t.km; cand.activityId = id; cand.date = day; cand.timing = 'elapsed';
         if (!res[t.key] || cand.sec < res[t.key].sec) res[t.key] = cand;
       });
     });
@@ -348,7 +391,7 @@
     measuredBests: measuredBests, measuredBestsLegacy: measuredBestsLegacy, measuredAllBests: measuredAllBests,
     normalizeSplits: normalizeSplits, bestWindow: bestWindow,
     bestWindowFromStreams: bestWindowFromStreams, streamTimeAxis: streamTimeAxis,
-    measuredRunBests: measuredRunBests, totalTimeOf: totalTimeOf
+    measuredRunBests: measuredRunBests, totalTimeOf: totalTimeOf, activeTimeOf: activeTimeOf
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   O.runBests = api;

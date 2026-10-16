@@ -116,6 +116,9 @@ class Settings:
     # Details die Rohfelder des Listeneintrags noch nicht in der Zeile standen (metrics.ext.fields),
     # EINMAL neu laden. Erst NACH dem Metadaten-Backfill sinnvoll. Standard AUS.
     detail_refetch_semantics: bool = False
+    # v8-449.1 · Laufen/Gehen/Wandern auf Vertrag 3, deren Bestwerte noch keine AKTIVE Zeit (Timer-Achse,
+    # best_efforts.distance_active) tragen, EINMAL neu laden. Gleiche Grenzen wie das Nachladen. Standard AUS.
+    detail_refetch_active: bool = False
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -157,6 +160,7 @@ class Settings:
             detail_refetch_resolution=_bool_env(env, "DETAIL_REFETCH_RESOLUTION"),
             provenance_backfill=_mode_env(env, "PROVENANCE_BACKFILL"),
             detail_refetch_semantics=_bool_env(env, "DETAIL_REFETCH_SEMANTICS"),
+            detail_refetch_active=_bool_env(env, "DETAIL_REFETCH_ACTIVE"),
         )
 
 

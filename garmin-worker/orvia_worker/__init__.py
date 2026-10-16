@@ -10,6 +10,8 @@ Importiert bewusst KEINE Settings beim Paket-Import (import-safe für Tests).
 # aus der vollstaendigen Antwort, gezielter Neuabruf (DETAIL_REFETCH_RESOLUTION, Standard AUS).
 # v8-447.3 · Herkunft: Status, Metadaten-Backfill aus der Liste (PROVENANCE_BACKFILL, Standard AUS),
 # Neupruefung der Bedeutung (DETAIL_REFETCH_SEMANTICS, Standard AUS).
-WORKER_BUILD = "v8-447.3"
+# v8-449.1 · aktive Zeit: Strecken-Bestwerte zusaetzlich auf der Timer-Achse (best_efforts.distance_active),
+# gezielter Neuabruf (DETAIL_REFETCH_ACTIVE, Standard AUS). Bestehende Felder unveraendert.
+WORKER_BUILD = "v8-449.1"
 
 __all__ = ["WORKER_BUILD"]

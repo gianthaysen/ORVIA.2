@@ -553,6 +553,7 @@ async def sync_user(
                 maxchart=maxchart,
                 refetch_resolution=bool(getattr(settings, "detail_refetch_resolution", False)) and maxchart > 0,
                 refetch_semantics=bool(getattr(settings, "detail_refetch_semantics", False)),
+                refetch_active=bool(getattr(settings, "detail_refetch_active", False)),
             )
             cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
