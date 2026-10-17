@@ -235,12 +235,15 @@ const live = await page.evaluate(({ splits }) => {
   try { b = bestTimes(); } catch (e) { err = String(e); }
   let profileHtml = '';
   try { profileHtml = gmProfBestTimes(); } catch (e) { err = err || String(e); }
+  /* v8-451: Die Karte zeigt nur Distanz, Zeit und Datum — Messart und Quelle stehen im Detailsheet. */
+  let sheetHtml = '';
+  try { gmOpenBtRowSheet(0); sheetHtml = document.getElementById('detailSheet').innerHTML; } catch (e) { err = err || String(e); }
   store.listActivities = origList; store.isTombstoned = origTomb;
   if (hadDay) DB[day] = prevDay; else delete DB[day];
   /* Das Datum der Messung lebt im Zeilenregister (_gmBtSlots) und im Zeilen-Sheet —
      nicht im Seiten-HTML selbst. Genau dort pruefen. */
   const slotDate = (typeof _gmBtSlots !== 'undefined' && _gmBtSlots[0]) ? _gmBtSlots[0].date : null;
-  return { b, err, profileHtml, day, slotDate };
+  return { b, err, profileHtml, sheetHtml, day, slotDate };
 }, { splits: raw(INTERVALS) });
 
 ok('LIVE · bestTimes() laeuft ohne Fehler', !live.err, live.err || '');
@@ -255,8 +258,8 @@ ok('LIVE · 5 km bleibt eine ausgewiesene Schaetzung (keine 5 gemessenen km vorh
 ok('LIVE · die Schaetzung ist damit nachweislich langsamer als die Messung',
    live.b && live.b.estPace != null && live.b.estPace > 260,
    live.b ? Math.round(live.b.estPace) + 's/km Durchschnittspace' : '—');
-ok('LIVE · die Bestzeitenseite nennt die Messung als Messung',
-   /gemessen/.test(live.profileHtml) && /Runden aus der Uhr/.test(live.profileHtml));
+ok('LIVE · die Bestzeitenseite nennt die Messung als Messung (Karte: „gemessen", Sheet: „Runden aus der Uhr")',
+   /gemessen/.test(live.profileHtml) && /Runden aus der Uhr/.test(live.sheetHtml));
 ok('LIVE · die Bestzeitenseite kennzeichnet die Schaetzung weiterhin als Schaetzung',
    /geschätzt/.test(live.profileHtml));
 /* PRAEZISIERT (2026-08-05): Die alte Pruefung suchte den Kalendertag im

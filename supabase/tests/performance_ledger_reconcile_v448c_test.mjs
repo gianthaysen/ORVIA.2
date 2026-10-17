@@ -67,16 +67,20 @@ const R0729 = realRun(4, { gmt: '2026-07-29T18:16:39Z', local: '2026-07-29T20:16
   pts: [[0, 1.61], [1, 4.0], [265, 1004.0], [2211, 5502.53]], targets: { 400: M(100, 0.2, 744), 1000: M(261, 1.2, 744), 5000: M(1996, 0.6, 1) } });
 const RUNS = [R0813, R0715, R0906, R0729];
 
+/* v8-451: Liegen Worker-Bestwerte vor, rechnet run-bests NUR noch ueber metric-eligibility (= Register). Die Fenster-
+   Rechnung aus Runden/Anzeige-Reihe bleibt fuer den Altbestand ohne Worker-Bestwerte — DIESEN Pfad pruefen R1–R9 und K2
+   weiterhin (Laeufe ohne best_efforts.distance). R10–R12 pruefen den neuen Pfad. */
+const noWorker = a => { const b = JSON.parse(JSON.stringify(a)); delete b.metrics.best_efforts.distance; return b; };
 sec('R · bisherige Anzeige (run-bests): Gesamtzeit = verstrichene Zeit');
 {
-  const one = a => RB.measuredBestsLegacy([a], { sport: 'running' });
+  const one = a => RB.measuredBestsLegacy([noWorker(a)], { sport: 'running' });
   const r1 = one(R0813), r2 = one(R0715);
   ok('R1 13.08.: 5 km nicht mehr 23:39 (Timer ohne 9:39 Pause), sondern verstrichen 1997 s', r1.k5 && r1.k5.sec === 1997, J(r1.k5));
   const bare = JSON.parse(JSON.stringify(R0813)); bare.metrics.streams = {};
   const r1b = one(bare);
   ok('R1b Gesamtaktivitaet allein (ohne Messreihe): activity_total mit verstrichener Zeit', r1b.k5 && r1b.k5.method === 'activity_total' && r1b.k5.sec === 1997 && r1b.k5.timeBasis === 'elapsed', J(r1b.k5));
   ok('R2 15.07.: 10 km nicht mehr 57:55, sondern verstrichen 4398 s', r2.k10 && r2.k10.sec === 4398 && r2.k10.sec !== 3475, J(r2.k10));
-  const all = RB.measuredBestsLegacy(RUNS, { sport: 'running' });
+  const all = RB.measuredBestsLegacy(RUNS.map(noWorker), { sport: 'running' });
   ok('R3 bestes 5 km bisherige Rechnung jetzt am Stueck: 29:29 im Halbmarathon (Anzeige-Reihe)', all.k5.sec === 1769 && all.k5.activityId === R0906.clientRecordId, J(all.k5));
   ok('R4 bestes 10 km bisherige Rechnung: 1:01:52 im Halbmarathon', all.k10.sec === 3712 && all.k10.activityId === R0906.clientRecordId, J(all.k10));
   ok('R5 1 km und Halbmarathon unveraendert (Messreihen-Fenster waren schon verstrichene Zeit)', all.k1.sec === 264 && all.k21.sec === 8468, all.k1.sec + ' / ' + all.k21.sec);
@@ -88,6 +92,11 @@ sec('R · bisherige Anzeige (run-bests): Gesamtzeit = verstrichene Zeit');
   ok('R8 widersinnige verstrichene Zeit (< Timer) wird nicht genommen', RB.totalTimeOf(weird).basis === 'timer');
   const pbs = PB.entries({ running: all });
   ok('R9 Profil-Bestzeiten (pb-sync) bekommen die Zeit am Stueck: 5 km 1769 s statt 1419 s', pbs.find(e => e.extra.targetKey === 'k5').timeSeconds === 1769);
+  /* v8-451 · mit Worker-Bestwerten: eine Rechnung — dieselben Werte wie das Register (L1–L4) */
+  const w = RB.measuredBestsLegacy(RUNS, { sport: 'running' });
+  ok('R10 v8-451 mit Worker-Bestwerten: 4:21 / 29:11 / 1:01:49 / 2:20:47 — identisch mit dem Register', w.k1.sec === 261 && w.k5.sec === 1751 && w.k10.sec === 3709 && w.k21.sec === 8447 && ['k1', 'k5', 'k10', 'k21'].every(k => w[k].method === 'worker_window'), [w.k1.sec, w.k5.sec, w.k10.sec, w.k21.sec].join('/'));
+  ok('R11 v8-451: 13.08. liefert 1995 s (verstrichenes 5-km-Fenster, wie Register L5), nicht 1997 s der ganzen Aktivitaet', RB.measuredBestsLegacy([R0813], { sport: 'running' }).k5.sec === 1995);
+  ok('R12 v8-451: pb-sync bekommt 29:11 (1751 s) statt 29:29 aus der Anzeige-Reihe', PB.entries({ running: w }).find(e => e.extra.targetKey === 'k5').timeSeconds === 1751);
 }
 
 sec('L · Register auf den Echtdaten');
@@ -109,9 +118,15 @@ sec('C · Probelauf-Vergleich mit Ursache');
 {
   const st = L.update(null, RUNS, { timeZone: TZ }).state;
   const cmp = BR.compareWithLegacy(st, RUNS).running, by = k => cmp.find(x => x.key === k);
-  ok('C1 1 km: abweichend, Ursache genauer (dieselbe Aktivitaet, mehr Messzeilen)', by('k1').verdict === 'abweichend' && by('k1').cause === 'genauer', J(by('k1')));
-  ok('C2 5 km: genauer (bisherige Rechnung findet jetzt dieselbe Aktivitaet)', by('k5').cause === 'genauer' && by('k5').bisher.sec === 1769, J(by('k5')));
-  ok('C3 10 km und HM: genauer', by('k10').cause === 'genauer' && by('k21').cause === 'genauer');
+  /* v8-451: die bisherige Rechnung nutzt fuer Laeufe mit Worker-Bestwerten dieselbe Pruefung — kein Unterschied mehr.
+     (v8-448C: 1 km/5 km/10 km/HM „genauer"; die Ursache „Anzeige-Reihe" pruefen C1b–C3b am Altbestand.) */
+  ok('C1 1 km: gleich (eine Rechnung)', by('k1').verdict === 'gleich' && by('k1').bisher.sec === 261, J(by('k1')));
+  ok('C2 5 km: gleich, 29:11 in beiden', by('k5').verdict === 'gleich' && by('k5').bisher.sec === 1751, J(by('k5')));
+  ok('C3 10 km und HM: gleich', by('k10').verdict === 'gleich' && by('k21').verdict === 'gleich');
+  const old = BR.compareWithLegacy(st, RUNS.map(noWorker)).running, byO = k => old.find(x => x.key === k);
+  ok('C1b Altbestand ohne Worker-Bestwerte: 1 km abweichend, Ursache genauer', byO('k1').verdict === 'abweichend' && byO('k1').cause === 'genauer', J(byO('k1')));
+  ok('C2b Altbestand: 5 km genauer (29:29 → 29:11)', byO('k5').cause === 'genauer' && byO('k5').bisher.sec === 1769, J(byO('k5')));
+  ok('C3b Altbestand: 10 km und HM genauer', byO('k10').cause === 'genauer' && byO('k21').cause === 'genauer');
   ok('C4 Kennung der bisherigen Bestzeit = Server-Kennung (nicht clientRecordId)', by('k1').bisher.activityId === R0729.id && by('k1').bisher.legacyId === R0729.clientRecordId);
   /* Altzustand nachgestellt: bisherige 5-km-Bestzeit 23:39 aus dem Timer — der Vergleich muss sie als „anderer Wert“
      derselben freigegebenen Aktivitaet ausweisen, nicht als gesperrt oder fehlend. */
@@ -139,7 +154,7 @@ sec('K · Bestand, Kopplung, Runden, Korrektur');
   const rec = { id: uuid(21), sportId: 'gym', source: 'garmin', status: 'completed', startedAt: '2026-06-23T14:02:30.000Z', durationSeconds: 3700, linkedActivityId: uuid(20), summary: {}, metrics: {} };
   const st = L.update(null, RUNS.concat([prim, rec]), { timeZone: TZ }).state;
   ok('K1 gekoppelte Kraft-Aufzeichnung ist keine eigene Einheit (5 statt 6), Laeufe unberuehrt', Object.keys(st.activities).length === 5 && !st.activities[uuid(21)] && !!st.activities[uuid(20)]);
-  const lapRun = JSON.parse(JSON.stringify(R0813));
+  const lapRun = noWorker(R0813);
   lapRun.metrics.streams = {};
   lapRun.metrics.splits = [{ distance: 2500, duration: 700, elapsedDuration: 700 }, { distance: 2506, duration: 718, elapsedDuration: 1297 }];
   const lr = RB.measuredBestsLegacy([lapRun], { sport: 'running' });

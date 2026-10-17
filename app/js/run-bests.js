@@ -269,6 +269,47 @@
     return num(s.distanceKm);
   }
 
+  /* v8-451 · EINE Rechnung je Laufaktivitaet. Liegen fuer einen Garmin-Lauf die Bestwerte des Workers vor (alle
+     Messzeilen, aktueller Details-Vertrag), entscheidet allein metric-eligibility — dieselbe Pruefung, aus der das
+     Leistungsregister rechnet. Vorher rechnete die Anzeige bei ausgeschaltetem Register aus der auf ≤ 300 Punkte
+     reduzierten Anzeige-Reihe (4:24 / 29:29 / 2:21:08 statt 4:21 / 29:11 / 2:20:47). Regel:
+       Worker-Bestwerte vorhanden  → nur metric-eligibility (nicht zulaessig = kein Kandidat dieser Aktivitaet)
+       keine Worker-Bestwerte      → bisherige Fenster (Runden, Messreihe, ganze Aktivitaet), unveraendert
+     Es wird nie das Minimum aus beiden Welten derselben Aktivitaet gebildet. */
+  var RUN_TARGET_M = { k1: 1000, k5: 5000, k10: 10000, k21: 21098, k42: 42195 };
+  function ME() { return O.metricEligibility || null; }
+  function workerAuthoritative(a, sport) {
+    var M = ME();
+    if (!M || sport !== 'running' || !a || a.source !== 'garmin' || typeof M.evaluate !== 'function') return false;
+    var m = a.metrics || {}, be = m.best_efforts, v = num(m.detailsVersion);
+    return !!(be && be.distance && typeof be.distance === 'object' && v != null && v >= (num(M.DETAILS_VERSION_CURRENT) || 0));
+  }
+  function evalOnce(memo, a, metric, targetM) {
+    var k = metric + ':' + targetM;
+    if (!(k in memo)) { try { memo[k] = ME().evaluate(a, metric, { targetM: targetM }); } catch (e) { memo[k] = null; } }
+    return memo[k];
+  }
+  function km3(m) { return m != null ? Math.round(m) / 1000 : null; }
+  function workerCandidates(a, t, memo) {
+    var tm = RUN_TARGET_M[t.key];
+    if (!tm) return { cand: null, act: null };
+    var e = evalOnce(memo, a, 'distanceBest', tm), cand = null, act = null;
+    if (e && e.eligible) {
+      var dm = num(e.provenance && e.provenance.distanceM);
+      cand = { sec: e.value, km: dm != null ? km3(dm) : t.km, distM: dm, laps: null, fromLap: null, method: 'worker_window', measure: 'elapsed_window' };
+    }
+    var ea = evalOnce(memo, a, 'distanceBestActive', tm);
+    if (ea && ea.eligible) {
+      var pv = ea.provenance || {}, adm = num(pv.distanceM), ms = pv.measure || null;
+      act = { sec: ea.value, km: adm != null ? km3(adm) : t.km, distM: adm, laps: null, fromLap: null,
+              method: ms === 'elapsed_window' ? 'worker_window' : (ms || 'worker_window'), measure: ms, timing: 'active',
+              timeBasis: ms === 'activity_timer' ? (pv.manual ? 'manual' : 'timer') : null,
+              pausedS: (ms === 'activity_timer' || ms === 'timer_window') && pv.pauses && pv.pauses.pausedS > 0 ? Math.round(pv.pauses.pausedS) : null };
+      if (ms === 'elapsed_window') act.upperBoundFrom = 'elapsed';
+    }
+    return { cand: cand, act: act };
+  }
+
   /* Gemessene Bestzeiten ueber alle kanonischen Laufaktivitaeten.
      activities: Ergebnis von ORVIA.activityStore.listActivities()
      opts.isTombstoned: optionale Praedikatsfunktion des Stores */
@@ -302,7 +343,9 @@
       var totalKm = distanceKm(a);
       var tt = totalTimeOf(a), totalSec = tt ? tt.sec : null;
       var sDist = null, sTime = null, sMethod = 'stream_window';
-      try {
+      var auth = workerAuthoritative(a, sport), memo = {};
+      if (auth) res.withWorker = (res.withWorker || 0) + 1;
+      if (!auth) try {
         var strm = a.metrics && a.metrics.streams;
         if (strm && Array.isArray(strm.distance) && strm.distance.length >= 2) {
           sTime = streamTimeAxis(strm);
@@ -320,9 +363,23 @@
       } catch (e) {}
       targets.forEach(function (t) {
         var cand = null;
+        if (auth) {
+          /* Vorfilter: kuerzer als die Zielstrecke ⇒ weder Fenster noch ganze Aktivitaet moeglich (spart die Pruefung) */
+          if (totalKm != null && totalKm * 1000 < RUN_TARGET_M[t.key] - 1) return;
+          var wc = workerCandidates(a, t, memo);
+          if (wc.act) {
+            wc.act.targetKm = t.km; wc.act.activityId = id; wc.act.date = day;
+            if (!res.active[t.key] || wc.act.sec < res.active[t.key].sec) res.active[t.key] = wc.act;
+          }
+          if (wc.cand) {
+            wc.cand.targetKm = t.km; wc.cand.activityId = id; wc.cand.date = day; wc.cand.timing = 'elapsed';
+            if (!res[t.key] || wc.cand.sec < res[t.key].sec) res[t.key] = wc.cand;
+          }
+          return;
+        }
         if (sDist) {
           var sw = bestWindowFromStreams(sDist, sTime, t.km, slack);
-          if (sw) cand = { sec: sw.sec, km: sw.km, laps: null, fromLap: null,
+          if (sw) cand = { sec: sw.sec, km: sw.km, distM: sw.km != null ? Math.round(sw.km * 1000) : null, laps: null, fromLap: null,
                            samples: sw.samples, method: sMethod };
         }
         if (splits) {
@@ -333,7 +390,7 @@
              Zeit ergaebe. Gegen eine echte Zeitachse ('stream_window') entscheidet
              wie bisher allein die kuerzere Zeit (beides Messungen). */
           if (w && (!cand || cand.method === 'stream_uniform' || w.sec < cand.sec)) {
-            cand = { sec: w.sec, km: w.km, laps: w.laps, fromLap: w.fromLap, method: 'lap_window' };
+            cand = { sec: w.sec, km: w.km, distM: w.km != null ? Math.round(w.km * 1000) : null, laps: w.laps, fromLap: w.fromLap, method: 'lap_window' };
           }
         }
         /* Ohne passende Runden: die Aktivitaet selbst, aber nur wenn ihre eigene
@@ -341,7 +398,7 @@
         if (totalKm != null && totalSec != null && totalSec > 0
             && totalKm + 1e-9 >= t.km && totalKm <= t.km * (1 + slack) + 1e-9) {
           if (!cand || totalSec < cand.sec) {
-            cand = { sec: Math.round(totalSec), km: Math.round(totalKm * 100) / 100,
+            cand = { sec: Math.round(totalSec), km: Math.round(totalKm * 100) / 100, distM: Math.round(totalKm * 1000),
                      laps: null, fromLap: null, method: 'activity_total', timeBasis: tt.basis };
           }
         }
@@ -354,7 +411,7 @@
           ? num(a.metrics.streams.distance[a.metrics.streams.distance.length - 1]) : null;
         var actKm = rowKm != null ? rowKm / 1000 : totalKm;
         if (at && actKm != null && overOk(actKm, t.km) && (!act || at.sec < act.sec)) {
-          act = { sec: Math.round(at.sec), km: Math.round(actKm * 100) / 100, laps: null, fromLap: null, method: 'activity_timer', timeBasis: at.basis, timing: 'active',
+          act = { sec: Math.round(at.sec), km: Math.round(actKm * 100) / 100, distM: Math.round(actKm * 1000), laps: null, fromLap: null, method: 'activity_timer', timeBasis: at.basis, timing: 'active',
                   pausedS: (elK != null && tmK != null && elK > tmK) ? Math.round(elK - tmK) : null };
         }
         if (act) {

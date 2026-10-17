@@ -62,7 +62,8 @@ if (haveOld) {
   writeFileSync(pl, readFileSync(pl, 'utf8').replace(/var CALC_VERSION = 'ledger@\d+'/, "var CALC_VERSION = 'ledger@1'"));
 }
 const sw3 = readFileSync(join(V3, 'sw.js'), 'utf8');
-const CACHE3 = (sw3.match(/const C = '([^']+)'/) || [])[1] + '-' + (sw3.match(/const REV = '([^']+)'/) || [])[1];
+const BUILD3 = (sw3.match(/const C = '([^']+)'/) || [])[1];          // aktuelle Auslieferung (ab v8-450; v8-451: nicht mehr fest verdrahtet)
+const CACHE3 = BUILD3 + '-' + (sw3.match(/const REV = '([^']+)'/) || [])[1];
 
 /* ---- Server wie GitHub Pages --------------------------------------------------------------------- */
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2' };
@@ -150,11 +151,11 @@ try {
              ls: { profile: localStorage.getItem('orvia_profile_v1'), acts: localStorage.getItem('orvia_activities_local'), garmin: localStorage.getItem('orvia_garmin_link') },
              engineVersion: (window.ORVIA || {}).engineVersion || null };
   }, CACHE3);
-  ok('U3 Build einheitlich: Seite orvia-v8-450, Cache ' + CACHE3, st.meta === 'orvia-v8-450' && st.keys.includes(CACHE3), JSON.stringify(st.keys));
+  ok('U3 Build einheitlich: Seite ' + BUILD3 + ', Cache ' + CACHE3, st.meta === BUILD3 && st.keys.includes(CACHE3), JSON.stringify(st.keys));
   ok('U4 veraltete App-Caches entfernt (nur noch EIN orvia-Cache), fremder Cache bleibt', st.keys.filter(k => /^orvia-/.test(k)).length === 1 && st.tile === 'kachel', JSON.stringify(st.keys));
   ok('U5 Nutzerdaten unberuehrt: localStorage (Profil, Korrekturen, Garmin-Verknuepfung) und IndexedDB', /Wochenplan A/.test(st.ls.profile || '') && /"manual":4500/.test(st.ls.acts || '') && st.ls.garmin === 'verbunden' && st.db === 'nutzerdaten');
   ok('U6 im Cache steht performance-ledger.js mit ledger@2', /CALC_VERSION = 'ledger@2'/.test(st.pl));
-  ok('U7 Engine-Version ohne Inhaltskennung (v8-450)', st.engineVersion === 'v8-450', String(st.engineVersion));
+  ok('U7 Engine-Version ohne Inhaltskennung (' + BUILD3.replace(/^orvia-/, '') + ')', st.engineVersion === BUILD3.replace(/^orvia-/, ''), String(st.engineVersion));
   /* kein altes Modul: jede gespeicherte Datei = Datei der Auslieferung v8-450 */
   const want = {};
   const assets = Function('"use strict"; return ' + /const ASSETS = (\[[\s\S]*?\]);/.exec(sw3)[1] + ';')();

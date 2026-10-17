@@ -1,4 +1,4 @@
-const C = 'orvia-v8-450';   /* CACHE-INTEGRITAET (2026-10-16) · v8-450:
+const C = 'orvia-v8-451';   /* CACHE-INTEGRITAET (2026-10-16) · eingefuehrt mit v8-450:
 
    BEFUND (nachgewiesen an origin/main): zwei verschiedene Auslieferungen trugen dieselbe Kennung
    v8-449 — „Deploy v8-449" 5933b20 (v8-448C, performance-ledger.js mit ledger@1) und
@@ -4329,7 +4329,7 @@ const C = 'orvia-v8-450';   /* CACHE-INTEGRITAET (2026-10-16) · v8-450:
    Stelle. Neu: supabase/tests/run-all.mjs wertet den Exit-Code aus statt Text zu durchsuchen.
    Zuvor v8-251: Wochenplan-Projektion (Phase 8.1/8.2). */
 /* v8-450 · Inhaltskennung der ausgelieferten Dateien — NICHT von Hand aendern: node app/tools/gen-sw-rev.mjs */
-const REV = 'fac7d0de7faf';
+const REV = '92a944cf93a9';
 const CACHE = C + '-' + REV;
 try { console.log('[ORVIA SW]', CACHE); } catch (e) {}
 const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',

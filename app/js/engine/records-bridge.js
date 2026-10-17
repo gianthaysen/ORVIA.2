@@ -27,7 +27,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'records-bridge@3';
+  var VERSION = 'records-bridge@4';   // v8-451: tatsaechliche Strecke (distM) aus der Herkunft, auch fuer die Gesamtzeit
   var RUN_KEYS = { k1: 1000, k5: 5000, k10: 10000, k21: 21098, k42: 42195 };
   var DIST_SPORTS = { running: 1, cycling: 1, swimming: 1, walking: 1, hiking: 1, rowing: 1 };
 
@@ -54,11 +54,18 @@
     Object.keys(RUN_KEYS).forEach(function (k) {
       var t = RUN_KEYS[k];
       out[k] = entryOut(S.bestOf('running.fastest_' + t + 'm@standard'), t, 'elapsed');
+      if (out[k]) {
+        var ee = S.entryOf ? S.entryOf(out[k].activityId, 'running.fastest_' + t + 'm') : null, ep = (ee && ee.provenance) || {};
+        out[k].measure = 'elapsed_window';
+        out[k].distM = ep.distanceM || null;
+        if (ep.distanceM) out[k].km = Math.round(ep.distanceM) / 1000;
+      }
       var ae = entryOut(S.bestOf('running.fastest_' + t + 'm_active@standard'), t, 'active');
       if (ae) {
         var en = S.entryOf ? S.entryOf(ae.activityId, 'running.fastest_' + t + 'm_active') : null, pv = (en && en.provenance) || {};
         ae.measure = pv.measure || null;
-        ae.km = pv.distanceM ? Math.round(pv.distanceM / 10) / 100 : ae.km;
+        ae.distM = pv.distanceM || null;
+        ae.km = pv.distanceM ? Math.round(pv.distanceM) / 1000 : ae.km;
         ae.pausedS = (pv.measure === 'activity_timer' || pv.measure === 'timer_window') && pv.pauses && pv.pauses.pausedS > 0 ? pv.pauses.pausedS : null;
       }
       out.active[k] = ae;

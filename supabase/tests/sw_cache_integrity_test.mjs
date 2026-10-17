@@ -21,7 +21,7 @@ const C = (sw.match(/const C = '([^']+)'/) || [])[1], REV = (sw.match(/const REV
 sec('K · Kennung');
 {
   const meta = (idx.match(/name="orvia-build" content="([^"]+)"/) || [])[1];
-  ok('K1 Build v8-450, in sw.js und index.html gleich', C === 'orvia-v8-450' && meta === C, C + ' / ' + meta);
+  ok('K1 Build ab v8-450, in sw.js und index.html gleich', /^orvia-v8-(\d+)$/.test(C) && Number(C.slice(9)) >= 450 && meta === C, C + ' / ' + meta);
   ok('K2 Build-Nummer steht genau einmal in sw.js (keine zweite, vergessene Kennung)', (sw.match(/orvia-v8-\d+/g) || []).length === 1);
   const r = GEN.computeRev(APP);
   ok('K3 Inhaltskennung REV passt zum Inhalt aller vorab gespeicherten Dateien (sonst: node app/tools/gen-sw-rev.mjs)', REV === r.rev && !r.missing.length && r.files > 150, REV + ' / ' + r.rev + ' (' + r.files + ' Dateien)');
@@ -49,7 +49,7 @@ sec('L · Lebenszyklus (Handler-Simulation)');
                              put: async (k, v) => { (store[name] || (store[name] = {}))[typeof k === 'string' ? k : k.url] = v; }, add: async () => {} });
   const g = {
     self: { addEventListener: (t, fn) => { H[t] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => { g.claimed = true; } }, location: { origin: 'https://x' } },
-    caches: { open: async n => { opened.push(['open', n]); return mkCache(n); }, keys: async () => ['orvia-v8-449', 'orvia-v8-448', 'maplibre-tiles', 'orvia-v8-450-' + REV, 'workbox-precache', 'orvia-test-1-abc'],
+    caches: { open: async n => { opened.push(['open', n]); return mkCache(n); }, keys: async () => ['orvia-v8-449', 'orvia-v8-448', 'maplibre-tiles', C + '-' + REV, 'workbox-precache', 'orvia-test-1-abc'],
               delete: async k => { deleted.push(k); return true; }, match: async () => { throw new Error('caches.match (alle Caches) darf nicht mehr benutzt werden'); } },
     Request: class { constructor(u, init) { this.url = typeof u === 'string' ? u : u.url; this.mode = (u && u.mode) || 'cors'; this.cache = (init && init.cache) || 'default'; this.method = 'GET'; } },
     Response: { error: () => 'ERR' },
@@ -60,7 +60,7 @@ sec('L · Lebenszyklus (Handler-Simulation)');
   ok('L1 Aktivieren loescht NUR veraltete App-Caches (Praefix orvia-), nie den aktuellen, nie fremde', deleted.sort().join() === ['orvia-test-1-abc', 'orvia-v8-448', 'orvia-v8-449'].sort().join() && g.claimed, deleted.join());
   let resp;
   await H.fetch({ request: { method: 'GET', url: 'https://x/js/engine/performance-ledger.js', mode: 'no-cors' }, respondWith: x => { resp = x; } }); await resp;
-  ok('L2 Module nur aus dem EIGENEN Cache (' + 'orvia-v8-450-' + REV + '), nie aus irgendeinem', opened.some(([t, n]) => t === 'match' && n === 'orvia-v8-450-' + REV) && opened.filter(([t]) => t === 'match').every(([, n]) => n === 'orvia-v8-450-' + REV));
+  ok('L2 Module nur aus dem EIGENEN Cache (' + C + '-' + REV + '), nie aus irgendeinem', opened.some(([t, n]) => t === 'match' && n === C + '-' + REV) && opened.filter(([t]) => t === 'match').every(([, n]) => n === C + '-' + REV));
   ok('L3 Nachladen eines fehlenden Moduls am HTTP-Cache vorbei (no-cache)', fetched.some(f => /performance-ledger\.js/.test(f.url) && f.cache === 'no-cache'));
   fetched.length = 0;
   await H.fetch({ request: { method: 'GET', url: 'https://x/index.html', mode: 'navigate' }, respondWith: x => { resp = x; } }); await resp;

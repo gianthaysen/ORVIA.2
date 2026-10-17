@@ -174,7 +174,7 @@ sec('B · bestehende Anzeigen');
   try {
     const ov = RB.measuredRunBests(RUNS);
     ok('B5 Flag an · Bruecke: aktiv 23:38 / einschliesslich Pausen 29:11 — beide aus dem Register', ov.active.k5.sec === 1418 && ov.k5.sec === 1751 && ov.k5.method === 'ledger' && ov.active.k5.timing === 'active' && ov.k5.timing === 'elapsed', J([ov.active.k5, ov.k5]));
-    ok('B6 Bruecke: Messgrundlage und Pausen der aktiven Bestzeit (fuer die Anzeige)', ov.active.k5.measure === 'activity_timer' && ov.active.k5.pausedS === 579 && ov.active.k5.km === 5.01);
+    ok('B6 Bruecke: Messgrundlage, Pausen und tatsaechliche Strecke (5,006 km, v8-451) der aktiven Bestzeit (fuer die Anzeige)', ov.active.k5.measure === 'activity_timer' && ov.active.k5.pausedS === 579 && ov.active.k5.km === 5.006 && Math.abs(ov.active.k5.distM - 5005.73) < 0.01, J(ov.active.k5));
     const pbOn = PB.entries({ running: ov });
     ok('B7 Flag an · pb-sync bekommt weiter die Zeit einschliesslich Pausen (29:11), nie die aktive', pbOn.find(e => e.extra.targetKey === 'k5').timeSeconds === 1751);
     const cmp = BR.compareWithLegacy(ST, RUNS);

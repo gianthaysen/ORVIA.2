@@ -360,6 +360,8 @@
     if (!item || item.q === 'too_short' || num(item.s) === null) { why(c, 'missing_data'); return; }
     if (item.q !== 'measured') { why(c, 'insufficient_resolution'); return; }
     c.prov.quality = 'exact';
+    /* v8-451: tatsaechliche Strecke des Fensters (Ziel + Ueberhang des Workers) — fuer die Messdetails der Anzeige */
+    if (num(item.over_m) !== null) c.prov.distanceM = t + item.over_m;
     if ((obj(c.be.distance) || {}).basis !== 'elapsed') why(c, 'invalid_time_axis');
     needEvidence(c, 'details.distance'); needEvidence(c, 'details.time');
     if (corrected(c, 'duration') && num(c.a.durationSeconds) !== null && c.a.durationSeconds < item.s) { c.prov.manual = true; why(c, 'manual_override_conflict'); }
@@ -405,7 +407,7 @@
     var cands = [];
     var da = obj(c.be.distance_active), it = da ? obj((obj(da.targets) || {})[String(t)]) : null;
     if (da && da.status === 'ok' && it && it.q === 'measured' && num(it.s) !== null) {
-      cands.push({ v: it.s, kind: 'timer_window', basis: 'best_efforts.distance_active.targets.' + t + ' (Timer, alle Messzeilen)', quality: 'exact' });
+      cands.push({ v: it.s, kind: 'timer_window', basis: 'best_efforts.distance_active.targets.' + t + ' (Timer, alle Messzeilen)', quality: 'exact', distanceM: num(it.over_m) !== null ? t + it.over_m : null });
     }
     var conflict = !!(da && num(da.conflicts) !== null && da.conflicts > 0);
     /* B: Zeit UND Strecke aus DERSELBEN Messzeile — der letzten der Detailantwort (Timer-Summe sumDuration →
@@ -424,7 +426,7 @@
       }
     }
     var eE = evaluate(c.a, 'distanceBest', { targetM: t });
-    if (eE.eligible) cands.push({ v: eE.value, kind: 'elapsed_window', basis: 'best_efforts.distance.targets.' + t + ' (verstrichene Zeit — Obergrenze der aktiven)', quality: 'exact' });
+    if (eE.eligible) cands.push({ v: eE.value, kind: 'elapsed_window', basis: 'best_efforts.distance.targets.' + t + ' (verstrichene Zeit — Obergrenze der aktiven)', quality: 'exact', distanceM: eE.provenance.distanceM || null });
     if (!cands.length) {
       if (conflict && it && it.q === 'split_by_conflict') { why(c, 'pause_conflict'); return; }
       why(c, (it && it.q === 'coarse') ? 'insufficient_resolution' : 'missing_data');

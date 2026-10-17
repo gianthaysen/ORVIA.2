@@ -92,7 +92,9 @@ function stubFlags(state) { return { describe: f => ({ known: f === 'performance
   ok('B5 Register geladen: on', BR.mode() === 'on', BR.mode());
   const ov = RB.measuredRunBests(ALL);
   ok('B6 Laufbestzeiten kommen NUR aus dem Register (method ledger)', ov.k5 && ov.k5.method === 'ledger' && ov.k5.sec === 1445 && ov.k5.activityId === uuid(2), J(ov.k5));
-  ok('B7 Laufband-5-km (21:40) zaehlt nicht — wie im Register', ov.k5.sec !== 1300 && JSON.parse(legacyRB).k5.sec <= 1300);
+  /* v8-451: auch die bisherige Rechnung prueft Laeufe mit Worker-Bestwerten ueber metric-eligibility — das Laufband zaehlt
+     bei ausgeschaltetem Register ebenfalls nicht mehr (vorher: 21:40 als „Gesamtaktivitaet"). */
+  ok('B7 Laufband-5-km (21:40) zaehlt nicht — im Register und (seit v8-451) auch bei Flag aus', ov.k5.sec !== 1300 && JSON.parse(legacyRB).k5.sec !== 1300 && JSON.parse(legacyRB).k5.sec === 1445, String(JSON.parse(legacyRB).k5.sec));
   ok('B8 Rad/Schwimmen (vom Register nicht gefuehrt) unveraendert', J(RB.measuredAllBests(ALL).cycling) === J(RB.measuredBestsLegacy(ALL, { sport: 'cycling' })));
   const acOn = AC.computeAchievements(ALL), acOff = JSON.parse(legacyAC);
   const lo = acOn.milestones.find(m => m.id === 'run_longest'), loOff = acOff.milestones.find(m => m.id === 'run_longest');
@@ -230,7 +232,7 @@ sec('D · Echtdaten-Probelauf');
   S._reset();
   const r4 = await S.dryRun({ activities: ALL }, { flags: off, repo: noMig, cache, uid: () => 'u', tombstones: () => [], declared: () => ({}), emit: () => {}, timeZone: TZ });
   ok('D4 Probelauf braucht Migration 0051 nicht (keine Register-Tabelle, kein Vermerk-Abruf)', r4.ok && r4.report.records.length === r.report.records.length);
-  ok('D3 Vergleich bisher ↔ Register je Distanz (bisherige Bestzeit stammt vom Laufband, Register nicht)', cmp.verdict === 'abweichend' && cmp.bisher.activityId === uuid(3) && cmp.register.sec === 1445 && cmp.register.activityId === uuid(2), J(cmp));
+  ok('D3 Vergleich bisher ↔ Register je Distanz (v8-451: eine Rechnung — Laufband zaehlt in keiner, beide 1445 s)', cmp.verdict === 'gleich' && cmp.bisher.activityId === uuid(2) && cmp.register.sec === 1445 && cmp.register.activityId === uuid(2), J(cmp));
 }
 
 sec('M · Zwischenspeicher');

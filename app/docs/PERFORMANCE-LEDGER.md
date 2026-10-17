@@ -121,8 +121,8 @@ wird rückwirkend rekonstruiert.
 
 | Bestehend | Flag aus (`off`) | Flag an, Register lädt (`pending`) | Register bereit (`on`) |
 |---|---|---|---|
-| `run-bests.js` Lauf 1 km … Marathon, einschließlich Pausen (`k1…k42`) | bisherige Rechnung | unverändert angezeigt | **nur** Register (`…m@standard`) |
-| `run-bests.js` Lauf, aktive Trainingsbestzeit (`active.k1…k42`) | bisherige Rechnung (Timer der ganzen Aktivität, Teilstücke als Obergrenze) | unverändert angezeigt | **nur** Register (`…m_active@standard`) |
+| `run-bests.js` Lauf 1 km … Marathon, einschließlich Pausen (`k1…k42`) | seit v8-451: Läufe mit Worker-Bestwerten über `metric-eligibility` (= Register-Prüfung), übrige bisherige Fenster | unverändert angezeigt | **nur** Register (`…m@standard`) |
+| `run-bests.js` Lauf, aktive Trainingsbestzeit (`active.k1…k42`) | seit v8-451: wie links (`distanceBestActive`), übrige: Timer der ganzen Aktivität, Teilstücke als Obergrenze | unverändert angezeigt | **nur** Register (`…m_active@standard`) |
 | `run-bests.js` Rad / Schwimmen | unverändert | unverändert | unverändert (kennt das Register nicht) |
 | `engine/pb-sync.js` → Profil, Zonen, Prognose | Bestzeit **einschließlich Pausen** | **pausiert** (kein Hin-und-her) | Register, **einschließlich Pausen** — nie die aktive |
 | `achievements.js` Einzelmaxima | unverändert | unverändert | nur freigegebene Distanzen, Kontext standard |
@@ -190,3 +190,21 @@ die Zeile, aus der auch die Distanz stammt.
 
 Exakte aktive Teilstücke (z. B. 5 km aus einem 7-km-Lauf mit Pause) brauchen die Timer-Summe **je Messzeile** — die rechnet erst der Worker v8-449.1
 (`best_efforts.distance_active`); für den Bestand einmaliger Neuabruf mit `DETAIL_REFETCH_ACTIVE=1`. Bis dahin: Gesamtzeit oder Obergrenze, je Wert benannt.
+
+## 12 · Eine Rechnung auch bei ausgeschaltetem Flag (v8-451)
+
+Befund 17.10.2026: Mit Flag aus zeigte die App 1 km 4:24, 5 km (Gesamtzeit) 29:29, Halbmarathon 2:21:08; der Probelauf 4:21 / 29:11 / 2:20:47.
+Ursache: `run-bests` rechnete die Fenster aus der Anzeige-Reihe (≤ 300 Punkte), das Register aus `best_efforts` des Workers (alle Messzeilen).
+
+Regel seit v8-451 (je Aktivität, nie gemischt):
+
+| Lauf | Rechnung |
+|---|---|
+| Garmin, aktueller Details-Vertrag, `best_efforts.distance` vorhanden | **nur** `metric-eligibility.evaluate(a, 'distanceBest' / 'distanceBestActive', {targetM})` — nicht zulässig (z. B. Laufband, Korrekturkonflikt) = kein Kandidat dieser Aktivität |
+| sonst (Altbestand, eigene Eingaben) | bisherige Fenster (Runden, Messreihe, ganze Aktivität), unverändert |
+
+Folge: Flag aus und Flag an liefern auf den 15 echten Läufen identische Werte (Test `best_times_v451` D3/S6). `dryRun().report.legacyComparison`
+zeigt deshalb für Läufe mit Worker-Bestwerten `gleich` (vorher `genauer`). Laufband-Läufe zählen auch bei ausgeschaltetem Flag nicht mehr.
+Jede Bestzeit trägt ihre tatsächliche Strecke `distM` (Ziel + Überhang des Workers bzw. Distanz der letzten Messzeile); die Brücke reicht sie für beide
+Zeitkategorien durch. Neue Methode `worker_window` (Etikett „gemessen · alle Messpunkte der Uhr").
+
