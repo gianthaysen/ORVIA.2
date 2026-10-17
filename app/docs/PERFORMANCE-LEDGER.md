@@ -207,4 +207,3 @@ Folge: Flag aus und Flag an liefern auf den 15 echten Läufen identische Werte (
 zeigt deshalb für Läufe mit Worker-Bestwerten `gleich` (vorher `genauer`). Laufband-Läufe zählen auch bei ausgeschaltetem Flag nicht mehr.
 Jede Bestzeit trägt ihre tatsächliche Strecke `distM` (Ziel + Überhang des Workers bzw. Distanz der letzten Messzeile); die Brücke reicht sie für beide
 Zeitkategorien durch. Neue Methode `worker_window` (Etikett „gemessen · alle Messpunkte der Uhr").
-
