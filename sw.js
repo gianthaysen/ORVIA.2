@@ -1,4 +1,27 @@
-const C = 'orvia-v8-449';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
+const C = 'orvia-v8-450';   /* CACHE-INTEGRITAET (2026-10-16) · v8-450:
+
+   BEFUND (nachgewiesen an origin/main): zwei verschiedene Auslieferungen trugen dieselbe Kennung
+   v8-449 — „Deploy v8-449" 5933b20 (v8-448C, performance-ledger.js mit ledger@1) und
+   „Deploy v8-449" 9ddce26 (v8-449.1, ledger@2). sw.js war in beiden BYTEGLEICH. Der Browser
+   erkennt ein Update aber nur an geaenderten Bytes von sw.js: kein neuer Worker, kein neuer
+   Cache, und der cache-first-Abruf lieferte aus dem alten Cache (v8-449) weiter ledger@1 —
+   obwohl auf GitHub Pages ledger@2 lag. „Bypass for network" ging am Cache vorbei, deshalb
+   war es dort richtig. Ursache war der Release-Prozess, nicht der Browser.
+
+   KORREKTUR — drei Sicherungen, jede fuer sich ausreichend:
+     1. Inhaltskennung REV (unten): SHA-256 ueber ALLE vorab gespeicherten Dateien, erzeugt mit
+        node app/tools/gen-sw-rev.mjs. Jede Aenderung an einer ausgelieferten Datei aendert
+        damit die Bytes von sw.js und den Cache-Namen (CACHE = C + '-' + REV) — auch wenn die
+        Build-Nummer vergessen wird. Ein Test (sw_cache_integrity) schlaegt fehl, wenn REV
+        nicht zum Inhalt passt; ohne gruene Suite kein Deploy.
+     2. deploy.sh verweigert eine Auslieferung, deren Build-Nummer schon live ist, wenn sich
+        der Inhalt unterscheidet.
+     3. Abruf nur noch aus dem EIGENEN Cache (nicht aus irgendeinem), Nachladen und Navigation
+        am HTTP-Cache vorbei (no-cache = Revalidierung). Beim Aktivieren werden NUR veraltete
+        App-Caches (Praefix orvia-) entfernt — nie IndexedDB, localStorage oder fremde Caches.
+
+   ============================================================
+   TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
 
    Der Upload von v8-354 war unvollstaendig: js/ und sw.js kamen an,
    styles.css NICHT (live weiterhin `.toast{z-index:99}`). Der Cache-Name
@@ -4305,7 +4328,10 @@ const C = 'orvia-v8-449';   /* TEILDEPLOY REPARIEREN (2026-08-17) · v8-355:
    weeklyReviewHTML) — der Vertrag war die ganze Zeit erfuellt, der Test zeigte auf die alte
    Stelle. Neu: supabase/tests/run-all.mjs wertet den Exit-Code aus statt Text zu durchsuchen.
    Zuvor v8-251: Wochenplan-Projektion (Phase 8.1/8.2). */
-try { console.log('[ORVIA SW]', C); } catch (e) {}
+/* v8-450 · Inhaltskennung der ausgelieferten Dateien — NICHT von Hand aendern: node app/tools/gen-sw-rev.mjs */
+const REV = 'fac7d0de7faf';
+const CACHE = C + '-' + REV;
+try { console.log('[ORVIA SW]', CACHE); } catch (e) {}
 const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
   './assets/icons/icon-192.png','./assets/icons/icon-512.png','./assets/icons/apple-touch-icon.png',
   './assets/icons/maskable-icon-512.png','./assets/brand/orvia-symbol-only.svg','./assets/brand/orvia-favicon.svg','./assets/brand/profile-cover.jpg',
@@ -4337,20 +4363,23 @@ const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',
    beim Vorbefuellen; die Versionsnummer allein reicht dafuer nicht. */
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(C).then(c => Promise.all(ASSETS.map(a =>
+    caches.open(CACHE).then(c => Promise.all(ASSETS.map(a =>
       /* v8-417 (Gians Befund 28.09., Safari Desktop): index.html zeigte v8-416, styles.css
          und js/ waren noch v8-415 — Safari ignoriert cache:'reload' im SW-Install und fuellte
          den neuen Cache aus dem HTTP-Cache. Deshalb zusaetzlich ein Versions-Query (?v=C),
          das jeden HTTP-/CDN-Cache umgeht; abgelegt wird die Antwort unter dem PLAIN-Schluessel,
          den die Seite anfragt. Rueckfall bleibt der unversionierte add(). */
-      fetch(new Request(a + (a.indexOf('?') < 0 ? '?v=' : '&v=') + C, { cache: 'reload' }))
+      fetch(new Request(a + (a.indexOf('?') < 0 ? '?v=' : '&v=') + CACHE, { cache: 'reload' }))
         .then(res => { if (!res || !(res.ok || res.type === 'opaque')) throw new Error('bad'); return c.put(a, res); })
         .catch(() => c.add(new Request(a, { cache: 'reload' })).catch(() => c.add(a).catch(() => null)))
     ))).then(() => self.skipWaiting())
   );
 });
+/* v8-450 · Aufraeumen NUR eindeutig eigener, veralteter Anwendungs-Caches (Praefix 'orvia-', nicht der aktuelle).
+   Fremde Caches (z. B. Kartenbibliothek) und alle Nutzerdaten (IndexedDB, localStorage) bleiben unberuehrt. */
+function isStaleAppCache(k) { return typeof k === 'string' && k.indexOf('orvia-') === 0 && k !== CACHE; }
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(isStaleAppCache).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
@@ -4369,23 +4398,27 @@ self.addEventListener('fetch', e => {
   // Navigation (index.html) + env.js: NETWORK-FIRST, damit der Auth-Guard und die
   // Konfiguration nach jedem Deploy sofort aktuell sind (nie eine alte Version ohne Guard).
   if (isNav || isEnv) {
+    /* v8-450: am HTTP-Cache vorbei (no-cache = mit ETag nachfragen). GitHub Pages liefert max-age=600 — sonst
+       kaeme nach einem Deploy bis zu 10 min die alte index.html (alte Skriptliste) zu neuen Modulen. */
+    const net = isNav ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => (r && r.redirected) ? fetch(req) : r)
+                      : fetch(new Request(req, { cache: 'no-cache' }));
     e.respondWith(
-      fetch(req).then(res => {
+      net.then(res => {
         if (res && (res.ok || res.type === 'opaque')) {
           const cp = res.clone();
-          caches.open(C).then(c => c.put(isNav ? './index.html' : req, cp));
+          caches.open(CACHE).then(c => c.put(isNav ? './index.html' : req, cp));
         }
         return res;
-      }).catch(() => caches.match(isNav ? './index.html' : req))
+      }).catch(() => caches.open(CACHE).then(c => c.match(isNav ? './index.html' : req)))
     );
     return;
   }
 
-  // Übrige Assets (versioniert über C): cache-first.
+  // Übrige Assets (versioniert über CACHE): cache-first — NUR aus dem eigenen Cache, nie aus einem anderen.
   e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then(r =>
-      r || fetch(req).then(res => {
-        if (res.ok || res.type === 'opaque') { const cp = res.clone(); caches.open(C).then(c => c.put(req, cp)); }
+    caches.open(CACHE).then(c => c.match(req, { ignoreSearch: true })).then(r =>
+      r || fetch(new Request(req, { cache: 'no-cache' })).then(res => {
+        if (res.ok || res.type === 'opaque') { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); }
         return res;
       }).catch(() => Response.error())
     )

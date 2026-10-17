@@ -12750,7 +12750,8 @@ function gmOpenDashboardSettings(){
     if(window.caches&&caches.keys){
       caches.keys().then(function(ks){
         var hit=(ks||[]).filter(function(k){return /^orvia-v/.test(k);}).sort().pop();
-        if(hit)O.engineVersion=hit.replace(/^orvia-/,'');
+        /* v8-450: Cache-Name = Build + '-' + Inhaltskennung — die Engine-Version ist der Build */
+        if(hit)O.engineVersion=hit.replace(/^orvia-/,'').replace(/-[0-9a-f]{8,}$/,'');
       }).catch(function(){});
     }
   }catch(_){ }
