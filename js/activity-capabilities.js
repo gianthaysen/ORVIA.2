@@ -192,8 +192,19 @@
     return { eligible: reasons.length === 0, reasons: reasons };
   }
 
+  /* v8-452 · Rohblock einer Aktivitaet (oder null) und eine KOPIE mit nachgeladenem Rohblock — die Oberflaeche greift
+     nie selbst in metrics.ext. Der Speicher fuehrt den Rohblock nicht; die Kopie lebt nur im Arbeitsspeicher. */
+  function extOf(owner) { var m = obj(owner && owner.metrics); return m ? obj(m.ext) : null; }
+  function withExt(owner, ext) {
+    var a = obj(owner); if (!a || !obj(ext)) return owner;
+    var cp = {}; Object.keys(a).forEach(function (k) { cp[k] = a[k]; });
+    var m = obj(a.metrics) || {}, mm = {}; Object.keys(m).forEach(function (k) { mm[k] = m[k]; });
+    mm.ext = ext; cp.metrics = mm;
+    return cp;
+  }
+
   var api = {
-    of: of, has: has, ledgerEligible: ledgerEligible,
+    of: of, has: has, ledgerEligible: ledgerEligible, extOf: extOf, withExt: withExt,
     FIELDS: FIELDS, SERIES: SERIES, EXPECT: EXPECT, BASE: BASE.slice(),
     DETAILS_VERSION_CURRENT: DETAILS_VERSION_CURRENT
   };

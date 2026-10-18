@@ -5141,3 +5141,67 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
 /* Blatt ueber der Bildschirmtastatur (gmSheetKeyboardSync setzt die beiden Werte) */
 .sheet.kb-up{bottom:var(--kb-inset,0px);max-height:calc(var(--kb-vvh,100dvh) - var(--sat,0px) - 8px);padding-bottom:16px}
 
+
+/* ---------- v8-452 · Sportartspezifische Aktivitaetsanalyse (Schwimmen zuerst) ----------
+   Eine Hauptzahl in der Farbe der Sportart, darunter wenige Karten; Verlauf, Intervalle und Gleichmaessigkeit nur mit
+   Datengrundlage; Messdetails eingeklappt. Material wie die uebrigen Karten der Seite. */
+#gmActPage .aa-hero{margin:0 18px 12px;padding:18px 16px 16px;border-radius:20px;background:var(--orvia-panel-bg),var(--orvia-surface-1);
+  border:1px solid var(--orvia-panel-border);box-shadow:var(--orvia-panel-shadow)}
+#gmActPage .aa-hero-main{display:flex;flex-direction:column;gap:4px}
+#gmActPage .aa-hero-main b{font-size:40px;line-height:1;font-weight:820;letter-spacing:-.03em;color:var(--activity-primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+#gmActPage .aa-hero-main span,#gmActPage .aa-hero-sub span,#gmActPage .aa-card span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--orvia-text-tertiary)}
+#gmActPage .aa-hero-sub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--orvia-hairline,rgba(255,255,255,.07))}
+#gmActPage .aa-hero-sub div{display:flex;flex-direction:column;gap:3px;min-width:0}
+#gmActPage .aa-hero-sub b{font-size:21px;line-height:1.1;font-weight:800;letter-spacing:-.02em;color:var(--orvia-text-primary,var(--text));font-variant-numeric:tabular-nums;white-space:nowrap}
+#gmActPage .aa-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 18px 10px}
+#gmActPage .aa-card .aa-cards,#gmActPage .card .aa-cards{margin:0}
+#gmActPage .aa-cards-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+#gmActPage .aa-card{display:flex;flex-direction:column;gap:4px;min-width:0;padding:13px 13px 12px;border-radius:15px;background:var(--orvia-panel-bg),var(--orvia-surface-1);
+  border:1px solid var(--orvia-panel-border);box-shadow:var(--orvia-panel-shadow)}
+#gmActPage .aa-card b{font-size:17px;line-height:1.15;font-weight:800;letter-spacing:-.015em;color:var(--orvia-text-primary,var(--text));font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#gmActPage .aa-note{display:flex;align-items:flex-start;gap:7px;margin:0 18px 12px;font-size:11.5px;line-height:1.45;color:var(--orvia-text-tertiary)}
+#gmActPage .card .aa-note{margin:10px 0 0}
+#gmActPage .aa-note .ic{flex:0 0 auto;margin-top:1px}
+#gmActPage .aa-loading{color:var(--orvia-text-secondary)}
+#gmActPage .aa-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+#gmActPage .aa-chips button{appearance:none;font:inherit;font-size:12px;font-weight:700;min-height:32px;padding:6px 12px;border-radius:999px;cursor:pointer;
+  background:transparent;border:1px solid var(--orvia-border-subtle,rgba(255,255,255,.12));color:var(--orvia-text-secondary)}
+#gmActPage .aa-chips button[aria-selected="true"]{border-color:var(--activity-primary);color:var(--orvia-text-primary,var(--text));background:var(--activity-tint)}
+#gmActPage .aa-chips button:focus-visible,#gmActPage .aa-md summary:focus-visible{outline:2px solid var(--orvia-brand-gold,#D8BB7A);outline-offset:2px}
+#gmActPage .aa-iv{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.3fr) minmax(0,.9fr);gap:6px;align-items:baseline;padding:9px 0;
+  border-top:1px solid var(--orvia-hairline,rgba(255,255,255,.06));font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--orvia-text-primary,var(--text))}
+#gmActPage .aa-iv-head{border-top:0;padding-top:0;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--orvia-text-tertiary)}
+#gmActPage .aa-iv span{min-width:0;overflow-wrap:anywhere}
+#gmActPage .aa-iv-n{color:var(--orvia-text-tertiary);font-weight:700}
+#gmActPage .aa-iv-p{font-weight:750}
+#gmActPage .aa-iv-h{color:var(--orvia-text-secondary);text-align:right}
+#gmActPage .aa-rest{color:var(--orvia-text-tertiary);font-size:11.5px}
+#gmActPage .aa-md-card{padding-top:4px;padding-bottom:4px}
+#gmActPage .aa-md summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:46px;font-size:13.5px;font-weight:750;color:var(--orvia-text-primary,var(--text));cursor:pointer}
+#gmActPage .aa-md summary::-webkit-details-marker{display:none}
+#gmActPage .aa-md summary .ic{color:var(--orvia-text-tertiary);transition:transform .25s ease}
+#gmActPage .aa-md[open] summary .ic{transform:rotate(180deg)}
+#gmActPage .aa-md-sum,#gmActPage .aa-md-foot{margin:2px 0 10px;font-size:11.5px;line-height:1.45;color:var(--orvia-text-tertiary)}
+#gmActPage .aa-md-h{margin:12px 0 2px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--orvia-text-secondary)}
+#gmActPage .aa-md dl{margin:0}
+#gmActPage .aa-md .bts-mr{display:grid;grid-template-columns:minmax(96px,40%) minmax(0,1fr);gap:12px;padding:9px 0;border-top:1px solid var(--orvia-hairline,rgba(255,255,255,.05))}
+#gmActPage .aa-md dt{font-size:12px;color:var(--orvia-text-tertiary);line-height:1.4}
+#gmActPage .aa-md dd{margin:0;font-size:12.5px;font-weight:650;color:var(--orvia-text-primary,var(--text));line-height:1.4;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#gmActPage .aa-md dd small{display:block;margin-top:2px;font-size:11px;font-weight:500;color:var(--orvia-text-tertiary)}
+#gmActPage .aa-z{display:grid;grid-template-columns:26px minmax(0,1fr) 52px 40px;gap:8px;align-items:center;padding:6px 0;font-size:12px;font-variant-numeric:tabular-nums;color:var(--orvia-text-primary,var(--text))}
+#gmActPage .aa-z-l{font-weight:800;color:var(--orvia-text-secondary)}
+#gmActPage .aa-z-bar{height:8px;border-radius:999px;background:var(--orvia-hairline,rgba(255,255,255,.06));overflow:hidden}
+#gmActPage .aa-z-bar i{display:block;height:100%;border-radius:999px;background:var(--activity-primary)}
+#gmActPage .aa-z-v{text-align:right}
+#gmActPage .aa-z-p{text-align:right;color:var(--orvia-text-tertiary)}
+@media (min-width:560px){#gmActPage .aa-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:359px){
+  #gmActPage .aa-hero{margin:0 14px 10px;padding:16px 14px 14px}
+  #gmActPage .aa-hero-main b{font-size:34px}
+  #gmActPage .aa-hero-sub b{font-size:18px}
+  #gmActPage .aa-cards{margin:0 14px 10px;gap:8px}
+  #gmActPage .aa-iv{grid-template-columns:18px minmax(0,1fr) minmax(0,.9fr) minmax(0,1.3fr);font-size:12px}
+  #gmActPage .aa-iv-h{display:none}
+  #gmActPage .aa-md .bts-mr{grid-template-columns:minmax(0,1fr);gap:2px}
+}
+@media (prefers-reduced-motion:reduce){#gmActPage .aa-md summary .ic{transition:none}}
