@@ -9445,7 +9445,7 @@ var GM_AA_LABEL={environment:'aa.m.environment',distance:'aa.m.distance',duratio
   cadenceSeries:'aa.m.cadenceSeries',elevationSeries:'aa.m.elevationSeries',powerSeries:'aa.m.powerSeries',powerCurve:'aa.m.powerCurve',laps:'aa.m.laps',lengths:'aa.m.lengths',route:'aa.m.route',
   calories:'aa.m.calories',trainingEffect:'aa.m.trainingEffect',trainingLoad:'aa.m.trainingLoad',runningCadence:'aa.m.runningCadence',cyclingCadence:'aa.m.cyclingCadence',strideLength:'aa.m.strideLength',
   elevationGain:'aa.m.elevationGain',avgPower:'aa.m.avgPower',maxPower:'aa.m.maxPower',normPower:'aa.m.normPower',exercises:'aa.m.exercises',workingSets:'aa.m.workingSets',reps:'aa.m.reps',volume:'aa.m.volume',timeAxis:'aa.m.timeAxis'};
-var GM_AA_CHART={pace100:'aa.c.pace',paceKm:'aa.c.pace',speedKmh:'aa.c.speed',hr:'aa.c.hr',strokeRate:'aa.c.strokeRate',swolf:'aa.c.swolf',cadence:'aa.c.cadence',power:'aa.c.power',elevation:'aa.c.elevation'};
+var GM_AA_CHART={lengthPace:'aa.c.lengthPace',lengthSwolf:'aa.c.lengthSwolf',pace100:'aa.c.pace',paceKm:'aa.c.pace',speedKmh:'aa.c.speed',hr:'aa.c.hr',strokeRate:'aa.c.strokeRate',swolf:'aa.c.swolf',cadence:'aa.c.cadence',power:'aa.c.power',elevation:'aa.c.elevation'};
 var GM_AA_CTX={pool:'aa.ctx.pool',open_water:'aa.ctx.open_water',indoor:'aa.ctx.indoor',virtual:'aa.ctx.virtual',outdoor:'aa.ctx.outdoor'};
 var GM_AA_SRC={garmin_list:'aa.src.garmin_list',garmin_details:'aa.src.garmin_details',garmin_extras:'aa.src.garmin_extras',own:'aa.src.own',manual:'aa.src.manual',derived:'aa.src.derived'};
 var GM_AA_ST={not_delivered:'aa.st.not_delivered',not_imported:'aa.st.not_imported',not_stored:'aa.st.not_stored',not_loaded:'aa.st.not_loaded',not_applicable:'aa.st.not_applicable'};
@@ -9461,6 +9461,7 @@ var GM_AA_WHY={field_absent:'aa.why.not_delivered',series_absent:'aa.why.not_del
   zero_value:'aa.why.zero_value',same_as_main:'aa.why.same_as_main',needs_timer_and_moving_time:'aa.why.needs_inputs',moving_above_timer:'aa.why.implausible',
   matches_garmin_avg_speed:'aa.why.matches_avg_speed',strokes_per_length_times_lengths:'aa.why.strokes_check',swolf_definition:'aa.why.swolf_check',strokes_per_moving_minute:'aa.why.stroke_rate_check',
   distance_per_stroke:'aa.why.stroke_distance_check',garmin_zones:'aa.why.garmin_zones',garmin_estimate:'aa.why.garmin_estimate',
+  active_lengths_match:'aa.why.active_lengths_match',active_lengths_mismatch:'aa.why.active_lengths_mismatch',lap_sums_match:'aa.why.lap_sums_match',laps_without_lengths:'aa.why.laps_without_lengths',
   other_cadence_kind:'aa.why.not_delivered',stats_missing:'aa.why.not_delivered',not_computed:'aa.why.not_delivered',elapsed_below_timer:'aa.why.implausible'};
 function gmAaT(map,k,fb){var key=map[k];return key?_uiT(key):(fb!=null?fb:String(k||''));}
 /* Owner mit Rohblock (Kopie, nie in den Speicher zurueck) + Ladezustand fuer describeActivity */
@@ -9558,7 +9559,8 @@ function gmAaMountChart(md,aid){
   var vals=[],times=[];
   c.values.forEach(function(v,i){if(v==null)return;vals.push(v);times.push(c.times?gmAaClock(c.times[i]):null);});
   if(vals.length<3)return;
-  if(!c.times)times=vals.map(function(_,i){var p=Math.round(i/(vals.length-1)*100);return i===0?'Start':(i===vals.length-1?'Ende':(p+'%'));});
+  if(c.labels){times=[];c.values.forEach(function(v,i){if(v!=null)times.push(_uiT('aa.sw.l_label',{n:c.labels[i]}));});}
+  else if(!c.times)times=vals.map(function(_,i){var p=Math.round(i/(vals.length-1)*100);return i===0?'Start':(i===vals.length-1?'Ende':(p+'%'));});
   ORVIA.charts.richChart(el,{label:gmAaT(GM_AA_CHART,c.id),series:vals,times:times,unit:c.unit,color:GM_ACT_CHART_COLOR,baseline:Math.round(c.mean*100)/100,higherBetter:c.higherBetter!==false,dec:c.dec,
     fmtValue:c.kind==='pace'?gmAaClock:undefined,neutralMarks:true});
 }
@@ -9586,7 +9588,95 @@ function gmAaEffHtml(md){
     '<div class="aa-card"><b>± '+gmEsc(gmAaNum(e.cvPct,1))+' %</b><span>'+gmEsc(_uiT('aa.eff.cv'))+'</span></div>'+
     '<div class="aa-card"><b>'+gmEsc(fp(e.bestPace))+'</b><span>'+gmEsc(_uiT('aa.eff.best',{n:e.best}))+'</span></div>'+
     '<div class="aa-card"><b>'+gmEsc(fp(e.worstPace))+'</b><span>'+gmEsc(_uiT('aa.eff.worst',{n:e.worst}))+'</span></div></div>'+
-    '<div class="aa-note">'+gmEsc(_uiT('aa.eff.def',{n:e.intervals}))+'</div></div>';
+    '<div class="aa-note">'+gmEsc(e.definition==='swim'?_uiT('aa.eff.def_swim',{n:e.intervals,s:gmAaT(GM_SW_STROKE,e.stroke)}):_uiT('aa.eff.def',{n:e.intervals}))+'</div></div>';
+}
+/* ---------- v8-453 · Schwimmintervalle, Pausen und Bahnen ----------
+   Modell: js/engine/swim-intervals.js (ueber activity-analysis, md.swim). Diese Seite zeichnet nur.
+   Bahnen erst beim Aufklappen (einzelnes Intervall), nie alle auf einmal. Auffaellige Bahnen dezent markiert, nie korrigiert. */
+var _gmSwModel={};          /* aid -> Schwimm-Modell der geoeffneten Aktivitaet */
+var _gmSwOpen={};           /* aid -> {Intervallnummer: true} */
+var GM_SW_STROKE={freestyle:'aa.sw.stroke.freestyle',breaststroke:'aa.sw.stroke.breaststroke',backstroke:'aa.sw.stroke.backstroke',butterfly:'aa.sw.stroke.butterfly',mixed:'aa.sw.stroke.mixed',unknown:'aa.sw.stroke.unknown'};
+var GM_SW_STROKE_S={freestyle:'aa.sw.strokeS.freestyle',breaststroke:'aa.sw.strokeS.breaststroke',backstroke:'aa.sw.strokeS.backstroke',butterfly:'aa.sw.strokeS.butterfly',mixed:'aa.sw.strokeS.mixed',unknown:'aa.sw.strokeS.unknown'};
+var GM_SW_CHK={match:'aa.sw.chk.match',mismatch:'aa.sw.chk.mismatch','n/a':'aa.sw.chk.na'};
+function gmSwM(m){return Math.round(m).toLocaleString('de-DE')+' m';}
+function gmSwHtml(md,aid){
+  var sw=md&&md.swim;if(!sw)return '';
+  _gmSwModel[aid]=sw;var open=_gmSwOpen[aid]||{},t=sw.totals;
+  var sum=[];
+  if(t.activeTime!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.activeTime))+'</b><span>'+gmEsc(_uiT('aa.sw.active'))+'</span></div>');
+  if(t.restInside!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.restInside+t.restBetween))+'</b><span>'+gmEsc(_uiT('aa.sw.rest_total'))+'</span></div>');
+  if(t.pace100Active!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.pace100Active))+'</b><span>'+gmEsc(_uiT('aa.sw.pace_active'))+'</span></div>');
+  var rows=sw.blocks.map(function(b){
+    if(b.kind==='rest'){
+      var sub=b.laps.length>1?_uiT('aa.sw.rest_laps',{n:b.laps.length}):(b.hr!=null?_uiT('aa.sw.hr',{v:Math.round(b.hr)}):'');
+      return '<div class="aa-sw-rest"><span class="aa-sw-rest-l">'+gmEsc(_uiT('aa.sw.rest'))+'</span><b>'+gmEsc(gmAaClock(b.duration))+'</b>'+(sub?'<small>'+gmEsc(sub)+'</small>':'')+'</div>';
+    }
+    return gmSwIvHtml(b,aid,!!open[b.n]);
+  }).join('');
+  var q=sw.quality,nq=q?(q.suspect+q.implausible):0;
+  var more=_uiT('aa.sw.sub',{n:t.intervals})+(t.restLaps?' · '+_uiT('aa.sw.sub_rest',{n:t.restLaps}):'');
+  return '<div class="card aa-sw-card"><div class="ctitle"><div class="l">'+gmEsc(_uiT('aa.iv.title_swim'))+'</div><span class="more">'+gmEsc(more)+'</span></div>'+
+    (sum.length?'<div class="aa-cards aa-cards-3 aa-sw-sum">'+sum.join('')+'</div>':'')+
+    '<div class="aa-sw-list">'+rows+'</div>'+
+    (nq?'<div class="aa-note aa-sw-qnote">'+'<span class="aa-sw-q" aria-hidden="true">≈</span><span>'+gmEsc(_uiT('aa.sw.q_note',{n:nq}))+'</span></div>':'')+
+    (!sw.lengthsLoaded?'':'<div class="aa-note">'+gmEsc(_uiT('aa.sw.tap_hint'))+'</div>')+'</div>';
+}
+function gmSwIvHtml(s,aid,isOpen){
+  var pace=s.pace100Active!=null?(gmAaClock(s.pace100Active)+' /100 m'):(s.pace100Elapsed!=null?(gmAaClock(s.pace100Elapsed)+' /100 m'):'—');
+  var meta=[];
+  if(s.activeTime!=null)meta.push(_uiT('aa.sw.m_active',{t:gmAaClock(s.activeTime)}));
+  else if(s.elapsedTime!=null)meta.push(_uiT('aa.sw.m_elapsed_only',{t:gmAaClock(s.elapsedTime)}));
+  if(s.restInside!=null&&s.restInside>=1)meta.push(_uiT('aa.sw.m_rest_inside',{t:gmAaClock(s.restInside)}));
+  if(s.activeLengths!=null)meta.push(_uiT('aa.sw.m_lengths',{n:s.activeLengths}));
+  if(s.stroke)meta.push(gmAaT(GM_SW_STROKE,s.stroke));
+  if(s.strokes!=null)meta.push(_uiT('aa.sw.m_strokes',{n:s.strokes}));
+  if(s.strokesPerLength!=null)meta.push(_uiT('aa.sw.m_spl',{v:gmAaNum(s.strokesPerLength,1)}));
+  if(s.swolf!=null)meta.push('SWOLF '+Math.round(s.swolf));
+  if(s.hr!=null)meta.push(_uiT('aa.sw.hr',{v:Math.round(s.hr)}));
+  var can=!!(s.lengths&&s.lengths.some(function(b){return b.kind==='active';}));
+  var id='gmSwL'+s.n,head='<span class="aa-sw-num">'+s.n+'</span><span class="aa-sw-main"><b>'+gmEsc(gmSwM(s.distance))+'</b><em>'+gmEsc(pace)+'</em>'+(s.pace100Active==null&&s.pace100Elapsed!=null?'<small>'+gmEsc(_uiT('aa.sw.pace_elapsed_label'))+'</small>':'')+'</span>';
+  var btn=can?'<button type="button" class="aa-sw-ivh" aria-expanded="'+isOpen+'" aria-controls="'+id+'" onclick="gmSwToggle(this,\''+gmEsc(String(aid))+'\','+s.n+')">'+head+'<span class="aa-sw-chev">'+icon('chevd','sm')+'</span></button>':'<div class="aa-sw-ivh">'+head+'</div>';
+  var qn=s.suspect?'<span class="aa-sw-qm"><span class="aa-sw-q" aria-hidden="true">≈</span> '+gmEsc(_uiT('aa.sw.m_suspect',{n:s.suspect}))+'</span>':'';
+  return '<div class="aa-sw-iv">'+btn+'<div class="aa-sw-meta">'+meta.map(function(x){return '<span>'+gmEsc(x)+'</span>';}).join('')+qn+'</div>'+
+    (can?'<div class="aa-sw-lengths" id="'+id+'"'+(isOpen?'':' hidden')+'>'+(isOpen?gmSwLengthsHtml(s):'')+'</div>':'')+'</div>';
+}
+function gmSwToggle(btn,aid,n){
+  try{
+    var sw=_gmSwModel[aid];if(!sw)return;var s=sw.intervals.filter(function(x){return x.n===n;})[0];if(!s)return;
+    var panel=document.getElementById(btn.getAttribute('aria-controls'));if(!panel)return;
+    var op=_gmSwOpen[aid]=_gmSwOpen[aid]||{},now=btn.getAttribute('aria-expanded')!=='true';
+    if(now&&!panel.innerHTML)panel.innerHTML=gmSwLengthsHtml(s);
+    panel.hidden=!now;btn.setAttribute('aria-expanded',String(now));
+    if(now)op[n]=true;else delete op[n];
+  }catch(_){ }
+}
+function gmSwLengthsHtml(s){
+  var L=s.lengths||[],act=L.filter(function(b){return b.kind==='active';});
+  var dists=act.map(function(b){return b.distance;}),uni=dists.every(function(d){return d===dists[0];});
+  var head=(uni&&dists.length?'<div class="aa-sw-pool">'+gmEsc(_uiT('aa.sw.l_pool',{l:gmSwM(dists[0])}))+'</div>':'')+'<div class="aa-sw-l aa-sw-lh" aria-hidden="true"><span>'+gmEsc(_uiT('aa.sw.l_n'))+'</span><span>'+gmEsc(_uiT('aa.sw.l_time'))+'</span><span>/100 m</span><span>'+gmEsc(_uiT('aa.sw.l_stroke'))+'</span><span>'+gmEsc(_uiT('aa.sw.l_strokes'))+'</span><span>SWOLF</span></div>';
+  var rows=L.map(function(b){
+    if(b.kind==='rest')return '<div class="aa-sw-l is-rest"><span></span><span class="aa-sw-l-rest">'+gmEsc(_uiT('aa.sw.l_rest',{t:gmAaClock(b.duration)}))+'</span></div>';
+    var ql=b.quality&&b.quality.plausibility,bad=ql==='suspect'||ql==='implausible';
+    var lab=_uiT('aa.sw.l_aria',{n:b.n,t:gmAaClock(b.duration),s:gmAaT(GM_SW_STROKE,b.stroke||'unknown')})+(bad?' — '+_uiT(ql==='implausible'?'aa.sw.q_implausible':'aa.sw.q_suspect'):'');
+    return '<div class="aa-sw-l'+(bad?' is-suspect':'')+'" role="listitem" aria-label="'+gmEsc(lab)+'"><span>'+b.n+(uni?'':' · '+gmEsc(gmSwM(b.distance)))+(bad?' <span class="aa-sw-q" title="'+gmEsc(_uiT(ql==='implausible'?'aa.sw.q_implausible':'aa.sw.q_suspect'))+'">≈</span>':'')+'</span>'+
+      '<span>'+gmEsc(gmAaClock(b.duration))+'</span><span>'+(b.pace100!=null?gmEsc(gmAaClock(b.pace100)):'—')+'</span><span>'+gmEsc(gmAaT(GM_SW_STROKE_S,b.stroke||'unknown'))+'</span>'+
+      '<span>'+(b.strokes!=null?b.strokes:'—')+'</span><span>'+(b.swolf!=null?Math.round(b.swolf):'—')+'</span></div>';
+  }).join('');
+  var tr=s.swolfTrend,foot='';
+  if(tr)foot+='<div class="aa-sw-trend">'+gmEsc(_uiT('aa.sw.trend',{s:gmAaT(GM_SW_STROKE,tr.stroke),l:gmSwM(tr.poolLength),n:tr.n,a:Math.round(tr.first),b:Math.round(tr.second)}))+'</div>';
+  if(s.suspect)foot+='<div class="aa-sw-legend"><span class="aa-sw-q" aria-hidden="true">≈</span> '+gmEsc(_uiT('aa.sw.q_legend'))+'</div>';
+  return head+'<div role="list">'+rows+'</div>'+foot;
+}
+/* Messdetails: Zeitdefinition, Pausenerkennung, Summenpruefung, Plausibilitaet, Validierung */
+function gmSwDetailsHtml(md){
+  var sw=md&&md.swim;if(!sw)return '';
+  var c=sw.sumChecks,ck=function(k){return gmAaT(GM_SW_CHK,c[k]);};
+  var p=['<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.time'))+'</p>','<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.rest'))+'</p>',
+    '<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.sums',{d:ck('distance'),l:ck('activeLengths'),s:ck('strokes'),a:ck('activeTime'),t:ck('timer')}))+'</p>'];
+  if(sw.quality)p.push('<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.quality',{p:sw.quality.plausible,s:sw.quality.suspect,i:sw.quality.implausible,u:sw.quality.unchecked}))+'</p>','<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.rule'))+'</p>');
+  else p.push('<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.no_lengths'))+'</p>');
+  p.push('<p class="aa-md-sum">'+gmEsc(_uiT('aa.sw.md.validation'))+'</p>');
+  return '<div class="aa-md-h">'+gmEsc(_uiT('aa.sw.md.title'))+'</div>'+p.join('');
 }
 /* Messdetails (eingeklappt): je Kennzahl Zustand, Quelle, Methode und Pruefstand in Klartext. Keine Rohdaten. */
 function gmAaStatusTxt(d,fam){
@@ -9618,7 +9708,7 @@ function gmAaDetailsHtml(md,owner){
   return '<div class="card aa-md-card"><details class="bts-md aa-md"><summary><span>'+gmEsc(_uiT('aa.md.toggle'))+'</span>'+icon('chevd','sm')+'</summary>'+
     (sm.length?'<p class="aa-md-sum">'+gmEsc(sm.join(' · '))+'</p>':'')+
     (md.details.some(function(d){return d.status==='available'&&d.validation==='unverified';})?'<p class="aa-md-sum">'+gmEsc(_uiT('aa.md.unverified_def'))+'</p>':'')+
-    grp(_uiT('aa.md.shown'),on)+grp(_uiT('aa.md.available'),av)+grp(_uiT('aa.md.missing'),off)+
+    gmSwDetailsHtml(md)+grp(_uiT('aa.md.shown'),on)+grp(_uiT('aa.md.available'),av)+grp(_uiT('aa.md.missing'),off)+
     '<p class="aa-md-foot">'+gmEsc(_uiT('aa.md.foot'))+'</p></details></div>';
 }
 /* Analyse-Modell der geoeffneten Aktivitaet (oder null, wenn das Modul fehlt) */
@@ -9888,7 +9978,7 @@ function gmOpenActivityPage(aid){
   var _hasStream=false;try{var _sAll=vm.canonicalStreams;if(_sAll)for(var _k in _sAll){if(Array.isArray(_sAll[_k])&&_sAll[_k].length>=3){_hasStream=true;break;}}}catch(_){ }
   /* v8-452: Schwimmen — Diagramme (Tempo, Puls, Zugfrequenz, SWOLF je nach Datenlage), Intervalle, Gleichmaessigkeit */
   if(_aaSwim){
-    h+=gmAaChartsHtml(_aa,aid)+gmAaZonesHtml(_aa)+gmAaIntervalsHtml(_aa)+gmAaEffHtml(_aa);
+    h+=gmAaChartsHtml(_aa,aid)+(_aa.swim?gmSwHtml(_aa,aid):gmAaIntervalsHtml(_aa))+gmAaEffHtml(_aa)+gmAaZonesHtml(_aa);
   }else if(run||_hasStream||splits){
     /* GM7.4.1: echte Garmin-Detail-Streams (metrics.streams, get_activity_details) —
        nur tatsächlich vorhandene Kurven, korrekt beschriftete Einheiten (Geschwindigkeit

@@ -1,0 +1,1539 @@
+{
+ "_info": "erzeugt von garmin-worker/scripts/gen_app_swim_fixture.py aus den anonymisierten Mitschnitten — nicht von Hand aendern",
+ "lap_swimming": {
+  "distance_m": 1350.0,
+  "duration_s": 4170.6259765625,
+  "metrics": {
+   "ext": {
+    "extras": {
+     "splits": "ok"
+    },
+    "fields": {
+     "activeLengths": 54,
+     "aerobicTrainingEffectMessage": "IMPACTING_TEMPO_22",
+     "anaerobicTrainingEffectMessage": "MAINTAINING_ANAEROBIC_BASE_1",
+     "autoCalcCalories": false,
+     "averageHR": 142.0,
+     "averageSpeed": 0.9269999861717224,
+     "averageSwimCadenceInStrokesPerMinute": 28.0,
+     "averageSwolf": 39.0,
+     "avgStrokeDistance": 0.0,
+     "avgStrokes": 12.5,
+     "bmrCalories": 101.0,
+     "calories": 613.0,
+     "distance": 1350.0,
+     "duration": 4170.6259765625,
+     "elapsedDuration": 4175.77978515625,
+     "elevationCorrected": false,
+     "hasIntensityIntervals": false,
+     "hasSplits": false,
+     "hrTimeInZone_1": 270.473,
+     "hrTimeInZone_2": 1619.008,
+     "hrTimeInZone_3": 1168.436,
+     "hrTimeInZone_4": 1046.148,
+     "hrTimeInZone_5": 57.339,
+     "isAutoCalcCalories": false,
+     "isElevationCorrected": false,
+     "lapCount": 10,
+     "maxHR": 183.0,
+     "maxSpeed": 2.115999937057495,
+     "minActivityLapDuration": 0.75,
+     "moderateIntensityMinutes": 11,
+     "movingDuration": 1456.93701171875,
+     "poolLength": 2500.0,
+     "strokes": 673.0,
+     "trainingEffectLabel": "TEMPO",
+     "unitOfPoolLength": "meter",
+     "vigorousIntensityMinutes": 45
+    },
+    "splits": {
+     "eventDTOs": [
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:00:00.0",
+       "startTimeGMTDoubleValue": 1767225600000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:00:02.0",
+       "startTimeGMTDoubleValue": 1767225602000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:04:19.0",
+       "startTimeGMTDoubleValue": 1767225859000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:04:21.0",
+       "startTimeGMTDoubleValue": 1767225861000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T01:09:35.0",
+       "startTimeGMTDoubleValue": 1767229775000.0
+      }
+     ],
+     "lapDTOs": [
+      {
+       "averageHR": 145.0,
+       "averageMovingSpeed": 0.6221846183992569,
+       "averageSWOLF": 64.0,
+       "averageSpeed": 0.621999979019165,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 24.0,
+       "averageSwimCadence": 36.0,
+       "bmrCalories": 6.0,
+       "calories": 39.0,
+       "distance": 75.0,
+       "duration": 257.293,
+       "elapsedDuration": 257.293,
+       "lapIndex": 1,
+       "lengthDTOs": [
+        {
+         "averageHR": 135.0,
+         "averageSWOLF": 63.0,
+         "averageSpeed": 0.5519999861717224,
+         "distance": 25.0,
+         "duration": 45.25,
+         "lengthIndex": 1,
+         "maxHR": 160.0,
+         "maxSpeed": 0.5519999861717224,
+         "startTimeGMT": "2026-01-01T00:00:01.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        },
+        {
+         "averageHR": 148.0,
+         "duration": 136.75,
+         "lengthIndex": 2,
+         "maxHR": 166.0,
+         "startTimeGMT": "2026-01-01T00:00:46.0"
+        },
+        {
+         "averageHR": 139.0,
+         "averageSWOLF": 83.0,
+         "averageSpeed": 0.5759999752044678,
+         "distance": 25.0,
+         "duration": 43.375,
+         "lengthIndex": 3,
+         "maxHR": 152.0,
+         "maxSpeed": 0.5759999752044678,
+         "startTimeGMT": "2026-01-01T00:03:03.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 40
+        },
+        {
+         "averageHR": 152.0,
+         "averageSWOLF": 46.0,
+         "averageSpeed": 0.7829999923706055,
+         "distance": 25.0,
+         "duration": 31.918,
+         "lengthIndex": 4,
+         "maxHR": 156.0,
+         "maxSpeed": 0.7829999923706055,
+         "startTimeGMT": "2026-01-01T00:03:46.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 14
+        }
+       ],
+       "maxHR": 166.0,
+       "maxSpeed": 0.7829999923706055,
+       "messageIndex": 0,
+       "movingDuration": 120.543,
+       "numberOfActiveLengths": 3,
+       "startTimeGMT": "2026-01-01T00:00:01.0",
+       "swimStroke": "FREESTYLE",
+       "totalNumberOfStrokes": 72
+      },
+      {
+       "averageHR": 151.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 0.0,
+       "calories": 0.0,
+       "distance": 0.0,
+       "duration": 2.522,
+       "elapsedDuration": 2.522,
+       "lapIndex": 2,
+       "lengthDTOs": [
+        {
+         "averageHR": 151.0,
+         "duration": 2.522,
+         "lengthIndex": 5,
+         "maxHR": 151.0,
+         "startTimeGMT": "2026-01-01T00:04:21.0"
+        }
+       ],
+       "maxHR": 152.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 1,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T00:04:21.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 163.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 6.0,
+       "calories": 53.0,
+       "distance": 0.0,
+       "duration": 238.63,
+       "elapsedDuration": 238.63,
+       "lapIndex": 3,
+       "lengthDTOs": [
+        {
+         "averageHR": 164.0,
+         "duration": 238.63,
+         "lengthIndex": 6,
+         "maxHR": 177.0,
+         "startTimeGMT": "2026-01-01T00:04:24.0"
+        }
+       ],
+       "maxHR": 177.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 2,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T00:04:24.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 153.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 0.0,
+       "calories": 2.0,
+       "distance": 0.0,
+       "duration": 10.856,
+       "elapsedDuration": 10.856,
+       "lapIndex": 4,
+       "lengthDTOs": [
+        {
+         "averageHR": 153.0,
+         "duration": 10.856,
+         "lengthIndex": 7,
+         "maxHR": 154.0,
+         "startTimeGMT": "2026-01-01T00:08:22.0"
+        }
+       ],
+       "maxHR": 154.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 3,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T00:08:22.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 146.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 4.0,
+       "calories": 33.0,
+       "distance": 0.0,
+       "duration": 169.708,
+       "elapsedDuration": 169.708,
+       "lapIndex": 5,
+       "lengthDTOs": [
+        {
+         "averageHR": 146.0,
+         "duration": 169.708,
+         "lengthIndex": 8,
+         "maxHR": 181.0,
+         "startTimeGMT": "2026-01-01T00:08:33.0"
+        }
+       ],
+       "maxHR": 181.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 4,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T00:08:33.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 161.0,
+       "averageMovingSpeed": 0.6712526859940243,
+       "averageSWOLF": 55.0,
+       "averageSpeed": 0.6710000038146972,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 18.0,
+       "averageSwimCadence": 29.0,
+       "bmrCalories": 7.0,
+       "calories": 40.0,
+       "distance": 125.0,
+       "duration": 275.656,
+       "elapsedDuration": 275.656,
+       "lapIndex": 6,
+       "lengthDTOs": [
+        {
+         "averageHR": 163.0,
+         "duration": 36.0,
+         "lengthIndex": 9,
+         "maxHR": 180.0,
+         "startTimeGMT": "2026-01-01T00:11:23.0"
+        },
+        {
+         "averageHR": 152.0,
+         "averageSWOLF": 58.0,
+         "averageSpeed": 0.656000018119812,
+         "distance": 25.0,
+         "duration": 38.125,
+         "lengthIndex": 10,
+         "maxHR": 165.0,
+         "maxSpeed": 0.656000018119812,
+         "startTimeGMT": "2026-01-01T00:11:59.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 20
+        },
+        {
+         "averageHR": 172.0,
+         "averageSWOLF": 44.0,
+         "averageSpeed": 0.8209999799728394,
+         "distance": 25.0,
+         "duration": 30.437,
+         "lengthIndex": 11,
+         "maxHR": 177.0,
+         "maxSpeed": 0.8209999799728394,
+         "startTimeGMT": "2026-01-01T00:12:37.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 14
+        },
+        {
+         "averageHR": 160.0,
+         "duration": 53.437,
+         "lengthIndex": 12,
+         "maxHR": 176.0,
+         "startTimeGMT": "2026-01-01T00:13:08.0"
+        },
+        {
+         "averageHR": 151.0,
+         "averageSWOLF": 60.0,
+         "averageSpeed": 0.6290000081062317,
+         "distance": 25.0,
+         "duration": 39.75,
+         "lengthIndex": 13,
+         "maxHR": 165.0,
+         "maxSpeed": 0.6290000081062317,
+         "startTimeGMT": "2026-01-01T00:14:01.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 20
+        },
+        {
+         "averageHR": 168.0,
+         "averageSWOLF": 72.0,
+         "averageSpeed": 0.46000000834465027,
+         "distance": 25.0,
+         "duration": 54.312,
+         "lengthIndex": 14,
+         "maxHR": 183.0,
+         "maxSpeed": 0.46000000834465027,
+         "startTimeGMT": "2026-01-01T00:14:41.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        },
+        {
+         "averageHR": 162.0,
+         "averageSWOLF": 42.0,
+         "averageSpeed": 1.059999942779541,
+         "distance": 25.0,
+         "duration": 23.595,
+         "lengthIndex": 15,
+         "maxHR": 176.0,
+         "maxSpeed": 1.059999942779541,
+         "startTimeGMT": "2026-01-01T00:15:35.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        }
+       ],
+       "maxHR": 183.0,
+       "maxSpeed": 1.059999942779541,
+       "messageIndex": 5,
+       "movingDuration": 186.219,
+       "numberOfActiveLengths": 5,
+       "startTimeGMT": "2026-01-01T00:11:23.0",
+       "swimStroke": "FREESTYLE",
+       "totalNumberOfStrokes": 90
+      },
+      {
+       "averageHR": 151.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 11.0,
+       "calories": 147.0,
+       "distance": 0.0,
+       "duration": 446.528,
+       "elapsedDuration": 446.528,
+       "lapIndex": 7,
+       "lengthDTOs": [
+        {
+         "averageHR": 151.0,
+         "duration": 446.528,
+         "lengthIndex": 16,
+         "maxHR": 182.0,
+         "startTimeGMT": "2026-01-01T00:15:58.0"
+        }
+       ],
+       "maxHR": 182.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 6,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T00:15:58.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 143.0,
+       "averageMovingSpeed": 0.9998478067940151,
+       "averageSWOLF": 36.0,
+       "averageSpeed": 1.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 13.899999618530273,
+       "averageSwimCadence": 33.0,
+       "bmrCalories": 53.0,
+       "calories": 274.0,
+       "distance": 1150.0,
+       "duration": 2201.961,
+       "elapsedDuration": 2201.961,
+       "lapIndex": 8,
+       "lengthDTOs": [
+        {
+         "averageHR": 159.0,
+         "duration": 38.0,
+         "lengthIndex": 17,
+         "maxHR": 172.0,
+         "startTimeGMT": "2026-01-01T00:23:25.0"
+        },
+        {
+         "averageHR": 155.0,
+         "averageSWOLF": 63.0,
+         "averageSpeed": 0.6259999871253966,
+         "distance": 25.0,
+         "duration": 39.937,
+         "lengthIndex": 18,
+         "maxHR": 165.0,
+         "maxSpeed": 0.6259999871253966,
+         "startTimeGMT": "2026-01-01T00:24:03.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 23
+        },
+        {
+         "averageHR": 167.0,
+         "averageSWOLF": 45.0,
+         "averageSpeed": 0.7490000128746033,
+         "distance": 25.0,
+         "duration": 33.375,
+         "lengthIndex": 19,
+         "maxHR": 172.0,
+         "maxSpeed": 0.7490000128746033,
+         "startTimeGMT": "2026-01-01T00:24:43.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 12
+        },
+        {
+         "averageHR": 150.0,
+         "duration": 58.687,
+         "lengthIndex": 20,
+         "maxHR": 171.0,
+         "startTimeGMT": "2026-01-01T00:25:16.0"
+        },
+        {
+         "averageHR": 135.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.0989999771118164,
+         "distance": 25.0,
+         "duration": 22.75,
+         "lengthIndex": 21,
+         "maxHR": 138.0,
+         "maxSpeed": 1.0989999771118164,
+         "startTimeGMT": "2026-01-01T00:26:15.0",
+         "swimStroke": "BACKSTROKE",
+         "totalNumberOfStrokes": 5
+        },
+        {
+         "averageHR": 130.0,
+         "duration": 108.25,
+         "lengthIndex": 22,
+         "maxHR": 154.0,
+         "startTimeGMT": "2026-01-01T00:26:38.0"
+        },
+        {
+         "averageHR": 132.0,
+         "averageSWOLF": 20.0,
+         "averageSpeed": 2.115999937057495,
+         "distance": 25.0,
+         "duration": 11.812,
+         "lengthIndex": 23,
+         "maxHR": 136.0,
+         "maxSpeed": 2.115999937057495,
+         "startTimeGMT": "2026-01-01T00:28:26.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 8
+        },
+        {
+         "averageHR": 149.0,
+         "averageSWOLF": 34.0,
+         "averageSpeed": 1.187000036239624,
+         "distance": 25.0,
+         "duration": 21.062,
+         "lengthIndex": 24,
+         "maxHR": 159.0,
+         "maxSpeed": 1.187000036239624,
+         "startTimeGMT": "2026-01-01T00:28:38.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 13
+        },
+        {
+         "averageHR": 160.0,
+         "averageSWOLF": 18.0,
+         "averageSpeed": 1.7940000295639038,
+         "distance": 25.0,
+         "duration": 13.937,
+         "lengthIndex": 25,
+         "maxHR": 161.0,
+         "maxSpeed": 1.7940000295639038,
+         "startTimeGMT": "2026-01-01T00:28:59.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 4
+        },
+        {
+         "averageHR": 165.0,
+         "averageSWOLF": 35.0,
+         "averageSpeed": 1.0390000343322754,
+         "distance": 25.0,
+         "duration": 24.062,
+         "lengthIndex": 26,
+         "maxHR": 175.0,
+         "maxSpeed": 1.0390000343322754,
+         "startTimeGMT": "2026-01-01T00:29:13.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 11
+        },
+        {
+         "averageHR": 139.0,
+         "duration": 102.125,
+         "lengthIndex": 27,
+         "maxHR": 175.0,
+         "startTimeGMT": "2026-01-01T00:29:37.0"
+        },
+        {
+         "averageHR": 142.0,
+         "averageSWOLF": 53.0,
+         "averageSpeed": 0.7379999756813049,
+         "distance": 25.0,
+         "duration": 33.875,
+         "lengthIndex": 28,
+         "maxHR": 155.0,
+         "maxSpeed": 0.7379999756813049,
+         "startTimeGMT": "2026-01-01T00:31:19.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 19
+        },
+        {
+         "averageHR": 166.0,
+         "averageSWOLF": 58.0,
+         "averageSpeed": 0.6150000095367432,
+         "distance": 25.0,
+         "duration": 40.625,
+         "lengthIndex": 29,
+         "maxHR": 177.0,
+         "maxSpeed": 0.6150000095367432,
+         "startTimeGMT": "2026-01-01T00:31:53.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 17
+        },
+        {
+         "averageHR": 172.0,
+         "averageSWOLF": 21.0,
+         "averageSpeed": 1.4980000257492065,
+         "distance": 25.0,
+         "duration": 16.687,
+         "lengthIndex": 30,
+         "maxHR": 178.0,
+         "maxSpeed": 1.4980000257492065,
+         "startTimeGMT": "2026-01-01T00:32:33.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 4
+        },
+        {
+         "averageHR": 147.0,
+         "duration": 39.812,
+         "lengthIndex": 31,
+         "maxHR": 162.0,
+         "startTimeGMT": "2026-01-01T00:32:50.0"
+        },
+        {
+         "averageHR": 138.0,
+         "averageSWOLF": 34.0,
+         "averageSpeed": 1.1979999542236328,
+         "distance": 25.0,
+         "duration": 20.875,
+         "lengthIndex": 32,
+         "maxHR": 146.0,
+         "maxSpeed": 1.1979999542236328,
+         "startTimeGMT": "2026-01-01T00:33:30.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 13
+        },
+        {
+         "averageHR": 156.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.253999948501587,
+         "distance": 25.0,
+         "duration": 19.937,
+         "lengthIndex": 33,
+         "maxHR": 160.0,
+         "maxSpeed": 1.253999948501587,
+         "startTimeGMT": "2026-01-01T00:33:51.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 8
+        },
+        {
+         "averageHR": 159.0,
+         "averageSWOLF": 16.0,
+         "averageSpeed": 1.8869999647140503,
+         "distance": 25.0,
+         "duration": 13.25,
+         "lengthIndex": 34,
+         "maxHR": 161.0,
+         "maxSpeed": 1.8869999647140503,
+         "startTimeGMT": "2026-01-01T00:34:11.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 3
+        },
+        {
+         "averageHR": 164.0,
+         "averageSWOLF": 48.0,
+         "averageSpeed": 0.8259999752044678,
+         "distance": 25.0,
+         "duration": 30.25,
+         "lengthIndex": 35,
+         "maxHR": 167.0,
+         "maxSpeed": 0.8259999752044678,
+         "startTimeGMT": "2026-01-01T00:34:24.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        },
+        {
+         "averageHR": 151.0,
+         "duration": 82.625,
+         "lengthIndex": 36,
+         "maxHR": 172.0,
+         "startTimeGMT": "2026-01-01T00:34:54.0"
+        },
+        {
+         "averageHR": 143.0,
+         "averageSWOLF": 43.0,
+         "averageSpeed": 0.9929999709129333,
+         "distance": 25.0,
+         "duration": 25.187,
+         "lengthIndex": 37,
+         "maxHR": 150.0,
+         "maxSpeed": 0.9929999709129333,
+         "startTimeGMT": "2026-01-01T00:36:17.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        },
+        {
+         "averageHR": 157.0,
+         "averageSWOLF": 31.0,
+         "averageSpeed": 1.031000018119812,
+         "distance": 25.0,
+         "duration": 24.25,
+         "lengthIndex": 38,
+         "maxHR": 160.0,
+         "maxSpeed": 1.031000018119812,
+         "startTimeGMT": "2026-01-01T00:36:42.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 7
+        },
+        {
+         "averageHR": 165.0,
+         "averageSWOLF": 39.0,
+         "averageSpeed": 1.0099999904632568,
+         "distance": 25.0,
+         "duration": 24.75,
+         "lengthIndex": 39,
+         "maxHR": 174.0,
+         "maxSpeed": 1.0099999904632568,
+         "startTimeGMT": "2026-01-01T00:37:06.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 14
+        },
+        {
+         "averageHR": 169.0,
+         "averageSWOLF": 14.0,
+         "averageSpeed": 1.9049999713897705,
+         "distance": 25.0,
+         "duration": 13.125,
+         "lengthIndex": 40,
+         "maxHR": 176.0,
+         "maxSpeed": 1.9049999713897705,
+         "startTimeGMT": "2026-01-01T00:37:31.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 1
+        },
+        {
+         "averageHR": 152.0,
+         "averageSWOLF": 32.0,
+         "averageSpeed": 0.9980000257492067,
+         "distance": 25.0,
+         "duration": 25.062,
+         "lengthIndex": 41,
+         "maxHR": 162.0,
+         "maxSpeed": 0.9980000257492067,
+         "startTimeGMT": "2026-01-01T00:37:44.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 7
+        },
+        {
+         "averageHR": 156.0,
+         "averageSWOLF": 54.0,
+         "averageSpeed": 0.6859999895095825,
+         "distance": 25.0,
+         "duration": 36.437,
+         "lengthIndex": 42,
+         "maxHR": 165.0,
+         "maxSpeed": 0.6859999895095825,
+         "startTimeGMT": "2026-01-01T00:38:09.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 18
+        },
+        {
+         "averageHR": 165.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.3070000410079956,
+         "distance": 25.0,
+         "duration": 19.125,
+         "lengthIndex": 43,
+         "maxHR": 171.0,
+         "maxSpeed": 1.3070000410079956,
+         "startTimeGMT": "2026-01-01T00:38:46.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 9
+        },
+        {
+         "averageHR": 150.0,
+         "duration": 77.125,
+         "lengthIndex": 44,
+         "maxHR": 171.0,
+         "startTimeGMT": "2026-01-01T00:39:05.0"
+        },
+        {
+         "averageHR": 148.0,
+         "averageSWOLF": 61.0,
+         "averageSpeed": 0.6110000014305115,
+         "distance": 25.0,
+         "duration": 40.937,
+         "lengthIndex": 45,
+         "maxHR": 169.0,
+         "maxSpeed": 0.6110000014305115,
+         "startTimeGMT": "2026-01-01T00:40:22.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 20
+        },
+        {
+         "averageHR": 171.0,
+         "averageSWOLF": 58.0,
+         "averageSpeed": 0.6359999775886536,
+         "distance": 25.0,
+         "duration": 39.312,
+         "lengthIndex": 46,
+         "maxHR": 174.0,
+         "maxSpeed": 0.6359999775886536,
+         "startTimeGMT": "2026-01-01T00:41:03.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 19
+        },
+        {
+         "averageHR": 146.0,
+         "duration": 101.75,
+         "lengthIndex": 47,
+         "maxHR": 171.0,
+         "startTimeGMT": "2026-01-01T00:41:42.0"
+        },
+        {
+         "averageHR": 122.0,
+         "duration": 168.0,
+         "lengthIndex": 48,
+         "maxHR": 140.0,
+         "startTimeGMT": "2026-01-01T00:43:24.0"
+        },
+        {
+         "averageHR": 129.0,
+         "averageSWOLF": 43.0,
+         "averageSpeed": 0.9279999732971191,
+         "distance": 25.0,
+         "duration": 26.937,
+         "lengthIndex": 49,
+         "maxHR": 136.0,
+         "maxSpeed": 0.9279999732971191,
+         "startTimeGMT": "2026-01-01T00:46:12.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 16
+        },
+        {
+         "averageHR": 143.0,
+         "averageSWOLF": 19.0,
+         "averageSpeed": 2.0409998893737793,
+         "distance": 25.0,
+         "duration": 12.25,
+         "lengthIndex": 50,
+         "maxHR": 146.0,
+         "maxSpeed": 2.0409998893737793,
+         "startTimeGMT": "2026-01-01T00:46:39.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 7
+        },
+        {
+         "averageHR": 153.0,
+         "averageSWOLF": 54.0,
+         "averageSpeed": 0.6359999775886536,
+         "distance": 25.0,
+         "duration": 39.312,
+         "lengthIndex": 51,
+         "maxHR": 164.0,
+         "maxSpeed": 0.6359999775886536,
+         "startTimeGMT": "2026-01-01T00:46:51.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 15
+        },
+        {
+         "averageHR": 148.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.0809999704360962,
+         "distance": 25.0,
+         "duration": 23.125,
+         "lengthIndex": 52,
+         "maxHR": 163.0,
+         "maxSpeed": 1.0809999704360962,
+         "startTimeGMT": "2026-01-01T00:47:30.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 5
+        },
+        {
+         "averageHR": 121.0,
+         "duration": 72.375,
+         "lengthIndex": 53,
+         "maxHR": 136.0,
+         "startTimeGMT": "2026-01-01T00:47:54.0"
+        },
+        {
+         "averageHR": 118.0,
+         "averageSWOLF": 32.0,
+         "averageSpeed": 1.215999960899353,
+         "distance": 25.0,
+         "duration": 20.562,
+         "lengthIndex": 54,
+         "maxHR": 121.0,
+         "maxSpeed": 1.215999960899353,
+         "startTimeGMT": "2026-01-01T00:49:06.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 11
+        },
+        {
+         "averageHR": 127.0,
+         "averageSWOLF": 27.0,
+         "averageSpeed": 1.3700000047683716,
+         "distance": 25.0,
+         "duration": 18.25,
+         "lengthIndex": 55,
+         "maxHR": 131.0,
+         "maxSpeed": 1.3700000047683716,
+         "startTimeGMT": "2026-01-01T00:49:27.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 9
+        },
+        {
+         "averageHR": 133.0,
+         "averageSWOLF": 26.0,
+         "averageSpeed": 1.2230000495910645,
+         "distance": 25.0,
+         "duration": 20.437,
+         "lengthIndex": 56,
+         "maxHR": 134.0,
+         "maxSpeed": 1.2230000495910645,
+         "startTimeGMT": "2026-01-01T00:49:45.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 6
+        },
+        {
+         "averageHR": 128.0,
+         "averageSWOLF": 18.0,
+         "averageSpeed": 2.0,
+         "distance": 25.0,
+         "duration": 12.5,
+         "lengthIndex": 57,
+         "maxHR": 129.0,
+         "maxSpeed": 2.0,
+         "startTimeGMT": "2026-01-01T00:50:05.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 5
+        },
+        {
+         "averageHR": 133.0,
+         "averageSWOLF": 19.0,
+         "averageSpeed": 1.8960000276565552,
+         "distance": 25.0,
+         "duration": 13.187,
+         "lengthIndex": 58,
+         "maxHR": 138.0,
+         "maxSpeed": 1.8960000276565552,
+         "startTimeGMT": "2026-01-01T00:50:18.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 6
+        },
+        {
+         "averageHR": 128.0,
+         "duration": 74.062,
+         "lengthIndex": 59,
+         "maxHR": 143.0,
+         "startTimeGMT": "2026-01-01T00:50:31.0"
+        },
+        {
+         "averageHR": 121.0,
+         "averageSWOLF": 40.0,
+         "averageSpeed": 0.9240000247955322,
+         "distance": 25.0,
+         "duration": 27.062,
+         "lengthIndex": 60,
+         "maxHR": 128.0,
+         "maxSpeed": 0.9240000247955322,
+         "startTimeGMT": "2026-01-01T00:51:45.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 13
+        },
+        {
+         "averageHR": 129.0,
+         "averageSWOLF": 35.0,
+         "averageSpeed": 1.1050000190734863,
+         "distance": 25.0,
+         "duration": 22.625,
+         "lengthIndex": 61,
+         "maxHR": 133.0,
+         "maxSpeed": 1.1050000190734863,
+         "startTimeGMT": "2026-01-01T00:52:12.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 12
+        },
+        {
+         "averageHR": 144.0,
+         "averageSWOLF": 35.0,
+         "averageSpeed": 1.0959999561309814,
+         "distance": 25.0,
+         "duration": 22.812,
+         "lengthIndex": 62,
+         "maxHR": 154.0,
+         "maxSpeed": 1.0959999561309814,
+         "startTimeGMT": "2026-01-01T00:52:35.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 12
+        },
+        {
+         "averageHR": 152.0,
+         "averageSWOLF": 33.0,
+         "averageSpeed": 0.8870000243186951,
+         "distance": 25.0,
+         "duration": 28.187,
+         "lengthIndex": 63,
+         "maxHR": 156.0,
+         "maxSpeed": 0.8870000243186951,
+         "startTimeGMT": "2026-01-01T00:52:57.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 5
+        },
+        {
+         "averageHR": 138.0,
+         "averageSWOLF": 20.0,
+         "averageSpeed": 1.503999948501587,
+         "distance": 25.0,
+         "duration": 16.625,
+         "lengthIndex": 64,
+         "maxHR": 140.0,
+         "maxSpeed": 1.503999948501587,
+         "startTimeGMT": "2026-01-01T00:53:26.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 3
+        },
+        {
+         "averageHR": 128.0,
+         "averageSWOLF": 40.0,
+         "averageSpeed": 0.8569999933242798,
+         "distance": 25.0,
+         "duration": 29.187,
+         "lengthIndex": 65,
+         "maxHR": 134.0,
+         "maxSpeed": 0.8569999933242798,
+         "startTimeGMT": "2026-01-01T00:53:42.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 11
+        },
+        {
+         "averageHR": 146.0,
+         "averageSWOLF": 29.0,
+         "averageSpeed": 1.3029999732971191,
+         "distance": 25.0,
+         "duration": 19.187,
+         "lengthIndex": 66,
+         "maxHR": 157.0,
+         "maxSpeed": 1.3029999732971191,
+         "startTimeGMT": "2026-01-01T00:54:11.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 10
+        },
+        {
+         "averageHR": 156.0,
+         "averageSWOLF": 39.0,
+         "averageSpeed": 0.8679999709129333,
+         "distance": 25.0,
+         "duration": 28.812,
+         "lengthIndex": 67,
+         "maxHR": 159.0,
+         "maxSpeed": 0.8679999709129333,
+         "startTimeGMT": "2026-01-01T00:54:31.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 10
+        },
+        {
+         "averageHR": 157.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.2350000143051147,
+         "distance": 25.0,
+         "duration": 20.25,
+         "lengthIndex": 68,
+         "maxHR": 162.0,
+         "maxSpeed": 1.2350000143051147,
+         "startTimeGMT": "2026-01-01T00:54:59.0",
+         "swimStroke": "BREASTSTROKE",
+         "totalNumberOfStrokes": 8
+        },
+        {
+         "averageHR": 136.0,
+         "duration": 57.25,
+         "lengthIndex": 69,
+         "maxHR": 161.0,
+         "startTimeGMT": "2026-01-01T00:55:20.0"
+        },
+        {
+         "averageHR": 129.0,
+         "averageSWOLF": 61.0,
+         "averageSpeed": 0.6389999985694885,
+         "distance": 25.0,
+         "duration": 39.125,
+         "lengthIndex": 70,
+         "maxHR": 138.0,
+         "maxSpeed": 0.6389999985694885,
+         "startTimeGMT": "2026-01-01T00:56:17.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 22
+        },
+        {
+         "averageHR": 138.0,
+         "averageSWOLF": 39.0,
+         "averageSpeed": 0.9129999876022339,
+         "distance": 25.0,
+         "duration": 27.375,
+         "lengthIndex": 71,
+         "maxHR": 142.0,
+         "maxSpeed": 0.9129999876022339,
+         "startTimeGMT": "2026-01-01T00:56:56.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 12
+        },
+        {
+         "averageHR": 141.0,
+         "averageSWOLF": 28.0,
+         "averageSpeed": 1.2309999465942383,
+         "distance": 25.0,
+         "duration": 20.312,
+         "lengthIndex": 72,
+         "maxHR": 143.0,
+         "maxSpeed": 1.2309999465942383,
+         "startTimeGMT": "2026-01-01T00:57:23.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 8
+        },
+        {
+         "averageHR": 140.0,
+         "duration": 51.187,
+         "lengthIndex": 73,
+         "maxHR": 153.0,
+         "startTimeGMT": "2026-01-01T00:57:44.0"
+        },
+        {
+         "averageHR": 137.0,
+         "averageSWOLF": 60.0,
+         "averageSpeed": 0.6200000047683716,
+         "distance": 25.0,
+         "duration": 40.312,
+         "lengthIndex": 74,
+         "maxHR": 143.0,
+         "maxSpeed": 0.6200000047683716,
+         "startTimeGMT": "2026-01-01T00:58:35.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 20
+        },
+        {
+         "averageHR": 142.0,
+         "averageSWOLF": 45.0,
+         "averageSpeed": 0.8029999732971191,
+         "distance": 25.0,
+         "duration": 31.125,
+         "lengthIndex": 75,
+         "maxHR": 144.0,
+         "maxSpeed": 0.8029999732971191,
+         "startTimeGMT": "2026-01-01T00:59:15.0",
+         "swimStroke": "FREESTYLE",
+         "totalNumberOfStrokes": 14
+        },
+        {
+         "averageHR": 160.0,
+         "duration": 20.538,
+         "lengthIndex": 76,
+         "maxHR": 170.0,
+         "startTimeGMT": "2026-01-01T00:59:46.0"
+        }
+       ],
+       "maxHR": 178.0,
+       "maxSpeed": 2.115999937057495,
+       "messageIndex": 7,
+       "movingDuration": 1150.175,
+       "numberOfActiveLengths": 46,
+       "startTimeGMT": "2026-01-01T00:23:25.0",
+       "swimStroke": "MIXED",
+       "totalNumberOfStrokes": 511
+      },
+      {
+       "averageHR": 114.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 14.0,
+       "calories": 25.0,
+       "distance": 0.0,
+       "duration": 566.722,
+       "elapsedDuration": 566.722,
+       "lapIndex": 9,
+       "lengthDTOs": [
+        {
+         "averageHR": 114.0,
+         "duration": 566.722,
+         "lengthIndex": 77,
+         "maxHR": 155.0,
+         "startTimeGMT": "2026-01-01T01:00:07.0"
+        }
+       ],
+       "maxHR": 156.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 8,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T01:00:07.0",
+       "totalNumberOfStrokes": 0
+      },
+      {
+       "averageHR": 110.0,
+       "averageSWOLF": 0.0,
+       "averageSpeed": 0.0,
+       "averageStrokeDistance": 0.0,
+       "averageStrokes": 0.0,
+       "averageSwimCadence": 0.0,
+       "bmrCalories": 0.0,
+       "calories": 0.0,
+       "distance": 0.0,
+       "duration": 0.75,
+       "elapsedDuration": 0.75,
+       "lapIndex": 10,
+       "lengthDTOs": [
+        {
+         "duration": 0.75,
+         "lengthIndex": 78,
+         "startTimeGMT": "2026-01-01T01:09:34.0"
+        }
+       ],
+       "maxHR": 110.0,
+       "maxSpeed": 0.0,
+       "messageIndex": 9,
+       "movingDuration": 0.0,
+       "numberOfActiveLengths": 0,
+       "startTimeGMT": "2026-01-01T01:09:34.0",
+       "totalNumberOfStrokes": 0
+      }
+     ]
+    },
+    "v": 1
+   },
+   "garmin": {
+    "elapsed_duration_s": 4174.0,
+    "moving_duration_s": 0.0,
+    "timer_duration_s": 4171.0,
+    "type_key": "lap_swimming"
+   },
+   "splits": [
+    {
+     "averageHR": 145.0,
+     "averageMovingSpeed": 0.6221846183992569,
+     "averageSWOLF": 64.0,
+     "averageSpeed": 0.621999979019165,
+     "averageStrokes": 24.0,
+     "averageSwimCadence": 36.0,
+     "distance": 75.0,
+     "duration": 257.293,
+     "elapsedDuration": 257.293,
+     "lapIndex": 1,
+     "maxHR": 166.0,
+     "movingDuration": 120.543,
+     "numberOfActiveLengths": 3,
+     "startTimeGMT": "2026-01-01T00:00:01.0",
+     "swimStroke": "FREESTYLE",
+     "totalNumberOfStrokes": 72
+    },
+    {
+     "averageHR": 151.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 2.522,
+     "elapsedDuration": 2.522,
+     "lapIndex": 2,
+     "maxHR": 152.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T00:04:21.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 163.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 238.63,
+     "elapsedDuration": 238.63,
+     "lapIndex": 3,
+     "maxHR": 177.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T00:04:24.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 153.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 10.856,
+     "elapsedDuration": 10.856,
+     "lapIndex": 4,
+     "maxHR": 154.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T00:08:22.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 146.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 169.708,
+     "elapsedDuration": 169.708,
+     "lapIndex": 5,
+     "maxHR": 181.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T00:08:33.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 161.0,
+     "averageMovingSpeed": 0.6712526859940243,
+     "averageSWOLF": 55.0,
+     "averageSpeed": 0.6710000038146972,
+     "averageStrokes": 18.0,
+     "averageSwimCadence": 29.0,
+     "distance": 125.0,
+     "duration": 275.656,
+     "elapsedDuration": 275.656,
+     "lapIndex": 6,
+     "maxHR": 183.0,
+     "movingDuration": 186.219,
+     "numberOfActiveLengths": 5,
+     "startTimeGMT": "2026-01-01T00:11:23.0",
+     "swimStroke": "FREESTYLE",
+     "totalNumberOfStrokes": 90
+    },
+    {
+     "averageHR": 151.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 446.528,
+     "elapsedDuration": 446.528,
+     "lapIndex": 7,
+     "maxHR": 182.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T00:15:58.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 143.0,
+     "averageMovingSpeed": 0.9998478067940151,
+     "averageSWOLF": 36.0,
+     "averageSpeed": 1.0,
+     "averageStrokes": 13.899999618530273,
+     "averageSwimCadence": 33.0,
+     "distance": 1150.0,
+     "duration": 2201.961,
+     "elapsedDuration": 2201.961,
+     "lapIndex": 8,
+     "maxHR": 178.0,
+     "movingDuration": 1150.175,
+     "numberOfActiveLengths": 46,
+     "startTimeGMT": "2026-01-01T00:23:25.0",
+     "swimStroke": "MIXED",
+     "totalNumberOfStrokes": 511
+    },
+    {
+     "averageHR": 114.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 566.722,
+     "elapsedDuration": 566.722,
+     "lapIndex": 9,
+     "maxHR": 156.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T01:00:07.0",
+     "totalNumberOfStrokes": 0
+    },
+    {
+     "averageHR": 110.0,
+     "averageSWOLF": 0.0,
+     "averageSpeed": 0.0,
+     "averageStrokes": 0.0,
+     "averageSwimCadence": 0.0,
+     "distance": 0.0,
+     "duration": 0.75,
+     "elapsedDuration": 0.75,
+     "lapIndex": 10,
+     "maxHR": 110.0,
+     "movingDuration": 0.0,
+     "numberOfActiveLengths": 0,
+     "startTimeGMT": "2026-01-01T01:09:34.0",
+     "totalNumberOfStrokes": 0
+    }
+   ],
+   "splits_source": "garmin_splits"
+  }
+ },
+ "open_water_swimming": {
+  "distance_m": 900.1400146484375,
+  "duration_s": 3025.5419921875,
+  "metrics": {
+   "ext": {
+    "extras": {
+     "splits": "ok"
+    },
+    "fields": {
+     "aerobicTrainingEffectMessage": "MAINTAINING_AEROBIC_BASE_7",
+     "anaerobicTrainingEffectMessage": "MINOR_ANAEROBIC_BENEFIT_15",
+     "autoCalcCalories": false,
+     "averageHR": 125.0,
+     "averageSpeed": 0.2980000078678131,
+     "averageSwimCadenceInStrokesPerMinute": 22.0,
+     "averageSwolf": 114.0,
+     "avgElevation": 25.364952529887056,
+     "avgStrokeDistance": 81.99999928474426,
+     "bmrCalories": 74.0,
+     "calories": 406.0,
+     "distance": 900.1400146484375,
+     "duration": 3025.5419921875,
+     "elapsedDuration": 5793.22900390625,
+     "elevationCorrected": true,
+     "elevationGain": 3.396238327026367,
+     "elevationLoss": 2.5088844299316406,
+     "hasIntensityIntervals": false,
+     "hasSplits": false,
+     "hrTimeInZone_1": 934.116,
+     "hrTimeInZone_2": 1392.754,
+     "hrTimeInZone_3": 95.996,
+     "hrTimeInZone_4": 41.002,
+     "hrTimeInZone_5": 0.0,
+     "isAutoCalcCalories": false,
+     "isElevationCorrected": true,
+     "lapCount": 1,
+     "maxElevation": 26.67061996459961,
+     "maxHR": 181.0,
+     "maxSpeed": 1.5000000000000002,
+     "maxSwimCadenceInStrokesPerMinute": 48.0,
+     "maxVerticalSpeed": 0.5285148620605469,
+     "minActivityLapDuration": 3025.5419921875,
+     "minElevation": 24.43735694885254,
+     "moderateIntensityMinutes": 1,
+     "movingDuration": 2166.0,
+     "strokes": 1094.0,
+     "trainingEffectLabel": "AEROBIC_BASE",
+     "vigorousIntensityMinutes": 0
+    },
+    "splits": {
+     "eventDTOs": [
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:00:00.0",
+       "startTimeGMTDoubleValue": 1767225600000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:00:01.0",
+       "startTimeGMTDoubleValue": 1767225601000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:09:35.0",
+       "startTimeGMTDoubleValue": 1767226175000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:54:46.0",
+       "startTimeGMTDoubleValue": 1767228886000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:54:54.0",
+       "startTimeGMTDoubleValue": 1767228894000.0
+      },
+      {
+       "sectionTypeDTO": {
+        "key": "timerTrigger",
+        "sectionTypeKey": "TIMER_TRIGGER"
+       },
+       "startTimeGMT": "2026-01-01T00:55:50.0",
+       "startTimeGMTDoubleValue": 1767228950000.0
+      }
+     ],
+     "lapDTOs": [
+      {
+       "averageHR": 125.0,
+       "averageMovingSpeed": 0.41557710740925097,
+       "averageSWOLF": 114.0,
+       "averageSpeed": 0.2980000078678131,
+       "averageStrokeDistance": 0.8199999928474426,
+       "averageSwimCadence": 22.0,
+       "bmrCalories": 74.0,
+       "calories": 406.0,
+       "distance": 900.14,
+       "duration": 3025.542,
+       "elapsedDuration": 5793.229,
+       "elevationGain": 3.4,
+       "elevationLoss": 2.51,
+       "intensityType": "ACTIVE",
+       "lapIndex": 1,
+       "maxElevation": 26.67,
+       "maxHR": 181.0,
+       "maxSpeed": 1.5000000000000002,
+       "maxSwimCadence": 48.0,
+       "maxVerticalSpeed": 0.5285148620605469,
+       "messageIndex": 0,
+       "minElevation": 24.44,
+       "movingDuration": 2166.0,
+       "startTimeGMT": "2026-01-01T00:00:01.0",
+       "totalNumberOfStrokes": 1094
+      }
+     ]
+    },
+    "v": 1
+   },
+   "garmin": {
+    "elapsed_duration_s": 5793.0,
+    "moving_duration_s": 2166.0,
+    "timer_duration_s": 3026.0,
+    "type_key": "open_water_swimming"
+   },
+   "splits": [
+    {
+     "averageHR": 125.0,
+     "averageMovingSpeed": 0.41557710740925097,
+     "averageSWOLF": 114.0,
+     "averageSpeed": 0.2980000078678131,
+     "averageSwimCadence": 22.0,
+     "distance": 900.14,
+     "duration": 3025.542,
+     "elapsedDuration": 5793.229,
+     "elevationGain": 3.4,
+     "intensityType": "ACTIVE",
+     "lapIndex": 1,
+     "maxHR": 181.0,
+     "maxSwimCadence": 48.0,
+     "movingDuration": 2166.0,
+     "startTimeGMT": "2026-01-01T00:00:01.0",
+     "totalNumberOfStrokes": 1094
+    }
+   ],
+   "splits_source": "garmin_splits"
+  }
+ }
+}

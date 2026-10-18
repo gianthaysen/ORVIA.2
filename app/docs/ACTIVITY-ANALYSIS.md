@@ -1,6 +1,6 @@
 # Sportartspezifische Aktivitätsanalyse (v8-452)
 
-**Status: IMPLEMENTED** (App, live seit v8-452) · Worker v8-452.1 **vorbereitet, nicht ausgerollt** · keine Migration
+**Status: IMPLEMENTED** (App v8-452 live; **v8-453 Schwimmintervalle gebaut, nicht ausgeliefert**) · Worker v8-452.1 **vorbereitet, nicht ausgerollt** · keine Migration
 
 ## 1 · Warum beim Schwimmen fast nur die Herzfrequenz erschien
 
@@ -64,7 +64,7 @@ Worker-Stand **v8-452.1** (Standard: alles aus, ein Deploy allein löst keinen A
 
 Freigabe-Reihenfolge (Gian) — **Stand nach dem Mitschnitt vom 18.10.2026 (§8)**:
 1. ~~Mitschnitt~~ erledigt (Becken 11.10., Freiwasser 26.06.; `tests/test_v4521_swim_capture.py` C1–C9 grün).
-2. **App v8-453 zuerst** (Voraussetzung): Intervall-Tempo auf `movingDuration` (Summe der aktiven Bahnen), Pause in der Runde getrennt, Bahnenliste aus `ext.splits.lapDTOs[].lengthDTOs`, unplausible Bahnen markieren. Ohne das zeigt v8-452 z. B. 5:43 statt 2:41 /100 m für ein Intervall mit Pause darin.
+2. **App v8-453 zuerst ausliefern** (gebaut, §9): Intervall-Tempo auf Schwimmzeit, Pausen getrennt, Bahnen, Plausibilität. v8-452 zeigte für ein Intervall mit Pause darin 5:43 statt 2:41 /100 m.
 3. Sicherung: `supabase/scripts/v4521_swim_extras_backup.sql`.
 4. `railway up` → `/healthz` `worker: v8-452.1` (ohne neue Variablen ändert sich nichts).
 5. Railway: `DETAIL_EXTRAS=splits` (**ohne** `typed_splits` — Antwort leer, §8), `DETAIL_EXTRAS_SPORTS=swimming`, einmalig `DETAIL_REFETCH_EXTRAS=1` → Protokoll `extras_pending:` fällt auf 0 (6 Einheiten, 1 Lauf).
@@ -137,3 +137,29 @@ Belegte Bedeutung (Test C8):
 - **Plausibilität**: 7 von 54 Bahnen unter 15 s je 25 m (schnellste 11,8 s ≈ 0:47 /100 m), 9 Bahnen mit ≤ 5 Zügen. Für diese Einheit (Median 24,9 s, 12 Züge) unplausibel — vermutlich Wenden-/Bahnerkennung der Uhr. Nicht korrigieren, in der App markieren; vor Validierung keine Bestzeiten je 25/50 m aus Bahnen.
 
 Worker-Prüfung am Mitschnitt (C9, echter Sync-Pfad): schlanke Runden mit Schwimmfeldern (3,6 kB, landet auch im lokalen Speicher), Rohblock mit allen Bahnen (24 kB, nur Server/bei Bedarf), Befund `ext.extras.splits = ok`, Rohfelder des Listeneintrags unverändert, kein privates Feld, keine Kappung (`keep_structure`: Runde 23 bzw. 31 Schlüssel < 80).
+
+## 9 · v8-453 Schwimmintervalle, Pausen, Bahnen (gebaut, nicht ausgeliefert)
+
+Kette: `metrics.splits` (schlanke Runden, lokal) + `metrics.ext.splits` (Rohrunden mit Bahnen, bei Bedarf vom Server) → `engine/swim-intervals.js` (`swim-intervals@1`, rein) → `activity-analysis.analyze().swim` → ui.js zeichnet nur. Kein Eingriff in Register, Bestzeiten, Korrekturen, Flags, Worker.
+
+| Größe | Rechnung | Herkunft |
+|---|---|---|
+| Schwimmzeit je Intervall | `movingDuration` der Runde; sonst Summe der aktiven Bahnen; sonst **keine** | gemessen (Garmin) / Summe |
+| Intervallzeit | `duration` der Runde (inkl. Pausen im Intervall) | gemessen |
+| Pause im Intervall | Summe der Bahnen ohne Distanz; ohne Bahnen: Intervallzeit − Schwimmzeit | gemessen / abgeleitet (benannt) |
+| Pausenrunde | Runde mit Distanz 0 — nie einem Intervall zugeschlagen; aufeinanderfolgende = ein Pausenblock (Anzeige) | gemessen |
+| Schwimmtempo | Schwimmzeit ÷ Distanz × 100 | abgeleitet |
+| Intervall-Tempo inkl. Pausen | Intervallzeit ÷ Distanz × 100 — nur angezeigt, wenn keine Schwimmzeit vorliegt, dann ausdrücklich „inkl. Pausen" | abgeleitet |
+| Züge je Bahn | Züge ÷ aktive Bahnen — **nur bei einer Lage** | abgeleitet |
+| SWOLF | Garmin je Bahn/Intervall; Gegenprobe Bahn = Züge + Sekunden (± 1), Intervall = Mittel der Bahnen | gemessen, geprüft |
+| Gleichmäßigkeit | Variationskoeffizient des Schwimmtempos, nur ≥ 3 Intervalle ≥ 50 m **derselben bekannten Lage** | abgeleitet |
+
+Lagen: Garmin-Werte FREESTYLE / BREASTSTROKE / BACKSTROKE / BUTTERFLY / MIXED → Kraul / Brust / Rücken / Schmetterling / Gemischt; alles andere „Lage unbekannt" (Rohwert bleibt). Nie aus Tempo oder Zugzahl geschätzt. Intervall gemischt, wenn Garmin MIXED liefert oder die Bahnen mehrere Lagen tragen.
+
+Plausibilität je Bahn (nie korrigiert): *ausgeschlossen* = schneller als der Weltrekord-Schnitt der Lage (50 m Kurzbahn: 2,47 / 2,26 / 2,00 / 2,35 m/s); *möglicherweise ungenau* = ≥ 1,6 × eigener Median derselben Lage und Bahnlänge, ≤ 40 % der eigenen Median-Zugzahl, 0 Züge oder SWOLF-Widerspruch; *plausibel* = mit ≥ 5 Vergleichsbahnen geprüft; *ohne Vergleich* sonst. Keine Bahn ist gegen Garmin Connect validiert; nichts davon geht in Rekorde, Bestzeiten oder Prognosen (Register-Ledger `false`).
+
+Einheit 11.10.2026 (echter Mitschnitt): Intervalle 75 / 125 / 1.150 m mit **2:41 / 2:29 / 1:40 /100 m** (v8-452: 5:43 / 3:41 / 3:11), Pausen im Intervall 2:17 / 1:29 / 17:32, Pausenblöcke 7:02 (4 Runden) / 7:27 / 9:27. Summen 1.350 m · 54 Bahnen · 673 Züge · 1.456,9 s; Zeitbilanz Schwimmzeit + Pausen = Timer (4.170,6 s). 11 von 54 Bahnen auffällig (10 möglicherweise ungenau, 1 ausgeschlossen: 25 m Brust in 12,3 s). SWOLF-Verlauf Kraul (28 plausible Bahnen): 42 → 44.
+
+Oberfläche: Verlauf mit „Tempo je Bahn" / Puls / „SWOLF je Bahn" (auffällige Bahnen = Lücke) · Karte „Intervalle" mit Zusammenfassung (Schwimmzeit, Pausen gesamt, Tempo), Intervallkarten und Pausenblöcken · Bahnen erst beim Antippen eines Intervalls (eine Tabelle, Pausenbahnen grau, auffällige mit „≈") · Messdetails: Zeitdefinition, Pausenerkennung, Summenprüfung, Plausibilität, Validierung. Ohne Runden (heutige Produktion): kein Intervall-Block, Ansicht wie v8-452. Bahnen kommen nach, sobald der Rohblock geladen ist; keine Duplikate (nur Anzeige, nichts gespeichert).
+
+Tests: `swim_intervals_v453` (53, echter Mitschnitt, 50-m-Becken, Fehlerfälle, Register), `swim_intervals_v453_ui_e2e` (23, 320–1200 px). App-Testdaten `supabase/tests/fixtures/swim_capture_v453.json` = Worker-Ausgabe (`garmin-worker/scripts/gen_app_swim_fixture.py`, Gleichheit: `test_v453_app_fixture.py`).

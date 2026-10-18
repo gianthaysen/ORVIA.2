@@ -1,5 +1,5 @@
 /* ============================================================
-   ORVIA · activity-analysis (v8-452) — sportartspezifische Aktivitaetsanalyse, rein.
+   ORVIA · activity-analysis (v8-452, Schwimmintervalle v8-453) — sportartspezifische Aktivitaetsanalyse, rein.
 
    Kette:  Aktivitaet
              → Sportart + Kontext          (Sport-ID, metric-eligibility.contextOf: Becken / Freiwasser / Rolle …)
@@ -29,6 +29,7 @@
     return null;
   }
   function ME() { return req('metricEligibility', './metric-eligibility.js'); }
+  function SI() { return req('swimIntervals', './swim-intervals.js'); }
   function obj(v) { return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null; }
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
 
@@ -174,6 +175,20 @@
              paceKind: prof.intervals.pace, definition: 'Variationskoeffizient des Intervall-Tempos (Intervalle ab ' + prof.intervals.minDist + ' m)' };
   }
 
+  /* v8-453 · Diagramme je aktiver Bahn (Becken, Bahnen geladen): Tempo /100 m und SWOLF. x = Bahn-Nummer. Auffaellige Bahnen
+     bleiben Luecken (nie geglaettet, nie ersetzt). Nur mit ≥ 3 Werten. */
+  function lengthCharts(swim) {
+    var ls = SI() && SI().lengthSeries(swim); if (!ls) return [];
+    var out = [];
+    [['lengthPace', ls.pace100, 'pace', '/100 m', false], ['lengthSwolf', ls.swolf, 'num', '', false]].forEach(function (d) {
+      var vals = d[1], n = vals.filter(function (v) { return v !== null; }).length; if (n < 3) return;
+      var sum = 0; vals.forEach(function (v) { if (v !== null) sum += v; });
+      out.push({ id: d[0], metric: 'lengths', kind: d[2], mean: sum / n, unit: d[3], dec: 0, higherBetter: d[4], values: vals, times: null, labels: ls.labels,
+                 points: n, validation: 'unverified', source: 'garmin_extras', basis: 'ext.splits.lapDTOs[].lengthDTOs' });
+    });
+    return out;
+  }
+
   /* Modell der Aktivitaetsansicht. owner = Datensatz mit den Messreihen (bei gekoppelter Aufzeichnung diese);
      opts.extState wie metric-eligibility.describeActivity. */
   function analyze(owner, opts) {
@@ -185,7 +200,19 @@
     var heroIds = hero.map(function (d) { return d.id; });
     cards = cards.filter(function (d) { return heroIds.indexOf(d.id) < 0; });
     var charts = chartsOf(a, desc, prof.charts, fam);
-    var iv = intervalsOf(desc, prof), eff = efficiencyOf(iv, prof);
+    var iv = null, eff = null, swim = null;
+    /* v8-453 · Schwimmen: Intervalle, Pausen und Bahnen aus engine/swim-intervals.js (Schwimmzeit = aktive Bahnen, nie die
+       Rundenzeit mit Pausen). Ohne Runden: kein Intervall-Block — die bisherigen Kennzahlen bleiben. */
+    if (fam === 'swimming') {
+      var S = SI();
+      try { swim = S && desc.metrics.laps && desc.metrics.laps.status === 'available' ? S.build(a, opts || {}) : null; } catch (e) { swim = null; }
+      if (swim && !swim.show) swim = null;
+      if (swim && swim.efficiency) { var se = swim.efficiency; eff = { intervals: se.intervals, meanPace: se.meanPace, cvPct: se.cvPct, best: se.best, bestPace: se.bestPace, worst: se.worst, worstPace: se.worstPace, paceKind: 'pace100', stroke: se.stroke, definition: 'swim' }; }
+      if (swim && swim.lengthsLoaded) {
+        var ORD = ['pace100', 'lengthPace', 'hr', 'strokeRate', 'swolf', 'lengthSwolf'];
+        charts = charts.concat(lengthCharts(swim)).sort(function (x, y) { return ORD.indexOf(x.id) - ORD.indexOf(y.id); });
+      }
+    } else { iv = intervalsOf(desc, prof); eff = efficiencyOf(iv, prof); }
     /* Zeit je Pulszone laut Garmin — Anteil je Zone (Summe der gelieferten Zonen = 100 %) */
     var zd = desc.metrics.hrZones, zones = null;
     if (prof.zones && show(zd) && Array.isArray(zd.value)) {
@@ -193,11 +220,11 @@
       if (zt > 0) zones = { seconds: zd.value.slice(), total: zt, share: zd.value.map(function (v) { return Math.round((num(v) || 0) / zt * 1000) / 10; }), validation: zd.validation, source: zd.source };
     }
     var details = prof.details.map(function (id) { return desc.metrics[id]; }).filter(Boolean);
-    var shownIds = heroIds.concat(cards.slice(0, 6).map(function (d) { return d.id; }), charts.map(function (c) { return c.metric; }), iv ? ['laps'] : [], zones ? ['hrZones'] : []);
+    var shownIds = heroIds.concat(cards.slice(0, 6).map(function (d) { return d.id; }), charts.map(function (c) { return c.metric; }), (iv || swim) ? ['laps'] : [], (swim && swim.lengthsLoaded) ? ['lengths'] : [], zones ? ['hrZones'] : []);
     var unverifiedShown = hero.concat(cards).some(function (d) { return d.validation === 'unverified'; });
     var loading = details.some(function (d) { return d.status === 'not_loaded' && (d.reason === 'raw_block_pending' || d.reason === 'raw_block_not_loaded'); });
     return { v: VERSION, family: fam, sport: desc.sport, context: desc.context.environment, source: desc.source, poolCheck: desc.poolCheck,
-             hero: hero, cards: cards.slice(0, 6), charts: charts, intervals: iv, efficiency: eff, zones: zones, details: details, shown: shownIds,
+             hero: hero, cards: cards.slice(0, 6), charts: charts, intervals: iv, swim: swim, efficiency: eff, zones: zones, details: details, shown: shownIds,
              unverifiedShown: unverifiedShown, rawPending: loading, metrics: desc.metrics };
   }
 
@@ -217,7 +244,7 @@
     prof.details.forEach(function (id) {
       var d = m.metrics[id]; if (!d) return;
       var ch = CHAIN[d.status] || {};
-      var inProfile = prof.hero.indexOf(id) >= 0 || prof.cards.indexOf(id) >= 0 || (id === 'hrZones' && !!prof.zones) || (prof.charts || []).some(function (c) { return CHART[c] && CHART[c].metric === id; }) || (id === 'laps' && !!prof.intervals);
+      var inProfile = prof.hero.indexOf(id) >= 0 || prof.cards.indexOf(id) >= 0 || (id === 'hrZones' && !!prof.zones) || (prof.charts || []).some(function (c) { return CHART[c] && CHART[c].metric === id; }) || (id === 'laps' && !!prof.intervals) || (id === 'lengths' && m.family === 'swimming');
       var displayed = m.shown.indexOf(id) >= 0;
       var why = d.status !== 'available' ? d.status + (d.reason ? ':' + d.reason : '') : (d.validation === 'blocked' ? 'blocked:' + (d.reason || '') : (!inProfile ? 'not_in_view' : (!displayed ? 'not_shown' : null)));
       rows.push({ metric: id, delivered: ch.delivered || '?', stored: ch.stored || '?', loaded: ch.loaded || '?', validation: d.validation || '—', method: d.method || '—',

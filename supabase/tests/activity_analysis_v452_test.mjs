@@ -66,12 +66,16 @@ sec('S · Schwimmen');
 {
   const a = pool(); a.metrics.splits = [{ distance: 400, duration: 480, averageHR: 135 }, { distance: 0, duration: 60 }, { distance: 400, duration: 470, averageHR: 140 }, { distance: 0, duration: 60 }, { distance: 400, duration: 490, averageHR: 142 }, { distance: 300, duration: 380 }];
   a.metrics.splits_source = 'garmin_splits';
-  const md = AA.analyze(a), iv = md.intervals;
-  ok('S15 Intervalle: aktive Intervalle nummeriert, Pausen getrennt, Tempo je Intervall aus Distanz/Zeit DERSELBEN Runde', iv && iv.active === 4 && iv.rest === 2 && iv.rows[0].n === 1 && iv.rows[1].n === null && iv.rows[2].n === 2 && Math.round(iv.rows[0].pace) === 120 && iv.restTime === 120, J(iv && iv.rows.map(r => [r.n, r.rest, Math.round(r.pace || 0)])));
-  ok('S16 Gleichmaessigkeit nur mit ≥ 3 aktiven Intervallen: Streuung (Variationskoeffizient), schnellstes/langsamstes benannt', md.efficiency && md.efficiency.intervals === 4 && md.efficiency.best === 2 && md.efficiency.cvPct > 0, J(md.efficiency));
-  ok('S17 Zugzahl/SWOLF je Intervall: nicht vorhanden (schlanke Runden tragen sie nicht) — nichts erfunden', iv.perIntervalStrokes === false && iv.rows.every(r => !('swolf' in r) && !('strokes' in r)));
+  const md = AA.analyze(a), sw = md.swim;
+  /* v8-453: Schwimm-Intervalle kommen aus engine/swim-intervals.js. Ohne movingDuration und ohne Bahnen gibt es KEINE Schwimmzeit —
+     nur die Intervallzeit (Rundenzeit), ausdruecklich so benannt; die Gleichmaessigkeit entfaellt (keine Bewertung aus unvollstaendigen Daten). */
+  ok('S15 Intervalle (v8-453): aktive Intervalle nummeriert, Pausenrunden getrennt; ohne Schwimmzeit nur Intervall-Tempo, nie als Schwimmtempo', sw && sw.intervals.length === 4 && sw.totals.restLaps === 2 && sw.intervals[0].n === 1 && sw.intervals[0].pace100Active === null && Math.round(sw.intervals[0].pace100Elapsed) === 120 && sw.totals.restBetween === 120 && md.intervals === null, J(sw && sw.intervals.map(r => [r.n, r.pace100Active, Math.round(r.pace100Elapsed)])));
+  const bb = clone(a); bb.metrics.splits = bb.metrics.splits.map(l => l.distance ? Object.assign({}, l, { movingDuration: l.duration - 20, swimStroke: 'FREESTYLE' }) : l);
+  const mb = AA.analyze(bb);
+  ok('S16 Gleichmaessigkeit nur mit Schwimmzeit und EINER Lage (≥ 3 Intervalle ≥ 50 m): Streuung, schnellstes/langsamstes benannt; ohne Schwimmzeit keine', md.efficiency === null && mb.efficiency && mb.efficiency.intervals === 4 && mb.efficiency.best === 2 && mb.efficiency.cvPct > 0 && mb.efficiency.stroke === 'freestyle', J([md.efficiency, mb.efficiency]));
+  ok('S17 Zugzahl/SWOLF/Lage je Intervall: Runden ohne diese Felder → leer, nichts erfunden', sw.intervals.every(r => r.swolf === null && r.strokes === null && r.stroke === null && r.lengths === null));
   const b = pool(); b.metrics.splits = [{ distance: 400, duration: 480 }, { distance: 400, duration: 470 }];
-  ok('S18 ohne genug Intervalle keine Effizienz-Karte; ohne Runden keine Intervalle', AA.analyze(b).efficiency === null && AA.analyze(pool()).intervals === null);
+  ok('S18 ohne genug Intervalle keine Effizienz-Karte; ohne Runden keine Intervalle', AA.analyze(b).efficiency === null && AA.analyze(pool()).intervals === null && AA.analyze(pool()).swim === null);
 }
 {
   const a = pool(); delete a.metrics.ext.fields.poolLength;

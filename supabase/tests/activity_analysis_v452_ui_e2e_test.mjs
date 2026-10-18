@@ -40,7 +40,7 @@ Object.assign(sw.metrics.garmin, { timer_duration_s: 2700, elapsed_duration_s: 2
 const n = 40, T = Array.from({ length: n }, (_, i) => i * 68);
 sw.metrics.streams = { time: T, heart_rate: T.map((_, i) => 120 + Math.round(25 * Math.sin(i / 6))), speed: T.map((_, i) => i % 8 === 7 ? 0 : 0.85 + 0.08 * Math.sin(i / 4)) };
 sw.metrics.stream_meta = { time: { kind: 'elapsed_s', unit: 's', source: 'directTimestamp' } };
-sw.metrics.splits = [400, 0, 400, 0, 400, 0, 400].map((d, i) => d ? { distance: d, duration: 470 + (i % 3) * 8, averageHR: 135 + i } : { distance: 0, duration: 60 });
+sw.metrics.splits = [400, 0, 400, 0, 400, 0, 400].map((d, i) => d ? { distance: d, duration: 470 + (i % 3) * 8, movingDuration: 440 + (i % 3) * 8, swimStroke: 'FREESTYLE', averageHR: 135 + i } : { distance: 0, duration: 60 });   // v8-453: Schwimmzeit + Lage je Runde wie vom Worker
 sw.metrics.splits_source = 'garmin_splits';
 const EXT = { v: 1, fields: { distance: 2000, duration: 2700, averageHR: 138, activeLengths: 80, poolLength: 2500, unitOfPoolLength: 'meter', strokes: 1480, avgStrokes: 18.5, averageSwolf: 39,
   averageSwimCadenceInStrokesPerMinute: 28, avgStrokeDistance: 175 },
@@ -81,7 +81,7 @@ const READ = () => page.evaluate(() => { const p = document.getElementById('gmAc
   return { hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null, heroSub: [...p.querySelectorAll('.aa-hero-sub b')].map(b => b.textContent),
     cards: [...p.querySelectorAll('#gmActPage > .aa-cards > .aa-card span, .aa-cards:not(.aa-cards-3) > .aa-card span')].map(s => s.textContent),
     chips: [...p.querySelectorAll('.aa-chips button')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chart: !!p.querySelector('#gmAaChart svg'),
-    iv: p.querySelectorAll('.aa-iv:not(.aa-iv-head):not(.aa-rest)').length, rest: p.querySelectorAll('.aa-rest').length, eff: !!p.querySelector('.aa-eff'),
+    iv: p.querySelectorAll('.aa-iv:not(.aa-iv-head):not(.aa-rest), .aa-sw-iv').length, rest: p.querySelectorAll('.aa-rest, .aa-sw-rest').length, eff: !!p.querySelector('.aa-eff'),
     md: p.querySelector('details.aa-md') ? { open: p.querySelector('details.aa-md').open, text: p.querySelector('details.aa-md').textContent } : null,
     kpis: p.querySelectorAll('.detail-kpis').length, note: [...p.querySelectorAll('.aa-note')].map(x => x.textContent).join(' | '), calls: window.__calls,
     localHasExt: !!(window.__local[0].metrics && window.__local[0].metrics.ext) }; });
@@ -106,7 +106,7 @@ await page.evaluate(() => { const x = [...document.querySelectorAll('.aa-chips b
 await page.waitForTimeout(200);
 const b2 = await READ();
 ok('B3 Auswahl wechselt das Diagramm (SWOLF), Seite bleibt an ihrer Stelle', b2.chips.includes('SWOLF*') && b2.chart);
-ok('B4 Intervalle: 4 aktive, 3 Pausen; Gleichmaessigkeit mit ≥ 3 Intervallen', b.iv === 4 && b.rest === 3 && b.eff, JSON.stringify([b.iv, b.rest, b.eff]));
+ok('B4 Intervalle (v8-453 Schwimmansicht): 4 aktive, 3 Pausen; Gleichmaessigkeit mit ≥ 3 Intervallen derselben Lage', b.iv === 4 && b.rest === 3 && b.eff, JSON.stringify([b.iv, b.rest, b.eff]));
 ok('B5 Messdetails eingeklappt; nennen Quelle, Pruefstand und Fehlendes; „Strecke je Zug" als nicht angezeigt (Einheit ungeklaert)', b.md && b.md.open === false && /ungeprüft/.test(b.md.text) && /Strecke je Zug/.test(b.md.text) && /Einheit ungeklärt/.test(b.md.text) && /Bahnen × Bahnlänge = Distanz/.test(b.md.text), b.md && b.md.text.slice(0, 200));
 ok('B6 Hinweis auf ungepruefte Quellwerte unter den Karten', /von Garmin übernommen/.test(b.note));
 ok('B7 keine technischen Feldnamen in der Hauptansicht', !(await page.evaluate(() => { const p = document.getElementById('gmActPage').cloneNode(true); p.querySelectorAll('details').forEach(d => d.remove()); return /ext\.fields|averageSwolf|directSwim|best_efforts/.test(p.textContent); })));
