@@ -62,14 +62,15 @@ Worker-Stand **v8-452.1** (Standard: alles aus, ein Deploy allein löst keinen A
 - Schlanke Runden (`metrics.splits`) tragen zusätzlich die Schwimmfelder je Runde (`SWIM_LAP_FIELDS`), soweit Garmin sie liefert.
 - Keine Migration (alles in `activities.metrics`).
 
-Freigabe-Reihenfolge (Gian):
-1. Mitschnitt lokal: `cd ~/Claude/Projects/Strava/garmin-worker && .venv-login/bin/python scripts/capture_activity_payloads.py --sports swimming` → Auswertung durch Claude (`tests/test_v4521_swim_capture.py` läuft dann mit).
-2. Sicherung: `supabase/scripts/v4521_swim_extras_backup.sql` (Schema `orvia_backup`, nicht über die API erreichbar).
-3. `railway up` → `/healthz` `worker: v8-452.1`. Ohne Variablen ändert sich nichts.
-4. Railway: `DETAIL_EXTRAS=splits,typed_splits`, `DETAIL_EXTRAS_SPORTS=swimming`, einmalig `DETAIL_REFETCH_EXTRAS=1` → Sync-Protokoll `extras_pending:` fällt auf 0 (6 Schwimmeinheiten, ≤ 1 Lauf bei Limit 10).
-5. Kontrolle: `supabase/scripts/v4521_swim_extras_check.sql` (nur lesend).
-6. `DETAIL_REFETCH_EXTRAS` löschen. `DETAIL_EXTRAS` + `DETAIL_EXTRAS_SPORTS` bleiben (neue Schwimmeinheiten bekommen Runden direkt beim ersten Laden).
-7. Validierung gegen Garmin Connect → Beleg `list.swim` / Bahnen in `metric-eligibility`.
+Freigabe-Reihenfolge (Gian) — **Stand nach dem Mitschnitt vom 18.10.2026 (§8)**:
+1. ~~Mitschnitt~~ erledigt (Becken 11.10., Freiwasser 26.06.; `tests/test_v4521_swim_capture.py` C1–C9 grün).
+2. **App v8-453 zuerst** (Voraussetzung): Intervall-Tempo auf `movingDuration` (Summe der aktiven Bahnen), Pause in der Runde getrennt, Bahnenliste aus `ext.splits.lapDTOs[].lengthDTOs`, unplausible Bahnen markieren. Ohne das zeigt v8-452 z. B. 5:43 statt 2:41 /100 m für ein Intervall mit Pause darin.
+3. Sicherung: `supabase/scripts/v4521_swim_extras_backup.sql`.
+4. `railway up` → `/healthz` `worker: v8-452.1` (ohne neue Variablen ändert sich nichts).
+5. Railway: `DETAIL_EXTRAS=splits` (**ohne** `typed_splits` — Antwort leer, §8), `DETAIL_EXTRAS_SPORTS=swimming`, einmalig `DETAIL_REFETCH_EXTRAS=1` → Protokoll `extras_pending:` fällt auf 0 (6 Einheiten, 1 Lauf).
+6. Kontrolle: `supabase/scripts/v4521_swim_extras_check.sql`.
+7. `DETAIL_REFETCH_EXTRAS` löschen; `DETAIL_EXTRAS` + `DETAIL_EXTRAS_SPORTS` bleiben.
+8. Validierung einer Einheit gegen Garmin Connect → Belege in `metric-eligibility`.
 
 Rückweg: `DETAIL_EXTRAS` löschen (stoppt jeden Abruf) → `v4521_swim_extras_rollback.sql` (entfernt genau Runden/Bahnen, sonst nichts) · Notfall: `v4521_swim_extras_restore.sql` (Stand der Sicherung, aktuelle Korrekturen bleiben) · Worker: in Railway die vorige Bereitstellung (v8-447.3) erneut ausrollen. Alle SQL-Dateien sind gegen ein echtes Postgres getestet (`test_v4521_swim_sql.py`).
 
@@ -111,3 +112,28 @@ Lauf vom 18.10.2026 (Build `orvia-v8-451`, `452-swim-audit-1`): 65 Aktivitäten,
 3. **Sehr große Ruhezeiten im Becken** (z. B. 51:03 von 1:08:07): Folge der Garmin-Bewegungszeit (nur Schwimmlängen). Deshalb werden Tempo in Bewegung und Gesamttempo getrennt ausgewiesen.
 4. **Hypothese 20.09.2026:** 1:16 /100 m und 19,8 Züge je „50-m-Bahn" passen nicht zu den übrigen Einheiten (1:48–2:26 /100 m auf 25 m bzw. 50 m). Wahrscheinlich war die Bahnlänge auf der Uhr falsch (25 m-Becken als 50 m). **Nicht korrigiert** — die Konsistenzprüfung kann das nicht erkennen (Längen × Bahnlänge stimmt mit der falsch eingestellten Länge). Prüfung in Garmin Connect nötig.
 5. **Langzeitfreigabe:** alle Schwimmfelder bleiben im Leistungsregister `unverified`, bis eine Einheit gegen Garmin Connect verglichen ist (Abschnitt 5, Schritt 5). Keine Prognose und kein Rekord aus Schwimm-Quellwerten.
+
+## 8 · Mitschnitt 18.10.2026 (Runden, Bahnen, Intervalle)
+
+Dateien: `garmin-worker/tests/fixtures/garmin/captures/swimming__lap_swimming.json` (Einheit 11.10., 1.350 m, 25-m-Becken) und `swimming__open_water_swimming.json` (26.06., 900 m). Anonymisiert, ohne GPS; Selbstprüfung des Skripts und `test_capture_script` grün.
+
+| Abruf | Becken | Freiwasser |
+|---|---|---|
+| `splits` (`get_activity_splits`) | `lapDTOs` 10 Runden = **3 Schwimm-Intervalle + 7 Pausen** (Distanz 0); je Runde `lengthDTOs` (78 Einträge, 54 aktiv) + `eventDTOs` (Timer) | 1 Runde, keine Bahnen |
+| `typed_splits` | **leer** (`splits: []`) | leer |
+| `split_summaries` | leer | leer |
+| `hr_zones` | 5 Zonen mit `secsInZone`, `zoneLowBoundary` | dito |
+
+Belegte Bedeutung (Test C8):
+- Runde ohne Distanz = Pause; **Bahn ohne Distanz innerhalb einer Runde = Pause im Intervall** (Intervall 3: 46 aktive Bahnen, 14 Pausen-„Bahnen" mit 1.052 s).
+- `Runde.movingDuration` = Summe der aktiven Bahnen; Summe über alle Runden = `movingDuration` des Listeneintrags (1.456,9 s). Das erklärt Garmins Bewegungszeit im Becken vollständig.
+- `Runde.duration` enthält die Pausen im Intervall → **Intervall-Tempo nur auf movingDuration** (Intervall 1: 2:41 statt 5:43 /100 m).
+- Summen stimmen exakt: Distanz 75+125+1.150 = 1.350 m, aktive Bahnen 3+5+46 = 54, Züge 72+90+511 = 673.
+- `Bahn.averageSWOLF` = Züge + gerundete Sekunden (54/54); `Runde.averageSWOLF` = Mittel der Bahnen. Schreibweise in Runde/Bahn: `averageSWOLF` (Listeneintrag: `averageSwolf`).
+- `Runde.averageSpeed` = Distanz ÷ movingDuration im Becken, Distanz ÷ Timer im Freiwasser (wie beim Listeneintrag).
+- Je Bahn: `distance, duration, averageSpeed, maxSpeed, averageHR, maxHR, totalNumberOfStrokes, averageSWOLF, swimStroke, lengthIndex, startTimeGMT` — keine Zugfrequenz, keine Bewegungszeit. Lagen: FREESTYLE, BREASTSTROKE, BACKSTROKE; Runde mit gemischten Lagen = MIXED.
+- **Nicht eindeutig**: `averageStrokes` und `averageSwimCadence` einer MIXED-Runde (13,9 bzw. 33 statt 11,1 Züge/Bahn bzw. 26,7 Züge/min aus den Bahnen) → bleiben ungeprüft.
+- `averageStrokeDistance`: Runde in **m** (Freiwasser 0,82), Listeneintrag in **cm** (82); Becken 0 → nicht in die schlanke Form übernommen.
+- **Plausibilität**: 7 von 54 Bahnen unter 15 s je 25 m (schnellste 11,8 s ≈ 0:47 /100 m), 9 Bahnen mit ≤ 5 Zügen. Für diese Einheit (Median 24,9 s, 12 Züge) unplausibel — vermutlich Wenden-/Bahnerkennung der Uhr. Nicht korrigieren, in der App markieren; vor Validierung keine Bestzeiten je 25/50 m aus Bahnen.
+
+Worker-Prüfung am Mitschnitt (C9, echter Sync-Pfad): schlanke Runden mit Schwimmfeldern (3,6 kB, landet auch im lokalen Speicher), Rohblock mit allen Bahnen (24 kB, nur Server/bei Bedarf), Befund `ext.extras.splits = ok`, Rohfelder des Listeneintrags unverändert, kein privates Feld, keine Kappung (`keep_structure`: Runde 23 bzw. 31 Schlüssel < 80).

@@ -93,3 +93,73 @@ def test_c6_no_private_fields_in_stored_block():
     blob = json.dumps(m["ext"])
     for bad in ("activityId", "Latitude", "Longitude", "ownerId", "deviceId"):
         assert bad not in blob, bad
+
+
+def test_c7_typed_splits_and_split_summaries_are_empty():
+    """Becken UND Freiwasser: Intervall-Abruf (typedsplits) und split_summaries liefern leere Listen — Intervalle und
+    Bahnen stecken vollstaendig in der Rundenantwort. Deshalb Freigabe nur mit DETAIL_EXTRAS=splits (spart einen Abruf)."""
+    c = _cap()
+    assert c["typed_splits"].get("splits") == [] and c["split_summaries"].get("splitSummaries") == []
+    ow = CAP.with_name("swimming__open_water_swimming.json")
+    if ow.exists():
+        o = json.load(open(ow, encoding="utf-8"))
+        assert o["typed_splits"].get("splits") == []
+
+
+def test_c8_semantics_of_laps_and_lengths():
+    """Belegte Bedeutung (Mitschnitt 18.10.2026):
+      Runde ohne Distanz = Pause (eine Bahn ohne Distanz)          · Bahn ohne Distanz in einer Runde = Pause in der Runde
+      Runde.movingDuration = Summe der aktiven Bahnen             · Listeneintrag.movingDuration = Summe der Runden-movingDuration
+      Bahn.averageSWOLF = Zuege + gerundete Sekunden              · Runde.averageSpeed (Becken) = Distanz / movingDuration
+      Summe Zuege der Runden = strokes des Listeneintrags"""
+    c = _cap()
+    laps, le = _laps(c["splits"]), c["list_entry"]
+    mov = 0.0
+    for lap in laps:
+        act = [x for x in _lengths(lap) if (x.get("distance") or 0) > 0]
+        if (lap.get("distance") or 0) == 0:
+            assert not act and lap.get("movingDuration", 0) == 0
+            continue
+        assert abs(sum(x["duration"] for x in act) - lap["movingDuration"]) < 0.05
+        assert lap["numberOfActiveLengths"] == len(act)
+        assert lap["totalNumberOfStrokes"] == sum(x.get("totalNumberOfStrokes") or 0 for x in act)
+        assert abs(lap["averageSpeed"] - lap["distance"] / lap["movingDuration"]) < 0.005
+        for x in act:
+            assert abs(x["averageSWOLF"] - (x["totalNumberOfStrokes"] + round(x["duration"]))) <= 1
+        mov += lap["movingDuration"]
+    assert abs(mov - le["movingDuration"]) < 0.1
+    assert sum(l.get("totalNumberOfStrokes") or 0 for l in laps) == le["strokes"]
+
+
+def test_c9_worker_end_to_end_with_the_real_capture():
+    """Listeneintrag → Zeile, Details + Runden aus dem Mitschnitt durch den echten Sync-Pfad (FakeDb). Ergebnis:
+    schlanke Runden mit Schwimmfeldern, Bahnen im Rohblock, Befund an der Zeile, Rohfelder bleiben, Zeilengroesse begrenzt."""
+    import asyncio
+    from orvia_worker import normalize
+    from tests.conftest import FakeDb
+
+    c = _cap()
+    act = normalize.normalize_activity(c["list_entry"])
+
+    async def run():
+        db = FakeDb()
+        await db.insert("activities", [{"user_id": "u", "source": "garmin", "source_record_id": act.source_record_id,
+                                        "sport_id": act.sport_id, "metrics": act.metrics}])
+        res = await DS.sync_activity_details(db, "u", lambda aid: c["details"], limit=5,
+                                             get_extra=lambda name, aid: c[name], extras=("splits",),
+                                             extras_sports=("swimming",))
+        assert res["updated"] == 1 and res["extras"] == 1
+        return (await db.select("activities", {"user_id": "u"}))[0]["metrics"]
+
+    m = asyncio.run(run())
+    laps = m["splits"]
+    assert m["splits_source"] == "garmin_splits" and len(laps) == len(_laps(c["splits"]))
+    active = [l for l in laps if l["distance"] > 0]
+    assert sum(l["numberOfActiveLengths"] for l in active) == c["list_entry"]["activeLengths"]
+    assert all("averageSWOLF" in l and "swimStroke" in l and "movingDuration" in l for l in active)
+    assert m["ext"]["extras"] == {"splits": "ok"}
+    raw_lengths = [ln for lap in m["ext"]["splits"]["lapDTOs"] for ln in lap.get("lengthDTOs", [])]
+    assert len(raw_lengths) == sum(len(_lengths(l)) for l in _laps(c["splits"]))
+    assert m["ext"]["fields"]["poolLength"] == c["list_entry"]["poolLength"]
+    assert len(json.dumps(m["ext"]["splits"])) < 60_000                         # Rohblock je Einheit (78 Bahnen ~ 24 kB)
+    assert len(json.dumps(m["splits"])) < 6_000                                # landet auch im lokalen Speicher

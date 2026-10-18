@@ -275,10 +275,15 @@ def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: An
     return out
 
 
-# v8-452.1 · Schwimmfelder je Runde (Feldnamen der Garmin-Rundenantwort), die zusaetzlich in die schlanke Form gehen —
-# nur wenn Garmin sie liefert und nur als Skalar. Belegt am Mitschnitt (tests/test_v4521_swim_capture.py).
-SWIM_LAP_FIELDS = ("numberOfActiveLengths", "totalNumberOfStrokes", "averageSwolf", "averageSwimCadence",
-                   "maxSwimCadence", "swimStroke", "intensityType", "averageStrokes", "averageStrokeDistance")
+# v8-452.1 · Schwimmfelder je Runde, die zusaetzlich in die schlanke Form gehen — nur wenn Garmin sie liefert und nur als
+# Skalar. Feldnamen BELEGT am Mitschnitt vom 18.10.2026 (captures/swimming__*.json, test_v4521_swim_capture.py):
+#   numberOfActiveLengths, totalNumberOfStrokes   Summe der Bahnen dieser Runde (Bahnen ohne Distanz = Pause in der Runde)
+#   averageSWOLF                                  Mittel der Bahnen-SWOLF (Bahn: Zuege + Sekunden) — Schreibweise "SWOLF"
+#   averageMovingSpeed                            Distanz / movingDuration (movingDuration = Summe der aktiven Bahnen)
+#   averageStrokes, averageSwimCadence, maxSwimCadence, swimStroke (FREESTYLE / BREASTSTROKE / BACKSTROKE / MIXED), intensityType
+# Bewusst NICHT: averageStrokeDistance — im Listeneintrag in cm, in der Rundenantwort in m (0 im Becken).
+SWIM_LAP_FIELDS = ("numberOfActiveLengths", "totalNumberOfStrokes", "averageSWOLF", "averageMovingSpeed",
+                   "averageStrokes", "averageSwimCadence", "maxSwimCadence", "swimStroke", "intensityType")
 
 
 def _slim_laps(raw: Any) -> list | None:

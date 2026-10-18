@@ -15,9 +15,9 @@ Rohwerte bleiben unter ihrem Garmin-Namen, nichts wird erfunden, nichts stillsch
 | Stufe | Bedeutung | Zeilen (Teil A–C) |
 |---|---|---|
 | **OBSERVED_PRODUCTION** | im Produktions-Zensus für die Sportart gezählt | 0 |
-| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 13 |
+| **OBSERVED_FIXTURE** | in einem echten, anonymisierten Mitschnitt im Repo gesehen | 22 |
 | **LIBRARY_DOCUMENTED** | im typisierten Modell der eingesetzten Bibliothek (garminconnect 0.3.6) benannt | 43 |
-| **ASSUMED** | üblicher Garmin-Connect-Name, hier **nicht** belegt | 67 |
+| **ASSUMED** | üblicher Garmin-Connect-Name, hier **nicht** belegt | 58 |
 | **ABSENT** | im Zensus nie geliefert, obwohl mindestens 5 passende Aktivitäten vorliegen | 0 |
 
 **Noch kein Produktions-Zensus erhoben.** Jede Zeile steht auf der Stufe aus dem Code; `OBSERVED_PRODUCTION` und `ABSENT` kommen erst mit dem Zensus (Abschnitt 12).
@@ -230,15 +230,15 @@ Umrechnung. Zusätzlich bleibt jedes weitere skalare Feld erhalten, dessen Name 
 | Laufdynamik | running | get_activities_by_date | `avgGradeAdjustedSpeed` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgGradeAdjustedSpeed` | nein | summary | m/s | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
 | Rad | cycling | get_activities_by_date | `averageBikingCadenceInRevPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
 | Rad | cycling | get_activities_by_date | `maxBikingCadenceInRevPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxBikingCadenceInRevPerMinute` | nein | summary | rpm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `poolLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.poolLength` | nein | summary | siehe unitOfPoolLength | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Meter oder Yards |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `unitOfPoolLength` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.unitOfPoolLength` | nein | summary | enum | keine (Rohwert) | nein | nach Zensus / Mitschnitt | geschachtelt: unitKey |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `activeLengths` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.activeLengths` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `strokes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.strokes` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `avgStrokes` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgStrokes` | nein | summary | count/length | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwolf` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageSwolf` | nein | summary | swolf | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwimCadenceInStrokesPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.averageSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming | get_activities_by_date | `maxSwimCadenceInStrokesPerMinute` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.maxSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
-| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `avgStrokeDistance` | ASSUMED | ja, wenn geliefert | `metrics.ext.fields.avgStrokeDistance` | nein | summary | cm | keine (Rohwert) | nein | nach Zensus / Mitschnitt | Einheit unbelegt |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `poolLength` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.poolLength` | nein | summary | cm (bei unitOfPoolLength meter) | keine (Rohwert) | nein | ja | Mitschnitt 18.10.2026: 2500 = 25 m; Yards nicht belegt |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `unitOfPoolLength` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.unitOfPoolLength` | nein | summary | enum | keine (Rohwert) | nein | ja | geschachtelt: unitKey |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `activeLengths` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.activeLengths` | nein | summary | count | keine (Rohwert) | nein | ja | = Summe numberOfActiveLengths der Runden (Mitschnitt) |
+| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `strokes` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.strokes` | nein | summary | count | keine (Rohwert) | nein | ja | Schwimmen: = Summe totalNumberOfStrokes der Runden; Rudern unbelegt |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `avgStrokes` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.avgStrokes` | nein | summary | count/length | keine (Rohwert) | nein | ja | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwolf` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.averageSwolf` | nein | summary | swolf | keine (Rohwert) | nein | ja | Runden/Bahnen schreiben averageSWOLF |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `averageSwimCadenceInStrokesPerMinute` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.averageSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | ja | — |
+| Schwimmen / Rudern | swimming | get_activities_by_date | `maxSwimCadenceInStrokesPerMinute` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.maxSwimCadenceInStrokesPerMinute` | nein | summary | strokes/min | keine (Rohwert) | nein | ja | — |
+| Schwimmen / Rudern | swimming, rowing | get_activities_by_date | `avgStrokeDistance` | OBSERVED_FIXTURE (Mitschnitt Lauf) | ja, wenn geliefert | `metrics.ext.fields.avgStrokeDistance` | nein | summary | cm | keine (Rohwert) | nein | ja | Freiwasser: cm (Runde: averageStrokeDistance in m); Becken 0; Rudern unbelegt |
 | Kraft | gym | get_activities_by_date | `totalSets` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.totalSets` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
 | Kraft | gym | get_activities_by_date | `activeSets` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.activeSets` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |
 | Kraft | gym | get_activities_by_date | `totalReps` | LIBRARY_DOCUMENTED | ja, wenn geliefert | `metrics.ext.fields.totalReps` | nein | summary | count | keine (Rohwert) | nein | nach Zensus / Mitschnitt | — |

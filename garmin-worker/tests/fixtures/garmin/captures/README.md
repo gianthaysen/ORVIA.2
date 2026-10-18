@@ -1,6 +1,7 @@
 # Echte, anonymisierte Mitschnitte je Garmin-Typ
 
-Dieser Ordner ist absichtlich (noch) leer. Dateien entstehen durch
+Stand 18.10.2026: `swimming__lap_swimming.json` (Becken), `swimming__open_water_swimming.json` (Freiwasser) —
+Auswertung in `app/docs/ACTIVITY-ANALYSIS.md` §8 und `tests/test_v4521_swim_capture.py`. Dateien entstehen durch
 
     python scripts/capture_activity_payloads.py
 
