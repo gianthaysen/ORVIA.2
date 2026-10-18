@@ -14,6 +14,7 @@ Importiert bewusst KEINE Settings beim Paket-Import (import-safe für Tests).
 # gezielter Neuabruf (DETAIL_REFETCH_ACTIVE, Standard AUS). Bestehende Felder unveraendert.
 # v8-452 · Zusatzabrufe fuer bereits geladene Aktivitaeten nachholen (DETAIL_REFETCH_EXTRAS, Standard AUS) — z. B.
 # Runden/Bahnen beim Beckenschwimmen, nur wenn DETAIL_EXTRAS sie einschaltet. Bestehende Felder unveraendert.
-WORKER_BUILD = "v8-452"
+# v8-452.1 · Zusatzabrufe je Sportart eingrenzbar (DETAIL_EXTRAS_SPORTS); Runden anderer Quelle werden nie ersetzt.
+WORKER_BUILD = "v8-452.1"
 
 __all__ = ["WORKER_BUILD"]

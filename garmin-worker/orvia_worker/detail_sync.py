@@ -194,7 +194,7 @@ def _needs_active(act: Any) -> bool:
     return isinstance(be, dict) and isinstance(be.get("distance"), dict) and "distance_active" not in be
 
 
-def _needs_extras(act: Any, extras: Any) -> bool:
+def _needs_extras(act: Any, extras: Any, sports: Any = None) -> bool:
     """v8-452 · Details aktuell, aber ein eingeschalteter Zusatzabruf, der fuer GENAU diese Aktivitaet in Frage kommt
     (extras_for: Sportart, Garmin-Typ, vorhandene Messreihen), lief nie — kein Befund in metrics.ext.extras. Ein Befund
     ('ok' / 'empty' / 'failed') zaehlt als gelaufen: kein Endlosabruf."""
@@ -205,14 +205,14 @@ def _needs_extras(act: Any, extras: Any) -> bool:
         return False
     g = m.get("garmin") if isinstance(m.get("garmin"), dict) else {}
     st = m.get("streams") if isinstance(m.get("streams"), dict) else {}
-    wanted = extras_for(act.get("sport_id"), extras, type_key=g.get("type_key"), streams=st.keys())
+    wanted = extras_for(act.get("sport_id"), extras, type_key=g.get("type_key"), streams=st.keys(), sports=sports)
     ext = m.get("ext") if isinstance(m.get("ext"), dict) else {}
     got = ext.get("extras") if isinstance(ext.get("extras"), dict) else {}
     return any(w not in got for w in wanted)
 
 
 def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool = False, refetch_active: bool = False,
-                   refetch_extras: Any = None) -> bool:
+                   refetch_extras: Any = None, extras_sports: Any = None) -> bool:
     """True, wenn fuer diese Aktivitaet (noch einmal) Details zu laden sind."""
     metrics = act.get("metrics") if isinstance(act, dict) else None
     if _parked(metrics):
@@ -228,7 +228,7 @@ def _needs_details(act: Any, refetch_maxchart: int = 0, refetch_semantics: bool 
         return True
     if refetch_active and _needs_active(act):
         return True
-    if refetch_extras and _needs_extras(act, refetch_extras):
+    if refetch_extras and _needs_extras(act, refetch_extras, extras_sports):
         return True
     return _needs_resolution_refetch(metrics, refetch_maxchart)
 
@@ -247,11 +247,18 @@ def provenance_incomplete(metrics: Any) -> bool:
     return needs_backfill(metrics)
 
 
-def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: Any = None) -> list[str]:
+def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: Any = None,
+               sports: Any = None) -> list[str]:
     """Welche der eingeschalteten Zusatzabrufe fuer diese Aktivitaet gemacht werden (feste
     Reihenfolge). `type_key` = Garmin-Typ, `streams` = Namen der Messreihen der Detailantwort.
     Fehlt eine Angabe, die eine Bedingung braucht, gilt die Bedingung als NICHT erfuellt —
-    im Zweifel kein Abruf."""
+    im Zweifel kein Abruf.
+    v8-452.1 · `sports` (DETAIL_EXTRAS_SPORTS): nur diese ORVIA-Sportarten; leer = alle, fuer die der
+    Abruf sinnvoll ist (bisheriges Verhalten). Grund: Garmin-Runden ersetzen metrics.splits, und die
+    Laufbestzeiten lesen metrics.splits als Rueckfall (run-bests) — Runden fuer Laeufe erst mit eigenem Beleg."""
+    only_sports = {str(x).strip().lower() for x in (sports or ()) if str(x).strip()}
+    if only_sports and str(sport_id or "").lower() not in only_sports:
+        return []
     on = [str(e).strip() for e in (enabled or ()) if str(e).strip()]
     have = set(streams or ())
     out = []
@@ -268,6 +275,12 @@ def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: An
     return out
 
 
+# v8-452.1 · Schwimmfelder je Runde (Feldnamen der Garmin-Rundenantwort), die zusaetzlich in die schlanke Form gehen —
+# nur wenn Garmin sie liefert und nur als Skalar. Belegt am Mitschnitt (tests/test_v4521_swim_capture.py).
+SWIM_LAP_FIELDS = ("numberOfActiveLengths", "totalNumberOfStrokes", "averageSwolf", "averageSwimCadence",
+                   "maxSwimCadence", "swimStroke", "intensityType", "averageStrokes", "averageStrokeDistance")
+
+
 def _slim_laps(raw: Any) -> list | None:
     """Runden in der Form, die die App schon liest (metrics.splits: distance + eine Dauer +
     averageHR). Nur echte Felder des Rohobjekts; passt die Antwort nicht, entsteht nichts."""
@@ -279,7 +292,7 @@ def _slim_laps(raw: Any) -> list | None:
     elif isinstance(raw, list):
         cands.append(raw)
     keep = ("distance", "duration", "movingDuration", "elapsedDuration", "averageHR", "maxHR",
-            "averageSpeed", "elevationGain", "lapIndex", "startTimeGMT")
+            "averageSpeed", "elevationGain", "lapIndex", "startTimeGMT") + SWIM_LAP_FIELDS
     for lst in cands:
         out = []
         for lap in lst[:200]:
@@ -323,7 +336,11 @@ def merge_extras(metrics: dict, sport_id: Any, fetched: dict) -> dict:
         got[name] = "ok"
         if name == "splits":
             laps = _slim_laps(raw)
-            if laps:
+            # v8-452.1 · Runden aus anderer Quelle (Detailantwort, eigene Daten) werden nie ersetzt — nur leere
+            # oder bereits aus diesem Abruf stammende. Der Rohblock (ext.splits) wird in jedem Fall abgelegt.
+            prev = metrics.get("splits")
+            foreign = isinstance(prev, list) and bool(prev) and metrics.get("splits_source") != "garmin_splits"
+            if laps and not foreign:
                 metrics["splits"] = laps
                 metrics["splits_source"] = "garmin_splits"
     ext["extras"] = got
@@ -411,7 +428,8 @@ def _parse_ts(value: Any) -> datetime | None:
 
 
 def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: int = 0,
-                    refetch_semantics: bool = False, refetch_active: bool = False, refetch_extras: Any = None) -> dict:
+                    refetch_semantics: bool = False, refetch_active: bool = False, refetch_extras: Any = None,
+                    extras_sports: Any = None) -> dict:
     """v8-447.1 · Stand des Nachladens — nur ZAHLEN, keine Inhalte, keine Kennungen.
 
       total      Garmin-Aktivitaeten
@@ -454,7 +472,7 @@ def backfill_status(rows: Any, now: datetime | None = None, refetch_maxchart: in
             out["semantics_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_active and _needs_active(r) and not _parked(m, now):
             out["active_pending"] += 1
-        if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_extras and _needs_extras(r, refetch_extras) and not _parked(m, now):
+        if complete and ver >= DETAILS_CONTRACT_VERSION and refetch_extras and _needs_extras(r, refetch_extras, extras_sports) and not _parked(m, now):
             out["extras_pending"] += 1
         if complete and ver >= DETAILS_CONTRACT_VERSION:
             out["current"] += 1
@@ -496,7 +514,7 @@ async def sync_activity_details(
     on_rate_limit: Callable[[int], None] | None = None,
     get_extra: Callable[[str, str], Any] | None = None, extras: Any = None,
     maxchart: int = 0, refetch_resolution: bool = False, refetch_semantics: bool = False,
-    refetch_active: bool = False, refetch_extras: bool = False,
+    refetch_active: bool = False, refetch_extras: bool = False, extras_sports: Any = None,
 ) -> dict:
     """Bounded, idempotenter Details-Backfill: nur Aktivitäten OHNE metrics.route
     werden detailliert; Ergebnis verlustfrei in activities.metrics gemerged.
@@ -527,7 +545,7 @@ async def sync_activity_details(
     acts = sorted(acts, key=_prio)
     candidates = [a.get("source_record_id") for a in acts if a.get("source_record_id")]
     already = [a["source_record_id"] for a in acts
-               if a.get("source_record_id") and not _needs_details(a, refetch_mc, refetch_sem, refetch_act, refetch_ex)]
+               if a.get("source_record_id") and not _needs_details(a, refetch_mc, refetch_sem, refetch_act, refetch_ex, extras_sports)]
     by_id = {a.get("source_record_id"): a for a in acts}
 
     # v8-447.1 · Die Garmin-Abrufe laufen in einem eigenen Thread. Vorher blockierten sie die
@@ -596,7 +614,7 @@ async def sync_activity_details(
             fetched: dict[str, Any] = {}
             g = merged.get("garmin") if isinstance(merged.get("garmin"), dict) else {}
             wanted = extras_for(act.get("sport_id"), extras, type_key=g.get("type_key"),
-                                streams=(parsed.get("streams") or {}).keys())
+                                streams=(parsed.get("streams") or {}).keys(), sports=extras_sports)
             for name in wanted:
                 try:
                     fetched[name] = await asyncio.to_thread(get_extra, name, aid)
@@ -677,7 +695,7 @@ async def sync_activity_details(
     by_cat: dict[str, int] = {}
     for cat in failures.values():
         by_cat[cat] = by_cat.get(cat, 0) + 1
-    status = backfill_status(acts, now, refetch_mc, refetch_sem, refetch_act, refetch_ex)
+    status = backfill_status(acts, now, refetch_mc, refetch_sem, refetch_act, refetch_ex, extras_sports)
     return {"selected": plan["selected"], "updated": updated, "failed": list(plan["failed"]) + persist_failed,
             "extras": extras_count, "failures": failures, "by_category": by_cat, "aborted": plan.get("aborted"),
             "not_attempted": plan.get("not_attempted") or [], "status": status}

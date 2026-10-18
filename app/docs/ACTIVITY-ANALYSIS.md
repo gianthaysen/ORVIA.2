@@ -1,6 +1,6 @@
 # Sportartspezifische Aktivitätsanalyse (v8-452)
 
-**Status: IMPLEMENTED** (App) · Worker-Erweiterung **vorbereitet, nicht ausgerollt** · keine Migration
+**Status: IMPLEMENTED** (App, live seit v8-452) · Worker v8-452.1 **vorbereitet, nicht ausgerollt** · keine Migration
 
 ## 1 · Warum beim Schwimmen fast nur die Herzfrequenz erschien
 
@@ -54,14 +54,24 @@ Andere Sportarten: bisherige Seite unverändert, Messdetails kommen dazu.
 
 ## 5 · Worker (vorbereitet, nicht ausgerollt)
 
-`DETAIL_REFETCH_EXTRAS` (Standard aus, Worker-Stand `v8-452`): lädt Einheiten auf Vertrag 3 einmal neu, wenn ein **eingeschalteter** Zusatzabruf für sie noch keinen Befund hat (`ext.extras`). Ohne `DETAIL_EXTRAS` wirkungslos. Keine Migration (alles in `activities.metrics`).
+Worker-Stand **v8-452.1** (Standard: alles aus, ein Deploy allein löst keinen Abruf aus):
+- `DETAIL_EXTRAS` — Zusatzabrufe (`splits` = Runden inkl. Bahnen je Runde, `typed_splits` = Intervalle, nur Becken).
+- `DETAIL_EXTRAS_SPORTS` — **neu**: Zusatzabrufe nur für diese Sportarten. Leer = alle (Verhalten v8-452). Für die Freigabe **`swimming`**, weil die Laufbestzeiten `metrics.splits` als Rückfall lesen (`run-bests.js`) — Garmin-Runden für Läufe brauchen einen eigenen Beleg.
+- `DETAIL_REFETCH_EXTRAS` — lädt Einheiten auf Vertrag 3 einmal neu, wenn ein eingeschalteter Zusatzabruf noch keinen Befund hat (`ext.extras`: ok / empty / failed). Nur innerhalb von `DETAIL_EXTRAS_SPORTS`. Je Lauf höchstens `DETAIL_BACKFILL_LIMIT`.
+- Runden anderer Quelle in `metrics.splits` werden **nie ersetzt**; der Rohblock (`ext.splits`) wird trotzdem abgelegt.
+- Schlanke Runden (`metrics.splits`) tragen zusätzlich die Schwimmfelder je Runde (`SWIM_LAP_FIELDS`), soweit Garmin sie liefert.
+- Keine Migration (alles in `activities.metrics`).
 
 Freigabe-Reihenfolge (Gian):
-1. Mitschnitt einer Beckeneinheit lokal: `python garmin-worker/scripts/capture_activity_payloads.py` (belegt die Form von Runden/Bahnen; anonymisiert).
-2. `railway up` (Worker v8-452) → `/healthz` `worker: v8-452`.
-3. Railway: `DETAIL_EXTRAS=splits,typed_splits` und einmalig `DETAIL_REFETCH_EXTRAS=1` (je Lauf höchstens `DETAIL_BACKFILL_LIMIT` Einheiten; Sync-Protokoll `extras_pending:`).
-4. Danach `DETAIL_REFETCH_EXTRAS` wieder aus. Bahnen (`typed_splits`) bleiben in der App gesperrt, bis der Mitschnitt ihre Form belegt.
-5. Validierung: eine Beckeneinheit in ORVIA gegen Garmin Connect vergleichen (Bahnlänge, Bahnen, SWOLF, Zugfrequenz, Züge) → Beleg `list.swim: { swimming: 'validated' }` mit Datum in `VALIDATIONS`.
+1. Mitschnitt lokal: `cd ~/Claude/Projects/Strava/garmin-worker && .venv-login/bin/python scripts/capture_activity_payloads.py --sports swimming` → Auswertung durch Claude (`tests/test_v4521_swim_capture.py` läuft dann mit).
+2. Sicherung: `supabase/scripts/v4521_swim_extras_backup.sql` (Schema `orvia_backup`, nicht über die API erreichbar).
+3. `railway up` → `/healthz` `worker: v8-452.1`. Ohne Variablen ändert sich nichts.
+4. Railway: `DETAIL_EXTRAS=splits,typed_splits`, `DETAIL_EXTRAS_SPORTS=swimming`, einmalig `DETAIL_REFETCH_EXTRAS=1` → Sync-Protokoll `extras_pending:` fällt auf 0 (6 Schwimmeinheiten, ≤ 1 Lauf bei Limit 10).
+5. Kontrolle: `supabase/scripts/v4521_swim_extras_check.sql` (nur lesend).
+6. `DETAIL_REFETCH_EXTRAS` löschen. `DETAIL_EXTRAS` + `DETAIL_EXTRAS_SPORTS` bleiben (neue Schwimmeinheiten bekommen Runden direkt beim ersten Laden).
+7. Validierung gegen Garmin Connect → Beleg `list.swim` / Bahnen in `metric-eligibility`.
+
+Rückweg: `DETAIL_EXTRAS` löschen (stoppt jeden Abruf) → `v4521_swim_extras_rollback.sql` (entfernt genau Runden/Bahnen, sonst nichts) · Notfall: `v4521_swim_extras_restore.sql` (Stand der Sicherung, aktuelle Korrekturen bleiben) · Worker: in Railway die vorige Bereitstellung (v8-447.3) erneut ausrollen. Alle SQL-Dateien sind gegen ein echtes Postgres getestet (`test_v4521_swim_sql.py`).
 
 ## 6 · Audit echter Einheiten
 

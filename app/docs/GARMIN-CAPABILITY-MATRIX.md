@@ -1,6 +1,6 @@
 # Garmin-Fähigkeits-Matrix
 
-**Status: IMPLEMENTED** · Stand Worker v8-452 · Details-Vertrag 3 · Rohblock-Version 1
+**Status: IMPLEMENTED** · Stand Worker v8-452.1 · Details-Vertrag 3 · Rohblock-Version 1
 
 > Diese Datei wird **erzeugt**: `python garmin-worker/scripts/gen_capability_matrix.py`.
 > Die Tabellen stammen aus dem Code des Workers (`garmin_fields.py`, `detail_sync.py`, `normalize.py`).

@@ -90,6 +90,9 @@ class Settings:
     # Zusatzabrufe je Aktivitaet, kommagetrennt aus: activity, splits, typed_splits,
     # hr_zones, power_zones, exercise_sets. Standard LEER = aus (Antwortformen unbelegt).
     detail_extras: tuple[str, ...] = ()
+    # v8-452.1 · Zusatzabrufe nur fuer diese ORVIA-Sportarten (kommagetrennt, z. B. "swimming"). LEER = alle Sportarten,
+    # fuer die ein Abruf sinnvoll ist (Verhalten bis v8-452). Gilt fuer neue Aktivitaeten UND fuer DETAIL_REFETCH_EXTRAS.
+    detail_extras_sports: tuple[str, ...] = ()
     # Einmaliger Rueckblick fuer den Herkunftsblock (Garmin-Typ, Ortszeit, Rohfelder) bei
     # bereits importierten Aktivitaeten: so viele Tage zurueck wird die LISTE gelesen
     # (ein Abruf, keine Einzelabrufe). 0 = nur das normale Sync-Fenster.
@@ -158,6 +161,9 @@ class Settings:
             detail_backfill_limit=max(1, _int_env(env, "DETAIL_BACKFILL_LIMIT", 10)),
             detail_extras=tuple(
                 e.strip().lower() for e in (env.get("DETAIL_EXTRAS") or "").split(",") if e.strip()
+            ),
+            detail_extras_sports=tuple(
+                e.strip().lower() for e in (env.get("DETAIL_EXTRAS_SPORTS") or "").split(",") if e.strip()
             ),
             activity_provenance_backfill_days=max(0, _int_env(env, "ACTIVITY_PROVENANCE_BACKFILL_DAYS", 0)),
             detail_maxchart=min(30000, max(0, _int_env(env, "DETAIL_MAXCHART", 0))),

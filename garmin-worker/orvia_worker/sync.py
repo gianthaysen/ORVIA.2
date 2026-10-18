@@ -555,6 +555,7 @@ async def sync_user(
                 refetch_semantics=bool(getattr(settings, "detail_refetch_semantics", False)),
                 refetch_active=bool(getattr(settings, "detail_refetch_active", False)),
                 refetch_extras=bool(getattr(settings, "detail_refetch_extras", False)) and bool(extras),
+                extras_sports=tuple(getattr(settings, "detail_extras_sports", ()) or ()),
             )
             cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
