@@ -12,6 +12,8 @@ Importiert bewusst KEINE Settings beim Paket-Import (import-safe für Tests).
 # Neupruefung der Bedeutung (DETAIL_REFETCH_SEMANTICS, Standard AUS).
 # v8-449.1 · aktive Zeit: Strecken-Bestwerte zusaetzlich auf der Timer-Achse (best_efforts.distance_active),
 # gezielter Neuabruf (DETAIL_REFETCH_ACTIVE, Standard AUS). Bestehende Felder unveraendert.
-WORKER_BUILD = "v8-449.1"
+# v8-452 · Zusatzabrufe fuer bereits geladene Aktivitaeten nachholen (DETAIL_REFETCH_EXTRAS, Standard AUS) — z. B.
+# Runden/Bahnen beim Beckenschwimmen, nur wenn DETAIL_EXTRAS sie einschaltet. Bestehende Felder unveraendert.
+WORKER_BUILD = "v8-452"
 
 __all__ = ["WORKER_BUILD"]

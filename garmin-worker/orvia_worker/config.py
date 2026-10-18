@@ -119,6 +119,10 @@ class Settings:
     # v8-449.1 · Laufen/Gehen/Wandern auf Vertrag 3, deren Bestwerte noch keine AKTIVE Zeit (Timer-Achse,
     # best_efforts.distance_active) tragen, EINMAL neu laden. Gleiche Grenzen wie das Nachladen. Standard AUS.
     detail_refetch_active: bool = False
+    # v8-452 · Aktivitaeten auf Vertrag 3, fuer die ein EINGESCHALTETER Zusatzabruf (DETAIL_EXTRAS, z. B. Runden/Bahnen
+    # beim Beckenschwimmen) noch nie lief — die Zusatzabrufe laufen nur zusammen mit dem Laden der Details. EINMAL neu
+    # laden; danach steht der Befund an der Zeile (ext.extras: ok / empty / failed), kein Endlosabruf. Standard AUS.
+    detail_refetch_extras: bool = False
 
     @classmethod
     def from_env(cls, env: dict | None = None) -> "Settings":
@@ -161,6 +165,7 @@ class Settings:
             provenance_backfill=_mode_env(env, "PROVENANCE_BACKFILL"),
             detail_refetch_semantics=_bool_env(env, "DETAIL_REFETCH_SEMANTICS"),
             detail_refetch_active=_bool_env(env, "DETAIL_REFETCH_ACTIVE"),
+            detail_refetch_extras=_bool_env(env, "DETAIL_REFETCH_EXTRAS"),
         )
 
 

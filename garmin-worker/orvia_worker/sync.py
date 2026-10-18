@@ -554,6 +554,7 @@ async def sync_user(
                 refetch_resolution=bool(getattr(settings, "detail_refetch_resolution", False)) and maxchart > 0,
                 refetch_semantics=bool(getattr(settings, "detail_refetch_semantics", False)),
                 refetch_active=bool(getattr(settings, "detail_refetch_active", False)),
+                refetch_extras=bool(getattr(settings, "detail_refetch_extras", False)) and bool(extras),
             )
             cats = " ".join(f"{k}:{v}" for k, v in sorted((det.get("by_category") or {}).items()))
             result["steps"]["activity_details"] = (
@@ -575,6 +576,7 @@ async def sync_user(
                     + (f" resolution_pending:{st.get('resolution_pending')}" if st.get("resolution_pending") else "")
                     + (f" provenance_incomplete:{st.get('provenance_incomplete')}" if st.get("provenance_incomplete") else "")
                     + (f" semantics_pending:{st.get('semantics_pending')}" if st.get("semantics_pending") else "")
+                    + (f" extras_pending:{st.get('extras_pending')}" if st.get("extras_pending") else "")
                 )
                 logger.info("backfill contract=%s total=%s current=%s pending=%s (legacy=%s never=%s) "
                             "failing=%s deferred=%s categories=%s processed_24h=%s eta_h>=%s",

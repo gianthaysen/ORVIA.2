@@ -98,7 +98,8 @@ await page.evaluate(async () => {
 /* Auslesen der Aktivitaetsseite */
 const PAGE = `(() => { const pg = document.getElementById('gmActPage'); const cs = e => e ? getComputedStyle(e) : null;
   const k = pg.querySelector('.plan-kicker'), line = pg.querySelector('.route-map .rmx-line'), st = pg.querySelector('.route-map .rmx-start'), en = pg.querySelector('.route-map .rmx-end');
-  const kpi = [].slice.call(pg.querySelectorAll('.detail-kpis > div')).map(d => ({ key: d.classList.contains('key'), col: cs(d.querySelector('b')).color, lbl: d.querySelector('span').textContent }));
+  /* v8-452: Schwimmen zeigt Hauptkennzahl (aa-hero-main) + Karten statt der sechs Kacheln — dieselbe Regel: eine Zahl in der Sportfarbe */
+  const kpi = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-cards > .aa-card')).map(d => ({ key: d.classList.contains('key') || d.classList.contains('aa-hero-main'), col: cs(d.querySelector('b')).color, lbl: d.querySelector('span').textContent.toUpperCase() }));
   const lines = [].slice.call(pg.querySelectorAll('.oc2 .g-line')).map(l => cs(l).stroke), marks = [].slice.call(pg.querySelectorAll('.oc2 .g-mm')).map(l => cs(l).stroke);
   const tiles = pg.querySelector('.route-map.has-rmx .rmx-tiles');
   return { act: pg.getAttribute('data-activity'), primary: cs(pg).getPropertyValue('--activity-primary').trim(), kicker: k ? cs(k).color : null, kpi: kpi,

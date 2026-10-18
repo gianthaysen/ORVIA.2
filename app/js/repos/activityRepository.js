@@ -104,6 +104,22 @@
     } catch (e) { return b.fail('exception', String(e && e.message || e)); }
   }
 
+  /* v8-452 · Rohblock metrics.ext EINER Aktivitaet (Garmin-Rohfelder, Zusatzreihen, Bedeutungspruefung, Zusatzabrufe).
+     Der lokale Speicher fuehrt ihn bewusst nicht (activity-store SERVER_ONLY_METRIC_KEYS: Umfang); die Aktivitaetsseite
+     laedt ihn bei Bedarf und haelt ihn nur im Arbeitsspeicher. Nur lesen, nur eigene Zeile (RLS + user_id). */
+  async function fetchExt(id) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!id) return b.fail('invalid_id', 'Keine Activity-ID.', { source: 'empty' });
+    if (!b.online()) return b.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().from('activities').select('id,ext:metrics->ext').eq('user_id', b.currentUserId()).eq('id', id).limit(1);
+      if (error) return b.fail('query_failed', error.message);
+      const row = (data && data[0]) || null;
+      return b.ok(row ? { id: row.id, ext: (row.ext && typeof row.ext === 'object') ? row.ext : null } : null, { source: row ? 'supabase' : 'empty' });
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+
   // Manuelle/importierte Activity serverseitig löschen (RLS owner-only).
   async function deleteActivity(id) {
     const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
@@ -158,5 +174,5 @@
   }
 
   O.repos = O.repos || {};
-  O.repos.activity = { upsertFromSession, updateFields, upsertManual, list, getById, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
+  O.repos.activity = { upsertFromSession, updateFields, upsertManual, list, getById, fetchExt, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
 })();

@@ -100,12 +100,12 @@ const GOLD = '216, 187, 122';
 const cs = `e => e ? getComputedStyle(e) : null`;
 const openPage = async id => { await page.evaluate(async id => { try { gmStoryClose(); } catch (_) { } showTab('akt'); await new Promise(r => setTimeout(r, 150)); gmOpenActivityPage(id); await new Promise(r => setTimeout(r, 1200)); }, id); };
 const READ = `(() => { const pg = document.getElementById('gmActPage'), cs = (e, p) => e ? getComputedStyle(e, p) : null;
-  const back = pg.querySelector('.backbtn'), open = pg.querySelector('.route-map .rmx-open'), kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div'));
+  const back = pg.querySelector('.backbtn'), open = pg.querySelector('.route-map .rmx-open'), kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-cards > .aa-card'));
   const story = pg.querySelector('.gm-story-cta'), del = pg.querySelector('.gm-corr .danger-btn'), k = pg.querySelector('.plan-kicker'), hero = pg.querySelector('.act-hero');
   const ctl = e => e ? { bg: cs(e).backgroundImage, border: cs(e).borderTopColor, shadow: cs(e).boxShadow, col: cs(e).color } : null;
   const order = story && del ? !!(story.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
   return { act: pg.getAttribute('data-activity'), back: ctl(back), open: ctl(open),
-    kpi: kp.map(d => ({ bg: cs(d).backgroundImage, border: cs(d).borderTopColor, shadow: cs(d).boxShadow, key: d.classList.contains('key'), col: cs(d.querySelector('b')).color, box: (b => [b.left, b.top, b.right, b.bottom])(d.getBoundingClientRect()) })),
+    kpi: kp.map(d => ({ tile: !d.classList.contains('aa-hero-main'), bg: cs(d).backgroundImage, border: cs(d).borderTopColor, shadow: cs(d).boxShadow, key: d.classList.contains('key') || d.classList.contains('aa-hero-main'), col: cs(d.querySelector('b')).color, box: (b => [b.left, b.top, b.right, b.bottom])(d.getBoundingClientRect()) })),
     story: story ? { border: cs(story).borderTopColor, icon: cs(story.querySelector('.ic')).color, col: cs(story).color, h: story.getBoundingClientRect().height } : null,
     del: del ? { border: cs(del).borderTopColor, col: cs(del).color, bg: cs(del).backgroundColor, h: del.getBoundingClientRect().height, size: cs(del).fontSize } : null, order: order,
     kickTick: k ? { w: cs(k, '::before').width, bg: cs(k, '::before').backgroundColor, col: cs(k).color } : null,
@@ -142,11 +142,12 @@ ok('C1 Schwimmen ohne Strecke: Wellenfeld im Platz der Karte (zwischen Kopf und 
 ok('C2 sieben Wellenlinien in der Farbe der Sportart (Aqua) — die Farbe kommt aus dem Thema, nicht aus dem Markup', swim.hero.paths === 7 && has(swim.hero.stop, RGB.swimming) && /url\(/.test(swim.hero.stroke), JSON.stringify([swim.hero.paths, swim.hero.stop, swim.hero.stroke]));
 ok('C3 eigene Ebene, keine Maske (Schutz vor Darstellungsfehlern unter der bewegten Zeichnung)', /matrix/.test(String(swim.hero.tf)) && (!swim.hero.mask || swim.hero.mask === 'none'), JSON.stringify([swim.hero.tf, swim.hero.mask]));
 { /* Darstellungsfehler aus der Entwicklung: gleiche Kacheln muessen gleich aussehen (vier Ecken je Kachel) */
-  const pts = []; swim.kpi.forEach(k => { pts.push([k.box[0] + 12, k.box[1] + 6], [k.box[2] - 12, k.box[1] + 6], [k.box[0] + 12, k.box[3] - 6], [k.box[2] - 12, k.box[3] - 6]); });
+  const tiles = swim.kpi.filter(k => k.tile);   // v8-452: gleich grosse Karten unter der Hauptkennzahl
+  const pts = []; tiles.forEach(k => { pts.push([k.box[0] + 12, k.box[1] + 6], [k.box[2] - 12, k.box[1] + 6], [k.box[0] + 12, k.box[3] - 6], [k.box[2] - 12, k.box[3] - 6]); });
   const px = await pixels(pts); let spread = 0;
-  for (let c = 0; c < 4; c++) { const v = swim.kpi.map((_, i) => px[i * 4 + c][0]); spread = Math.max(spread, Math.max(...v) - Math.min(...v)); }
-  ok('C4 die sechs Kennzahl-Kacheln unter dem Wellenfeld sehen gleich aus (Streuung je Ecke ≤ 3 Helligkeitsstufen; ohne eigene Ebene waren es 42)', swim.kpi.length === 6 && spread <= 3, 'Streuung ' + spread); }
-ok('C5 dieselbe Sprache wie Lauf und Rad: Kennzeichen-Strich, eine Hauptkennzahl, Story vor Loeschen — alles in Aqua bzw. Gold wie dort', has(swim.kickTick.bg, RGB.swimming) && swim.kpi.filter(k => has(k.col, RGB.swimming)).length === 1 && swim.order === true && isGold(swim.story.border, 0.24) && swim.kpi[0].bg === run.kpi[0].bg, JSON.stringify([swim.kickTick, swim.order]));
+  for (let c = 0; c < 4; c++) { const v = tiles.map((_, i) => px[i * 4 + c][0]); spread = Math.max(spread, Math.max(...v) - Math.min(...v)); }
+  ok('C4 die Kennzahl-Karten unter dem Wellenfeld sehen gleich aus (Streuung je Ecke ≤ 3 Helligkeitsstufen; ohne eigene Ebene waren es 42)', tiles.length >= 2 && spread <= 3, tiles.length + ' Karten, Streuung ' + spread); }
+ok('C5 dieselbe Sprache wie Lauf und Rad: Kennzeichen-Strich, eine Hauptkennzahl, Story vor Loeschen — alles in Aqua bzw. Gold wie dort', has(swim.kickTick.bg, RGB.swimming) && swim.kpi.filter(k => has(k.col, RGB.swimming)).length === 1 && swim.order === true && isGold(swim.story.border, 0.24) && swim.kpi.filter(k => k.tile)[0].bg === run.kpi[0].bg, JSON.stringify([swim.kickTick, swim.order]));
 await openPage('t-gym'); const gym = await page.evaluate(READ);
 ok('C6 andere Sportarten ohne Strecke bekommen KEIN Wellenfeld (Kraft)', gym.hero === null && gym.map === false);
 ok('C7 Textlink der Seite („Dauer korrigieren") ohne Browser-Blau: helle Schrift, goldene Unterstreichung', !gym.link || (has(gym.link.col, TEXT) && isGold(gym.link.deco, 0.24)), JSON.stringify(gym.link));
