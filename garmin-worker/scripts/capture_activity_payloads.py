@@ -411,6 +411,42 @@ def richness(entry: dict, sport: str) -> int:
     return sum(1 for k in _RICH.get(sport, ()) if entry.get(k) not in (None, "", [], {}))
 
 
+# v8-454 · Intervall-Audit: je Sportart gezielt eine strukturierte und eine gleichmaessige Einheit (Rad zusaetzlich
+# Rolle/virtuell). Merkmale nur aus dem Listeneintrag: hasIntensityIntervals (Garmin: Einheit mit Intensitaetsintervallen,
+# z. B. aus einem Garmin-Workout), lapCount. Juengste zuerst bei Gleichstand.
+VIRTUAL_TYPES = ("virtual_ride", "indoor_cycling", "virtual_run", "treadmill_running")
+
+
+def _laps_n(e: dict) -> int:
+    v = e.get("lapCount")
+    return int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else 0
+
+
+def pick_interval_audit(entries: list, sports: tuple[str, ...]) -> list[tuple[str, dict]]:
+    """[(rolle, eintrag)]: rolle = intervals | steady | indoor. Keine Einheit doppelt."""
+    out: list[tuple[str, dict]] = []
+    for sport in sports:
+        mine = [e for e in entries if isinstance(e, dict)
+                and normalize.map_sport(((e.get("activityType") or {}).get("typeKey") or "")) == sport]
+        if not mine:
+            continue
+        tk = lambda e: ((e.get("activityType") or {}).get("typeKey") or "")  # noqa: E731
+        flagged = [e for e in mine if e.get("hasIntensityIntervals") is True]
+        pool = flagged or [e for e in mine if _laps_n(e) >= 3]
+        chosen: list = []
+        if pool:
+            best = max(pool, key=lambda e: (_laps_n(e), -pool.index(e)))
+            out.append(("intervals", best)); chosen.append(best)
+        steady = [e for e in mine if e not in chosen and e.get("hasIntensityIntervals") is not True and tk(e) not in VIRTUAL_TYPES]
+        if steady:
+            out.append(("steady", steady[0])); chosen.append(steady[0])
+        if sport == "cycling":
+            ind = [e for e in mine if e not in chosen and tk(e) in VIRTUAL_TYPES]
+            if ind:
+                out.append(("indoor", ind[0]))
+    return out
+
+
 def resolution_probe(api, activity_id, maxcharts=(20000,), keep_raw: dict | None = None) -> list[dict]:
     """v8-447.1 · Liefert Garmin mit groesserem maxChartSize ALLE aufgezeichneten Zeilen?
     Die offene Frage hinter den Leistungs-Bestwerten. Je Wert EIN zusaetzlicher Abruf; behalten
@@ -473,6 +509,9 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="nur den Bericht drucken, keine Datei schreiben")
     ap.add_argument("--probe-resolution", action="store_true",
                     help="je Aktivitaet EIN zusaetzlicher Abruf mit maxchart=20000: liefert Garmin alle Zeilen? (nur Zahlen)")
+    ap.add_argument("--interval-audit", action="store_true",
+                    help="v8-454: je Sportart (Standard running,cycling) eine Einheit mit Intervallen, eine gleichmaessige, "
+                         "beim Rad zusaetzlich Rolle/virtuell — Dateiname <sportart>__<typ>__<rolle>.json")
     ap.add_argument("--out-dir", default=str(OUT_DIR))
     args = ap.parse_args()
     sports = tuple(s.strip().lower() for s in args.sports.split(",") if s.strip()) or None
@@ -483,7 +522,13 @@ def main() -> int:
         entries = api.get_activities_by_date((today - timedelta(days=args.days)).isoformat(), today.isoformat())
     except Exception as e:  # noqa: BLE001
         _fail(f"Aktivitaetsliste nicht lesbar ({type(e).__name__}).")
-    picked = pick_activities(entries if isinstance(entries, list) else [], sports, args.activity_id)
+    roles: dict = {}
+    if args.interval_audit:
+        pairs = pick_interval_audit(entries if isinstance(entries, list) else [], sports or ("running", "cycling"))
+        picked = [e for _, e in pairs]
+        roles = {id(e): r for r, e in pairs}
+    else:
+        picked = pick_activities(entries if isinstance(entries, list) else [], sports, args.activity_id)
     if not picked:
         _fail("Keine passende Aktivitaet gefunden (--days erhoehen oder --activity-id nutzen).")
     try:
@@ -496,6 +541,8 @@ def main() -> int:
     written = 0
     for entry in picked:
         name = file_name(entry)
+        if id(entry) in roles:
+            name = name[:-5] + "__" + roles[id(entry)] + ".json"
         print(f"\n=== {name} ===")
         payload = fetch_payload(api, entry)
         anon = anonymize_payload(payload, with_gps=args.with_gps)
