@@ -334,7 +334,10 @@
          ohne verstrichene Zeit, eigene Daten): wie bisher. */
       var gm = a.metrics && a.metrics.garmin, elK = gm ? num(gm.elapsed_duration_s) : null, tmK = gm ? num(gm.timer_duration_s) : null;
       var pausesKnown = elK != null && tmK != null && elK > tmK + 5;
-      var splits = normalizeSplits(a.metrics && a.metrics.splits, { elapsed: true, requireElapsed: pausesKnown });
+      /* v8-454: Garmin-Runden aus dem Zusatzabruf (splits_source 'garmin_splits') zaehlen NICHT fuer Bestzeiten — das Nachladen
+         von Runden darf keine historische Bestzeit neu berechnen. Neue Rundenrekorde nur ueber einen eigenen, validierten Prozess. */
+      var lapsAllowed = !(a.metrics && a.metrics.splits_source === 'garmin_splits');
+      var splits = lapsAllowed ? normalizeSplits(a.metrics && a.metrics.splits, { elapsed: true, requireElapsed: pausesKnown }) : null;
       if (splits) res.withSplits++;
       /* Sekundengenaues Stream-Fenster — nur mit ECHTER Zeitachse (siehe
          bestWindowFromStreams). Rundenfenster bleibt der Rueckfall. */

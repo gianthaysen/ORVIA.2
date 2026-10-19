@@ -30,6 +30,7 @@
   }
   function ME() { return req('metricEligibility', './metric-eligibility.js'); }
   function SI() { return req('swimIntervals', './swim-intervals.js'); }
+  function IVE() { return req('intervals', './intervals.js'); }
   function obj(v) { return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null; }
   function num(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
 
@@ -72,7 +73,7 @@
     running: {
       hero: ['distance', 'duration', 'paceKm'],
       cards: ['avgHr', 'runningCadence', 'elevationGain', 'maxHr', 'pause', 'calories', 'trainingEffect'],
-      charts: ['paceKm', 'hr', 'cadence', 'elevation'],
+      charts: ['paceKm', 'hr', 'cadence', 'elevation'],          // v8-454: Tempo · Puls · Kadenz · Hoehe
       intervals: { pace: 'paceKm', minDist: 200 },
       details: ['environment', 'distance', 'duration', 'timer', 'elapsed', 'moving', 'pause', 'paceKm', 'avgHr', 'maxHr', 'runningCadence', 'strideLength', 'elevationGain',
                 'hrSeries', 'speedSeries', 'cadenceSeries', 'elevationSeries', 'laps', 'route', 'calories', 'trainingEffect', 'trainingLoad']
@@ -80,7 +81,7 @@
     cycling: {
       hero: ['distance', 'duration', 'avgSpeed'],
       cards: ['avgPower', 'normPower', 'avgHr', 'cyclingCadence', 'elevationGain', 'maxPower', 'maxSpeed', 'maxHr', 'pause', 'calories', 'trainingEffect'],
-      charts: ['power', 'speedKmh', 'hr', 'cadence', 'elevation'],
+      charts: ['power', 'hr', 'cadence', 'speedKmh', 'elevation'],   // v8-454: Leistung · Puls · Kadenz · Geschwindigkeit
       intervals: { pace: 'speedKmh', minDist: 500 },
       details: ['environment', 'distance', 'duration', 'timer', 'elapsed', 'moving', 'pause', 'avgSpeed', 'maxSpeed', 'avgPower', 'normPower', 'maxPower', 'powerCurve', 'cyclingCadence',
                 'avgHr', 'maxHr', 'elevationGain', 'hrSeries', 'speedSeries', 'powerSeries', 'cadenceSeries', 'elevationSeries', 'laps', 'route', 'calories', 'trainingEffect', 'trainingLoad']
@@ -101,6 +102,21 @@
     }
   };
 
+  /* v8-454 · Uebersicht: EINE grosse Hauptkennzahl + hoechstens drei Kennzahlen. Alles Weitere steht im Analysebereich
+     (md.more). Rad: drinnen/virtuell mit GEMESSENER Leistung ist die Leistung die Hauptzahl (die Strecke ist dort modelliert). */
+  function heroIdsFor(fam, desc) {
+    var m = desc.metrics, ctx = desc.context && desc.context.environment;
+    if (fam === 'swimming') return ['distance', 'duration', 'pace100', 'avgHr'];
+    if (fam === 'running') return ['distance', 'duration', 'paceKm', 'avgHr'];
+    if (fam === 'cycling') {
+      var pw = show(m.avgPower);
+      if (pw && (ctx === 'indoor' || ctx === 'virtual')) return ['avgPower', 'duration', 'avgHr', 'cyclingCadence'];
+      return pw ? ['distance', 'duration', 'avgPower', 'avgHr'] : ['distance', 'duration', 'avgSpeed', 'avgHr'];
+    }
+    return null;
+  }
+
+  var MIN_SERIES_POINTS = 20;
   function show(d) { return !!(d && d.status === 'available' && d.validation !== 'blocked' && d.value !== null && d.value !== undefined); }
 
   /* Zeitachse (Sekunden je Punkt), nur wenn sie zur Reihe passt — sonst null (keine erfundene Achse). */
@@ -110,17 +126,24 @@
   }
 
   function chartsOf(owner, desc, ids, fam) {
-    var out = [];
+    var out = [], ctx = desc.context && desc.context.environment;
     (ids || []).forEach(function (cid) {
       var c = CHART[cid]; if (!c) return;
       var d = desc.metrics[c.metric];
       if (!show(d) || !Array.isArray(d.value)) return;
       var vals = d.value.map(function (v) { var x = num(v); return x === null ? null : (c.conv ? c.conv(x) : x); });
       if (cid === 'pace100') vals = vals.map(function (v) { return (v !== null && v >= 30 && v <= 900) ? v : null; });   // Pausen/Wenden (≈ 0 m/s) sind kein Tempo
-      if (cid === 'paceKm') vals = vals.map(function (v) { return (v !== null && v >= 100 && v <= 1800) ? v : null; });
+      if (cid === 'paceKm') {
+        vals = vals.map(function (v) { return (v !== null && v >= 100 && v <= 1800) ? v : null; });
+        /* v8-454: Gehen/Stehen (langsamer als das Doppelte des Median-Tempos) ist kein Lauftempo — Luecke statt Spitze */
+        var pv = vals.filter(function (v) { return v !== null; }).sort(function (x, y) { return x - y; }), pm = pv.length ? pv[Math.floor(pv.length / 2)] : null;
+        if (pm) vals = vals.map(function (v) { return v !== null && v > pm * 2 ? null : v; });
+      }
       if (cid === 'cadence' && d.kind && d.kind !== (fam === 'cycling' ? 'cycling_cadence_rpm' : 'running_cadence_spm')) return;
+      /* v8-454: Rolle / virtuell — Geschwindigkeit und Hoehe sind dort modelliert (keine Messung im Gelaende): kein Diagramm */
+      if (fam === 'cycling' && (cid === 'speedKmh' || cid === 'elevation') && (ctx === 'indoor' || ctx === 'virtual')) return;
       var n = vals.filter(function (v) { return v !== null; }).length;
-      if (n < 3) return;
+      if (n < MIN_SERIES_POINTS) return;                  // v8-454: keine scheinbar genaue Kurve aus wenigen Punkten
       var sum = 0; vals.forEach(function (v) { if (v !== null) sum += v; });
       out.push({ id: cid, metric: c.metric, kind: c.kind, mean: sum / n, unit: cid === 'cadence' ? (fam === 'cycling' ? ' rpm' : ' spm') : c.unit, dec: c.dec != null ? c.dec : 0,
                  higherBetter: c.higherBetter, values: vals, times: timesFor(owner, vals.length), points: n, validation: d.validation, source: d.source, basis: d.basis });
@@ -181,7 +204,7 @@
     var ls = SI() && SI().lengthSeries(swim); if (!ls) return [];
     var out = [];
     [['lengthPace', ls.pace100, 'pace', '/100 m', false], ['lengthSwolf', ls.swolf, 'num', '', false]].forEach(function (d) {
-      var vals = d[1], n = vals.filter(function (v) { return v !== null; }).length; if (n < 3) return;
+      var vals = d[1], n = vals.filter(function (v) { return v !== null; }).length; if (n < 8) return;
       var sum = 0; vals.forEach(function (v) { if (v !== null) sum += v; });
       out.push({ id: d[0], metric: 'lengths', kind: d[2], mean: sum / n, unit: d[3], dec: 0, higherBetter: d[4], values: vals, times: null, labels: ls.labels,
                  points: n, validation: 'unverified', source: 'garmin_extras', basis: 'ext.splits.lapDTOs[].lengthDTOs' });
@@ -196,11 +219,11 @@
     var a = obj(owner) || {}, fam = family(a.sportId), prof = PROFILES[fam] || PROFILES.other;
     var desc = M.describeActivity(a, opts || {});
     var pick = function (ids) { return ids.map(function (id) { return desc.metrics[id]; }).filter(show); };
-    var hero = pick(prof.hero), cards = pick(prof.cards);
+    var hero = pick(heroIdsFor(fam, desc) || prof.hero).slice(0, 4), cards = pick(prof.cards);
     var heroIds = hero.map(function (d) { return d.id; });
     cards = cards.filter(function (d) { return heroIds.indexOf(d.id) < 0; });
     var charts = chartsOf(a, desc, prof.charts, fam);
-    var iv = null, eff = null, swim = null;
+    var iv = null, eff = null, swim = null, timeline = null;
     /* v8-453 · Schwimmen: Intervalle, Pausen und Bahnen aus engine/swim-intervals.js (Schwimmzeit = aktive Bahnen, nie die
        Rundenzeit mit Pausen). Ohne Runden: kein Intervall-Block — die bisherigen Kennzahlen bleiben. */
     if (fam === 'swimming') {
@@ -208,10 +231,20 @@
       try { swim = S && desc.metrics.laps && desc.metrics.laps.status === 'available' ? S.build(a, opts || {}) : null; } catch (e) { swim = null; }
       if (swim && !swim.show) swim = null;
       if (swim && swim.efficiency) { var se = swim.efficiency; eff = { intervals: se.intervals, meanPace: se.meanPace, cvPct: se.cvPct, best: se.best, bestPace: se.bestPace, worst: se.worst, worstPace: se.worstPace, paceKind: 'pace100', stroke: se.stroke, definition: 'swim' }; }
+      if (swim) { var IE = IVE(); timeline = IE ? IE.swimTimeline(swim) : null; }
       if (swim && swim.lengthsLoaded) {
         var ORD = ['pace100', 'lengthPace', 'hr', 'strokeRate', 'swolf', 'lengthSwolf'];
         charts = charts.concat(lengthCharts(swim)).sort(function (x, y) { return ORD.indexOf(x.id) - ORD.indexOf(y.id); });
       }
+    } else if (fam === 'running' || fam === 'cycling') {
+      /* v8-454: gemeinsame Intervall-Engine (engine/intervals.js) — Runden, Garmin-Workout-Schritte, Zeitsemantik, Analyse */
+      var E = IVE();
+      try { iv = E ? E.build(a, { desc: desc, extState: (opts || {}).extState, legacySplits: (opts || {}).legacySplits }) : null; } catch (e) { iv = null; }
+      if (iv && !iv.show) iv = null;
+      timeline = iv ? iv.timeline : null;
+      var an = iv && iv.analytics;
+      if (an && an.comparable) eff = { intervals: an.count, meanPace: an.mean, cvPct: an.cvPct, best: an.best, bestPace: an.bestValue, worst: an.worst, worstPace: an.worstValue,
+                                       paceKind: an.metric === 'pace' ? 'paceKm' : (an.metric === 'power' ? 'power' : 'speedKmh'), definition: 'intervals', analytics: an };
     } else { iv = intervalsOf(desc, prof); eff = efficiencyOf(iv, prof); }
     /* Zeit je Pulszone laut Garmin — Anteil je Zone (Summe der gelieferten Zonen = 100 %) */
     var zd = desc.metrics.hrZones, zones = null;
@@ -220,11 +253,11 @@
       if (zt > 0) zones = { seconds: zd.value.slice(), total: zt, share: zd.value.map(function (v) { return Math.round((num(v) || 0) / zt * 1000) / 10; }), validation: zd.validation, source: zd.source };
     }
     var details = prof.details.map(function (id) { return desc.metrics[id]; }).filter(Boolean);
-    var shownIds = heroIds.concat(cards.slice(0, 6).map(function (d) { return d.id; }), charts.map(function (c) { return c.metric; }), (iv || swim) ? ['laps'] : [], (swim && swim.lengthsLoaded) ? ['lengths'] : [], zones ? ['hrZones'] : []);
+    var shownIds = heroIds.concat(cards.map(function (d) { return d.id; }), charts.map(function (c) { return c.metric; }), (iv || swim) ? ['laps'] : [], (swim && swim.lengthsLoaded) ? ['lengths'] : [], zones ? ['hrZones'] : []);
     var unverifiedShown = hero.concat(cards).some(function (d) { return d.validation === 'unverified'; });
     var loading = details.some(function (d) { return d.status === 'not_loaded' && (d.reason === 'raw_block_pending' || d.reason === 'raw_block_not_loaded'); });
     return { v: VERSION, family: fam, sport: desc.sport, context: desc.context.environment, source: desc.source, poolCheck: desc.poolCheck,
-             hero: hero, cards: cards.slice(0, 6), charts: charts, intervals: iv, swim: swim, efficiency: eff, zones: zones, details: details, shown: shownIds,
+             hero: hero, cards: cards.slice(0, 6), more: cards, charts: charts, intervals: iv, swim: swim, timeline: timeline, efficiency: eff, zones: zones, details: details, shown: shownIds,
              unverifiedShown: unverifiedShown, rawPending: loading, metrics: desc.metrics };
   }
 
