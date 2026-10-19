@@ -663,13 +663,24 @@
     if (x === 'ok') return { status: 'not_delivered', reason: 'laps_unreadable' };      // Antwort da, aber ohne Runden in lesbarer Form
     return { status: 'not_imported', reason: 'extras_disabled' };
   }
-  /* Bahnen einzeln (Zusatzabruf get_activity_typed_splits → metrics.ext.typed_splits). Die FORM dieser Antwort ist im Repo
-     nicht belegt (kein Mitschnitt): liegt sie vor, wird sie gemeldet, aber nicht gedeutet. */
+  /* Bahnen einzeln. v8-453: belegt am Garmin-Mitschnitt (18.10.2026) — die Bahnen stecken in der RUNDEN-Antwort
+     (metrics.ext.splits.lapDTOs[].lengthDTOs, Bahn ohne Distanz = Pause). get_activity_typed_splits lieferte leer; liegt dort
+     doch etwas, bleibt es gesperrt (Form unbelegt). Gegenprobe: aktive Bahnen = activeLengths des Listeneintrags. */
   function readLengths(a, opts) {
     if (a.source !== 'garmin') return { status: 'not_delivered', reason: 'source_without_lengths' };
     var m = obj(a.metrics) || {}, ext = obj(m.ext), st = extState(a, opts);
     if (!ext) return st === 'loaded' ? { status: 'not_imported', reason: 'extras_disabled' } : { status: 'not_loaded', reason: st === 'unknown' ? 'raw_block_not_loaded' : 'raw_block_' + st };
-    if (ext.typed_splits) return { status: 'available', value: ext.typed_splits, source: 'garmin_extras', basis: 'ext.typed_splits', shapeUnverified: true };
+    var sp = obj(ext.splits), lapsRaw = sp && Array.isArray(sp.lapDTOs) ? sp.lapDTOs : null;
+    if (lapsRaw) {
+      var L = [];
+      lapsRaw.forEach(function (l) { if (obj(l) && Array.isArray(l.lengthDTOs)) l.lengthDTOs.forEach(function (x) { if (obj(x)) L.push(x); }); });
+      if (L.length) {
+        var act = L.filter(function (x) { return (num(x.distance) || 0) > 0; }).length, want = num((obj(ext.fields) || {}).activeLengths);
+        return { status: 'available', value: L, source: 'garmin_extras', basis: 'ext.splits.lapDTOs[].lengthDTOs', activeCount: act, countMatch: want === null ? null : act === want };
+      }
+      return { status: 'not_delivered', reason: 'laps_without_lengths' };
+    }
+    if (ext.typed_splits && !(Array.isArray(ext.typed_splits.splits) && !ext.typed_splits.splits.length)) return { status: 'available', value: ext.typed_splits, source: 'garmin_extras', basis: 'ext.typed_splits', shapeUnverified: true };
     var x = (obj(ext.extras) || {}).typed_splits;
     if (x === 'failed') return { status: 'not_delivered', reason: 'fetch_failed' };
     if (x === 'empty') return { status: 'not_delivered', reason: 'empty_response' };
@@ -761,7 +772,18 @@
      function (a) { return { validation: evLevel('list.training_effect', a.sportId), reason: 'evidence_library' }; });
   am('hrSeries', null, 'bpm', 'series', function (a) { return readStream(a, 'heart_rate'); }, function (a) { return ownOk(a) || { validation: evLevel('details.heart_rate', a.sportId), reason: 'evidence_' + level('details.heart_rate', a.sportId) }; });
   am('timeAxis', null, 's', 'series', function (a) { return readStream(a, 'time'); }, function (a) { return { validation: evLevel('details.time', a.sportId) }; });
-  am('laps', null, 'list', 'structure', function (a, x) { return readLaps(a, x.opts); }, function (a) { return ownOk(a) || { validation: 'unverified', reason: 'evidence_assumed' }; });
+  am('laps', null, 'list', 'structure', function (a, x) { return readLaps(a, x.opts); }, function (a, r) {
+    var own = ownOk(a); if (own) return own;
+    /* v8-453 · Schwimmen: Summe der Rundendistanzen = Distanz UND Summe der aktiven Bahnen = activeLengths → in DIESER Einheit bestaetigt */
+    if (String(a.sportId || '').toLowerCase() === 'swimming' && r && Array.isArray(r.value)) {
+      var f = obj((obj((obj(a.metrics) || {}).ext) || {}).fields) || {}, dist = num(f.distance) !== null ? num(f.distance) : num((obj(a.summary) || {}).distanceM);
+      var sd = 0, sl = 0, okL = true;
+      r.value.forEach(function (l) { if (!obj(l)) return; sd += num(l.distance) || 0; if (num(l.numberOfActiveLengths) === null && (num(l.distance) || 0) > 0) okL = false; sl += num(l.numberOfActiveLengths) || 0; });
+      var dOk = dist !== null && Math.abs(sd - dist) <= Math.max(1, dist * 0.01), lOk = okL && num(f.activeLengths) !== null && sl === num(f.activeLengths);
+      if (dOk && lOk) return { validation: 'consistent', reason: 'lap_sums_match' };
+    }
+    return { validation: 'unverified', reason: 'evidence_assumed' };
+  });
   am('route', null, 'points', 'structure', function (a) { var rt = (obj(a.metrics) || {}).route; return Array.isArray(rt) && rt.length > 1 ? { status: 'available', value: rt.length, source: a.source === 'garmin' ? 'garmin_details' : a.source, basis: 'route' } : { status: 'not_delivered', reason: 'no_gps' }; },
      function () { return { validation: 'unverified', reason: 'evidence_assumed' }; });
 
@@ -845,7 +867,12 @@
   am('strokeRateSeries', SWIM, 'spm', 'series', function (a, x) { return readSeries(a, ['directSwimCadence', 'directStrokeCadence'], x.opts); }, function (a) { return { validation: evLevel('list.swim', a.sportId), reason: 'evidence_' + level('list.swim', a.sportId) }; });
   am('swolfSeries', SWIM, 'swolf', 'series', function (a, x) { return POOL_ONLY(a) || readSeries(a, ['directSwolf'], x.opts); }, function (a) { return { validation: evLevel('list.swim', a.sportId), reason: 'evidence_' + level('list.swim', a.sportId) }; });
   am('strokesSeries', SWIM, 'count', 'series', function (a, x) { return readSeries(a, ['directStrokes'], x.opts); }, function (a) { return { validation: evLevel('list.swim', a.sportId), reason: 'evidence_' + level('list.swim', a.sportId) }; });
-  am('lengths', SWIM, 'list', 'structure', function (a, x) { return POOL_ONLY(a) || readLengths(a, x.opts); }, function (a, r) { return r.shapeUnverified ? { validation: 'blocked', reason: 'shape_unverified' } : { validation: 'unverified', reason: 'evidence_assumed' }; });
+  am('lengths', SWIM, 'list', 'structure', function (a, x) { return POOL_ONLY(a) || readLengths(a, x.opts); }, function (a, r) {
+    if (r.shapeUnverified) return { validation: 'blocked', reason: 'shape_unverified' };
+    if (r.countMatch === true) return { validation: 'consistent', reason: 'active_lengths_match' };
+    if (r.countMatch === false) return { validation: 'unverified', reason: 'active_lengths_mismatch' };
+    return { validation: 'unverified', reason: 'evidence_assumed' };
+  });
 
   /* ---- Laufen / Gehen ---- */
   am('paceKm', RUN, 's/km', 'pace', function (a, x) {
