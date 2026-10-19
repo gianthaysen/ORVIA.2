@@ -102,9 +102,12 @@ await page.evaluate(([SER]) => {
 const ID = n => '7a000000-0000-4000-8000-0000000000' + n;
 const openPage = async id => page.evaluate(async id => { try { gmCloseSheets(); } catch (_) { } try { gmStoryClose(); } catch (_) { } showTab('akt'); await new Promise(r => setTimeout(r, 120)); gmOpenActivityPage(id); await new Promise(r => setTimeout(r, 450));
   const pg = document.getElementById('gmActPage'), T = e => e ? e.innerText.replace(/\s+/g, ' ').trim() : null;
-  const kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div')).map(d => T(d));
+  /* v8-454: neue Aktivitaetsansicht — Uebersicht (Hauptzahl + drei Werte) und Analysebereich „Alle Kennzahlen" (aufgeklappt gelesen) */
+  pg.querySelectorAll('details.aa-more').forEach(d => { d.open = true; });
+  const kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-more-grid > .aa-card')).map(d => { let t = T(d); d.querySelectorAll('.aa-q').forEach(q => { const x = T(q); if (x) t = t.replace(' ' + x, '').replace(x, ''); }); return t.trim(); });
+  const md = gmActAnalysisFor(_resolveActivityAny(id), activityDetailViewModel(_resolveActivityAny(id)));
   const a = _resolveActivityAny(id), vm = activityDetailViewModel(a);
-  return { on: pg.classList.contains('on'), head: T(pg.querySelector('.page-head')), kicker: T(pg.querySelector('.plan-kicker')), kpis: kp, charts: [].slice.call(pg.querySelectorAll('.oc2')).map(e => T(e.previousElementSibling)),
+  return { on: pg.classList.contains('on'), head: T(pg.querySelector('.page-head')), kicker: T(pg.querySelector('.plan-kicker')), kpis: kp, charts: [].slice.call(pg.querySelectorAll('.aa-chips button')).map(e => T(e)).concat(md ? md.charts.map(c => c.id + ':' + String(c.unit).trim()) : []),
     cadNote: T(pg.querySelector('.gm-cad-note')), vmDate: vm.date, vmTime: vm.time, cad: vm.cadence ? { status: vm.cadence.status, kind: vm.cadence.kind, avg: vm.cadence.avg } : null,
     story: gmStoryPages(a).join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '), sport: vm.sportId, label: vm.sportLabel }; }, id);
 const manualId = await page.evaluate(() => { const a = ORVIA.activityStore.getActivityBySource('manual', 'manual:2026-10-05:yoga'); return a.clientRecordId; });
@@ -130,23 +133,23 @@ ok('A7 die Liste nennt dieselben Tage (17. Juli fuer die Einheit nach Mitternach
 sec('B · Laufkadenz');
 p = await openPage(ID('11'));
 ok('B1 neuer Import: Kennzahl „161 spm" (bis v8-446: 80)', p.kpis.some(k => /^161 spm SCHRITTFREQUENZ$/i.test(k)) && p.cad.status === 'ok' && p.cad.avg === 161, JSON.stringify(p.kpis));
-ok('B2 Kurve „Kadenz (spm)" ist da und nutzt dieselbe Messreihe', p.charts.some(c => /Kadenz \(spm\)/.test(c)) && p.cadNote === null, JSON.stringify(p.charts));
+ok('B2 Kurve „Kadenz" (spm) ist da und nutzt dieselbe Messreihe', p.charts.includes('Kadenz') && p.charts.includes('cadence:spm') && p.cadNote === null, JSON.stringify(p.charts));
 ok('B3 Highlights nennen dieselbe Zahl: 161 spm', /161 spm/.test(p.story) && !/\b80 spm/.test(p.story), p.story.slice(0, 200));
 p = await openPage(ID('12'));
-ok('B4 Altimport: KEINE Zahl in der Kennzahl (weder 80 noch 160), keine Kadenz-Kurve', p.kpis.some(k => /^— SCHRITTFREQUENZ$/i.test(k)) && !p.kpis.some(k => /\b(80|160) spm/.test(k)) && !p.charts.some(c => /Kadenz/.test(c)) && p.cad.status === 'unverified', JSON.stringify([p.kpis, p.charts]));
-ok('B5 Altimport: Hinweis, dass die Messreihe neu geladen wird; die uebrigen Kurven bleiben', /älteren Import/.test(p.cadNote || '') && p.charts.some(c => /Herzfrequenz/.test(c)) && p.charts.some(c => /Tempo/.test(c)), String(p.cadNote));
+ok('B4 Altimport: KEINE Zahl in der Kennzahl (weder 80 noch 160; v8-454: keine Kachel), keine Kadenz-Kurve', !p.kpis.some(k => /SCHRITTFREQUENZ/i.test(k)) && !p.kpis.some(k => /\b(80|160) spm/.test(k)) && !p.charts.some(c => /Kadenz/.test(c)) && p.cad.status === 'unverified', JSON.stringify([p.kpis, p.charts]));
+ok('B5 Altimport: Hinweis, dass die Messreihe neu geladen wird; die uebrigen Kurven bleiben', /älteren Import/.test(p.cadNote || '') && p.charts.includes('Puls') && p.charts.includes('Tempo'), String(p.cadNote));
 ok('B6 Altimport: Highlights nennen keine Schrittfrequenz', !/\d+ spm/.test(p.story), p.story.slice(0, 200));
 
 sec('C · Rad');
 p = await openPage(ID('21'));
-ok('C1 Trittfrequenz unveraendert: Kurve „Trittfrequenz (rpm)", Bedeutung Umdrehungen, Mittel 92', p.charts.some(c => /Trittfrequenz \(rpm\)/.test(c)) && p.cad.status === 'ok' && p.cad.kind === 'cycling_cadence_rpm' && p.cad.avg === 92, JSON.stringify([p.charts, p.cad]));
-ok('C2 Rad-Seite traegt keine Schrittfrequenz; Leistung bleibt', !p.kpis.some(k => /SCHRITTFREQUENZ/i.test(k)) && p.kpis.some(k => /19\d W Ø LEISTUNG/i.test(k)) && p.charts.some(c => /Leistung/.test(c)), JSON.stringify(p.kpis));
+ok('C1 Trittfrequenz unveraendert: Kurve „Kadenz" in rpm, Bedeutung Umdrehungen, Mittel 92', p.charts.includes('Kadenz') && p.charts.includes('cadence:rpm') && p.cad.status === 'ok' && p.cad.kind === 'cycling_cadence_rpm' && p.cad.avg === 92, JSON.stringify([p.charts, p.cad]));
+ok('C2 Rad-Seite traegt keine Schrittfrequenz; Leistung bleibt', !p.kpis.some(k => /SCHRITTFREQUENZ/i.test(k)) && p.kpis.some(k => /19\d W Ø LEISTUNG/i.test(k)) && p.charts.includes('Leistung'), JSON.stringify(p.kpis));
 
 sec('D · Lauf-Seite: Max. HF und Kalorien');
 p = await openPage(ID('11'));
-ok('D1 liefert die Quelle sie, stehen Max. Herzfrequenz (176 bpm) und Kalorien (512 kcal) auf der Seite', p.kpis.some(k => /^176 bpm MAX\. HERZFREQUENZ$/i.test(k)) && p.kpis.some(k => /^512 kcal KALORIEN$/i.test(k)) && p.kpis.length === 8, JSON.stringify(p.kpis));
+ok('D1 liefert die Quelle sie, stehen Max. Herzfrequenz (176 bpm) und Kalorien (512 kcal) auf der Seite', p.kpis.some(k => /^176 bpm MAX\. PULS$/i.test(k)) && p.kpis.some(k => /^512 kcal KALORIEN$/i.test(k)) && !p.kpis.some(k => /^—/.test(k)), JSON.stringify(p.kpis));
 p = await openPage(ID('12'));
-ok('D2 liefert sie sie nicht, gibt es keine leere Kachel dafuer (sechs Kennzahlen wie bisher)', p.kpis.length === 6 && !p.kpis.some(k => /MAX\. HERZFREQUENZ|KALORIEN/i.test(k)), JSON.stringify(p.kpis));
+ok('D2 liefert sie sie nicht, gibt es keine leere Kachel dafuer', !p.kpis.some(k => /^—/.test(k)) && !p.kpis.some(k => /MAX\. PULS|KALORIEN/i.test(k)), JSON.stringify(p.kpis));
 
 sec('E · Yoga ist Yoga');
 p = await openPage(ID('31'));

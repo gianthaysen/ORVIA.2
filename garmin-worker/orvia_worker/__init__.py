@@ -15,6 +15,7 @@ Importiert bewusst KEINE Settings beim Paket-Import (import-safe für Tests).
 # v8-452 · Zusatzabrufe fuer bereits geladene Aktivitaeten nachholen (DETAIL_REFETCH_EXTRAS, Standard AUS) — z. B.
 # Runden/Bahnen beim Beckenschwimmen, nur wenn DETAIL_EXTRAS sie einschaltet. Bestehende Felder unveraendert.
 # v8-452.1 · Zusatzabrufe je Sportart eingrenzbar (DETAIL_EXTRAS_SPORTS); Runden anderer Quelle werden nie ersetzt.
-WORKER_BUILD = "v8-452.1"
+# v8-454 · Lauf-/Radfelder je Runde (Kadenz, Leistung, Workout-Schritt); Intervall-Abruf (typed_splits) nur Laufen.
+WORKER_BUILD = "v8-454"
 
 __all__ = ["WORKER_BUILD"]

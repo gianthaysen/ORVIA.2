@@ -135,7 +135,7 @@ sec('A · Einbindung');
   const mloc = AA.analyze(loc, { extState: 'pending' });
   ok('A7 Rohblock wird noch geladen: Intervalle aus den lokalen Runden sofort da, Bahnen folgen (nicht geladen)', mloc.swim && mloc.swim.lengthsLoaded === false && mloc.metrics.lengths.status === 'not_loaded');
   const none = AA.analyze(swimRow(5, true));
-  ok('A8 ohne Runden (Produktion heute): kein Intervall-Block, bisherige Kennzahlen und Diagramme wie in v8-452', none.swim === null && none.intervals === null && none.hero.length === 3 && none.charts.map(c => c.id).join() === 'hr');
+  ok('A8 ohne Runden (Produktion heute): kein Intervall-Block, bisherige Kennzahlen und Diagramme wie in v8-452', none.swim === null && none.intervals === null && none.hero.length === 4 && none.charts.map(c => c.id).join() === 'hr');
   const ow = swimRow(1, true); ow.metrics.splits = clone(F.open_water_swimming.metrics.splits); ow.metrics.splits_source = 'garmin_splits';
   ok('A9 Freiwasser mit einer Runde: kein Intervall-Block, Ansicht wie bisher', AA.analyze(ow).swim === null);
   const comp = AA.completeness(a);
@@ -156,7 +156,8 @@ sec('L · Register, Bestzeiten, andere Sportarten');
   ok('L5 Bahnen/Runden fuer Langzeitauswertungen gesperrt (ledger=false)', ['laps', 'lengths', 'swolf'].every(k => ME.describeActivity(a).metrics[k].ledger === false));
   const run = GEN.referenceActivity('running', 'best'); run.metrics.splits = [{ distance: 1000, duration: 300, averageHR: 150 }, { distance: 1000, duration: 295 }, { distance: 1000, duration: 290 }];
   const mr = AA.analyze(run);
-  ok('L6 Laufen: Runden wie bisher (activity-analysis intervalsOf), kein Schwimm-Modell', mr.swim === null && mr.intervals && mr.intervals.active === 3 && mr.efficiency && mr.efficiency.intervals === 3);
+  /* v8-454: Laufen nutzt die gemeinsame Intervall-Engine — drei gleich lange Runden = automatische Runden (Regel), zu wenige fuer eine Analyse */
+  ok('L6 Laufen: Runden ueber engine/intervals.js (automatische Runden), kein Schwimm-Modell, keine Analyse aus drei Runden', mr.swim === null && mr.intervals && mr.intervals.v === 'intervals@1' && mr.intervals.segments.length === 3 && mr.intervals.segments.every(s => s.kind === 'auto_lap' && s.kindSource === 'rule') && mr.efficiency === null);
 }
 
 sec('U · Quelltext-Vertrag');

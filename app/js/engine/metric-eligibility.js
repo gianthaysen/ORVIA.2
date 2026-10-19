@@ -914,6 +914,12 @@
        var r = sumRead(a, key);
        if (r.status === 'available' && r.value > 0) return r;
        if (key === 'avgPowerW') { var st = obj((obj((obj(a.metrics) || {}).best_efforts) || {}).stats) || {}, p = obj(st.power); if (p && num(p.avg) !== null && p.avg > 0) return { status: 'available', value: p.avg, source: 'garmin_details', basis: 'best_efforts.stats.power (alle Zeilen)' }; }
+       /* v8-454: gemessene Leistungsreihe ohne Summenwert → Mittel bzw. Maximum der Reihe (berechnet, wie bisher die Seite) */
+       if (key === 'avgPowerW' || key === 'maxPowerW') {
+         var ps = readStream(a, 'power');
+         if (ps.status === 'available') { var pv = ps.value.map(num).filter(function (x) { return x !== null && x >= 0; });
+           if (pv.length >= 5 && pv.some(function (x) { return x > 0; })) return { status: 'available', value: key === 'avgPowerW' ? Math.round(pv.reduce(function (q, x) { return q + x; }, 0) / pv.length) : Math.max.apply(null, pv), method: 'derived', source: 'garmin_details', basis: key === 'avgPowerW' ? 'Mittel der Leistungsreihe' : 'Maximum der Leistungsreihe' }; }
+       }
        return { status: 'not_delivered', reason: 'no_power_meter' }; }; };
   var powerCheck = function (a, r) { if (!plaus(r.value, 'power')) return { validation: 'blocked', reason: 'implausible' }; return { validation: evLevel('details.power', a.sportId), reason: 'evidence_' + level('details.power', a.sportId) }; };
   am('avgPower', BIKE, 'W', 'cycle', powerRead('avgPowerW'), powerCheck);

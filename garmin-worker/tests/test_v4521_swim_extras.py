@@ -57,7 +57,7 @@ def test_extras_for_respects_sport_scope():
     f = DS.extras_for
     assert f("running", ON, type_key="running", sports=("swimming",)) == []
     assert f("cycling", ON, type_key="road_biking", sports=("swimming",)) == []
-    assert f("swimming", ON, type_key="lap_swimming", sports=("swimming",)) == ["splits", "typed_splits"]
+    assert f("swimming", ON, type_key="lap_swimming", sports=("swimming",)) == ["splits"]          # v8-454: Intervall-Abruf nur Laufen
     assert f("swimming", ON, type_key="open_water_swimming", sports=("swimming",)) == ["splits"]   # Bahnen nur im Becken
     assert f("running", ON, type_key="running") == ["splits", "typed_splits"]                       # leer = wie v8-452
     assert f("running", ON, type_key="running", sports=()) == ["splits", "typed_splits"]
@@ -99,7 +99,7 @@ def test_refetch_touches_only_swims():
         after = {r["source_record_id"]: r for r in await db.select("activities", {"user_id": "u1"})}
         for rid, before in (("R1", rows[1]), ("C1", rows[2]), ("G1", rows[3])):
             assert after[rid]["metrics"] == before["metrics"], rid                               # unveraendert
-        assert after["S1"]["metrics"]["ext"]["extras"] == {"splits": "ok", "typed_splits": "empty"}
+        assert after["S1"]["metrics"]["ext"]["extras"] == {"splits": "ok"}
         assert res["status"]["extras_pending"] == 0
         # zweiter Lauf: Befund steht → kein weiterer Abruf
         calls.clear()
@@ -141,7 +141,7 @@ def test_swim_refetch_keeps_user_and_garmin_data():
         await db.insert("activities", [copy.deepcopy(row)])
 
         def get_extra(name, aid):
-            if name == "typed_splits":
+            if name == "splits":
                 raise RuntimeError("429")
             return _swim_splits()
 
@@ -153,7 +153,7 @@ def test_swim_refetch_keeps_user_and_garmin_data():
         assert r["duration_seconds"] == 4171
         assert m["ext"]["fields"]["poolLength"] == 2500 and m["ext"]["fields"]["activeLengths"] == 54   # Listeneintrag bleibt
         assert m["garmin"]["type_key"] == "lap_swimming"
-        assert m["ext"]["extras"] == {"splits": "ok", "typed_splits": "failed"}
+        assert m["ext"]["extras"] == {"splits": "failed"} and "splits" not in m
         assert m["detailsVersion"] == DS.DETAILS_CONTRACT_VERSION
         # 'failed' ist ein Befund → kein Endlosabruf
         assert DS._needs_extras(r, ON, ("swimming",)) is False

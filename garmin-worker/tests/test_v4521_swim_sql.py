@@ -73,7 +73,7 @@ def _no_ts(m):
 def test_backup_check_rollback_restore_on_postgres(pg):
     before, after = _rows()
     assert after[2]["metrics"] == before[2]["metrics"]                       # Lauf vom Nachholen unberuehrt
-    assert after[0]["metrics"]["ext"]["extras"] == {"splits": "ok", "typed_splits": "empty"}
+    assert after[0]["metrics"]["ext"]["extras"] == {"splits": "ok"}
     assert after[1]["metrics"]["ext"]["extras"] == {"splits": "ok"}         # Freiwasser: keine Bahnen-Abfrage
 
     # 1 · Sicherung VOR dem Nachholen (Stand before)

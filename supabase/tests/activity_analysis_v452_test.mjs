@@ -53,7 +53,7 @@ sec('S · Schwimmen');
   ok('S8 Pausen = Gesamtzeit − Timer (60 s), berechnet', m.pause.value === 60 && m.pause.method === 'derived');
   ok('S9 Runden/Bahnen: „nicht abgefragt" (Zusatzabruf aus) — nicht „nicht geliefert"', m.laps.status === 'not_imported' && m.laps.reason === 'extras_disabled' && m.lengths.status === 'not_imported');
   const md = AA.analyze(pool());
-  ok('S10 Ansicht: Hauptkennzahl Distanz, dann Dauer und Tempo; Karten mit Puls, Bahnen, SWOLF, Zugfrequenz …', md.hero.map(d => d.id).join() === 'distance,duration,pace100' && ['avgHr', 'activeLengths', 'swolf', 'strokeRate'].every(k => md.cards.some(d => d.id === k)), J(md.cards.map(d => d.id)));
+  ok('S10 Ansicht: Hauptkennzahl Distanz, dann Dauer und Tempo; Karten mit Puls, Bahnen, SWOLF, Zugfrequenz …', md.hero.map(d => d.id).join() === 'distance,duration,pace100,avgHr' && ['activeLengths', 'swolf', 'strokeRate'].every(k => md.cards.some(d => d.id === k))   /* v8-454: Puls in der Uebersicht */, J(md.cards.map(d => d.id)));
   ok('S11 gesperrte Werte erscheinen nirgends in der Hauptansicht', !md.hero.concat(md.cards).some(d => d.validation === 'blocked'));
   ok('S12 ungepruefte Quellwerte werden markiert (Hinweis unter den Karten)', md.unverifiedShown === true);
 }
@@ -121,7 +121,8 @@ sec('S · Schwimmen');
   ok('S32 unvollstaendige Einheit: Dauer nicht geprueft (not_completed), Anzeige bleibt moeglich', M(inc).duration.validation === 'unverified' && M(inc).duration.reason === 'not_completed');
   const thin = pool(); thin.metrics.streams = { heart_rate: [140, 141], time: [0, 2100] };
   ok('S33 geringe Aufloesung (2 Punkte): kein Diagramm (mindestens 3 Messpunkte), keine nachgebaute Kurve', AA.analyze(thin).charts.length === 0);
-  const ser = pool(); ser.metrics.streams.speed = [0.8, 0.9, 0, 0.85, 0.82, 0.9]; ser.metrics.ext.series = { directSwimCadence: { values: [26, 27, 0, 28, 27, 26], garmin_unit: 'strokesPerMinute' }, directSwolf: { values: [38, 39, null, 40, 39, 38] } };
+  /* v8-454: Diagramme erst ab 20 Messpunkten (keine scheinbar genaue Kurve aus wenigen Punkten) — Reihen hier mit 24 Punkten */
+  const ser = pool(), R24 = (a) => Array.from({ length: 24 }, (_, i) => a[i % a.length]); ser.metrics.streams = { time: Array.from({ length: 24 }, (_, i) => i * 90), heart_rate: R24([138, 140, 141, 139]), speed: R24([0.8, 0.9, 0, 0.85, 0.82, 0.9]) }; ser.metrics.ext.series = { directSwimCadence: { values: R24([26, 27, 0, 28, 27, 26]), garmin_unit: 'strokesPerMinute' }, directSwolf: { values: R24([38, 39, null, 40, 39, 38]) } };
   const sm = AA.analyze(ser);
   ok('S34 Diagramme nur mit Reihe: Tempo (0 m/s = Wende/Pause weggelassen), Puls, Zugfrequenz, SWOLF; Zeitachse uebernommen', sm.charts.map(c => c.id).join() === 'pace100,hr,strokeRate,swolf' && sm.charts[0].values[2] === null && !!sm.charts[0].times, J(sm.charts.map(c => [c.id, c.points])));
 }
@@ -143,7 +144,7 @@ sec('R · echte Schwimmeinheiten (Audit 18.10.2026)');
   ok('R10 Pulszonen in allen sechs geliefert (Garmin-Zonen, ungeprueft)', D.every(d => d.metrics.hrZones.status === 'available' && d.metrics.hrZones.validation === 'unverified'));
   ok('R11 Runden/Bahnen: in keiner Einheit abgefragt (Zusatzabruf aus) — obwohl Garmin lapCount 1–14 meldet', D.every(d => d.metrics.laps.status === 'not_imported' && d.metrics.laps.reason === 'extras_disabled'));
   const P = SWIMS.map((_, i) => AA.analyze(swimRow(i)));
-  ok('R12 Ansicht Becken: Puls, Bahnen, SWOLF, Zugfrequenz, Ruhezeit, Bahnlaenge · Freiwasser: Puls, Zugfrequenz, Ruhezeit, Tempo in Bewegung, Zuege, Strecke je Zug', P[5].cards.map(d => d.id).join() === 'avgHr,activeLengths,swolf,strokeRate,restTime,poolLength' && P[0].cards.map(d => d.id).join() === 'avgHr,strokeRate,restTime,pace100Moving,strokes,strokeDistance', P[5].cards.map(d => d.id).join() + ' | ' + P[0].cards.map(d => d.id).join());
+  ok('R12 Ansicht Becken: Puls, Bahnen, SWOLF, Zugfrequenz, Ruhezeit, Bahnlaenge · Freiwasser: Puls, Zugfrequenz, Ruhezeit, Tempo in Bewegung, Zuege, Strecke je Zug', P[5].hero.map(d => d.id).join() === 'distance,duration,pace100,avgHr' && P[5].cards.map(d => d.id).join() === 'activeLengths,swolf,strokeRate,restTime,poolLength,pace100Total' && P[0].cards.map(d => d.id).join() === 'strokeRate,restTime,pace100Moving,strokes,strokeDistance,maxHr'   /* v8-454: Puls in der Uebersicht */, P[5].cards.map(d => d.id).join() + ' | ' + P[0].cards.map(d => d.id).join());
   ok('R13 Diagramme: Becken nur Puls (Garmin liefert dort weder Tempo- noch Zugreihe); Freiwasser Tempo, Puls, Zugfrequenz', P[5].charts.map(c => c.id).join() === 'hr' && P[0].charts.map(c => c.id).join() === 'pace100,hr,strokeRate');
 }
 

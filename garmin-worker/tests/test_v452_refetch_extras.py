@@ -28,7 +28,9 @@ def test_needs_extras_only_for_enabled_and_matching():
     assert DS._needs_extras(_swim(type_key="open_water_swimming"), ("typed_splits",)) is False   # Bahnen nur im Becken
     assert DS._needs_extras(_swim(extras={"splits": "ok", "typed_splits": "empty"}), ("splits", "typed_splits")) is False
     assert DS._needs_extras(_swim(extras={"splits": "failed"}), ("splits",)) is False             # Befund steht: kein Endlosabruf
-    assert DS._needs_extras(_swim(extras={"splits": "ok"}), ("splits", "typed_splits")) is True
+    assert DS._needs_extras(_swim(extras={"splits": "ok"}), ("splits", "typed_splits")) is False   # v8-454: typed_splits nur Laufen
+    run = _swim(type_key="running"); run["sport_id"] = "running"
+    assert DS._needs_extras(dict(run, metrics=dict(run["metrics"], ext={"v": 1, "extras": {"splits": "ok"}})), ("splits", "typed_splits")) is True
 
 
 def test_needs_details_respects_flag():

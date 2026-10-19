@@ -9530,13 +9530,30 @@ function gmAaFmt(d,fam){
   }
 }
 /* Hauptkennzahlen + Karten. Die erste Hauptkennzahl traegt die Farbe der Sportart (eine Hauptzahl). */
+/* v8-454: Zahl und Einheit getrennt (Einheit kleiner) — „1:48 /100 m" → <b>1:48</b><small>/100 m</small>. Reine Formatierung. */
+function gmAaValUnit(txt){var m=/^([0-9.,:\u2212\-]+)\s*(.*)$/.exec(String(txt||''));return m&&m[2]?(gmEsc(m[1])+' <small>'+gmEsc(m[2])+'</small>'):gmEsc(String(txt||''));}
+/* Uebersicht (v8-454): EINE grosse Hauptkennzahl + hoechstens drei Kennzahlen; alles Weitere im Analysebereich. */
 function gmAaHeroHtml(md){
   if(!md||!md.hero.length)return '';
-  var first=md.hero[0],rest=md.hero.slice(1);
-  var h='<div class="aa-hero"><div class="aa-hero-main"><b>'+gmEsc(gmAaFmt(first,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,first.id))+'</span></div>';
-  if(rest.length)h+='<div class="aa-hero-sub">'+rest.map(function(d){return '<div><b>'+gmEsc(gmAaFmt(d,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,d.id))+'</span></div>';}).join('')+'</div>';
+  var first=md.hero[0],rest=md.hero.slice(1,4);
+  var h='<div class="aa-hero"><div class="aa-hero-main"><b>'+gmAaValUnit(gmAaFmt(first,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,first.id))+'</span></div>';
+  if(rest.length)h+='<div class="aa-hero-sub n'+rest.length+'">'+rest.map(function(d){return '<div><b>'+gmAaValUnit(gmAaFmt(d,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,d.id))+'</span></div>';}).join('')+'</div>';
+  if(md.rawPending)h+='<div class="aa-hero-load" role="status">'+gmEsc(_uiT('aa.note.loading'))+'</div>';
   return h+'</div>';
 }
+/* Analysebereich (v8-454): alle weiteren Kennzahlen + Pulszonen, eingeklappt. */
+function gmAaMoreHtml(md){
+  if(!md)return '';
+  var list=(md.more||md.cards||[]),z=md.zones?gmAaZonesInner(md):'';
+  if(!list.length&&!z)return '';
+  return '<div class="card aa-more-card"><details class="aa-more"><summary><span>'+gmEsc(_uiT('aa.more.toggle'))+'</span><span class="aa-more-n">'+gmEsc(_uiT('aa.more.count',{n:list.length+(md.zones?1:0)}))+'</span>'+icon('chevd','sm')+'</summary>'+
+    (list.length?'<div class="aa-cards aa-more-grid">'+list.map(function(d){return '<div class="aa-card"><b>'+gmAaValUnit(gmAaFmt(d,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,d.id))+'</span>'+gmAaQTag(d)+'</div>';}).join('')+'</div>':'')+
+    z+(md.unverifiedShown?'<div class="aa-note">'+gmEsc(_uiT('aa.note.unverified'))+'</div>':'')+'</details></div>';
+}
+/* Datenqualitaet als dezentes Kennzeichen (gemessen bleibt ohne Zeichen) */
+var GM_AA_Q={derived:'aa.q.derived',estimated:'aa.q.estimated',unverified:'aa.q.unverified',suspect:'aa.q.suspect',missing:'aa.q.missing',measured:'aa.q.measured'};
+function gmAaQState(d){var IV=window.ORVIA&&ORVIA.intervals;return IV&&IV.qualityState?IV.qualityState(d):'measured';}
+function gmAaQTag(d,force){var q=gmAaQState(d);if(q==='measured'&&!force)return '';return '<i class="aa-q aa-q-'+q+'">'+gmEsc(_uiT(GM_AA_Q[q]||'aa.q.unverified'))+'</i>';}
 function gmAaCardsHtml(md){
   if(!md)return '';
   var cards=md.cards.slice(0,6),h='';
@@ -9563,6 +9580,11 @@ function gmAaMountChart(md,aid){
   else if(!c.times)times=vals.map(function(_,i){var p=Math.round(i/(vals.length-1)*100);return i===0?'Start':(i===vals.length-1?'Ende':(p+'%'));});
   ORVIA.charts.richChart(el,{label:gmAaT(GM_AA_CHART,c.id),series:vals,times:times,unit:c.unit,color:GM_ACT_CHART_COLOR,baseline:Math.round(c.mean*100)/100,higherBetter:c.higherBetter!==false,dec:c.dec,
     fmtValue:c.kind==='pace'?gmAaClock:undefined,neutralMarks:true});
+}
+function gmAaZonesInner(md){
+  var z=md&&md.zones;if(!z)return '';
+  var rows=z.seconds.map(function(sec,i){return '<div class="aa-z"><span class="aa-z-l">Z'+(i+1)+'</span><span class="aa-z-bar"><i style="width:'+Math.max(0,Math.min(100,z.share[i]))+'%;opacity:'+(0.35+i*0.16).toFixed(2)+'"></i></span><span class="aa-z-v">'+gmEsc(gmAaClock(sec))+'</span><span class="aa-z-p">'+gmEsc(gmAaNum(z.share[i],0))+' %</span></div>';}).join('');
+  return '<div class="aa-md-h">'+gmEsc(_uiT('aa.zones.title'))+'</div>'+rows+'<div class="aa-note">'+gmEsc(_uiT('aa.zones.note'))+'</div>';
 }
 function gmAaZonesHtml(md){
   var z=md&&md.zones;if(!z)return '';
@@ -9603,52 +9625,179 @@ function gmSwHtml(md,aid){
   var sw=md&&md.swim;if(!sw)return '';
   _gmSwModel[aid]=sw;var open=_gmSwOpen[aid]||{},t=sw.totals;
   var sum=[];
-  if(t.activeTime!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.activeTime))+'</b><span>'+gmEsc(_uiT('aa.sw.active'))+'</span></div>');
-  if(t.restInside!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.restInside+t.restBetween))+'</b><span>'+gmEsc(_uiT('aa.sw.rest_total'))+'</span></div>');
-  if(t.pace100Active!=null)sum.push('<div class="aa-card"><b>'+gmEsc(gmAaClock(t.pace100Active))+'</b><span>'+gmEsc(_uiT('aa.sw.pace_active'))+'</span></div>');
-  var rows=sw.blocks.map(function(b){
+  if(t.activeTime!=null)sum.push('<div class="iv-stat"><b>'+gmEsc(gmAaClock(t.activeTime))+'</b><span>'+gmEsc(_uiT('aa.sw.active'))+'</span></div>');
+  if(t.restInside!=null)sum.push('<div class="iv-stat"><b>'+gmEsc(gmAaClock(t.restInside+t.restBetween))+'</b><span>'+gmEsc(_uiT('aa.sw.rest_total'))+'</span></div>');
+  if(t.pace100Active!=null)sum.push('<div class="iv-stat"><b>'+gmEsc(gmAaClock(t.pace100Active))+'</b><span>'+gmEsc(_uiT('aa.sw.pace_active'))+'</span></div>');
+  var rows=sw.blocks.map(function(b,i){
     if(b.kind==='rest'){
       var sub=b.laps.length>1?_uiT('aa.sw.rest_laps',{n:b.laps.length}):(b.hr!=null?_uiT('aa.sw.hr',{v:Math.round(b.hr)}):'');
-      return '<div class="aa-sw-rest"><span class="aa-sw-rest-l">'+gmEsc(_uiT('aa.sw.rest'))+'</span><b>'+gmEsc(gmAaClock(b.duration))+'</b>'+(sub?'<small>'+gmEsc(sub)+'</small>':'')+'</div>';
+      return '<div class="iv-rest" data-tl="'+i+'"><span class="iv-rest-l">'+gmEsc(_uiT('aa.sw.rest'))+'</span><b>'+gmEsc(gmAaClock(b.duration))+'</b>'+(sub?'<small>'+gmEsc(sub)+'</small>':'')+'</div>';
     }
-    return gmSwIvHtml(b,aid,!!open[b.n]);
+    return gmSwIvHtml(b,aid,!!open[b.n],i);
   }).join('');
-  var q=sw.quality,nq=q?(q.suspect+q.implausible):0;
   var more=_uiT('aa.sw.sub',{n:t.intervals})+(t.restLaps?' · '+_uiT('aa.sw.sub_rest',{n:t.restLaps}):'');
-  return '<div class="card aa-sw-card"><div class="ctitle"><div class="l">'+gmEsc(_uiT('aa.iv.title_swim'))+'</div><span class="more">'+gmEsc(more)+'</span></div>'+
-    (sum.length?'<div class="aa-cards aa-cards-3 aa-sw-sum">'+sum.join('')+'</div>':'')+
-    '<div class="aa-sw-list">'+rows+'</div>'+
-    (nq?'<div class="aa-note aa-sw-qnote">'+'<span class="aa-sw-q" aria-hidden="true">≈</span><span>'+gmEsc(_uiT('aa.sw.q_note',{n:nq}))+'</span></div>':'')+
-    (!sw.lengthsLoaded?'':'<div class="aa-note">'+gmEsc(_uiT('aa.sw.tap_hint'))+'</div>')+'</div>';
+  return '<div class="card iv-card aa-sw-card"><div class="ctitle"><div class="l">'+gmEsc(_uiT('aa.iv.title_swim'))+'</div><span class="more">'+gmEsc(more)+'</span></div>'+
+    (sum.length?'<div class="iv-stats">'+sum.join('')+'</div>':'')+gmTlHtml(md.timeline,aid,'swimming')+
+    '<div class="iv-list aa-sw-list" role="list">'+rows+'</div>'+gmIvAnalyticsHtml(md)+'</div>';
 }
-function gmSwIvHtml(s,aid,isOpen){
+/* Kompakte Intervallkarte Schwimmen: Distanz · Schwimmtempo · Schwimmzeit. Alles Weitere beim Aufklappen. */
+function gmSwIvHtml(s,aid,isOpen,tl){
   var pace=s.pace100Active!=null?(gmAaClock(s.pace100Active)+' /100 m'):(s.pace100Elapsed!=null?(gmAaClock(s.pace100Elapsed)+' /100 m'):'—');
-  var meta=[];
-  if(s.activeTime!=null)meta.push(_uiT('aa.sw.m_active',{t:gmAaClock(s.activeTime)}));
-  else if(s.elapsedTime!=null)meta.push(_uiT('aa.sw.m_elapsed_only',{t:gmAaClock(s.elapsedTime)}));
-  if(s.restInside!=null&&s.restInside>=1)meta.push(_uiT('aa.sw.m_rest_inside',{t:gmAaClock(s.restInside)}));
-  if(s.activeLengths!=null)meta.push(_uiT('aa.sw.m_lengths',{n:s.activeLengths}));
-  if(s.stroke)meta.push(gmAaT(GM_SW_STROKE,s.stroke));
-  if(s.strokes!=null)meta.push(_uiT('aa.sw.m_strokes',{n:s.strokes}));
-  if(s.strokesPerLength!=null)meta.push(_uiT('aa.sw.m_spl',{v:gmAaNum(s.strokesPerLength,1)}));
-  if(s.swolf!=null)meta.push('SWOLF '+Math.round(s.swolf));
-  if(s.hr!=null)meta.push(_uiT('aa.sw.hr',{v:Math.round(s.hr)}));
-  var can=!!(s.lengths&&s.lengths.some(function(b){return b.kind==='active';}));
-  var id='gmSwL'+s.n,head='<span class="aa-sw-num">'+s.n+'</span><span class="aa-sw-main"><b>'+gmEsc(gmSwM(s.distance))+'</b><em>'+gmEsc(pace)+'</em>'+(s.pace100Active==null&&s.pace100Elapsed!=null?'<small>'+gmEsc(_uiT('aa.sw.pace_elapsed_label'))+'</small>':'')+'</span>';
-  var btn=can?'<button type="button" class="aa-sw-ivh" aria-expanded="'+isOpen+'" aria-controls="'+id+'" onclick="gmSwToggle(this,\''+gmEsc(String(aid))+'\','+s.n+')">'+head+'<span class="aa-sw-chev">'+icon('chevd','sm')+'</span></button>':'<div class="aa-sw-ivh">'+head+'</div>';
-  var qn=s.suspect?'<span class="aa-sw-qm"><span class="aa-sw-q" aria-hidden="true">≈</span> '+gmEsc(_uiT('aa.sw.m_suspect',{n:s.suspect}))+'</span>':'';
-  return '<div class="aa-sw-iv">'+btn+'<div class="aa-sw-meta">'+meta.map(function(x){return '<span>'+gmEsc(x)+'</span>';}).join('')+qn+'</div>'+
-    (can?'<div class="aa-sw-lengths" id="'+id+'"'+(isOpen?'':' hidden')+'>'+(isOpen?gmSwLengthsHtml(s):'')+'</div>':'')+'</div>';
+  var sub=s.activeTime!=null?_uiT('aa.sw.m_active_short',{t:gmAaClock(s.activeTime)}):(s.elapsedTime!=null?_uiT('aa.sw.m_elapsed_only',{t:gmAaClock(s.elapsedTime)}):'');
+  var id='gmSwL'+s.n,q=s.suspect?' <span class="aa-sw-q" title="'+gmEsc(_uiT('aa.sw.m_suspect',{n:s.suspect}))+'">≈</span><span class="sr-only">'+gmEsc(_uiT('aa.sw.m_suspect',{n:s.suspect}))+'</span>':'';
+  return '<div class="iv-item aa-sw-iv k-work" role="listitem" data-tl="'+(tl!=null?tl:'')+'"><button type="button" class="iv-head aa-sw-ivh" aria-expanded="'+isOpen+'" aria-controls="'+id+'" onclick="gmSwToggle(this,\''+gmEsc(String(aid))+'\','+s.n+')">'+
+    '<span class="iv-num aa-sw-num">'+s.n+'</span><span class="iv-main aa-sw-main"><b>'+gmEsc(gmSwM(s.distance))+'</b><em>'+gmEsc(pace)+'</em>'+(s.pace100Active==null&&s.pace100Elapsed!=null?'<small>'+gmEsc(_uiT('aa.sw.pace_elapsed_label'))+'</small>':'')+'<span class="iv-sub">'+gmEsc(sub)+q+'</span></span>'+
+    '<span class="iv-chev aa-sw-chev">'+icon('chevd','sm')+'</span></button>'+
+    '<div class="iv-body aa-sw-lengths" id="'+id+'"'+(isOpen?'':' hidden')+'>'+(isOpen?gmSwBodyHtml(s):'')+'</div></div>';
+}
+function gmSwBodyHtml(s){
+  var rows=[];
+  if(s.activeTime!=null)rows.push([_uiT('aa.sw.active'),gmAaClock(s.activeTime),s.activeBasis==='lap_moving'?'measured':'derived']);
+  if(s.elapsedTime!=null)rows.push([_uiT('aa.iv2.elapsed_iv'),gmAaClock(s.elapsedTime),'measured']);
+  if(s.restInside!=null&&s.restInside>=1)rows.push([_uiT('aa.sw.rest_inside'),gmAaClock(s.restInside),s.restBasis==='rest_lengths'?'measured':'derived']);
+  if(s.activeLengths!=null)rows.push([_uiT('aa.m.activeLengths'),String(s.activeLengths),s.validation==='consistent'?'measured':'unverified']);
+  if(s.stroke)rows.push([_uiT('aa.sw.l_stroke'),gmAaT(GM_SW_STROKE,s.stroke),'measured']);
+  if(s.strokes!=null)rows.push([_uiT('aa.m.strokes'),String(s.strokes),s.checks&&s.checks.strokes==='match'?'measured':'unverified']);
+  if(s.strokesPerLength!=null)rows.push([_uiT('aa.m.strokesPerLength'),gmAaNum(s.strokesPerLength,1),'derived']);
+  if(s.swolf!=null)rows.push(['SWOLF',String(Math.round(s.swolf)),s.checks&&s.checks.swolf==='match'?'measured':'unverified']);
+  if(s.hr!=null)rows.push([_uiT('aa.m.avgHr'),Math.round(s.hr)+' bpm','measured']);
+  if(s.maxHr!=null)rows.push([_uiT('aa.m.maxHr'),Math.round(s.maxHr)+' bpm','measured']);
+  return gmIvGridHtml(rows)+(s.lengths&&s.lengths.some(function(b){return b.kind==='active';})?gmSwLengthsHtml(s):'');
 }
 function gmSwToggle(btn,aid,n){
   try{
     var sw=_gmSwModel[aid];if(!sw)return;var s=sw.intervals.filter(function(x){return x.n===n;})[0];if(!s)return;
     var panel=document.getElementById(btn.getAttribute('aria-controls'));if(!panel)return;
     var op=_gmSwOpen[aid]=_gmSwOpen[aid]||{},now=btn.getAttribute('aria-expanded')!=='true';
-    if(now&&!panel.innerHTML)panel.innerHTML=gmSwLengthsHtml(s);
+    if(now&&!panel.innerHTML)panel.innerHTML=gmSwBodyHtml(s);
     panel.hidden=!now;btn.setAttribute('aria-expanded',String(now));
     if(now)op[n]=true;else delete op[n];
   }catch(_){ }
+}
+/* ---------- v8-454 · Intervalle Laufen / Rad (Modell: js/engine/intervals.js) ----------
+   Zeitstrahl (Breite = Dauer), kompakte Karten (zwei Zeilen), Details erst beim Aufklappen, Analyse nur aus vergleichbaren
+   Belastungen. Die Seite rechnet nichts — sie formatiert, was das Modell liefert. */
+var _gmIvModel={},_gmIvOpen={},_gmIvAll={};
+var GM_IV_KIND={work:'aa.iv2.k.work',recovery:'aa.iv2.k.recovery',warmup:'aa.iv2.k.warmup',cooldown:'aa.iv2.k.cooldown',auto_lap:'aa.iv2.k.auto_lap',manual_lap:'aa.iv2.k.manual_lap',step:'aa.iv2.k.step',unknown:'aa.iv2.k.unknown'};
+var GM_IV_SRC={garmin:'aa.iv2.src.garmin',plan:'aa.iv2.src.plan',rule:'aa.iv2.src.rule',none:'aa.iv2.src.none'};
+var GM_IV_LIMIT=12;
+var GM_IV_KP={work:'aa.iv2.kp.work',recovery:'aa.iv2.kp.recovery',warmup:'aa.iv2.kp.warmup',cooldown:'aa.iv2.kp.cooldown',auto_lap:'aa.iv2.kp.auto_lap',manual_lap:'aa.iv2.kp.manual_lap',step:'aa.iv2.kp.step',unknown:'aa.iv2.kp.unknown'};
+var GM_IV_HOW={workout_steps:'aa.iv2.how.workout_steps',workout_intervals:'aa.iv2.how.workout_intervals',garmin:'aa.iv2.how.garmin',garmin_trigger:'aa.iv2.how.garmin_trigger',rule_auto:'aa.iv2.how.rule_auto',rule_work:'aa.iv2.how.rule_work',none:'aa.iv2.how.none'};
+var GM_IV_QI={pace_faster_than_world_record:'aa.iv2.qi.pace_faster_than_world_record',speed_implausible:'aa.iv2.qi.speed_implausible',hr_differs_from_series:'aa.iv2.qi.hr_differs_from_series'};
+var GM_IV_ANL={work:['aa.iv2.an.best_work','aa.iv2.an.worst_work'],lap:['aa.iv2.an.best_lap','aa.iv2.an.worst_lap'],power_work:['aa.iv2.an.best_power_work','aa.iv2.an.worst_power_work'],power_lap:['aa.iv2.an.best_power_lap','aa.iv2.an.worst_power_lap']};
+var GM_IV_TREND_PW={slower:'aa.iv2.an.trend_power_down',faster:'aa.iv2.an.trend_power_up'};
+var GM_IV_TREND={slower:'aa.iv2.an.trend_slower',faster:'aa.iv2.an.trend_faster'};
+function gmIvKindLabel(s,fam){if(s.kind==='cooldown'&&fam==='cycling')return _uiT('aa.iv2.k.cooldown_bike');return gmAaT(GM_IV_KIND,s.kind);}
+function gmIvDist(m){return m>=1000?(fmtDe(Math.round(m/10)/100)+' km'):(Math.round(m)+' m');}
+/* Zeitstrahl: Breite je Abschnitt = Anteil an der Gesamtdauer. Art erkennbar an Fuellung UND Muster UND Legende (nicht nur Farbe). */
+function gmTlHtml(tl,aid,fam){
+  if(!tl||!tl.blocks||tl.blocks.length<2)return '';
+  var kinds={},segs=tl.blocks.map(function(b){
+    kinds[b.kind]=true;
+    var lab=(b.kind==='recovery'?_uiT('aa.iv2.k.recovery'):gmAaT(GM_IV_KIND,b.kind))+(b.n!=null?' '+b.n:'')+', '+gmAaClock(b.dur);
+    var txt=(b.share>=0.08&&b.n!=null)?'<span>'+b.n+'</span>':'';
+    return '<button type="button" tabindex="-1" class="tl-seg k-'+b.kind+(b.n!=null&&b.n%2===0?' alt':'')+'" style="flex:'+Math.max(0.0001,b.share).toFixed(5)+' 1 0" data-tl="'+b.idx+'" aria-label="'+gmEsc(lab)+'" onclick="gmIvPick(\''+gmEsc(String(aid))+'\','+b.idx+')">'+txt+'</button>';
+  }).join('');
+  var leg=Object.keys(kinds).map(function(k){return '<span class="tl-leg"><i class="tl-sw k-'+k+'"></i>'+gmEsc(fam==='swimming'?_uiT(k==='work'?'aa.iv2.k.swim_iv':'aa.sw.rest'):gmAaT(GM_IV_KIND,k))+'</span>';}).join('');
+  return '<div class="iv-tl" role="img" aria-label="'+gmEsc(_uiT('aa.iv2.tl_aria',{n:tl.blocks.length,t:gmAaClock(tl.total)}))+'"><div class="tl-bar">'+segs+'</div>'+
+    '<div class="tl-axis"><span>0:00</span><span>'+gmEsc(_uiT(tl.basis==='elapsed'?'aa.iv2.tl_elapsed':'aa.iv2.tl_timer'))+'</span><span>'+gmEsc(gmAaClock(tl.total))+'</span></div><div class="tl-legend">'+leg+'</div></div>';
+}
+function gmIvPick(aid,idx){
+  try{
+    var pg=document.getElementById('gmActPage');if(!pg)return;
+    var card=pg.querySelector('.iv-card');if(!card)return;
+    var it=card.querySelector(':not(.tl-seg)[data-tl="'+idx+'"]');   /* Karte, nicht der Zeitstrahl-Block selbst */
+    if(!it&&_gmIvModel[aid]&&!_gmIvAll[aid]){_gmIvAll[aid]=true;gmActRedrawKeep();card=document.querySelector('#gmActPage .iv-card');it=card&&card.querySelector(':not(.tl-seg)[data-tl="'+idx+'"]');}
+    [].forEach.call(document.querySelectorAll('#gmActPage .is-picked'),function(x){x.classList.remove('is-picked');});
+    [].forEach.call(document.querySelectorAll('#gmActPage .tl-seg[data-tl="'+idx+'"]'),function(x){x.classList.add('is-picked');});
+    if(!it)return;it.classList.add('is-picked');
+    var rm=false;try{rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
+    try{it.scrollIntoView({block:'nearest',behavior:rm?'auto':'smooth'});}catch(_){ }
+  }catch(_){ }
+}
+function gmIvHtml(md,aid){
+  var iv=md&&md.intervals;if(!iv||!iv.segments)return '';
+  _gmIvModel[aid]=iv;
+  var fam=md.family,open=_gmIvOpen[aid]||{},all=!!_gmIvAll[aid]||iv.segments.length<=GM_IV_LIMIT+4,segs=iv.segments,shown=all?segs:segs.slice(0,GM_IV_LIMIT);   /* bis 16 alles zeigen — kein „1 weiteren anzeigen" */
+  var title=iv.structure==='workout_steps'?'aa.iv2.title_steps':((iv.counts.work||0)>0?'aa.iv2.title_work':'aa.iv2.title_laps');
+  var cnt=Object.keys(iv.counts).map(function(k){var key=GM_IV_KP[k];return key?_uiT(key,{n:iv.counts[k]}):String(iv.counts[k]);}).join(' · ');
+  var rows=shown.map(function(s){return gmIvItemHtml(s,aid,fam,!!open[s.idx]);}).join('');
+  var moreBtn=(!all&&segs.length>GM_IV_LIMIT)?'<button type="button" class="cta wide-ghost iv-all" onclick="_gmIvAll[\''+gmEsc(String(aid))+'\']=true;gmActRedrawKeep()">'+gmEsc(_uiT('aa.iv2.show_all',{n:segs.length}))+'</button>':'';
+  return '<div class="card iv-card"><div class="ctitle"><div class="l">'+gmEsc(_uiT(title))+'</div><span class="more">'+gmEsc(cnt)+'</span></div>'+
+    gmTlHtml(iv.timeline,aid,fam)+'<div class="iv-list" role="list">'+rows+'</div>'+moreBtn+gmIvAnalyticsHtml(md)+
+    '<div class="iv-src">'+gmEsc(gmAaT(GM_IV_HOW,iv.structure||'none',''))+'</div></div>';
+}
+function gmIvItemHtml(s,aid,fam,isOpen){
+  var main,acc,sub=[];
+  if(fam==='cycling'){
+    main=gmAaClock(s.timer!=null?s.timer:s.elapsed);
+    acc=s.power?Math.round(s.power.v)+' W':(s.speed!=null?gmAaNum(s.speed*3.6,1)+' km/h':'');
+    if(s.hr!=null)sub.push(_uiT('aa.sw.hr',{v:Math.round(s.hr)}));
+    if(s.distance>0)sub.push(gmIvDist(s.distance));
+  }else{
+    main=s.distance>0?gmIvDist(s.distance):gmAaClock(s.timer!=null?s.timer:s.elapsed);
+    acc=s.pace!=null?gmAaClock(s.pace)+' /km':'';
+    sub.push(gmAaClock(s.timer!=null?s.timer:s.elapsed));
+  }
+  var kind=gmIvKindLabel(s,fam)+(s.kind==='step'||s.kind==='work'?' '+(s.kind==='step'?s.n:s.workN):'');
+  var id='gmIvB'+s.idx;
+  return '<div class="iv-item k-'+s.kind+'" role="listitem" data-tl="'+s.idx+'"><button type="button" class="iv-head" aria-expanded="'+isOpen+'" aria-controls="'+id+'" onclick="gmIvToggle(this,\''+gmEsc(String(aid))+'\','+s.idx+')">'+
+    '<span class="iv-num">'+(s.n!=null?s.n:'')+'</span><span class="iv-main"><b>'+gmEsc(main)+'</b>'+(acc?'<em>'+gmEsc(acc)+'</em>':'')+'<span class="iv-sub">'+gmEsc(sub.concat([kind]).join(' · '))+'</span></span>'+
+    '<span class="iv-chev">'+icon('chevd','sm')+'</span></button><div class="iv-body" id="'+id+'"'+(isOpen?'':' hidden')+'>'+(isOpen?gmIvBodyHtml(s,fam):'')+'</div></div>';
+}
+function gmIvToggle(btn,aid,idx){
+  try{
+    var iv=_gmIvModel[aid];if(!iv)return;var s=iv.segments.filter(function(x){return x.idx===idx;})[0];if(!s)return;
+    var panel=document.getElementById(btn.getAttribute('aria-controls'));if(!panel)return;
+    var op=_gmIvOpen[aid]=_gmIvOpen[aid]||{},now=btn.getAttribute('aria-expanded')!=='true';
+    if(now&&!panel.innerHTML)panel.innerHTML=gmIvBodyHtml(s,iv.family);
+    panel.hidden=!now;btn.setAttribute('aria-expanded',String(now));
+    if(now)op[idx]=true;else delete op[idx];
+  }catch(_){ }
+}
+/* Detailraster: Bezeichnung · Wert · Datenqualitaet */
+function gmIvGridHtml(rows){
+  return '<dl class="iv-grid">'+rows.map(function(r){return '<div><dt>'+gmEsc(r[0])+'</dt><dd>'+gmEsc(r[1])+(r[2]&&r[2]!=='measured'?'<i class="aa-q aa-q-'+r[2]+'">'+gmEsc(_uiT(GM_AA_Q[r[2]]||'aa.q.unverified'))+'</i>':'')+'</dd></div>';}).join('')+'</dl>';
+}
+function gmIvBodyHtml(s,fam){
+  var r=[];
+  if(s.distance>0)r.push([_uiT('aa.m.distance'),gmIvDist(s.distance),s.valuesFrom==='laps_summed'?'derived':'measured']);
+  if(s.timer!=null)r.push([_uiT('aa.iv2.timer'),gmAaClock(s.timer),'measured']);
+  if(s.elapsed!=null&&s.timer!=null&&s.elapsed-s.timer>2)r.push([_uiT('aa.iv2.elapsed'),gmAaClock(s.elapsed),'measured'],[_uiT('aa.iv2.stopped'),gmAaClock(s.stoppedInside),'derived']);
+  if(s.moving!=null&&s.timer!=null&&Math.abs(s.moving-s.timer)>2)r.push([_uiT('aa.iv2.moving'),gmAaClock(s.moving),'measured']);
+  if(fam==='cycling'){if(s.speed!=null)r.push([_uiT('aa.m.avgSpeed'),gmAaNum(s.speed*3.6,1)+' km/h','derived']);}
+  else if(s.pace!=null)r.push([_uiT('aa.m.paceKm'),gmAaClock(s.pace)+' /km','derived']);
+  if(s.bestPace)r.push([_uiT('aa.iv2.best_pace'),gmAaClock(s.bestPace.v)+' /km','unverified']);
+  if(s.hr!=null)r.push([_uiT('aa.m.avgHr'),Math.round(s.hr)+' bpm',s.hrCheck==='mismatch'?'suspect':'measured']);
+  if(s.maxHr!=null)r.push([_uiT('aa.m.maxHr'),Math.round(s.maxHr)+' bpm','measured']);
+  if(s.cadence)r.push([_uiT(fam==='cycling'?'aa.m.cyclingCadence':'aa.m.runningCadence'),Math.round(s.cadence.v)+(fam==='cycling'?' rpm':' spm'),s.cadence.quality]);
+  if(s.power)r.push([_uiT('aa.m.avgPower'),Math.round(s.power.v)+' W',s.power.quality]);
+  if(s.maxPower)r.push([_uiT('aa.m.maxPower'),Math.round(s.maxPower.v)+' W','unverified']);
+  if(s.np)r.push([_uiT('aa.m.normPower'),Math.round(s.np.v)+' W','unverified']);
+  if(s.elevGain!=null||s.elevLoss!=null)r.push([_uiT('aa.iv2.elev'),'+'+Math.round(s.elevGain||0)+' / −'+Math.round(s.elevLoss||0)+' m','unverified']);
+  r.push([_uiT('aa.iv2.class'),gmIvKindLabel(s,fam)+' · '+gmAaT(GM_IV_SRC,s.kindSource),s.kindSource==='rule'?'derived':(s.kindSource==='none'?'missing':'measured')]);
+  var q=(s.quality||[]).map(function(k){return gmAaT(GM_IV_QI,k,k);});
+  var h=gmIvGridHtml(r)+(q.length?'<div class="iv-qnote"><span class="aa-sw-q" aria-hidden="true">≈</span> '+gmEsc(q.join(' · '))+'</div>':'');
+  if(s.children&&s.children.length){
+    h+='<div class="iv-kids"><div class="iv-kid iv-kid-h" aria-hidden="true"><span>'+gmEsc(_uiT('aa.iv2.lap'))+'</span><span>'+gmEsc(_uiT('aa.m.distance'))+'</span><span>'+gmEsc(_uiT('aa.iv.time'))+'</span><span>'+gmEsc(fam==='cycling'?'km/h':'/km')+'</span><span>'+gmEsc(_uiT('aa.iv.hr'))+'</span></div>'+
+      s.children.map(function(c){return '<div class="iv-kid"><span>'+(c.lapIndex!=null?c.lapIndex:'')+'</span><span>'+gmEsc(gmIvDist(c.distance))+'</span><span>'+gmEsc(gmAaClock(c.timer!=null?c.timer:c.elapsed))+'</span><span>'+gmEsc(fam==='cycling'?(c.speed!=null?gmAaNum(c.speed*3.6,1):'—'):(c.pace!=null?gmAaClock(c.pace):'—'))+'</span><span>'+(c.hr!=null?Math.round(c.hr):'—')+'</span></div>';}).join('')+'</div>';
+  }
+  return h;
+}
+/* Analyse vergleichbarer Abschnitte (Lauf/Rad: Modell intervals.analytics; Schwimmen: Gleichmaessigkeit aus swim-intervals) */
+function gmIvAnalyticsHtml(md){
+  var e=md&&md.efficiency;if(!e)return '';
+  var an=e.analytics,fv=function(v){return e.paceKind==='power'?Math.round(v)+' W':(e.paceKind==='speedKmh'?gmAaNum(v*3.6,1)+' km/h':(gmAaClock(v)+(e.paceKind==='pace100'?' /100 m':' /km')));};
+  var head=an?(an.basis==='auto_lap_in_step'?_uiT('aa.iv2.an.basis_step',{n:an.count,s:an.step}):(an.basis==='auto_lap'?_uiT('aa.iv2.an.basis_laps',{n:an.count}):_uiT('aa.iv2.an.basis_work',{n:an.count}))):_uiT('aa.iv2.an.basis_swim',{n:e.intervals});
+  var pw=e.paceKind==='power',lk=an?(GM_IV_ANL[(pw?'power_':'')+an.unit]||null):null;
+  var lines=['<div class="iv-stat"><b>± '+gmEsc(gmAaNum(e.cvPct,1))+' %</b><span>'+gmEsc(_uiT(pw?'aa.iv2.an.cv_power':'aa.eff.cv'))+'</span></div>',
+    '<div class="iv-stat"><b>'+gmAaValUnit(fv(e.bestPace))+'</b><span>'+gmEsc(_uiT(lk?lk[0]:'aa.eff.best',{n:e.best}))+'</span></div>',
+    '<div class="iv-stat"><b>'+gmAaValUnit(fv(e.worstPace))+'</b><span>'+gmEsc(_uiT(lk?lk[1]:'aa.eff.worst',{n:e.worst}))+'</span></div>'];
+  var notes=[];
+  if(an&&an.trend&&GM_IV_TREND[an.trend])notes.push(_uiT((pw?GM_IV_TREND_PW:GM_IV_TREND)[an.trend],{p:gmAaNum(Math.abs(an.changePct),1)}));
+  if(an&&an.hrChange!=null&&Math.abs(an.hrChange)>=5)notes.push(_uiT('aa.iv2.an.hr',{a:Math.round(an.hrFirst),b:Math.round(an.hrLast)}));
+  if(an&&an.excluded)notes.push(_uiT('aa.iv2.an.excluded',{n:an.excluded}));
+  return '<div class="iv-an"><div class="aa-md-h">'+gmEsc(_uiT('aa.eff.title'))+' · '+gmEsc(head)+'</div><div class="iv-stats">'+lines.join('')+'</div>'+(notes.length?'<div class="aa-note">'+gmEsc(notes.join(' · '))+'</div>':'')+'</div>';
 }
 function gmSwLengthsHtml(s){
   var L=s.lengths||[],act=L.filter(function(b){return b.kind==='active';});
@@ -9712,11 +9861,11 @@ function gmAaDetailsHtml(md,owner){
     '<p class="aa-md-foot">'+gmEsc(_uiT('aa.md.foot'))+'</p></details></div>';
 }
 /* Analyse-Modell der geoeffneten Aktivitaet (oder null, wenn das Modul fehlt) */
-function gmActAnalysisFor(a,vm){
+function gmActAnalysisFor(a,vm,legacySplits){
   var AA=window.ORVIA&&ORVIA.activityAnalysis;if(!AA||!a)return null;
   var owner=(a.source!=='garmin'&&vm&&vm.streamOwner&&vm.streamOwner.source==='garmin')?vm.streamOwner:a;
   var xo=gmActExtOwner(owner);
-  var md=null;try{md=AA.analyze(xo.owner,{extState:xo.extState});}catch(_){md=null;}
+  var md=null;try{md=AA.analyze(xo.owner,{extState:xo.extState,legacySplits:legacySplits||null});}catch(_){md=null;}
   if(md)md.owner=xo.owner;
   return md;
 }
@@ -9741,13 +9890,14 @@ function gmOpenActivityPage(aid){
   var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
   vm=vm||{};
   var run=vm.sportId==='running';
-  /* v8-452: Analyse-Modell (Kennzahlen mit Urteil, sportartspezifische Darstellung) */
-  var _aa=gmActAnalysisFor(a,vm);
   /* Kanonisch verknüpfte Legacy-Session (AD1c-Story-Verknüpfung) — einzige Route-/Split-Quelle. */
   var sess=null;try{if(vm.storyRef&&typeof DB!=='undefined'){var e=DB[vm.storyRef.date];sess=(e&&e.sessions&&e.sessions[vm.storyRef.typ])||null;}}catch(_){ }
   /* GM7.9: Legacy-Aktivitaeten (source legacy_local) tragen _legacy.date/type — direkte
      Session-Aufloesung (einzige Quelle fuer Gym-Saetze/RPE aus dem Tages-Blob). */
   try{if(!sess&&a._legacy&&typeof DB!=='undefined'){var eL=DB[a._legacy.date];sess=(eL&&eL.sessions&&eL.sessions[a._legacy.type])||null;}}catch(_){ }
+  /* v8-452: Analyse-Modell (Kennzahlen mit Urteil, sportartspezifische Darstellung).
+     v8-454: Altbestand ohne Runden im Datensatz bekommt die Runden der verknuepften Session (nur Anzeige). */
+  var _aa=gmActAnalysisFor(a,vm,(sess&&Array.isArray(sess.splits)&&sess.splits.length&&!(vm.canonicalSplits&&vm.canonicalSplits.length))?sess.splits:null);
   /* GM7.3: kanonische Route zuerst (metrics.route aus dem Activity-Record, cloud-synchron);
      Legacy-Blob nur als Fallback. */
   var route=null;try{route=(vm.canonicalRoute&&vm.canonicalRoute.length>1)?vm.canonicalRoute:((sess&&typeof actRoute==='function')?actRoute(sess):null);}catch(_){ }
@@ -9864,7 +10014,10 @@ function gmOpenActivityPage(aid){
   var _keyLbl=(_fam==='gym')?'VOLUMEN':'DISTANZ';
   /* v8-452: Schwimmen — Hauptkennzahlen + Karten aus dem Analyse-Modell (nur vorhandene, nicht gesperrte Werte) */
   var _aaSwim=!!(_aa&&_aa.family==='swimming');
-  if(_aaSwim)h+=gmAaHeroHtml(_aa)+gmAaCardsHtml(_aa);
+  /* v8-454: neue Aktivitaetsansicht fuer Schwimmen, Laufen, Rad — Uebersicht (eine Hauptzahl + drei Werte), Diagramme,
+     Intervalle mit Zeitstrahl, Analysebereich, Messdetails. Andere Sportarten: bisherige Seite. */
+  var _aaNew=!!(_aa&&(_aa.family==='swimming'||_aa.family==='running'||_aa.family==='cycling'));
+  if(_aaNew)h+=gmAaHeroHtml(_aa);
   else h+='<div class="detail-kpis">'+kcells.map(function(c){return '<div'+((c[1]===_keyLbl&&c[0]!=='—')?' class="key"':'')+'><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>';
   /* P0-Nachtrag 2026-08-05 (Nutzerentscheidung): Dauer eines ORVIA-Workouts ist
      nachtraeglich korrigierbar — bewusst KEINE automatische Obergrenze. Eine
@@ -9914,9 +10067,11 @@ function gmOpenActivityPage(aid){
      behaelt die Activity; Loeschen nutzt ausschliesslich den kanonischen
      Tombstone-Pfad. Keine Schaltflaeche tut beides. */
   var _aidCorr=a.clientRecordId||a.id;
-  h+='<div class="gm-corr" style="margin:0 18px 14px">'+
+  var _corrH='<div class="gm-corr" style="margin:0 18px 14px">'+
     (vm.planLink?'<button class="cta wide-ghost" style="width:100%;margin-bottom:8px" onclick="unlinkActivityPlanCanonical(\''+gmEsc(String(_aidCorr))+'\',\''+gmEsc(String(vm.planLink))+'\')">Vom Wochenplan lösen</button>':'')+
     '<button class="cta wide-ghost danger-btn" style="width:100%" onclick="deleteActivityCanonical(\''+gmEsc(String(_aidCorr))+'\')">Aktivität löschen</button></div>';
+  /* v8-454: in der neuen Ansicht stehen die Korrekturwege am Ende der Seite (weniger auf einmal; Story bleibt davor) */
+  if(!_aaNew)h+=_corrH;
   /* S5a (v14): Debrief als Zustand aus dem kanonischen Record (gmDebriefModel) —
      Soll/Ist-Zeilen + Mitnahmen nur aus Record-Feldern; freie Einheit behaelt den
      bisherigen Bewertungstext (rateActivity) als Einordnung. */
@@ -9977,8 +10132,10 @@ function gmOpenActivityPage(aid){
      GM-Charts. Die ehrlichen Leerzustaende bleiben Lauf-exklusiv (dortiger Vertrag). */
   var _hasStream=false;try{var _sAll=vm.canonicalStreams;if(_sAll)for(var _k in _sAll){if(Array.isArray(_sAll[_k])&&_sAll[_k].length>=3){_hasStream=true;break;}}}catch(_){ }
   /* v8-452: Schwimmen — Diagramme (Tempo, Puls, Zugfrequenz, SWOLF je nach Datenlage), Intervalle, Gleichmaessigkeit */
-  if(_aaSwim){
-    h+=gmAaChartsHtml(_aa,aid)+(_aa.swim?gmSwHtml(_aa,aid):gmAaIntervalsHtml(_aa))+gmAaEffHtml(_aa)+gmAaZonesHtml(_aa);
+  if(_aaNew){
+    /* v8-454: Diagramme → Intervalle (Zeitstrahl + Karten) → Analysebereich. Kadenz aus Altimport: Hinweis bei den Diagrammen. */
+    var _cadN=(vm.cadence&&vm.cadence.status==='unverified')?'<div class="mini-note gm-cad-note" style="margin:0 18px 12px">'+icon('info','xs')+'<div>'+_uiT('ui.kadenz_altimport')+'</div></div>':'';
+    h+=gmAaChartsHtml(_aa,aid)+_cadN+(_aa.swim?gmSwHtml(_aa,aid):gmIvHtml(_aa,aid))+gmAaMoreHtml(_aa);
   }else if(run||_hasStream||splits){
     /* GM7.4.1: echte Garmin-Detail-Streams (metrics.streams, get_activity_details) —
        nur tatsächlich vorhandene Kurven, korrekt beschriftete Einheiten (Geschwindigkeit
@@ -10025,6 +10182,7 @@ function gmOpenActivityPage(aid){
   }
   /* v8-452: Messdetails (eingeklappt) fuer jede Sportart — Quelle, Methode, Pruefstand, Fehlendes mit Grund */
   if(_aa)h+=gmAaDetailsHtml(_aa,_aa.owner);
+  if(_aaNew)h+=_corrH;
   h+='<div class="tabspacer"></div>';
   /* v8-439: Farbthema der Sportart fuer die ganze Seite (Strecke, Messreihen, Kennzeichen) */
   pg.setAttribute('data-activity',gmActThemeId(vm.sportId));
@@ -10035,7 +10193,7 @@ function gmOpenActivityPage(aid){
   /* GM7.7: Stream-Charts nach dem Einhaengen zeichnen — dieselbe GM-Komponente wie in den
      Metrik-Sheets. Baseline = Ø der ECHTEN Samples (reine Aggregation). X-Achse: Sample-
      Position in % der Einheit (die Serien tragen keinen Zeitstempel — kein erfundener). */
-  try{if(_aaSwim)gmAaMountChart(_aa,aid);}catch(_){ }
+  try{if(_aaNew)gmAaMountChart(_aa,aid);}catch(_){ }
   try{
     if(window.ORVIA&&ORVIA.charts&&ORVIA.charts.richChart){
       _gmActCharts.forEach(function(c){

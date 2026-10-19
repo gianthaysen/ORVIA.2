@@ -68,13 +68,13 @@ const setup = (acts, ext, mode) => page.evaluate(({ acts, ext, mode }) => {
   try { _gmActExt = {}; _gmSwOpen = {}; } catch (e) {}
   try { showTab('akt'); } catch (e) {}
 }, { acts, ext, mode });
-const READ = () => page.evaluate(() => { const p = document.getElementById('gmActPage'), c = p.querySelector('.aa-sw-card');
+const READ = () => page.evaluate(() => { const p = document.getElementById('gmActPage'), c = p.querySelector('.aa-sw-card, .iv-card');
   return { card: !!c, hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null,
     iv: c ? [...c.querySelectorAll('.aa-sw-iv')].map(x => ({ d: x.querySelector('.aa-sw-main b').textContent, p: x.querySelector('.aa-sw-main em').textContent, btn: !!x.querySelector('button.aa-sw-ivh'),
-      exp: (x.querySelector('button.aa-sw-ivh') || {}).getAttribute ? x.querySelector('button.aa-sw-ivh').getAttribute('aria-expanded') : null, meta: x.querySelector('.aa-sw-meta').textContent,
+      exp: (x.querySelector('button.aa-sw-ivh') || {}).getAttribute ? x.querySelector('button.aa-sw-ivh').getAttribute('aria-expanded') : null, meta: (x.querySelector('.iv-sub') || {}).textContent || '', body: (x.querySelector('.iv-body') || {}).textContent || '',
       rows: x.querySelectorAll('.aa-sw-l[role="listitem"]').length, restRows: x.querySelectorAll('.aa-sw-l.is-rest').length, sus: x.querySelectorAll('.aa-sw-l.is-suspect').length,
       hidden: x.querySelector('.aa-sw-lengths') ? x.querySelector('.aa-sw-lengths').hidden : null })) : [],
-    rest: c ? [...c.querySelectorAll('.aa-sw-rest')].map(x => x.textContent) : [], sum: c ? [...c.querySelectorAll('.aa-sw-sum .aa-card')].map(x => x.textContent) : [],
+    rest: c ? [...c.querySelectorAll('.iv-rest')].map(x => x.textContent) : [], sum: c ? [...c.querySelectorAll('.iv-stats .iv-stat')].map(x => x.textContent) : [],   /* v8-454: Pausenbloecke .iv-rest, Zusammenfassung .iv-stat */
     chips: [...p.querySelectorAll('.aa-chips button')].map(b => b.textContent), md: (p.querySelector('details.aa-md') || {}).textContent || '', calls: window.__calls,
     note: c ? [...c.querySelectorAll('.aa-note')].map(x => x.textContent).join(' | ') : '' }; });
 
@@ -88,13 +88,19 @@ sec('B · Intervalle und Bahnen');
 await setup([withLaps], EXT, 'ok');
 await page.evaluate(id => gmOpenActivityPage(id), withLaps.id);
 const c0 = await READ();
-ok('C1 sofort (Rohblock laedt): Intervalle aus den lokalen Runden — Schwimmtempo 2:41 / 2:29 / 1:40, noch ohne Aufklappen', c0.card && c0.iv.map(x => x.p).join() === '2:41 /100 m,2:29 /100 m,1:40 /100 m' && c0.iv.every(x => !x.btn), JSON.stringify(c0.iv.map(x => [x.p, x.btn])));
+ok('C1 sofort (Rohblock laedt): Intervalle aus den lokalen Runden — Schwimmtempo 2:41 / 2:29 / 1:40, noch ohne Aufklappen', c0.card && c0.iv.map(x => x.p).join() === '2:41 /100 m,2:29 /100 m,1:40 /100 m' && c0.iv.every(x => x.rows === 0), JSON.stringify(c0.iv.map(x => [x.p, x.btn])));
 await page.waitForTimeout(700);
-const b = await READ();
+let b = await READ();
 ok('B1 3 Intervalle (75 m · 125 m · 1.150 m), 3 Pausenbloecke (7:02 aus 4 Pausenrunden · 7:27 · 9:27)', b.iv.map(x => x.d).join() === '75 m,125 m,1.150 m' && b.rest.length === 3 && /7:02/.test(b.rest[0]) && /4 Pausenrunden/.test(b.rest[0]) && /7:27/.test(b.rest[1]) && /9:27/.test(b.rest[2]), JSON.stringify(b.rest));
 ok('B2 Zusammenfassung: Schwimmzeit 24:17, Pausen gesamt 45:14, Tempo 1:48 /100 m', b.sum.length === 3 && /24:17/.test(b.sum[0]) && /45:14/.test(b.sum[1]) && /1:48/.test(b.sum[2]), JSON.stringify(b.sum));
-ok('B3 Intervall 3: Schwimmzeit 19:10, Pause im Intervall 17:32, 46 Bahnen, Gemischt, 511 Zuege, SWOLF 36 — keine Zuege/Bahn bei gemischten Lagen', /Schwimmzeit 19:10/.test(b.iv[2].meta) && /Pause im Intervall 17:32/.test(b.iv[2].meta) && /Bahnen: 46/.test(b.iv[2].meta) && /Gemischt/.test(b.iv[2].meta) && /Züge: 511/.test(b.iv[2].meta) && /SWOLF 36/.test(b.iv[2].meta) && !/Züge\/Bahn/.test(b.iv[2].meta) && /24,0 Züge\/Bahn/.test(b.iv[0].meta), b.iv[2].meta);
-ok('B4 nach dem Laden aufklappbar; zugeklappt — keine Bahnen im DOM (mobile Leistung); genau EIN Abruf', b.iv.every(x => x.btn && x.exp === 'false' && x.rows === 0) && b.calls === 1);
+/* v8-454: kompakte Karte = Distanz · Schwimmtempo · Schwimmzeit; alles Weitere erst beim Aufklappen */
+ok('B3a kompakte Karte: zweite Zeile nur „19:10 Schwimmzeit" (keine sechs Textzeilen)', /^19:10 Schwimmzeit/.test(b.iv[2].meta.trim()) && !/Züge|SWOLF|Pause/.test(b.iv[2].meta), b.iv[2].meta);
+await page.evaluate(() => { document.querySelectorAll('.aa-sw-ivh[aria-expanded]')[2].click(); }); await page.waitForTimeout(120);
+const b3 = (await READ()).iv[2].body.replace(/\s+/g, ' ');
+ok('B3 Intervall 3 aufgeklappt: Schwimmzeit 19:10, Pause im Intervall 17:32, 46 Bahnen, Gemischt, 511 Zuege, SWOLF 36 — keine Zuege/Bahn bei gemischten Lagen', /Schwimmzeit ?19:10/.test(b3) && /Pause im Intervall ?17:32/.test(b3) && /Bahnen ?46/.test(b3) && /Gemischt/.test(b3) && /Züge gesamt ?511/.test(b3) && /SWOLF ?36/.test(b3) && !/Züge je Bahn/.test(b3), b3.slice(0, 300));
+await page.evaluate(() => { document.querySelectorAll('.aa-sw-ivh[aria-expanded]')[2].click(); }); await page.waitForTimeout(80);
+b = await READ();
+ok('B4 nach dem Laden aufklappbar; nie geoeffnete Intervalle ohne Bahnen im DOM (mobile Leistung), zugeklapptes verborgen; genau EIN Abruf', b.iv.every(x => x.btn && x.exp === 'false') && b.iv[0].rows === 0 && b.iv[1].rows === 0 && b.iv[2].hidden === true && b.calls === 1);
 ok('B5 Diagramme: Tempo je Bahn, Puls, SWOLF je Bahn', b.chips.join() === 'Tempo je Bahn,Puls,SWOLF je Bahn', b.chips.join());
 await page.evaluate(() => { const bs = document.querySelectorAll('.aa-sw-ivh[aria-expanded]'); bs[2].click(); }); await page.waitForTimeout(150);
 const b6 = await READ();
@@ -114,7 +120,9 @@ sec('C · Laden scheitert');
 await setup([withLaps], EXT, 'fail');
 await page.evaluate(id => gmOpenActivityPage(id), withLaps.id); await page.waitForTimeout(700);
 const cf = await READ();
-ok('C2 Rohblock nicht ladbar: Intervalle und Schwimmtempo bleiben (lokale Runden), ohne Aufklappen, kein Fehler', cf.card && cf.iv.length === 3 && cf.iv.every(x => !x.btn) && /2:41/.test(cf.iv[0].p));
+await page.evaluate(() => { document.querySelectorAll('.aa-sw-ivh[aria-expanded]')[2].click(); }); await page.waitForTimeout(80);
+const cf2 = await READ();
+ok('C2 Rohblock nicht ladbar: Intervalle und Schwimmtempo bleiben (lokale Runden); aufgeklappt ohne Bahnen, kein Fehler', cf.card && cf.iv.length === 3 && cf2.iv[2].rows === 0 && /Schwimmzeit/.test(cf2.iv[2].body) && /2:41/.test(cf.iv[0].p));
 
 sec('D · Messdetails');
 await setup([withLaps], EXT, 'ok');
@@ -130,7 +138,7 @@ for (const w of [320, 375, 390, 430, 1200]) {
   await page.waitForTimeout(150);
   const m = await page.evaluate(() => { const p = document.getElementById('gmActPage'), clip = e => e.scrollWidth > e.clientWidth + 1;
     return { ov: document.documentElement.scrollWidth - document.documentElement.clientWidth, pov: p.scrollWidth - p.clientWidth,
-      cut: [...p.querySelectorAll('.aa-sw-card b, .aa-sw-card em, .aa-sw-sum .aa-card span, .aa-sw-meta span, .aa-sw-l > span, .aa-chips button')].filter(clip).map(e => e.textContent).slice(0, 4) }; });
+      cut: [...p.querySelectorAll('.iv-card b, .iv-card em, .iv-stat span, .iv-sub, .iv-grid dd, .aa-sw-l > span, .tl-axis span, .aa-chips button')].filter(clip).map(e => e.textContent).slice(0, 4) }; });
   ok('E ' + w + ' px: kein Ueberlauf, kein abgeschnittener Wert (Intervalle, Bahnen, Zusammenfassung)', m.ov <= 0 && m.pov <= 0 && !m.cut.length, JSON.stringify(m));
 }
 ok('keine ungefangenen JS-Fehler', errs.length === 0, errs.slice(0, 2).join(' | '));

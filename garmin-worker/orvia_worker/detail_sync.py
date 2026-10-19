@@ -71,7 +71,10 @@ LAP_SPORTS = ("running", "cycling", "swimming", "rowing", "hiking", "walking", "
 EXTRAS: dict[str, tuple[str, ...]] = {
     "activity": ("*",),            # get_activity: volle Zusammenfassung (summaryDTO)
     "splits": LAP_SPORTS,          # get_activity_splits: Runden
-    "typed_splits": ("swimming", "running", "cycling"),   # Intervalle / Bahnen
+    # v8-454: Intervalle (typedsplits) NUR Laufen — Mitschnitt 19.10.2026: Laufen liefert dort Garmin-Workout-Schritte
+    # (INTERVAL_*, mit lapIndexes) und Lauf/Geh/Steh-Abschnitte (RWD_*); Becken und Freiwasser liefern leer, Rad nur
+    # Untergrund-Abschnitte (SURFACE_TYPE_*). Bahnen stecken in der Rundenantwort (splits).
+    "typed_splits": ("running",),
     "hr_zones": ("*",),            # get_activity_hr_in_timezones
     "power_zones": ("cycling",),   # get_activity_power_in_timezones
     "exercise_sets": ("gym",),     # get_activity_exercise_sets
@@ -82,7 +85,6 @@ EXTRAS: dict[str, tuple[str, ...]] = {
 EXTRA_CONDITIONS: dict[str, dict] = {
     "hr_zones": {"stream": "heart_rate"},
     "power_zones": {"stream": "power"},
-    "typed_splits": {"type_keys": {"swimming": ("lap_swimming",)}},
 }
 
 # Schluessel in activities.metrics, die der CLIENT fuehrt (Plan-Zuordnung,
@@ -284,6 +286,12 @@ def extras_for(sport_id: Any, enabled: Any, *, type_key: Any = None, streams: An
 # Bewusst NICHT: averageStrokeDistance — im Listeneintrag in cm, in der Rundenantwort in m (0 im Becken).
 SWIM_LAP_FIELDS = ("numberOfActiveLengths", "totalNumberOfStrokes", "averageSWOLF", "averageMovingSpeed",
                    "averageStrokes", "averageSwimCadence", "maxSwimCadence", "swimStroke", "intensityType")
+# v8-454 · Lauf-/Radfelder je Runde — Namen BELEGT am Mitschnitt vom 19.10.2026 (captures/running__*, cycling__*):
+#   averageRunCadence / maxRunCadence (Schritte/min, voller Wert), averageBikeCadence / maxBikeCadence (U/min),
+#   averagePower / maxPower / normalizedPower (W, nur mit Leistungsmessung), elevationLoss, maxSpeed,
+#   wktStepIndex (Schritt eines Garmin-Workouts). Bewusst NICHT: strideLength (Rundenwert ≠ Listenwert, Einheit unbelegt).
+RUN_BIKE_LAP_FIELDS = ("averageRunCadence", "maxRunCadence", "averageBikeCadence", "maxBikeCadence", "averagePower",
+                       "maxPower", "normalizedPower", "elevationLoss", "maxSpeed", "wktStepIndex")
 
 
 def _slim_laps(raw: Any) -> list | None:
@@ -297,7 +305,7 @@ def _slim_laps(raw: Any) -> list | None:
     elif isinstance(raw, list):
         cands.append(raw)
     keep = ("distance", "duration", "movingDuration", "elapsedDuration", "averageHR", "maxHR",
-            "averageSpeed", "elevationGain", "lapIndex", "startTimeGMT") + SWIM_LAP_FIELDS
+            "averageSpeed", "elevationGain", "lapIndex", "startTimeGMT") + SWIM_LAP_FIELDS + RUN_BIKE_LAP_FIELDS
     for lst in cands:
         out = []
         for lap in lst[:200]:

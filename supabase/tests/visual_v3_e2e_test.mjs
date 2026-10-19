@@ -100,12 +100,12 @@ const GOLD = '216, 187, 122';
 const cs = `e => e ? getComputedStyle(e) : null`;
 const openPage = async id => { await page.evaluate(async id => { try { gmStoryClose(); } catch (_) { } showTab('akt'); await new Promise(r => setTimeout(r, 150)); gmOpenActivityPage(id); await new Promise(r => setTimeout(r, 1200)); }, id); };
 const READ = `(() => { const pg = document.getElementById('gmActPage'), cs = (e, p) => e ? getComputedStyle(e, p) : null;
-  const back = pg.querySelector('.backbtn'), open = pg.querySelector('.route-map .rmx-open'), kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-cards > .aa-card'));
+  const back = pg.querySelector('.backbtn'), open = pg.querySelector('.route-map .rmx-open'), kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero, .aa-cards > .aa-card'));   /* v8-454: Uebersicht als EIN Kartenblock (.aa-hero) + Analysebereich */
   const story = pg.querySelector('.gm-story-cta'), del = pg.querySelector('.gm-corr .danger-btn'), k = pg.querySelector('.plan-kicker'), hero = pg.querySelector('.act-hero');
   const ctl = e => e ? { bg: cs(e).backgroundImage, border: cs(e).borderTopColor, shadow: cs(e).boxShadow, col: cs(e).color } : null;
   const order = story && del ? !!(story.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
   return { act: pg.getAttribute('data-activity'), back: ctl(back), open: ctl(open),
-    kpi: kp.map(d => ({ tile: !d.classList.contains('aa-hero-main'), bg: cs(d).backgroundImage, border: cs(d).borderTopColor, shadow: cs(d).boxShadow, key: d.classList.contains('key') || d.classList.contains('aa-hero-main'), col: cs(d.querySelector('b')).color, box: (b => [b.left, b.top, b.right, b.bottom])(d.getBoundingClientRect()) })),
+    kpi: kp.map(d => ({ tile: !d.classList.contains('aa-hero'), bg: cs(d).backgroundImage, border: cs(d).borderTopColor, shadow: cs(d).boxShadow, key: d.classList.contains('key') || d.classList.contains('aa-hero'), col: cs(d.querySelector('b')).color, box: (b => [b.left, b.top, b.right, b.bottom])(d.getBoundingClientRect()) })),
     story: story ? { border: cs(story).borderTopColor, icon: cs(story.querySelector('.ic')).color, col: cs(story).color, h: story.getBoundingClientRect().height } : null,
     del: del ? { border: cs(del).borderTopColor, col: cs(del).color, bg: cs(del).backgroundColor, h: del.getBoundingClientRect().height, size: cs(del).fontSize } : null, order: order,
     kickTick: k ? { w: cs(k, '::before').width, bg: cs(k, '::before').backgroundColor, col: cs(k).color } : null,
@@ -126,7 +126,7 @@ sec('Bedienelemente: eine Flaeche, ein Rand');
 ok('A1 Zurueck-Knopf und Oeffnen-Zeichen der Karte tragen dieselbe Flaeche (dunkler Verlauf), denselben Goldrand (16 %) und denselben Schatten', !!run.back && !!run.open && /linear-gradient/.test(run.back.bg) && run.back.bg === run.open.bg && isGold(run.back.border, 0.16) && run.back.border === run.open.border && run.back.shadow === run.open.shadow && /inset/.test(run.back.shadow), JSON.stringify([run.back, run.open && run.open.border]));
 ok('A2 das Zeichen im Knopf bleibt neutral (kein goldener Knopf)', has(run.back.col, TEXT) && has(run.open.col, TEXT), JSON.stringify([run.back.col, run.open.col]));
 sec('Aktivitaetsseite als ein Guss');
-ok('B1 alle Kennzahl-Kacheln (sieben: seit v8-447 auch Max. HF, weil die Quelle sie liefert) aus EINEM Material: derselbe Verlauf, derselbe Rand, dieselbe helle Oberkante', run.kpi.length === 7 && run.kpi.every(k => k.bg === run.kpi[0].bg && k.border === run.kpi[0].border && k.shadow === run.kpi[0].shadow) && /linear-gradient/.test(run.kpi[0].bg) && /inset/.test(run.kpi[0].shadow), JSON.stringify(run.kpi[0]));
+ok('B1 alle Kennzahl-Flaechen (v8-454: Uebersicht + Karten im Analysebereich) aus EINEM Material: derselbe Verlauf, derselbe Rand, dieselbe helle Oberkante', run.kpi.length >= 2 && run.kpi.every(k => k.bg === run.kpi[0].bg && k.border === run.kpi[0].border && k.shadow === run.kpi[0].shadow) && /linear-gradient/.test(run.kpi[0].bg) && /inset/.test(run.kpi[0].shadow), JSON.stringify(run.kpi[0]));
 ok('B2 weiter genau EINE farbige Hauptkennzahl (Farbe der Sportart), alle anderen neutral — Gold an keiner Zahl', run.kpi.filter(k => has(k.col, RGB.running)).length === 1 && run.kpi.filter(k => !has(k.col, RGB.running)).every(k => rgbOf(k.col).slice(0, 3).every(v => v >= 230)) && run.kpi.every(k => !isGold(k.col)), JSON.stringify(run.kpi.map(k => k.col)));
 ok('B3 Story ist die Hauptaktion: steht VOR dem Loeschen, Goldrand (24 %), Stern in Gold, Schrift neutral', !!run.story && run.order === true && isGold(run.story.border, 0.24) && isGold(run.story.icon) && has(run.story.col, TEXT), JSON.stringify([run.order, run.story]));
 ok('B4 Loeschen bleibt erreichbar, tritt aber zurueck: kleiner, ohne Flaeche, leiser Rand und Sekundaerschrift', !!run.del && run.del.h < run.story.h - 4 && run.del.h >= 40 && /rgba\(0, 0, 0, 0\)/.test(run.del.bg) && has(run.del.col, '173, 181, 193') && !isGold(run.del.border), JSON.stringify(run.del));
@@ -142,12 +142,12 @@ ok('C1 Schwimmen ohne Strecke: Wellenfeld im Platz der Karte (zwischen Kopf und 
 ok('C2 sieben Wellenlinien in der Farbe der Sportart (Aqua) — die Farbe kommt aus dem Thema, nicht aus dem Markup', swim.hero.paths === 7 && has(swim.hero.stop, RGB.swimming) && /url\(/.test(swim.hero.stroke), JSON.stringify([swim.hero.paths, swim.hero.stop, swim.hero.stroke]));
 ok('C3 eigene Ebene, keine Maske (Schutz vor Darstellungsfehlern unter der bewegten Zeichnung)', /matrix/.test(String(swim.hero.tf)) && (!swim.hero.mask || swim.hero.mask === 'none'), JSON.stringify([swim.hero.tf, swim.hero.mask]));
 { /* Darstellungsfehler aus der Entwicklung: gleiche Kacheln muessen gleich aussehen (vier Ecken je Kachel) */
-  const tiles = swim.kpi.filter(k => k.tile);   // v8-452: gleich grosse Karten unter der Hauptkennzahl
-  const pts = []; tiles.forEach(k => { pts.push([k.box[0] + 12, k.box[1] + 6], [k.box[2] - 12, k.box[1] + 6], [k.box[0] + 12, k.box[3] - 6], [k.box[2] - 12, k.box[3] - 6]); });
-  const px = await pixels(pts); let spread = 0;
-  for (let c = 0; c < 4; c++) { const v = tiles.map((_, i) => px[i * 4 + c][0]); spread = Math.max(spread, Math.max(...v) - Math.min(...v)); }
-  ok('C4 die Kennzahl-Karten unter dem Wellenfeld sehen gleich aus (Streuung je Ecke ≤ 3 Helligkeitsstufen; ohne eigene Ebene waren es 42)', tiles.length >= 2 && spread <= 3, tiles.length + ' Karten, Streuung ' + spread); }
-ok('C5 dieselbe Sprache wie Lauf und Rad: Kennzeichen-Strich, eine Hauptkennzahl, Story vor Loeschen — alles in Aqua bzw. Gold wie dort', has(swim.kickTick.bg, RGB.swimming) && swim.kpi.filter(k => has(k.col, RGB.swimming)).length === 1 && swim.order === true && isGold(swim.story.border, 0.24) && swim.kpi.filter(k => k.tile)[0].bg === run.kpi[0].bg, JSON.stringify([swim.kickTick, swim.order]));
+  /* v8-454: die Uebersicht ist EINE Karte — linke und rechte Ecken derselben Hoehe muessen gleich aussehen (Darstellungsfehler der Ebene zeigte 42 Stufen) */
+  const hero = swim.kpi.filter(k => !k.tile && k.box[3] > k.box[1])[0];
+  const pts = hero ? [[hero.box[0] + 12, hero.box[1] + 6], [hero.box[2] - 12, hero.box[1] + 6], [hero.box[0] + 12, hero.box[3] - 6], [hero.box[2] - 12, hero.box[3] - 6]] : [];
+  const px = pts.length ? await pixels(pts) : []; const spread = px.length ? Math.max(Math.abs(px[0][0] - px[1][0]), Math.abs(px[2][0] - px[3][0])) : 99;
+  ok('C4 die Kennzahl-Karte unter dem Wellenfeld sieht links wie rechts gleich aus (Streuung ≤ 3 Helligkeitsstufen; ohne eigene Ebene waren es 42)', !!hero && spread <= 3, 'Streuung ' + spread); }
+ok('C5 dieselbe Sprache wie Lauf und Rad: Kennzeichen-Strich, eine Hauptkennzahl, Story vor Loeschen — alles in Aqua bzw. Gold wie dort', has(swim.kickTick.bg, RGB.swimming) && swim.kpi.filter(k => has(k.col, RGB.swimming)).length === 1 && swim.order === true && isGold(swim.story.border, 0.24) && swim.kpi[0].bg === run.kpi[0].bg, JSON.stringify([swim.kickTick, swim.order]));
 await openPage('t-gym'); const gym = await page.evaluate(READ);
 ok('C6 andere Sportarten ohne Strecke bekommen KEIN Wellenfeld (Kraft)', gym.hero === null && gym.map === false);
 ok('C7 Textlink der Seite („Dauer korrigieren") ohne Browser-Blau: helle Schrift, goldene Unterstreichung', !gym.link || (has(gym.link.col, TEXT) && isGold(gym.link.deco, 0.24)), JSON.stringify(gym.link));

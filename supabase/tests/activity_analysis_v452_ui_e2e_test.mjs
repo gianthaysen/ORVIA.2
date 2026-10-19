@@ -81,9 +81,9 @@ const READ = () => page.evaluate(() => { const p = document.getElementById('gmAc
   return { hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null, heroSub: [...p.querySelectorAll('.aa-hero-sub b')].map(b => b.textContent),
     cards: [...p.querySelectorAll('#gmActPage > .aa-cards > .aa-card span, .aa-cards:not(.aa-cards-3) > .aa-card span')].map(s => s.textContent),
     chips: [...p.querySelectorAll('.aa-chips button')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chart: !!p.querySelector('#gmAaChart svg'),
-    iv: p.querySelectorAll('.aa-iv:not(.aa-iv-head):not(.aa-rest), .aa-sw-iv').length, rest: p.querySelectorAll('.aa-rest, .aa-sw-rest').length, eff: !!p.querySelector('.aa-eff'),
+    iv: p.querySelectorAll('.aa-iv:not(.aa-iv-head):not(.aa-rest), .aa-sw-iv').length, rest: p.querySelectorAll('.aa-rest, .iv-rest').length, eff: !!p.querySelector('.aa-eff, .iv-an'),   /* v8-454: Pausenbloecke .iv-rest, Gleichmaessigkeit in der Intervallkarte */
     md: p.querySelector('details.aa-md') ? { open: p.querySelector('details.aa-md').open, text: p.querySelector('details.aa-md').textContent } : null,
-    kpis: p.querySelectorAll('.detail-kpis').length, note: [...p.querySelectorAll('.aa-note')].map(x => x.textContent).join(' | '), calls: window.__calls,
+    kpis: p.querySelectorAll('.detail-kpis').length, note: [...p.querySelectorAll('.aa-note, .aa-hero-load')].map(x => x.textContent).join(' | '), calls: window.__calls,
     localHasExt: !!(window.__local[0].metrics && window.__local[0].metrics.ext) }; });
 
 sec('A · Rohblock laden');
@@ -100,7 +100,7 @@ ok('A4 erneutes Oeffnen: kein zweiter Abruf (Zwischenspeicher der Sitzung)', (aw
 
 sec('B · Schwimmansicht');
 const b = await READ();
-ok('B1 keine alten sechs Kacheln; Hauptkennzahl Distanz, darunter Dauer und Tempo /100 m', b.kpis === 0 && b.hero === '2.000 m' && b.heroSub.length === 2 && /\/100 m/.test(b.heroSub[1]), JSON.stringify(b.heroSub));
+ok('B1 keine alten sechs Kacheln; Hauptkennzahl Distanz, darunter Dauer und Tempo /100 m', b.kpis === 0 && b.hero === '2.000 m' && b.heroSub.length === 3 && /\/100 m/.test(b.heroSub[1]) && /bpm/.test(b.heroSub[2])   /* v8-454: drei Werte unter der Hauptzahl */, JSON.stringify(b.heroSub));
 ok('B2 Verlauf mit Auswahl: Tempo, Puls, Zugfrequenz, SWOLF — ein Diagramm sichtbar', b.chips.join() === 'Tempo*,Puls,Zugfrequenz,SWOLF' && b.chart, b.chips.join());
 await page.evaluate(() => { const x = [...document.querySelectorAll('.aa-chips button')].find(b => b.textContent === 'SWOLF'); x.click(); });
 await page.waitForTimeout(200);
@@ -130,7 +130,7 @@ sec('D · andere Sportarten');
 await setup([run], GEN.referenceActivity('running', 'best').metrics.ext, 'ok');
 await page.evaluate(id => gmOpenActivityPage(id), run.id); await page.waitForTimeout(700);
 const d1 = await READ();
-ok('D1 Laufen: bisherige Kacheln bleiben, Messdetails kommen dazu (Timer- und Gesamtzeit, geprueft)', d1.kpis === 1 && d1.hero === null && d1.md && /Timer-Zeit/.test(d1.md.text) && /Gesamtzeit/.test(d1.md.text) && /geprüft/.test(d1.md.text));
+ok('D1 Laufen (v8-454 neue Ansicht): Hauptzahl statt alter Kacheln, Messdetails mit Timer- und Gesamtzeit, geprueft', d1.kpis === 0 && d1.hero !== null && d1.md && /Timer-Zeit/.test(d1.md.text) && /Gesamtzeit/.test(d1.md.text) && /geprüft/.test(d1.md.text));
 
 sec('E · Layout');
 await setup([sw], EXT, 'ok');

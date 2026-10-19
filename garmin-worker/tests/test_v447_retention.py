@@ -264,10 +264,11 @@ def test_extras_follow_the_sport():
     f = detail_sync.extras_for
     # v8-447.1: je Abruf zaehlt, ob er fuer GENAU diese Aktivitaet etwas liefern kann.
     assert f("gym", on, streams=hr) == ["activity", "hr_zones", "exercise_sets"]            # keine Runden bei Kraft
-    assert f("swimming", on, type_key="lap_swimming", streams=hr) == ["activity", "splits", "typed_splits", "hr_zones"]
+    # v8-454: Intervall-Abruf (typed_splits) nur Laufen (Mitschnitte: Becken/Freiwasser leer, Rad nur Untergrund-Abschnitte)
+    assert f("swimming", on, type_key="lap_swimming", streams=hr) == ["activity", "splits", "hr_zones"]
     assert f("swimming", on, type_key="open_water_swimming", streams=hr) == ["activity", "splits", "hr_zones"]   # Bahnen nur im Becken
-    assert f("cycling", on, streams=hrpw) == ["activity", "splits", "typed_splits", "hr_zones", "power_zones"]
-    assert f("cycling", on, streams=hr) == ["activity", "splits", "typed_splits", "hr_zones"]   # ohne Leistungsreihe keine Leistungszonen
+    assert f("cycling", on, streams=hrpw) == ["activity", "splits", "hr_zones", "power_zones"]
+    assert f("cycling", on, streams=hr) == ["activity", "splits", "hr_zones"]   # ohne Leistungsreihe keine Leistungszonen
     assert f("running", on, streams=hrpw) == ["activity", "splits", "typed_splits", "hr_zones"]  # Leistungszonen nur Rad
     assert f("yoga", on, streams=hr) == ["activity", "hr_zones"]
     assert f("yoga", on) == ["activity"]                                                    # ohne HF-Reihe keine HF-Zonen

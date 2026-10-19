@@ -1,6 +1,6 @@
-# Sportartspezifische Aktivitätsanalyse (v8-452)
+# Sportartspezifische Aktivitätsanalyse (v8-452 · v8-453 · v8-454)
 
-**Status: IMPLEMENTED** (App v8-452 live; **v8-453 Schwimmintervalle gebaut, nicht ausgeliefert**) · Worker v8-452.1 **vorbereitet, nicht ausgerollt** · keine Migration
+**Status: IMPLEMENTED** (App v8-453 live) · **App v8-454 gebaut, nicht ausgeliefert** (universelle Intervalle Laufen/Rad, Neugestaltung der Aktivitätsseite, §10) · Worker v8-452.1 live (`DETAIL_EXTRAS=splits`, `DETAIL_EXTRAS_SPORTS=swimming`) · **Worker v8-454 vorbereitet, nicht ausgerollt** · keine Migration
 
 ## 1 · Warum beim Schwimmen fast nur die Herzfrequenz erschien
 
@@ -138,7 +138,7 @@ Belegte Bedeutung (Test C8):
 
 Worker-Prüfung am Mitschnitt (C9, echter Sync-Pfad): schlanke Runden mit Schwimmfeldern (3,6 kB, landet auch im lokalen Speicher), Rohblock mit allen Bahnen (24 kB, nur Server/bei Bedarf), Befund `ext.extras.splits = ok`, Rohfelder des Listeneintrags unverändert, kein privates Feld, keine Kappung (`keep_structure`: Runde 23 bzw. 31 Schlüssel < 80).
 
-## 9 · v8-453 Schwimmintervalle, Pausen, Bahnen (gebaut, nicht ausgeliefert)
+## 9 · v8-453 Schwimmintervalle, Pausen, Bahnen (live)
 
 Kette: `metrics.splits` (schlanke Runden, lokal) + `metrics.ext.splits` (Rohrunden mit Bahnen, bei Bedarf vom Server) → `engine/swim-intervals.js` (`swim-intervals@1`, rein) → `activity-analysis.analyze().swim` → ui.js zeichnet nur. Kein Eingriff in Register, Bestzeiten, Korrekturen, Flags, Worker.
 
@@ -163,3 +163,85 @@ Einheit 11.10.2026 (echter Mitschnitt): Intervalle 75 / 125 / 1.150 m mit **2:41
 Oberfläche: Verlauf mit „Tempo je Bahn" / Puls / „SWOLF je Bahn" (auffällige Bahnen = Lücke) · Karte „Intervalle" mit Zusammenfassung (Schwimmzeit, Pausen gesamt, Tempo), Intervallkarten und Pausenblöcken · Bahnen erst beim Antippen eines Intervalls (eine Tabelle, Pausenbahnen grau, auffällige mit „≈") · Messdetails: Zeitdefinition, Pausenerkennung, Summenprüfung, Plausibilität, Validierung. Ohne Runden (heutige Produktion): kein Intervall-Block, Ansicht wie v8-452. Bahnen kommen nach, sobald der Rohblock geladen ist; keine Duplikate (nur Anzeige, nichts gespeichert).
 
 Tests: `swim_intervals_v453` (53, echter Mitschnitt, 50-m-Becken, Fehlerfälle, Register), `swim_intervals_v453_ui_e2e` (23, 320–1200 px). App-Testdaten `supabase/tests/fixtures/swim_capture_v453.json` = Worker-Ausgabe (`garmin-worker/scripts/gen_app_swim_fixture.py`, Gleichheit: `test_v453_app_fixture.py`).
+
+## 10 · v8-454 Universelle Intervalle Laufen · Rad · Schwimmen (gebaut, nicht ausgeliefert)
+
+### 10.1 Audit echter Einheiten (Mitschnitt 19.10.2026, `capture_activity_payloads.py --interval-audit`)
+
+Belegt an 2 Läufen (Workout-Lauf 17 km mit 4 Schritten, gleichmäßiger Lauf 3,3 km) und 3 Radfahrten (Rennrad 27,6 km mit 6 Auto-Runden, Rad 4,8 km eine Runde, Zwift 1:02 h eine Runde). Rohdaten: `garmin-worker/tests/fixtures/garmin/captures/{running,cycling}__*.json`; App-Testdaten `supabase/tests/fixtures/run_ride_capture_v454.json` = Worker-Ausgabe (Gleichheit: `test_v453_app_fixture.py`).
+
+Spalten: **geliefert** = im Garmin-Rohabruf vorhanden · **verarbeitet** = Worker v8-454 übernimmt es · **gespeichert** = heute in Produktion in `activities.metrics` · **geladen** = App liest es · **geprüft** = Gegenprobe mit Beleg · **sichtbar** = v8-454-Oberfläche.
+
+| Kennzahl | geliefert | verarbeitet (v8-454) | gespeichert heute | geladen | geprüft (Beleg) | sichtbar |
+|---|---|---|---|---|---|---|
+| Runden: Distanz, Timer, Gesamtzeit, Bewegungszeit | Lauf + Rad (`lapDTOs`) | ja (schlank + Rohblock) | **nein** (nur Schwimmen) | ja | Summe = Einheit: Lauf 17.002 / 17.002 m, Timer 6.066 / 6.064 s; Rad 27.604 / 27.604 m, 4.070 / 4.071 s | Karten, Zeitstrahl |
+| Runden: Ø/Max-Puls | ja | ja | nein | ja | gegen Messreihe: 17 + 4 + 6 + 1 + 1 Runden „stimmt", 1 ohne Reihe | Karte (Rad), Detail |
+| Laufkadenz je Runde (`averageRunCadence`, voller spm-Wert) | ja | ja | nein | ja | gegen Kadenzreihe (ohne Nullen): 15 gemessen + passend, 2 abgeleitet, 1 ohne | Detail (mit Qualität) |
+| Schrittlänge je Runde | ja | **nein** | nein | nein | widersprüchlich zur Kadenz × Tempo → gesperrt | nein |
+| Radkadenz je Runde | nur Zwift | ja | nein | ja | gegen Reihe (Zwift) | Detail |
+| Leistung je Runde (Ø, Max, NP) | nur Zwift | ja | nein | ja | Ø gegen Leistungsreihe (Zwift); Max/NP **ungeprüft** | Detail; Hero nur bei gemessener Leistung |
+| Höhenmeter je Runde | ja | ja | nein | ja | **ungeprüft** (Barometer, keine Gegenprobe) | Detail „ungeprüft"; Ausschluss im Vergleich |
+| Max. Geschwindigkeit je Runde | ja | ja | nein | ja | nur Plausibilität (≤ 1,6 × Ø) | „Bestes Tempo" ungeprüft |
+| `intensityType` je Runde | ja | ja | nein | ja | **unzuverlässig, wenn einheitlich** (Workout-Lauf: alle ACTIVE; normaler Lauf: alle INTERVAL) → zählt nur mit ≥ 2 Arten | nur als Einordnung |
+| Workout-Schritt je Runde (`wktStepIndex`) | Lauf mit Workout | ja | nein | ja | Schrittgruppen = Garmin-Intervallantwort (4 / 4 / 8 / 2 Runden) | Abschnitte |
+| Intervallantwort (`typed_splits`: INTERVAL_*, `lapIndexes`) | Lauf; Rad nur Untergrund; Schwimmen leer | **nur Laufen** | nein | ja | Summen der Runden je Schritt = Schrittwerte | Abschnitte / Intervalle |
+| Messreihen (Puls, Tempo, Kadenz, Leistung, Höhe) | ja | unverändert seit v8-447 | **ja** | ja | v8-452 | Diagramme |
+| Leistung Einheit (Rad draußen) | **nein** (kein Leistungsmesser) | — | — | — | — | nie geschätzt; kein Leistungs-Hero |
+
+Befund: In Gians echten Daten gibt es **keine** echte Belastungs-/Erholungs-Einheit. Der Workout-Lauf hat 4 gleichartige „ACTIVE"-Schritte (6:50 / 6:07 / 5:16 / 7:05 /km), die Radfahrten Auto-Runden oder eine Runde, draußen ohne Leistung. Belastung/Erholung ist deshalb nur synthetisch (mit den belegten Feldnamen) getestet.
+
+Die Konsolen-Prüfung `app/tools/activity-audit-run-ride-console.js` (nur lesend, im eingeloggten Browser) steht noch aus — sie belegt den **gespeicherten** Stand aller Lauf-/Radeinheiten.
+
+### 10.2 Kette und Engine
+
+`metrics.splits` (schlanke Runden, lokal) + `metrics.ext.splits` / `ext.typed_splits` (Rohblock, bei Bedarf vom Server) + Messreihen → `engine/intervals.js` (`intervals@1`, rein, keine DOM-/Speicherzugriffe) → `activity-analysis.analyze()` (`intervals`, `timeline`, `efficiency`) → ui.js formatiert nur. Schwimmen delegiert unverändert an `swim-intervals.js` (v8-453). **Eine** Engine, keine zweite.
+
+1. **Normalisierung** `lapsOf`: schlanke und Rohrunden über `lapIndex` zusammengeführt; Altbestand aus der verknüpften Trainingssession (`km/sec/hr`) mit Herkunft `legacy_session`. Kaputte Runden (Text, null, negative Distanz, ohne Zeit) fallen weg — nichts geraten.
+2. **Identifikation** `classify` (Runden) und `stepsOf` (Abschnitte):
+   - Garmin-Einordnung (`intensityType`) nur bei ≥ 2 verschiedenen Arten → Herkunft `garmin`.
+   - Garmin-Auslöser (`lapTrigger`) → manuell / automatisch laut Garmin.
+   - Gleich lange Runden (± 1,5 %, ≥ 3 bewegte, letzte ≤) → `auto_lap`, Herkunft `rule`.
+   - Belastung/Erholung aus Wechseln: Laufen über Tempo (Lücke ≥ 1,2 ×), Rad **nur mit gemessener Leistung** (≥ 1,3 ×); in sich geschlossen (Verhältnis ≥ 1,08, Größen-Streuung ≤ 25 %); sonst `unknown`.
+   - Abschnitte: Intervallantwort (≥ 2 INTERVAL_*-Einträge, Runden über `lapIndexes`) oder `wktStepIndex`-Gruppen. Alle gleich (z. B. alles ACTIVE) → „Abschnitt", **keine** erfundene Belastung/Erholung.
+   - Herkunft je Abschnitt: `garmin` / `rule` / `none`; `plan` ist vorgesehen, wird aber noch nicht befüllt (keine Planverknüpfung je Runde).
+3. **Zeitsemantik** (getrennt, nie verrechnet): *Timer* (`duration`, Uhr läuft) = Grundlage für Tempo/Geschwindigkeit; *Gesamtzeit* (`elapsedDuration`) = Breite im Zeitstrahl; *Bewegungszeit* (`movingDuration`); *Uhr angehalten* = Gesamtzeit − Timer (berechnet). Ohne Timer: Gesamtzeit als Grundlage, ausdrücklich `timeBasis: elapsed`. Beispiel Abschnitt 2 des Workout-Laufs: Timer 24:29, Gesamtzeit 32:29, 7:59 angehalten — Tempo 6:07 /km auf dem Timer.
+4. **Sportmetriken** je Abschnitt/Runde: Tempo/Geschwindigkeit, Puls (+ Gegenprobe Reihe), Kadenz (gemessen / abgeleitet / ungeprüft), Leistung nur wenn gemessen (Ø / Max / NP), Höhenmeter, bestes Tempo (≤ 1,6 × Ø).
+5. **Qualität** je Runde, nie korrigiert: schneller als Weltrekord-Schnitt, Rad > 90 km/h draußen, Puls weicht von der Reihe ab.
+6. **Analyse** `analyticsOf` — nur vergleichbare Gruppen:
+   - Kandidaten: Belastungen; sonst Auto-Runden ohne die Teilrunde am Ende; bei Abschnitten ohne Vergleich die gleich langen Runden im längsten Abschnitt („Kilometer in Abschnitt 3").
+   - Rad ohne Leistung: **kein** Vergleich (Wind, Gelände, Ampeln) — `no_power`.
+   - Gruppe: gleiche Distanz ± 7 % (Rad-Belastungen: gleiche Dauer); Ausschluss bei Gelände (Höhenmeter/km > 15 m vom Median) und Stillstand (Bewegungszeit < 90 % Timer), Anzahl genannt.
+   - Ergebnis: Streuung (CV), schnellste/langsamste mit der Nummer, die auf der Karte steht (Belastung n bzw. Runde n), Verlauf per Regression — **nur** bei ≥ 4 Belastungen bzw. ≥ 5 Runden, |Änderung| ≥ 3 % und R² ≥ 0,5, formuliert als Beobachtung („über die Wiederholungen 7,1 % langsamer"), nie als Form-/Fitnessurteil. Puls erste → letzte.
+7. **Darstellung**: Zeitstrahl (Breite = Gesamtzeit, sonst Timer, benannt; fehlt eine Dauer → kein Zeitstrahl).
+
+### 10.3 Neugestaltung der Aktivitätsseite (Lauf, Rad, Schwimmen)
+
+A Hero: **eine** große Zahl (Laufen/Schwimmen/Rad draußen: Distanz; Rad drinnen mit Leistung: Ø Leistung) · B höchstens 3 Kennzahlen darunter · C Diagramme (Rad drinnen ohne Geschwindigkeit/Höhe; Tempo-Ausreißer > 2 × Median als Lücke) · D Zeitstrahl: Breite = Dauer, Art über Füllung **und** Muster (Erholung schraffiert, Auf-/Auslaufen Verlauf + Linie) **und** Legende, antippbar → markiert die Karte, für Screenreader `role=img` mit Klartext · E kompakte Karten (2 Zeilen: Hauptwert + Tempo/Geschwindigkeit, darunter Zeit · Art), echte Knöpfe mit `aria-expanded` · F Details erst beim Aufklappen (Raster mit Qualitätsangabe, Runden-Tabelle; Inhalt wird erst dann gebaut) · G „Alle Kennzahlen" und Messdetails eingeklappt. Bis 16 Einträge alles sichtbar, darüber 12 + „Alle n anzeigen".
+
+Datenqualität sichtbar als: gemessen (ohne Marke) · berechnet · geschätzt · ungeprüft · möglicherweise fehlerhaft · nicht verfügbar.
+
+### 10.4 Schutz von Register und Bestzeiten
+
+`run-bests.js` liest Runden aus `metrics.splits` **nicht**, wenn `splits_source = 'garmin_splits'` — Garmin-Runden können keine Bestzeit erzeugen oder überschreiben. Register (5 km aktiv 23:38, 10 km aktiv 57:55, 5 km gesamt 29:11, 10 km gesamt 1:01:49) mit hinzugefügten Garmin-Runden unverändert: `intervals_v454` L1–L6. Prognosen, Zonen, Korrekturen, Historien unberührt. Deshalb **App v8-454 vor jedem Lauf-/Rad-Nachholen** ausliefern.
+
+### 10.5 Worker v8-454 (vorbereitet, nicht ausgerollt)
+
+- `typed_splits` nur noch für **Laufen** (Rad liefert nur Untergrund, Schwimmen leer).
+- Schlanke Runden tragen zusätzlich `RUN_BIKE_LAP_FIELDS` (Lauf-/Radkadenz, Leistung Ø/Max/NP, Höhenverlust, Max-Geschwindigkeit, Workout-Schritt).
+- Ohne Änderung der Railway-Variablen verhält sich v8-454 wie v8-452.1 (`DETAIL_EXTRAS_SPORTS=swimming` → Lauf/Rad bekommen nichts).
+
+Freigabe-Reihenfolge (nur nach ausdrücklicher Freigabe durch Gian):
+1. App v8-454 ausliefern (`deploy.sh`, Suite-Marker = HEAD) — Bestzeitenschutz liegt in der App.
+2. Konsolen-Prüfung `activity-audit-run-ride-console.js` ausführen und Ergebnis prüfen.
+3. Sicherung: `supabase/scripts/v454_runbike_extras_backup.sql`.
+4. `railway up` → `/healthz` meldet `worker: v8-454` (ohne neue Variablen ändert sich nichts).
+5. Railway: `DETAIL_EXTRAS=splits,typed_splits`, `DETAIL_EXTRAS_SPORTS=swimming,running,cycling`, einmalig `DETAIL_REFETCH_EXTRAS=1` → Protokoll `extras_pending:` fällt auf 0 (je Lauf höchstens `DETAIL_BACKFILL_LIMIT`; bei 429 später weiter).
+6. Kontrolle: `v454_runbike_extras_check.sql` (fremde Runden unverändert, Rad ohne Intervallantwort, keine andere Sportart betroffen).
+7. `DETAIL_REFETCH_EXTRAS` löschen.
+8. In der App: Bestzeiten-Seite unverändert (23:38 / 57:55 / 29:11 / 1:01:49).
+
+Rückweg: `DETAIL_EXTRAS_SPORTS=swimming` (stoppt Lauf/Rad sofort) → `v454_runbike_extras_rollback.sql` (entfernt bei Lauf/Rad genau Runden/Intervalle, Schwimmen und fremde Runden bleiben) · Notfall: `v454_runbike_extras_restore.sql` (Stand der Sicherung, aktuelle Korrekturen bleiben) · Worker: vorige Bereitstellung (v8-452.1) in Railway erneut ausrollen. Alle vier SQL-Dateien gegen echtes Postgres getestet (`test_v454_runbike_sql.py`).
+
+### 10.6 Tests
+
+`intervals_v454` (49: echte Einheiten, synthetische Workouts, Zeitsemantik, fehlende Daten, Leistung/Indoor, Register, Quellvertrag, 50 Runden), `intervals_v454_ui_e2e` (40: Hero, Zeitstrahl, Antippen, Aufklappen, Tastatur, Rad/Zwift, 50 Runden, Rohblock fehlt, 320–1200 px), Worker `test_v454_runbike_sql.py` (Umfang des Nachholens, Sicherung/Kontrolle/Rückweg/Wiederherstellung auf Postgres) sowie angepasste v452/v453/v447/visual-Tests.
