@@ -1,6 +1,6 @@
-# Sportartspezifische Aktivitätsanalyse (v8-452 · v8-453 · v8-454)
+# Sportartspezifische Aktivitätsanalyse (v8-452 · v8-453 · v8-454 · v8-454.1)
 
-**Status: IMPLEMENTED** (App v8-453 live) · **App v8-454 gebaut, nicht ausgeliefert** (universelle Intervalle Laufen/Rad, Neugestaltung der Aktivitätsseite, §10) · Worker v8-452.1 live (`DETAIL_EXTRAS=splits`, `DETAIL_EXTRAS_SPORTS=swimming`) · **Worker v8-454 vorbereitet, nicht ausgerollt** · keine Migration
+**Status: IMPLEMENTED** (App v8-454 live) · **App v8-454.1 gebaut, nicht ausgeliefert** (Build orvia-v8-455: neue Aktivitätsansicht, Zeitquellen, Leistungskurve, §11) · Worker v8-452.1 live (`DETAIL_EXTRAS=splits`, `DETAIL_EXTRAS_SPORTS=swimming`) · Worker v8-454 vorbereitet, nicht ausgerollt · keine Migration
 
 ## 1 · Warum beim Schwimmen fast nur die Herzfrequenz erschien
 
@@ -164,7 +164,7 @@ Oberfläche: Verlauf mit „Tempo je Bahn" / Puls / „SWOLF je Bahn" (auffälli
 
 Tests: `swim_intervals_v453` (53, echter Mitschnitt, 50-m-Becken, Fehlerfälle, Register), `swim_intervals_v453_ui_e2e` (23, 320–1200 px). App-Testdaten `supabase/tests/fixtures/swim_capture_v453.json` = Worker-Ausgabe (`garmin-worker/scripts/gen_app_swim_fixture.py`, Gleichheit: `test_v453_app_fixture.py`).
 
-## 10 · v8-454 Universelle Intervalle Laufen · Rad · Schwimmen (gebaut, nicht ausgeliefert)
+## 10 · v8-454 Universelle Intervalle Laufen · Rad · Schwimmen (live)
 
 ### 10.1 Audit echter Einheiten (Mitschnitt 19.10.2026, `capture_activity_payloads.py --interval-audit`)
 
@@ -245,3 +245,66 @@ Rückweg: `DETAIL_EXTRAS_SPORTS=swimming` (stoppt Lauf/Rad sofort) → `v454_run
 ### 10.6 Tests
 
 `intervals_v454` (49: echte Einheiten, synthetische Workouts, Zeitsemantik, fehlende Daten, Leistung/Indoor, Register, Quellvertrag, 50 Runden), `intervals_v454_ui_e2e` (40: Hero, Zeitstrahl, Antippen, Aufklappen, Tastatur, Rad/Zwift, 50 Runden, Rohblock fehlt, 320–1200 px), Worker `test_v454_runbike_sql.py` (Umfang des Nachholens, Sicherung/Kontrolle/Rückweg/Wiederherstellung auf Postgres) sowie angepasste v452/v453/v447/visual-Tests.
+
+## 11 · v8-454.1 Premium Activity Experience (gebaut, nicht ausgeliefert · Build orvia-v8-455)
+
+Gilt für Laufen, Rad, Schwimmen (`gmAxPageHtml` in ui.js, CSS-Block „v8-454.1" am Ende von styles.css, `js/activity-chart.js`). Alle übrigen Sportarten behalten die bisherige Seite. Die Seite rechnet nichts: sie formatiert das Modell (`activity-analysis@2` → `intervals` / `swim-intervals` → `metric-eligibility`).
+
+### 11.1 Befunde der Bestandsanalyse (v8-454, echte Mitschnitte, 390 und 1440 px)
+
+| Problem | Ursache im Code | Lösung |
+|---|---|---|
+| Titel dreimal (Kopfleiste, Kennzeichen, Überschrift) | `page-head` + `detail-title` + `plan-kicker` | Titel genau einmal im Hero; Kopfleiste nur „Zurück"; Kennzeichen entfällt, wenn der Titel die Sportart wiederholt |
+| Verwaltung vor der Analyse | Debrief/Plan-Zuordnung direkt nach dem Hero | Reihenfolge = Hierarchie (11.2); Korrektur/Löschen am Ende |
+| Kachelwand, Qualitätsetikett an jeder Zahl | `aa-card` + `aa-q`-Pillen | Hero ohne Flächen; Bibliothek als gruppierte Zeilen; Qualität als 7-px-Ring + Vorlesetext, Erklärung beim Antippen |
+| kleines Diagramm, schwache Achsen | Chart.js-Karte 180 px, Index-Achse | eigenes SVG-Diagramm 220/260/300 px, Zeitachse, Fadenkreuz, Tooltip, Tastatur, Vergleich |
+| Desktop = Telefonspalte | `.gm-page{max-width:430px}` | `.ax-page` bis 1240 px (≥ 1440: 1320), Mehrspalten ab 1024 px |
+| „Leistungskurve: [object Object]" | `gmAaFmt` default `String(v)` für die Struktur `best_efforts.power.windows` | eigener Fall `powerCurve` („n Zeitfenster"), jede andere Struktur „n Einträge" — nie ein Objekt als Text |
+| Zwift: Timer 1:13:21 = Gesamtzeit, Uhr angehalten 0 s | Timer aus dem Ende von `sumDuration` der Detail-Antwort | siehe 11.3 |
+| Max. Leistung 214 W (Seite) vs. 326 W (Garmin) | Rückfall „Maximum der Reihe" auf die ausgedünnte Reihe | Garmin-Wert zuerst; aus ausgedünnter Reihe kein Maximum |
+| Leistungskurve 164 W statt Garmins 162 W (30 s) | Worker-Näherung aus 2-s-Abtastung | Garmins `maxAvgPower_*` zuerst (11.4) |
+| Debrief zeigt beim Rad einen Läufer | Symbol fest `run` | `run` nur bei Tempo-Sportarten, sonst neutral |
+| dunkler Fleck am unteren Rand (hell deutlich) | Schatten geschlossener Blätter (`.sheet` bei translateY 102 %) | Schatten nur bei offenem Blatt |
+| heller Modus: Titel dunkel auf dunkel | Seite nutzte feste dunkle Farben | eigene Tokens `--ax-*` für hell/dunkel (Kontrast geprüft) |
+
+### 11.2 Informationshierarchie
+
+1. **Kopfbild**: echte GPS-Strecke = Kartenfeld (Gestaltung v8-441 unverändert, volle Breite); virtuelle Strecke = Linie ohne Landkarte mit „Virtuelle Strecke (Spielwelt, kein GPS)"; Schwimmen ohne Strecke = Wellenfeld.
+2. **Hauptleistung**: Kennzeichen (Sportart · Umgebung), Titel einmal, Datum; eine Hauptzahl (Distanz bzw. gemessene Ø-Leistung bei Rolle/virtuell); höchstens drei Kennzahlen; „Highlights ansehen" und „Garmin ⓘ" (öffnet die Datenherkunft).
+3. **Verlauf**: Diagramm mit Reitern je Messreihe, „Ø im Diagramm" + Bereich (aus genau den gezeichneten Punkten — keine Vermischung mit Garmin-Summenwerten), Achse benannt (Gesamtzeit / je Bahn), optional Vergleich mit einer zweiten Reihe derselben Zeitachse (eigenes Diagramm darunter, gemeinsames Fadenkreuz — nie zwei y-Achsen).
+4. **Intervalle/Runden**: Zeitstrahl (Werkzeugleiste, ein Tab-Halt, Pfeiltasten), Spaltenkopf mit Einheit, Zeilen aus Nummer + drei Werten (Laufen: Distanz · Zeit · Tempo; Rad: Zeit · Distanz · Leistung bzw. km/h; Schwimmen: Distanz · Schwimmzeit · Tempo /100 m). Art über das Zeichen links (gleiches Muster wie im Zeitstrahl) und den Vorlesetext. Details erst beim Aufklappen.
+5. **Analyse**: Gleichmäßigkeit (nur vergleichbare Gruppen, Nummern wie auf den Zeilen), Leistung je Dauer, Zeit in Pulszonen.
+6. **Trainingsbewertung**: Debrief, Plan-Zuordnung.
+7. **Alle Kennzahlen** (Telefon eingeklappt, Desktop offen): Gruppen Leistung · Herzfrequenz · Bewegung · Zeiten (mit Definition) · Trainingsbelastung · Weitere; Zeile antippen = Quelle, Prüfstand, Grund.
+8. **Datenherkunft** (eingeklappt): Quelle, Umgebung, Messreihen (gespeichert/geliefert), Zeitdefinitionen, Widersprüche, virtuelle Werte, „ungeprüft"-Definition, geliefert-aber-nicht-angezeigt, nicht verfügbar; darunter Einstellungen (Aufzeichnung lösen, Dauer korrigieren, vom Plan lösen, löschen).
+
+Layout: 320–767 px eine Spalte; 768 px größere Typografie, Bibliothek zweispaltig; ≥ 1024 px Hauptzahl neben den Kennzahlen, Intervalle und Analyse/Bewertung nebeneinander, Diagramm über die volle Breite (300 px hoch); ≥ 1440 px Bibliothek dreispaltig.
+
+### 11.3 Zeitquellen (Zwift 07.10.2026, echter Mitschnitt)
+
+| Quelle | Feld | Wert |
+|---|---|---|
+| Listeneintrag / Zusammenfassung / Runde | `duration` | 3734 s (1:02:14) |
+| Listeneintrag / Zusammenfassung / Runde | `elapsedDuration` | 4401 s (1:13:21) |
+| Listeneintrag / Zusammenfassung / Runde | `movingDuration` | 3698 s (1:01:38) |
+| Detail-Antwort (Messzeilen) | `sumDuration` letzte Zeile | 4401 s — **läuft in jeder Zeile gleich `sumElapsedDuration`** |
+| Detail-Antwort | Zeitstempel | 3 Lücken ohne Messzeile: 191 s, 234 s, 249 s (674 s) |
+| Detail-Antwort | `totalMetricsCount` | 3734 Messpunkte (1/s) |
+
+Folgerung: Die Detail-Uhr hält bei dieser Aufzeichnung nicht an; sie ist dort keine Timer-Zeit. Regel (`metric-eligibility` `timer`): Weicht die Aufzeichnung um > 5 s / 1 % von der Zusammenfassung ab **und** ist sie gleich der Gesamtzeit, gilt die Zusammenfassung — mit `conflict {series, summary, elapsed, use:'summary', reason:'series_timer_without_stops'}`; jeder andere Widerspruch lässt die Aufzeichnung stehen, Prüfstand „ungeprüft". Manuell korrigierte Dauer: kein Ersatz. Kein Garmin-Wert wird verändert; die Seite nennt den Widerspruch in der Dauer-Zeile und in der Datenherkunft. Folge: „Uhr angehalten" = 667 s (11:07) statt 0 s. Läufe (Abweichung ≤ 2 s) unverändert.
+
+Weitere Prüfung derselben Einheit: Ø-Leistung 112 W (Garmin) = Mittel aller 1.877 gelieferten Zeilen 112,4 W; Max 326 W = Maximum der Zeilen; NP 116 W ungeprüft (aus 2-s-Abtastung nicht nachrechenbar); virtuelle Distanz 14,28 km = `sumDistance` letzte Zeile; Max-Geschwindigkeit 45,9 km/h und Höhenmeter 395 m aus der Spielwelt (gekennzeichnet „(virtuell)"); Diagrammwerte = gespeicherte Reihe (269 von 1.877 Punkten, Hinweis im Diagramm), Zeitachse Gesamtzeit mit Lücken als Linienbruch.
+
+Worker: unverändert (Freigabe nötig). Vorschlag für einen späteren Worker-Schritt: `timer_duration_s` bei dieser Konstellation aus dem Listeneintrag statt aus `sumDuration`.
+
+### 11.4 Leistungskurve
+
+`powerCurve`: zuerst Garmins Bestwerte des Listeneintrags (`maxAvgPower_1 … _3600`, aus allen Messpunkten, Quelle „Garmin (Zusammenfassung)", ungeprüft), sonst die Näherung des Workers (`best_efforts.power`, „≈", Lücken als 0 W benannt). Validierungsregeln (`evaluate('powerBest')`) unverändert; nichts geht ins Register.
+
+### 11.5 Datenqualität sichtbar
+
+gemessen (ohne Zeichen) · berechnet (gepunkteter Ring) · geschätzt (gepunkteter Ring) · ungeprüft (Ring) · möglicherweise fehlerhaft (gefüllter Ring, Warnfarbe) · nicht verfügbar (Datenherkunft). Jede Zeile nennt beim Antippen Quelle und Prüfstand; Hero-Werte tragen den Ring mit Vorlesetext.
+
+### 11.6 Tests
+
+`activity_experience_v4541` (34: Zeitquellen, Leistung, Bibliothek, Diagramm-Geometrie, Register, Quelltext), `activity_experience_v4541_ui_e2e` (41: Hierarchie, Renderfehler in allen Sportarten, Zwift, Diagramme mit Zeiger/Tastatur/Vergleich, Bibliothek, hell/dunkel/Kontrast, reduzierte Bewegung, 320–1440 px). Angepasst an die neue Struktur (gleiche Regeln): `visual_v3_e2e`, `activity_theme_e2e`, `data_integrity_v447_e2e`, `activity_analysis_v452_ui_e2e`, `swim_intervals_v453_ui_e2e`, `intervals_v454_ui_e2e`. Testdaten tragen jetzt den Details-Stand (`detailsVersion`), wie die Produktion.

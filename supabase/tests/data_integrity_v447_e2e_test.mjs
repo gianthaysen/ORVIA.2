@@ -104,10 +104,18 @@ const openPage = async id => page.evaluate(async id => { try { gmCloseSheets(); 
   const pg = document.getElementById('gmActPage'), T = e => e ? e.innerText.replace(/\s+/g, ' ').trim() : null;
   /* v8-454: neue Aktivitaetsansicht — Uebersicht (Hauptzahl + drei Werte) und Analysebereich „Alle Kennzahlen" (aufgeklappt gelesen) */
   pg.querySelectorAll('details.aa-more').forEach(d => { d.open = true; });
-  const kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-more-grid > .aa-card')).map(d => { let t = T(d); d.querySelectorAll('.aa-q').forEach(q => { const x = T(q); if (x) t = t.replace(' ' + x, '').replace(x, ''); }); return t.trim(); });
+  /* v8-454.1: neue Ansicht (.ax-page) — Hero (Hauptzahl + drei Werte) und Bibliothek „Alle Kennzahlen" (Zeilen), je „Wert BEZEICHNUNG" ohne Vorlesetext */
+  const X = e => { if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.sr-only, small, .ax-qm').forEach(q => { if (!(q.tagName === 'SMALL' && q.parentNode && q.parentNode.tagName !== 'SPAN')) q.remove(); }); return c.textContent.replace(/\s+/g, ' ').trim(); };
+  const V = e => e ? e.textContent.replace(/\s+/g, ' ').replace(/(ungeprüft|berechnet|geschätzt|möglicherweise fehlerhaft|nicht verfügbar)/g, '').trim() : '';
+  pg.querySelectorAll('details.ax-lib').forEach(d => { d.open = true; });
+  const kp = pg.classList.contains('ax-page')
+    ? [].slice.call(pg.querySelectorAll('.ax-key-main')).map(d => V(d.querySelector('b')) + ' ' + X(d.querySelector('span')).toUpperCase())
+        .concat([].slice.call(pg.querySelectorAll('.ax-stats > div')).map(d => V(d.querySelector('dd')) + ' ' + X(d.querySelector('dt')).toUpperCase()))
+        .concat([].slice.call(pg.querySelectorAll('.ax-row')).map(d => V(d.querySelector('.ax-rv')) + ' ' + (d.querySelector('.ax-rl').firstChild.textContent || '').trim().toUpperCase()))
+    : [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-more-grid > .aa-card')).map(d => { let t = T(d); d.querySelectorAll('.aa-q').forEach(q => { const x = T(q); if (x) t = t.replace(' ' + x, '').replace(x, ''); }); return t.trim(); });
   const md = gmActAnalysisFor(_resolveActivityAny(id), activityDetailViewModel(_resolveActivityAny(id)));
   const a = _resolveActivityAny(id), vm = activityDetailViewModel(a);
-  return { on: pg.classList.contains('on'), head: T(pg.querySelector('.page-head')), kicker: T(pg.querySelector('.plan-kicker')), kpis: kp, charts: [].slice.call(pg.querySelectorAll('.aa-chips button')).map(e => T(e)).concat(md ? md.charts.map(c => c.id + ':' + String(c.unit).trim()) : []),
+  return { on: pg.classList.contains('on'), head: T(pg.querySelector('.page-head') || pg.querySelector('.ax-when')), kicker: T(pg.querySelector('.plan-kicker') || pg.querySelector('.ax-kicker')), kpis: kp, charts: [].slice.call(pg.querySelectorAll('.aa-chips button')).map(e => e.textContent.trim()).concat(md ? md.charts.map(c => c.id + ':' + String(c.unit).trim()) : []),
     cadNote: T(pg.querySelector('.gm-cad-note')), vmDate: vm.date, vmTime: vm.time, cad: vm.cadence ? { status: vm.cadence.status, kind: vm.cadence.kind, avg: vm.cadence.avg } : null,
     story: gmStoryPages(a).join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '), sport: vm.sportId, label: vm.sportLabel }; }, id);
 const manualId = await page.evaluate(() => { const a = ORVIA.activityStore.getActivityBySource('manual', 'manual:2026-10-05:yoga'); return a.clientRecordId; });

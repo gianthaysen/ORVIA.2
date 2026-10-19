@@ -75,12 +75,12 @@ sec('C · Stand der Umsetzung');
   ok('C1 gezeichnet ist heute genau eine Signatur: Schwimmen (Wellenfeld)', J(impl) === J(['swimming']) && SG.renderer('swimming') === 'waves');
   ok('C2 fuer alle anderen gibt es noch keinen Zeichner — die App zeigt dort wie bisher nichts Erfundenes', IDS.filter(id => id !== 'swimming').every(id => SG.renderer(id) === null && SG.get(id).states.length === 0));
   ok('C3 angebotene Zustaende von Schwimmen: static + ambient (reactive erst mit Zugfrequenz)', J(SG.get('swimming').states) === J(['static', 'ambient']));
-  ok('C4 ui.js entscheidet ueber den Zeichner NUR ueber das Register (zwei Stellen: Seite und Highlights)',
-    (ui.match(/gmActSignatureRenderer\(vm\.sportId\)==='waves'/g) || []).length === 2 && !/gmActThemeId\(vm\.sportId\)==='swimming'/.test(ui) && /S\.renderer\(sportId\)/.test(ui));
+  ok('C4 ui.js entscheidet ueber den Zeichner NUR ueber das Register (drei Stellen: bisherige Seite, neue Ansicht v8-454.1, Highlights)',
+    (ui.match(/gmActSignatureRenderer\(vm\.sportId\)==='waves'/g) || []).length === 3 && !/gmActThemeId\(vm\.sportId\)==='swimming'/.test(ui) && /S\.renderer\(sportId\)/.test(ui));
   const names = Array.from(new Set(IDS.map(id => SG.renderer(id)).filter(Boolean)));
   ok('C5 jeder im Register genannte Zeichner existiert in ui.js', names.every(n => new RegExp("gmActSignatureRenderer\\(vm\\.sportId\\)==='" + n + "'").test(ui)) && /function gmActWaves\(/.test(ui), names.join(','));
   ok('C6 „Bewegung reduzieren": das Wellenfeld steht dann still und ist vollstaendig gezeichnet', /@media \(prefers-reduced-motion:reduce\)\{\.act-waves path\{animation:none;stroke-dashoffset:0\}/.test(css));
-  ok('C7 das Wellenfeld ist rein dekorativ (aria-hidden) — Bewegung ist nie Voraussetzung fuers Verstehen', (ui.match(/class="(?:act-hero|wst-waves) act-waves" aria-hidden="true"/g) || []).length === 2);
+  ok('C7 das Wellenfeld ist rein dekorativ (aria-hidden) — Bewegung ist nie Voraussetzung fuers Verstehen', (ui.match(/class="(?:act-hero|wst-waves) act-waves" aria-hidden="true"/g) || []).length === 3);   /* v8-454.1: auch im Kopfbild der neuen Ansicht */
   ok('C8 Modul ist geladen und liegt im Vorrat des Service Workers', /<script src="js\/sport-signatures\.js"><\/script>/.test(rd('index.html')) && /'\.\/js\/sport-signatures\.js'/.test(rd('sw.js')));
 }
 

@@ -13,6 +13,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
+from orvia_worker.best_efforts import DISTANCE_SPORTS
 from orvia_worker import detail_sync as DS, normalize, series_normalize as S  # noqa: E402
 
 CAP = HERE.parent / "tests" / "fixtures" / "garmin" / "captures"
@@ -49,12 +50,25 @@ def build_run_ride() -> dict:
         if act.sport_id == "running":
             fetched["typed_splits"] = cap["typed_splits"]
         metrics = DS.merge_extras(metrics, act.sport_id, fetched)
-        keep = {k: metrics[k] for k in ("splits", "splits_source", "streams", "stream_meta") if k in metrics}
+        # v8-454.1: wie in der Produktion — Bestwerte (Strecken-Teil nur fuer DISTANCE_SPORTS, wie detail_sync), Trainingslast,
+        # vollstaendiger Herkunftsblock (Abtastung), Zusammenfassung des Listeneintrags (ohne Namen).
+        be = metrics.get("best_efforts")
+        if isinstance(be, dict) and act.sport_id not in DISTANCE_SPORTS:
+            be = {k: v for k, v in be.items() if k not in ("distance", "distance_active")}
+        keep = {k: metrics[k] for k in ("splits", "splits_source", "streams", "stream_meta", "training_load") if k in metrics}
+        # v8-454.1: Details-Stand wie in der Produktion (sonst gilt jede fehlende Reihe als „noch nicht geladen"); Zeitstempel fest
+        # (Abruf ueber detail_sync setzt beide Marker; der Mitschnitt laeuft an detail_sync vorbei.)
+        keep["detailsVersion"] = DS.DETAILS_CONTRACT_VERSION
+        keep["detailsFetchedAt"] = "2026-10-19T00:00:00Z"
+        if be:
+            keep["best_efforts"] = be
         keep["ext"] = {k: metrics["ext"][k] for k in ("v", "fields", "splits", "typed_splits", "extras", "series") if k in metrics["ext"]}
-        keep["garmin"] = {k: metrics.get("garmin", {}).get(k) for k in ("type_key", "start_gmt", "timer_duration_s", "elapsed_duration_s", "moving_duration_s")}
+        keep["garmin"] = {k: metrics.get("garmin", {}).get(k) for k in ("v", "type_key", "parent_type_id", "start_gmt", "utc_offset_s", "timer_duration_s", "elapsed_duration_s",
+                                                                    "moving_duration_s", "stream_rows", "stream_kept", "stream_total") if metrics.get("garmin", {}).get(k) is not None}
         le = cap["list_entry"]
+        summ = {k: v for k, v in (act.summary or {}).items() if k != "name"}
         out[name] = {"sport": act.sport_id, "distance_m": le.get("distance"), "duration_s": le.get("duration"), "avg_hr": le.get("averageHR"),
-                     "max_hr": le.get("maxHR"), "avg_speed": le.get("averageSpeed"), "avg_power": le.get("avgPower"), "metrics": keep}
+                     "max_hr": le.get("maxHR"), "avg_speed": le.get("averageSpeed"), "avg_power": le.get("avgPower"), "summary": summ, "metrics": keep}
     return out
 
 

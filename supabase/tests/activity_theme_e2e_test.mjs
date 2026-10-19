@@ -97,10 +97,14 @@ await page.evaluate(async () => {
 
 /* Auslesen der Aktivitaetsseite */
 const PAGE = `(() => { const pg = document.getElementById('gmActPage'); const cs = e => e ? getComputedStyle(e) : null;
-  const k = pg.querySelector('.plan-kicker'), line = pg.querySelector('.route-map .rmx-line'), st = pg.querySelector('.route-map .rmx-start'), en = pg.querySelector('.route-map .rmx-end');
+  const k = pg.querySelector('.plan-kicker, .ax-kicker'), line = pg.querySelector('.route-map .rmx-line'), st = pg.querySelector('.route-map .rmx-start'), en = pg.querySelector('.route-map .rmx-end');
   /* v8-452: Schwimmen zeigt Hauptkennzahl (aa-hero-main) + Karten statt der sechs Kacheln — dieselbe Regel: eine Zahl in der Sportfarbe */
-  const kpi = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-cards > .aa-card')).map(d => ({ key: d.classList.contains('key') || d.classList.contains('aa-hero-main'), col: cs(d.querySelector('b')).color, lbl: d.querySelector('span').textContent.toUpperCase() }));
-  const lines = [].slice.call(pg.querySelectorAll('.oc2 .g-line')).map(l => cs(l).stroke), marks = [].slice.call(pg.querySelectorAll('.oc2 .g-mm')).map(l => cs(l).stroke);
+  /* v8-454.1: neue Ansicht (.ax-page): Hauptzahl (.ax-key-main b) + drei Kennzahlen (.ax-stats dd); Bezeichnung ohne Vorlesetext */
+  const ax = pg.classList.contains('ax-page'), txt = e => { if (!e) return ''; const c = e.cloneNode(true); c.querySelectorAll('.sr-only').forEach(x => x.remove()); return c.textContent.trim(); };
+  const kpi = ax ? [].slice.call(pg.querySelectorAll('.ax-key-main, .ax-stats > div')).map(d => ({ key: d.classList.contains('ax-key-main'), col: cs(d.querySelector('b, dd')).color, lbl: txt(d.querySelector('span, dt')).toUpperCase() }))
+    : [].slice.call(pg.querySelectorAll('.detail-kpis > div, .aa-hero-main, .aa-hero-sub > div, .aa-cards > .aa-card')).map(d => ({ key: d.classList.contains('key') || d.classList.contains('aa-hero-main'), col: cs(d.querySelector('b')).color, lbl: d.querySelector('span').textContent.toUpperCase() }));
+  /* Diagramm: bisher Chart-Linie + Hoechst-/Tiefstmarken (.oc2), neu das eigene Diagramm (.aac-line, ohne Marken — der Bereich steht als Zahl darueber) */
+  const lines = [].slice.call(pg.querySelectorAll('.oc2 .g-line, .aac-line')).map(l => cs(l).stroke), marks = ax ? null : [].slice.call(pg.querySelectorAll('.oc2 .g-mm')).map(l => cs(l).stroke);
   const tiles = pg.querySelector('.route-map.has-rmx .rmx-tiles');
   return { act: pg.getAttribute('data-activity'), primary: cs(pg).getPropertyValue('--activity-primary').trim(), kicker: k ? cs(k).color : null, kpi: kpi,
     line: line ? cs(line).stroke : null, lineW: line ? parseFloat(cs(line).strokeWidth) : null, caseW: pg.querySelector('.route-map .rmx-case') ? parseFloat(cs(pg.querySelector('.route-map .rmx-case')).strokeWidth) : null,
@@ -138,7 +142,7 @@ for (const [id, theme, name, keyLbl, hasRoute] of CASES) {
   ok(n + 'b Sport-Kennzeichen ueber dem Titel in der Farbe der Sportart', has(p.kicker, rgb), p.kicker);
   const keys = p.kpi.filter(k => k.key), rest = p.kpi.filter(k => !k.key);
   ok(n + 'c genau EINE farbige Hauptkennzahl (' + keyLbl + '); alle anderen Kennzahlen neutral und untereinander gleich', keys.length === 1 && keys[0].lbl === keyLbl && has(keys[0].col, rgb) && rest.length >= 3 && rest.every(k => k.col === rest[0].col && !has(k.col, rgb)), JSON.stringify(p.kpi.map(k => [k.lbl, k.key ? 1 : 0, k.col])));
-  ok(n + 'd alle Messreihen der Seite in der Farbe der Sportart (' + p.lines.length + ' Reihen); Hoechst-/Tiefstwert neutral, nicht gruen/rot', p.lines.length >= 1 && p.lines.every(l => has(l, rgb)) && p.marks.length === p.lines.length * 2 && p.marks.every(m => has(m, '173, 181, 193')), JSON.stringify([p.lines, p.marks.slice(0, 2)]));
+  ok(n + 'd alle Messreihen der Seite in der Farbe der Sportart (' + p.lines.length + ' Reihen); Hoechst-/Tiefstwert neutral, nicht gruen/rot', p.lines.length >= 1 && p.lines.every(l => has(l, rgb)) && (p.marks === null || (p.marks.length === p.lines.length * 2 && p.marks.every(m => has(m, '173, 181, 193')))), JSON.stringify([p.lines, p.marks && p.marks.slice(0, 2)]));
   ok(n + 'e Stimmung der Seite: ein Verlauf aus dem Ton der Sportart (kein fester Fremdton)', /radial-gradient/.test(p.bg) && has(p.bg, rgb), String(p.bg).slice(0, 110));
   if (hasRoute) {
     ok(n + 'f Strecke in der Farbe der Sportart, 4,5 px, dunkler Rand 7,5 px', has(p.line, rgb) && Math.abs(p.lineW - 4.5) < 0.01 && Math.abs(p.caseW - 7.5) < 0.01, JSON.stringify([p.line, p.lineW, p.caseW]));

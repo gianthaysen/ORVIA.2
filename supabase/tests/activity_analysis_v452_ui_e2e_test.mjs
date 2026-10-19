@@ -78,12 +78,15 @@ const setup = (acts, ext, mode) => page.evaluate(({ acts, ext, mode }) => {
   try { showTab('akt'); } catch (e) {}
 }, { acts, ext, mode });
 const READ = () => page.evaluate(() => { const p = document.getElementById('gmActPage');
-  return { hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null, heroSub: [...p.querySelectorAll('.aa-hero-sub b')].map(b => b.textContent),
-    cards: [...p.querySelectorAll('#gmActPage > .aa-cards > .aa-card span, .aa-cards:not(.aa-cards-3) > .aa-card span')].map(s => s.textContent),
+  /* v8-454.1: Hero-Werte in <dd>; Kennzahlen als Zeilen der Bibliothek (.ax-row: Bezeichnung + Wert); Herkunft/Messdetails = details.aa-md (Datenherkunft) */
+  const lib = p.querySelector('details.ax-lib');
+  return { hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null, heroSub: [...p.querySelectorAll('.aa-hero-sub dd, .aa-hero-sub b')].map(b => b.textContent),
+    cards: [...p.querySelectorAll('.ax-row .ax-rl')].map(s => s.firstChild.textContent).concat([...p.querySelectorAll('.aa-hero-sub dt, .aa-hero-main > span')].map(s => s.firstChild.textContent)),
+    lib: lib ? { open: lib.open, text: lib.textContent } : null,
     chips: [...p.querySelectorAll('.aa-chips button')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')), chart: !!p.querySelector('#gmAaChart svg'),
     iv: p.querySelectorAll('.aa-iv:not(.aa-iv-head):not(.aa-rest), .aa-sw-iv').length, rest: p.querySelectorAll('.aa-rest, .iv-rest').length, eff: !!p.querySelector('.aa-eff, .iv-an'),   /* v8-454: Pausenbloecke .iv-rest, Gleichmaessigkeit in der Intervallkarte */
     md: p.querySelector('details.aa-md') ? { open: p.querySelector('details.aa-md').open, text: p.querySelector('details.aa-md').textContent } : null,
-    kpis: p.querySelectorAll('.detail-kpis').length, note: [...p.querySelectorAll('.aa-note, .aa-hero-load')].map(x => x.textContent).join(' | '), calls: window.__calls,
+    kpis: p.querySelectorAll('.detail-kpis').length, note: [...p.querySelectorAll('.aa-note, .aa-hero-load, .ax-note, .ax-p')].map(x => x.textContent).join(' | '), calls: window.__calls,
     localHasExt: !!(window.__local[0].metrics && window.__local[0].metrics.ext) }; });
 
 sec('A · Rohblock laden');
@@ -107,8 +110,8 @@ await page.waitForTimeout(200);
 const b2 = await READ();
 ok('B3 Auswahl wechselt das Diagramm (SWOLF), Seite bleibt an ihrer Stelle', b2.chips.includes('SWOLF*') && b2.chart);
 ok('B4 Intervalle (v8-453 Schwimmansicht): 4 aktive, 3 Pausen; Gleichmaessigkeit mit ≥ 3 Intervallen derselben Lage', b.iv === 4 && b.rest === 3 && b.eff, JSON.stringify([b.iv, b.rest, b.eff]));
-ok('B5 Messdetails eingeklappt; nennen Quelle, Pruefstand und Fehlendes; „Strecke je Zug" als nicht angezeigt (Einheit ungeklaert)', b.md && b.md.open === false && /ungeprüft/.test(b.md.text) && /Strecke je Zug/.test(b.md.text) && /Einheit ungeklärt/.test(b.md.text) && /Bahnen × Bahnlänge = Distanz/.test(b.md.text), b.md && b.md.text.slice(0, 200));
-ok('B6 Hinweis auf ungepruefte Quellwerte unter den Karten', /von Garmin übernommen/.test(b.note));
+ok('B5 Datenherkunft eingeklappt; nennt Quelle, Pruefstand (je Kennzahl in „Alle Kennzahlen“) und Fehlendes; „Strecke je Zug" als nicht angezeigt (Einheit ungeklaert)', b.md && b.md.open === false && /ungeprüft/i.test(b.md.text) && /Strecke je Zug/.test(b.md.text) && /Einheit ungeklärt/.test(b.md.text) && /Bahnen × Bahnlänge = Distanz/.test(b.md.text + ' ' + (b.lib ? b.lib.text : '')), b.md && b.md.text.slice(0, 200));
+ok('B6 Hinweis auf ungepruefte Quellwerte (v8-454.1: in der Datenherkunft)', /von Garmin übernommen/.test(b.note));
 ok('B7 keine technischen Feldnamen in der Hauptansicht', !(await page.evaluate(() => { const p = document.getElementById('gmActPage').cloneNode(true); p.querySelectorAll('details').forEach(d => d.remove()); return /ext\.fields|averageSwolf|directSwim|best_efforts/.test(p.textContent); })));
 
 sec('C · Fehlerfaelle');
@@ -130,7 +133,7 @@ sec('D · andere Sportarten');
 await setup([run], GEN.referenceActivity('running', 'best').metrics.ext, 'ok');
 await page.evaluate(id => gmOpenActivityPage(id), run.id); await page.waitForTimeout(700);
 const d1 = await READ();
-ok('D1 Laufen (v8-454 neue Ansicht): Hauptzahl statt alter Kacheln, Messdetails mit Timer- und Gesamtzeit, geprueft', d1.kpis === 0 && d1.hero !== null && d1.md && /Timer-Zeit/.test(d1.md.text) && /Gesamtzeit/.test(d1.md.text) && /geprüft/.test(d1.md.text));
+ok('D1 Laufen (v8-454.1): Hauptzahl statt alter Kacheln, Datenherkunft erklaert Timer- und Gesamtzeit, Pruefstand genannt', d1.kpis === 0 && d1.hero !== null && d1.md && /Uhr lief \(Timer\)/.test(d1.md.text) && /Gesamtzeit/.test(d1.md.text) && /geprüft/.test(d1.md.text));
 
 sec('E · Layout');
 await setup([sw], EXT, 'ok');

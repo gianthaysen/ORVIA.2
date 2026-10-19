@@ -740,7 +740,29 @@
      function (a, r) { if (r.method === 'manual') return { validation: 'validated', reason: 'manual_correction' }; return ownOk(a) || eligState(a, 'duration'); });
   am('elapsed', null, 's', 'base', function (a, x) { var r = garminRead(a, 'elapsed_duration_s'); if (r.status !== 'available') { var f = readField(a, 'elapsedDuration', x.opts); if (f.status === 'available') return f; } return r; },
      function (a) { return { validation: evLevel('details.durations', a.sportId) }; });
-  am('timer', null, 's', 'base', function (a) { return garminRead(a, 'timer_duration_s'); }, function (a) { return { validation: evLevel('details.durations', a.sportId) }; });
+  /* v8-454.1 · Timer-Zeit: Ende der Aufzeichnung (sumDuration). Zwei Garmin-Quellen koennen widersprechen — Befund Zwift 07.10.2026:
+     Zusammenfassung/Runde 3734 s, Messreihe 4401 s = Gesamtzeit, obwohl 3 Datenluecken (674 s) ohne Messzeile in der Reihe liegen.
+     Laeuft die Reihen-„Uhr" ohne Halt durch (Ende = Gesamtzeit) und nennt die Zusammenfassung weniger, ist die Reihe dort keine
+     Timer-Zeit: dann gilt die Zusammenfassung — benannt (conflict), nie still angeglichen. Andere Widersprueche: Reihe bleibt, ungeprueft. */
+  function timerSummary(a, x) {
+    var f = readField(a, 'duration', x && x.opts);
+    if (f.status === 'available' && num(f.value) !== null && f.value > 0) return { v: num(f.value), basis: 'ext.fields.duration' };
+    var m = obj(a.metrics) || {};
+    if (a.source === 'garmin' && num(a.durationSeconds) > 0 && !obj(m.corrections) && !obj(m.durationCorrection)) return { v: num(a.durationSeconds), basis: 'duration_seconds' };
+    return null;
+  }
+  am('timer', null, 's', 'base', function (a, x) {
+       var r = garminRead(a, 'timer_duration_s');
+       if (r.status !== 'available') return r;
+       var s = timerSummary(a, x); if (!s || Math.abs(r.value - s.v) <= Math.max(5, s.v * 0.01)) return r;
+       var e = num((obj((obj(a.metrics) || {}).garmin) || {}).elapsed_duration_s);
+       var noStops = e !== null && Math.abs(r.value - e) <= 2 && s.v < e - 5;
+       var c = { series: r.value, summary: s.v, elapsed: e, use: noStops ? 'summary' : 'series', reason: noStops ? 'series_timer_without_stops' : 'sources_differ' };
+       return noStops ? { status: 'available', value: s.v, source: 'garmin_list', basis: s.basis, conflict: c } : Object.assign({}, r, { conflict: c });
+     }, function (a, r) {
+       if (r.conflict && r.conflict.use === 'series') return { validation: 'unverified', reason: 'sources_differ' };
+       return { validation: evLevel('details.durations', a.sportId), reason: r.conflict ? r.conflict.reason : undefined };
+     });
   /* Bewegungszeit: Aufzeichnung (sumMovingDuration) — beim Beckenschwimmen liefert Garmin dort 0 (Befund 18.10.2026, alle vier
      Beckeneinheiten); dann der Listenwert movingDuration. 0 ist kein Messwert. */
   am('moving', null, 's', 'base', function (a, x) {
@@ -755,7 +777,7 @@
        var t = x.get('timer'), e = x.get('elapsed');
        if (t.status !== 'available' || e.status !== 'available') return { status: t.status !== 'available' ? t.status : e.status, reason: 'needs_timer_and_elapsed' };
        if (e.value < t.value - 1) return { status: 'available', value: null, blocked: true, reason: 'elapsed_below_timer' };
-       return { status: 'available', value: Math.max(0, Math.round(e.value - t.value)), method: 'derived', source: 'derived', basis: 'garmin.elapsed_duration_s − garmin.timer_duration_s' };
+       return { status: 'available', value: Math.max(0, Math.round(e.value - t.value)), method: 'derived', source: 'derived', basis: 'garmin.elapsed_duration_s − ' + (t.conflict && t.conflict.use === 'summary' ? 'ext.fields.duration' : 'garmin.timer_duration_s') };
      }, function (a, r, x) { if (r.blocked) return { validation: 'blocked', reason: r.reason }; return { validation: worst([x.get('timer').validation, x.get('elapsed').validation]) }; });
   am('distance', null, 'm', 'base', function (a) { return distanceRead(a); }, function (a, r, x) {
        if (r.method === 'manual') return { validation: 'validated', reason: 'manual_correction' };
@@ -910,13 +932,20 @@
        return readStream(a, 'cadence').status === 'available' ? { status: 'not_delivered', reason: 'stats_missing' } : readStream(a, 'cadence'); },
      function (a, r) { if (!plaus(r.value, 'cyclingCadence')) return { validation: 'blocked', reason: 'implausible' }; return eligState(a, 'cyclingCadence'); });
   /* Leistung: NUR mit gemessener Wattzahl (Leistungsmesser/Trainer). Nie aus Geschwindigkeit. */
-  var powerRead = function (key) { return function (a) {
+  var POWER_FIELD = { avgPowerW: 'avgPower', maxPowerW: 'maxPower', normPowerW: 'normPower' };
+  var powerRead = function (key) { return function (a, x) {
        var r = sumRead(a, key);
        if (r.status === 'available' && r.value > 0) return r;
+       /* v8-454.1: Listeneintrag (Garmin-Zusammenfassung, alle Messpunkte) vor jeder Rechnung aus der gespeicherten Reihe */
+       var lf = readField(a, POWER_FIELD[key], x && x.opts);
+       if (lf.status === 'available' && num(lf.value) !== null && lf.value > 0) return { status: 'available', value: num(lf.value), source: 'garmin_list', basis: lf.basis };
        if (key === 'avgPowerW') { var st = obj((obj((obj(a.metrics) || {}).best_efforts) || {}).stats) || {}, p = obj(st.power); if (p && num(p.avg) !== null && p.avg > 0) return { status: 'available', value: p.avg, source: 'garmin_details', basis: 'best_efforts.stats.power (alle Zeilen)' }; }
        /* v8-454: gemessene Leistungsreihe ohne Summenwert → Mittel bzw. Maximum der Reihe (berechnet, wie bisher die Seite) */
        if (key === 'avgPowerW' || key === 'maxPowerW') {
-         var ps = readStream(a, 'power');
+         var ps = readStream(a, 'power'), gs = obj((obj(a.metrics) || {}).garmin) || {};
+         /* v8-454.1: das Maximum einer ausgeduennten Reihe ist kein Maximum (Zwift 07.10.: Reihe 214 W, Garmin 326 W) — dann keins */
+         var thinned = num(gs.stream_kept) !== null && num(gs.stream_rows) !== null && gs.stream_kept < gs.stream_rows;
+         if (key === 'maxPowerW' && thinned && ps.status === 'available') return { status: 'not_delivered', reason: 'thinned_series' };
          if (ps.status === 'available') { var pv = ps.value.map(num).filter(function (x) { return x !== null && x >= 0; });
            if (pv.length >= 5 && pv.some(function (x) { return x > 0; })) return { status: 'available', value: key === 'avgPowerW' ? Math.round(pv.reduce(function (q, x) { return q + x; }, 0) / pv.length) : Math.max.apply(null, pv), method: 'derived', source: 'garmin_details', basis: key === 'avgPowerW' ? 'Mittel der Leistungsreihe' : 'Maximum der Leistungsreihe' }; }
        }
@@ -926,7 +955,16 @@
   am('maxPower', BIKE, 'W', 'cycle', powerRead('maxPowerW'), powerCheck);
   am('normPower', BIKE, 'W', 'cycle', powerRead('normPowerW'), powerCheck);
   am('powerSeries', BIKE, 'W', 'series', function (a) { return readStream(a, 'power'); }, function (a) { return { validation: evLevel('details.power', a.sportId), reason: 'evidence_' + level('details.power', a.sportId) }; });
-  am('powerCurve', BIKE, 'W', 'structure', function (a) { var p = obj((obj((obj(a.metrics) || {}).best_efforts) || {}).power);
+  /* v8-454.1 · Leistungskurve: zuerst Garmins eigene Bestwerte je Fenster (Listeneintrag maxAvgPower_<s>, aus ALLEN Messpunkten —
+     Befund Zwift 07.10.: 30 s Garmin 162 W, Naeherung aus 2-s-Abtastung 164 W), sonst die Worker-Naeherung (best_efforts.power). */
+  function garminPowerCurve(a, x) {
+    var m = obj(a.metrics) || {}, f = obj((obj(m.ext) || {}).fields); if (!f) return null;
+    var out = {}, n = 0;
+    Object.keys(f).forEach(function (k) { var mm = /^maxAvgPower_(\d+)$/.exec(k); var v = num(f[k]); if (mm && v !== null && v > 0) { out[mm[1]] = { w: v, q: 'garmin' }; n++; } });
+    return n >= 3 ? out : null;
+  }
+  am('powerCurve', BIKE, 'W', 'structure', function (a, x) { var g = garminPowerCurve(a, x); if (g) return { status: 'available', value: g, source: 'garmin_list', basis: 'ext.fields.maxAvgPower_*' };
+       var p = obj((obj((obj(a.metrics) || {}).best_efforts) || {}).power);
        return p && obj(p.windows) ? { status: 'available', value: p.windows, source: 'garmin_details', basis: 'best_efforts.power.windows' } : (readStream(a, 'power').status === 'available' ? { status: 'not_delivered', reason: 'not_computed' } : { status: 'not_delivered', reason: 'no_power_meter' }); },
      function (a) { var e = evaluate(a, 'powerBest', { windowS: 300 }); return e.eligible ? { validation: 'validated' } : { validation: 'unverified', reason: e.reasons[0] }; });
 
@@ -958,6 +996,7 @@
       if (r.kind) res.kind = r.kind;
       if (r.shapeUnverified) res.shapeUnverified = true;
       if (r.paceBasis) res.paceBasis = r.paceBasis;
+      if (r.conflict) res.conflict = r.conflict;        // v8-454.1: zwei Garmin-Quellen widersprechen (benannt, nie still angeglichen)
       if (res.status === 'available') {
         var v = { validation: 'unverified' };
         try { v = (d.check ? d.check(a, r, x) : null) || v; } catch (e) { v = { validation: 'unverified', reason: 'check_error' }; }

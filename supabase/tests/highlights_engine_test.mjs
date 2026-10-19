@@ -153,7 +153,7 @@ sec('G · Stand im Projekt');
   ok('G2 ehrlich ausgewiesen: VORBEREITET — die App laedt das Modul noch nicht, die Story ist unveraendert', /STATUS: VORBEREITET/.test(src) && !/engine\/highlights\.js/.test(rd('index.html')) && !/engine\/highlights\.js/.test(rd('sw.js')));
   ok('G3 fuer den Nutzer heisst es „Highlights": Knopf und Schliessen-Beschriftung kommen aus der Sprachdatei',
     /'ui\.highlights_ansehen': 'Highlights ansehen'/.test(rd('locales/de.js')) && /_uiT\('ui\.highlights_ansehen'\)/.test(rd('js/ui.js')) && /_uiT\('ui\.highlights_schliessen'\)/.test(rd('js/ui.js')) && !/Story ansehen|Story schließen/.test(rd('js/ui.js')) && !/Story ansehen/.test(rd('js/activity.js')));
-  ok('G4 der Knopf bleibt die Hauptaktion (Stern, volle Breite, vor den Korrekturen)', /class="cta wide-ghost gm-story-cta"[^>]*onclick="gmOpenStory\(/.test(rd('js/ui.js')) && rd('js/ui.js').indexOf('class="cta wide-ghost gm-story-cta"') < rd('js/ui.js').indexOf('<div class="gm-corr"'));
+  ok('G4 der Knopf bleibt die Hauptaktion (Stern; bisherige Seite: volle Breite vor den Korrekturen; v8-454.1: im Hero, Korrekturen erst in der Datenherkunft am Ende)', (u => /class="cta wide-ghost gm-story-cta"[^>]*onclick="gmOpenStory\(/.test(u) && /class="ax-btn gm-story-cta" onclick="gmOpenStory\(/.test(u) && /function gmAxPageHtml[\s\S]*gmAxHeroHtml\([\s\S]*gmAxSourceHtml\(/.test(u) && /function gmAxSourceHtml[\s\S]*?gmActCorrHtml\(a,vm\)/.test(u))(rd('js/ui.js')));
 }
 
 console.log('\n' + (fail ? '❌' : '✅') + ' highlights_engine: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

@@ -71,7 +71,7 @@ const setup = (acts, ext, mode) => page.evaluate(({ acts, ext, mode }) => {
 const READ = () => page.evaluate(() => { const p = document.getElementById('gmActPage'), c = p.querySelector('.aa-sw-card, .iv-card');
   return { card: !!c, hero: (p.querySelector('.aa-hero-main b') || {}).textContent || null,
     iv: c ? [...c.querySelectorAll('.aa-sw-iv')].map(x => ({ d: x.querySelector('.aa-sw-main b').textContent, p: x.querySelector('.aa-sw-main em').textContent, btn: !!x.querySelector('button.aa-sw-ivh'),
-      exp: (x.querySelector('button.aa-sw-ivh') || {}).getAttribute ? x.querySelector('button.aa-sw-ivh').getAttribute('aria-expanded') : null, meta: (x.querySelector('.iv-sub') || {}).textContent || '', body: (x.querySelector('.iv-body') || {}).textContent || '',
+      exp: (x.querySelector('button.aa-sw-ivh') || {}).getAttribute ? x.querySelector('button.aa-sw-ivh').getAttribute('aria-expanded') : null, meta: (x.querySelector('.iv-v2') || {}).textContent || '', row: (x.querySelector('.iv-head') || {}).textContent || '', body: (x.querySelector('.iv-body') || {}).textContent || '',
       rows: x.querySelectorAll('.aa-sw-l[role="listitem"]').length, restRows: x.querySelectorAll('.aa-sw-l.is-rest').length, sus: x.querySelectorAll('.aa-sw-l.is-suspect').length,
       hidden: x.querySelector('.aa-sw-lengths') ? x.querySelector('.aa-sw-lengths').hidden : null })) : [],
     rest: c ? [...c.querySelectorAll('.iv-rest')].map(x => x.textContent) : [], sum: c ? [...c.querySelectorAll('.iv-stats .iv-stat')].map(x => x.textContent) : [],   /* v8-454: Pausenbloecke .iv-rest, Zusammenfassung .iv-stat */
@@ -88,13 +88,13 @@ sec('B · Intervalle und Bahnen');
 await setup([withLaps], EXT, 'ok');
 await page.evaluate(id => gmOpenActivityPage(id), withLaps.id);
 const c0 = await READ();
-ok('C1 sofort (Rohblock laedt): Intervalle aus den lokalen Runden — Schwimmtempo 2:41 / 2:29 / 1:40, noch ohne Aufklappen', c0.card && c0.iv.map(x => x.p).join() === '2:41 /100 m,2:29 /100 m,1:40 /100 m' && c0.iv.every(x => x.rows === 0), JSON.stringify(c0.iv.map(x => [x.p, x.btn])));
+ok('C1 sofort (Rohblock laedt): Intervalle aus den lokalen Runden — Schwimmtempo 2:41 / 2:29 / 1:40 (Einheit /100 m in der Spaltenueberschrift), noch ohne Aufklappen', c0.card && c0.iv.map(x => x.p).join() === '2:41,2:29,1:40' && c0.iv.every(x => x.rows === 0), JSON.stringify(c0.iv.map(x => [x.p, x.btn])));
 await page.waitForTimeout(700);
 let b = await READ();
 ok('B1 3 Intervalle (75 m · 125 m · 1.150 m), 3 Pausenbloecke (7:02 aus 4 Pausenrunden · 7:27 · 9:27)', b.iv.map(x => x.d).join() === '75 m,125 m,1.150 m' && b.rest.length === 3 && /7:02/.test(b.rest[0]) && /4 Pausenrunden/.test(b.rest[0]) && /7:27/.test(b.rest[1]) && /9:27/.test(b.rest[2]), JSON.stringify(b.rest));
 ok('B2 Zusammenfassung: Schwimmzeit 24:17, Pausen gesamt 45:14, Tempo 1:48 /100 m', b.sum.length === 3 && /24:17/.test(b.sum[0]) && /45:14/.test(b.sum[1]) && /1:48/.test(b.sum[2]), JSON.stringify(b.sum));
 /* v8-454: kompakte Karte = Distanz · Schwimmtempo · Schwimmzeit; alles Weitere erst beim Aufklappen */
-ok('B3a kompakte Karte: zweite Zeile nur „19:10 Schwimmzeit" (keine sechs Textzeilen)', /^19:10 Schwimmzeit/.test(b.iv[2].meta.trim()) && !/Züge|SWOLF|Pause/.test(b.iv[2].meta), b.iv[2].meta);
+ok('B3a kompakte Zeile (v8-454.1): nur Distanz · Schwimmzeit · Tempo — „1.150 m · 19:10 · 1:40“ + dezentes ≈ (auffaellige Bahnen), keine weiteren Texte', b.iv[2].meta.trim() === '19:10' && b.iv[2].row.replace(/\s+/g, '') === '31.150m19:101:40≈', JSON.stringify([b.iv[2].meta, b.iv[2].row]));
 await page.evaluate(() => { document.querySelectorAll('.aa-sw-ivh[aria-expanded]')[2].click(); }); await page.waitForTimeout(120);
 const b3 = (await READ()).iv[2].body.replace(/\s+/g, ' ');
 ok('B3 Intervall 3 aufgeklappt: Schwimmzeit 19:10, Pause im Intervall 17:32, 46 Bahnen, Gemischt, 511 Zuege, SWOLF 36 — keine Zuege/Bahn bei gemischten Lagen', /Schwimmzeit ?19:10/.test(b3) && /Pause im Intervall ?17:32/.test(b3) && /Bahnen ?46/.test(b3) && /Gemischt/.test(b3) && /Züge gesamt ?511/.test(b3) && /SWOLF ?36/.test(b3) && !/Züge je Bahn/.test(b3), b3.slice(0, 300));

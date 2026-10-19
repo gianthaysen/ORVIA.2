@@ -88,7 +88,8 @@ sec('D · Record-Suche');
 
 sec('E · Verdrahtung');
 {
-  const act = ui.slice(ui.indexOf('function gmOpenActivityPage(aid){'), ui.indexOf('function gmOpenActivityPage(aid){') + 40000);
+  /* v8-454.1: Debrief/Plan-Zuordnung/Korrekturen als eigene Funktionen direkt vor gmOpenActivityPage (beide Seitenfassungen nutzen sie) */
+  const act = ui.slice(ui.indexOf('v8-454.1 · Premium Activity Experience'), ui.indexOf('function gmOpenActivityPage(aid){') + 40000);
   ok('E1 Aktivitaetsseite: Debrief-Karte aus gmDebriefModel (planLink, Ist aus summary/duration)', /gmDbRecordFor\(vm\.planLink\|\|null,vm\.date\|\|null,null\)/.test(act) && /gmDebriefCardHTML\(_dbM,\{planCta:true,freeText:rate\?rate\.txt:null\}\)/.test(act) && /a\.summary\.distanceKm/.test(act));
   ok('E2 alte coach-card nur noch als Fehler-Rueckfall', (act.match(/class="coach-card"/g) || []).length === 1 && /catch\(_dbE\)/.test(act));
   const plan = ui.slice(ui.indexOf('function renderGMPlan(){'), ui.indexOf('function renderGMPlan(){') + 30000);

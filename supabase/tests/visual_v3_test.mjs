@@ -73,9 +73,12 @@ const rules = v3.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /* ---------- D) Seite und Story: Markup ---------- */
 {
-  const iStory = ui.indexOf('class="cta wide-ghost gm-story-cta"'), iCorr = ui.indexOf('<div class="gm-corr"');
-  ok('D1 Story-Knopf steht im Quelltext VOR den Korrekturwegen und traegt eine eigene Klasse', iStory > 0 && iCorr > iStory, [iStory, iCorr].join(' '));
-  ok('D2 die drei Korrekturwege bleiben getrennt und unveraendert verdrahtet (Loesen ≠ Loeschen)', /unlinkActivityPlanCanonical\(/.test(ui.slice(iCorr, iCorr + 900)) && /deleteActivityCanonical\(/.test(ui.slice(iCorr, iCorr + 900)) && (ui.match(/onclick="deleteActivityCanonical\(/g) || []).length === 1);
+  /* v8-454.1: Korrekturwege als eigene Funktion gmActCorrHtml (beide Seitenfassungen); geprueft wird die Reihenfolge der Verwendung */
+  const pgFn = ui.indexOf('function gmOpenActivityPage(aid){'), iStory = ui.indexOf('class="cta wide-ghost gm-story-cta"', pgFn), iCorr = ui.indexOf('var _corrH=gmActCorrHtml(a,vm);', pgFn);
+  const ax = ui.slice(ui.indexOf('function gmAxPageHtml('), ui.indexOf('function gmActRecordingHtml('));
+  ok('D1 Story-Knopf steht VOR den Korrekturwegen (bisherige Seite; neue Ansicht: Hero vor Datenherkunft/Einstellungen) und traegt eine eigene Klasse', iStory > pgFn && iCorr > iStory && ax.indexOf('gmAxHeroHtml(') < ax.indexOf('gmAxSourceHtml(') && /class="ax-btn gm-story-cta"/.test(ui), [iStory, iCorr].join(' '));
+  const iCorrFn = ui.indexOf('function gmActCorrHtml(a,vm){');
+  ok('D2 die drei Korrekturwege bleiben getrennt und unveraendert verdrahtet (Loesen ≠ Loeschen; v8-454.1: in gmActCorrHtml)', iCorrFn > 0 && /unlinkActivityPlanCanonical\(/.test(ui.slice(iCorrFn, iCorrFn + 900)) && /deleteActivityCanonical\(/.test(ui.slice(iCorrFn, iCorrFn + 900)) && (ui.match(/onclick="deleteActivityCanonical\(/g) || []).length === 1);
   ok('D3 Abschluss mit Strecke: die Hauptzahl bekommt ihren Namen (Distanz bzw. Dauer) — nur wenn es eine Hauptzahl gibt', /\(_dm\?'<div class="wst-kick">'\+gmEsc\(vm\.distanceLabel\?_uiT\('ui\.distanz_'\):'Dauer'\)\+'<\/div>':''\)\+\s*\(_dm\?'<div class="wst-heronum">/.test(ui));
   ok('D4 Textlink „Dauer korrigieren" hat eine Klasse statt Browser-Blau', /class="gm-inline-link" style="font-weight:700">' \+ _uiT\('ui\.dauer_korrigieren'\)/.test(ui) && /#gmActPage \.gm-inline-link\{color:var\(--orvia-text-primary\);text-decoration:underline;text-decoration-color:var\(--orvia-gold-24\);/.test(rules));
   ok('D5 Diagramm-Tafel: Raster aus Punkten, senkrechte Linien zurueckgenommen, Kurve 2,2 px, Schein weicher', /\.gm-story \.wst-grid line\{stroke-dasharray:1 5;stroke-linecap:round\}/.test(rules) && /\.gm-story \.wst-grid line\[y1="0"\]\{opacity:\.45\}/.test(rules) && /\.gm-story \.wst-line\{stroke-width:2\.2\}/.test(rules) && /\.gm-story \.wst-halo\{-webkit-filter:blur\(5px\);filter:blur\(5px\);opacity:\.8\}/.test(rules));

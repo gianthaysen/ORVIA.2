@@ -95,16 +95,20 @@ async function open(c, mode) {
   }, { a: c.a, ext: c.ext, mode: mode || 'ok' });
   await page.waitForTimeout(650);
 }
+/* v8-454.1: Abschnitt „Intervalle/Runden" (.iv-card) mit Ueberschrift h2, Zeilen mit drei Werten (b · .iv-v2 · em), Vorlesetext am Knopf,
+   Zeitstrahl als Werkzeugleiste (role=toolbar), Analyse in eigenem Abschnitt (.ax-analysis) */
 const READ = () => page.evaluate(() => {
   const p = document.getElementById('gmActPage'), c = p.querySelector('.iv-card'), tx = e => e ? e.textContent.replace(/\s+/g, ' ').trim() : null;
-  return { card: !!c, title: c ? tx(c.querySelector('.ctitle .l')) : null, cnt: c ? tx(c.querySelector('.ctitle .more')) : null,
-    hero: tx(p.querySelector('.aa-hero-main')), heroSub: [...p.querySelectorAll('.aa-hero-sub > *')].map(tx),
-    tl: c ? [...c.querySelectorAll('.tl-seg')].map(s => ({ k: s.className.replace(/.*k-(\w+).*/, '$1'), w: s.getBoundingClientRect().width, lab: s.getAttribute('aria-label') })) : [],
-    tlAria: c && c.querySelector('.iv-tl') ? c.querySelector('.iv-tl').getAttribute('aria-label') : null, axis: c ? tx(c.querySelector('.tl-axis')) : null, legend: c ? tx(c.querySelector('.tl-legend')) : null,
-    items: c ? [...c.querySelectorAll('.iv-item')].map(x => ({ main: tx(x.querySelector('.iv-main b')), acc: tx(x.querySelector('.iv-main em')), sub: tx(x.querySelector('.iv-sub')),
+  const X = e => { if (!e) return null; const k = e.cloneNode(true); k.querySelectorAll('.sr-only').forEach(x => x.remove()); return k.textContent.replace(/\s+/g, ' ').trim(); };
+  return { card: !!c, title: c ? tx(c.querySelector('.ax-sec-h h2')) : null, cnt: c ? tx(c.querySelector('.ax-sec-n')) : null,
+    hero: X(p.querySelector('.ax-key-main')), heroSub: [...p.querySelectorAll('.ax-stats > div')].map(d => X(d.querySelector('dt')) + ' ' + X(d.querySelector('dd'))),
+    tl: c ? [...c.querySelectorAll('.tl-seg')].map(s => ({ k: s.className.replace(/.*k-(\w+).*/, '$1'), w: s.getBoundingClientRect().width, lab: s.getAttribute('aria-label'), ti: s.tabIndex })) : [],
+    tlAria: c && c.querySelector('.tl-bar') ? c.querySelector('.tl-bar').getAttribute('aria-label') : null, tlRole: c && c.querySelector('.tl-bar') ? c.querySelector('.tl-bar').getAttribute('role') : null,
+    axis: c ? tx(c.querySelector('.tl-axis')) : null, legend: c ? tx(c.querySelector('.tl-legend')) : null, cols: c ? tx(c.querySelector('.iv-cols')) : null,
+    items: c ? [...c.querySelectorAll('.iv-item')].map(x => ({ main: tx(x.querySelector('.iv-main b')), v2: tx(x.querySelector('.iv-v2')), acc: tx(x.querySelector('.iv-main em')), lab: x.querySelector('.iv-head').getAttribute('aria-label'),
       exp: x.querySelector('.iv-head').getAttribute('aria-expanded'), hidden: x.querySelector('.iv-body').hidden, body: tx(x.querySelector('.iv-body')), kids: x.querySelectorAll('.iv-kid:not(.iv-kid-h)').length,
       picked: x.classList.contains('is-picked'), h: x.querySelector('.iv-head').getBoundingClientRect().height })) : [],
-    an: c ? tx(c.querySelector('.iv-an')) : null, src: c ? tx(c.querySelector('.iv-src')) : null, all: c ? tx(c.querySelector('.iv-all')) : null,
+    an: tx(p.querySelector('.ax-analysis .iv-an')), anSec: tx(p.querySelector('.ax-analysis')), src: c ? tx(c.querySelector('.iv-src')) : null, all: c ? tx(c.querySelector('.iv-all')) : null,
     chips: [...p.querySelectorAll('.aa-chips button')].map(tx), calls: window.__calls, dt: window.__dt };
 });
 
@@ -112,11 +116,11 @@ sec('R · Workout-Lauf (echter Mitschnitt)');
 const RUN = real('running__running__intervals');
 await open(RUN);
 let r = await READ();
-ok('R1 Hauptzahl Distanz 17 km + genau 3 Kennzahlen (Dauer, Ø Tempo, Ø Puls)', /^17 km ?Distanz$/.test(r.hero) && r.heroSub.length === 3 && /Dauer/.test(r.heroSub[0]) && /Tempo/.test(r.heroSub[1]) && /Puls/.test(r.heroSub[2]), JSON.stringify([r.hero, r.heroSub]));
-ok('R2 Karte „Abschnitte" mit 4 kompakten Eintraegen: 4 km 6:50 · 4 km 6:07 · 8 km 5:16 · 1 km 7:05 /km', r.title === 'Abschnitte' && r.items.map(x => x.main + ' ' + x.acc).join() === '4 km 6:50 /km,4 km 6:07 /km,8 km 5:16 /km,1 km 7:05 /km', JSON.stringify(r.items.map(x => [x.main, x.acc])));
-ok('R3 kompakt: je Eintrag zwei Zeilen, zweite Zeile nur Timer-Zeit + Art (z. B. „24:29 · Abschnitt 2"); alles zugeklappt', r.items[1].sub === '24:29 · Abschnitt 2' && r.items.every(x => x.exp === 'false' && x.hidden && x.h < 80), JSON.stringify(r.items.map(x => [x.sub, x.h])));
+ok('R1 Hauptzahl Distanz 17 km + genau 3 Kennzahlen (Dauer, Ø Tempo, Ø Puls)', /^17 km ?Distanz$/.test(r.hero) && r.heroSub.length === 3 && /^Dauer/.test(r.heroSub[0]) && /^Ø Tempo/.test(r.heroSub[1]) && /^Ø Puls/.test(r.heroSub[2]), JSON.stringify([r.hero, r.heroSub]));
+ok('R2 Abschnitt „Abschnitte" mit 4 Zeilen aus je drei Werten: 4 km · 27:19 · 6:50 | 4 km · 24:29 · 6:07 | 8 km · 42:11 · 5:16 | 1 km · 7:06 · 7:05 (Einheit /km in der Spaltenueberschrift)', r.title === 'Abschnitte' && r.items.map(x => [x.main, x.v2, x.acc].join(' ')).join('|') === '4 km 27:19 6:50|4 km 24:29 6:07|8 km 42:11 5:16|1 km 7:06 7:05' && /Tempo \/km/.test(r.cols), JSON.stringify([r.items.map(x => [x.main, x.v2, x.acc]), r.cols]));
+ok('R3 kompakt: eine Zeile je Abschnitt (≤ 60 px), Art und Einheiten im Vorlesetext („Abschnitt 2: 4 km, 24:29, 6:07 /km“); alles zugeklappt', r.items[1].lab === 'Abschnitt 2: 4 km, 24:29, 6:07 /km' && r.items.every(x => x.exp === 'false' && x.hidden && x.h <= 60), JSON.stringify(r.items.map(x => [x.lab, x.h])));
 ok('R4 Zeitstrahl: 4 Bloecke, Breite proportional zur Gesamtzeit je Abschnitt (Abschnitt 3 ≈ 42 %), Achse „Gesamtzeit 1:57:55"', r.tl.length === 4 && Math.abs(r.tl[2].w / r.tl.reduce((s, x) => s + x.w, 0) - 2953.4 / 7075.4) < 0.02 && /Gesamtzeit/.test(r.axis) && /1:57:55/.test(r.axis), JSON.stringify([r.tl.map(x => Math.round(x.w)), r.axis]));
-ok('R5 Zeitstrahl fuer Screenreader: role=img mit Klartext; Bloecke mit Beschriftung (Art, Nummer, Dauer)', /4/.test(r.tlAria || '') && r.tl.every(x => /Abschnitt \d, \d/.test(x.lab)), JSON.stringify([r.tlAria, r.tl.map(x => x.lab)]));
+ok('R5 Zeitstrahl fuer Screenreader: Werkzeugleiste mit Klartext; Bloecke mit Beschriftung (Art, Nummer, Dauer)', r.tlRole === 'toolbar' && /4/.test(r.tlAria || '') && r.tl.every(x => /Abschnitt \d, \d/.test(x.lab)), JSON.stringify([r.tlAria, r.tl.map(x => x.lab)]));
 ok('R6 Herkunft ehrlich: „Abschnitte aus deinem Garmin-Workout … keine Belastung und Erholung"', /Garmin-Workout/.test(r.src) && /keine Belastung und Erholung/.test(r.src), r.src);
 ok('R7 Analyse nur vergleichbarer Kilometer (Abschnitt 3, 6 vergleichbar): ± 3,8 %, schnellste Runde 12 (4:58), langsamste Runde 9 (5:36), 2 ausgeschlossen benannt', /Abschnitt 3/.test(r.an) && /6 vergleichbar/.test(r.an) && /3,8 %/.test(r.an) && /4:58/.test(r.an) && /schnellste · Runde 12/.test(r.an) && /5:36/.test(r.an) && /langsamste · Runde 9/.test(r.an) && /2 nicht vergleichbar/.test(r.an), r.an);
 ok('R8 kein pauschales Formurteil („Form", „fitter", „Ermüdung") in der Karte', !/Form\b|fitter|Ermüdung|ermüdet/.test(await page.evaluate(() => document.querySelector('.iv-card').textContent)));
@@ -135,24 +139,24 @@ await page.evaluate(() => document.querySelectorAll('.iv-head')[2].click()); awa
 ok('R15 erneut antippen klappt zu', (await READ()).items[2].hidden === true);
 await page.focus('.iv-head'); await page.keyboard.press('Enter'); await page.waitForTimeout(100);
 ok('R16 Tastatur: Enter auf dem Eintrag klappt auf (echter Knopf, aria-expanded)', (await READ()).items[0].exp === 'true');
-ok('R17 Zeitstrahl-Bloecke nicht im Tab-Fokus (tabindex -1) — Karten sind die Bedienung', await page.evaluate(() => [...document.querySelectorAll('.tl-seg')].every(b => b.tabIndex === -1)));
+ok('R17 Zeitstrahl per Tastatur: genau EIN Tab-Halt (roving tabindex), Pfeil rechts waehlt den naechsten Block und markiert seine Zeile', await (async () => { const t0 = await page.evaluate(() => [...document.querySelectorAll('.tl-seg')].filter(b => b.tabIndex === 0).length); await page.focus('.tl-seg[tabindex="0"]'); await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(120); const s = await page.evaluate(() => ({ f: document.activeElement && document.activeElement.getAttribute('data-tl'), z: [...document.querySelectorAll('.tl-seg')].filter(b => b.tabIndex === 0).map(b => b.getAttribute('data-tl')), pick: [...document.querySelectorAll('.iv-item.is-picked')].map(x => x.getAttribute('data-tl')) })); return t0 === 1 && s.z.length === 1 && s.z[0] === s.f && s.pick.length === 1 && s.pick[0] === s.f; })());
 ok('R18 keine technischen Feldnamen in der Hauptansicht', !(await page.evaluate(() => { const p = document.getElementById('gmActPage').cloneNode(true); p.querySelectorAll('details').forEach(x => x.remove());
   return /lapDTOs|typed_splits|INTERVAL_|wktStep|intensityType|movingDuration|averageRunCadence|garmin_typed|rule_auto/.test(p.textContent); })));
 
 sec('B · Rad');
 await open(real('cycling__road_biking__intervals'));
 let b = await READ();
-ok('B1 Rennrad: Hauptzahl Distanz 27,6 km; Ø Geschwindigkeit statt Leistung (keine Leistung gemessen)', /^27,6 km ?Distanz$/.test(b.hero) && b.heroSub.some(x => /Geschwindigkeit/.test(x)) && !b.heroSub.some(x => / W /.test(x + ' ')), JSON.stringify([b.hero, b.heroSub]));
-ok('B2 6 Runden (5 × 5 km + 2,6 km), Zeit als Hauptwert, km/h daneben, Puls + Distanz darunter', b.title === 'Runden' && b.items.length === 6 && b.items[0].main === '12:32' && b.items[0].acc === '23,9 km/h' && /134 bpm · 5 km/.test(b.items[0].sub), JSON.stringify(b.items.map(x => [x.main, x.acc, x.sub])));
+ok('B1 Rennrad: Hauptzahl Distanz 27,6 km; Ø Tempo in km/h statt Leistung (keine Leistung gemessen)', /^27,6 km ?Distanz$/.test(b.hero) && b.heroSub.some(x => /km\/h/.test(x)) && !b.heroSub.some(x => / W$/.test(x)), JSON.stringify([b.hero, b.heroSub]));
+ok('B2 6 Runden (5 × 5 km + 2,6 km): Zeit · Distanz · km/h; Puls im aufgeklappten Detail', b.title === 'Runden' && b.items.length === 6 && b.items[0].main === '12:32' && b.items[0].v2 === '5 km' && b.items[0].acc === '23,9 km/h' && b.items[5].v2 === '2,6 km', JSON.stringify(b.items.map(x => [x.main, x.v2, x.acc])));
 ok('B3 automatische Runden als Regel erkannt und so benannt; ohne Leistung KEIN Tempo-/Gleichmaessigkeitsvergleich (Wind/Gelaende)', /automatisch gesetzte Runden/.test(b.src) && !b.an, JSON.stringify([b.src, b.an]));
 ok('B4 Rad-Diagramme ohne Leistung: Puls, Geschwindigkeit, Höhe', b.chips.join() === 'Puls,Geschwindigkeit,Höhe', b.chips.join());
 await open(real('cycling__virtual_ride__indoor'));
 b = await READ();
-ok('B5 Zwift (virtuell): Hauptzahl Ø Leistung 112 W (gemessen), kein Distanz-Hero, keine Geschwindigkeit/Hoehe als Diagramm', /^112 W ?Ø Leistung$/.test(b.hero) && b.chips.join() === 'Leistung,Puls,Kadenz', JSON.stringify([b.hero, b.chips]));
+ok('B5 Zwift (virtuell): Hauptzahl Ø Leistung 112 W, kein Distanz-Hero, keine Geschwindigkeit/Hoehe als Diagramm', /^112 W ?Ø Leistung$/.test(b.hero) && b.chips.join() === 'Leistung,Puls,Kadenz', JSON.stringify([b.hero, b.chips]));
 ok('B6 Zwift mit nur einer Runde: keine Rundenkarte', !b.card);
 await open(real('cycling__cycling__steady'));
 b = await READ();
-ok('B7 gleichmaessige Fahrt (eine Runde): keine Rundenkarte, kein leerer Block, Hero wie bisher', !b.card && /^4,8 km ?Distanz$/.test(b.hero));
+ok('B7 gleichmaessige Fahrt (eine Runde): keine Rundenkarte, kein leerer Block, Hero wie bisher', !b.card && /^4,8 km ?Distanz$/.test(b.hero), JSON.stringify(b.hero));
 
 sec('S · Garmin-Intervalltraining (synthetisch, Feldnamen wie im Mitschnitt)');
 const W = synthWorkout();
@@ -162,7 +166,7 @@ ok('S1 Titel „Intervalle"; Zaehlung Aufwaermen · 6 Belastungen · 5 Erholunge
 ok('S2 Zeitstrahl 13 Bloecke; Erholung, Aufwaermen, Auslaufen per Muster unterscheidbar (nicht nur Farbe) und in der Legende', s.tl.length === 13 && await page.evaluate(() => {
   const st = k => getComputedStyle(document.querySelector('.tl-seg.k-' + k)).backgroundImage;
   return /gradient/.test(st('recovery')) && /gradient/.test(st('warmup')) && st('work') === 'none'; }) && /Erholung/.test(s.legend) && /Belastung/.test(s.legend), s.legend);
-ok('S3 Belastung 1: 800 m · 4:15 /km; zweite Zeile „3:24 · Belastung 1"', s.items[1].main === '800 m' && s.items[1].acc === '4:15 /km' && s.items[1].sub === '3:24 · Belastung 1', JSON.stringify(s.items[1]));
+ok('S3 Belastung 1: 800 m · 3:24 · 4:15; Vorlesetext „Belastung 1: 800 m, 3:24, 4:15 /km“; Erholungszeile mit Schraffur-Zeichen', s.items[1].main === '800 m' && s.items[1].v2 === '3:24' && s.items[1].acc === '4:15' && s.items[1].lab === 'Belastung 1: 800 m, 3:24, 4:15 /km' && await page.evaluate(() => /gradient/.test(getComputedStyle(document.querySelector('.iv-item.k-recovery .iv-num')).backgroundImage)), JSON.stringify(s.items[1]));
 ok('S4 Analyse der 6 Belastungen: langsamer werdend um 7,1 % als Beobachtung; Puls 165 → 175; schnellste = Belastung 1, langsamste = Belastung 6 (Nummern wie auf den Karten)', /6 Belastungen|Belastungen \(6|6 vergleichbar/.test(s.an) && /7,1 %/.test(s.an) && /165 → 175/.test(s.an) && /schnellste · Belastung 1/.test(s.an) && /langsamste · Belastung 6/.test(s.an) && !/Form/.test(s.an), s.an);
 
 sec('P · Viele Runden und fehlender Rohblock');
@@ -177,7 +181,7 @@ await page.evaluate(() => { const s = document.querySelectorAll('.tl-seg'); s[s.
 ok('P4 letzter Zeitstrahl-Block markiert Runde 50', (await READ()).items[49].picked);
 await open(RUN, 'fail');
 p = await READ();
-ok('P5 Rohblock nicht ladbar: Abschnitte trotzdem aus den lokalen Runden (Workout-Schritt je Runde) — 4 Abschnitte, gleiche Tempi, kein Fehler', p.card && p.title === 'Abschnitte' && p.items.map(x => x.acc).join() === '6:50 /km,6:07 /km,5:16 /km,7:05 /km', JSON.stringify([p.title, p.items.map(x => x.acc)]));
+ok('P5 Rohblock nicht ladbar: Abschnitte trotzdem aus den lokalen Runden (Workout-Schritt je Runde) — 4 Abschnitte, gleiche Tempi, kein Fehler', p.card && p.title === 'Abschnitte' && p.items.map(x => x.acc).join() === '6:50,6:07,5:16,7:05', JSON.stringify([p.title, p.items.map(x => x.acc)]));
 
 sec('E · Layout');
 await open(RUN);
@@ -187,7 +191,7 @@ for (const w of [320, 375, 390, 430, 1200]) {
   await page.waitForTimeout(150);
   const m = await page.evaluate(() => { const p = document.getElementById('gmActPage'), clip = e => e.scrollWidth > e.clientWidth + 1;
     return { ov: document.documentElement.scrollWidth - document.documentElement.clientWidth, pov: p.scrollWidth - p.clientWidth,
-      cut: [...p.querySelectorAll('.aa-hero b, .aa-hero span, .iv-card b, .iv-card em, .iv-sub, .iv-stat span, .iv-grid dd, .iv-grid dt, .iv-kid > span, .tl-axis span, .tl-leg, .aa-chips button, .iv-an .aa-md-h')].filter(clip).map(e => e.textContent).slice(0, 4),
+      cut: [...p.querySelectorAll('.ax-key-main b, .ax-key-main span, .ax-stats dd, .ax-stats dt, .ax-title, .iv-card b, .iv-card em, .iv-v2, .iv-cols span, .iv-stat span, .iv-grid dd, .iv-grid dt, .iv-kid > span, .tl-axis span, .tl-leg, .aa-chips button, .iv-an .aa-md-h, .ax-rv, .ax-rl, .ax-sec-h h2, .ax-btn, .ax-chip')].filter(e => !e.closest('.sr-only') && !e.classList.contains('sr-only')).filter(clip).map(e => e.textContent).slice(0, 4),
       tap: Math.min(...[...p.querySelectorAll('.iv-head')].map(b => b.getBoundingClientRect().height)) }; });
   ok('E ' + w + ' px: kein Ueberlauf, nichts abgeschnitten, Tippflaeche ≥ 44 px', m.ov <= 0 && m.pov <= 0 && !m.cut.length && m.tap >= 44, JSON.stringify(m));
 }
