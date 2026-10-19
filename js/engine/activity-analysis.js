@@ -21,7 +21,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'activity-analysis@1';
+  var VERSION = 'activity-analysis@2';
 
   function req(name, path) {
     if (O[name]) return O[name];
@@ -75,6 +75,7 @@
       cards: ['avgHr', 'runningCadence', 'elevationGain', 'maxHr', 'pause', 'calories', 'trainingEffect'],
       charts: ['paceKm', 'hr', 'cadence', 'elevation'],          // v8-454: Tempo · Puls · Kadenz · Hoehe
       intervals: { pace: 'paceKm', minDist: 200 },
+      zones: true,                                                // v8-454.1: Zeit in Pulszonen laut Garmin (Analysebereich)
       details: ['environment', 'distance', 'duration', 'timer', 'elapsed', 'moving', 'pause', 'paceKm', 'avgHr', 'maxHr', 'runningCadence', 'strideLength', 'elevationGain',
                 'hrSeries', 'speedSeries', 'cadenceSeries', 'elevationSeries', 'laps', 'route', 'calories', 'trainingEffect', 'trainingLoad']
     },
@@ -83,6 +84,7 @@
       cards: ['avgPower', 'normPower', 'avgHr', 'cyclingCadence', 'elevationGain', 'maxPower', 'maxSpeed', 'maxHr', 'pause', 'calories', 'trainingEffect'],
       charts: ['power', 'hr', 'cadence', 'speedKmh', 'elevation'],   // v8-454: Leistung · Puls · Kadenz · Geschwindigkeit
       intervals: { pace: 'speedKmh', minDist: 500 },
+      zones: true,
       details: ['environment', 'distance', 'duration', 'timer', 'elapsed', 'moving', 'pause', 'avgSpeed', 'maxSpeed', 'avgPower', 'normPower', 'maxPower', 'powerCurve', 'cyclingCadence',
                 'avgHr', 'maxHr', 'elevationGain', 'hrSeries', 'speedSeries', 'powerSeries', 'cadenceSeries', 'elevationSeries', 'laps', 'route', 'calories', 'trainingEffect', 'trainingLoad']
     },
@@ -116,6 +118,53 @@
     return null;
   }
 
+  /* v8-454.1 · Kennzahlen-Bibliothek: Gruppen statt gleichwertiger Mini-Karten. Reihenfolge = Anzeige. Zeiten bilden eine eigene
+     Gruppe (mit Definitionen in der Oberflaeche). Nur skalare Werte — Reihen, Runden, Strecke, Zonen und Leistungskurve stehen
+     an ihrem eigenen Ort. Was keiner Gruppe angehoert, landet in „Weitere Messwerte". */
+  var LIBRARY = [
+    { id: 'performance', ids: ['paceKm', 'pace100', 'pace100Moving', 'pace100Total', 'avgSpeed', 'maxSpeed', 'avgPower', 'normPower', 'maxPower'] },
+    { id: 'heart', ids: ['avgHr', 'maxHr'] },
+    { id: 'movement', ids: ['distance', 'runningCadence', 'cyclingCadence', 'strideLength', 'elevationGain', 'poolLength', 'activeLengths', 'strokes', 'strokesPerLength', 'swolf',
+                            'strokeRate', 'maxStrokeRate', 'strokeDistance'] },
+    { id: 'time', ids: ['duration', 'timer', 'elapsed', 'moving', 'pause', 'restTime'] },
+    { id: 'load', ids: ['trainingLoad', 'trainingEffect', 'calories'] }
+  ];
+  var NOT_IN_LIBRARY = { environment: 1, hrZones: 1, powerCurve: 1, laps: 1, lengths: 1, route: 1, timeAxis: 1 };
+  function scalar(v) { return typeof v === 'number' || typeof v === 'string'; }
+  function libraryOf(desc, detailIds) {
+    var m = desc.metrics, used = {}, groups = [];
+    var dur = m.duration, tim = m.timer;
+    LIBRARY.forEach(function (g) {
+      var items = g.ids.filter(function (id) {
+        var d = m[id]; if (!show(d) || !scalar(d.value)) return false;
+        /* Dauer (Garmin-Zusammenfassung) und Timer-Zeit (Ende der Aufzeichnung) beschreiben dieselbe Uhr: weichen sie hoechstens
+           5 s bzw. 1 % ab, steht nur die Dauer da (= Hauptzahl oben, als Timer-Zeit erklaert). Manuell korrigiert: beide. */
+        if (id === 'timer' && show(dur) && dur.method !== 'manual' && Math.abs(d.value - dur.value) <= Math.max(5, dur.value * 0.01)) return false;
+        return true;
+      }).map(function (id) { used[id] = 1; return m[id]; });
+      if (items.length) groups.push({ id: g.id, items: items });
+    });
+    LIBRARY.forEach(function (g) { g.ids.forEach(function (id) { used[id] = 1; }); });
+    var other = (detailIds || []).filter(function (id) { return !used[id] && !NOT_IN_LIBRARY[id]; }).map(function (id) { return m[id]; })
+      .filter(function (d) { return show(d) && scalar(d.value) && !/Series$/.test(d.id); });
+    if (other.length) groups.push({ id: 'other', items: other });
+    return groups;
+  }
+  /* Leistungskurve (beste Ø-Leistung je Fensterdauer, Worker best_efforts.power): nur Fenster mit Wert; „approx" = aus der Abtastung
+     angenaehert, gap = Datenluecke im Fenster (zaehlt als 0 W). Unzureichende Fenster entfallen — nichts wird aufgefuellt. */
+  function powerCurveOf(desc) {
+    var d = desc.metrics.powerCurve; if (!show(d) || !obj(d.value)) return null;
+    var rows = Object.keys(d.value).map(function (k) { var w = obj(d.value[k]) || {}; return { s: +k, w: num(w.w), q: w.q || null, gap: num(w.gap_s) }; })
+      .filter(function (r) { return isFinite(r.s) && r.w !== null && r.q !== 'insufficient'; }).sort(function (x, y) { return x.s - y.s; });
+    return rows.length ? { rows: rows, validation: d.validation, reason: d.reason, approx: rows.some(function (r) { return r.q === 'approx'; }) } : null;
+  }
+  /* Abtastung der gespeicherten Messreihen (Diagramme): gespeicherte Punkte von gelieferten Zeilen — Spitzen koennen fehlen */
+  function samplingOf(owner) {
+    var g = obj((obj(owner && owner.metrics) || {}).garmin) || {};
+    var rows = num(g.stream_rows), kept = num(g.stream_kept), total = num(g.stream_total);
+    return rows !== null && kept !== null ? { rows: rows, kept: kept, total: total, thinned: kept < rows } : null;
+  }
+
   var MIN_SERIES_POINTS = 20;
   function show(d) { return !!(d && d.status === 'available' && d.validation !== 'blocked' && d.value !== null && d.value !== undefined); }
 
@@ -144,9 +193,10 @@
       if (fam === 'cycling' && (cid === 'speedKmh' || cid === 'elevation') && (ctx === 'indoor' || ctx === 'virtual')) return;
       var n = vals.filter(function (v) { return v !== null; }).length;
       if (n < MIN_SERIES_POINTS) return;                  // v8-454: keine scheinbar genaue Kurve aus wenigen Punkten
-      var sum = 0; vals.forEach(function (v) { if (v !== null) sum += v; });
-      out.push({ id: cid, metric: c.metric, kind: c.kind, mean: sum / n, unit: cid === 'cadence' ? (fam === 'cycling' ? ' rpm' : ' spm') : c.unit, dec: c.dec != null ? c.dec : 0,
-                 higherBetter: c.higherBetter, values: vals, times: timesFor(owner, vals.length), points: n, validation: d.validation, source: d.source, basis: d.basis });
+      var sum = 0, lo = null, hi = null; vals.forEach(function (v) { if (v !== null) { sum += v; lo = lo === null || v < lo ? v : lo; hi = hi === null || v > hi ? v : hi; } });
+      var tms = timesFor(owner, vals.length);
+      out.push({ id: cid, metric: c.metric, kind: c.kind, mean: sum / n, min: lo, max: hi, axis: tms ? 'elapsed' : 'index', unit: cid === 'cadence' ? (fam === 'cycling' ? ' rpm' : ' spm') : c.unit, dec: c.dec != null ? c.dec : 0,
+                 higherBetter: c.higherBetter, values: vals, times: tms, points: n, validation: d.validation, source: d.source, basis: d.basis });
     });
     return out;
   }
@@ -205,8 +255,8 @@
     var out = [];
     [['lengthPace', ls.pace100, 'pace', '/100 m', false], ['lengthSwolf', ls.swolf, 'num', '', false]].forEach(function (d) {
       var vals = d[1], n = vals.filter(function (v) { return v !== null; }).length; if (n < 8) return;
-      var sum = 0; vals.forEach(function (v) { if (v !== null) sum += v; });
-      out.push({ id: d[0], metric: 'lengths', kind: d[2], mean: sum / n, unit: d[3], dec: 0, higherBetter: d[4], values: vals, times: null, labels: ls.labels,
+      var sum = 0, lo = null, hi = null; vals.forEach(function (v) { if (v !== null) { sum += v; lo = lo === null || v < lo ? v : lo; hi = hi === null || v > hi ? v : hi; } });
+      out.push({ id: d[0], metric: 'lengths', kind: d[2], mean: sum / n, min: lo, max: hi, axis: 'lengths', unit: d[3], dec: 0, higherBetter: d[4], values: vals, times: null, labels: ls.labels,
                  points: n, validation: 'unverified', source: 'garmin_extras', basis: 'ext.splits.lapDTOs[].lengthDTOs' });
     });
     return out;
@@ -258,7 +308,10 @@
     var loading = details.some(function (d) { return d.status === 'not_loaded' && (d.reason === 'raw_block_pending' || d.reason === 'raw_block_not_loaded'); });
     return { v: VERSION, family: fam, sport: desc.sport, context: desc.context.environment, source: desc.source, poolCheck: desc.poolCheck,
              hero: hero, cards: cards.slice(0, 6), more: cards, charts: charts, intervals: iv, swim: swim, timeline: timeline, efficiency: eff, zones: zones, details: details, shown: shownIds,
-             unverifiedShown: unverifiedShown, rawPending: loading, metrics: desc.metrics };
+             unverifiedShown: unverifiedShown, rawPending: loading, metrics: desc.metrics,
+             /* v8-454.1 */
+             library: libraryOf(desc, prof.details), powerCurve: powerCurveOf(desc), sampling: samplingOf(a), timerConflict: (desc.metrics.timer && desc.metrics.timer.conflict) || null,
+             modeled: fam === 'cycling' && (desc.context.environment === 'indoor' || desc.context.environment === 'virtual') };
   }
 
   /* Vollstaendigkeit je Kennzahl (interne Diagnose): geliefert → gespeichert → geprueft → in der App verfuegbar → angezeigt,
