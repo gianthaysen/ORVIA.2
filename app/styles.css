@@ -5811,8 +5811,13 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
 .gm-story .wst-in.wst-numpg .wst-mid{justify-content:center}
 .gm-story .wst-numgrid{gap:12px;margin-top:18px}
 .gm-story .wst-numgrid .wst-cell{padding:18px 16px;min-height:clamp(78px,11vh,108px);display:flex;flex-direction:column;justify-content:center}
-.gm-story .wst-numgrid .wst-cell b{font-size:clamp(23px,7.4cqi,32px);white-space:nowrap}
+.gm-story .wst-numgrid .wst-cell b{font-size:clamp(23px,6.8cqi,30px);white-space:nowrap}
 .gm-story .wst-numgrid .wst-cell span{font-size:10.5px;margin-top:6px}
+/* v8-457: schmale Geraete (320 px) — Spalten duerfen nicht ueber den Rand wachsen (1fr = min-content), Zahlen bleiben einzeilig und ganz sichtbar */
+.gm-story .wst-numgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gm-story .wst-numgrid .wst-cell{min-width:0}
+.gm-story .wst-numgrid .wst-cell span{overflow-wrap:anywhere}
+@media (max-width:374px){.gm-story .wst-numgrid{gap:10px}.gm-story .wst-numgrid .wst-cell{padding:14px 11px}.gm-story .wst-numgrid .wst-cell b{font-size:clamp(17px,6vw,23px)}.gm-story .wst-numgrid .wst-cell span{font-size:9.5px;letter-spacing:.05em}}
 /* Story · Herzfrequenz/Diagramm-Seiten: Diagramm nimmt den Raum, Ø und Max gemeinsam darunter */
 .gm-story .wst-in.wst-chartpg .wst-mid{flex:1 1 auto;justify-content:center;margin-top:clamp(12px,3vh,32px)}
 .gm-story .wst-in.wst-chartpg .wst-foot{margin-bottom:clamp(12px,4vh,40px)}

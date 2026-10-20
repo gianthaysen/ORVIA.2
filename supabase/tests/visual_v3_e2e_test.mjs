@@ -196,6 +196,16 @@ const sNum = await story('t-run', sRun.n - 2);   /* v8-456: letzte Seite = Absch
    der Seite (Debrief, Plan-Zuordnung: #gmActPage .card) und in den Story-Kacheln: beide aus --orvia-panel-bg/-border. */
 const cardMat = await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'background-image:var(--orvia-panel-bg);border-top:1px solid var(--orvia-panel-border)'; document.body.appendChild(d); const cs = getComputedStyle(d), r = { bg: cs.backgroundImage, border: cs.borderTopColor }; d.remove(); return r; });
 ok('E6 Kennzahl-Kacheln der Story aus dem gemeinsamen Flaechen-Material (--orvia-panel-bg/-border; v8-456: die Seite hat keine Kacheln mehr)', !!sNum.cell && sNum.cell.bg.indexOf(cardMat.bg) === 0 && sNum.cell.border === cardMat.border, JSON.stringify([sNum.cell, cardMat]));
+{ /* v8-457: auf 320 px wuchsen die Spalten von „Deine Zahlen" ueber den Rand („1.274 kca", „Ø HERZFREQUEN") — jede Kachel und jede Zahl muss ganz sichtbar sein */
+  const fit = []; for (const w of [320, 390, 430]) { await page.setViewportSize({ width: w, height: 844 }); await story('t-run', sRun.n - 2);
+    fit.push(await page.evaluate((w) => { const pg = document.querySelector('.gm-story .wst-page.on'), cells = [].slice.call(pg.querySelectorAll('.wst-numgrid .wst-cell'));
+      /* Lastfall aus dem echten Halbmarathon/Intervall-Lauf: laengste Werte und Beschriftungen, die die App heute erzeugt */
+      const WORST = [['17,00 km', 'Distanz'], ['1:41:06', 'Dauer'], ['5:57 /km', 'Ø Tempo'], ['159 bpm', 'Ø Herzfrequenz'], ['184 bpm', 'Max. Herzfrequenz'], ['161 spm', 'Ø Schrittfrequenz'], ['1.274 kcal', 'Energie'], ['1.274 kcal', 'Ø Herzfrequenz']];
+      cells.forEach((c, i) => { const b = c.querySelector('b'), sp = c.querySelector('span'), v = WORST[Math.min(i + 3, WORST.length - 1)]; if (b) b.textContent = v[0]; if (sp) sp.textContent = v[1]; });
+      return { w, n: cells.length, out: cells.filter(c => { const r = c.getBoundingClientRect(); return r.left < 0 || r.right > w + 0.5; }).length,
+        cut: cells.filter(c => [].slice.call(c.children).some(e => e.scrollWidth > c.clientWidth || e.getBoundingClientRect().right > c.getBoundingClientRect().right + 0.5)).map(c => c.textContent) }; }, w)); }
+  await page.setViewportSize({ width: 390, height: 844 });
+  ok('E7 „Deine Zahlen" bei 320 / 390 / 430 px (laengste reale Werte): alle Kacheln im Bild, keine Zahl und keine Beschriftung abgeschnitten', fit.every(f => f.n >= 4 && f.out === 0 && f.cut.length === 0), JSON.stringify(fit)); }
 sec('Story: Schwimmen');
 const sSwim = await story('t-swim', 0);
 ok('F1 Abschluss ohne Strecke: Wellenfeld hinter der grossen Zahl (neun Linien, Aqua), Zahl bleibt die Distanz', !!sSwim.waves && sSwim.waves.paths === 9 && has(sSwim.waves.stop, RGB.swimming) && /wst-wavepg/.test(sSwim.waves.cls) && /1\.500/.test(String(sSwim.waves.big)), JSON.stringify(sSwim.waves));
