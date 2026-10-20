@@ -213,16 +213,21 @@
   /* Reihen je aktiver Bahn fuer Diagramme (Tempo / SWOLF). Auffaellige Bahnen bleiben als Luecke (nie geglaettet). */
   function lengthSeries(model) {
     if (!model || !model.lengthsLoaded) return null;
-    var pace = [], swolf = [], labels = [], k = 0;
+    /* v8-456: zusaetzlich alle Werte (auch auffaellige) mit Kennzeichen und Grund — die Darstellung entscheidet, wie sie sie zeigt;
+       pace100/swolf (nur plausible) bleiben fuer Mittelwerte und bestehende Leser unveraendert. */
+    var pace = [], swolf = [], paceAll = [], swolfAll = [], flags = [], reasons = [], meta = [], labels = [], k = 0;
     model.intervals.forEach(function (s) {
       (s.lengths || []).forEach(function (b) {
         if (b.kind !== 'active') return;
         k++;
-        var good = b.quality && (b.quality.plausibility === 'plausible' || b.quality.plausibility === 'unchecked');
+        var q = b.quality ? b.quality.plausibility : 'unchecked', good = q === 'plausible' || q === 'unchecked';
         pace.push(good ? b.pace100 : null); swolf.push(good ? b.swolf : null); labels.push(k);
+        paceAll.push(b.pace100 != null ? b.pace100 : null); swolfAll.push(b.swolf != null ? b.swolf : null);
+        flags.push(good ? null : q); reasons.push(good ? null : ((b.quality && b.quality.reasons) || []));
+        meta.push({ distance: b.distance, duration: b.duration, stroke: b.stroke || null, interval: s.n });
       });
     });
-    return { pace100: pace, swolf: swolf, labels: labels };
+    return { pace100: pace, swolf: swolf, pace100All: paceAll, swolfAll: swolfAll, flags: flags, reasons: reasons, meta: meta, labels: labels };
   }
 
   var api = { VERSION: VERSION, build: build, lengthSeries: lengthSeries, strokeOf: strokeOf, WR_SPEED: WR_SPEED, REL: REL };

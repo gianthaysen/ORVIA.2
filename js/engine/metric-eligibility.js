@@ -777,7 +777,15 @@
        var t = x.get('timer'), e = x.get('elapsed');
        if (t.status !== 'available' || e.status !== 'available') return { status: t.status !== 'available' ? t.status : e.status, reason: 'needs_timer_and_elapsed' };
        if (e.value < t.value - 1) return { status: 'available', value: null, blocked: true, reason: 'elapsed_below_timer' };
-       return { status: 'available', value: Math.max(0, Math.round(e.value - t.value)), method: 'derived', source: 'derived', basis: 'garmin.elapsed_duration_s − ' + (t.conflict && t.conflict.use === 'summary' ? 'ext.fields.duration' : 'garmin.timer_duration_s') };
+       /* v8-456 · Beleg der Pause: Gesamtzeit − Timer allein beweist keinen Stopp.
+            timer_counter  Garmins eigener Zeitzaehler der Aufzeichnung (sumDuration) stand still → Uhr angehalten, belegt
+            unclear        Zeitzaehler lief durch (= Gesamtzeit), nur die Zusammenfassung nennt weniger → Ursache offen
+                           (Zwift 07.10.2026: 3 Luecken ohne Messzeilen, Stopp nicht belegt)
+            none           keine Differenz (≤ 2 s)
+            derived_only   andere Quelle (eigene Daten, Korrektur) — nur die Rechnung */
+       var v = Math.max(0, Math.round(e.value - t.value)), useSum = !!(t.conflict && t.conflict.use === 'summary');
+       var ev = v <= 2 ? 'none' : (useSum ? 'unclear' : (t.basis === 'garmin.timer_duration_s' || /timer_duration_s/.test(String(t.basis || '')) ? 'timer_counter' : 'derived_only'));
+       return { status: 'available', value: v, method: 'derived', source: 'derived', evidence: ev, basis: 'garmin.elapsed_duration_s − ' + (useSum ? 'ext.fields.duration' : 'garmin.timer_duration_s') };
      }, function (a, r, x) { if (r.blocked) return { validation: 'blocked', reason: r.reason }; return { validation: worst([x.get('timer').validation, x.get('elapsed').validation]) }; });
   am('distance', null, 'm', 'base', function (a) { return distanceRead(a); }, function (a, r, x) {
        if (r.method === 'manual') return { validation: 'validated', reason: 'manual_correction' };
@@ -997,6 +1005,7 @@
       if (r.shapeUnverified) res.shapeUnverified = true;
       if (r.paceBasis) res.paceBasis = r.paceBasis;
       if (r.conflict) res.conflict = r.conflict;        // v8-454.1: zwei Garmin-Quellen widersprechen (benannt, nie still angeglichen)
+      if (r.evidence) res.evidence = r.evidence;        // v8-456: Beleg einer Pause (timer_counter | unclear | none | derived_only)
       if (res.status === 'available') {
         var v = { validation: 'unverified' };
         try { v = (d.check ? d.check(a, r, x) : null) || v; } catch (e) { v = { validation: 'unverified', reason: 'check_error' }; }

@@ -21,7 +21,7 @@
   'use strict';
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'activity-analysis@2';
+  var VERSION = 'activity-analysis@3';
 
   function req(name, path) {
     if (O[name]) return O[name];
@@ -115,6 +115,10 @@
       if (pw && (ctx === 'indoor' || ctx === 'virtual')) return ['avgPower', 'duration', 'avgHr', 'cyclingCadence'];
       return pw ? ['distance', 'duration', 'avgPower', 'avgHr'] : ['distance', 'duration', 'avgSpeed', 'avgHr'];
     }
+    /* v8-456: Krafttraining und weitere Sportarten in derselben Ansicht — Dauer ist die einzige Groesse, die jede Einheit
+       sicher traegt; dazu, was die Quelle tatsaechlich liefert (fehlende Werte fallen weg, nichts wird ergaenzt). */
+    if (fam === 'gym') return ['volume', 'duration', 'workingSets', 'exercises', 'avgHr'];   // Volumen = Hauptkennzahl (wie v8-439), sonst Dauer
+    if (fam === 'other') return ['duration', 'distance', 'avgHr', 'calories', 'maxHr'];
     return null;
   }
 
@@ -174,6 +178,21 @@
     return (Array.isArray(t) && t.length === n && t.every(function (x) { return num(x) !== null; })) ? t.slice() : null;
   }
 
+  /* v8-456 · Kennwerte je Diagramm aus der Aktivitaet selbst (Garmin-Zusammenfassung / alle Messpunkte) — die Diagrammpunkte
+     sind eine Auswahl (≤ 300) und erzeugen keine eigene Wahrheit fuer Ø oder Maximum. */
+  var REF = { hr: { avg: 'avgHr', max: 'maxHr' }, power: { avg: 'avgPower', max: 'maxPower' }, cadenceRun: { avg: 'runningCadence' }, cadenceBike: { avg: 'cyclingCadence' },
+              speedKmh: { avg: 'avgSpeed', max: 'maxSpeed' }, paceKm: { avg: 'paceKm' }, pace100: { avg: 'pace100' }, elevation: { gain: 'elevationGain' },
+              lengthPace: { avg: 'pace100' }, lengthSwolf: { avg: 'swolf' }, swolf: { avg: 'swolf' }, strokeRate: { avg: 'strokeRate' } };
+  function stopsOf(desc, n, fam) {
+    if (fam !== 'running' && fam !== 'cycling') return null;
+    var d = desc.metrics.speedSeries; if (!show(d) || !Array.isArray(d.value) || d.value.length !== n) return null;
+    return d.value.map(function (v) { var x = num(v); return x !== null && x <= 0.3; });
+  }
+  /* Distanz je Messpunkt (streams.distance, gleicher Index) — nur fuer die Anzeige „Kilometer 12,4" am gewaehlten Punkt */
+  function distOf(owner, n) {
+    var v = (obj((obj(owner && owner.metrics) || {}).streams) || {}).distance;
+    return Array.isArray(v) && v.length === n ? v.map(num) : null;
+  }
   function chartsOf(owner, desc, ids, fam) {
     var out = [], ctx = desc.context && desc.context.environment;
     (ids || []).forEach(function (cid) {
@@ -182,12 +201,9 @@
       if (!show(d) || !Array.isArray(d.value)) return;
       var vals = d.value.map(function (v) { var x = num(v); return x === null ? null : (c.conv ? c.conv(x) : x); });
       if (cid === 'pace100') vals = vals.map(function (v) { return (v !== null && v >= 30 && v <= 900) ? v : null; });   // Pausen/Wenden (≈ 0 m/s) sind kein Tempo
-      if (cid === 'paceKm') {
-        vals = vals.map(function (v) { return (v !== null && v >= 100 && v <= 1800) ? v : null; });
-        /* v8-454: Gehen/Stehen (langsamer als das Doppelte des Median-Tempos) ist kein Lauftempo — Luecke statt Spitze */
-        var pv = vals.filter(function (v) { return v !== null; }).sort(function (x, y) { return x - y; }), pm = pv.length ? pv[Math.floor(pv.length / 2)] : null;
-        if (pm) vals = vals.map(function (v) { return v !== null && v > pm * 2 ? null : v; });
-      }
+      /* v8-456: Tempo nur aus Geschwindigkeit > 0,3 m/s (Stillstand hat kein Tempo). Langsame, aber bewegte Punkte (Gehen)
+         bleiben Messwerte — die Achse blendet sie als „ausserhalb" am Rand ein (activity-chart), statt sie zu loeschen. */
+      if (cid === 'paceKm') vals = vals.map(function (v) { return (v !== null && v >= 100 && v <= 3600) ? v : null; });
       if (cid === 'cadence' && d.kind && d.kind !== (fam === 'cycling' ? 'cycling_cadence_rpm' : 'running_cadence_spm')) return;
       /* v8-454: Rolle / virtuell — Geschwindigkeit und Hoehe sind dort modelliert (keine Messung im Gelaende): kein Diagramm */
       if (fam === 'cycling' && (cid === 'speedKmh' || cid === 'elevation') && (ctx === 'indoor' || ctx === 'virtual')) return;
@@ -195,8 +211,16 @@
       if (n < MIN_SERIES_POINTS) return;                  // v8-454: keine scheinbar genaue Kurve aus wenigen Punkten
       var sum = 0, lo = null, hi = null; vals.forEach(function (v) { if (v !== null) { sum += v; lo = lo === null || v < lo ? v : lo; hi = hi === null || v > hi ? v : hi; } });
       var tms = timesFor(owner, vals.length);
+      /* v8-456 · Stillstand je Messpunkt (Geschwindigkeit ≤ 0,3 m/s, Lauf/Rad): Tempo gibt es dort nicht, Kadenz 0 ist dort
+         Stehen — beides wird im Diagramm als eigener Punkt am Grund gezeigt, nicht als Einbruch der Linie. Nichts geloescht. */
+      var marks = null, sp = stopsOf(desc, vals.length, fam);
+      if (sp && (cid === 'paceKm' || cid === 'speedKmh' || (cid === 'cadence' && fam === 'running'))) {
+        marks = vals.map(function (v, i) { return sp[i] && (cid !== 'cadence' || v === null || v === 0) ? 'stop' : null; });
+        if (!marks.some(Boolean)) marks = null;
+      }
       out.push({ id: cid, metric: c.metric, kind: c.kind, mean: sum / n, min: lo, max: hi, axis: tms ? 'elapsed' : 'index', unit: cid === 'cadence' ? (fam === 'cycling' ? ' rpm' : ' spm') : c.unit, dec: c.dec != null ? c.dec : 0,
-                 higherBetter: c.higherBetter, values: vals, times: tms, points: n, validation: d.validation, source: d.source, basis: d.basis });
+                 higherBetter: c.higherBetter, values: vals, times: tms, points: n, validation: d.validation, source: d.source, basis: d.basis,
+                 marks: marks, dist: distOf(owner, vals.length), ref: REF[cid === 'cadence' ? (fam === 'cycling' ? 'cadenceBike' : 'cadenceRun') : cid] || null });
     });
     return out;
   }
@@ -253,10 +277,14 @@
   function lengthCharts(swim) {
     var ls = SI() && SI().lengthSeries(swim); if (!ls) return [];
     var out = [];
-    [['lengthPace', ls.pace100, 'pace', '/100 m', false], ['lengthSwolf', ls.swolf, 'num', '', false]].forEach(function (d) {
-      var vals = d[1], n = vals.filter(function (v) { return v !== null; }).length; if (n < 8) return;
-      var sum = 0, lo = null, hi = null; vals.forEach(function (v) { if (v !== null) { sum += v; lo = lo === null || v < lo ? v : lo; hi = hi === null || v > hi ? v : hi; } });
-      out.push({ id: d[0], metric: 'lengths', kind: d[2], mean: sum / n, min: lo, max: hi, axis: 'lengths', unit: d[3], dec: 0, higherBetter: d[4], values: vals, times: null, labels: ls.labels,
+    /* v8-456: jede aktive Bahn ist ein Punkt. Auffaellige Bahnen (moeglicherweise ungenau / ausgeschlossen) bleiben sichtbar —
+       als markierter Einzelpunkt ohne Verbindungslinie, Grund beim Antippen; Ø und Bereich nur aus plausiblen Bahnen. */
+    [['lengthPace', ls.pace100, ls.pace100All, 'pace', '/100 m', false], ['lengthSwolf', ls.swolf, ls.swolfAll, 'num', '', false]].forEach(function (d) {
+      var good = d[1], all = d[2] || good, n = good.filter(function (v) { return v !== null; }).length; if (n < 8) return;
+      var sum = 0, lo = null, hi = null; good.forEach(function (v) { if (v !== null) { sum += v; lo = lo === null || v < lo ? v : lo; hi = hi === null || v > hi ? v : hi; } });
+      var marks = (ls.flags || []).map(function (f, i) { return f === 'implausible' ? 'excl' : (f === 'suspect' ? 'flag' : null); });
+      out.push({ id: d[0], metric: 'lengths', kind: d[3], mean: sum / n, min: lo, max: hi, axis: 'lengths', unit: d[4], dec: 0, higherBetter: d[5], values: all, times: null, labels: ls.labels,
+                 marks: marks.some(Boolean) ? marks : null, reasons: ls.reasons || null, meta: ls.meta || null, ref: REF[d[0]] || null,
                  points: n, validation: 'unverified', source: 'garmin_extras', basis: 'ext.splits.lapDTOs[].lengthDTOs' });
     });
     return out;
