@@ -202,8 +202,11 @@ async function boot(mode) {
   const own = await page.evaluate(() => { const g = ORVIA.routeMapView._gl(); return { line: g.project(51.4850, 7.2210), start: g.project(51.4800, 7.2160), end: g.project(51.4797, 7.2160) }; });
   const me = { line: scr(51.4850, 7.2210), start: scr(51.4800, 7.2160) };
   ok('C4 Lage: Karte und unabhaengige Rechnung liefern dieselbe Bildschirmstelle (± 0,05 px)', Math.abs(own.line[0] - me.line[0]) < 0.05 && Math.abs(own.line[1] - me.line[1]) < 0.05 && Math.abs(own.start[0] - me.start[0]) < 0.05, JSON.stringify([own.line.map(v => +v.toFixed(2)), me.line.map(v => +v.toFixed(2))]));
-  const vp = await B.pixels([me.line, [me.line[0], me.line[1] - 3.0], me.start, [me.start[0] - 6.5, me.start[1]], own.end, scr(51.4842, 7.2220), scr(51.4842, 7.2225), scr(51.4804, 7.2175), scr(51.48275, 7.22225)]);
-  ok('C5 Strecke in der Farbe der Sportart (Laufen #FF9A5C), daneben der dunkle Rand — kein Leuchten', near(vp[0], RUN, 4) && vp[1][0] < 60 && vp[1][1] < 50, JSON.stringify([vp[0], vp[1]]));
+  const vp = await B.pixels([me.line, [me.line[0], me.line[1] - 2.0], me.start, [me.start[0] - 6.5, me.start[1]], own.end, scr(51.4842, 7.2220), scr(51.4842, 7.2225), scr(51.4804, 7.2175), scr(51.48275, 7.22225)]);
+  /* v8-457: feinere Strecke (ROUTE_W 3 · CASE_W 1,5 · Deckkraft 0,4) — der Rand liegt jetzt zwischen 1,5 und 2,25 px neben der Mitte (Probe bei 2,0 px);
+     geprueft wird er gegen die Karte direkt daneben (3,5 px): Rand = Karte × (1 − 0,4), je Kanal ± 8 — kein Leuchten, kein Farbsaum */
+  const outside = (await B.pixels([[me.line[0], me.line[1] - 3.5]]))[0];
+  ok('C5 Strecke in der Farbe der Sportart (Laufen #FF9A5C), daneben der dunkle Rand (Karte × 0,6) — kein Leuchten', near(vp[0], RUN, 4) && !!outside && !near(outside, RUN, 40) && near(vp[1], outside.map(v => v * 0.6), 8), JSON.stringify([vp[0], vp[1], outside]));
   ok('C6 Start = gruener Ring um dunkle Mitte, Ziel = roter Punkt (Zustandsfarben)', near(vp[2], BASE, 6) && near(vp[3], START, 12) && near(vp[4], FINISH, 6), JSON.stringify([vp[2], vp[3], vp[4]]));
   ok('C7 Karte unter der Strecke: Strasse, Land, Gebaeude und Wald in den Farben des ORVIA-Stils an den gerechneten Stellen', near(vp[5], ROAD, 7) && near(vp[6], LAND, 5) && near(vp[7], BUILDING, 5) && near(vp[8], NATURE, 5), JSON.stringify(vp.slice(5)));
 

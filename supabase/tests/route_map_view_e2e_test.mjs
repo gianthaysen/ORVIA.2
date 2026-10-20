@@ -189,7 +189,7 @@ async function boot(mode) {
   const z2 = await B.info(); const nAfter = B.tiles();
   ok('C1 Finger doppelt so weit auseinander ⇒ eine Stufe hinein; der Ort zwischen den Fingern bleibt stehen (± 1,5 px)', !!z2 && Math.abs(z2.Z - (f0.Z + 1)) < 0.02 && close1(z2.start, f0.start, 1.5), JSON.stringify([+f0.Z.toFixed(2), +z2.Z.toFixed(2), r1(z2.start), r1(f0.start)]));
   ok('C2 WAEHREND des Zoomens geht keine Anfrage hinaus — erst danach die Kacheln der Endstufe', nDuring === nBefore && Math.abs(during.Z - (f0.Z + 1)) < 0.02 && nAfter > nBefore && nAfter - nBefore <= 6, JSON.stringify({ vorher: nBefore, waehrend: nDuring, danach: nAfter }));
-  ok('C3 Strichstaerke bleibt gleich (4,5 px), Strecke liegt in der neuen Stufe auf der Karte (± 1,5 px)', Math.abs(z2.strokeW - 4.5) < 0.01 && Math.abs(during.strokeW - 4.5) < 0.01 && z2.covers === true && z2.loaded === z2.cur && close1(z2.start, z2.cross, 1.5) && z2.z === f0.z + 1, JSON.stringify([r1(z2.start), r1(z2.cross), z2.z]));
+  ok('C3 Strichstaerke bleibt gleich (seit v8-457 feiner: 3 px), Strecke liegt in der neuen Stufe auf der Karte (± 1,5 px)', Math.abs(z2.strokeW - 3) < 0.01 && Math.abs(during.strokeW - 3) < 0.01 && z2.covers === true && z2.loaded === z2.cur && close1(z2.start, z2.cross, 1.5) && z2.z === f0.z + 1, JSON.stringify([r1(z2.start), r1(z2.cross), z2.z]));
   ok('C4 Strecke ist auf dem Bildschirm doppelt so gross — der Pfad selbst wurde dafuer NICHT neu geschrieben (nur transformiert)', Math.abs(z2.lineW / f0.lineW - 2) < 0.04 && z2.d === o.d && during.d === o.d && z2.gT !== f0.gT, (z2.lineW / f0.lineW).toFixed(3));
 
   sec('Schwung');
