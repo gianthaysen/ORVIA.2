@@ -310,7 +310,7 @@ gemessen (ohne Zeichen) · berechnet (gepunkteter Ring) · geschätzt (gepunktet
 `activity_experience_v4541` (34: Zeitquellen, Leistung, Bibliothek, Diagramm-Geometrie, Register, Quelltext), `activity_experience_v4541_ui_e2e` (41: Hierarchie, Renderfehler in allen Sportarten, Zwift, Diagramme mit Zeiger/Tastatur/Vergleich, Bibliothek, hell/dunkel/Kontrast, reduzierte Bewegung, 320–1440 px). Angepasst an die neue Struktur (gleiche Regeln): `visual_v3_e2e`, `activity_theme_e2e`, `data_integrity_v447_e2e`, `activity_analysis_v452_ui_e2e`, `swim_intervals_v453_ui_e2e`, `intervals_v454_ui_e2e`. Testdaten tragen jetzt den Details-Stand (`detailsVersion`), wie die Produktion.
 
 
-## 12 · v8-456 Unified Activity Experience Quality Pass + Teilen aus den Highlights (gebaut, nicht ausgeliefert · Build orvia-v8-456)
+## 12 · v8-456 Unified Activity Experience Quality Pass + Teilen aus den Highlights (live · Build orvia-v8-456)
 
 Status: IMPLEMENTIERT im Repo, NICHT deployt. Keine Migration, kein Worker-Rollout, keine Railway-Änderung, keine Änderung an
 Rekordberechnung, Rohdaten, Korrekturen oder Plan-Zuordnungen.
@@ -420,3 +420,68 @@ Rekordberechnung, Rohdaten, Korrekturen oder Plan-Zuordnungen.
 `story_share_v456_ui_e2e_test` (32); angepasst: intervals_v454 P5 (neue Regel), activity_experience_v4541_ui_e2e (Ablesezeile,
 Zwift-Pause unklar, Spielwelt-Feld), activity_theme_e2e 5b, effective_metric_e2e (Dauer im neuen Kopf), visual_v3_e2e E6,
 route_map G1.
+
+## 13 · v8-457 Running Experience Premium Quality Pass (gebaut, nicht ausgeliefert · Build orvia-v8-457)
+
+Grundlage: Gians 33 Bilder vom 20.10. (Halbmarathon Flensburg 06.09., 21,18 km; v8-456 live) + Auftrag „Running Experience
+Premium Quality Pass". Die 17-km-Bilder der Designreferenzen sind ein anderer Lauf (Intervalllauf 07.10.) — nicht vermischt.
+Kein Deploy, keine Migration, kein Worker, keine Railway-Aenderung, keine Rekordberechnung geaendert.
+
+### 13.1 Audit (Phase A) — Befund · Art · Ursache (nachgewiesen/vermutet) · Korrektur · Risiko
+
+| Befund (Bild) | Art | Ursache | Korrektur v8-457 | Risiko |
+|---|---|---|---|---|
+| 21,2 km auf Seite/Karten, 21,18 in der Story | Darstellung | gmAaFmt rundete auf eine Stelle (fmtDe), Story nahm das Anzeige-Modell (2 Stellen) — nachgewiesen | EINE Funktion gmDistTxt: Lauf-Familie 2 Stellen, mathematisch gerundet; Rad/Sonstige unveraendert | gering (nur Anzeige) |
+| 150 spm (Seite/Karte) vs. 149 (Story „Deine Zahlen") | Daten-Konflikt | Seite: Garmin-Mittel aller Messzeilen (metric-eligibility runningCadence, validiert); Story: Mittel der 296 gespeicherten Punkte (vm.cadence) — nachgewiesen | Story nimmt dieselbe Kennzahl (M('runningCadence')) | keins |
+| „2 h 22 min" (Story) vs. „2:22:12" | Darstellung | Story nahm vm.durationLabel | Story: Dauer h:mm:ss aus dem Modell | keins |
+| 312 m „Höhenmeter" | Definition | Garmin elevationGain = kumulierter Anstieg (summiert), nicht Hoehendifferenz/absolute Hoehe — nachgewiesen (sumRead elevationM) | Bezeichnung „Anstieg" in Story; Definition „bergauf, summiert (Garmin)" in der Bibliothek | keins |
+| 2:20:47 Halbmarathon bei 2:22:12 Dauer | geprueft, kein Fehler | Schnellstes 21,0975-km-Fenster aus allen 8.533 Messzeilen (Worker-Fenster „alle Messpunkte"). 21,18 km − 21,0975 km = 82,5 m in 85 s (≈ 17 min/km) → Stehen an Start/Ziel ausserhalb des Fensters. Timer = Gesamtzeit (0 s angehalten) → aktiv = einschliesslich Pausen. Kategorie „Aktive Trainingsbestzeit" = Register | unveraendert; Story nennt Kategorie, Distanz, Zeit — ohne Rechensatz | — |
+| „Halbmaratho / in 2:20:47" | Fehler | `.wst-prval` mit fester Groesse + Silbentrennung im schmalen Story-Rahmen | Bestleistung als Komposition: Kategorie · Distanzname (eigene Zeile, nowrap, Groesse nach Containerbreite) · Zeit; Text „Deine schnellste aufgezeichnete Halbmarathonzeit" | gering |
+| Titel „… Jacob Cemen…" abgeschnitten (Karten, Story-Kopf, Aufkleber) | Fehler | eine Zeile + Auslassung mitten im Wort | gmShortTitle (Anzeige: „Jacob Cement Halbmarathon"), Originaltitel bleibt gespeichert und steht in der Datenherkunft/Tooltip; Karten: erst kleiner, dann Umbruch an Wortgrenzen | gering |
+| Desktop: lange Titelzeile, Karte flach (Streifen) | Gestaltung | Kopf einspaltig, Karte 340 px Streifen | Desktop zweispaltig: links Kopf, rechts Karte im Seitenverhaeltnis der Strecke (380–560 px); gegen „Karte oben, 460 px" verglichen (Bilder) — zweispaltig gewaehlt (alles ueber der Falz, Karte doppelt so gross) | mittel (Layout) |
+| Teilen nur in den Highlights | Funktion | — | „Teilen" im Kopf, gmShareOpen = dieselbe Auswahl (keine zweite Engine) | gering |
+| Tempo-Einbrueche bis 15–17 min/km, Uhr nie angehalten | Daten — offen | Gespeichert sind 296 von 8.533 Zeilen (jede 29.). Die Einbrueche sind keine Stopps (≤ 0,3 m/s), sondern langsame Bewegung 1–1,7 m/s. Ob Gehen (Anstiege, Verpflegung) oder GPS-Geschwindigkeitsfehler, laesst sich nur mit Kadenz an diesen Punkten entscheiden — **nicht verifiziert** | nichts geloescht; Konsole `activity-dips-console.js` (v2) mit Gegenprobe Kadenz/Puls an den langsamen Punkten; Abgleich mit dem Tempo-Verlauf in Garmin Connect | — |
+| 296 von 8.533 Punkten | Datenreduktion | Worker speichert Punktauswahl (series_normalize _sample_indices) | Vorschlag Extremwert-erhaltende Reduktion (Min/Max je Zeitfenster) steht in §12 — Worker-Aenderung braucht Freigabe | — |
+| Z5 = 74 %, Grenzen unbekannt | Herkunft | Garmin liefert je Aktivitaet nur hrTimeInZone_1…5; die Grenzwerte speichert ORVIA nicht | „Zonengrenzen ansehen": Herkunft, „Grenzen liegen nicht vor" (nichts geschaetzt), wo in Garmin Connect/auf der Uhr; keine Umrechnung alter Aktivitaeten | keins |
+| Halbmarathon 06.09. ↔ „Long Run Sa 5.9. automatisch zugeordnet" | Zuordnung, kein Fehler | plan-auto-link@5: offene Einheit derselben Sportart in derselben Woche, naechster Tag, bei Gleichstand die fruehere — der Samstag-Lauf war offen | unveraendert (Gian kann „Ändern"/„Lösen") | — |
+| „Intervalle / Runden: wird von ORVIA noch nicht abgerufen" | Verfuegbarkeit | Runden fuer Laufen kommen erst mit Worker v8-454 (nicht ausgerollt) | keine Abschnitte-/Intervallkarte fuer diesen Lauf (keine erfundenen) | — |
+| Highlights zu langsam beim Wiedersehen | Gestaltung | 8,5 s je Szene + Strecke 2 s/km (HM 42 s) | Quick Highlights 3,6 s je Szene, Strecke 2,2 s fix (≈ 18 s gesamt); Cinematic Replay getrennt | gering |
+| Strecken dick/unscharf (Karte, Story, Karten, Aufkleber) | Gestaltung | Linie 4,5 px + Rand 7,5 px bei 65 %; Karten 11–16 px mit dunkler Kontur und starkem Leuchten | Karte 3 px + Rand 4,5 px bei 40 %; Start r 5 / Ziel r 3,5; Karten 6–7 px (1080er), leiser Schein, keine Kontur; Aufkleber 8–9 px mit kaum sichtbarer Kante | gering |
+| Aufkleber auf hellem Grund unlesbar, grauer Hof | Gestaltung | weisse Schrift, Schatten 16 px Blur | Schrift hell/dunkel waehlbar, Schatten 5 px; eng zugeschnitten (Inhalt + 28 px) | gering |
+| Karten mit Quellenzeile „Daten: Garmin · ORVIA" | Text | — | entfernt (keine Kartenkacheln → keine Attributionspflicht) | keins |
+| Exporte 1080 × 1920 | Qualitaet | Massstab 1 | 4K: gezeichnet in 2160 × 3840 (Massstab 2, Vektor); Standard 1080 × 1920 waehlbar; Rueckfall auf 1080 bei Speicherproblem mit Hinweis | mittel (Speicher aelterer iPhones) |
+
+### 13.2 Highlights: drei Wiedergaben
+- **Quick Highlights** (Standard): Szene 3,6 s (`GM_STORY_MS`), Strecke 2,2 s unabhaengig von der Distanz, Seite steht 1,6 s
+  nach der Zeichnung. Tippen links/rechts, Gedrueckthalten haelt an (Loslassen setzt fort, kein Weiterblaettern), Pause-Knopf,
+  Taste P; Teilen haelt an und setzt danach mit der Restzeit fort. Fortschrittsbalken ist eine CSS-Animation (anhaltbar).
+- **Cinematic Replay** („Strecke abspielen" auf der Abschlussseite): eigene Seite, distanzgetreu — Laufen 2 s/km, Rad 0,6 s/km,
+  sonst 1,5 s/km; 0,5× / 1× / 2×; 4–120 s. Ein Punkt faehrt die Linie ab (CSS `offset-path` = derselbe Pfad, gleiche Dauer und
+  lineare Kurve wie der Strich — er kann nicht springen). Keine neue Video-Infrastruktur.
+- **Social Highlight / Videoexport**: Folgephase. Kein Video-Knopf.
+
+### 13.3 Teilen — Vorlagen (Abgleich mit den zehn freigegebenen Richtungen)
+| # | Richtung | Stand v8-457 | Bedingung |
+|---|---|---|---|
+| 1 | Minimal | `hero`: grosse Zahl + zwei Werte | ≥ 1 Wert |
+| 2 | Strecke im Fokus | `route`, `route_plus`: feine echte GPS-Linie, leiser Schein, **ohne** Kartengrund | Strecke |
+| 3 | Bestleistung | `pb`: Kategorie (Register) · Distanz · Zeit · Datum | Bestzeit aus genau dieser Aktivitaet |
+| 4 | Signature Ring | `ring`: leuchtender Ring als Dekoration (kein Anteil/Fortschritt) | ≥ 1 Wert |
+| 5 | Photo Experience | `photo`: eigenes Foto (lokal gelesen, nie hochgeladen; Standortdaten der Datei fallen beim Neuzeichnen weg) | Foto gewaehlt |
+| 6 | Splits | `splits`: vergleichbare Belastungen/Runden der Intervall-Engine; Abweichung zum Schnitt der Gruppe (Plan-Ziele sind nicht angebunden — beschriftet „Δ zum Schnitt") | ≥ 3 vergleichbare |
+| 7 | Elevation Pro | `elev`: Hoehe ueber Distanz (Messreihe), Anstieg = Garmin, hoechster/tiefster Punkt aus der Reihe | Hoehenreihe + Anstieg |
+| 8 | Intervallverlauf | `intervals`: Tempo/Leistung ueber Zeit, Belastungen als Baender | ≥ 2 echte Belastungen, Zeitachsen passend |
+| 9 | Transparenter Sticker | `s_stack`: Titel · Distanz · Dauer · Tempo · Logo (+ alle bisherigen Aufkleber) | ≥ 3 Werte |
+| 10 | Contour Minimal | `contour`: abstrakte Linien (aus der Aktivitaets-ID, kein Gelaende) + drei Werte | ≥ 3 Werte |
+Standardvorlage: Bestzeit → `pb`, echte Intervalle → `intervals`, sonst `trio`; Aufkleber `s_stack`; eine von Hand gewaehlte
+Vorlage bleibt fuer diese Aktivitaet (Sitzung) vorn. Datenschutz: „Standort beim Teilen schuetzen" (Aus/200/500 m, entlang der
+Strecke gemessen — `privacyTrim` summiert Haversine-Abstaende), unter „Weitere Optionen", nur im Export.
+Karte mit Kartengrund (Mockup #2): bewusst nicht — MapTiler-Bedingungen fuer geteilte Bilder und das Ausblenden der Umgebung
+von Start/Ziel sind ungeklaert (Folgephase).
+
+### 13.4 Offen / nicht geprueft
+- Echte Geraete: iPhone Safari, iPhone-PWA, Android Chrome, Desktop Safari — nicht getestet (nur Chromium in der Cloud).
+- Bereits funktionierendes Kopieren → Instagram (Gians Test 20.10.) mit 4K-Aufklebern erneut pruefen (Dateigroesse 0,1–0,6 MB).
+- 4K-Karten (≈ 3–6 MB PNG) auf aelteren iPhones: Speicher-Rueckfall ist eingebaut, aber nicht auf Geraet geprueft.
+- Tempo-Einbrueche HM: Konsole (Kadenz-Gegenprobe) bzw. Garmin Connect.
+- Kartenkacheln (MapTiler) sind in der Cloud nicht erreichbar — die Bilder der Aktivitaetsseite zeigen die Ersatzzeichnung.
