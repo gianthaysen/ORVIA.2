@@ -9512,11 +9512,40 @@ function gmActRedrawKeep(){
 function gmAaClock(sec){if(sec==null||!isFinite(sec))return '—';var t=Math.round(sec),h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return h?(h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')):(m+':'+String(s).padStart(2,'0'));}
 function gmAaPause(sec){var t=Math.round(sec),m=Math.floor(t/60),s=t%60;return m?(m+' min'+(s?' '+s+' s':'')):(s+' s');}
 function gmAaNum(v,dec){dec=dec||0;try{return (+v).toLocaleString('de-DE',{minimumFractionDigits:dec,maximumFractionDigits:dec});}catch(_){return dec?(+v).toFixed(dec).replace('.',','):String(Math.round(v));}}
+/* v8-457 · EINE Distanzanzeige fuer Seite, Analyse, Highlights, Karten und Aufkleber: Lauf-Familie (Laufen, Gehen, Wandern,
+   Trail) mit zwei Nachkommastellen (21,18 km — Gians Wunsch), Rad und Sonstige wie bisher mit hoechstens einer, Schwimmen in
+   Metern. Mathematisch gerundet (21,175 → 21,18). Nur Anzeige: keine Zeit, kein Tempo und keine Bestzeit wird je aus diesem
+   Text oder einer gerundeten Distanz neu berechnet. Garmin liefert die Distanz in Zentimetern — zwei Stellen (10 m) sind gedeckt. */
+function gmDistTxt(m,fam){
+  if(m==null||!isFinite(m))return '—';
+  if(fam==='swimming')return Math.round(m).toLocaleString('de-DE')+' m';
+  var km=Math.round(m/10)/100;
+  if(fam==='running')return km.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' km';
+  return fmtDe(km)+' km';
+}
+/* v8-457 · Kurzer Anzeigetitel. Garmin-Rennnamen sind oft lang („Flensburg - W 25 So. Rennen - Jacob Cement Halbmarathon
+   (21,1 km)"). Gespeichert bleibt IMMER der Originaltitel; hier entsteht nur eine Anzeige:
+     1. eine angehaengte Distanz in Klammern faellt weg (die Distanz steht ohnehin gross daneben),
+     2. ist der Titel dann noch lang (> 30 Zeichen) und durch „ - " gegliedert, gilt der letzte Abschnitt mit mindestens zwei
+        Woertern (bei Rennen der Veranstaltungsname). Kein Abschneiden mitten im Wort, keine erfundenen Woerter.
+   Rueckgabe { text, full, shortened } — die Seite zeigt den Originaltitel in der Datenherkunft und als Tooltip. */
+function gmShortTitle(t){
+  var full=String(t==null?'':t).replace(/\s+/g,' ').trim(),s=full;
+  if(!s)return {text:'',full:'',shortened:false};
+  s=s.replace(/\s*\(\s*[\d.,]+\s*(?:km|mi|m)\s*\)\s*$/i,'').trim()||full;
+  if(s.length>30){
+    var parts=s.split(/\s+[-–—|]\s+/).map(function(x){return x.trim();}).filter(Boolean);
+    if(parts.length>=2){
+      for(var i=parts.length-1;i>=0;i--){if(parts[i].split(' ').length>=2&&parts[i].length>=8){s=parts[i];break;}}
+    }
+  }
+  return {text:s,full:full,shortened:s!==full};
+}
 /* Wert einer Kennzahl mit Einheit — reine Formatierung */
 function gmAaFmt(d,fam){
   if(!d||d.value==null)return '—';var v=d.value;
   switch(d.id){
-    case 'distance':return fam==='swimming'?(Math.round(v).toLocaleString('de-DE')+' m'):(fmtDe(Math.round(v/10)/100)+' km');
+    case 'distance':return gmDistTxt(v,fam);
     case 'duration':case 'timer':case 'elapsed':case 'moving':return gmAaClock(v);
     case 'pause':return gmAaPause(v);
     case 'pace100':case 'pace100Moving':case 'pace100Total':return gmAaClock(v)+' /100 m';
@@ -9606,7 +9635,16 @@ function gmAaMountChart(md,aid){
 function gmAaZonesInner(md){
   var z=md&&md.zones;if(!z)return '';
   var rows=z.seconds.map(function(sec,i){return '<div class="aa-z"><span class="aa-z-l">Z'+(i+1)+'</span><span class="aa-z-bar"><i style="width:'+Math.max(0,Math.min(100,z.share[i]))+'%;opacity:'+(0.35+i*0.16).toFixed(2)+'"></i></span><span class="aa-z-v">'+gmEsc(gmAaClock(sec))+'</span><span class="aa-z-p">'+gmEsc(gmAaNum(z.share[i],0))+' %</span></div>';}).join('');
-  return '<div class="aa-md-h">'+gmEsc(_uiT('aa.zones.title'))+'</div>'+rows+'<div class="aa-note">'+gmEsc(_uiT('aa.zones.note'))+'</div>';
+  return '<div class="aa-md-h">'+gmEsc(_uiT('aa.zones.title'))+'</div>'+rows+'<div class="aa-note">'+gmEsc(_uiT('aa.zones.note'))+'</div>'+gmAaZoneInfoHtml(z);
+}
+/* v8-457 · „Zonengrenzen ansehen": Herkunft der Zonen ehrlich. Garmin liefert je Aktivitaet nur die ZEIT je Zone
+   (hrTimeInZone_1…5); die Grenzwerte speichert ORVIA bisher nicht — dann steht genau das da, keine geschaetzten Grenzen.
+   Liegen Grenzen vor (z.bounds = Untergrenzen in bpm), werden sie gezeigt. Keine eigene Zonen-Rechnung, keine Umrechnung. */
+function gmAaZoneInfoHtml(z){
+  var b=z&&Array.isArray(z.bounds)&&z.bounds.length===z.seconds.length?z.bounds:null;
+  var rows=b?'<dl class="ax-zb">'+b.map(function(lo,i){var hi=i<b.length-1?b[i+1]-1:null;return '<div><dt>Z'+(i+1)+'</dt><dd>'+gmEsc(hi!=null?_uiT('ax.z.range',{a:lo,b:hi}):_uiT('ax.z.from',{a:lo}))+'</dd></div>';}).join('')+'</dl>':'<p>'+gmEsc(_uiT('ax.z.no_bounds'))+'</p>';
+  return '<details class="ax-zinfo"><summary>'+gmEsc(_uiT('ax.z.open'))+'</summary><div class="ax-zinfo-b">'+
+    '<p>'+gmEsc(_uiT('ax.z.how'))+'</p>'+rows+'<p>'+gmEsc(_uiT('ax.z.where'))+'</p><p>'+gmEsc(_uiT('ax.z.history'))+'</p></div></details>';
 }
 function gmAaZonesHtml(md){
   var z=md&&md.zones;if(!z)return '';
@@ -9939,7 +9977,7 @@ try{window.ORVIA=window.ORVIA||{};window.ORVIA.activityDiagnose=gmActivityDiagno
 var _gmAxCmp={};          /* aid -> Vergleichsreihe (Diagramm-ID) */
 var _gmAxCharts=[];       /* aktive Diagramme (Neuzeichnen beim Schliessen loesen) */
 var GM_AX_LIB={performance:'ax.lib.performance',heart:'ax.lib.heart',movement:'ax.lib.movement',time:'ax.lib.time',load:'ax.lib.load',other:'ax.lib.other'};
-var GM_AX_DEF={duration:'ax.def.timer',timer:'ax.def.timer_series',elapsed:'ax.def.elapsed',moving:'ax.def.moving',pause:'ax.def.pause',restTime:'ax.def.restTime'};
+var GM_AX_DEF={duration:'ax.def.timer',timer:'ax.def.timer_series',elapsed:'ax.def.elapsed',moving:'ax.def.moving',pause:'ax.def.pause',restTime:'ax.def.restTime',elevationGain:'ax.def.elev'};
 var GM_AX_MODELED={distance:1,avgSpeed:1,maxSpeed:1,elevationGain:1};
 var GM_AX_HERO_LBL={avgSpeed:'ax.hero.avgSpeed'};   /* kurze Bezeichnung in der schmalen Hero-Spalte */
 /* Bezeichnung einer Kennzahl in der Bibliothek: Zeiten erklaert, modellierte Werte (Rolle/virtuell) gekennzeichnet */
@@ -9960,7 +9998,7 @@ function gmAxHeroHtml(md,vm,a,aid,when,rpe){
   var ctx=(md.context&&md.context!=='outdoor')?gmAaT(GM_AA_CTX,md.context,''):'';
   var h='<section class="ax-hero" aria-labelledby="gmAxTitle"><div class="ax-hero-txt">'+
     (gmAxSame(vm.title,vm.sportLabel)?(ctx?'<div class="ax-kicker is-ctx"><span class="ax-ctx">'+gmEsc(ctx)+'</span></div>':''):'<div class="ax-kicker"><span>'+gmEsc(vm.sportLabel||'')+'</span>'+(ctx?'<span class="ax-ctx">'+gmEsc(ctx)+'</span>':'')+'</div>')+
-    '<h1 id="gmAxTitle" class="ax-title">'+gmEsc(vm.title||vm.sportLabel||'—')+'</h1>'+
+    (function(){var st=gmShortTitle(vm.title||vm.sportLabel||'—');return '<h1 id="gmAxTitle" class="ax-title"'+(st.shortened?' title="'+gmEsc(st.full)+'"':'')+'>'+gmEsc(st.text||'—')+'</h1>';})()+
     '<p class="ax-when">'+gmEsc(when)+'</p>';
   if(first){
     h+='<div class="ax-key aa-hero"><div class="ax-key-main aa-hero-main"><b>'+gmAaValUnit(gmAaFmt(first,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,first.id))+gmAxQm(first)+'</span></div>';
@@ -9975,6 +10013,8 @@ function gmAxHeroHtml(md,vm,a,aid,when,rpe){
   }
   var act='';
   try{if(typeof gmStoryPages==='function'&&gmStoryPages(a).length>=2)act+='<button type="button" class="ax-btn gm-story-cta" onclick="gmOpenStory(\''+gmEsc(String(aid))+'\')">'+icon('sparkle','sm')+'<span>'+gmEsc(_uiT('ui.highlights_ansehen'))+'</span></button>';}catch(_){ }
+  /* v8-457: Teilen direkt aus der Aktivitaet — dieselbe Auswahl (story-share) wie in den Highlights, keine zweite Teilen-Logik */
+  if(gmStoryCanShare())act+='<button type="button" class="ax-btn ax-share-cta" onclick="gmShareActivity(\''+gmEsc(String(aid))+'\')">'+ORVIA.storyShare.SHARE_SVG+'<span>'+gmEsc(_uiT('share.share'))+'</span></button>';
   act+='<button type="button" class="ax-chip" onclick="gmAxShowSource()" aria-label="'+gmEsc(_uiT('ax.src.open'))+'">'+gmEsc(gmActSrcLabel(vm.source))+icon('info','xs')+'</button>';
   h+='<div class="ax-act">'+act+'</div></div>';
   return h+'</section>';
@@ -9991,6 +10031,24 @@ function gmAxVisHtml(md,route,vm){
   }
   if(md.family==='swimming'&&gmActSignatureRenderer(vm.sportId)==='waves')return '<div class="act-hero act-waves" aria-hidden="true">'+gmActWaves(390,150,7)+'</div>';
   return '';
+}
+/* v8-457 · Kopf der Seite. Mit Strecke (Karte oder virtuelle Linie): am Desktop zwei Spalten — links Titel, Hauptzahl,
+   Kennzahlen und Aktionen, rechts eine grosse Karte im Seitenverhaeltnis der Strecke (--ax-map-ar, begrenzt auf 0,75–1,6;
+   Hoehe 380–560 px). Am Telefon/Tablet unveraendert: Karte volle Breite oben, darunter der Kopf. Ohne Strecke wie bisher. */
+function gmRouteAspect(route){
+  try{
+    var la0=90,la1=-90,lo0=180,lo1=-180;
+    route.forEach(function(p){if(!p)return;var la=+p[0],lo=+p[1];if(!isFinite(la)||!isFinite(lo))return;la0=Math.min(la0,la);la1=Math.max(la1,la);lo0=Math.min(lo0,lo);lo1=Math.max(lo1,lo);});
+    if(la1<la0)return 1.2;
+    var w=(lo1-lo0)*Math.cos((la0+la1)/2*Math.PI/180),h=la1-la0;
+    var ar=h>0?w/h:1.6;return Math.max(0.75,Math.min(1.6,Math.round(ar*100)/100));
+  }catch(_){return 1.2;}
+}
+function gmAxLeadHtml(vis,route,heroH){
+  if(!vis)return heroH;
+  var map=/class="route-map/.test(vis);
+  if(!map)return '<div class="ax-top">'+vis+'</div>'+heroH;
+  return '<div class="ax-lead has-map" style="--ax-map-ar:'+gmRouteAspect(route||[])+'"><div class="ax-top ax-lead-map">'+vis+'</div>'+heroH+'</div>';
 }
 /* Virtuelle Strecke: dieselbe Einpassung wie die Karte (route-map, Kartenkacheln ausdruecklich aus); ohne Modul bleibt die
    eingepasste Linienzeichnung stehen. */
@@ -10194,7 +10252,7 @@ function gmAxLibHtml(md){
   var lv=gmAxLevel(),open=lv==='p';if(lv==='f'){try{open=matchMedia('(min-width:1024px)').matches;}catch(_){ }}
   var body=groups.map(function(g){
     return '<section class="ax-lg"><h3>'+gmEsc(_uiT(GM_AX_LIB[g.id]||'ax.lib.other'))+'</h3>'+g.items.map(function(d){
-      var def=g.id==='time'&&GM_AX_DEF[d.id]?'<small>'+gmEsc(_uiT(d.id==='duration'&&d.method==='manual'?'ax.def.duration_manual':GM_AX_DEF[d.id]))+'</small>':'';
+      var def=(g.id==='time'||d.id==='elevationGain')&&GM_AX_DEF[d.id]?'<small>'+gmEsc(_uiT(d.id==='duration'&&d.method==='manual'?'ax.def.duration_manual':GM_AX_DEF[d.id]))+'</small>':'';
       var qm=gmAxQm(d);if(qm)anyQ=true;
       return '<details class="ax-row"><summary><span class="ax-rl">'+gmEsc(gmAxLabel(d,md))+def+'</span><span class="ax-rv">'+gmAaValUnit(gmAaFmt(d,md.family))+qm+'</span></summary>'+
         '<div class="ax-rd">'+gmAxRowMeta(d,md).map(function(t){return '<span>'+gmEsc(t)+'</span>';}).join('')+'</div></details>';
@@ -10208,6 +10266,8 @@ function gmAxLibHtml(md){
 function gmAxSourceHtml(md,owner,a,vm,aid){
   var kv=[];
   kv.push([_uiT('ax.src.source'),gmActSrcLabel(vm.source)+(vm.recording?' + '+gmActSrcLabel(vm.recording.source):'')]);
+  /* v8-457: Originaltitel (gespeichert, unveraendert), wenn oben ein kuerzerer Anzeigetitel steht */
+  var _st=gmShortTitle(vm.title||'');if(_st.shortened)kv.push([_uiT('ax.src.title'),_st.full]);
   if(md.context)kv.push([_uiT('ax.src.env'),gmAaT(GM_AA_CTX,md.context,md.context)]);
   if(md.sampling)kv.push([_uiT('ax.src.series'),md.sampling.thinned?_uiT('ax.src.series_thin',{k:md.sampling.kept.toLocaleString('de-DE'),r:md.sampling.rows.toLocaleString('de-DE')}):_uiT('ax.src.series_full',{r:md.sampling.rows.toLocaleString('de-DE')})]);
   var p=[];
@@ -10255,7 +10315,7 @@ function gmAxPageHtml(a,vm,md,aid,o){
   var colB=an+asH;
   return '<div class="ax" data-ax-ctx="'+gmEsc(md.context||'')+'" data-ax-fam="'+gmEsc(md.family)+'">'+
     '<div class="ax-bar"><button class="backbtn" onclick="gmCloseActivityPage()" aria-label="'+_uiT('ui.zurueck')+'">'+icon('chev')+'</button></div>'+
-    (vis?'<div class="ax-top">'+vis+'</div>':'')+gmAxHeroHtml(md,vm,a,aid,when,o.rpe)+
+    gmAxLeadHtml(vis,o.route,gmAxHeroHtml(md,vm,a,aid,when,o.rpe))+
     '<div class="ax-body">'+gmAxChartsHtml(md,aid,o.cadNote)+
       '<div class="ax-cols'+(iv?'':' no-a')+'">'+(iv?'<div class="ax-col-a">'+iv+'</div>':'')+'<div class="ax-col-b">'+colB+'</div></div>'+
       gmAxLibHtml(md)+gmAxSourceHtml(md,md.owner,a,vm,aid)+
@@ -11038,15 +11098,23 @@ renderAkt=function(){return ORVIA.activity.render();};
    Keine Engine-Aenderung, keine Neuberechnung, keine erfundene Seite: fehlt eine
    Datenquelle, entfaellt die betreffende Seite ersatzlos.
    ============================================================ */
-var _gmStory={pages:[],idx:0,timer:null,aid:null};
-var GM_STORY_MS=8500;
-/* v8-456 · Strecke in den Highlights: Standard 2 s je km (einstellbar: localStorage orvia_story_route_spkm, 0,5–5 s/km),
-   mindestens 2 s, hoechstens 90 s. Die Seite bleibt mindestens bis 2,5 s nach dem Ende der Zeichnung stehen. */
-var GM_STORY_ROUTE_SPKM=2;
-function gmStoryRouteDraw(km){
-  var spk=GM_STORY_ROUTE_SPKM;try{var v=parseFloat(localStorage.getItem('orvia_story_route_spkm'));if(isFinite(v)&&v>=0.5&&v<=5)spk=v;}catch(_){ }
-  var k=(typeof km==='number'&&isFinite(km)&&km>0)?km:0;
-  return Math.round(Math.min(90,Math.max(2,k*spk))*10)/10;
+var _gmStory={pages:[],idx:0,timer:null,aid:null,mode:null,paused:false,dur:0,left:0,t0:0};
+/* v8-457 · Zwei Wiedergaben (Gians Befund 20.10.: beim wiederholten Ansehen zu langsam):
+   Quick Highlights (Standard): kurze Szenen (3,6 s), Strecke zeichnet sich kompakt in 2,2 s — unabhaengig von der Distanz;
+     5–6 Szenen ≈ 15–20 s. Tippen links/rechts springt, Gedrueckthalten (oder Pause-Knopf, Taste P) haelt an, Teilen jederzeit.
+   Cinematic Replay (eigener Modus, Abschlussseite „Strecke abspielen"): die ganze Strecke distanzproportional — Laufen 2 s/km,
+     Rad 0,6 s/km, sonst 1,5 s/km; Tempo 0,5× / 1× / 2× waehlbar; 4–120 s. Ein Punkt faehrt die Linie gleichmaessig ab
+     (CSS-Bewegungspfad, gleiche Dauer und Kurve wie der Strich — er kann nicht springen).
+   Videoexport (Social Highlight als Datei) ist eine eigene Folgephase — hier gibt es dafuer keinen Knopf. */
+var GM_STORY_MS=3600;
+var GM_STORY_QUICK_DRAW=2.2;
+var GM_STORY_REPLAY_SPKM={running:2,cycling:0.6,other:1.5};
+function gmStoryRouteDraw(km,mode,fam,speed){
+  if(mode!=='replay')return GM_STORY_QUICK_DRAW;
+  var spk=GM_STORY_REPLAY_SPKM[fam]||GM_STORY_REPLAY_SPKM.other;
+  try{var v=parseFloat(localStorage.getItem('orvia_story_route_spkm'));if(isFinite(v)&&v>=0.2&&v<=5)spk=v;}catch(_){ }
+  var k=(typeof km==='number'&&isFinite(km)&&km>0)?km:0,f=(+speed>0)?+speed:1;
+  return Math.round(Math.min(120,Math.max(4,k*spk/f))*10)/10;
 }
 function gmStoryPageMs(html){var m=/data-st-ms="(\d+)"/.exec(String(html||''));return Math.max(GM_STORY_MS,m?+m[1]:0);}
 /* Gesehene Storys: kanonisch im Profil (cloud-synchron ueber saveProfile), damit die
@@ -11286,11 +11354,48 @@ function gmShareData(aid){
   var theme=gmActThemeId(vm.sportId),acc='';
   try{var pr=document.createElement('div');pr.setAttribute('data-activity',theme);pr.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.appendChild(pr);acc=getComputedStyle(pr).getPropertyValue('--activity-primary').trim();pr.remove();}catch(_){acc='';}
   if(!/^#[0-9a-f]{3,8}$|^rgb/i.test(acc))acc='';
-  var src=gmActSrcLabel(vm.source);
-  return {fam:fam,accent:acc,title:vm.title||vm.sportLabel||_uiT('ui.training'),sport:vm.sportLabel||'',date:dl,metrics:metrics,rateIds:GM_SHARE_RATE[fam]||[],
+  /* v8-457: kurzer Anzeigetitel, keine technische Quellenzeile (keine Kartenkacheln → keine Attributionspflicht) */
+  return {fam:fam,accent:acc,title:gmShortTitle(vm.title||vm.sportLabel||_uiT('ui.training')).text,sport:vm.sportLabel||'',date:dl,metrics:metrics,rateIds:GM_SHARE_RATE[fam]||[],
     route:route,routeVirtual:ctx==='virtual',routeTag:ctx==='virtual'?_uiT('share.virtual_route'):'',
-    pb:pb?{kicker:pb.catLabel,dist:pb.dist,time:pb.time,sub:pb.how+(pb.m.date?' · '+pb.m.date.split('-').reverse().join('.'):'')}:null,
-    footer:src&&src!=='—'?_uiT('share.footer',{s:src}):'',fileBase:'orvia-'+(vm.sportId||'aktivitaet')+'-'+(vm.date||'')};
+    pb:pb?{kicker:pb.catLabel,dist:pb.dist,time:pb.time,date:pb.m.date?String(pb.m.date).split('-').reverse().join('.'):''}:null,
+    splits:gmShareSplits(md),ivtl:gmShareIvTimeline(md),elev:gmShareElev(md),photoHint:_uiT('share.photo_hint'),
+    fileBase:'orvia-'+(vm.sportId||'aktivitaet')+'-'+(vm.date||'')};
+}
+/* v8-457 · Daten fuer die Vorlagen „Abschnitte", „Intervallverlauf" und „Hoehenprofil" — nur aus dem Analyse-Modell, nur wenn
+   echt vorhanden (sonst null → Vorlage erscheint nicht). Keine Ziele erfunden: ohne hinterlegtes Ziel ist die Abweichung die
+   zum Schnitt DERSELBEN vergleichbaren Gruppe (Intervall-Engine), und so beschriftet. */
+function gmShareSplits(md){
+  try{
+    var an=md&&md.intervals&&md.intervals.analytics;if(!an||!an.comparable||!Array.isArray(an.values)||an.values.length<3)return null;
+    var hb=an.metric!=='pace',sum=0;an.values.forEach(function(v){sum+=v;});var mean=sum/an.values.length;
+    var fmtV=function(v){return an.metric==='pace'?gmAaClock(v):(an.metric==='power'?Math.round(v)+' W':gmAaNum(v*3.6,1)+' km/h');};
+    var fmtD=function(dv){var sg=dv>0?'+':(dv<0?'−':'±'),a=Math.abs(dv);return sg+(an.metric==='pace'?gmAaClock(a):(an.metric==='power'?Math.round(a)+' W':gmAaNum(a*3.6,1)));};
+    return {title:_uiT(an.unit==='work'?'share.sp.work':'share.sp.laps'),refLabel:_uiT('share.sp.ref_mean'),higherBetter:hb,
+      rows:an.members.map(function(lb,i){var v=an.values[i],dv=v-mean;return {label:an.unit==='work'?_uiT('st.laps.work_s',{n:lb}):String(lb),v:v,txt:fmtV(v),delta:dv,dtxt:fmtD(dv)};})};
+  }catch(_){return null;}
+}
+function gmShareIvTimeline(md){
+  try{
+    var tl=md&&md.timeline,iv=md&&md.intervals;if(!tl||!iv||!Array.isArray(tl.blocks))return null;
+    var work=tl.blocks.filter(function(b){return b.kind==='work';});if(work.length<2)return null;
+    var pz=md.metrics&&md.metrics.pause;if(tl.basis!=='elapsed'&&pz&&pz.value>2)return null;   /* Zeitachsen muessen passen */
+    var c=md.charts.filter(function(x){return md.family==='running'?x.id==='paceKm':(x.id==='power'||x.id==='speedKmh');})[0];
+    if(!c||!c.times)return null;
+    var pace=c.kind==='pace';
+    return {title:_uiT('share.iv.title'),legend:_uiT('share.iv.legend'),inv:pace,total:tl.total,blocks:tl.blocks.map(function(b){return {kind:b.kind,start:b.start,dur:b.dur};}),
+      pace:{t:c.times.slice(),v:c.values.map(function(v,i){return (c.marks&&c.marks[i])?null:v;})},fmt:pace?function(v){return gmAaClock(v)+' /km';}:function(v){return gmAaNum(v,c.dec||0)+' '+String(c.unit||'').trim();}};
+  }catch(_){return null;}
+}
+function gmShareElev(md){
+  try{
+    var c=md&&md.charts&&md.charts.filter(function(x){return x.id==='elevation';})[0],g=md&&md.metrics&&md.metrics.elevationGain;
+    if(!c||!c.dist||!gmAxOk(g))return null;
+    var pts=[];c.values.forEach(function(v,i){var d=c.dist[i];if(v!=null&&d!=null)pts.push([d/1000,v]);});
+    if(pts.length<20)return null;
+    var ys=pts.map(function(p){return p[1];});
+    return {pts:pts,gain:gmAaFmt(g,md.family),gainLabel:_uiT('share.el.gain'),hi:Math.round(Math.max.apply(null,ys))+' m',lo:Math.round(Math.min.apply(null,ys))+' m',
+      hiLabel:_uiT('share.el.hi'),loLabel:_uiT('share.el.lo'),x0:'0 km',x1:md.metrics.distance&&gmAxOk(md.metrics.distance)?gmDistTxt(md.metrics.distance.value,md.family):''};
+  }catch(_){return null;}
 }
 /* v8-456 · vergleichbare Abschnitte fuer die Highlights — dasselbe Modell wie die Aktivitaetsseite (keine zweite Rechnung).
    Rueckgabe null = keine vergleichbaren Abschnitte (dann keine Rundenseite statt einer schiefen). */
@@ -11316,6 +11421,14 @@ function gmStoryLapModel(a,vm,sess,fam){
   if(!rows.some(function(r){return r.best;})){var bi=0;rows.forEach(function(r,i){if(hb?r.v>rows[bi].v:r.v<rows[bi].v)bi=i;});rows[bi].best=true;}
   return {rows:rows,kick:kick,bestLbl:bestLbl,sub:sub,higherBetter:hb};
 }
+/* Groesse der Kartenflaeche einer Story-Seite (Cover und Replay). v8-435: Der Kopf (Balken, Titel, Datum) rueckt auf dem
+   iPhone um den sicheren Rand (--sat, 54–59 px) nach unten — der Innenrand der Strecke muss mitgehen. */
+function gmStoryMapGeom(){
+  var _vw=(typeof window!=='undefined'&&window.innerWidth)||390,_vh=(typeof window!=='undefined'&&window.innerHeight)||780;
+  var w=(_vw>=700)?440:_vw,h=Math.round(_vh*0.66);
+  var _sat=0;try{var _pb=document.createElement('div');_pb.style.cssText='position:fixed;left:0;top:0;width:0;height:var(--sat,0px);visibility:hidden;pointer-events:none';document.body.appendChild(_pb);_sat=_pb.offsetHeight||0;document.body.removeChild(_pb);}catch(_){_sat=0;}
+  return {w:w,h:h,pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(h*0.17),l:44}};
+}
 function gmStoryPages(a){
   var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
   if(!vm)return [];
@@ -11325,13 +11438,15 @@ function gmStoryPages(a){
   var pages=[];
   /* Legacy-Sessions tragen ein synthetisches T00:00 — keine gemessene Uhrzeit. */
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
-  var title=vm.title||vm.sportLabel||'' + _uiT('ui.training') + '';
+  /* v8-457: kurzer Anzeigetitel (Originaltitel bleibt gespeichert und steht auf der Aktivitaetsseite) */
+  var title=gmShortTitle(vm.title||vm.sportLabel||_uiT('ui.training')).text;
   var top='<div class="wst-top"><b>'+gmEsc(title)+'</b><span>'+gmEsc(dl)+(vm.source?' · '+gmEsc(gmActSrcLabel(vm.source)):'')+'</span></div>';
   var page=function(mid,footHtml,cls){return '<div class="wst-bg" '+actAttr+'></div><div class="wst-in'+(cls?' '+cls:'')+'" '+actAttr+'>'+top+'<div class="wst-mid">'+mid+'</div>'+(footHtml||'')+'</div>';};
   var foot=function(hl,sub,src){return '<div class="wst-foot"><div class="wst-hl">'+hl+'</div>'+(sub?'<div class="wst-hsub">'+gmEsc(sub)+'</div>':'')+(src?'<div class="wst-hsrc">'+gmEsc(src)+'</div>':'')+'</div>';};
   /* v8-432: Quelle der Messung klein unter den Zahlen — statt erklaerender Saetze. */
   var srcLine=(vm.source&&typeof gmActSrcLabel==='function')?gmActSrcLabel(vm.source):null;if(srcLine==='—')srcLine=null;
-  var em=function(v){return '<em class="wst-em">'+gmEsc(String(v))+'</em>';};
+  /* v8-457: Wert und Einheit bleiben zusammen (geschuetztes Leerzeichen) — kein „4:58 / /km"-Umbruch */
+  var em=function(v){return '<em class="wst-em">'+gmEsc(String(v).replace(/ /g,'\u00a0'))+'</em>';};
   /* Verknuepfte Legacy-Session (Splits/Saetze/RPE/Debrief): storyRef ODER _legacy. */
   var sess=null;
   try{if(vm.storyRef&&typeof DB!=='undefined'){var e0=DB[vm.storyRef.date];sess=(e0&&e0.sessions&&e0.sessions[vm.storyRef.typ])||null;}}catch(_){ }
@@ -11340,10 +11455,15 @@ function gmStoryPages(a){
   var cleanArr=function(arr,conv){if(!Array.isArray(arr))return null;var out=[];for(var i=0;i<arr.length;i++){var v=arr[i];if(typeof v==='number'&&isFinite(v)){var w=conv?conv(v):v;if(w!=null&&isFinite(w))out.push(w);}}return out.length>=5?out:null;};
   var hr=cleanArr(st&&st.heart_rate,null);
   var gym=(fam==='gym')?gmActGymAgg(a,vm,sess):null;
-  /* v8-456 · Tempo aus DEMSELBEN Modell wie Aktivitaetsseite und Teilen-Karte (metric-eligibility). Vorher: vm.paceLabel —
-     beim Schwimmen Gesamtzeit/Distanz inkl. Pausen (z. B. „Ø 5:09/100 m"), waehrend Seite und Karte 1:48 /100 m zeigten. */
-  var paceTxt=(function(){try{var md0=gmActAnalysisFor(a,vm,null);if(!md0||!md0.metrics)return null;var id=md0.family==='running'?'paceKm':(md0.family==='swimming'?'pace100':null);
-    var d0=id?md0.metrics[id]:null;return gmAxOk(d0)?gmAaFmt(d0,md0.family):null;}catch(_){return null;}})()||vm.paceLabel||null;
+  /* v8-456/457 · Kennzahlen der Highlights aus DEMSELBEN Modell wie Aktivitaetsseite und Teilen-Karte (activity-analysis →
+     metric-eligibility, Formatierung gmAaFmt/gmDistTxt). Vorher teils aus dem Anzeige-Modell: Schwimmen „Ø 5:09/100 m"
+     (Gesamtzeit inkl. Pausen) statt 1:48; Kadenz 149 (Mittel der 296 gespeicherten Punkte) statt 150 (Garmin, alle Punkte);
+     Dauer „2 h 22 min" neben „2:22:12"; Distanz 21,2 neben 21,18. */
+  var mdS=null;try{mdS=gmActAnalysisFor(a,vm,(sess&&Array.isArray(sess.splits)&&sess.splits.length&&!(vm.canonicalSplits&&vm.canonicalSplits.length))?sess.splits:null);}catch(_){mdS=null;}
+  var M=function(id){try{var d=mdS&&mdS.metrics?mdS.metrics[id]:null;return gmAxOk(d)?gmAaFmt(d,mdS.family):null;}catch(_){return null;}};
+  var paceTxt=M(mdS&&mdS.family==='swimming'?'pace100':'paceKm')||vm.paceLabel||null;
+  var distTxt=M('distance')||vm.distanceLabel||null;
+  var durClock=M('duration');
   /* ---------- Headline: faktischer Satz aus echten Feldern ---------- */
   var VERB={running:'gelaufen',trail_running:'gelaufen',walking:'gegangen',hiking:'gewandert',cycling:'' + _uiT('ui.rad_gefahren') + '',swimming:'geschwommen',rowing:'gerudert'};
   var PLAY={football:1,handball:1,basketball:1,tennis:1,padel:1,volleyball:1,table_tennis:1,tabletennis:1};
@@ -11366,8 +11486,8 @@ function gmStoryPages(a){
   if(fam==='gym'&&gym&&gym.exCount){
     hl='' + _uiT('ui.du_hast') + ''+em(gym.exCount+(gym.exCount===1?'' + _uiT('ui.uebung') + '':'' + _uiT('ui.uebungen_') + ''))+(gym.setCount?' mit '+em(gym.setCount+'' + _uiT('ui.saetzen') + ''):'')+' absolviert.';
     sub=[gym.volumeKg?gmKg(gym.volumeKg)+'' + _uiT('ui.kg_bewegtes_volumen') + '':null,durTxt,vm.avgHr!=null?'' + _uiT('ui.hf') + ''+vm.avgHr+' bpm':null].filter(Boolean).join(' · ');
-  }else if(VERB[sNorm]&&vm.distanceLabel){
-    hl='' + _uiT('ui.du_bist') + ''+em(vm.distanceLabel)+' '+VERB[sNorm]+'.';
+  }else if(VERB[sNorm]&&distTxt){
+    hl='' + _uiT('ui.du_bist') + ''+em(distTxt)+' '+VERB[sNorm]+'.';
   }else if(VERB[sNorm]&&durTxt){
     hl='' + _uiT('ui.du_bist') + ''+em(durTxt)+' '+VERB[sNorm]+'.';
   }else if(PLAY[sNorm]&&durTxt){
@@ -11389,24 +11509,18 @@ function gmStoryPages(a){
   if(route&&window.ORVIA&&ORVIA.routeMap&&typeof ORVIA.routeMap.html==='function'){
     var _mapOn=true;try{_mapOn=ORVIA.routeMap.cfg().story!==false;}catch(_){ }
     try{
-      var _vw=(typeof window!=='undefined'&&window.innerWidth)||390,_vh=(typeof window!=='undefined'&&window.innerHeight)||780;
-      var _sw=(_vw>=700)?440:_vw,_mh=Math.round(_vh*0.66);
-      /* v8-435: Der Kopf (Balken, Titel, Datum) rueckt auf dem iPhone um den sicheren Rand
-         (--sat, 54–59 px) nach unten — der Innenrand der Strecke muss mitgehen, sonst liegt
-         die Strecke auf der Datumszeile (Gians Bild vom 5.10.). */
-      var _sat=0;try{var _pb=document.createElement('div');_pb.style.cssText='position:fixed;left:0;top:0;width:0;height:var(--sat,0px);visibility:hidden;pointer-events:none';document.body.appendChild(_pb);_sat=_pb.offsetHeight||0;document.body.removeChild(_pb);}catch(_){_sat=0;}
-      var _map=ORVIA.routeMap.html(route,{w:_sw,h:_mh,cls:'cover',draw:true,tiles:_mapOn,
-        pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(_mh*0.17),l:44}});
+      var _g=gmStoryMapGeom();
+      var _map=ORVIA.routeMap.html(route,{w:_g.w,h:_g.h,cls:'cover',draw:true,tiles:_mapOn,pad:_g.pad});
       if(_map){
-        var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
-        var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);_kp=_kp.map(function(c){return (paceTxt&&(c[1]==='TEMPO'||c[1]==='PACE'))?[paceTxt,c[1]]:c;});}catch(_){ }
-        var _km=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_draw=gmStoryRouteDraw(_km),_rm=false;
+        var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(distTxt||durClock||durTxt||''));
+        var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);_kp=_kp.map(function(c){return (paceTxt&&(c[1]==='TEMPO'||c[1]==='PACE'))?[paceTxt,c[1]]:((durClock&&c[1]==='DAUER')?[durClock,c[1]]:c);});}catch(_){ }
+        var _km=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_draw=gmStoryRouteDraw(_km,'quick'),_rm=false;
         try{_rm=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
-        coverPage='<div class="wst-bg" '+actAttr+' data-st-ms="'+(_rm?0:Math.round(_draw*1000+2650))+'"></div><div class="wst-mapbg" '+actAttr+' style="--st-draw:'+_draw+'s">'+_map+'</div>'+
+        coverPage='<div class="wst-bg" '+actAttr+' data-st-ms="'+(_rm?0:Math.round(_draw*1000+1600))+'"></div><div class="wst-mapbg" '+actAttr+' style="--st-draw:'+_draw+'s">'+_map+'</div>'+
           '<div class="wst-in wst-coverpg" '+actAttr+'>'+top+
           '<div class="wst-hero">'+
             /* v8-444 (V3): die Hauptzahl ist benannt wie jede andere (Distanz bzw. Dauer) */
-            (_dm?'<div class="wst-kick">'+gmEsc(vm.distanceLabel?_uiT('ui.distanz_'):'Dauer')+'</div>':'')+
+            (_dm?'<div class="wst-kick">'+gmEsc(distTxt?_uiT('ui.distanz_'):'Dauer')+'</div>':'')+
             (_dm?'<div class="wst-heronum"><b>'+gmEsc(_dm[1])+'</b>'+(_dm[2]?'<span>'+gmEsc(_dm[2])+'</span>':'')+'</div>':'')+
             (_kp.length?'<div class="wst-herostats">'+_kp.map(function(c){return '<div><b>'+gmEsc(c[0])+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>':'')+
           '</div></div>';
@@ -11419,12 +11533,12 @@ function gmStoryPages(a){
        Zeichenanimation auf die tatsaechliche Pfadlaenge (vorher fester Schaetzwert). */
     try{var svg=routeSVG(route,{aspect:'auto',noBg:true});
       svg=svg.replace('<path d="','<path class="gm-route-line" pathLength="1" style="--rl:1" d="');
-      var _km2=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_dr2=gmStoryRouteDraw(_km2),_rm2=false;try{_rm2=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
-      cover='<div class="wst-map big" style="--st-draw:'+_dr2+'s"'+(_rm2?'':' data-st-ms="'+Math.round(_dr2*1000+2500)+'"')+'>'+svg+'</div>';}catch(_){ }
+      var _km2=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_dr2=gmStoryRouteDraw(_km2,'quick'),_rm2=false;try{_rm2=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
+      cover='<div class="wst-map big" style="--st-draw:'+_dr2+'s"'+(_rm2?'':' data-st-ms="'+Math.round(_dr2*1000+1600)+'"')+'>'+svg+'</div>';}catch(_){ }
   }
   if(!cover){
     var bigV=(fam==='gym'&&gym&&gym.setCount)?[String(gym.setCount),'' + _uiT('ui.saetze__') + '']
-      :(vm.distanceLabel?[vm.distanceLabel,'' + _uiT('ui.distanz_') + '']:(durTxt?[durTxt,'Dauer']:null));
+      :(distTxt?[distTxt,'' + _uiT('ui.distanz_') + '']:(durTxt?[durTxt,'Dauer']:null));
     cover=bigV?'<div class="wst-bignum'+(String(bigV[0]).length>6?' long':'')+'"><b>'+gmStoryBigVal(bigV[0])+'</b><span>'+gmEsc(bigV[1])+'</span></div>':'';
   }
   /* Ohne Route: grosse Kennzahl mittig auf der Seite (Kick + Zahl zentriert). */
@@ -11447,10 +11561,16 @@ function gmStoryPages(a){
        waehrend die aktive 10-km-Bestzeit 57:55 aus einem anderen Lauf stammt). */
     var distPB=(fam==='pace')?gmStoryPbOf(a):null;
     if(distPB){
-      var _dn=distPB.dist,_cat=distPB.catLabel,_how=distPB.how;
-      pages.push('<div class="wst-bg pr" data-activity="brand"></div><div class="wst-in" data-activity="brand">'+top+
-        '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>'+gmEsc(_cat)+'</span></div><div class="wst-prval">'+gmEsc(_uiT('st.pb.val',{d:_dn,t:gmAaClock(distPB.m.sec)}))+'</div></div>'+
-        foot(gmEsc(_uiT('st.pb.hl',{d:_dn}))+' '+em(gmAaClock(distPB.m.sec)),_cat+' · '+_how+(distPB.m.km!=null?' · '+_uiT('st.pb.over',{k:fmtDe(distPB.m.km)}):''))+'</div>');
+      /* v8-457: Kategorie · Distanz · Zeit als EINE Komposition. Distanzname in eigener Zeile, nie getrennt (vorher
+         „Halbmaratho / in 2:20:47" durch Silbentrennung und feste Groesse). Keine Rechenerklaerung in der Story —
+         die steht im Bestzeiten-Register. */
+      var _dn=distPB.dist,_cat=distPB.catLabel,_long=_dn.length>9;
+      var _pbHl=_uiT(distPB.kk==='k21'?'st.pb.hl_hm':(distPB.kk==='k42'?'st.pb.hl_m':'st.pb.hl_km'),{d:String(_dn).replace(/ /g,'\u00a0')});
+      var _pbDate=distPB.m.date?String(distPB.m.date).split('-').reverse().join('.'):'';
+      pages.push('<div class="wst-bg pr" data-activity="brand"></div><div class="wst-in wst-pbpg" data-activity="brand">'+top+
+        '<div class="wst-mid"><div class="wst-pb"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>'+gmEsc(_cat)+'</span></div>'+
+        '<div class="wst-pbdist'+(_long?' is-long':'')+'">'+gmEsc(_dn)+'</div><div class="wst-pbtime">'+gmEsc(gmAaClock(distPB.m.sec))+'</div></div></div>'+
+        foot(gmEsc(_pbHl),_pbDate)+'</div>');
     }
     var pb=distPB?null:gmActPersonalBest(a,vm,fam);
     if(pb){
@@ -11533,30 +11653,33 @@ function gmStoryPages(a){
   /* ---------- 6) Kennzahlen-Raster: nur belegte Zellen, gestaffelt ---------- */
   var cells=[];
   /* v8-439: dritter Wert 1 = Hauptkennzahl in der Farbe der Sportart (Distanz bzw. Kraft-Volumen) */
-  if(vm.distanceLabel)cells.push([vm.distanceLabel,'' + _uiT('ui.distanz_') + '',1]);
-  if(durTxt)cells.push([durTxt,'Dauer']);
+  if(distTxt)cells.push([distTxt,'' + _uiT('ui.distanz_') + '',1]);
+  if(durClock||durTxt)cells.push([durClock||durTxt,'Dauer']);
   if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','' + _uiT('ui.geschwindigkeit_') + '']);}
   else if(paceTxt)cells.push([paceTxt,'' + _uiT('ui.tempo_') + '']);
   if(vm.avgPowerW!=null)cells.push([vm.avgPowerW+' W','Ø ' + _uiT('ui.leistung__') + '']);
   if(vm.normPowerW!=null)cells.push([vm.normPowerW+' W','NP']);
-  if(vm.avgHr!=null)cells.push([vm.avgHr+' bpm','' + _uiT('ui.herzfrequenz_') + '']);
-  if(vm.maxHr!=null)cells.push([vm.maxHr+' bpm','' + _uiT('ui.max_herzfrequenz_') + '']);
+  if(M('avgHr')||vm.avgHr!=null)cells.push([M('avgHr')||vm.avgHr+' bpm','' + _uiT('ui.herzfrequenz_') + '']);
+  if(M('maxHr')||vm.maxHr!=null)cells.push([M('maxHr')||vm.maxHr+' bpm','' + _uiT('ui.max_herzfrequenz_') + '']);
   if(gym){
     if(gym.exCount!=null)cells.push([String(gym.exCount),'' + _uiT('ui.uebungen__') + '']);
     if(gym.setCount!=null)cells.push([String(gym.setCount),'' + _uiT('ui.saetze__') + '']);
     if(gym.volumeKg!=null)cells.push([gmKg(gym.volumeKg)+' kg','Volumen',1]);
   }
   /* v8-447: dieselbe Kadenz wie Seite und Kurve (vm.cadence) — nur gesicherte Schrittfrequenz */
-  var cad=(vm.cadence&&vm.cadence.status==='ok'&&vm.cadence.kind==='running_cadence_spm')?vm.cadence.avg:null;
-  if(cad!=null&&fam==='pace')cells.push([cad+' spm','' + _uiT('ui.schrittfrequenz') + '']);
-  if(vm.elevationM!=null&&(fam==='pace'||fam==='cycling'))cells.push([vm.elevationM+' m','Höhenmeter']);
-  if(vm.caloriesKcal!=null)cells.push([fmtDe(vm.caloriesKcal)+' kcal','Energie']);
+  /* v8-457: Kadenz und Anstieg aus dem Analyse-Modell (wie Seite/Karte); nur ohne Modell der bisherige Weg */
+  var cadTxt=M('runningCadence');
+  if(!cadTxt&&!mdS){var cad=(vm.cadence&&vm.cadence.status==='ok'&&vm.cadence.kind==='running_cadence_spm')?vm.cadence.avg:null;if(cad!=null)cadTxt=cad+' spm';}
+  if(cadTxt&&fam==='pace')cells.push([cadTxt,'' + _uiT('ui.schrittfrequenz') + '']);
+  var eleTxt=M('elevationGain')||(!mdS&&vm.elevationM!=null?vm.elevationM+' m':null);
+  if(eleTxt&&(fam==='pace'||fam==='cycling'))cells.push([eleTxt,_uiT('st.num.elev')]);
+  if(M('calories')||vm.caloriesKcal!=null)cells.push([M('calories')||fmtDe(vm.caloriesKcal)+' kcal','Energie']);
   var rpe0=(a&&a.summary&&a.summary.rpe!=null)?a.summary.rpe:((sess&&sess.rpe!=null)?sess.rpe:null);
   if(rpe0!=null)cells.push(['' + _uiT('ui.rpe') + ''+rpe0,'Belastung']);
   if(cells.length>=2){
-    pages.push(page('<div class="wst-kick">' + _uiT('ui.deine_zahlen') + '</div><div class="wst-grid">'+cells.slice(0,8).map(function(c,i){
+    pages.push(page('<div class="wst-kick">' + _uiT('ui.deine_zahlen') + '</div><div class="wst-grid wst-numgrid n'+Math.min(8,cells.length)+'">'+cells.slice(0,8).map(function(c,i){
       return '<div class="wst-cell'+(c[2]?' key':'')+'" style="animation-delay:'+(120+i*80)+'ms"><b>'+gmEsc(String(c[0]))+'</b><span>'+gmEsc(c[1])+'</span></div>';}).join('')+'</div>',
-      foot('' + _uiT('ui.alles_aus_deiner_einheit') + '','' + _uiT('ui.werte_unveraendert_aus_der_aktivitaetsquelle') + '')));
+      foot('' + _uiT('ui.alles_aus_deiner_einheit') + '',null),'wst-numpg'));
   }
   /* ---------- 7) Debrief: nur bestehende produktive Bewertung ---------- */
   var rate2=null;try{if(vm.sportId==='running'&&sess&&typeof rateActivity==='function')rate2=rateActivity('Laufen',sess);}catch(_){ }
@@ -11587,77 +11710,123 @@ function gmStoryCanShare(){return !!(window.ORVIA&&ORVIA.storyShare&&typeof docu
 function gmStoryEndPage(a){
   var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
   var attr=gmActThemeAttr(vm&&vm.sportId);
+  var hasRoute=!!(vm&&vm.canonicalRoute&&vm.canonicalRoute.length>1);
   return '<div class="wst-bg" '+attr+' data-st-end="1"></div><div class="wst-in wst-endpg" '+attr+'><div class="wst-mid wst-end">'+
     '<div class="wst-kick">'+gmEsc(_uiT('share.end_kick'))+'</div><div class="wst-endt">'+gmEsc(_uiT('share.end_title'))+'</div>'+
     '<p class="wst-endp">'+gmEsc(_uiT('share.end_text'))+'</p>'+
     (gmStoryCanShare()?'<button type="button" class="wst-endbtn is-primary" onclick="gmStoryShare()">'+ORVIA.storyShare.SHARE_SVG+'<span>'+gmEsc(_uiT('share.share'))+'</span></button>':'')+
+    /* v8-457: Cinematic Replay — eigener Modus, nie Teil der normalen Highlights */
+    (hasRoute?'<button type="button" class="wst-endbtn" onclick="gmOpenReplay(_gmStory.aid)">'+icon('play','sm')+'<span>'+gmEsc(_uiT('st.replay.open'))+'</span></button>':'')+
     '<button type="button" class="wst-endbtn" onclick="gmStoryClose()"><span>'+gmEsc(_uiT('share.done_btn'))+'</span></button></div></div>';
 }
+/* v8-457 · EIN Einstieg in die Teilen-Auswahl fuer Aktivitaetsseite und Highlights (gleiche Daten, gleiche Vorlagen,
+   gleiche Kopier- und Datenschutzregeln). opts.onClose: Aufrufer setzt danach fort (Story). */
+function gmShareOpen(aid,opts){
+  opts=opts||{};
+  if(!gmStoryCanShare()||!aid)return false;
+  var d=null;try{d=gmShareData(aid);}catch(_){d=null;}
+  if(!d){try{toast(_uiT('share.err_data'));}catch(_){ }return false;}
+  ORVIA.storyShare.open(d,{t:_uiT,returnFocus:opts.returnFocus||document.activeElement,onClose:opts.onClose||null});
+  return true;
+}
+function gmShareActivity(aid){return gmShareOpen(aid,{returnFocus:document.activeElement});}
+/* Teilen aus der Story: Story haelt an (Fortschritt bleibt stehen) und laeuft nach dem Schliessen an derselben Stelle weiter */
 function gmStoryShare(){
   if(!gmStoryCanShare()||!_gmStory.aid)return;
-  var d=null;try{d=gmShareData(_gmStory.aid);}catch(_){d=null;}
-  if(!d){try{toast(_uiT('share.err_data'));}catch(_){ }return;}
-  gmStoryStop();
-  var host=document.getElementById('gmStory');if(host)host.classList.add('st-paused');
-  var ret=document.activeElement;
-  ORVIA.storyShare.open(d,{t:_uiT,returnFocus:ret,onClose:function(){
-    var h=document.getElementById('gmStory');if(h)h.classList.remove('st-paused');
-    /* an derselben Seite weiter (Seite beginnt neu, Abschlussseite bleibt stehen) */
-    if(h&&h.classList.contains('on')){gmStoryRender();try{var sb=h.querySelector('.wst-page.on .wst-endbtn.is-primary')||h.querySelector('.wst-share');if(sb)sb.focus({preventScroll:true});}catch(_){ }}
+  var wasHeld=_gmStory.paused;
+  gmStoryPause('share');
+  var ok=gmShareOpen(_gmStory.aid,{returnFocus:document.activeElement,onClose:function(){
+    var h=document.getElementById('gmStory');
+    if(h&&h.classList.contains('on')){if(!wasHeld)gmStoryResume('share');try{var sb=h.querySelector('.wst-page.on .wst-endbtn.is-primary')||h.querySelector('.wst-share');if(sb)sb.focus({preventScroll:true});}catch(_){ }}
   }});
+  if(!ok&&!wasHeld)gmStoryResume('share');
 }
+/* ---------- Ablauf: Zeitgeber mit Restzeit (Anhalten/Fortsetzen ohne Neustart der Szene) ---------- */
 function gmStoryStop(){if(_gmStory.timer){clearTimeout(_gmStory.timer);_gmStory.timer=null;}}
+function gmStoryHolds(page){return /data-st-end="1"|data-st-replay="1"/.test(page||'');}
+function gmStoryArm(ms){
+  gmStoryStop();
+  _gmStory.dur=ms;_gmStory.left=ms;_gmStory.t0=Date.now();
+  _gmStory.timer=setTimeout(function(){_gmStory.timer=null;gmStoryNext();},ms);
+}
+function gmStoryPause(why){
+  var host=document.getElementById('gmStory');if(!host||!host.classList.contains('on'))return;
+  if(_gmStory.timer){_gmStory.left=Math.max(0,_gmStory.dur-(Date.now()-_gmStory.t0));gmStoryStop();}
+  _gmStory.paused=why||true;host.classList.add('st-hold');
+  var pp=host.querySelector('.wst-pp');if(pp){pp.setAttribute('aria-pressed','true');pp.setAttribute('aria-label',_uiT('st.resume'));}
+}
+function gmStoryResume(){
+  var host=document.getElementById('gmStory');if(!host)return;
+  _gmStory.paused=false;host.classList.remove('st-hold');
+  var pp=host.querySelector('.wst-pp');if(pp){pp.setAttribute('aria-pressed','false');pp.setAttribute('aria-label',_uiT('st.pause'));}
+  if(gmStoryHolds(_gmStory.pages[_gmStory.idx])||!(_gmStory.left>0))return;
+  var left=_gmStory.left;gmStoryStop();_gmStory.t0=Date.now()-(_gmStory.dur-left);
+  _gmStory.timer=setTimeout(function(){_gmStory.timer=null;gmStoryNext();},left);
+}
+function gmStoryTogglePause(){if(_gmStory.paused)gmStoryResume();else gmStoryPause('user');}
+/* Gedrueckthalten (Touch/Maus) haelt an, Loslassen setzt fort; ein kurzes Tippen bleibt Vor/Zurueck. */
+function gmStoryBindHold(host){
+  if(!host||host._stHold)return;host._stHold=1;
+  var tmr=null,held=false;
+  var down=function(ev){
+    if(ev.button>0)return;var t=ev.target;
+    if(t&&t.closest&&t.closest('.wst-x,.wst-share,.wst-pp,.wst-endbtn,.wst-rpl button'))return;
+    held=false;clearTimeout(tmr);
+    tmr=setTimeout(function(){if(!_gmStory.paused){held=true;gmStoryPause('hold');}},220);
+  };
+  var up=function(){clearTimeout(tmr);if(held&&_gmStory.paused==='hold'){gmStoryResume();host._stSuppress=Date.now();}held=false;};
+  host.addEventListener('pointerdown',down);
+  ['pointerup','pointercancel','pointerleave'].forEach(function(n){host.addEventListener(n,up);});
+  /* nach dem Gedrueckthalten kein Weiterblaettern durch den Klick des Loslassens */
+  host.addEventListener('click',function(ev){if(host._stSuppress&&Date.now()-host._stSuppress<400){ev.stopPropagation();ev.preventDefault();host._stSuppress=0;}},true);
+  host.addEventListener('contextmenu',function(ev){if(_gmStory.paused==='hold')ev.preventDefault();});
+}
 function gmStoryRender(){
   var host=document.getElementById('gmStory');if(!host)return;
   var n=_gmStory.pages.length;if(!n)return;
-  var bars='<div class="wst-bars">'+_gmStory.pages.map(function(_,i){
+  var replay=_gmStory.mode==='replay';
+  var bars=replay?'':'<div class="wst-bars">'+_gmStory.pages.map(function(_,i){
     return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+(/data-st-end="1"/.test(_)?' end':'')+'"><b></b></i>';}).join('')+'</div>';
   host.innerHTML=bars+
     '<button class="wst-x" aria-label="'+_uiT('ui.highlights_schliessen')+'" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
     (gmStoryCanShare()?'<button type="button" class="wst-share" aria-label="'+gmEsc(_uiT('share.open'))+'" onclick="gmStoryShare()">'+ORVIA.storyShare.SHARE_SVG+'</button>':'')+
-    '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
-    '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
+    (replay?'':'<button type="button" class="wst-pp" aria-pressed="false" aria-label="'+gmEsc(_uiT('st.pause'))+'" onclick="gmStoryTogglePause()"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="pp-p" d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/><path class="pp-r" d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></button>')+
+    (replay?'':'<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
+    '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>')+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');
-  /* v8-433: Kartenkacheln nur fuer die SICHTBARE Seite laden — und aus dem Sitzungsspeicher,
-     wenn sie schon einmal geladen wurden. Dieses Markup wird bei jedem Seitenwechsel neu
-     gesetzt; mit src im Markup wuerde jede Kachel je Seitenwechsel erneut angefragt. */
+  /* v8-433: Kartenkacheln nur fuer die SICHTBARE Seite laden — und aus dem Sitzungsspeicher. */
   try{var _on=host.querySelector('.wst-page.on');if(_on&&window.ORVIA&&ORVIA.routeMap&&ORVIA.routeMap.hydrate)ORVIA.routeMap.hydrate(_on);}catch(_){ }
   gmActWavesFit(host);
-  /* Auto-Weiterschaltung wie im Story-Muster; Tap uebersteuert jederzeit. */
+  gmStoryBindHold(host);
   gmStoryStop();
-  /* Abschlussseite: bleibt stehen (kein Weiterschalten), bis „Teilen" oder „Fertig" gewaehlt wird */
-  if(/data-st-end="1"/.test(_gmStory.pages[_gmStory.idx]||'')){host.classList.add('st-end');try{var _fb=host.querySelector('.wst-end .wst-endbtn');if(_fb)_fb.focus({preventScroll:true});}catch(_){ }return;}
+  _gmStory.paused=false;host.classList.remove('st-hold');
+  /* Abschlussseite und Replay: bleiben stehen (kein Weiterschalten) */
+  if(gmStoryHolds(_gmStory.pages[_gmStory.idx]||'')){host.classList.add('st-end');_gmStory.left=0;try{var _fb=host.querySelector('.wst-end .wst-endbtn,.wst-rpl button[aria-pressed="true"]');if(_fb)_fb.focus({preventScroll:true});}catch(_){ }return;}
   host.classList.remove('st-end');
   var _ms=gmStoryPageMs(_gmStory.pages[_gmStory.idx]);
   try{host.style.setProperty('--st-dur',(_ms/1000)+'s');}catch(_){ }
-  _gmStory.timer=setTimeout(function(){gmStoryNext();},_ms);
+  gmStoryArm(_ms);
 }
 function gmStoryNext(){if(_gmStory.idx>=_gmStory.pages.length-1){gmStoryClose();return;}_gmStory.idx++;gmStoryRender();}
-function gmStoryPrev(){if(_gmStory.idx<=0)return;_gmStory.idx--;gmStoryRender();}
+function gmStoryPrev(){if(_gmStory.idx<=0){gmStoryRender();return;}_gmStory.idx--;gmStoryRender();}
 function gmStoryClose(){
   gmStoryStop();
   var host=document.getElementById('gmStory');
-  if(host){host.classList.remove('on');host.setAttribute('aria-hidden','true');host.innerHTML='';}
+  if(host){host.classList.remove('on','st-hold','st-end','st-replay');host.setAttribute('aria-hidden','true');host.innerHTML='';}
   try{document.documentElement.style.overflow='';}catch(_){ }
-  gmStoryMarkSeen(_gmStory.aid);
-  _gmStory.pages=[];_gmStory.idx=0;_gmStory.hrSeries=null;
+  if(_gmStory.mode!=='replay')gmStoryMarkSeen(_gmStory.aid);
+  _gmStory.pages=[];_gmStory.idx=0;_gmStory.hrSeries=null;_gmStory.paused=false;_gmStory.mode=null;
   try{if(_gmLastFocus&&_gmLastFocus.focus)_gmLastFocus.focus();}catch(_){ }
 }
-function gmOpenStory(aid){
+function gmStoryShow(aid,pages,mode){
   var host=document.getElementById('gmStory');if(!host)return false;
-  var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_){ }
-  if(!a)return false;
-  var pages=gmStoryPages(a);
-  if(pages.length<2)return false;            /* zu wenig echte Daten => keine Story */
-  try{_gmLastFocus=document.activeElement;}catch(_){ }
-  /* v8-456: Abschlussseite mit „Teilen" (dieselbe Funktion wie das Symbol oben) und „Fertig" */
-  try{pages=pages.concat([gmStoryEndPage(a)]);}catch(_){ }
-  _gmStory.pages=pages;_gmStory.idx=0;_gmStory.aid=aid;
-  host.classList.add('on');host.setAttribute('aria-hidden','false');
+  try{if(!host.classList.contains('on'))_gmLastFocus=document.activeElement;}catch(_){ }
+  _gmStory.pages=pages;_gmStory.idx=0;_gmStory.aid=aid;_gmStory.mode=mode||'quick';
+  host.classList.add('on');host.classList.toggle('st-replay',mode==='replay');host.setAttribute('aria-hidden','false');
   try{document.documentElement.style.overflow='hidden';}catch(_){ }
   gmStoryRender();
-  try{host.focus&&host.setAttribute('tabindex','-1');host.focus&&host.focus();}catch(_){ }
-  /* Escape/Pfeiltasten: GENAU EINMAL global gebunden (kein Listener-Zuwachs). */
+  try{host.setAttribute('tabindex','-1');host.focus();}catch(_){ }
+  /* Escape/Pfeiltasten/P: GENAU EINMAL global gebunden (kein Listener-Zuwachs). */
   try{
     if(!window._gmStoryKeyBound){window._gmStoryKeyBound=1;
       document.addEventListener('keydown',function(ev){
@@ -11665,12 +11834,58 @@ function gmOpenStory(aid){
         if(!h||!h.classList.contains('on'))return;
         if(window.ORVIA&&ORVIA.storyShare&&ORVIA.storyShare.isOpen())return;       /* Teilen-Auswahl hat die Tastatur */
         if(ev.key==='Escape'){ev.preventDefault();gmStoryClose();}
-        else if((ev.key===' '||ev.key==='Enter')&&ev.target&&ev.target.closest&&ev.target.closest('.wst-share,.wst-x,.wst-end button'))return;   /* Knopf selbst ausloesen */
+        else if((ev.key===' '||ev.key==='Enter')&&ev.target&&ev.target.closest&&ev.target.closest('.wst-share,.wst-x,.wst-pp,.wst-end button,.wst-rpl button'))return;   /* Knopf selbst ausloesen */
+        else if(ev.key==='p'||ev.key==='P'||ev.key==='k'){ev.preventDefault();gmStoryTogglePause();}
+        else if(_gmStory.mode==='replay')return;
         else if(ev.key==='ArrowRight'||ev.key===' '||ev.key==='Enter'){ev.preventDefault();gmStoryNext();}
         else if(ev.key==='ArrowLeft'){ev.preventDefault();gmStoryPrev();}
       });}
   }catch(_){ }
   return true;
+}
+function gmOpenStory(aid){
+  var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_){ }
+  if(!a)return false;
+  var pages=gmStoryPages(a);
+  if(pages.length<2)return false;            /* zu wenig echte Daten => keine Story */
+  /* v8-456: Abschlussseite mit „Teilen" (dieselbe Funktion wie das Symbol oben) und „Fertig" */
+  try{pages=pages.concat([gmStoryEndPage(a)]);}catch(_){ }
+  return gmStoryShow(aid,pages,'quick');
+}
+/* ---------- v8-457 · Cinematic Replay: die ganze Strecke, distanzproportional ---------- */
+var _gmReplaySpeed=1;
+function gmStoryReplayPage(a,speed){
+  var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
+  var route=vm&&vm.canonicalRoute&&vm.canonicalRoute.length>1?vm.canonicalRoute:null;
+  if(!route||!window.ORVIA||!ORVIA.routeMap||typeof ORVIA.routeMap.html!=='function')return null;
+  var md=null;try{md=gmActAnalysisFor(a,vm,null);}catch(_){ }
+  var fam=md?md.family:'other',dist=md&&md.metrics&&gmAxOk(md.metrics.distance)?md.metrics.distance.value:null;
+  var km=dist!=null?dist/1000:((a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null);
+  var draw=gmStoryRouteDraw(km,'replay',fam,speed),g=gmStoryMapGeom(),on=true;
+  try{on=ORVIA.routeMap.cfg().story!==false;}catch(_){ }
+  var map=ORVIA.routeMap.html(route,{w:g.w,h:g.h,cls:'cover',draw:true,pos:true,tiles:on,pad:g.pad});
+  if(!map)return null;
+  var attr=gmActThemeAttr(vm.sportId),st=gmShortTitle(vm.title||vm.sportLabel||'').text;
+  var distTxt=dist!=null?gmDistTxt(dist,fam):(vm.distanceLabel||'');
+  var chips=[0.5,1,2].map(function(f){return '<button type="button" aria-pressed="'+(f===speed)+'" onclick="gmReplaySpeed('+f+')">'+gmEsc(_uiT('st.replay.x',{f:String(f).replace('.',',')}))+'</button>';}).join('');
+  return '<div class="wst-bg" '+attr+' data-st-replay="1"></div><div class="wst-mapbg" '+attr+' style="--st-draw:'+draw+'s">'+map+'</div>'+
+    '<div class="wst-in wst-coverpg wst-replaypg" '+attr+'><div class="wst-top"><b>'+gmEsc(st)+'</b><span>'+gmEsc(_uiT('st.replay.kick'))+'</span></div>'+
+    '<div class="wst-hero"><div class="wst-kick">'+gmEsc(_uiT('ui.distanz_'))+'</div><div class="wst-heronum"><b>'+gmEsc(String(distTxt).replace(/\s*km$/,''))+'</b><span>km</span></div>'+
+    '<div class="wst-rpl" role="group" aria-label="'+gmEsc(_uiT('st.replay.speed'))+'">'+chips+
+    '<button type="button" class="wst-rpl-again" onclick="gmReplaySpeed(_gmReplaySpeed)">'+gmEsc(_uiT('st.replay.again'))+'</button></div>'+
+    '<p class="wst-rpl-note">'+gmEsc(_uiT('st.replay.note',{s:String(Math.round(draw))}))+'</p></div></div>';
+}
+function gmOpenReplay(aid){
+  var a=null;try{a=(typeof _resolveActivityAny==='function')?_resolveActivityAny(aid):null;}catch(_){ }
+  if(!a)return false;
+  var p=gmStoryReplayPage(a,_gmReplaySpeed);if(!p)return false;
+  return gmStoryShow(aid,[p],'replay');
+}
+function gmReplaySpeed(f){
+  _gmReplaySpeed=(+f>0)?+f:1;
+  var a=null;try{a=_resolveActivityAny(_gmStory.aid);}catch(_){ }
+  var p=a?gmStoryReplayPage(a,_gmReplaySpeed):null;if(!p)return;
+  _gmStory.pages=[p];_gmStory.idx=0;gmStoryRender();
 }
 /* Auto-Start: neueste abgeschlossene Einheit der letzten 48 h, die noch nie als Story
    gezeigt wurde. Genau EIN Versuch je Sitzung — kein wiederholtes Aufpoppen. */

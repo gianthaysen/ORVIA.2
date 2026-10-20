@@ -148,7 +148,7 @@
           '<svg class="rmv-route" aria-hidden="true"><g class="rmv-g">' +
             '<path class="rmx-case" fill="none" stroke-width="' + (R.ROUTE_W + R.CASE_W) + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
             '<path class="rmx-line" fill="none" stroke="var(--activity-primary)" stroke-width="' + R.ROUTE_W + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-          '</g><circle class="rmx-start" r="6.5"/><circle class="rmx-end" r="4.5"/></svg>' +
+          '</g><circle class="rmx-start" r="5"/><circle class="rmx-end" r="3.5"/></svg>' +
         '</div>' +
         '<div class="rmv-top"><div class="rmv-ttl"><b>' + esc(opts.title || '') + '</b><span>' + esc(opts.sub || '') + '</span></div>' +
           '<button type="button" class="rmv-btn rmv-close" aria-label="' + esc(L.close || 'Schließen') + '">' + ICON.x + '</button></div>' +

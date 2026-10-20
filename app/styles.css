@@ -3835,16 +3835,16 @@ body.profile-open #tab-mehr{max-width:430px;margin:0 auto}
 .rmx-tiles::before{content:"";position:absolute;inset:0;z-index:1;background:rgba(5,8,13,var(--rmx-dim,.10));pointer-events:none}
 .rmx-tiles img.rmx-t.ok,.rmv-tiles img.rmx-t.ok{opacity:1}
 .rmx.tiles-failed .rmx-tiles,.rmx.tiles-failed .rmx-attr{display:none}
-.rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
+.rmx-route{position:absolute;inset:0;display:block;overflow:visible;-webkit-filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
 /* v8-439: Strecke = Farbe der Sportart (stroke im Markup: var(--activity-primary)), darunter ein dunkler
    Rand — kein Leuchten. Start und Ziel sind ZUSTAENDE und in jeder Sportart gleich: Gruen = Start,
    Rot = Ziel.
    v8-441 (Karte V2): Linie 4,5 px, Rand 7,5 px bei 65 % (Masse: ROUTE_W/CASE_W in route-map.js — fuer
    Story, Kartenfeld und Kartenansicht dieselben). Der weiche Schatten ist kleiner und leiser (3 px /
    45 % statt 5 px / 55 %): die Linie wirkt praeziser, die Karte darunter bleibt lesbar. */
-.rmx-case{stroke:#000;stroke-opacity:.65}
-.rmx-start{fill:var(--orvia-bg-base);stroke:var(--orvia-route-start);stroke-width:3}
-.rmx-end{fill:var(--orvia-route-finish);stroke:var(--orvia-bg-base);stroke-width:2}
+.rmx-case{stroke:#000;stroke-opacity:.4}
+.rmx-start{fill:var(--orvia-bg-base);stroke:var(--orvia-route-start);stroke-width:2.2}
+.rmx-end{fill:var(--orvia-route-finish);stroke:var(--orvia-bg-base);stroke-width:1.5}
 .rmx-attr{position:absolute;right:8px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:600;letter-spacing:.01em;
   color:rgba(255,255,255,.58);text-shadow:0 1px 2px rgba(0,0,0,.9);pointer-events:none;white-space:nowrap}
 .rmx-attr .rmx-logo{height:13px;width:auto;opacity:.85}
@@ -5749,3 +5749,107 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
   .shs-strip{flex-wrap:wrap;overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){.shs-panel,.shs-scrim{transition:none}}
+
+/* ============================================================
+   v8-457 · Running Experience Premium Quality Pass
+   ============================================================ */
+/* Cinematic Replay: Punkt faehrt die Linie ab — gleiche Dauer, gleiche (lineare) Kurve wie der Strich */
+.rmx-pos{fill:#F4F2ED;stroke:var(--activity-primary,#D8BB7A);stroke-width:2.2;offset-rotate:0deg;offset-distance:0%}
+.gm-story .wst-mapbg .rmx-pos{animation:stPos var(--st-draw,3.2s) linear .15s forwards}
+@keyframes stPos{to{offset-distance:100%}}
+
+/* Aktivitaetsseite · Kopf: Titel bricht an Wortgrenzen (vorher overflow-wrap:anywhere = Trennung mitten im Wort) */
+#gmActPage.ax-page .ax-title{overflow-wrap:break-word;-webkit-hyphens:manual;hyphens:manual;text-wrap:balance}
+#gmActPage.ax-page .ax-act .ax-share-cta svg{width:17px;height:17px}
+/* Desktop: Kopf zweispaltig, Karte rechts gross im Seitenverhaeltnis der Strecke */
+@media (min-width:1024px){
+  #gmActPage.ax-page .ax-lead.has-map{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.32fr);column-gap:44px;align-items:center;padding:8px 0 30px;
+    border-bottom:1px solid transparent;border-image:linear-gradient(90deg,transparent,var(--ax-gold-line) 22%,var(--ax-gold-line) 78%,transparent) 1}
+  #gmActPage.ax-page .ax-lead.has-map > .ax-lead-map{grid-column:2;grid-row:1;margin:0}
+  #gmActPage.ax-page .ax-lead.has-map > .ax-hero{grid-column:1;grid-row:1;padding:0;border:0;border-image:none}
+  #gmActPage.ax-page .ax-lead.has-map .ax-lead-map .route-map{width:100%;height:auto;aspect-ratio:var(--ax-map-ar,1.2);min-height:380px;max-height:560px;border-radius:24px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-lead-map .ax-vroute{width:100%;height:auto;aspect-ratio:var(--ax-map-ar,1.2);min-height:360px;max-height:520px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-hero .ax-key{display:block}
+  #gmActPage.ax-page .ax-lead.has-map .ax-hero .ax-stats{margin:26px 0 0;max-width:none}
+  #gmActPage.ax-page .ax-lead.has-map .ax-title{font-size:34px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-key-main b{font-size:80px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-stats dd{font-size:24px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-stats > div{padding:0 16px}
+  #gmActPage.ax-page .ax-lead.has-map .ax-stats > div:first-child{padding-left:0}
+}
+@media (min-width:1440px){
+  #gmActPage.ax-page .ax-lead.has-map .ax-key-main b{font-size:88px}
+}
+
+/* Story · Fortschritt als Animation, damit Anhalten/Fortsetzen an derselben Stelle weitergeht */
+.gm-story .wst-bars i.act b{width:0;transition:none;animation:stProg var(--st-dur,3.6s) linear forwards}
+@keyframes stProg{from{width:0}to{width:100%}}
+.gm-story.st-hold .wst-bars i.act b,.gm-story.st-hold .wst-page.on,.gm-story.st-hold .wst-page.on *{animation-play-state:paused!important}
+.gm-story.st-replay .wst-bars{display:none}
+.gm-story .wst-pp{position:absolute;top:calc(var(--sat) + 23px);right:102px;z-index:5;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.14);
+  background:rgba(8,14,24,.42);color:#F4F2ED;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.gm-story .wst-pp svg{width:16px;height:16px}
+.gm-story .wst-pp .pp-r{display:none}
+.gm-story.st-hold .wst-pp .pp-r{display:inline}
+.gm-story.st-hold .wst-pp .pp-p{display:none}
+.gm-story.st-end .wst-pp{display:none}
+.gm-story .wst-pp:focus-visible{outline:2px solid #D8BB7A;outline-offset:3px}
+.gm-story .wst-page{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* Story · Kopfzeile: kurzer Titel, hoechstens zwei Zeilen statt Abschneiden mitten im Wort */
+.gm-story .wst-top b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip;overflow-wrap:break-word;line-height:1.2}
+.gm-story .wst-top{padding-right:142px}
+/* Story · Bestleistung: Kategorie · Distanz · Zeit als EINE Komposition, ohne Silbentrennung */
+.gm-story{container-type:inline-size}
+.gm-story .wst-in.wst-pbpg .wst-mid{justify-content:center}
+.gm-story .wst-pb{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.gm-story .wst-pbdist{margin-top:14px;font-size:min(13cqi,58px);font-weight:850;letter-spacing:-.03em;line-height:1.02;color:var(--orvia-text-primary);white-space:nowrap;-webkit-hyphens:none;hyphens:none;animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .12s both}
+.gm-story .wst-pbdist.is-long{font-size:min(11.5cqi,52px)}
+.gm-story .wst-pbtime{font-size:min(24cqi,112px);font-weight:850;letter-spacing:-.045em;line-height:.95;font-variant-numeric:tabular-nums;white-space:nowrap;
+  background:linear-gradient(135deg,var(--orvia-brand-gold-light),var(--orvia-brand-gold) 55%,var(--orvia-brand-gold-soft));-webkit-background-clip:text;background-clip:text;color:transparent;animation:wstUp .9s cubic-bezier(.2,.7,.2,1) .24s both}
+.gm-story .wst-in.wst-pbpg .wst-hl{font-size:24px;line-height:1.2;-webkit-hyphens:none;hyphens:none}
+/* Story · Deine Zahlen: groessere Werte, Raster fuellt die Seite statt kleiner Kacheln in leerer Flaeche */
+.gm-story .wst-in.wst-numpg .wst-mid{justify-content:center}
+.gm-story .wst-numgrid{gap:12px;margin-top:18px}
+.gm-story .wst-numgrid .wst-cell{padding:18px 16px;min-height:clamp(78px,11vh,108px);display:flex;flex-direction:column;justify-content:center}
+.gm-story .wst-numgrid .wst-cell b{font-size:clamp(23px,7.4cqi,32px);white-space:nowrap}
+.gm-story .wst-numgrid .wst-cell span{font-size:10.5px;margin-top:6px}
+/* Story · Herzfrequenz/Diagramm-Seiten: Diagramm nimmt den Raum, Ø und Max gemeinsam darunter */
+.gm-story .wst-in.wst-chartpg .wst-mid{flex:1 1 auto;justify-content:center;margin-top:clamp(12px,3vh,32px)}
+.gm-story .wst-in.wst-chartpg .wst-foot{margin-bottom:clamp(12px,4vh,40px)}
+/* Cinematic Replay: Tempo-Wahl */
+.gm-story .wst-rpl{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;position:relative;z-index:4}
+.gm-story .wst-rpl button{min-height:44px;min-width:56px;padding:0 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(8,14,24,.5);color:#F4F2ED;font:inherit;font-size:14px;font-weight:750;cursor:pointer}
+.gm-story .wst-rpl button[aria-pressed="true"]{border-color:#D8BB7A;color:#D8BB7A}
+.gm-story .wst-rpl .wst-rpl-again{margin-left:auto}
+.gm-story .wst-rpl button:focus-visible{outline:2px solid #D8BB7A;outline-offset:2px}
+.gm-story .wst-rpl-note{margin:10px 0 0;font-size:12px;color:var(--orvia-text-tertiary)}
+@media (prefers-reduced-motion:reduce){
+  .gm-story .wst-bars i.act b{animation:none;width:100%}
+  .gm-story .wst-mapbg .rmx-pos{animation:none;offset-distance:100%}
+}
+/* Aktivitaetsseite · Zonengrenzen */
+.ax-zinfo{margin-top:12px;border-top:1px solid var(--ax-line,rgba(150,172,198,.16));padding-top:10px}
+.ax-zinfo > summary{min-height:40px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ax-text,#F4F2ED);cursor:pointer;list-style:none}
+.ax-zinfo > summary::-webkit-details-marker{display:none}
+.ax-zinfo > summary::after{content:"";width:7px;height:7px;margin-left:10px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg) translateY(-2px)}
+.ax-zinfo[open] > summary::after{transform:rotate(-135deg) translateY(-2px)}
+.ax-zinfo-b p{margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--ax-text-2,#ADB5C1)}
+.ax-zb{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px 16px;margin:8px 0 0}
+.ax-zb div{display:flex;gap:8px;font-size:12.5px}.ax-zb dt{font-weight:750;color:var(--ax-text)}.ax-zb dd{margin:0;color:var(--ax-text-2);font-variant-numeric:tabular-nums}
+/* Teilen-Auswahl · v8-457: Schrift der Aufkleber, eigenes Foto, weitere Optionen (Standort schuetzen, Aufloesung) */
+.shs-ink,.shs-q{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 12px;border-radius:14px;background:var(--shs-s2);border:1px solid var(--shs-line);font-size:13px;font-weight:650}
+.shs-ink[hidden],.shs-photo[hidden]{display:none}
+.shs-photo{display:flex;flex-direction:column;gap:6px}
+.shs-photo small,.shs-q small{flex:1 0 100%;font-size:11.5px;font-weight:500;line-height:1.45;color:var(--shs-t3)}
+.shs-pick{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:16px;border:1px solid var(--shs-line);color:var(--shs-text);font-size:16px;font-weight:720;cursor:pointer}
+.shs-file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}   /* nicht display:none — iOS oeffnet sonst die Fotoauswahl ueber das Label nicht zuverlaessig */
+.shs-pick{position:relative}
+.shs-pick:focus-within{outline:2px solid var(--shs-gold);outline-offset:2px}
+.shs-more{border-top:1px solid var(--shs-line);padding-top:6px}
+.shs-more > summary{min-height:44px;display:flex;align-items:center;font-size:13.5px;font-weight:700;color:var(--shs-t2);cursor:pointer;list-style:none}
+.shs-more > summary::-webkit-details-marker{display:none}
+.shs-more > summary::after{content:"";width:7px;height:7px;margin-left:10px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg) translateY(-2px)}
+.shs-more[open] > summary::after{transform:rotate(-135deg) translateY(-2px)}
+.shs-more > div + div{margin-top:8px}
+.shs-more .shs-priv{margin-top:2px}
+.shs-more summary:focus-visible{outline:2px solid var(--shs-gold);outline-offset:2px;border-radius:8px}

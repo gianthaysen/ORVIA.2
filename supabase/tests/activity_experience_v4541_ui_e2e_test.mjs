@@ -99,7 +99,7 @@ const h = await page.evaluate(() => {
   const order = ['.ax-top', '.ax-hero', '.ax-charts', '.iv-card', '.ax-analysis', '.ax-assess', '.ax-libsec', '.ax-srcsec'].map(s => y(q(s)));
   const title = q('.ax-title').textContent, same = [...p.querySelectorAll('h1, h2, .ax-kicker span, .page-head h2')].filter(e => e.textContent.trim() === title).length;
   const del = q('.gm-corr .danger-btn'), last = [...p.querySelectorAll('button')].filter(b => b.offsetParent).pop();
-  return { order, title, same, delLast: del === last, story: !!q('.ax-hero .gm-story-cta'), src: !!q('.ax-hero .ax-chip'), map: !!q('.ax-top .route-map'), bar: q('.ax-top') && q('.ax-top').previousElementSibling && q('.ax-top').previousElementSibling.className, dt: window.__dt };
+  return { order, title, same, delLast: del === last, story: !!q('.ax-hero .gm-story-cta'), src: !!q('.ax-hero .ax-chip'), map: !!q('.ax-top .route-map'), bar: q('.ax-top') && (q('.ax-top').previousElementSibling || (q('.ax-lead') && q('.ax-lead').previousElementSibling) || {}).className, dt: window.__dt };
 });
 ok('H1 Reihenfolge: Kopfbild · Hauptleistung · Verlauf · Abschnitte · Analyse · Trainingsbewertung · Alle Kennzahlen · Datenherkunft', h.order.every((v, i) => v !== null && (i === 0 || v > h.order[i - 1])), JSON.stringify(h.order));
 ok('H2 Aktivitaetsname genau einmal (kein zweiter Titel in Kopfleiste oder Kennzeichen)', h.same === 1, JSON.stringify([h.title, h.same]));

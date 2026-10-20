@@ -128,7 +128,7 @@ sec('V · Zwift-Strecke');
 await page.setViewportSize({ width: 1440, height: 900 }); await open(ZW);
 const v1 = await page.evaluate(() => { const f = document.querySelector('#gmActPage .ax-vroute'), r = f.getBoundingClientRect(), line = f.querySelector('.rmx-line, path'); const b = line.getBoundingClientRect();
   return { fieldW: Math.round(r.width), lineH: Math.round(b.height), fieldH: Math.round(r.height), label: f.querySelector('.ax-vlabel').textContent, tiles: !!f.querySelector('.has-tiles, .rmx-tiles img, .rmx-gl'), darkRect: !!f.querySelector('svg.rmap rect') }; });
-ok('V1 virtuelle Strecke im vollen Kartenfeld eingepasst (Linie nutzt ≥ 55 % der Hoehe), ohne Landkarte und ohne dunkles Zusatzrechteck; „Spielwelt" benannt', v1.fieldW > 1000 && v1.lineH >= v1.fieldH * 0.55 && !v1.tiles && !v1.darkRect && /Spielwelt/.test(v1.label), JSON.stringify(v1));
+ok('V1 virtuelle Strecke im Kartenfeld eingepasst (Desktop v8-457: grosse rechte Spalte, Linie nutzt ≥ 55 % der Hoehe), ohne Landkarte und ohne dunkles Zusatzrechteck; „Spielwelt" benannt', v1.fieldW > 600 && v1.fieldH >= 360 && v1.lineH >= v1.fieldH * 0.55 && !v1.tiles && !v1.darkRect && /Spielwelt/.test(v1.label), JSON.stringify(v1));
 
 sec('W · Wellenfeld');
 await open(SW);

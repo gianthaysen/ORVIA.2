@@ -1,4 +1,4 @@
-/* ORVIA · v8-456 · Einbrueche im Tempo-/Kadenz-Verlauf einer Aktivitaet einordnen — NUR LESEN.
+/* ORVIA · v8-456/457 · Einbrueche im Tempo-/Kadenz-Verlauf einer Aktivitaet einordnen — NUR LESEN.
    Angemeldet in der Konsole des Desktop-Browsers einfuegen (ORVIA ab v8-456). Optional vorher setzen:
      window.__ORVIA_DIPS_DAY = '2026-09-06'   (Standard: Halbmarathon 06.09.)   window.__ORVIA_DIPS_SPORT = 'running'
    Schreibt nichts (kein Server, kein Zwischenspeicher, kein Flag). Liest die gespeicherte Zeile und ordnet JEDEN gespeicherten
@@ -35,6 +35,14 @@
       if (c === 0 && v !== null && v > 0.3) cls.cadence_zero.push(at);
       if (gapLim != null && i > 0 && isN(t[i]) && isN(t[i - 1]) && t[i] - t[i - 1] > gapLim) cls.time_gap.push(at + ' (+' + Math.round(t[i] - t[i - 1]) + ' s)');
     }
+    /* v8-457 · Entscheidende Gegenprobe: Kadenz und Puls AN DEN langsamen Punkten. Gehen = Kadenz deutlich niedriger (≈ 100–135 spm)
+       → echter Einbruch. Kadenz normal (≥ 145) bei niedriger Geschwindigkeit → GPS-/Geschwindigkeitsfehler, kein Gehen. */
+    const medOf = a => { const v = a.filter(isN).slice().sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null; };
+    const hrS = Array.isArray(st.heart_rate) ? st.heart_rate : null, cadAt = [], hrAt = [], cadAll = [];
+    for (let i = 0; i < n; i++) { const v = sp && isN(sp[i]) ? sp[i] : null; if (cad && isN(cad[i]) && v !== null && v >= 1.67) cadAll.push(cad[i]); if (v !== null && v > 0.3 && v < 1.67) { if (cad && isN(cad[i])) cadAt.push(cad[i]); if (hrS && isN(hrS[i])) hrAt.push(hrS[i]); } }
+    const cS = medOf(cadAt), cA = medOf(cadAll);
+    const gegenprobe = { kadenz_median_langsame_punkte: cS, kadenz_median_laufend: cA, puls_median_langsame_punkte: medOf(hrAt),
+      deutung: cS == null ? 'keine Kadenz an langsamen Punkten' : (cS <= 135 ? 'Kadenz an den Einbruechen deutlich niedriger → wahrscheinlich echtes Gehen (z. B. Anstiege, Verpflegung)' : (cS >= 145 ? 'Kadenz an den Einbruechen normal → wahrscheinlich GPS-/Geschwindigkeitsfehler, kein Gehen' : 'Kadenz dazwischen → nicht eindeutig')) };
     const short = a => a.length > 24 ? a.slice(0, 12).concat(['…'], a.slice(-6)) : a;
     const timer = isN(g.timer_duration_s) ? g.timer_duration_s : null, el = isN(g.elapsed_duration_s) ? g.elapsed_duration_s : null, mv = isN(g.moving_duration_s) ? g.moving_duration_s : null;
     return {
@@ -42,14 +50,14 @@
       zeiten: { timer: timer, gesamt: el, bewegung: mv, gesamt_minus_timer: (el != null && timer != null) ? Math.round(el - timer) : null, timer_minus_bewegung: (timer != null && mv != null) ? Math.round(timer - mv) : null },
       abtastung: { geliefert: isN(g.stream_rows) ? g.stream_rows : null, gespeichert: isN(g.stream_kept) ? g.stream_kept : n, median_abstand_s: med, luecken_grenze_s: gapLim,
                    hinweis: (isN(g.stream_rows) && isN(g.stream_kept) && g.stream_kept < g.stream_rows) ? 'gespeichert ist jede ' + Math.ceil(g.stream_rows / g.stream_kept) + '. Zeile — kurze Stopps koennen als einzelner Einbruch erscheinen' : null },
-      punkte: n,
+      punkte: n, gegenprobe: gegenprobe,
       klassen: Object.fromEntries(Object.keys(cls).map(k => [k, { anzahl: cls[k].length, anteil_pct: n ? r1(cls[k].length / n * 100) : null, sekunden: short(cls[k]) }])),
       einordnung: cls.stop.length && !cls.time_gap.length && timer != null && mv != null && timer - mv > 30
         ? 'Einbrueche passen zu Stillstand OHNE angehaltene Uhr (Timer − Bewegung = ' + Math.round(timer - mv) + ' s): echte Messpunkte, ab v8-456 als Stillstand markiert, nicht geloescht.'
         : (cls.time_gap.length ? 'Abschnitte ohne Messwerte vorhanden — v8-456 zeigt sie als verkuerzte Luecke (aktive Zeit) bzw. Flaeche (Gesamtzeit).' : 'Keine Stillstands- oder Lueckenpunkte — Einbrueche anders verursacht; Ausgabe an Claude geben.')
     };
   });
-  const json = JSON.stringify({ tool: 'activity-dips@1', build: (document.querySelector('meta[name="orvia-build"]') || {}).content || null, tag: DAY, sport: SPORT, aktivitaeten: out }, null, 2);
+  const json = JSON.stringify({ tool: 'activity-dips@2', build: (document.querySelector('meta[name="orvia-build"]') || {}).content || null, tag: DAY, sport: SPORT, aktivitaeten: out }, null, 2);
   try { await navigator.clipboard.writeText(json); console.log('In der Zwischenablage (' + json.length + ' Zeichen).'); } catch (e) { console.log(json); }
   return out;
 })();

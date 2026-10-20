@@ -95,8 +95,8 @@ const RUN = real('running__running__intervals', 'Intervalllauf', ROUTE), ZW = re
 const GYM = { a: { id: '54560000-0000-4000-8000-000000000099', clientRecordId: 'act:v456s-gym', sportId: 'gym', source: 'orvia_workout', status: 'completed', startedAt: '2026-10-08T16:00:00.000Z', durationSeconds: 4020, workoutSessionId: 'w-v456s',
   summary: { name: 'Oberkörper', exerciseCount: 2, workingSetCount: 5, avgHr: 112 }, metrics: { exercises: [{ name: 'Bankdrücken', sets: [{ reps: 8, weight: 70 }, { reps: 8, weight: 70 }, { reps: 7, weight: 70 }] }, { name: 'Rudern', sets: [{ reps: 12, weight: 50 }, { reps: 11, weight: 50 }] }] } }, ext: null };
 async function story(c) { await open(c); await page.evaluate(id => gmOpenStory(id), c.a.id); await page.waitForTimeout(300); }
-async function shareOpen() { await page.evaluate(() => document.querySelector('#gmStory .wst-share').click()); await page.waitForFunction(() => !!document.querySelector('.shs[data-ready]'), null, { timeout: 8000 }); }
-const ready = id => page.waitForFunction(i => { const h = document.querySelector('.shs'); return h && h.getAttribute('data-ready') === i && !h.classList.contains('is-busy'); }, id, { timeout: 8000 });
+async function shareOpen() { await page.evaluate(() => document.querySelector('#gmStory .wst-share').click()); await page.waitForFunction(() => { const h = document.querySelector('.shs[data-ready]'); return h && !h.classList.contains('is-busy') && document.querySelector('.shs-img').naturalWidth > 0; }, null, { timeout: 15000 }); }
+const ready = id => page.waitForFunction(i => { const h = document.querySelector('.shs'); return h && h.getAttribute('data-ready') === i && !h.classList.contains('is-busy'); }, id, { timeout: 15000 });
 const decode = () => page.evaluate(async () => { const st = ORVIA.storyShare._state(); const bm = await createImageBitmap(st.blob); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const x = c.getContext('2d'); x.drawImage(bm, 0, 0);
   const px = (a, b) => Array.from(x.getImageData(a, b, 1, 1).data); let opaque = 0; const d = x.getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 200) opaque++;
   return { w: bm.width, h: bm.height, type: st.blob.type, corners: [px(0, 0), px(c.width - 1, 0), px(0, c.height - 1), px(c.width - 1, c.height - 1)].map(p => p[3]), opaque, file: st.file && { name: st.file.name, type: st.file.type, size: st.file.size } }; });
@@ -109,18 +109,30 @@ ok('S1 Teilen-Symbol (Quadrat mit Pfeil) oben in der Story, benannt „Teilen", 
 await shareOpen();
 const s2 = await page.evaluate(() => ({ dlg: document.querySelector('.shs').getAttribute('role') + '/' + document.querySelector('.shs').getAttribute('aria-modal'), timer: _gmStory.timer, tabs: [...document.querySelectorAll('.shs-seg [role=tab]')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')),
   tpls: [...document.querySelectorAll('.shs-th')].map(b => b.getAttribute('data-tpl')), img: (i => [i.naturalWidth, i.naturalHeight])(document.querySelector('.shs-img')), focus: document.activeElement && document.activeElement.closest('.shs') ? 1 : 0 }));
-ok('S2 Auswahl als Dialog; Story angehalten; Karten | Aufkleber; Vorlagen mit Strecke; Vorschau 1080 × 1920; Fokus im Dialog', s2.dlg === 'dialog/true' && s2.timer === null && s2.tabs.join() === 'Karten*,Aufkleber' && /route,route_plus/.test(s2.tpls.join()) && s2.img.join() === '1080,1920' && s2.focus === 1, JSON.stringify(s2));
+ok('S2 Auswahl als Dialog; Story angehalten; Karten | Aufkleber; Bestzeit-Karte vorn (Lauf mit Bestzeit), Vorlagen mit Strecke; Vorschau 2160 × 3840 (4K); Fokus im Dialog', s2.dlg === 'dialog/true' && s2.timer === null && s2.tabs.join() === 'Karten*,Aufkleber' && s2.tpls[0] === 'pb' && /route,route_plus/.test(s2.tpls.join()) && s2.img.join() === '2160,3840' && s2.focus === 1, JSON.stringify(s2));
 
 sec('X · Export');
 const x1 = await decode();
-ok('X1 Karte: PNG 1080 × 1920, deckend (Ecken Alpha 255), Datei image/png .png', x1.w === 1080 && x1.h === 1920 && x1.type === 'image/png' && x1.corners.every(a => a === 255) && x1.file && x1.file.type === 'image/png' && /\.png$/.test(x1.file.name) && x1.file.size > 10000, JSON.stringify(x1));
-await page.evaluate(() => document.querySelector('.shs [data-kind="sticker"]').click()); await ready('s_main');
+ok('X1 Karte: PNG nativ 2160 × 3840 (4K), deckend (Ecken Alpha 255), Datei image/png .png', x1.w === 2160 && x1.h === 3840 && x1.type === 'image/png' && x1.corners.every(a => a === 255) && x1.file && x1.file.type === 'image/png' && /\.png$/.test(x1.file.name) && x1.file.size > 10000, JSON.stringify(x1));
+await page.evaluate(() => document.querySelector('.shs [data-q="1"]').click()); await ready('pb');
+const x1s = await decode();
+ok('X1b Aufloesung „Standard": dieselbe Karte als 1080 × 1920', x1s.w === 1080 && x1s.h === 1920, JSON.stringify([x1s.w, x1s.h]));
+await page.evaluate(() => document.querySelector('.shs [data-q="2"]').click()); await ready('pb');
+await page.evaluate(() => document.querySelector('.shs [data-kind="sticker"]').click()); await ready('s_stack');
+const xs = await decode();
+ok('X5 gestapelter Aufkleber zuerst: transparent, eng zugeschnitten (kleiner als 2160 × 3000), Inhalt vorhanden', xs.corners.every(a => a === 0) && xs.w < 2160 && xs.h < 3000 && xs.opaque > 50, JSON.stringify([xs.w, xs.h, xs.opaque]));
+await page.evaluate(() => document.querySelector('.shs [data-tpl="s_main"]').click()); await ready('s_main');
 const x2 = await decode();
-ok('X2 Aufkleber: PNG mit echtem Alpha-Kanal — Ecken transparent (Alpha 0), Inhalt deckend vorhanden', x2.type === 'image/png' && x2.corners.every(a => a === 0) && x2.opaque > 50 && x2.w === 1080, JSON.stringify(x2));
+ok('X2 Aufkleber: PNG mit echtem Alpha-Kanal — Ecken transparent (Alpha 0), Inhalt deckend vorhanden, eng zugeschnitten', x2.type === 'image/png' && x2.corners.every(a => a === 0) && x2.opaque > 50 && x2.w > 600 && x2.w < 2160, JSON.stringify(x2));
+const inkD = await page.evaluate(async () => { const px = async () => { const st = ORVIA.storyShare._state(); const bm = await createImageBitmap(st.blob); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const x = c.getContext('2d'); x.drawImage(bm, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; let l = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 53) if (d[i + 3] > 240) { l += d[i] + d[i + 1] + d[i + 2]; n++; } return n ? l / n / 3 : null; }; return { light: await px() }; });
+await page.evaluate(() => document.querySelector('.shs [data-ink="dark"]').click()); await ready('s_main');
+const inkD2 = await page.evaluate(async () => { const st = ORVIA.storyShare._state(); const bm = await createImageBitmap(st.blob); const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const x = c.getContext('2d'); x.drawImage(bm, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; let l = 0, n = 0, t = 0; for (let i = 0; i < d.length; i += 4 * 53) { if (d[i + 3] > 240) { l += d[i] + d[i + 1] + d[i + 2]; n++; } if (d[i + 3] === 0) t++; } return { dark: n ? l / n / 3 : null, transparent: t }; });
+ok('X6 Schrift dunkel (fuer helle Fotos): deutlich dunklere Schrift, weiter transparent', inkD.light > 180 && inkD2.dark < 120 && inkD2.transparent > 100, JSON.stringify([inkD, inkD2]));
+await page.evaluate(() => document.querySelector('.shs [data-ink="light"]').click()); await ready('s_main');
 ok('X3 Aufkleber-Vorschau auf Schachbrett (nur Darstellung) — die Datei selbst bleibt transparent', await page.evaluate(() => /linear-gradient/.test(getComputedStyle(document.querySelector('.shs-prev')).backgroundImage) && document.querySelector('.shs-prev').classList.contains('is-sticker')));
 await page.evaluate(() => document.querySelector('.shs [data-tpl="s_route"]').click()); await ready('s_route');
 const x4 = await decode();
-ok('X4 GPS-Strecke ohne Kartengrund als Aufkleber: transparent, Strecke sichtbar', x4.corners.every(a => a === 0) && x4.opaque > 20 && x4.h === 1080, JSON.stringify(x4));
+ok('X4 GPS-Strecke ohne Kartengrund als Aufkleber: transparent, Strecke sichtbar (eng zugeschnitten)', x4.corners.every(a => a === 0) && x4.opaque > 20 && x4.h < 2160, JSON.stringify(x4));
 
 sec('D · Datenschutz');
 const before = await page.evaluate(() => JSON.stringify(window.__local[0].metrics.route));
@@ -151,7 +163,8 @@ ok('N5 fehlgeschlagenes Teilen: Hinweis mit Ausweg „speichern"', await page.ev
 sec('C · Aufkleber kopieren');
 await page.evaluate(() => { window.__clip = null; window.ClipboardItem = function (o) { this.types = Object.keys(o); this.o = o; };
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write: items => new Promise((res, rej) => { window.__clip = { items: items.map(i => i.types.join()), res, rej }; }) } }); });
-await page.evaluate(() => document.querySelector('.shs [data-kind="sticker"]').click()); await ready('s_main');
+await page.evaluate(() => document.querySelector('.shs [data-kind="sticker"]').click()); await ready('s_route');   /* zuletzt von Hand gewaehlte Vorlage bleibt (v8-457) */
+await page.evaluate(() => document.querySelector('.shs [data-tpl="s_main"]').click()); await ready('s_main');
 const c0 = await page.evaluate(() => !document.querySelector('.shs [data-act="copy"]').hidden);
 await page.click('.shs [data-act="copy"]'); await page.waitForTimeout(80);
 const c1 = await page.evaluate(() => ({ items: window.__clip && window.__clip.items, status: document.querySelector('.shs-status').textContent }));
@@ -160,7 +173,7 @@ const c2 = await page.evaluate(() => document.querySelector('.shs-status').textC
 ok('C1 „Aufkleber kopieren" (nur bei Aufklebern, nur mit ClipboardItem): image/png in die Zwischenablage; Erfolg ERST nach write()', c0 && c1.items && c1.items[0] === 'image/png' && !/kopiert/.test(c1.status) && /kopiert/.test(c2), JSON.stringify([c1, c2]));
 await page.click('.shs [data-act="copy"]'); await page.waitForTimeout(60); await page.evaluate(() => window.__clip.rej(new Error('denied'))); await page.waitForTimeout(80);
 ok('C2 Kopieren abgelehnt: kein Erfolg, Fallback-Hinweis (speichern, in Instagram über „Foto")', await page.evaluate(() => /nicht möglich/.test(document.querySelector('.shs-status').textContent)));
-await page.evaluate(() => document.querySelector('.shs [data-kind="card"]').click()); await ready('hero');
+await page.evaluate(() => document.querySelector('.shs [data-kind="card"]').click()); await ready('pb');
 ok('C3 Karten: kein „Kopieren"-Knopf', await page.evaluate(() => document.querySelector('.shs [data-act="copy"]').hidden));
 
 sec('L · Layout');
@@ -181,7 +194,7 @@ await page.keyboard.press('Escape'); await page.waitForTimeout(100);
 sec('E · Abschlussseite');
 const e2 = await page.evaluate(() => { _gmStory.idx = _gmStory.pages.length - 1; gmStoryRender(); const pg = document.querySelector('#gmStory .wst-page.on');
   return { btns: [...pg.querySelectorAll('.wst-endbtn')].map(b => b.textContent.trim()), timer: _gmStory.timer, end: document.getElementById('gmStory').classList.contains('st-end'), bars: [...document.querySelectorAll('#gmStory .wst-bars i')].filter(i => getComputedStyle(i).display !== 'none').length, pages: _gmStory.pages.length }; });
-ok('E1 nach der letzten Szene: „Teilen" + „Fertig", bleibt stehen (kein Weiterschalten), ohne eigenen Fortschrittsbalken', e2.btns.join() === 'Teilen,Fertig' && e2.timer === null && e2.end && e2.bars === e2.pages - 1, JSON.stringify(e2));
+ok('E1 nach der letzten Szene: „Teilen", „Strecke abspielen" (Cinematic Replay, nur mit Strecke) und „Fertig", bleibt stehen (kein Weiterschalten), ohne eigenen Fortschrittsbalken', e2.btns.join() === 'Teilen,Strecke abspielen,Fertig' && e2.timer === null && e2.end && e2.bars === e2.pages - 1, JSON.stringify(e2));
 await page.evaluate(() => document.querySelector('#gmStory .wst-page.on .wst-endbtn.is-primary').click()); await page.waitForFunction(() => !!document.querySelector('.shs[data-ready]'));
 ok('E2 „Teilen" auf der Abschlussseite oeffnet DIESELBE Auswahl', await page.evaluate(() => ORVIA.storyShare.isOpen() && document.querySelectorAll('.shs').length === 1));
 await page.keyboard.press('Escape'); await page.waitForTimeout(80);
@@ -208,9 +221,26 @@ await open(RUN);
 const h1 = await page.evaluate(id => { const a = window.__local[0]; const vm = activityDetailViewModel(a); const lm = gmStoryLapModel(a, vm, null, 'pace'); const pages = gmStoryPages(a).join('');
   const m = /<div class="wst-laps">([\s\S]*?)<\/div><\/div>/.exec(pages); return { lm: lm && { n: lm.rows.length, txt: lm.rows.map(r => r.txt), best: lm.rows.filter(r => r.best).length, kick: lm.kick }, zero: /<strong>0:0\d<\/strong>/.test(pages), draw: (/--st-draw:([\d.]+)s/.exec(pages) || [])[1], km: a.summary.distanceKm }; }, RUN.a.id);
 ok('H1 Runden-Seite aus der Intervall-Engine: nur vergleichbare Belastungen (Tempo /km), genau eine schnellste, keine Pausenrunde („0:0x")', h1.lm && h1.lm.n >= 3 && h1.lm.txt.every(t => /^\d+:\d\d \/km$/.test(t)) && h1.lm.best === 1 && !h1.zero, JSON.stringify(h1));
-const h2 = await page.evaluate(() => { const ps = gmStoryPages(window.__local[0]); return { ms0: gmStoryPageMs(ps[0]), def: GM_STORY_MS, st: (/data-st-ms="(\d+)"/.exec(ps[0]) || [])[1], f: gmStoryRouteDraw(21.0975), f2: gmStoryRouteDraw(0.4), f3: gmStoryRouteDraw(60) }; });
-ok('H2 Strecke zeichnet sich mit 2 s je km (' + h1.km + ' km → ' + h1.draw + ' s; HM 42,2 s; min 2 s, max 90 s); bei „Bewegung reduzieren" ohne Verlaengerung der Seite',
-  Math.abs(+h1.draw - Math.round(Math.min(90, Math.max(2, h1.km * 2)) * 10) / 10) < 0.01 && h2.f === 42.2 && h2.f2 === 2 && h2.f3 === 90 && h2.st === '0' && h2.ms0 === h2.def, JSON.stringify([h1.draw, h2]));
+const h2 = await page.evaluate(() => { const ps = gmStoryPages(window.__local[0]); return { ms0: gmStoryPageMs(ps[0]), def: GM_STORY_MS, st: (/data-st-ms="(\d+)"/.exec(ps[0]) || [])[1], q1: gmStoryRouteDraw(21.0975, 'quick', 'running'), q2: gmStoryRouteDraw(180, 'quick', 'cycling'),
+  r1: gmStoryRouteDraw(21.0975, 'replay', 'running', 1), r2: gmStoryRouteDraw(21.0975, 'replay', 'running', 2), r3: gmStoryRouteDraw(100, 'replay', 'cycling', 1), r4: gmStoryRouteDraw(0.4, 'replay', 'running', 1), r5: gmStoryRouteDraw(400, 'replay', 'cycling', 1) }; });
+ok('H2 Quick Highlights: Strecke kompakt 2,2 s unabhaengig von der Distanz (' + h1.km + ' km → ' + h1.draw + ' s), Szene 3,6 s; Replay distanzgetreu (HM 42,2 s, 2× = 21,1 s, Rad 100 km = 60 s, 4–120 s); bei „Bewegung reduzieren" ohne Verlaengerung',
+  +h1.draw === 2.2 && h2.q1 === 2.2 && h2.q2 === 2.2 && h2.def === 3600 && h2.r1 === 42.2 && h2.r2 === 21.1 && h2.r3 === 60 && h2.r4 === 4 && h2.r5 === 120 && h2.st === '0' && h2.ms0 === h2.def, JSON.stringify([h1.draw, h2]));
+/* Anhalten/Fortsetzen mit Restzeit, Gedrueckthalten */
+await page.evaluate(id => { gmOpenStory(id); }, RUN.a.id); await page.waitForTimeout(900);
+const p1 = await page.evaluate(() => { gmStoryPause('user'); return { timer: _gmStory.timer, left: _gmStory.left, dur: _gmStory.dur, hold: document.getElementById('gmStory').classList.contains('st-hold'), pp: document.querySelector('#gmStory .wst-pp').getAttribute('aria-pressed') }; });
+await page.waitForTimeout(700);
+const p2 = await page.evaluate(() => { const idx = _gmStory.idx, l = _gmStory.left; gmStoryResume(); return { idx, l, timer: !!_gmStory.timer, hold: document.getElementById('gmStory').classList.contains('st-hold') }; });
+ok('H3 Anhalten: Zeitgeber steht, Restzeit bleibt (keine Zeit vergeht im Halten), Fortschritt pausiert; Fortsetzen an derselben Stelle', p1.timer === null && p1.left > p1.dur - 1500 && p1.left < p1.dur - 300 && p1.hold && p1.pp === 'true' && p2.l === p1.left && p2.timer && !p2.hold && p2.idx === 0, JSON.stringify([p1, p2]));
+const box = await page.evaluate(() => { const r = document.querySelector('#gmStory .wst-nav.next').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+await page.mouse.move(box.x, box.y); await page.mouse.down(); await page.waitForTimeout(450);
+const p3 = await page.evaluate(() => ({ paused: _gmStory.paused, timer: _gmStory.timer }));
+await page.mouse.up(); await page.waitForTimeout(120);
+const p4 = await page.evaluate(() => ({ idx: _gmStory.idx, paused: _gmStory.paused, timer: !!_gmStory.timer }));
+ok('H4 Gedrueckthalten haelt an, Loslassen setzt fort — ohne dabei weiterzublaettern', p3.paused === 'hold' && p3.timer === null && p4.idx === 0 && p4.paused === false && p4.timer, JSON.stringify([p3, p4]));
+await page.evaluate(() => { gmStoryClose(); });
+const r1 = await page.evaluate(id => { const ok = gmOpenReplay(id); const h = document.getElementById('gmStory'); return { ok, replay: h.classList.contains('st-replay'), pos: !!h.querySelector('.wst-page.on .rmx-pos') || !!h.querySelector('.wst-page.on .wst-map'), chips: [...h.querySelectorAll('.wst-rpl button[aria-pressed]')].map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(), timer: _gmStory.timer, bars: !!h.querySelector('.wst-bars') }; }, RUN.a.id);
+ok('H5 Cinematic Replay: eigener Modus (kein Fortschrittsbalken, kein Weiterschalten), Tempo 0,5× / 1× / 2×', r1.ok && r1.replay && r1.chips === '0,5×,1×*,2×' && r1.timer === null && !r1.bars, JSON.stringify(r1));
+await page.evaluate(() => { gmStoryClose(); });
 
 ok('keine ungefangenen JS-Fehler', errs.length === 0, errs.slice(0, 2).join(' | '));
 await browser.close(); server.close();

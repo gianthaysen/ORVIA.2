@@ -191,7 +191,9 @@
      gezeichnete Karte) nehmen sie von hier. v8-441 (Karte V2): Linie 4,5 px (vorher 5), darunter
      ein dunkler Rand, 3 px breiter (7,5 px, je 1,5 px sichtbar). Deckkraft des Rands: styles.css
      .rmx-case bzw. CASE_OPACITY fuer die gezeichnete Karte. */
-  var ROUTE_W = 4.5, CASE_W = 3, CASE_OPACITY = 0.65;
+  /* v8-457 (Gians Befund 20.10.: Strecke zu dick, dunkle Kontur macht sie unscharf): Linie 3 px, Rand nur 1,5 px breiter
+     (je 0,75 px sichtbar) bei 40 % — feiner Kern, Rand nur noch als Abhebung von hellen Strassen. */
+  var ROUTE_W = 3, CASE_W = 1.5, CASE_OPACITY = 0.4;
   function smooth(pts) {
     var n = pts.length;
     if (n < 5) return pts.slice();
@@ -318,8 +320,11 @@
         '<path class="rmx-line' + (opts.draw ? ' gm-route-line' : '') + '"' + (opts.draw ? ' pathLength="1" style="--rl:1"' : '') + ' d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linejoin="round" stroke-linecap="round"/>' +
         /* Start = offener Ring, Ziel = gefuellter Punkt: bei Rundkursen liegen beide
            uebereinander und bleiben trotzdem beide lesbar. */
-        '<circle class="rmx-start" cx="' + cx(a) + '" cy="' + cy(a) + '" r="6.5"/>' +
-        '<circle class="rmx-end" cx="' + cx(b) + '" cy="' + cy(b) + '" r="4.5"/>' +
+        '<circle class="rmx-start" cx="' + cx(a) + '" cy="' + cy(a) + '" r="5"/>' +
+        '<circle class="rmx-end" cx="' + cx(b) + '" cy="' + cy(b) + '" r="3.5"/>' +
+        /* v8-457 · Cinematic Replay: ein Punkt faehrt die Linie ab (CSS-Bewegungspfad = derselbe Pfad, gleiche Dauer und
+           gleichmaessige Kurve wie der Strich — er kann nicht springen). Nur mit opts.pos. */
+        (opts.pos ? '<circle class="rmx-pos" cx="0" cy="0" r="4.5" style="offset-path:path(\'' + d + '\')"/>' : '') +
       '</svg>' +
       (useTiles ? '<div class="rmx-attr">' + (c.logo ? '<img class="rmx-logo" alt="" referrerpolicy="strict-origin" data-rmx-src="' + esc(c.logo) + '">' : '') + '<span>' + esc(c.attribution) + '</span></div>' : '') +
       '</div>';
