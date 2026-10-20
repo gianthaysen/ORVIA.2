@@ -8944,12 +8944,28 @@ function gmActWaves(w,h,n,id){
       var y=y0+amp*env*Math.sin(x/per*2*Math.PI+ph);
       d+=(i?' L':'M')+x.toFixed(1)+','+y.toFixed(1);
     }
-    out+='<path d="'+d+'" pathLength="1" stroke="url(#'+gid+')" style="--wo:'+(0.2+0.55*tp).toFixed(2)+';--wd:'+(0.08*k).toFixed(2)+'s"/>';
+    out+='<path d="'+d+'" pathLength="1" stroke="url(#'+gid+')" style="--wo:'+(0.2+0.55*tp).toFixed(2)+';--wd:'+(0.08*k).toFixed(2)+'s;--wx:'+((k%2?-1:1)*(6+4*tp)).toFixed(1)+'px;--wt:'+(11+k*1.3).toFixed(1)+'s"/>';
   }
-  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true">'+
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" data-wn="'+n+'" aria-hidden="true">'+
     '<defs><linearGradient id="'+gid+'" class="act-wvg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="'+w+'" y2="0">'+
     '<stop offset="0" stop-opacity="0"/><stop offset="0.16" stop-opacity="1"/><stop offset="0.84" stop-opacity="1"/><stop offset="1" stop-opacity="0"/></linearGradient></defs>'+
     out+'</svg>';
+}
+/* v8-456 · Wellenfeld in der TATSAECHLICHEN Groesse neu zeichnen (1 Einheit = 1 px): gleiche Wellenlaenge auf Handy und
+   Desktop, kein Verzerren. Erster Aufruf ersetzt das Platzhalter-Feld vor dem ersten Bild (keine doppelte Einblendung);
+   spaetere Groessenaenderungen zeichnen ohne erneute Einblend-Animation (wv-fit). */
+function gmActWavesFit(root){
+  try{
+    (root||document).querySelectorAll('.act-waves').forEach(function(el){
+      var w=Math.round(el.clientWidth),h=Math.round(el.clientHeight);if(w<40||h<40)return;
+      var sv=el.querySelector('svg'),n=sv?+sv.getAttribute('data-wn')||7:7;
+      if(el._wvW===w&&el._wvH===h)return;
+      var first=el._wvW==null;el._wvW=w;el._wvH=h;
+      el.innerHTML=gmActWaves(w,h,n);
+      if(!first)el.classList.add('wv-fit');
+      if(first&&typeof ResizeObserver==='function'&&!el._wvRo){var t=null;el._wvRo=new ResizeObserver(function(){clearTimeout(t);t=setTimeout(function(){if(el.isConnected)gmActWavesFit(el.parentNode);else el._wvRo.disconnect();},120);});el._wvRo.observe(el);}
+    });
+  }catch(_){ }
 }
 /* GM-SVG-Visualisierung: rein darstellerische Wahl anhand des kanonischen Sportfeldes. */
 function gmActGlyph(gmSport){
@@ -9575,7 +9591,7 @@ function gmAaChartsHtml(md,aid){
   var chips=md.charts.length>1?'<div class="aa-chips" role="tablist">'+md.charts.map(function(c){return '<button type="button" role="tab" aria-selected="'+(c.id===sel)+'" onclick="gmAaSelChart(\''+gmEsc(String(aid))+'\',\''+c.id+'\')">'+gmEsc(gmAaT(GM_AA_CHART,c.id))+'</button>';}).join('')+'</div>':'';
   return '<div class="card aa-chart-card"><div class="ctitle"><div class="l">'+icon('chart')+' '+gmEsc(_uiT('aa.charts.title'))+'</div>'+(md.charts.length===1?'<span class="more">'+gmEsc(gmAaT(GM_AA_CHART,sel))+'</span>':'')+'</div>'+chips+'<div class="oc2" id="gmAaChart" data-chart="'+sel+'"></div></div>';
 }
-function gmAaSelChart(aid,id){_gmAaChartSel[aid]=id;gmActRedrawKeep();}
+function gmAaSelChart(aid,id){_gmAaChartSel[aid]=id;if(document.getElementById('gmAxCharts'))gmAxRedrawCharts(aid,'[data-chart-id="'+id+'"]');else gmActRedrawKeep();}
 function gmAaMountChart(md,aid){
   var el=document.getElementById('gmAaChart');if(!el||!md||!(window.ORVIA&&ORVIA.charts&&ORVIA.charts.richChart))return;
   var c=md.charts.filter(function(x){return x.id===el.getAttribute('data-chart');})[0];if(!c)return;
@@ -9928,7 +9944,7 @@ var GM_AX_MODELED={distance:1,avgSpeed:1,maxSpeed:1,elevationGain:1};
 var GM_AX_HERO_LBL={avgSpeed:'ax.hero.avgSpeed'};   /* kurze Bezeichnung in der schmalen Hero-Spalte */
 /* Bezeichnung einer Kennzahl in der Bibliothek: Zeiten erklaert, modellierte Werte (Rolle/virtuell) gekennzeichnet */
 function gmAxLabel(d,md){
-  var l=d.id==='duration'?_uiT(d.method==='manual'?'ax.lbl.duration_manual':'ax.lbl.timer'):gmAaT(GM_AA_LABEL,d.id);
+  var l=d.id==='duration'?_uiT(d.method==='manual'?'ax.lbl.duration_manual':'ax.lbl.timer'):(d.id==='pause'&&d.evidence==='unclear'?_uiT('ax.lbl.pause_unclear'):gmAaT(GM_AA_LABEL,d.id));
   if(md&&md.modeled&&GM_AX_MODELED[d.id])l+=' '+_uiT(md.context==='virtual'?'ax.sfx.virtual':'ax.sfx.indoor');
   return l;
 }
@@ -9939,7 +9955,7 @@ function gmAxDur(sec){if(sec>=3600&&sec%3600===0)return _uiT('ax.u.h',{n:sec/360
 /* 1 · Hero */
 /* Titel = Sportart (Garmin-Standardname)? Dann steht die Sportart nicht noch einmal darueber. */
 function gmAxSame(a,b){var n=function(x){return String(x||'').toLowerCase().replace(/[^a-zäöüß]/g,'');};var x=n(a),y=n(b);return !!x&&!!y&&(x===y||x.indexOf(y.slice(0,5))===0);}
-function gmAxHeroHtml(md,vm,a,aid,when){
+function gmAxHeroHtml(md,vm,a,aid,when,rpe){
   var first=md.hero[0],rest=md.hero.slice(1,4);
   var ctx=(md.context&&md.context!=='outdoor')?gmAaT(GM_AA_CTX,md.context,''):'';
   var h='<section class="ax-hero" aria-labelledby="gmAxTitle"><div class="ax-hero-txt">'+
@@ -9948,7 +9964,12 @@ function gmAxHeroHtml(md,vm,a,aid,when){
     '<p class="ax-when">'+gmEsc(when)+'</p>';
   if(first){
     h+='<div class="ax-key aa-hero"><div class="ax-key-main aa-hero-main"><b>'+gmAaValUnit(gmAaFmt(first,md.family))+'</b><span>'+gmEsc(gmAaT(GM_AA_LABEL,first.id))+gmAxQm(first)+'</span></div>';
-    if(rest.length)h+='<dl class="ax-stats aa-hero-sub n'+rest.length+'">'+rest.map(function(d){return '<div><dt>'+gmEsc(GM_AX_HERO_LBL[d.id]?_uiT(GM_AX_HERO_LBL[d.id]):gmAaT(GM_AA_LABEL,d.id))+gmAxQm(d)+'</dt><dd>'+gmAaValUnit(gmAaFmt(d,md.family))+'</dd></div>';}).join('')+'</dl>';
+    /* v8-456: eigene Einschaetzung (RPE) gehoert bei Kraft und Sonstigem in die Uebersicht — eingetragen, nicht gemessen */
+    /* RPE ersetzt bei Bedarf den dritten Nebenwert (der bleibt in „Alle Kennzahlen") — die Uebersicht hat hoechstens drei */
+    if(rpe!=null&&(md.family==='gym'||md.family==='other')&&rest.length>=3)rest=rest.slice(0,2);
+    var rpeH=(rpe!=null&&rest.length<3&&(md.family==='gym'||md.family==='other'))?'<div><dt>'+gmEsc(_uiT('ax.hero.rpe'))+'</dt><dd>'+gmEsc(String(rpe))+'<small> /10</small></dd></div>':'';
+    var nSt=rest.length+(rpeH?1:0);
+    if(nSt)h+='<dl class="ax-stats aa-hero-sub n'+nSt+'">'+rest.map(function(d){return '<div><dt>'+gmEsc(GM_AX_HERO_LBL[d.id]?_uiT(GM_AX_HERO_LBL[d.id]):gmAaT(GM_AA_LABEL,d.id))+gmAxQm(d)+'</dt><dd>'+gmAaValUnit(gmAaFmt(d,md.family))+'</dd></div>';}).join('')+rpeH+'</dl>';
     if(md.rawPending)h+='<div class="aa-hero-load" role="status">'+gmEsc(_uiT('aa.note.loading'))+'</div>';
     h+='</div>';
   }
@@ -9962,55 +9983,166 @@ function gmAxHeroHtml(md,vm,a,aid,when){
    virtuelle Strecke (Zwift o. ae.) NUR als Linie ohne Landkarte, deutlich benannt; Schwimmen ohne Strecke = Wellenfeld (v8-444). */
 function gmAxVisHtml(md,route,vm){
   if(route&&route.length>=2){
-    if(md.context==='virtual')return '<div class="ax-vroute" role="img" aria-label="'+gmEsc(_uiT('ax.vroute'))+'">'+((typeof routeSVG==='function')?routeSVG(route):'')+'<span class="ax-vlabel">'+gmEsc(_uiT('ax.vroute'))+'</span></div>';
+    /* v8-456: virtuelle Strecke im selben Kartenfeld wie echte GPS-Strecken (volle Breite, Strecke eingepasst), aber OHNE
+       Landkarte — die Koordinaten liegen in einer Spielwelt (Zwift: Pazifik). Vorher (v8-454.1) eine kleine Zeichnung mit
+       eigenem dunklen Rechteck mitten im Feld, nicht eingepasst. Kennzeichnung „Spielwelt" bleibt sichtbar. */
+    if(md.context==='virtual')return '<div class="route-map ax-vroute" role="img" aria-label="'+gmEsc(_uiT('ax.vroute'))+'"><div class="ax-vr-draw">'+((typeof routeSVG==='function')?routeSVG(route,{noBg:true}):'')+'</div><span class="ax-vlabel">'+gmEsc(_uiT('ax.vroute'))+'</span></div>';
     return '<div class="route-map">'+((typeof routeSVG==='function')?routeSVG(route):'')+'</div>';
   }
   if(md.family==='swimming'&&gmActSignatureRenderer(vm.sportId)==='waves')return '<div class="act-hero act-waves" aria-hidden="true">'+gmActWaves(390,150,7)+'</div>';
   return '';
 }
+/* Virtuelle Strecke: dieselbe Einpassung wie die Karte (route-map, Kartenkacheln ausdruecklich aus); ohne Modul bleibt die
+   eingepasste Linienzeichnung stehen. */
+function gmAxMountVirtualRoute(pg,route){
+  try{
+    var RM=window.ORVIA&&ORVIA.routeMap,el=pg&&pg.querySelector('.ax-vroute .ax-vr-draw');
+    if(!el||!RM||typeof RM.mount!=='function'||!route||route.length<2)return false;
+    var keep=el.innerHTML,ok=RM.mount(el,route,{cls:'detail',tiles:false,pad:{t:GM_ACT_MAP_PAD.t,r:GM_ACT_MAP_PAD.r,b:GM_ACT_MAP_PAD.b+24,l:GM_ACT_MAP_PAD.l}});   /* unten Platz fuer die Kennzeichnung */
+    if(!ok)el.innerHTML=keep;
+    return ok;
+  }catch(_){return false;}
+}
 function gmAxShowSource(){
   try{var d=document.getElementById('gmAxSrc');if(!d)return;d.open=true;var rm=false;try{rm=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }d.scrollIntoView({block:'start',behavior:rm?'auto':'smooth'});var s=d.querySelector('summary');if(s)s.focus({preventScroll:true});}catch(_){ }
 }
 
-/* 2 · Verlauf */
+/* 2 · Verlauf (v8-456: gemeinsames Diagrammsystem activity-chart@2)
+   - Kopf: Ø/Max der GANZEN Aktivitaet (Kennzahl aus md.metrics, Quelle wie in der Bibliothek) — die Diagrammpunkte
+     sind eine Auswahl und erzeugen keine eigene Wahrheit. Nur ohne Kennzahl: „Ø im Diagramm".
+   - Feste Ablesezeile UEBER dem Diagramm (kein schwebender Hinweis): Position (Kilometer / Zeit / Bahn) · Wert · Vergleichswert · Kennzeichnung.
+   - Zeitachse: „Aktive Zeit" (Abschnitte ohne Messwerte verkuerzt, Standard) oder „Gesamtzeit" — nur wenn es solche Abschnitte gibt.
+   - Vergleich nur zwischen Reihen DERSELBEN Messpunkte (gleiche Achse, gleiche Laenge → gleicher Index = gleicher Zeitpunkt). */
+var _gmAxAxis={};          /* aid -> 'active' | 'total' */
+var _gmAxMd=null,_gmAxAid=null;
+var GM_AX_REF_SAME={avgHr:1,maxHr:1,avgPower:1,maxPower:1,paceKm:1,pace100:1,avgSpeed:1,runningCadence:1,cyclingCadence:1,swolf:1};  /* gleiche Einheit wie die Diagrammreihe */
 function gmAxFmtFor(c){return c.kind==='pace'?gmAaClock:function(v){return gmAaNum(v,c.dec||0);};}
 function gmAxUnit(c){return String(c.unit||'').trim();}
+function gmAxOk(d){return !!(d&&d.status==='available'&&d.validation!=='blocked'&&d.value!=null&&typeof d.value!=='object');}
+function gmAxRef(md,c,k){var id=c.ref&&c.ref[k];var d=id&&md.metrics?md.metrics[id]:null;return gmAxOk(d)?d:null;}
+/* Wert einer Diagrammreihe als Text (mit Einheit; einheitslose Reihen mit Namen, z. B. „SWOLF 42") */
+function gmAxValTxt(c,v){if(v==null)return '—';var u=gmAxUnit(c),t=gmAxFmtFor(c)(v);return u?(t+' '+u):(gmAaT(GM_AA_CHART,c.id)+' '+t);}
+function gmAxCmpList(md,c){return md.charts.filter(function(x){return x.id!==c.id&&x.axis===c.axis&&c.axis!=='index'&&x.values.length===c.values.length;});}
+function gmAxSpec(c,compress){return {values:c.values,x:c.times||null,marks:c.marks||null,compress:!!compress,pace:c.kind==='pace',zeroBased:c.id==='power'||c.id==='cadence'};}
+/* Vorab-Geometrie (ohne DOM): Abschnitte ohne Messwerte und Punkte ausserhalb der robusten Tempoachse */
+function gmAxProbe(c){
+  var AC=window.ORVIA&&ORVIA.activityChart,r={gaps:[],out:false};if(!AC)return r;
+  try{var m=AC.model(gmAxSpec(c,false),600,200);if(m){r.gaps=c.times?m.gaps:[];r.gapTotal=c.times?m.gapTotal:0;r.out=m.have.some(function(p){return p.mark==='out';});}}catch(_){ }
+  return r;
+}
 function gmAxChartsHtml(md,aid,cadNote){
   if(!md.charts.length)return '';
   var sel=_gmAaChartSel[aid];if(!md.charts.some(function(c){return c.id===sel;}))sel=md.charts[0].id;
-  var c=md.charts.filter(function(x){return x.id===sel;})[0],f=gmAxFmtFor(c),u=gmAxUnit(c);
-  var tabs=md.charts.length>1?'<div class="aa-chips ax-tabs" role="tablist" aria-label="'+gmEsc(_uiT('aa.charts.title'))+'">'+md.charts.map(function(x){return '<button type="button" role="tab" data-chart-id="'+x.id+'" aria-selected="'+(x.id===sel)+'" onclick="gmAaSelChart(\''+gmEsc(String(aid))+'\',\''+x.id+'\')">'+gmEsc(gmAaT(GM_AA_CHART,x.id))+'</button>';}).join('')+'</div>':'';
-  var cmpList=c.axis==='elapsed'?md.charts.filter(function(x){return x.id!==sel&&x.axis==='elapsed';}):[];
+  var c=md.charts.filter(function(x){return x.id===sel;})[0],f=gmAxFmtFor(c),u=gmAxUnit(c),A=gmEsc(String(aid));
+  var tabs=md.charts.length>1?'<div class="aa-chips ax-tabs" role="tablist" aria-label="'+gmEsc(_uiT('aa.charts.title'))+'" onkeydown="gmAxTabKey(event)">'+md.charts.map(function(x){var on=x.id===sel;return '<button type="button" role="tab" data-chart-id="'+x.id+'" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" onclick="gmAaSelChart(\''+A+'\',\''+x.id+'\')">'+gmEsc(gmAaT(GM_AA_CHART,x.id))+'</button>';}).join('')+'</div>':'';
+  var cmpList=gmAxCmpList(md,c);
   var cmp=_gmAxCmp[aid];if(!cmpList.some(function(x){return x.id===cmp;}))cmp='';
-  var cmpSel=cmpList.length?'<label class="ax-cmp"><span>'+gmEsc(_uiT('ax.ch.compare'))+'</span><select onchange="gmAxSetCmp(\''+gmEsc(String(aid))+'\',this.value)"><option value="">'+gmEsc(_uiT('ax.ch.compare_none'))+'</option>'+
+  var cmpSel=cmpList.length?'<label class="ax-cmp"><span>'+gmEsc(_uiT('ax.ch.compare'))+'</span><select data-ax-cmp="1" onchange="gmAxSetCmp(\''+A+'\',this.value)"><option value="">'+gmEsc(_uiT('ax.ch.compare_none'))+'</option>'+
     cmpList.map(function(x){return '<option value="'+x.id+'"'+(x.id===cmp?' selected':'')+'>'+gmEsc(gmAaT(GM_AA_CHART,x.id))+'</option>';}).join('')+'</select></label>':'';
-  var lo=c.min,hi=c.max;   /* Bereich immer kleinster – groesster Messwert */
-  var sum='<div class="aac-sum"><span class="aac-k">'+gmEsc(_uiT('ax.ch.avg_lbl'))+'</span><b>'+gmAaValUnit(f(c.mean)+(u?' '+u:''))+'</b><span>'+gmEsc(_uiT('ax.ch.range',{a:f(lo),b:f(hi)})+(u?' '+u:''))+'</span>'+
-    '<em>'+gmEsc(_uiT(c.axis==='elapsed'?'ax.ch.axis_elapsed':(c.axis==='lengths'?'ax.ch.axis_lengths':'ax.ch.axis_index')))+'</em></div>';
-  var notes=[];
-  if(md.sampling&&md.sampling.thinned&&c.metric!=='lengths')notes.push(_uiT('ax.ch.thinned',{k:md.sampling.kept.toLocaleString('de-DE'),r:md.sampling.rows.toLocaleString('de-DE')}));
-  if(c.id==='power'){var mp=md.metrics&&md.metrics.maxPower;if(mp&&mp.status==='available'&&mp.value!=null&&c.max!=null&&mp.value>c.max+1)notes.push(_uiT('ax.ch.maxnote',{v:Math.round(mp.value)+' W',c:Math.round(c.max)+' W'}));}
-  if(c.axis==='elapsed'&&(md.timerConflict||(md.metrics&&md.metrics.pause&&md.metrics.pause.value>30)))notes.push(_uiT('ax.ch.gaps'));
+  /* Kopf: Kennzahlen der ganzen Aktivitaet */
+  var avg=gmAxRef(md,c,'avg'),mx=gmAxRef(md,c,'max'),gain=gmAxRef(md,c,'gain'),kv=[];
+  if(avg)kv.push([_uiT('ax.ch.k_avg'),gmAaFmt(avg,md.family)]);
+  if(mx)kv.push([_uiT('ax.ch.k_max'),gmAaFmt(mx,md.family)]);
+  if(gain)kv.push([_uiT('ax.ch.k_gain'),gmAaFmt(gain,md.family)]);
+  if(!avg&&!gain)kv.push([_uiT('ax.ch.avg_lbl'),f(c.mean)+(u?' '+u:'')]);
+  if(!mx&&c.min!=null&&!(c.kind==='pace'&&c.metric!=='lengths'))kv.push(   /* Lauftempo: Spanne wuerde Gehpausen zeigen, nicht die Leistung */
+    [_uiT(c.metric==='lengths'?'ax.ch.k_range_ok':'ax.ch.k_range'),_uiT('ax.ch.range',{a:f(c.min),b:f(c.max)})+(u?' '+u:'')]);
+  var pr=gmAxProbe(c),gaps=c.axis==='elapsed'?pr.gaps:[],ax=gaps.length?(_gmAxAxis[aid]||'active'):'total';
+  var axTxt=c.axis==='elapsed'?(gaps.length?'':_uiT('ax.ch.axis_elapsed')):_uiT(c.axis==='lengths'?'ax.ch.axis_lengths':'ax.ch.axis_index');
+  var axSw=gaps.length?'<div class="ax-seg" role="group" aria-label="'+gmEsc(_uiT('ax.ch.axis'))+'">'+[['active','ax.ch.axis_active'],['total','ax.ch.axis_elapsed']].map(function(o){return '<button type="button" data-ax-axis="'+o[0]+'" aria-pressed="'+(ax===o[0])+'" onclick="gmAxSetAxis(\''+A+'\',\''+o[0]+'\')">'+gmEsc(_uiT(o[1]))+'</button>';}).join('')+'</div>':'';
+  var sum='<div class="aac-head"><dl class="aac-sum">'+kv.map(function(r,i){return '<div class="aac-kv'+(i?'':' is-main')+'"><dt>'+gmEsc(r[0])+'</dt><dd>'+gmAaValUnit(r[1])+'</dd></div>';}).join('')+'</dl>'+
+    (axSw||(axTxt?'<em class="aac-axis">'+gmEsc(axTxt)+'</em>':''))+'</div>';
   var cc=cmp?md.charts.filter(function(x){return x.id===cmp;})[0]:null;
-  var cmpH=cc?'<div class="ax-cmpwrap"><div class="aac-sum aac-sum-s"><b>'+gmEsc(gmAaT(GM_AA_CHART,cc.id))+'</b><span>'+gmEsc(_uiT('ax.ch.avg',{v:gmAxFmtFor(cc)(cc.mean)})+(gmAxUnit(cc)?' '+gmAxUnit(cc):''))+'</span></div><div class="aac-plot aac-plot-s" id="gmAxPlot2" data-chart="'+cc.id+'"></div></div>':'';
-  return '<section class="ax-sec ax-charts aa-chart-card" aria-labelledby="gmAxChH"><div class="ax-sec-h"><h2 id="gmAxChH">'+gmEsc(_uiT('aa.charts.title'))+'</h2>'+cmpSel+'</div>'+tabs+
-    '<div class="ax-panel ax-chartpanel">'+sum+'<div class="aac-plot" id="gmAaChart" data-chart="'+sel+'"></div>'+cmpH+'<div class="sr-only" aria-live="polite" id="gmAxLive"></div></div>'+
-    (notes.length?'<p class="ax-note">'+gmEsc(notes.join(' '))+'</p>':'')+(cadNote?'<p class="ax-note gm-cad-note">'+gmEsc(_uiT('ui.kadenz_altimport'))+'</p>':'')+'</section>';
+  var read='<div class="aac-read" id="gmAxRead" data-empty="1"><span class="aac-r-hint">'+gmEsc(_uiT('ax.ch.read_hint'))+'</span></div>';
+  var cmpH=cc?'<div class="ax-cmpwrap"><div class="aac-cmph"><i class="aac-sw is-cmp" aria-hidden="true"></i><b>'+gmEsc(gmAaT(GM_AA_CHART,cc.id))+'</b>'+(function(){var r=gmAxRef(md,cc,'avg');return '<span>'+gmEsc(_uiT('ax.ch.avg',{v:r?gmAaFmt(r,md.family):(gmAxFmtFor(cc)(cc.mean)+(gmAxUnit(cc)?' '+gmAxUnit(cc):''))}))+'</span>';})()+'</div><div class="aac-plot aac-plot-s aac-is-cmp" id="gmAxPlot2" data-chart="'+cc.id+'"></div></div>':'';
+  /* Hinweise: nur was im Bild zu sehen ist */
+  var notes=[],pz=md.metrics&&md.metrics.pause,ev=pz&&pz.evidence;
+  if(gaps.length){var gd=pr.gapTotal;notes.push(_uiT((ax==='active'?'ax.ch.gaps_c_':'ax.ch.gaps_f_')+(ev==='timer_counter'?'timer':(ev==='unclear'?'unclear':'plain')),{n:gaps.length,d:gmAaPause(gd)}));}
+  else if(c.axis==='elapsed'&&ev==='unclear')notes.push(_uiT('ax.ch.nogaps_unclear'));
+  if(c.marks&&c.marks.indexOf('stop')>=0)notes.push(_uiT(c.id==='cadence'?'ax.ch.stop_cad':'ax.ch.stop'));
+  if(pr.out)notes.push(_uiT('ax.ch.out'));
+  if(c.marks&&c.metric==='lengths'&&c.marks.some(function(m){return m==='flag'||m==='excl';}))notes.push(_uiT('ax.ch.flagged'));
+  if(md.sampling&&md.sampling.thinned&&c.metric!=='lengths')notes.push(_uiT('ax.ch.thinned',{k:md.sampling.kept.toLocaleString('de-DE'),r:md.sampling.rows.toLocaleString('de-DE')}));
+  if(mx&&c.max!=null){var mv=mx.id==='maxSpeed'?mx.value*3.6:mx.value;if(mv>c.max*1.02+0.5)notes.push(_uiT(md.sampling&&!md.sampling.thinned?'ax.ch.maxnote_full':'ax.ch.maxnote',{v:gmAaFmt(mx,md.family),c:f(c.max)+(u?' '+u:'')}));}
+  return '<section class="ax-sec ax-charts aa-chart-card" id="gmAxCharts" aria-labelledby="gmAxChH"><div class="ax-sec-h"><h2 id="gmAxChH">'+gmEsc(_uiT('aa.charts.title'))+'</h2>'+cmpSel+'</div>'+tabs+
+    '<div class="ax-panel ax-chartpanel" role="tabpanel" aria-labelledby="gmAxChH">'+sum+read+'<div class="aac-plot" id="gmAaChart" data-chart="'+sel+'" data-axis="'+ax+'"></div>'+cmpH+'<div class="sr-only" aria-live="polite" id="gmAxLive"></div></div>'+
+    (notes.length?'<ul class="ax-note ax-chnotes">'+notes.map(function(n){return '<li>'+gmEsc(n)+'</li>';}).join('')+'</ul>':'')+(cadNote?'<p class="ax-note gm-cad-note">'+gmEsc(_uiT('ui.kadenz_altimport'))+'</p>':'')+'</section>';
 }
-function gmAxSetCmp(aid,id){_gmAxCmp[aid]=id||'';gmActRedrawKeep();}
+/* Nur den Verlauf neu aufbauen (Tab, Vergleich, Achse) — Seite, Scrollposition und Fokus bleiben */
+function gmAxRedrawCharts(aid,focusSel){
+  var sec=document.getElementById('gmAxCharts');
+  if(!sec||!_gmAxMd||String(_gmAxAid)!==String(aid)){gmActRedrawKeep();return;}
+  var tmp=document.createElement('div');tmp.innerHTML=gmAxChartsHtml(_gmAxMd,aid,!!sec.querySelector('.gm-cad-note'));
+  var nu=tmp.firstChild;if(!nu){gmActRedrawKeep();return;}
+  sec.parentNode.replaceChild(nu,sec);
+  try{gmAxMountCharts(_gmAxMd,aid);}catch(_){ }
+  if(focusSel){try{var f=nu.querySelector(focusSel);if(f)f.focus({preventScroll:true});}catch(_){ }}
+}
+function gmAxSetCmp(aid,id){_gmAxCmp[aid]=id||'';gmAxRedrawCharts(aid,'[data-ax-cmp]');}
+function gmAxSetAxis(aid,ax){_gmAxAxis[aid]=ax==='total'?'total':'active';gmAxRedrawCharts(aid,'[data-ax-axis="'+(ax==='total'?'total':'active')+'"]');}
+function gmAxTabKey(ev){
+  var k=ev.key;if(k!=='ArrowRight'&&k!=='ArrowLeft'&&k!=='Home'&&k!=='End')return;
+  var b=[].slice.call(ev.currentTarget.querySelectorAll('[role=tab]')),i=b.indexOf(document.activeElement);if(i<0)return;
+  i=k==='Home'?0:k==='End'?b.length-1:(i+(k==='ArrowRight'?1:-1)+b.length)%b.length;
+  ev.preventDefault();b[i].focus();b[i].click();
+}
+/* Ablesezeile: Position · Wert · Vergleichswert · Kennzeichnung */
+function gmAxReadParts(md,c,cc,sel){
+  var i=sel.i,pos=[],note=[];
+  if(c.metric==='lengths'){
+    var mt=c.meta&&c.meta[i];
+    pos.push(_uiT('aa.sw.l_label',{n:c.labels?c.labels[i]:i+1}));
+    if(mt){if(mt.distance!=null)pos.push(_uiT('ax.rd.len_m',{n:gmAaNum(mt.distance,mt.distance%1?1:0)}));if(mt.duration!=null)pos.push(_uiT('ax.rd.len_s',{n:Math.round(mt.duration)}));if(mt.stroke)pos.push(gmAaT(GM_SW_STROKE,mt.stroke));}
+  }else{
+    var d=c.dist&&c.dist[i];
+    if(d!=null&&(md.family==='running'||md.family==='cycling'))pos.push(_uiT('ax.rd.km',{n:gmAaNum(d/1000,1)}));
+    if(sel.x!=null&&c.times){pos.push(gmAaClock(sel.xa));if(Math.abs(sel.x-sel.xa)>5)pos.push(_uiT('ax.rd.total',{t:gmAaClock(sel.x)}));}
+    else if(!c.times)pos.push(_uiT('ax.rd.point',{n:i+1}));
+  }
+  var v=sel.v,mk=sel.mark;
+  if(mk==='stop')note.push(_uiT(c.id==='cadence'?'ax.rd.stop_cad':'ax.rd.stop'));
+  else if(mk==='out')note.push(_uiT('ax.rd.out'));
+  else if(mk==='flag'||mk==='excl'){
+    var rs=(c.reasons&&c.reasons[i])||[];
+    note.push(_uiT(mk==='excl'?'ax.rd.excl':'ax.rd.flag')+(rs.length?': '+rs.map(function(r){return _uiT('ax.rq.'+r);}).join(', '):''));
+  }
+  var cv=cc?cc.values[i]:null,cm=cc&&cc.marks?cc.marks[i]:null;
+  return {pos:pos,val:(mk==='stop'&&v==null)?'—':gmAxValTxt(c,v),cmp:cc?((cm==='stop'&&cv==null)?'—':gmAxValTxt(cc,cv)):null,note:note,muted:!!mk};
+}
+function gmAxRenderRead(md,c,cc,sel){
+  var el=document.getElementById('gmAxRead');if(!el)return;
+  if(!sel){el.setAttribute('data-empty','1');el.innerHTML='<span class="aac-r-hint">'+gmEsc(_uiT('ax.ch.read_hint'))+'</span>';return;}
+  var p=gmAxReadParts(md,c,cc,sel);
+  el.removeAttribute('data-empty');
+  el.innerHTML='<span class="aac-r-pos">'+gmEsc(p.pos.join(' · '))+'</span>'+
+    '<span class="aac-r-val'+(p.muted?' is-mk':'')+'"><i class="aac-sw" aria-hidden="true"></i><b>'+gmEsc(p.val)+'</b></span>'+
+    (p.cmp!=null?'<span class="aac-r-val is-cmp"><i class="aac-sw is-cmp" aria-hidden="true"></i><b>'+gmEsc(p.cmp)+'</b></span>':'')+
+    (p.note.length?'<span class="aac-r-note">'+gmEsc(p.note.join(' · '))+'</span>':'');
+  var live=document.getElementById('gmAxLive');
+  if(live){clearTimeout(gmAxRenderRead._t);gmAxRenderRead._t=setTimeout(function(){live.textContent=[p.pos.join(', '),p.val,p.cmp||''].concat(p.note).filter(Boolean).join(' · ');},450);}
+}
 function gmAxMountCharts(md,aid){
   var AC=window.ORVIA&&ORVIA.activityChart;if(!AC||!md)return;
+  _gmAxMd=md;_gmAxAid=aid;
   _gmAxCharts.forEach(function(c){try{if(c&&c.disconnect)c.disconnect();}catch(_){ }});_gmAxCharts=[];
   var el=document.getElementById('gmAaChart'),el2=document.getElementById('gmAxPlot2');if(!el)return;
-  var grp=el2?AC.group():null,live=document.getElementById('gmAxLive');
-  [[el,false],[el2,true]].forEach(function(p){
-    var host=p[0];if(!host)return;
-    var c=md.charts.filter(function(x){return x.id===host.getAttribute('data-chart');})[0];if(!c)return;
-    var f=gmAxFmtFor(c),u=gmAxUnit(c),lab=gmAaT(GM_AA_CHART,c.id);
-    var xl=c.labels?function(i){var n=c.labels[Math.round(i)];return n!=null?_uiT('aa.sw.l_label',{n:n}):'';}:null;
-    var api=AC.mount(host,{values:c.values,x:c.times||null,xLabel:xl,area:!c.labels,dots:!!c.labels,fmt:f,unit:u,pace:c.kind==='pace',zeroBased:c.id==='power'||c.id==='cadence',mean:c.mean,
-      height:p[1]?(window.innerWidth>=1024?150:120):(window.innerWidth>=1024?300:(window.innerWidth>=768?260:220)),group:grp,live:live,
-      ariaLabel:_uiT('ax.ch.aria',{l:lab,n:c.points,v:f(c.mean)+(u?' '+u:'')})});
+  var byId=function(id){return md.charts.filter(function(x){return x.id===id;})[0]||null;};
+  var c=byId(el.getAttribute('data-chart'));if(!c)return;
+  var cc=el2?byId(el2.getAttribute('data-chart')):null;
+  var compress=el.getAttribute('data-axis')==='active';
+  var grp=cc?AC.group():null;
+  /* Die Ablesezeile folgt dem Hauptdiagramm; waehlt man im Vergleichsdiagramm, waehlt die Gruppe denselben Index im Hauptdiagramm */
+  var onSel=function(sel){gmAxRenderRead(md,c,cc,sel);},onSel2=function(sel){if(!sel)gmAxRenderRead(md,c,cc,null);};
+  [[el,c,false],[el2,cc,true]].forEach(function(p){
+    var host=p[0],ch=p[1];if(!host||!ch)return;
+    var f=gmAxFmtFor(ch),u=gmAxUnit(ch),lab=gmAaT(GM_AA_CHART,ch.id),avg=gmAxRef(md,ch,'avg');
+    var mean=(avg&&GM_AX_REF_SAME[avg.id])?avg.value:ch.mean;
+    var xl=ch.labels?function(xa){var n=ch.labels[Math.round(xa)];return n!=null?_uiT('aa.sw.l_label',{n:n}):'';}:null;
+    var spec=gmAxSpec(ch,compress);
+    spec.xLabel=xl;spec.area=!ch.labels;spec.dots=!!ch.labels;spec.fmt=f;spec.mean=mean;spec.group=grp;spec.onSelect=p[2]?onSel2:onSel;
+    spec.height=p[2]?(window.innerWidth>=1024?150:120):(window.innerWidth>=1024?300:(window.innerWidth>=768?260:220));
+    spec.ariaLabel=_uiT('ax.ch.aria',{l:lab,n:ch.points,v:avg?gmAaFmt(avg,md.family):(f(ch.mean)+(u?' '+u:''))});
+    var api=AC.mount(host,spec);
     if(api)_gmAxCharts.push(api);
   });
 }
@@ -10037,6 +10169,7 @@ function gmAxAnalysisHtml(md){
 }
 
 /* 6 · Alle Kennzahlen (Bibliothek) */
+function gmAxLevel(){try{return typeof gmLevel==='function'?gmLevel():'f';}catch(_){return 'f';}}
 function gmAxRowMeta(d,md){
   var meta=[];
   if(d.source)meta.push(_uiT('ax.row.src',{s:gmAaT(GM_AA_SRC,d.source,d.source)}));
@@ -10046,6 +10179,8 @@ function gmAxRowMeta(d,md){
   if(md.modeled&&GM_AX_MODELED[d.id]&&!(d.reason&&GM_AA_WHY[d.reason]))meta.push(_uiT(md.context==='virtual'?'ax.row.virtual':'ax.row.indoor'));
   var c=(d.id==='timer'||d.id==='duration')?md.timerConflict:null;
   if(c)meta.push(gmAxConflictTxt(c));
+  /* v8-456: Pause nur dann „Pause", wenn der Timer sie belegt — sonst ehrlich als unklar bzw. rein rechnerisch */
+  if(d.id==='pause'&&d.evidence&&d.evidence!=='none')meta.push(_uiT('ax.pause.ev.'+d.evidence));
   return meta;
 }
 function gmAxConflictTxt(c){
@@ -10054,7 +10189,9 @@ function gmAxConflictTxt(c){
 function gmAxLibHtml(md){
   var groups=md.library||[];if(!groups.length)return '';
   var n=0,anyQ=false;groups.forEach(function(g){n+=g.items.length;});
-  var open=false;try{open=matchMedia('(min-width:1024px)').matches;}catch(_){ }
+  /* v8-456 · Anzeigemodus steuert NUR, was anfangs aufgeklappt ist — nie, was es gibt: Profi offen, Anfaenger zu,
+     Fortgeschritten am Desktop offen. Inhalt, Werte und Berechnung sind in allen Modi gleich. */
+  var lv=gmAxLevel(),open=lv==='p';if(lv==='f'){try{open=matchMedia('(min-width:1024px)').matches;}catch(_){ }}
   var body=groups.map(function(g){
     return '<section class="ax-lg"><h3>'+gmEsc(_uiT(GM_AX_LIB[g.id]||'ax.lib.other'))+'</h3>'+g.items.map(function(d){
       var def=g.id==='time'&&GM_AX_DEF[d.id]?'<small>'+gmEsc(_uiT(d.id==='duration'&&d.method==='manual'?'ax.def.duration_manual':GM_AX_DEF[d.id]))+'</small>':'';
@@ -10087,21 +10224,38 @@ function gmAxSourceHtml(md,owner,a,vm,aid){
   if(off.length)p.push('<h3>'+gmEsc(_uiT('aa.md.missing'))+'</h3><dl class="ax-kv ax-miss">'+off.map(function(d){return '<div><dt>'+gmEsc(gmAaT(GM_AA_LABEL,d.id))+'</dt><dd>'+gmEsc(gmAaStatusTxt(d,md.family))+'</dd></div>';}).join('')+'</dl>');
   p.push('<p class="ax-p ax-foot">'+gmEsc(_uiT('aa.md.foot'))+'</p>');
   var set=gmActRecordingHtml(a,vm,aid)+gmActDurNoteHtml(a)+gmActCorrHtml(a,vm);
-  return '<section class="ax-sec ax-srcsec"><details class="ax-src aa-md" id="gmAxSrc"><summary><h2>'+gmEsc(_uiT('ax.sec.source'))+'</h2>'+icon('chevd','sm')+'</summary><div class="ax-src-b">'+p.join('')+'</div></details>'+
+  return '<section class="ax-sec ax-srcsec"><details class="ax-src aa-md" id="gmAxSrc"'+(gmAxLevel()==='p'?' open':'')+'><summary><h2>'+gmEsc(_uiT('ax.sec.source'))+'</h2>'+icon('chevd','sm')+'</summary><div class="ax-src-b">'+p.join('')+'</div></details>'+
     '<div class="ax-set" aria-label="'+gmEsc(_uiT('ax.sec.settings'))+'">'+set+'</div></section>';
 }
 
+/* 3b · Krafttraining: Uebungen & Saetze (statt Intervallen) */
+function gmAxGymHtml(a,vm,gym,aid){
+  var rows=gmActGymRowsHtml(a,vm,gym,aid);
+  return '<section class="ax-sec ax-gym" aria-labelledby="gmAxGyH"><div class="ax-sec-h"><h2 id="gmAxGyH">'+gmEsc(_uiT('ax.sec.gym'))+'</h2>'+(gym&&gym.setCount?'<span class="ax-sec-n">'+gmEsc(_uiT('ax.gym.sets',{n:gym.setCount}))+'</span>':'')+'</div><div class="ax-panel ax-gympanel">'+rows+'</div></section>';
+}
+/* 3c · weitere Sportarten mit echten Runden (Quelle: Aktivitaet bzw. verknuepfte Session) — Zeit je Runde, keine Hochrechnung */
+function gmAxSplitsHtml(splits,canon){
+  if(!splits||!splits.length)return '';
+  var rows=splits.map(function(sp,i){
+    var full=(sp.km==null)||Math.abs(sp.km-1)<=0.05,lbl=full?String(i+1):(fmtDe(sp.km)+' km');
+    return '<div class="ax-spl"><span>'+gmEsc(lbl)+'</span><b>'+gmEsc(gmAaClock(sp.sec))+'</b>'+(sp.hr!=null?'<small>'+gmEsc(sp.hr+' bpm')+'</small>':'')+'</div>';
+  }).join('');
+  return '<section class="ax-sec ax-splits" aria-labelledby="gmAxSpH"><div class="ax-sec-h"><h2 id="gmAxSpH">'+gmEsc(_uiT('ui.runden_'))+'</h2><span class="ax-sec-n">'+splits.length+'</span></div><div class="ax-panel">'+rows+
+    '<p class="ax-note">'+gmEsc(_uiT(canon?'ui.echte_runden_aus_der_aktivitaetsquelle':'ui.runden_aus_der_verknuepften_trainingssession'))+'</p></div></section>';
+}
 /* ganze Seite */
 function gmAxPageHtml(a,vm,md,aid,o){
   var when=o.when,vis=gmAxVisHtml(md,o.route,vm);
   var iv=md.swim?gmSwHtml(md,aid):gmIvHtml(md,aid);
+  if(!iv&&md.family==='gym')iv=gmAxGymHtml(a,vm,o.gym,aid);
+  if(!iv&&o.splits)iv=gmAxSplitsHtml(o.splits,o.splitsCanon);
   var an=gmAxAnalysisHtml(md);
   var as=gmActAssessHtml(a,vm,o.rate,o.fam,o.aidCorr);
   var asH=as?'<section class="ax-sec ax-assess" aria-labelledby="gmAxAsH"><div class="ax-sec-h"><h2 id="gmAxAsH">'+gmEsc(_uiT('ax.sec.assess'))+'</h2></div>'+as+'</section>':'';
   var colB=an+asH;
   return '<div class="ax" data-ax-ctx="'+gmEsc(md.context||'')+'" data-ax-fam="'+gmEsc(md.family)+'">'+
     '<div class="ax-bar"><button class="backbtn" onclick="gmCloseActivityPage()" aria-label="'+_uiT('ui.zurueck')+'">'+icon('chev')+'</button></div>'+
-    (vis?'<div class="ax-top">'+vis+'</div>':'')+gmAxHeroHtml(md,vm,a,aid,when)+
+    (vis?'<div class="ax-top">'+vis+'</div>':'')+gmAxHeroHtml(md,vm,a,aid,when,o.rpe)+
     '<div class="ax-body">'+gmAxChartsHtml(md,aid,o.cadNote)+
       '<div class="ax-cols'+(iv?'':' no-a')+'">'+(iv?'<div class="ax-col-a">'+iv+'</div>':'')+'<div class="ax-col-b">'+colB+'</div></div>'+
       gmAxLibHtml(md)+gmAxSourceHtml(md,md.owner,a,vm,aid)+
@@ -10198,14 +10352,27 @@ function gmOpenActivityPage(aid){
   var rate=null;try{if(run&&sess&&typeof rateActivity==='function')rate=rateActivity('Laufen',sess);}catch(_){ }
   var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'—')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
   /* v8-454.1: Laufen, Rad, Schwimmen → Premium Activity Experience (gmAxPageHtml). Andere Sportarten: bisherige Seite. */
-  if(_aa&&(_aa.family==='swimming'||_aa.family==='running'||_aa.family==='cycling')){
+  /* v8-456: ALLE Sportarten mit Analyse-Modell (auch Krafttraining, Ballsport, Sonstiges) → dieselbe Ansicht. */
+  if(_aa){
+    var _gymAx=(_aa.family==='gym')?gmActGymAgg(a,vm,sess):null;
+    var _rpeAx=(a.summary&&a.summary.rpe!=null)?a.summary.rpe:((sess&&sess.rpe!=null)?sess.rpe:null);
+    /* Kraft: Volumen fehlt in der Zusammenfassung, liegt aber als echte Saetze vor (Snapshot/Log) → dieselbe Summe wie die
+       bisherige Seite (gmActGymAgg, Gewicht × Wiederholungen), als abgeleitet gekennzeichnet. Keine Saetze → kein Volumen. */
+    if(_aa.family==='gym'&&_gymAx&&_gymAx.volumeKg>0&&!_aa.hero.some(function(d){return d.id==='volume';})){
+      _aa.hero=[{id:'volume',value:_gymAx.volumeKg,status:'available',method:'derived',source:'orvia_workout',validation:'unverified',basis:'sets.weight×reps'}].concat(_aa.hero).slice(0,4);
+    }
     pg.setAttribute('data-activity',gmActThemeId(vm.sportId));
     pg.classList.add('ax-page');
-    pg.innerHTML=gmAxPageHtml(a,vm,_aa,aid,{when:dl,route:route,rate:rate,fam:gmActFamily(vm.sportId),aidCorr:a.clientRecordId||a.id,cadNote:!!(vm.cadence&&vm.cadence.status==='unverified')});
+    pg.innerHTML=gmAxPageHtml(a,vm,_aa,aid,{when:dl,route:route,rate:rate,fam:gmActFamily(vm.sportId),aidCorr:a.clientRecordId||a.id,cadNote:!!(vm.cadence&&vm.cadence.status==='unverified'),
+      gym:_gymAx,rpe:_rpeAx,splits:(_aa.family==='other'&&splits)?splits:null,splitsCanon:splitsCanon});
     pg.classList.add('on');
     if(_aa.context!=='virtual')gmActMountRouteMap(pg,route,vm);     /* virtuelle Strecke: keine Landkarte darunter */
+    else gmAxMountVirtualRoute(pg,route);
     try{pg.scrollTop=0;}catch(_){ }
     try{gmAxMountCharts(_aa,aid);}catch(_){ }
+    gmActWavesFit(pg);
+    /* Saetze fehlen lokal → einmalig aus der Cloud nachladen (wie bisher, GM-Bugfix 2026-08-05) */
+    try{if(_aa.family==='gym'&&(!_gymAx||!_gymAx.list||!_gymAx.list.length)&&(vm.source==='orvia_workout'||vm.source==='live'))gmActLoadGymFallback(aid,a);}catch(_){ }
     return;
   }
   pg.classList.remove('ax-page');
@@ -10353,38 +10520,7 @@ function gmOpenActivityPage(aid){
   /* GM7.9: Krafttraining — Uebungs- & Satzliste aus den ECHTEN gespeicherten Saetzen
      (Snapshot/Legacy-Log). Reine Wiedergabe + Summen; ohne Details ehrlicher Leerzustand. */
   if(_fam==='gym'){
-    var _gx=_gym&&_gym.list,_grows='';
-    if(_gx&&_gx.length){
-      _grows=_gx.map(function(e){
-        var sub;
-        if(e.sets&&e.sets.length){
-          sub=e.sets.map(function(st,i){
-            var mid=(st.weight!=null&&st.reps!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong><span class="gs-x">×</span><strong>'+st.reps+'</strong>'
-              :(st.reps!=null)?'<strong>'+st.reps+'' + _uiT('ui.wdh') + '</strong>'
-              :(st.weight!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong>':'<strong>—</strong>';
-            return '<div class="gymset-row"><span>Satz '+(i+1)+'</span>'+mid+'</div>';}).join('');
-        }else{
-          sub='<div class="gymset-row"><span>'+(e.setsN!=null?e.setsN+'' + _uiT('ui.saetze_') + '':'—')+'</span><strong>'+(e.kg!=null?fmtDe(e.kg)+' kg':'—')+'</strong><span class="gs-x">×</span><strong>'+(e.reps!=null?e.reps:'—')+'</strong></div>';
-        }
-        return '<div class="gymex"><div class="gymex-head"><b>'+gmEsc(e.name)+'</b><span>'+(e.volumeKg?gmKg(e.volumeKg)+'' + _uiT('ui.kg_volumen') + '':'')+'</span></div>'+sub+'</div>';
-      }).join('');
-    }else{
-      /* Bugfix-Nachbesserung (2026-08-05): Der bisherige Text behauptete pauschal „keine
-         Details gespeichert" — er verdeckte damit die drei voellig verschiedenen Faelle
-         (wird gerade nachgeladen / Server hat sie wirklich nicht / offline, deshalb nicht
-         pruefbar). Der Nutzer sah dadurch bei verschwundenen Saetzen dieselbe Meldung wie
-         bei einem Workout, das nie Saetze hatte. Jetzt wird der TATSAECHLICHE Zustand
-         benannt — samt Diagnose-Einstieg, damit die Ursache belegbar statt vermutet ist. */
-      var _st=_gmActFallbackState[String(aid)]||null;
-      var _canServer=!!(a&&(a.workoutSessionId||a.sourceRecordId)&&(vm.source==='orvia_workout'||vm.source==='live'));
-      var _off=false;try{_off=(navigator.onLine===false);}catch(_){ }
-      if(_st==='loading')_grows='<div class="gm-split-empty">' + _uiT('ui.satzdetails_werden_aus_der_cloud') + '</div>';
-      else if(_off&&_canServer)_grows='<div class="gm-split-empty">' + _uiT('ui.offline_die_satzdetails_liegen_nicht') + '</div>';
-      else if(_st==='server_empty')_grows='<div class="gm-split-empty">' + _uiT('ui.fuer_diese_einheit_sind_weder') + '</div>';
-      else if(_st==='error')_grows='<div class="gm-split-empty">Die Satzdetails konnten nicht geladen werden (Verbindungsfehler). <a href="#" onclick="event.preventDefault();gmActRetryGym(\''+gmEsc(String(aid))+'\')" style="font-weight:700">' + _uiT('ui.erneut_versuchen') + '</a></div>';
-      else _grows='<div class="gm-split-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine ' + _uiT('ui.saetze__') + '.</div>';
-      if(_canServer)_grows+='<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div><a href="#" onclick="event.preventDefault();gmOpenSetsDiagnose(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Warum fehlen die ' + _uiT('ui.saetze__') + '?</a> — zeigt, wo die Daten tatsächlich liegen.</div></div>';
-    }
+    var _grows=gmActGymRowsHtml(a,vm,_gym,aid);
     h+='<div class="card"><div class="ctitle"><div class="l">'+icon('dumbbell')+'' + _uiT('ui.uebungen_') + ' &amp;' + _uiT('ui.saetze_') + '</div>'+(_gym&&_gym.setCount?'<span class="more">'+_gym.setCount+'' + _uiT('ui.saetze_') + '</span>':'')+'</div>'+_grows+'</div>';
   }
   /* GM7.9: Messreihen/Runden nicht mehr Lauf-exklusiv — jede Sportart mit ECHTEN
@@ -10449,6 +10585,7 @@ function gmOpenActivityPage(aid){
   pg.innerHTML=h;
   pg.classList.add('on');
   gmActMountRouteMap(pg,route,vm);
+  gmActWavesFit(pg);
   try{pg.scrollTop=0;}catch(_){ }
   /* GM7.7: Stream-Charts nach dem Einhaengen zeichnen — dieselbe GM-Komponente wie in den
      Metrik-Sheets. Baseline = Ø der ECHTEN Samples (reine Aggregation). X-Achse: Sample-
@@ -10473,6 +10610,42 @@ function gmOpenActivityPage(aid){
   try{
     if(_fam==='gym'&&(!_gym||!_gym.list||!_gym.list.length)&&(vm.source==='orvia_workout'||vm.source==='live'))gmActLoadGymFallback(aid,a);
   }catch(_){ }
+}
+/* v8-456: Uebungen & Saetze (echte gespeicherte Saetze, ehrliche Leerzustaende) — EINE Funktion fuer beide Seitenfassungen */
+function gmActGymRowsHtml(a,vm,_gym,aid){
+    var _gx=_gym&&_gym.list,_grows='';
+    if(_gx&&_gx.length){
+      _grows=_gx.map(function(e){
+        var sub;
+        if(e.sets&&e.sets.length){
+          sub=e.sets.map(function(st,i){
+            var mid=(st.weight!=null&&st.reps!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong><span class="gs-x">×</span><strong>'+st.reps+'</strong>'
+              :(st.reps!=null)?'<strong>'+st.reps+'' + _uiT('ui.wdh') + '</strong>'
+              :(st.weight!=null)?'<strong>'+fmtDe(st.weight)+' kg</strong>':'<strong>—</strong>';
+            return '<div class="gymset-row"><span>Satz '+(i+1)+'</span>'+mid+'</div>';}).join('');
+        }else{
+          sub='<div class="gymset-row"><span>'+(e.setsN!=null?e.setsN+'' + _uiT('ui.saetze_') + '':'—')+'</span><strong>'+(e.kg!=null?fmtDe(e.kg)+' kg':'—')+'</strong><span class="gs-x">×</span><strong>'+(e.reps!=null?e.reps:'—')+'</strong></div>';
+        }
+        return '<div class="gymex"><div class="gymex-head"><b>'+gmEsc(e.name)+'</b><span>'+(e.volumeKg?gmKg(e.volumeKg)+'' + _uiT('ui.kg_volumen') + '':'')+'</span></div>'+sub+'</div>';
+      }).join('');
+    }else{
+      /* Bugfix-Nachbesserung (2026-08-05): Der bisherige Text behauptete pauschal „keine
+         Details gespeichert" — er verdeckte damit die drei voellig verschiedenen Faelle
+         (wird gerade nachgeladen / Server hat sie wirklich nicht / offline, deshalb nicht
+         pruefbar). Der Nutzer sah dadurch bei verschwundenen Saetzen dieselbe Meldung wie
+         bei einem Workout, das nie Saetze hatte. Jetzt wird der TATSAECHLICHE Zustand
+         benannt — samt Diagnose-Einstieg, damit die Ursache belegbar statt vermutet ist. */
+      var _st=_gmActFallbackState[String(aid)]||null;
+      var _canServer=!!(a&&(a.workoutSessionId||a.sourceRecordId)&&(vm.source==='orvia_workout'||vm.source==='live'));
+      var _off=false;try{_off=(navigator.onLine===false);}catch(_){ }
+      if(_st==='loading')_grows='<div class="gm-split-empty">' + _uiT('ui.satzdetails_werden_aus_der_cloud') + '</div>';
+      else if(_off&&_canServer)_grows='<div class="gm-split-empty">' + _uiT('ui.offline_die_satzdetails_liegen_nicht') + '</div>';
+      else if(_st==='server_empty')_grows='<div class="gm-split-empty">' + _uiT('ui.fuer_diese_einheit_sind_weder') + '</div>';
+      else if(_st==='error')_grows='<div class="gm-split-empty">Die Satzdetails konnten nicht geladen werden (Verbindungsfehler). <a href="#" onclick="event.preventDefault();gmActRetryGym(\''+gmEsc(String(aid))+'\')" style="font-weight:700">' + _uiT('ui.erneut_versuchen') + '</a></div>';
+      else _grows='<div class="gm-split-empty">'+GM_NA+' — für diese ' + _uiT('ui.einheit') + ' sind keine Übungs- und Satzdetails gespeichert. ORVIA erfindet keine ' + _uiT('ui.saetze__') + '.</div>';
+      if(_canServer)_grows+='<div class="mini-note" style="margin-top:8px">'+icon('info','xs')+'<div><a href="#" onclick="event.preventDefault();gmOpenSetsDiagnose(\''+gmEsc(String(aid))+'\')" style="font-weight:700">Warum fehlen die ' + _uiT('ui.saetze__') + '?</a> — zeigt, wo die Daten tatsächlich liegen.</div></div>';
+    }
+    return _grows;
 }
 var _gmActFallbackTried={};
 var _gmActFallbackState={};   /* aid -> loading | loaded | server_empty | error | no_session */
@@ -10867,6 +11040,15 @@ renderAkt=function(){return ORVIA.activity.render();};
    ============================================================ */
 var _gmStory={pages:[],idx:0,timer:null,aid:null};
 var GM_STORY_MS=8500;
+/* v8-456 · Strecke in den Highlights: Standard 2 s je km (einstellbar: localStorage orvia_story_route_spkm, 0,5–5 s/km),
+   mindestens 2 s, hoechstens 90 s. Die Seite bleibt mindestens bis 2,5 s nach dem Ende der Zeichnung stehen. */
+var GM_STORY_ROUTE_SPKM=2;
+function gmStoryRouteDraw(km){
+  var spk=GM_STORY_ROUTE_SPKM;try{var v=parseFloat(localStorage.getItem('orvia_story_route_spkm'));if(isFinite(v)&&v>=0.5&&v<=5)spk=v;}catch(_){ }
+  var k=(typeof km==='number'&&isFinite(km)&&km>0)?km:0;
+  return Math.round(Math.min(90,Math.max(2,k*spk))*10)/10;
+}
+function gmStoryPageMs(html){var m=/data-st-ms="(\d+)"/.exec(String(html||''));return Math.max(GM_STORY_MS,m?+m[1]:0);}
 /* Gesehene Storys: kanonisch im Profil (cloud-synchron ueber saveProfile), damit die
    Story auf keinem Zweitgeraet erneut aufpoppt. Deckel 60 Eintraege. */
 function gmStorySeen(){try{var v=(typeof PROFILE!=='undefined'&&PROFILE&&Array.isArray(PROFILE.storySeen))?PROFILE.storySeen:null;return v||[];}catch(_){return [];}}
@@ -11033,6 +11215,107 @@ function gmStoryDotChart(vals,unit,dec,opts){
     '</div></div>';
 }
 /* Baut die Seiten NUR aus vorhandenen Werten. Rueckgabe: [] = keine Story moeglich. */
+/* v8-456 · Bestzeit aus GENAU dieser Aktivitaet — mit derselben Kategorie wie im Bestzeiten-Register:
+   „Aktive Trainingsbestzeit" (Timer, Pausen nicht enthalten) oder „Bestzeit einschliesslich Pausen". Beide Kategorien,
+   alle Distanzen bis Marathon; laengste Distanz gewinnt, bei gleicher Distanz die aktive (Standardansicht des Registers).
+   Vorher: nur 1/5/10 km einschliesslich Pausen ohne Kennzeichnung („10-km-Bestzeit 1:01:49" im Halbmarathon, waehrend die
+   aktive 10-km-Bestzeit 57:55 aus einem anderen Lauf stammt). Bestaetigte Wettkampfbestzeiten sind eine dritte Kategorie
+   (Ergebnisse, engine/race-result) und werden hier NICHT behauptet. Eine Quelle fuer Story UND Teilen. */
+function gmStoryPbOf(a){
+  try{
+    if(!a||typeof bestTimes!=='function')return null;
+    var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
+    if(!vm||gmActFamily(vm.sportId)!=='pace')return null;
+    var bt=bestTimes(),ids={},best=null;[a.clientRecordId,a.id,a.sourceRecordId].forEach(function(x){if(x!=null)ids[String(x)]=1;});
+    if(!bt||!bt.meas)return null;
+    ['k1','k5','k10','k21','k42'].forEach(function(kk){
+      [['active',bt.active&&bt.active[kk]],['elapsed',bt.meas[kk]]].forEach(function(c){
+        var m=c[1];if(!m||m.sec==null||m.activityId==null||!ids[String(m.activityId)])return;
+        var tk=m.targetKm!=null?m.targetKm:({k1:1,k5:5,k10:10,k21:21.0975,k42:42.195})[kk];
+        if(!best||tk>best.tk+1e-6)best={m:m,tk:tk,cat:c[0],kk:kk};
+      });
+    });
+    if(!best)return null;
+    best.dist=best.kk==='k21'?_uiT('st.pb.hm'):(best.kk==='k42'?_uiT('st.pb.m'):fmtDe(best.tk)+' km');
+    best.catLabel=_uiT(best.cat==='active'?'bt.active_label':'bt.elapsed_label');
+    /* Herkunft mit DERSELBEN Formulierung wie das Bestzeiten-Register (gmBtMethodTxt) */
+    best.how=(typeof gmBtMethodTxt==='function')?gmBtMethodTxt(best.m):'';if(!best.how||best.how===GM_NA)best.how=best.m.method==='lap_window'?_uiT('st.pb.how_laps'):(best.m.method==='stream_window'||best.m.method==='worker_window'?_uiT('st.pb.how_stream'):'');
+    best.sec=best.m.sec;best.time=gmAaClock(best.m.sec);
+    return best;
+  }catch(_){return null;}
+}
+/* v8-456 · Daten fuer das Teilen (Karten/Aufkleber) — dieselbe gepruefte Basis wie die Aktivitaetsseite: Analyse-Modell
+   (metric-eligibility), Formatierung gmAaFmt, Bezeichnung gmAxLabel; gesperrte Werte nie, modellierte mit „(virtuell)".
+   Kraft ohne Volumen in der Zusammenfassung: dieselbe Saetze-Summe wie die Seite (gmActGymAgg). Rechnet keine neue Kennzahl. */
+var GM_SHARE_IDS={
+  running:['distance','duration','paceKm','avgHr','elevationGain','runningCadence','maxHr','calories'],
+  cycling:['distance','duration','avgPower','avgSpeed','normPower','avgHr','cyclingCadence','elevationGain','maxPower','calories'],
+  cyclingIndoor:['avgPower','duration','normPower','avgHr','cyclingCadence','distance','maxPower','calories'],
+  swimming:['distance','pace100','duration','activeLengths','swolf','avgHr','strokeRate','calories'],
+  gym:['volume','duration','workingSets','exercises','reps','avgHr','calories'],
+  other:['duration','distance','avgHr','maxHr','calories','trainingEffect']
+};
+var GM_SHARE_RATE={running:['paceKm'],cycling:['avgPower','avgSpeed'],swimming:['pace100'],gym:['workingSets'],other:['avgHr']};
+function gmShareData(aid){
+  var a=null;try{a=_resolveActivityAny(aid);}catch(_){ }
+  if(!a)return null;
+  var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
+  vm=vm||{};
+  var sess=null;try{if(vm.storyRef&&typeof DB!=='undefined'){var e=DB[vm.storyRef.date];sess=(e&&e.sessions&&e.sessions[vm.storyRef.typ])||null;}}catch(_){ }
+  try{if(!sess&&a._legacy&&typeof DB!=='undefined'){var eL=DB[a._legacy.date];sess=(eL&&eL.sessions&&eL.sessions[a._legacy.type])||null;}}catch(_){ }
+  var md=gmActAnalysisFor(a,vm,(sess&&Array.isArray(sess.splits)&&sess.splits.length&&!(vm.canonicalSplits&&vm.canonicalSplits.length))?sess.splits:null);
+  var fam=md?md.family:'other',ctx=md&&md.context;
+  var ids=GM_SHARE_IDS[fam==='cycling'&&(ctx==='indoor'||ctx==='virtual')?'cyclingIndoor':fam]||GM_SHARE_IDS.other;
+  var metrics=[];
+  ids.forEach(function(id){
+    var d=md&&md.metrics?md.metrics[id]:null;
+    if(!gmAxOk(d))return;
+    var txt=gmAaFmt(d,fam);if(!txt||txt==='—')return;
+    var sv=ORVIA.storyShare?ORVIA.storyShare.splitVal(txt):{n:txt,u:''};
+    /* Dauer heisst im Bild schlicht „Dauer" (die Timer-Definition steht in der App); virtuelle Werte bleiben gekennzeichnet */
+    metrics.push({id:id,label:id==='duration'&&d.method!=='manual'?gmAaT(GM_AA_LABEL,'duration'):gmAxLabel(d,md),txt:txt,n:sv.n,u:sv.u,q:gmAaQState(d)});
+  });
+  if(fam==='gym'&&!metrics.some(function(m){return m.id==='volume';})){
+    var g=gmActGymAgg(a,vm,sess);
+    if(g&&g.volumeKg>0){var vt=gmKg(g.volumeKg)+' kg';metrics.unshift({id:'volume',label:gmAaT(GM_AA_LABEL,'volume'),txt:vt,n:gmKg(g.volumeKg),u:'kg',q:'derived'});}
+  }
+  var route=(vm.canonicalRoute&&vm.canonicalRoute.length>1)?vm.canonicalRoute:null;
+  var pb=gmStoryPbOf(a);
+  var dl=(vm.date?((typeof fmtDate==='function')?fmtDate(vm.date):vm.date):'')+((vm.time&&!(vm.source==='legacy_local'&&vm.time==='00:00'))?' · '+vm.time:'');
+  /* Farbe der Sportart aus dem Farbthema (styles.css, data-activity → --activity-primary) — kein Farbwert im JS */
+  var theme=gmActThemeId(vm.sportId),acc='';
+  try{var pr=document.createElement('div');pr.setAttribute('data-activity',theme);pr.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.appendChild(pr);acc=getComputedStyle(pr).getPropertyValue('--activity-primary').trim();pr.remove();}catch(_){acc='';}
+  if(!/^#[0-9a-f]{3,8}$|^rgb/i.test(acc))acc='';
+  var src=gmActSrcLabel(vm.source);
+  return {fam:fam,accent:acc,title:vm.title||vm.sportLabel||_uiT('ui.training'),sport:vm.sportLabel||'',date:dl,metrics:metrics,rateIds:GM_SHARE_RATE[fam]||[],
+    route:route,routeVirtual:ctx==='virtual',routeTag:ctx==='virtual'?_uiT('share.virtual_route'):'',
+    pb:pb?{kicker:pb.catLabel,dist:pb.dist,time:pb.time,sub:pb.how+(pb.m.date?' · '+pb.m.date.split('-').reverse().join('.'):'')}:null,
+    footer:src&&src!=='—'?_uiT('share.footer',{s:src}):'',fileBase:'orvia-'+(vm.sportId||'aktivitaet')+'-'+(vm.date||'')};
+}
+/* v8-456 · vergleichbare Abschnitte fuer die Highlights — dasselbe Modell wie die Aktivitaetsseite (keine zweite Rechnung).
+   Rueckgabe null = keine vergleichbaren Abschnitte (dann keine Rundenseite statt einer schiefen). */
+function gmStoryLapModel(a,vm,sess,fam){
+  var md=null;try{md=gmActAnalysisFor(a,vm,(sess&&Array.isArray(sess.splits)&&sess.splits.length&&!(vm.canonicalSplits&&vm.canonicalSplits.length))?sess.splits:null);}catch(_){md=null;}
+  var rows=[],kick=_uiT('ui.runden_'),bestLbl='',sub='',hb=false;
+  if(md&&md.family==='swimming'&&md.swim&&md.efficiency&&md.efficiency.stroke){
+    var st=md.efficiency.stroke;
+    md.swim.intervals.filter(function(s){return s.pace100Active!=null&&!s.mixed&&s.stroke===st&&s.distance>=50;}).forEach(function(s){
+      rows.push({label:String(s.n),v:s.pace100Active,txt:gmAaClock(s.pace100Active)+' /100 m',best:s.n===md.efficiency.best});});
+    kick=_uiT('st.laps.kick_swim');bestLbl=_uiT('st.laps.best_swim');
+    sub=_uiT('st.laps.sub_swim',{n:rows.length,s:gmAaT(GM_SW_STROKE,st)});
+  }else if(md&&md.intervals&&md.intervals.analytics&&md.intervals.analytics.comparable&&Array.isArray(md.intervals.analytics.values)){
+    var an=md.intervals.analytics;hb=an.metric!=='pace';
+    var fmtV=function(v){return an.metric==='pace'?gmAaClock(v)+' /km':(an.metric==='power'?Math.round(v)+' W':gmAaNum(v*3.6,1)+' km/h');};
+    an.members.forEach(function(lb,i){rows.push({label:(an.unit==='work'?_uiT('st.laps.work_s',{n:lb}):String(lb)),v:an.values[i],txt:fmtV(an.values[i]),best:lb===an.best&&an.values[i]===an.bestValue});});
+    kick=_uiT(an.unit==='work'?'st.laps.kick_work':'ui.runden_');
+    bestLbl=_uiT(an.metric==='power'?'st.laps.best_power':(an.unit==='work'?'st.laps.best_work':'st.laps.best_lap'));
+    var ref=an.refKey==='timer'?gmAaClock(an.ref):(an.ref>=1000?fmtDe(Math.round(an.ref/10)/100)+' km':Math.round(an.ref)+' m');
+    sub=_uiT('st.laps.sub',{n:rows.length,r:ref})+(an.excluded?' · '+_uiT('st.laps.excl',{n:an.excluded}):'');
+  }else return null;
+  if(rows.length<2)return null;
+  if(!rows.some(function(r){return r.best;})){var bi=0;rows.forEach(function(r,i){if(hb?r.v>rows[bi].v:r.v<rows[bi].v)bi=i;});rows[bi].best=true;}
+  return {rows:rows,kick:kick,bestLbl:bestLbl,sub:sub,higherBetter:hb};
+}
 function gmStoryPages(a){
   var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
   if(!vm)return [];
@@ -11057,6 +11340,10 @@ function gmStoryPages(a){
   var cleanArr=function(arr,conv){if(!Array.isArray(arr))return null;var out=[];for(var i=0;i<arr.length;i++){var v=arr[i];if(typeof v==='number'&&isFinite(v)){var w=conv?conv(v):v;if(w!=null&&isFinite(w))out.push(w);}}return out.length>=5?out:null;};
   var hr=cleanArr(st&&st.heart_rate,null);
   var gym=(fam==='gym')?gmActGymAgg(a,vm,sess):null;
+  /* v8-456 · Tempo aus DEMSELBEN Modell wie Aktivitaetsseite und Teilen-Karte (metric-eligibility). Vorher: vm.paceLabel —
+     beim Schwimmen Gesamtzeit/Distanz inkl. Pausen (z. B. „Ø 5:09/100 m"), waehrend Seite und Karte 1:48 /100 m zeigten. */
+  var paceTxt=(function(){try{var md0=gmActAnalysisFor(a,vm,null);if(!md0||!md0.metrics)return null;var id=md0.family==='running'?'paceKm':(md0.family==='swimming'?'pace100':null);
+    var d0=id?md0.metrics[id]:null;return gmAxOk(d0)?gmAaFmt(d0,md0.family):null;}catch(_){return null;}})()||vm.paceLabel||null;
   /* ---------- Headline: faktischer Satz aus echten Feldern ---------- */
   var VERB={running:'gelaufen',trail_running:'gelaufen',walking:'gegangen',hiking:'gewandert',cycling:'' + _uiT('ui.rad_gefahren') + '',swimming:'geschwommen',rowing:'gerudert'};
   var PLAY={football:1,handball:1,basketball:1,tennis:1,padel:1,volleyball:1,table_tennis:1,tabletennis:1};
@@ -11070,7 +11357,7 @@ function gmStoryPages(a){
     if(s6.distanceKm>0&&d6>0)return Math.round(s6.distanceKm/(d6/3600)*10)/10;return null;})();
   var subParts=[];
   if(fam==='cycling'){if(spdAvg!=null)subParts.push('Ø '+fmtDe(spdAvg)+' km/h');}
-  else if(vm.paceLabel)subParts.push('Ø '+vm.paceLabel);
+  else if(paceTxt)subParts.push('Ø '+paceTxt);
   if(durTxt)subParts.push(durTxt);
   if(vm.avgHr!=null)subParts.push('' + _uiT('ui.hf') + ''+vm.avgHr+' bpm');
   if(vm.caloriesKcal!=null)subParts.push(fmtDe(vm.caloriesKcal)+' kcal');
@@ -11112,8 +11399,10 @@ function gmStoryPages(a){
         pad:{t:_sat+Math.round(Math.max(112,Math.min(132,_vh*0.15))),r:44,b:Math.round(_mh*0.17),l:44}});
       if(_map){
         var _dm=/^([\d.,:]+)\s*(.*)$/.exec(String(vm.distanceLabel||durTxt||''));
-        var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);}catch(_){ }
-        coverPage='<div class="wst-bg" '+actAttr+'></div><div class="wst-mapbg" '+actAttr+'>'+_map+'</div>'+
+        var _kp=[];try{_kp=gmActCardKpis(a,vm).filter(function(c){return c[0]!=='—'&&c[1]!=='DISTANZ'&&!(!vm.distanceLabel&&c[1]==='DAUER');}).slice(0,3);_kp=_kp.map(function(c){return (paceTxt&&(c[1]==='TEMPO'||c[1]==='PACE'))?[paceTxt,c[1]]:c;});}catch(_){ }
+        var _km=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_draw=gmStoryRouteDraw(_km),_rm=false;
+        try{_rm=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
+        coverPage='<div class="wst-bg" '+actAttr+' data-st-ms="'+(_rm?0:Math.round(_draw*1000+2650))+'"></div><div class="wst-mapbg" '+actAttr+' style="--st-draw:'+_draw+'s">'+_map+'</div>'+
           '<div class="wst-in wst-coverpg" '+actAttr+'>'+top+
           '<div class="wst-hero">'+
             /* v8-444 (V3): die Hauptzahl ist benannt wie jede andere (Distanz bzw. Dauer) */
@@ -11130,7 +11419,8 @@ function gmStoryPages(a){
        Zeichenanimation auf die tatsaechliche Pfadlaenge (vorher fester Schaetzwert). */
     try{var svg=routeSVG(route,{aspect:'auto',noBg:true});
       svg=svg.replace('<path d="','<path class="gm-route-line" pathLength="1" style="--rl:1" d="');
-      cover='<div class="wst-map big">'+svg+'</div>';}catch(_){ }
+      var _km2=(a&&a.summary&&a.summary.distanceKm>0)?a.summary.distanceKm:null,_dr2=gmStoryRouteDraw(_km2),_rm2=false;try{_rm2=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(_){ }
+      cover='<div class="wst-map big" style="--st-draw:'+_dr2+'s"'+(_rm2?'':' data-st-ms="'+Math.round(_dr2*1000+2500)+'"')+'>'+svg+'</div>';}catch(_){ }
   }
   if(!cover){
     var bigV=(fam==='gym'&&gym&&gym.setCount)?[String(gym.setCount),'' + _uiT('ui.saetze__') + '']
@@ -11150,21 +11440,17 @@ function gmStoryPages(a){
      Damit ist die fruehere Doppel-Wahrheit aufgeloest: das Distanzmodell fuehrt,
      der Aktivitaetsvergleich bleibt als klar benannter Zusatz. */
   try{
-    var distPB=null;
-    try{
-      if(fam==='pace'&&typeof bestTimes==='function'){
-        var _bt2=bestTimes();var _aid2=a.clientRecordId||a.id||a.sourceRecordId||null;
-        if(_bt2&&_bt2.meas&&_aid2){
-          ['k1','k5','k10'].forEach(function(kk){var m2=_bt2.meas[kk];
-            if(m2&&m2.activityId===_aid2&&(!distPB||m2.targetKm>distPB.targetKm))distPB=m2;});
-        }
-      }
-    }catch(_){ }
+    /* v8-456: Bestzeit aus GENAU dieser Aktivitaet — mit derselben Kategorie wie im Bestzeiten-Register:
+       „Aktive Trainingsbestzeit" (Timer, Pausen nicht enthalten) oder „Bestzeit einschliesslich Pausen". Beide Kategorien,
+       alle Distanzen bis Marathon; laengste Distanz gewinnt, bei gleicher Distanz die aktive (Standardansicht des Registers).
+       Vorher: nur 1/5/10 km einschliesslich Pausen ohne Kennzeichnung („10-km-Bestzeit 1:01:49" im Halbmarathon,
+       waehrend die aktive 10-km-Bestzeit 57:55 aus einem anderen Lauf stammt). */
+    var distPB=(fam==='pace')?gmStoryPbOf(a):null;
     if(distPB){
-      var _fs3=function(sec){var m3=Math.floor(sec/60),s3=Math.round(sec%60);return m3+':'+String(s3).padStart(2,'0');};
+      var _dn=distPB.dist,_cat=distPB.catLabel,_how=distPB.how;
       pages.push('<div class="wst-bg pr" data-activity="brand"></div><div class="wst-in" data-activity="brand">'+top+
-        '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>' + _uiT('ui.neue_bestzeit_gemessen') + '</span></div><div class="wst-prval">'+gmEsc(fmtDe(distPB.targetKm))+' km in '+gmEsc(_fs3(distPB.sec))+'</div></div>'+
-        foot('' + _uiT('ui.deine_schnellste_gemessene') + ''+em(fmtDe(distPB.targetKm)+' km')+'' + _uiT('ui.strecke') + ''+(distPB.method==='stream_window'?'' + _uiT('ui.aus_den_messreihen_deiner_uhr') + '':distPB.method==='lap_window'?'' + _uiT('ui.aus_den_runden_deiner_uhr') + '':'' + _uiT('ui.aus_dieser_aktivitaet') + '')+'.','' + _uiT('ui.gemessen_ueber') + ''+fmtDe(distPB.km)+'' + _uiT('ui.km_keine_schaetzung') + '')+'</div>');
+        '<div class="wst-mid"><div class="wst-kick pr">'+icon('bolt','sm')+'<span>'+gmEsc(_cat)+'</span></div><div class="wst-prval">'+gmEsc(_uiT('st.pb.val',{d:_dn,t:gmAaClock(distPB.m.sec)}))+'</div></div>'+
+        foot(gmEsc(_uiT('st.pb.hl',{d:_dn}))+' '+em(gmAaClock(distPB.m.sec)),_cat+' · '+_how+(distPB.m.km!=null?' · '+_uiT('st.pb.over',{k:fmtDe(distPB.m.km)}):''))+'</div>');
     }
     var pb=distPB?null:gmActPersonalBest(a,vm,fam);
     if(pb){
@@ -11184,23 +11470,22 @@ function gmStoryPages(a){
         foot(em(prTitle)+'!',prSub)+'</div>');
     }
   }catch(_){ }
-  /* ---------- 2) Runden — fliegen gestaffelt von links ein ---------- */
+  /* ---------- 2) Runden — fliegen gestaffelt von links ein ----------
+     v8-456: NUR vergleichbare Abschnitte aus demselben Modell wie die Aktivitaetsseite (gmStoryLapModel):
+     Laufen/Rad = Gruppe gleicher Laenge bzw. Dauer der Intervall-Engine; Schwimmen = Intervalle derselben Lage (≥ 50 m).
+     Pausen-/Erholungsrunden (0 m) zaehlen nie — vorher „Schnellste Runde 0:01" aus einer Pausenrunde. */
   try{
-    var laps=(vm.canonicalSplits&&vm.canonicalSplits.length)?vm.canonicalSplits:((sess&&Array.isArray(sess.splits)&&sess.splits.length)?sess.splits:null);
-    if(laps&&laps.length>=2){
-      var secs=laps.map(function(x){return x.sec;});
-      var fast=Math.min.apply(null,secs),slow=Math.max.apply(null,secs),rngL=(slow-fast)||1;
-      var fmtL=function(sec){var m=Math.floor(sec/60),s3=Math.round(sec%60);return m+':'+String(s3).padStart(2,'0');};
-      var iFast=secs.indexOf(fast);
-      var maxRows=9,shown=laps.slice(0,maxRows);
-      var rows=shown.map(function(x,i){
-        var w=34+(1-(x.sec-fast)/rngL)*62;
-        var full=(x.km==null)||Math.abs(x.km-1)<=0.05;
-        var lbl=full?String(i+1):(fmtDe(x.km)+' km');
-        return '<div class="wst-lap'+(i===iFast?' best':'')+'" style="animation-delay:'+(140+i*95)+'ms"><span>'+gmEsc(lbl)+'</span><i style="width:'+w.toFixed(0)+'%"></i><strong>'+fmtL(x.sec)+'</strong></div>';
+    var LM=gmStoryLapModel(a,vm,sess,fam);
+    if(LM){
+      var vals=LM.rows.map(function(r){return r.v;}),vLo=Math.min.apply(null,vals),vHi=Math.max.apply(null,vals),rngL=(vHi-vLo)||1;
+      var maxRows=9,shown=LM.rows.slice(0,maxRows);
+      var rows=shown.map(function(r,i){
+        var q=LM.higherBetter?(r.v-vLo)/rngL:(vHi-r.v)/rngL,w=34+q*62;
+        return '<div class="wst-lap'+(r.best?' best':'')+'" style="animation-delay:'+(140+i*95)+'ms"><span>'+gmEsc(r.label)+'</span><i style="width:'+w.toFixed(0)+'%"></i><strong>'+gmEsc(r.txt)+'</strong></div>';
       }).join('');
-      pages.push(page('<div class="wst-kick">' + _uiT('ui.runden_') + '</div><div class="wst-laps">'+rows+'</div>'+(laps.length>maxRows?'<div class="wst-note">+ '+(laps.length-maxRows)+' weitere im Aktivitätsdetail.</div>':''),
-        foot('' + _uiT('ui.schnellste_runde') + ''+em(fmtL(fast)),'' + _uiT('ui.runde') + ''+(iFast+1)+' von '+laps.length+' · langsamste '+fmtL(slow))));
+      var bestR=LM.rows.filter(function(r){return r.best;})[0]||LM.rows[0];
+      pages.push(page('<div class="wst-kick">'+gmEsc(LM.kick)+'</div><div class="wst-laps">'+rows+'</div>'+(LM.rows.length>maxRows?'<div class="wst-note">+ '+(LM.rows.length-maxRows)+' weitere im Aktivitätsdetail.</div>':''),
+        foot(gmEsc(LM.bestLbl)+' '+em(bestR.txt),LM.sub)));
     }
   }catch(_){ }
   /* ---------- 3) Gym: Uebungen & Saetze — fliegen gestaffelt ein ---------- */
@@ -11251,7 +11536,7 @@ function gmStoryPages(a){
   if(vm.distanceLabel)cells.push([vm.distanceLabel,'' + _uiT('ui.distanz_') + '',1]);
   if(durTxt)cells.push([durTxt,'Dauer']);
   if(fam==='cycling'){if(spdAvg!=null)cells.push([fmtDe(spdAvg)+' km/h','' + _uiT('ui.geschwindigkeit_') + '']);}
-  else if(vm.paceLabel)cells.push([vm.paceLabel,'' + _uiT('ui.tempo_') + '']);
+  else if(paceTxt)cells.push([paceTxt,'' + _uiT('ui.tempo_') + '']);
   if(vm.avgPowerW!=null)cells.push([vm.avgPowerW+' W','Ø ' + _uiT('ui.leistung__') + '']);
   if(vm.normPowerW!=null)cells.push([vm.normPowerW+' W','NP']);
   if(vm.avgHr!=null)cells.push([vm.avgHr+' bpm','' + _uiT('ui.herzfrequenz_') + '']);
@@ -11297,14 +11582,39 @@ function gmStoryPages(a){
   }
   return pages;
 }
+/* v8-456 · Teilen aus den Highlights */
+function gmStoryCanShare(){return !!(window.ORVIA&&ORVIA.storyShare&&typeof document!=='undefined'&&document.createElement('canvas').getContext);}
+function gmStoryEndPage(a){
+  var vm=null;try{vm=activityDetailViewModel(a);}catch(_){ }
+  var attr=gmActThemeAttr(vm&&vm.sportId);
+  return '<div class="wst-bg" '+attr+' data-st-end="1"></div><div class="wst-in wst-endpg" '+attr+'><div class="wst-mid wst-end">'+
+    '<div class="wst-kick">'+gmEsc(_uiT('share.end_kick'))+'</div><div class="wst-endt">'+gmEsc(_uiT('share.end_title'))+'</div>'+
+    '<p class="wst-endp">'+gmEsc(_uiT('share.end_text'))+'</p>'+
+    (gmStoryCanShare()?'<button type="button" class="wst-endbtn is-primary" onclick="gmStoryShare()">'+ORVIA.storyShare.SHARE_SVG+'<span>'+gmEsc(_uiT('share.share'))+'</span></button>':'')+
+    '<button type="button" class="wst-endbtn" onclick="gmStoryClose()"><span>'+gmEsc(_uiT('share.done_btn'))+'</span></button></div></div>';
+}
+function gmStoryShare(){
+  if(!gmStoryCanShare()||!_gmStory.aid)return;
+  var d=null;try{d=gmShareData(_gmStory.aid);}catch(_){d=null;}
+  if(!d){try{toast(_uiT('share.err_data'));}catch(_){ }return;}
+  gmStoryStop();
+  var host=document.getElementById('gmStory');if(host)host.classList.add('st-paused');
+  var ret=document.activeElement;
+  ORVIA.storyShare.open(d,{t:_uiT,returnFocus:ret,onClose:function(){
+    var h=document.getElementById('gmStory');if(h)h.classList.remove('st-paused');
+    /* an derselben Seite weiter (Seite beginnt neu, Abschlussseite bleibt stehen) */
+    if(h&&h.classList.contains('on')){gmStoryRender();try{var sb=h.querySelector('.wst-page.on .wst-endbtn.is-primary')||h.querySelector('.wst-share');if(sb)sb.focus({preventScroll:true});}catch(_){ }}
+  }});
+}
 function gmStoryStop(){if(_gmStory.timer){clearTimeout(_gmStory.timer);_gmStory.timer=null;}}
 function gmStoryRender(){
   var host=document.getElementById('gmStory');if(!host)return;
   var n=_gmStory.pages.length;if(!n)return;
   var bars='<div class="wst-bars">'+_gmStory.pages.map(function(_,i){
-    return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+'"><b></b></i>';}).join('')+'</div>';
+    return '<i class="'+(i<_gmStory.idx?'done':(i===_gmStory.idx?'act':''))+(/data-st-end="1"/.test(_)?' end':'')+'"><b></b></i>';}).join('')+'</div>';
   host.innerHTML=bars+
     '<button class="wst-x" aria-label="'+_uiT('ui.highlights_schliessen')+'" onclick="gmStoryClose()">'+icon('x','sm')+'</button>'+
+    (gmStoryCanShare()?'<button type="button" class="wst-share" aria-label="'+gmEsc(_uiT('share.open'))+'" onclick="gmStoryShare()">'+ORVIA.storyShare.SHARE_SVG+'</button>':'')+
     '<button class="wst-nav prev" aria-label="' + _uiT('ui.zurueck') + '" onclick="gmStoryPrev()"></button>'+
     '<button class="wst-nav next" aria-label="' + _uiT('ui.weiter') + '" onclick="gmStoryNext()"></button>'+
     _gmStory.pages.map(function(p,i){return '<div class="wst-page'+(i===_gmStory.idx?' on':'')+'">'+p+'</div>';}).join('');
@@ -11312,10 +11622,15 @@ function gmStoryRender(){
      wenn sie schon einmal geladen wurden. Dieses Markup wird bei jedem Seitenwechsel neu
      gesetzt; mit src im Markup wuerde jede Kachel je Seitenwechsel erneut angefragt. */
   try{var _on=host.querySelector('.wst-page.on');if(_on&&window.ORVIA&&ORVIA.routeMap&&ORVIA.routeMap.hydrate)ORVIA.routeMap.hydrate(_on);}catch(_){ }
+  gmActWavesFit(host);
   /* Auto-Weiterschaltung wie im Story-Muster; Tap uebersteuert jederzeit. */
   gmStoryStop();
-  try{host.style.setProperty('--st-dur',(GM_STORY_MS/1000)+'s');}catch(_){ }
-  _gmStory.timer=setTimeout(function(){gmStoryNext();},GM_STORY_MS);
+  /* Abschlussseite: bleibt stehen (kein Weiterschalten), bis „Teilen" oder „Fertig" gewaehlt wird */
+  if(/data-st-end="1"/.test(_gmStory.pages[_gmStory.idx]||'')){host.classList.add('st-end');try{var _fb=host.querySelector('.wst-end .wst-endbtn');if(_fb)_fb.focus({preventScroll:true});}catch(_){ }return;}
+  host.classList.remove('st-end');
+  var _ms=gmStoryPageMs(_gmStory.pages[_gmStory.idx]);
+  try{host.style.setProperty('--st-dur',(_ms/1000)+'s');}catch(_){ }
+  _gmStory.timer=setTimeout(function(){gmStoryNext();},_ms);
 }
 function gmStoryNext(){if(_gmStory.idx>=_gmStory.pages.length-1){gmStoryClose();return;}_gmStory.idx++;gmStoryRender();}
 function gmStoryPrev(){if(_gmStory.idx<=0)return;_gmStory.idx--;gmStoryRender();}
@@ -11335,6 +11650,8 @@ function gmOpenStory(aid){
   var pages=gmStoryPages(a);
   if(pages.length<2)return false;            /* zu wenig echte Daten => keine Story */
   try{_gmLastFocus=document.activeElement;}catch(_){ }
+  /* v8-456: Abschlussseite mit „Teilen" (dieselbe Funktion wie das Symbol oben) und „Fertig" */
+  try{pages=pages.concat([gmStoryEndPage(a)]);}catch(_){ }
   _gmStory.pages=pages;_gmStory.idx=0;_gmStory.aid=aid;
   host.classList.add('on');host.setAttribute('aria-hidden','false');
   try{document.documentElement.style.overflow='hidden';}catch(_){ }
@@ -11346,7 +11663,9 @@ function gmOpenStory(aid){
       document.addEventListener('keydown',function(ev){
         var h=document.getElementById('gmStory');
         if(!h||!h.classList.contains('on'))return;
+        if(window.ORVIA&&ORVIA.storyShare&&ORVIA.storyShare.isOpen())return;       /* Teilen-Auswahl hat die Tastatur */
         if(ev.key==='Escape'){ev.preventDefault();gmStoryClose();}
+        else if((ev.key===' '||ev.key==='Enter')&&ev.target&&ev.target.closest&&ev.target.closest('.wst-share,.wst-x,.wst-end button'))return;   /* Knopf selbst ausloesen */
         else if(ev.key==='ArrowRight'||ev.key===' '||ev.key==='Enter'){ev.preventDefault();gmStoryNext();}
         else if(ev.key==='ArrowLeft'){ev.preventDefault();gmStoryPrev();}
       });}

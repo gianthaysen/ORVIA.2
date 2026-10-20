@@ -163,7 +163,8 @@ sec('Sportart ohne eigenes Thema');
 {
   const p = await openPage('t-foot');
   ok('5a Fussball ⇒ Thema „brand": ORVIA-Gold, keine erfundene Farbe', p.act === 'brand' && has(p.kicker, RGB.brand) && p.lines.every(l => has(l, RGB.brand)), JSON.stringify([p.act, p.kicker, p.lines[0]]));
-  ok('5b ohne Distanz/Volumen bleibt jede Kennzahl neutral (keine Farbe ohne Hauptkennzahl)', p.kpi.filter(k => k.key).length === 0, JSON.stringify(p.kpi.map(k => k.lbl)));
+  /* v8-456: auch Ballsport/Sonstiges in der gemeinsamen Ansicht — dort traegt die EINE Hauptzahl (Dauer) die Farbe (ORVIA-Gold), der Rest bleibt neutral */
+  ok('5b genau eine Hauptzahl (Dauer) in ORVIA-Gold, alle anderen Kennzahlen neutral', p.kpi.filter(k => k.key).length === 1 && p.kpi.filter(k => k.key)[0].lbl === 'DAUER' && has(p.kpi.filter(k => k.key)[0].col, RGB.brand) && p.kpi.filter(k => !k.key).every(k => !has(k.col, RGB.brand)), JSON.stringify(p.kpi.map(k => [k.lbl, k.key ? 1 : 0, k.col])));
 }
 
 sec('Kartenansicht');

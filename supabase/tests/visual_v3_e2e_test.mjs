@@ -191,8 +191,11 @@ ok('E2 Raster aus feinen Punkten; senkrechte Linien treten zurueck (45 %)', !!sC
 ok('E3 Kurve weiter in der Farbe der Sportart, 2,2 px; Gold an keiner Kurve', has(sChart.chart.line, RGB.running) && sChart.chart.lineW === '2.2px' && !isGold(sChart.chart.line), JSON.stringify([sChart.chart.line, sChart.chart.lineW]));
 ok('E4 Ø-Schild als kleines Instrument: feiner heller Rand (24 %), „Ø" in der Farbe der Sportart; Max/Min in Sekundaerschrift', /rgba\(255, 255, 255, 0\.24\)/.test(String(sChart.chart.pillBorder)) && has(sChart.chart.pillEm, RGB.running) && has(sChart.chart.ref, '173, 181, 193'), JSON.stringify([sChart.chart.pillBorder, sChart.chart.pillEm, sChart.chart.ref]));
 ok('E5 Abschnittsname der Diagramm-Seite mit Gold-Strich', !!sChart.kick && isGold(sChart.kick.tick) && sChart.kick.inHero === false, JSON.stringify(sChart.kick));
-const sNum = await story('t-run', sRun.n - 1);
-ok('E6 Kennzahl-Kacheln der Story aus demselben Material wie die Kacheln der Aktivitaetsseite (v8-454.1: Kraft-Seite; Lauf/Rad/Schwimmen haben keine Kacheln mehr)', !!sNum.cell && gym.kpi.length > 0 && sNum.cell.bg === gym.kpi[0].bg && sNum.cell.border === gym.kpi[0].border, JSON.stringify(sNum.cell));
+const sNum = await story('t-run', sRun.n - 2);   /* v8-456: letzte Seite = Abschlussseite (Teilen / Fertig), davor „Deine Zahlen" */
+/* v8-456: keine Sportart hat mehr Kennzahl-Kacheln (alle in der gemeinsamen Ansicht) — das gemeinsame Material lebt in den Karten
+   der Seite (Debrief, Plan-Zuordnung: #gmActPage .card) und in den Story-Kacheln: beide aus --orvia-panel-bg/-border. */
+const cardMat = await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'background-image:var(--orvia-panel-bg);border-top:1px solid var(--orvia-panel-border)'; document.body.appendChild(d); const cs = getComputedStyle(d), r = { bg: cs.backgroundImage, border: cs.borderTopColor }; d.remove(); return r; });
+ok('E6 Kennzahl-Kacheln der Story aus dem gemeinsamen Flaechen-Material (--orvia-panel-bg/-border; v8-456: die Seite hat keine Kacheln mehr)', !!sNum.cell && sNum.cell.bg.indexOf(cardMat.bg) === 0 && sNum.cell.border === cardMat.border, JSON.stringify([sNum.cell, cardMat]));
 sec('Story: Schwimmen');
 const sSwim = await story('t-swim', 0);
 ok('F1 Abschluss ohne Strecke: Wellenfeld hinter der grossen Zahl (neun Linien, Aqua), Zahl bleibt die Distanz', !!sSwim.waves && sSwim.waves.paths === 9 && has(sSwim.waves.stop, RGB.swimming) && /wst-wavepg/.test(sSwim.waves.cls) && /1\.500/.test(String(sSwim.waves.big)), JSON.stringify(sSwim.waves));

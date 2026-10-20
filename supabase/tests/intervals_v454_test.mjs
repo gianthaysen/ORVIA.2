@@ -144,7 +144,15 @@ sec('P · Leistung und Rolle');
   const run = AA.analyze(real('running__running__intervals'), { extState: 'loaded' });
   ok('P4 Laufen: Hauptzahl Distanz; Diagramme Tempo · Puls · Kadenz · Hoehe', run.hero[0].id === 'distance' && run.charts.map(c => c.id).join() === 'paceKm,hr,cadence,elevation' && run.intervals.v === 'intervals@1');
   const pace = run.charts.find(c => c.id === 'paceKm');
-  ok('P5 Tempo-Kurve: Gehen/Stehen (langsamer als das Doppelte des Medians) als Luecke, nie als Spitze', pace.values.filter(v => v !== null).every(v => v < 2 * 340));
+  /* v8-456 (neue Regel): langsame, bewegte Punkte (Gehen) bleiben Messwerte; das Diagramm (robuste Tempoachse) markiert sie als
+     „ausserhalb" am Rand — nie als Spitze der Linie. Stillstand (≤ 0,3 m/s) hat kein Tempo und ist als eigener Punkt markiert. */
+  const AC = require(new URL(_APPREL + 'js/activity-chart.js', import.meta.url).pathname);
+  const pm = AC.model({ values: pace.values, x: pace.times, marks: pace.marks, pace: true }, 600, 220);
+  const lineVals = pm.segs.reduce((a, sg) => a.concat(sg.map(p => p.v)), []);
+  const slow = pace.values.filter(v => v !== null && v > 2 * 340).length;
+  ok('P5 Tempo-Kurve: Gehen bleibt Messwert, liegt aber ausserhalb der Linie (markiert „out"); Linie nur im Achsenbereich; Werte 100–3600 s/km',
+    pace.values.every(v => v === null || (v >= 100 && v <= 3600)) && lineVals.every(v => v >= pm.y0 && v <= pm.y1) && pm.have.filter(p => p.mark === 'out').length >= (slow ? 1 : 0), 'langsam ' + slow + ', out ' + pm.have.filter(p => p.mark === 'out').length);
+  ok('P5b Stillstand (≤ 0,3 m/s) als eigener Punkt markiert, nicht Teil der Linie', !pace.marks || pace.marks.every((m, i) => m !== 'stop' || !pm.segs.some(sg => sg.some(p => p.i === i))));
 }
 
 sec('L · Register, Bestzeiten, Schwimmen');

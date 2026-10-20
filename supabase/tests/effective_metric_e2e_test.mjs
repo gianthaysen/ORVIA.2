@@ -86,7 +86,7 @@ await page.evaluate(([ROW, SRC]) => {
 }, [ROW, SRC]);
 
 const openPage = async () => { await page.evaluate(async id => { try { gmCloseSheets(); } catch (_) { } try { gmStoryClose(); } catch (_) { } showTab('akt'); await new Promise(r => setTimeout(r, 150)); gmOpenActivityPage(id); await new Promise(r => setTimeout(r, 500)); }, ID); };
-const pageState = () => page.evaluate(() => { const pg = document.getElementById('gmActPage'); const kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div')).map(d => d.innerText.replace(/\s+/g, ' ').trim());
+const pageState = () => page.evaluate(() => { const pg = document.getElementById('gmActPage'); const kp = [].slice.call(pg.querySelectorAll('.detail-kpis > div, .ax-key-main, .ax-stats > div')).map(d => d.innerText.replace(/\s+/g, ' ').trim());
   const note = pg.querySelector('.gm-dur-note'); return { on: pg.classList.contains('on'), kpis: kp, text: pg.innerText.replace(/\s+/g, ' '), note: note ? note.innerText.replace(/\s+/g, ' ').trim() : null, corr: !!(note && note.classList.contains('is-corr')), link: note && note.querySelector('a') ? note.querySelector('a').innerText.trim() : null }; });
 const sheetState = () => page.evaluate(() => { const sh = document.getElementById('detailSheet'), q = id => document.getElementById(id); const r = e => { if (!e) return null; const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]; };
   const h = q('gmDurH'), m = q('gmDurM'), save = q('gmDurSave'), err = q('gmDurErr'), cs = e => getComputedStyle(e);
@@ -94,14 +94,14 @@ const sheetState = () => page.evaluate(() => { const sh = document.getElementByI
     reset: !!sh.querySelector('.dur-src a'), err: err && !err.hidden ? err.innerText.trim() : null, invalid: [h, m].map(e => e && e.getAttribute('aria-invalid')), describedby: h && h.getAttribute('aria-describedby'),
     active: document.activeElement && document.activeElement.id, font: h && parseFloat(cs(h).fontSize), mode: [h, m].map(e => e && e.getAttribute('inputmode')), labels: [].slice.call(sh.querySelectorAll('.dur-f span')).map(s => s.innerText.trim().toUpperCase()),
     title: (sh.querySelector('h3') || {}).innerText, rect: { sheet: r(sh), h: r(h), m: r(m), save: r(save), cancel: r(sh.querySelector('.sheet-cta .sec')) }, bottom: cs(sh).bottom, maxH: cs(sh).maxHeight, vh: innerHeight }; });
-const OLD = /5 h 41|341 min|5:41 h/;
+const OLD = /5 h 41|341 min|5:41 h|5:41:\d\d/;
 const TABS = ['akt', 'dash', 'plan', 'heute', 'hist'];
 
 /* ══════════ A · Ausgang und Dialog ══════════ */
 sec('A · Ausgang und Dialog');
 await openPage();
 let pg = await pageState();
-ok('A1 Ausgang: die Seite zeigt 5 h 41 min und bietet „Dauer korrigieren" an', pg.on && pg.kpis.some(k => /5 h 41 min/.test(k)) && pg.link === 'Dauer korrigieren' && pg.corr === false, JSON.stringify([pg.kpis, pg.note]));
+ok('A1 Ausgang: die Seite zeigt 5 h 41 min und bietet „Dauer korrigieren" an', pg.on && pg.kpis.some(k => /5 h 41 min|5:41:\d\d/.test(k)) && pg.link === 'Dauer korrigieren' && pg.corr === false, JSON.stringify([pg.kpis, pg.note]));
 await page.click('#gmActPage .gm-dur-note a'); await page.waitForTimeout(250);
 let sh = await sheetState();
 ok('A2 Blatt offen: Stunden 5, Minuten 41 (zwei Felder mit Beschriftung)', sh.on && sh.h === '5' && sh.m === '41' && sh.labels.join('|') === 'STUNDEN|MINUTEN' && /Dauer korrigieren/.test(sh.title), JSON.stringify([sh.h, sh.m, sh.labels]));
@@ -155,7 +155,7 @@ await page.click('#gmDurSave'); await page.waitForTimeout(700);
 pg = await pageState();
 const store1 = await page.evaluate(id => { const a = ORVIA.activityStore.getActivityById(id), E = ORVIA.activityEffective; return { sec: a.durationSeconds, sync: a.syncStatus, res: E.resolveMetric(a, 'duration'), sheet: document.getElementById('detailSheet').classList.contains('on') }; }, ID);
 ok('C1 Speicher: 75 min, Quelle 341 min, wartet auf den Abgleich; Blatt zu', store1.sec === MAN && store1.res.sourceValue === SRC && store1.res.corrected && store1.sync === 'pending' && store1.sheet === false, JSON.stringify(store1));
-ok('C2 Seite: Kennzahl 1 h 15 min, kein 5 h 41 mehr in den Kennzahlen', pg.kpis.some(k => /1 h 15 min/.test(k)) && !pg.kpis.some(k => OLD.test(k)), JSON.stringify(pg.kpis));
+ok('C2 Seite: Kennzahl 1 h 15 min, kein 5 h 41 mehr in den Kennzahlen', pg.kpis.some(k => /1 h 15 min|1:15:\d\d/.test(k)) && !pg.kpis.some(k => OLD.test(k)), JSON.stringify(pg.kpis));
 ok('C3 Seite: „Dauer auf 1 h 15 min korrigiert · urspruenglich 5 h 41 min · Aendern"', pg.corr === true && /Dauer auf 1 h 15 min korrigiert/.test(pg.note) && /ursprünglich 5 h 41 min/.test(pg.note) && pg.link === 'Ändern', String(pg.note));
 const mirror = await page.evaluate(() => DB[todayStr()].sessions.Gym.dur);
 ok('C4 Tagesblock gespiegelt: 75 min', mirror === 75, String(mirror));
@@ -190,7 +190,7 @@ await page.evaluate(([ROW, SRC]) => { const row = (0, eval)(ROW), a = ORVIA.acti
 sf = await surfaces();
 ok('D3 nach dem NEULADEN der Seite: Liste 1 h 15 min, Wochensumme 75 min, nirgends die alte Dauer', /1 h 15 min/.test(sf.akt || '') && sf.week === 75 && TABS.every(t => !OLD.test(sf[t] || '')), JSON.stringify([sf.week, sf.unified]) + ' ' + oldIn(sf));
 await openPage(); pg = await pageState();
-ok('D4 nach dem Neuladen: Seite 1 h 15 min mit Hinweis auf den urspruenglichen Wert', pg.kpis.some(k => /1 h 15 min/.test(k)) && pg.corr === true && /ursprünglich 5 h 41 min/.test(pg.note), String(pg.note));
+ok('D4 nach dem Neuladen: Seite 1 h 15 min mit Hinweis auf den urspruenglichen Wert', pg.kpis.some(k => /1 h 15 min|1:15:\d\d/.test(k)) && pg.corr === true && /ursprünglich 5 h 41 min/.test(pg.note), String(pg.note));
 
 /* ══════════ E · Aendern und Zuruecksetzen ══════════ */
 sec('E · Aendern und Zuruecksetzen');
@@ -204,7 +204,7 @@ await page.click('#detailSheet .dur-src a'); await page.waitForTimeout(700);
 pg = await pageState();
 const st3 = await page.evaluate(id => { const a = ORVIA.activityStore.getActivityById(id); return { sec: a.durationSeconds, res: ORVIA.activityEffective.resolveMetric(a, 'duration'), mirror: DB[todayStr()].sessions.Gym.dur, legacy: a.metrics.durationCorrection === undefined, sync: a.syncStatus }; }, ID);
 ok('E3 Zuruecksetzen: wieder 341 min, nicht mehr korrigiert, wartet auf den Abgleich; Tagesblock 341', st3.sec === SRC && st3.res.corrected === false && st3.mirror === 341 && st3.legacy && st3.sync === 'pending', JSON.stringify(st3));
-ok('E4 Seite zeigt wieder 5 h 41 min und bietet „Dauer korrigieren" an', pg.kpis.some(k => /5 h 41 min/.test(k)) && pg.corr === false && pg.link === 'Dauer korrigieren', JSON.stringify([pg.kpis, pg.note]));
+ok('E4 Seite zeigt wieder 5 h 41 min und bietet „Dauer korrigieren" an', pg.kpis.some(k => /5 h 41 min|5:41:\d\d/.test(k)) && pg.corr === false && pg.link === 'Dauer korrigieren', JSON.stringify([pg.kpis, pg.note]));
 
 ok('keine ungefangenen JS-Fehler', errs.length === 0, errs.slice(0, 3).join(' | '));
 await browser.close(); server.close();

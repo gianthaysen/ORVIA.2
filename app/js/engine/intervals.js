@@ -281,7 +281,9 @@
     var label = function (s) { return unit === 'work' ? (s.workN != null ? s.workN : (s.lapIndex != null ? s.lapIndex : s.n)) : (s.lapIndex != null ? s.lapIndex : s.n); };
     return { unit: unit, basis: basis, comparable: true, metric: metric, ref: g.ref, refKey: key, count: n, excluded: excluded, mean: mu, cvPct: mu ? Math.round(sd / mu * 1000) / 10 : null,
              best: label(members[bi]), bestValue: v[bi], worst: label(members[wi]), worstValue: v[wi], changePct: r1(changePct), r2: Math.round(r2 * 100) / 100, trend: trend,
-             hrFirst: hrOk ? hr[0] : null, hrLast: hrOk ? hr[n - 1] : null, hrChange: hrOk ? hr[n - 1] - hr[0] : null, members: members.map(label) };
+             hrFirst: hrOk ? hr[0] : null, hrLast: hrOk ? hr[n - 1] : null, hrChange: hrOk ? hr[n - 1] - hr[0] : null, members: members.map(label),
+             /* v8-456: Werte je Mitglied (gleiche Reihenfolge wie members) — fuer Highlights, damit dort dieselbe Gruppe gilt */
+             values: v.slice(), dists: members.map(function (s) { return s.distance; }), times: members.map(function (s) { return s.timer !== null ? s.timer : s.elapsed; }) };
   }
 
   /* ---------- Hauptfunktion Laufen / Rad ---------- */

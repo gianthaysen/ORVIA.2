@@ -1,4 +1,4 @@
-# Sportartspezifische Aktivitätsanalyse (v8-452 · v8-453 · v8-454 · v8-454.1)
+# Sportartspezifische Aktivitätsanalyse (v8-452 · v8-453 · v8-454 · v8-454.1 · v8-456)
 
 **Status: IMPLEMENTED** (App v8-454 live) · **App v8-454.1 gebaut, nicht ausgeliefert** (Build orvia-v8-455: neue Aktivitätsansicht, Zeitquellen, Leistungskurve, §11) · Worker v8-452.1 live (`DETAIL_EXTRAS=splits`, `DETAIL_EXTRAS_SPORTS=swimming`) · Worker v8-454 vorbereitet, nicht ausgerollt · keine Migration
 
@@ -246,7 +246,7 @@ Rückweg: `DETAIL_EXTRAS_SPORTS=swimming` (stoppt Lauf/Rad sofort) → `v454_run
 
 `intervals_v454` (49: echte Einheiten, synthetische Workouts, Zeitsemantik, fehlende Daten, Leistung/Indoor, Register, Quellvertrag, 50 Runden), `intervals_v454_ui_e2e` (40: Hero, Zeitstrahl, Antippen, Aufklappen, Tastatur, Rad/Zwift, 50 Runden, Rohblock fehlt, 320–1200 px), Worker `test_v454_runbike_sql.py` (Umfang des Nachholens, Sicherung/Kontrolle/Rückweg/Wiederherstellung auf Postgres) sowie angepasste v452/v453/v447/visual-Tests.
 
-## 11 · v8-454.1 Premium Activity Experience (gebaut, nicht ausgeliefert · Build orvia-v8-455)
+## 11 · v8-454.1 Premium Activity Experience (live · Build orvia-v8-455)
 
 Gilt für Laufen, Rad, Schwimmen (`gmAxPageHtml` in ui.js, CSS-Block „v8-454.1" am Ende von styles.css, `js/activity-chart.js`). Alle übrigen Sportarten behalten die bisherige Seite. Die Seite rechnet nichts: sie formatiert das Modell (`activity-analysis@2` → `intervals` / `swim-intervals` → `metric-eligibility`).
 
@@ -308,3 +308,115 @@ gemessen (ohne Zeichen) · berechnet (gepunkteter Ring) · geschätzt (gepunktet
 ### 11.6 Tests
 
 `activity_experience_v4541` (34: Zeitquellen, Leistung, Bibliothek, Diagramm-Geometrie, Register, Quelltext), `activity_experience_v4541_ui_e2e` (41: Hierarchie, Renderfehler in allen Sportarten, Zwift, Diagramme mit Zeiger/Tastatur/Vergleich, Bibliothek, hell/dunkel/Kontrast, reduzierte Bewegung, 320–1440 px). Angepasst an die neue Struktur (gleiche Regeln): `visual_v3_e2e`, `activity_theme_e2e`, `data_integrity_v447_e2e`, `activity_analysis_v452_ui_e2e`, `swim_intervals_v453_ui_e2e`, `intervals_v454_ui_e2e`. Testdaten tragen jetzt den Details-Stand (`detailsVersion`), wie die Produktion.
+
+
+## 12 · v8-456 Unified Activity Experience Quality Pass + Teilen aus den Highlights (gebaut, nicht ausgeliefert · Build orvia-v8-456)
+
+Status: IMPLEMENTIERT im Repo, NICHT deployt. Keine Migration, kein Worker-Rollout, keine Railway-Änderung, keine Änderung an
+Rekordberechnung, Rohdaten, Korrekturen oder Plan-Zuordnungen.
+
+### 12.1 Eine Ansicht für alle Sportarten
+- `gmOpenActivityPage` führt **jede** Sportart mit Analyse-Modell in die gemeinsame Ansicht (`gmAxPageHtml`). Vorher: nur
+  Laufen/Rad/Schwimmen; Kraft und alle anderen auf der Altseite.
+- Kraft: Hauptzahl Volumen (Zusammenfassung; fehlt sie, dieselbe Satz-Summe wie bisher `gmActGymAgg`, als „berechnet"
+  gekennzeichnet), dann Dauer · Sätze · RPE. Abschnitt „Übungen & Sätze" (`gmActGymRowsHtml`, EINE Funktion für beide
+  Seitenfassungen, inkl. Nachladen aus der Cloud und Satz-Diagnose). Sonstige: Dauer, Distanz, Puls; echte Runden als Liste.
+- Erhalten: Dauer korrigieren, gekoppelte Aufzeichnung, Debrief, Plan-Zuordnung, Highlights, Lösen/Löschen, Trainingslast.
+- Anzeigemodus (`uiDetailMode` → `gmLevel`) steuert NUR die Startaufklappung: Anfänger zu, Profi „Alle Kennzahlen" und
+  „Datenherkunft" offen, Fortgeschritten am Desktop Kennzahlen offen. Gleiche Werte, gleiche Rechnung in allen Modi (Test M2).
+
+### 12.2 Diagrammsystem `activity-chart@2`
+- Kein schwebender Hinweis mehr. Auswahl = Punkt + Führungslinie; Wert steht in der **festen Ablesezeile über dem Diagramm**
+  (`#gmAxRead`): Position („Kilometer 12,4 · 32:41", „Bahn 25 · 25 Meter · 31 Sekunden · Kraul") · Wert · Vergleichswert ·
+  Kennzeichnung („Stillstand", „möglicherweise ungenau: …"). Vorlesen gedrosselt über `aria-live`.
+- Kopf: Ø/Max/Anstieg der **ganzen Aktivität** (`chart.ref` → `md.metrics`); nur ohne Kennzahl „Ø im Diagramm".
+  Gestrichelte Ø-Linie = derselbe Wert (nur bei gleicher Einheit).
+- Markierte Punkte gehören nie zur Linie, bleiben sichtbar und wählbar: `stop` (≤ 0,3 m/s, Strich am Grund, auch ohne Wert),
+  `flag`/`excl` (Bahn möglicherweise ungenau / ausgeschlossen, Grund beim Antippen), `out` (außerhalb der robusten Tempoachse
+  2.–98. Perzentil ± 15 %, Dreieck am Rand).
+- Zeitachse: Abschnitte ohne Messwerte (Zeitsprung > max(3 × Median, 60 s)) → Umschalter „Aktive Zeit" (Standard, Lücke auf
+  einen Messabstand verkürzt, gestrichelt) | „Gesamtzeit" (volle Achse, schattierte Fläche). Nie gemischt.
+- Vergleich nur zwischen Reihen derselben Messpunkte (gleiche Achse, gleiche Länge) — jetzt auch Tempo ↔ SWOLF je Bahn.
+- Tastatur: Reiter mit Pfeiltasten (roving tabindex), Diagramm ← → Pos1 Ende (Umschalt = 10), Esc. Touch: Wählen nur mit
+  gedrücktem Finger, vertikal scrollt. Tab/Vergleich/Achse bauen nur den Verlauf neu (Scrollposition und Fokus bleiben).
+
+### 12.3 Pausen und Zeitachsen (P0)
+- `metric-eligibility` gibt der Pause eine Belegstärke `evidence`: `timer_counter` (Garmin-Timer belegt angehaltene Uhr),
+  `unclear` (Garmin-Zeiten widersprechen sich: Messreihe = Gesamtzeit), `derived_only` (nur Gesamt − Dauer), `none` (≤ 2 s).
+- **Zwift 07.10.:** 11:07 bleibt sichtbar, heißt aber „Zeit ohne Aufzeichnung — Ursache nicht eindeutig" (nicht mehr „Uhr
+  angehalten"). Die 3 Abschnitte ohne Zeilen (191/234/249 s) sind im Diagramm markiert. Ob Pause oder Aufzeichnungslücke:
+  mit den vorhandenen Daten NICHT entscheidbar → offen.
+- **HM 06.09. (Tempo-/Kadenzeinbrüche):** 1 Hz, keine Zeitsprünge; Bewegung − Timer = 163 s. Wahrscheinlichste Ursache:
+  Stillstandszeilen, die durch die Punktauswahl des Workers (jede n-te Zeile) als einzelne Einbrüche erscheinen. Seit v8-456 als
+  Stillstand markiert statt als Linieneinbruch; nichts gelöscht. **Nicht verifiziert** gegen die Produktionszeile → Konsolen-Audit
+  `app/tools/activity-dips-console.js` (nur lesen) für Gian.
+- v8-454 löschte Tempopunkte > 2 × Median (Linie brach). Seit v8-456: Werte 100–3600 s/km bleiben Messwerte; Darstellung über
+  die robuste Achse.
+
+### 12.4 Schwimmen
+- Bahnen je Diagramm: alle Bahnen sind Punkte; auffällige als Ring/Kreuz mit Grund; Ø und Bereich nur aus plausiblen Bahnen.
+- Wellenfeld: wird in der gemessenen Breite gezeichnet (`gmActWavesFit`, 1 Einheit = 1 px). Ursache des Desktop-Zerfalls:
+  390-px-Feld per viewBox auf ~1300 px gestreckt + `non-scaling-stroke` + `pathLength`-Strichmuster. Danach langsame Drift;
+  „Bewegung reduzieren" = still.
+- Highlights: Pausenrunden zählen nie. Rundenseite = Intervalle **derselben Lage** ≥ 50 m (dieselbe Gruppe wie die
+  Gleichmäßigkeit). Vorher „Schnellste Runde 0:01" aus einer 0-m-Pausenrunde.
+
+### 12.5 Rad
+- Zwift-Strecke: wieder im vollen Kartenfeld eingepasst (route-map mit `tiles:false`), ohne Landkarte, „Spielwelt"-Kennzeichnung
+  bleibt. Ursache der Regression v8-454.1: Linienzeichnung mit eigenem dunklen Rechteck, nicht eingepasst.
+- Watt: Überschrift 112 W / Max 326 W aus der Aktivität; Diagrammpunkte erreichen 214 W (Auswahl von 269 aus 1.877 Zeilen) →
+  Hinweis, keine zweite Wahrheit.
+- **Vorschlag Worker (NICHT umgesetzt, Freigabe nötig — Worker ist geschützt):** `_sample_indices` (jede ceil(n/300)-te Zeile)
+  durch eimerweise Auswahl ersetzen, die je Eimer Min und Max (Leistung, Puls) und eine Stillstandszeile behält
+  (LTTB-ähnlich, ≤ 300 Punkte, gemeinsamer Index). Effekt im Zwift-Mitschnitt: Max im Diagramm 326 statt 214 W. Benötigt
+  Worker-Tests + Neuabruf; ändert keine gespeicherten Kennzahlen.
+
+### 12.6 Laufen und Bestzeiten in den Highlights
+- Highlights-Bestzeit (`gmStoryPbOf`, auch für das Teilen): Kategorie wie im Register — „Aktive Trainingsbestzeit" (Timer) oder
+  „Bestzeit einschließlich Pausen"; alle Distanzen bis Marathon; längste Distanz gewinnt, bei gleicher die aktive. Zeitformat
+  h:mm:ss (vorher „61:49"). HM-Fall: „10 km 1:01:49" erscheint nur noch als „Bestzeit einschließlich Pausen"; die aktive
+  10-km-Bestzeit 57:55 stammt aus einem anderen Lauf und wird dieser Einheit nicht zugeschrieben.
+- Bestätigte Wettkampfbestzeiten (dritte Kategorie) behauptet die Story nicht.
+- Rundenseite: nur die vergleichbare Gruppe der Intervall-Engine (`analytics.values/dists/times` neu), Wert je Metrik
+  (Tempo /km, Watt, km/h). Ohne vergleichbare Gruppe keine Rundenseite.
+- Strecke zeichnet sich mit **2 s je km** (`GM_STORY_ROUTE_SPKM`, einstellbar über `localStorage.orvia_story_route_spkm`
+  0,5–5), min. 2 s, max. 90 s, gleichmäßige Geschwindigkeit; die Seite bleibt bis Zeichnungsende + 2,5 s. Reduzierte Bewegung:
+  keine Verlängerung.
+
+### 12.7 Herzfrequenzzonen (Dokumentation + Konzept, nichts geändert)
+- Heute: Zeit je Zone = Garmins `hrTimeInZone_1…5` (Zonen-Einstellung in Garmin Connect). Grenzen werden in der Produktion
+  **nicht** gespeichert. Im Mitschnitt (Endpoint hrZones) belegt: Laufen 97/111/140/159/178, Rad 99/119/139/158/178 bpm (Untergrenzen).
+- Konzept ORVIA-Zonen (Folgephase, eigene Freigabe): (1) Worker speichert Garmin-Grenzen je Aktivität (`metrics.garmin.hr_zones`,
+  versioniert); (2) Profil: Zonenmodell je Sportart (Garmin übernehmen | % HFmax | % LTHR), Gültig-ab-Datum; (3) Zeit je
+  ORVIA-Zone aus der Pulsreihe nur für Aktivitäten **ab** dem Gültig-ab-Datum — keine rückwirkende Umdeutung; Garmin-Zeiten
+  bleiben daneben sichtbar; (4) Migration nur additiv. Keine Änderung in v8-456.
+
+### 12.8 Teilen aus den Highlights (`js/story-share.js`, `story-share@1`)
+- Einstieg: Teilen-Symbol (Quadrat mit Pfeil) oben in der Story und „Teilen" auf der neuen Abschlussseite (bleibt stehen,
+  „Fertig" schließt). Beide rufen `gmStoryShare`. Story pausiert; nach Schließen läuft dieselbe Seite neu an.
+- Daten: `gmShareData` — Analyse-Modell, `gmAxOk` (gesperrte Werte nie), `gmAaFmt`, Bezeichnungen der App, virtuelle Werte
+  gekennzeichnet; Bestzeit über `gmStoryPbOf`. Das Modul rechnet keine Kennzahl.
+- Karten (PNG 1080 × 1920): Hauptwert · Drei Werte · Strecke · Strecke + Werte · Bestzeit · Zusammenfassung. Inhalte zwischen
+  ~250 px oben/unten (Instagram-Bedienflächen). Logo = Originalgeometrie aus `assets/brand/orvia-lockup-horizontal.svg` als
+  Path2D (Test vergleicht mit der Datei).
+- Aufkleber (PNG mit Alpha-Kanal, Ecken Alpha 0): Hauptwert · Zeit · Tempo/Leistung · Drei Werte · Strecke · Strecke + Werte ·
+  Statistik · Bestzeit. Schachbrett nur in der Vorschau (CSS).
+- Strecke ohne Kartenkacheln (keine Attributionspflicht, kein gesperrtes Canvas). Start/Ziel ausblenden: Aus / 200 m
+  (Standard) / 500 m — nur in der Exportkopie; zu kurze Strecke (< 3 × Bereich) → keine Strecke. Spielwelt: kein Ausblenden.
+- Teilen: Datei wird beim Auswählen vorbereitet; der Tipp ruft `navigator.share({files})` sofort (WebKit: `share()` verbraucht
+  die kurze Nutzeraktivierung). Nur nach `navigator.canShare({files})`; sonst kein Teilen-Knopf, „Bild speichern" ist Hauptweg.
+  Abbruch (AbortError) ohne Meldung. „Aufkleber kopieren": `ClipboardItem({'image/png'})`, Erfolg erst nach `write()`
+  (Safari ≥ 13.1 unterstützt image/png).
+- Plattform-Fakten: Eine Web-App kann Instagram Stories **nicht** gezielt öffnen/befüllen (das geht nur nativ über
+  `instagram-stories://` + UIPasteboard + Facebook-App-ID). Instagram erscheint nur, wenn iOS/Android es im System-Teilen-Menü
+  anbietet. Firefox Desktop: kein `share()` (Fallback Speichern).
+- **Video: kein Knopf.** Folgephase „Video-Export": MP4 (H.264) 1080 × 1920 aus derselben Zeichenschicht (Canvas →
+  `captureStream` + MediaRecorder nur wo MP4 unterstützt, sonst serverseitig); erst mit zuverlässigem Renderer.
+- Getestet: Chromium (Desktop, Mobil-Emulation 320–1440 px), Mocks für share/clipboard. **Offen (Gerätetest):** iPhone Safari,
+  installierte iPhone-PWA, Android Chrome, Desktop Safari, tatsächliche Übergabe an Instagram.
+
+### 12.9 Tests
+`activity_quality_v456_test` (19), `activity_quality_v456_ui_e2e_test` (28), `story_share_v456_test` (34),
+`story_share_v456_ui_e2e_test` (32); angepasst: intervals_v454 P5 (neue Regel), activity_experience_v4541_ui_e2e (Ablesezeile,
+Zwift-Pause unklar, Spielwelt-Feld), activity_theme_e2e 5b, effective_metric_e2e (Dauer im neuen Kopf), visual_v3_e2e E6,
+route_map G1.

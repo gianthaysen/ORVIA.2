@@ -213,7 +213,7 @@ ok('KF-015 · Registry-Vertrag repo-intern verankert',
    existsSync(join(APP, 'docs', 'gm-ref', 'metric-registry.snapshot.json'))
    && /metric-registry\.snapshot\.json/.test(readFileSync(join(HERE, 'metric_registry_test.mjs'), 'utf8')));
 ok('KF-021-Nachtrag · Story prueft das kanonische Distanzmodell VOR dem Aktivitaetsvergleich',
-   /var distPB=null/.test(ui) && /distPB\?null:gmActPersonalBest/.test(ui));
+   /var distPB=(null|\(fam==='pace'\)\?gmStoryPbOf\(a\):null)/.test(ui) && /distPB\?null:gmActPersonalBest/.test(ui));   /* v8-456: Distanzmodell in gmStoryPbOf */
 ok('Achievements · eingebunden und im Precache, VOR ui.js',
    /src="js\/achievements\.js"/.test(html) && /'\.\/js\/achievements\.js'/.test(sw)
    && html.indexOf('js/achievements.js') < html.indexOf('js/ui.js'));
