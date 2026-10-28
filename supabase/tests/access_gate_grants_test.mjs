@@ -20,6 +20,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { quellen, modell } from './_grant-model.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -87,9 +88,31 @@ if (existsSync(schema)) {
   ok('D1 Profilzeilen entstehen nur in orvia_complete_invite_registration',
     /insert into public\.profiles/.test(sch)
     && /create or replace function public\.orvia_complete_invite_registration/.test(sch));
-  ok('D2 … und diese Funktion ist ausschliesslich an service_role vergeben',
-    /grant execute on function public\.orvia_complete_invite_registration\([^)]*\) to service_role/.test(sch)
-    && !/grant execute on function public\.orvia_complete_invite_registration\([^)]*\) to (authenticated|anon)/.test(sch));
+  /* D2 alt (bis 28.10.2026) prüfte nur: grant an service_role da, KEIN expliziter
+     grant an anon/authenticated. Das war falsch-grün — Supabase vergibt EXECUTE
+     per Default Privileges DIREKT an anon/authenticated, `revoke … from public`
+     entzieht das nicht. Live war die Funktion deshalb für anon ausführbar
+     (Befund 28.10.2026, behoben mit 0052). Jetzt: WIRKSAME Rechte über das
+     Rechtemodell (Supabase-Default + alle revoke/grant der Kette). */
+  const altKriterium = /grant execute on function public\.orvia_complete_invite_registration\([^)]*\) to service_role/.test(sch)
+    && !/grant execute on function public\.orvia_complete_invite_registration\([^)]*\) to (authenticated|anon)/.test(sch);
+  ok('D2a schema.sql vergibt die Funktion explizit nur an service_role', altKriterium);
+  const Q = quellen(join(REPO, 'supabase'));
+  const M = modell(Q);
+  const INV = 'orvia_complete_invite_registration/3';
+  ok('D2b WIRKSAM nach der Kette: anon darf NICHT ausführen', M.rechte.has(INV) && !M.darf(INV, 'anon'));
+  ok('D2c WIRKSAM nach der Kette: authenticated darf NICHT ausführen', !M.darf(INV, 'authenticated'));
+  ok('D2d WIRKSAM nach der Kette: service_role darf (Edge Function register-with-invite)', M.darf(INV, 'service_role'));
+  const ersteMig = Q.find(q => q.datei !== 'schema.sql');
+  const nurSchema = modell(Q, { bis: ersteMig && ersteMig.datei });
+  ok('D2e Gegenprobe: mit schema.sql allein ist das alte Kriterium grün UND anon darf trotzdem ausführen (Falsch-Grün belegt)',
+    altKriterium && nurSchema.darf(INV, 'anon') && nurSchema.darf(INV, 'authenticated'));
+  /* D3 · Der Access-Gate liest die Rolle über orvia_user_role/orvia_is_owner (RLS,
+     owner_all). Angemeldete Nutzer MÜSSEN sie ausführen dürfen, anon nicht (0053). */
+  for (const k of ['orvia_user_role/0', 'orvia_is_owner/0']) {
+    ok('D3 ' + k.split('/')[0] + ': authenticated darf (sonst bräche jede owner_all-Policy)', M.darf(k, 'authenticated'));
+    ok('D3 ' + k.split('/')[0] + ': anon darf NICHT', M.rechte.has(k) && !M.darf(k, 'anon'));
+  }
 }
 
 console.log('\n' + '═'.repeat(62) + '\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
