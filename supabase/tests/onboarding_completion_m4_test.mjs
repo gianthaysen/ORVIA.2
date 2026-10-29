@@ -78,7 +78,7 @@ const run = async () => {
   ok('MAP1 displayName → name', patch.name === 'Gian');
   ok('MAP2 experienceLevel → sports[primary].level (kanonisches Ziel, Feldmatrix)', patch.sports.find(s => s.role === 'primary').level === 'advanced');
   ok('MAP3 kein Level-Duplikat: top-level patch.level bleibt unberührt, Sekundärsport ohne Level', patch.level === undefined && patch.sports.find(s => s.role === 'supplemental').level === null);
-  ok('MAP4 Körper-/Basisfelder gemappt', patch.heightCm === 180 && patch.weightKg === 75 && patch.birthDate === '1996-05-01' && patch.sex === 'male');
+  ok('MAP4 Körper-/Basisfelder gemappt', patch.heightCm === 180 && patch.weightKg === 75 && patch.birthDate === '1996-05-01' && patch.sex === 'm');   /* R5 (2026-10-29): Abschluss schreibt die App-Codes m/f/d (Grundumsatz/Zyklus lesen 'm'/'f') */
   ok('MAP5 goals + availability normalisiert', Array.isArray(patch.goals) && patch.goals[0].title === 'HM unter 1:50' && patch.availability.days.mo.available === true);
 
   /* ---------- 2) Erfolg: persist wird AWAITED, completed erst danach ---------- */

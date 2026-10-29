@@ -80,7 +80,11 @@
       renderFreshChoice(existing);          // fresh überschreibt NIE still
       return true;
     }
-    S.draft = existing || L().startDraft(L().newDraft(), now());
+    /* R1 (2026-10-29): BEARBEITEN baut IMMER einen frischen Entwurf aus dem aktuellen Profil.
+       Ein alter Ersteinrichtungs-Entwurf ist ein veralteter Stand (z. B. ohne spaeter angelegte
+       Ziele) und wuerde beim Speichern das Profil ueberschreiben. */
+    S.edit = !!opts.edit; S.seed = null;
+    S.draft = (opts.edit ? null : existing) || L().startDraft(L().newDraft(), now());
     S.source = opts.source || null; S.resumed = !!existing && !opts.edit;
     S.obLoggedStep = null; _obLog('open', S.draft.currentStep);
     // BEARBEITEN hat IMMER Vorrang vor dem Done-Screen — UNABHÄNGIG davon, ob bereits ein
@@ -88,6 +92,7 @@
     // ohne dass je ein v2-Draft gespeichert wurde. edit:true darf NIE renderReviewDone() zeigen.
     if (opts.edit) {
       if (!S.draft) S.draft = L().startDraft(L().newDraft(), now());
+      _seedEditDraft();                  // R2/R5/R6: alle Abschnitte aus dem aktuellen Profil vorbelegen
       S.draft.currentStep = 'profile';   // erster sichtbarer Screen = bearbeitbarer Profilbereich
       try { console.debug('[profile-edit]', { entryPoint: opts.source || 'unknown', fresh: opts.fresh === true, edit: true, readyForReview: !!L().readyForReview(S.draft), selectedRenderer: 'editable_profile' }); } catch (e) {}
       render();   // seedt fehlende Werte aus PROFILE (profileSeedFromExisting), persistiert am Ende
@@ -128,8 +133,11 @@
   }
 
   function mountShell() {
-    if (S.el) return;
+    if (S.el && S.el.isConnected !== false) return;
+    S.el = null;
     var doc = D(); if (!doc) return;
+    /* R7 (2026-10-29): verwaiste Dialoge entfernen — nie zwei Einrichtungs-Ebenen uebereinander. */
+    try { Array.prototype.forEach.call(doc.querySelectorAll('.ob2-bg') || [], function (n) { try { n.remove(); } catch (e) {} }); } catch (e) {}
     var el = doc.createElement('div');
     el.className = 'ob2-bg';
     el.setAttribute('role', 'dialog');
@@ -446,7 +454,7 @@
           '<p class="ob2-hint">' + T('ob.ohne_datum_plant_orvia_offen') + '</p>' +
           goalValueFieldHTML(ex) +
         '</div>' : '') + '</div>' +
-      (otherCount > 0 ? '<p class="ob2-note">' + otherCount + '' + T('ob.weiteres_ziel') + '' + (otherCount > 1 ? 'e' : '') + '' + T('ob.aus_deinem_profil_bleib') + '' + (otherCount > 1 ? 'en' : 't') + ' erhalten.</p>' : '') +
+      (otherCount > 0 ? '<p class="ob2-note">' + otherCount + '' + T(otherCount > 1 ? 'ob.weitere_ziele' : 'ob.weiteres_ziel') + '' + T('ob.aus_deinem_profil_bleib') + '' + (otherCount > 1 ? 'en' : 't') + ' erhalten.</p>' : '') +
       '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-next">' + T('ob.weiter') + '</button></div>' +
       '<button type="button" class="ob2-later" id="ob2-later">' + T('ob.spaeter_fortsetzen') + '</button></div>';
     mountProgressHeader(card, '' + T('ob.dein_ziel') + '', '' + T('ob.was_willst_du_erreichen') + '');
@@ -595,7 +603,8 @@
       options: sl.DURATION_BANDS.map(function (b) { return { value: b.id, label: b.label, id: 'avdur-' + b.id }; }),
       value: prim ? sl.bandForDuration(prim.typicalDuration) : null,
       onChange: function (bandId) {
-        _applyTypicalDuration(sl.durationForBand(bandId));
+        var _cp = primaryEntry(S.draft.draftData.sports);   // R4: genaue Dauer im selben Band behalten
+        _applyTypicalDuration((_cp && _cp.typicalDuration != null && sl.bandForDuration(_cp.typicalDuration) === bandId) ? _cp.typicalDuration : sl.durationForBand(bandId));
         persist();
         if (S.availabilitySubmitted) { var e = doc.getElementById('err-duration'); if (e) e.textContent = ''; }
       }
@@ -625,6 +634,33 @@
      constraintsAcknowledgedAt entsteht ERST im Completion-Pfad (keine Vorwegnahme).
      ============================================================ */
   function curSafety() { S.draft.draftData = S.draft.draftData || {}; return S.draft.draftData.safety || null; }
+  /* R6 (2026-10-29): Bearbeiten zeigt die Antwort, die im Profil steht. Aktive Beschwerde → „Ja"
+     mit Region/Seite/Intensitaet; bestaetigt ohne Beschwerde → „Nein"; nie beantwortet → leer. */
+  function _profileSource() {
+    var src = null;
+    try { if (O.profile && typeof O.profile.get === 'function') src = O.profile.get(); } catch (e) { src = null; }
+    return src || root.PROFILE || {};
+  }
+  function safetyFromProfile(P) {
+    P = P || {};
+    var act = (Array.isArray(P.constraintsList) ? P.constraintsList : []).filter(function (c) { return c && c.bodyRegion && (c.status || 'active') === 'active'; })[0];
+    if (act) return { hasComplaints: true, constraint: { bodyRegion: act.bodyRegion, side: (act.side && act.side !== 'na') ? act.side : null, intensity: act.intensity != null ? act.intensity : null }, constraintId: act.id || null };
+    if (P.constraintsAcknowledgedAt) return { hasComplaints: false, constraint: null };
+    return null;
+  }
+  function _safetySig(sf) {
+    if (!sf || typeof sf.hasComplaints !== 'boolean') return 'none';
+    var c = sf.hasComplaints && sf.constraint ? sf.constraint : null;
+    return sf.hasComplaints + '|' + (c ? [c.bodyRegion || '', c.side || '', c.intensity == null ? '' : c.intensity].join('/') : '');
+  }
+  function _seedEditDraft() {
+    var P = _profileSource(); var dd = S.draft.draftData = S.draft.draftData || {};
+    var sf = safetyFromProfile(P);
+    if (sf) dd.safety = sf;
+    S.seed = { safetySig: _safetySig(sf) };
+    var rt = (P.preferences && P.preferences.riskTolerance) || P.riskTolerance;
+    if (['conservative', 'balanced', 'ambitious'].indexOf(rt) >= 0) dd.preferences = Object.assign({}, dd.preferences || {}, { riskTolerance: rt });
+  }
   function _setSafetyAnswer(has) {
     var s = curSafety() || {};
     s.hasComplaints = has;
@@ -911,7 +947,7 @@
       _rvCard('rv-goal', 'goals', '' + T('ob.dein_ziel') + '', [
         esc(primary ? primary.title : '—'),
         esc(primary && primary.targetDate ? '' + T('ob.zieldatum') + '' + _rvDate(primary.targetDate) : ''),
-        goals.length > 1 ? esc('+ ' + (goals.length - 1) + '' + T('ob.weiteres_ziel') + '' + (goals.length > 2 ? 'e' : '')) : ''
+        goals.length > 1 ? esc('+ ' + (goals.length - 1) + '' + T(goals.length > 2 ? 'ob.weitere_ziele' : 'ob.weiteres_ziel')) : ''
       ]) +
       _rvCard('rv-availability', 'availability', '' + T('ob.verfuegbarkeit') + '', [
         esc(days.length + '' + T('ob.tage_pro_woche') + '' + days.map(function (w) { return w[1]; }).join(', ') + ')'),
@@ -922,7 +958,7 @@
         bodySkipped ? esc('' + T('ob.uebersprungen_jederzeit_nachtragbar') + '') :
           esc([pf.heightCm != null ? pf.heightCm + ' cm' : '', pf.weightKg != null ? pf.weightKg + ' kg' : ''].filter(Boolean).join(' · ') || '' + T('ob.uebersprungen_jederzeit_nachtragbar') + '')
       ]) +
-      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-finish">' + T('ob.profil_erstellen') + '</button></div></div>';
+      '<div class="ob2-navwrap"><div class="ob2-nav"><button type="button" class="btn sec" id="ob2-back">' + T('ob.zurueck') + '</button><button type="button" class="btn" id="ob2-finish">' + T(S.edit ? 'ob.aenderungen_speichern' : 'ob.profil_erstellen') + '</button></div></div>';
     mountProgressHeader(card, '' + T('ob.zusammenfassung') + '', '' + T('ob.alles_laesst_sich_spaeter_aendern') + '');
     // Rücksprünge: gezielt in den jeweiligen Schritt (auch body via Skip-Rücknahme durch Besuch).
     ['profile', 'sports', 'training_level', 'goals', 'availability', 'safety', 'body'].forEach(function (step) {
@@ -966,11 +1002,29 @@
       }
     } catch (e) {}
     if (pf.displayName != null) patch.name = pf.displayName; else if (pf.firstName) patch.name = pf.firstName;
-    if (pf.heightCm != null) patch.heightCm = pf.heightCm; if (pf.weightKg != null) patch.weightKg = pf.weightKg; if (pf.birthDate) patch.birthDate = pf.birthDate; if (pf.sex) patch.sex = pf.sex;
+    if (pf.heightCm != null) patch.heightCm = pf.heightCm; if (pf.weightKg != null) patch.weightKg = pf.weightKg; if (pf.birthDate) patch.birthDate = pf.birthDate; if (pf.sex) patch.sex = ({ male: 'm', female: 'f', diverse: 'd' })[pf.sex] || (pf.sex === 'prefer_not_to_say' ? null : pf.sex);   /* R5: App-Codes m/f/d (Grundumsatz, Zyklus lesen 'f'/'m') */
     // M8-Fix: „Nur Alter angeben"-Nutzer (A1) verloren ihr Alter beim Abschluss — ageEstimate mitmappen.
     if (!pf.birthDate && pf.ageEstimate != null && pf.ageEstimate !== '') { var _ae = parseInt(pf.ageEstimate, 10); if (isFinite(_ae)) patch.ageEstimate = _ae; }
     var sportsSel = (dd.sports && Array.isArray(dd.sports.sports)) ? dd.sports.sports : [];
-    patch.sports = M.normalizeSports(sportsSel.map(function (e) { return { sportId: e.sportId, customName: e.customName || null, role: e.role || 'supplemental', activeInApp: e.visible !== false, includeInPlan: !!e.planningEnabled, level: e.level || null, sessionsPerWeek: (e.sessionsPerWeek != null ? e.sessionsPerWeek : null), typicalDuration: (e.typicalDuration != null ? e.typicalDuration : null) }; }));   // M5b/M7: A3+A5 pro Sport (kanonisch, KEIN PROFILE.level)
+    /* R3 (2026-10-29): Sportarten mit dem bestehenden Profil ZUSAMMENFUEHREN statt ersetzen.
+       Was die Einrichtung abfragt (Rolle, Plan, Sichtbarkeit, Niveau, Haeufigkeit, Dauer), kommt aus
+       dem Entwurf; alles andere (bevorzugte Tage, Sportprofil, Saisonphase …) bleibt. Sportarten,
+       die die Einrichtung nicht kennt (eigene), bleiben ebenfalls erhalten. */
+    var exSports = (existing && Array.isArray(existing.sports)) ? existing.sports : [];
+    var exById = {}; exSports.forEach(function (s) { if (s && s.sportId) exById[String(s.sportId).toLowerCase()] = s; });
+    var _draftRole = function (r) { return r === 'supplemental' ? 'secondary' : r; };
+    var merged = sportsSel.map(function (e) {
+      var base = exById[String(e.sportId).toLowerCase()] || {};
+      var role = e.role || 'supplemental';
+      if (base.role && _draftRole(base.role) === role) role = base.role;   // „supplemental" bleibt, wenn unveraendert
+      return Object.assign({}, base, { sportId: e.sportId, customName: e.customName || base.customName || null, role: role, activeInApp: e.visible !== false, includeInPlan: !!e.planningEnabled,
+        level: e.level || null, sessionsPerWeek: (e.sessionsPerWeek != null ? e.sessionsPerWeek : null), typicalDuration: (e.typicalDuration != null ? e.typicalDuration : null) });
+    });
+    var _sl = (typeof SL === 'function') ? SL() : null;
+    var _known = (_sl && typeof _sl.isKnownSport === 'function') ? _sl.isKnownSport : function () { return true; };
+    var _hasPrim = merged.some(function (s) { return s.role === 'primary'; });
+    exSports.forEach(function (s) { if (s && s.sportId && !_known(s.sportId)) merged.push((_hasPrim && s.role === 'primary') ? Object.assign({}, s, { role: 'secondary' }) : s); });
+    patch.sports = M.normalizeSports(merged);   // M5b/M7: A3+A5 pro Sport (kanonisch, KEIN PROFILE.level)
     var lvl = pf.experienceLevel || null;
     if (lvl) patch.sports = patch.sports.map(function (s) { return (s.role === 'primary' && s.level == null) ? Object.assign({}, s, { level: lvl }) : s; });
     patch.goals = M.normalizeGoals((dd.goals || []).filter(function (g) { return g.title && g.title.trim(); }));
@@ -987,18 +1041,27 @@
     /* M7 (A6): Sicherheitscheck → kanonische Constraints. Acknowledge NUR bei beantworteter
        Frage (nichts erfinden); bei Ja zusätzlich EIN normalisierter Constraint (status active).
        issues[]-Projektion läuft zentral über _profileSave (kein direkter issues-Write hier). */
+    /* R6 (2026-10-29): unveraenderte Antwort aus dem Bearbeiten-Modus → Abschnitt bleibt
+       unangetastet (kein neuer Bestaetigungszeitpunkt, keine doppelte Beschwerde). Geaendert →
+       Basis ist die BESTEHENDE Liste des Profils (vorher: Entwurfsliste, die alte Eintraege verlor). */
     var sf = dd.safety;
-    if (sf && typeof sf.hasComplaints === 'boolean') {
+    var _S = (typeof S !== 'undefined' && S) ? S : {};   /* auch als herausgeschnittene reine Funktion lauffaehig (Tests) */
+    var seedSig = (_S.edit && _S.seed) ? _S.seed.safetySig : null;
+    var curSig = (typeof _safetySig === 'function') ? _safetySig(sf) : null;
+    if (sf && typeof sf.hasComplaints === 'boolean' && (seedSig == null || curSig !== seedSig)) {
       patch.constraintsAcknowledgedAt = nowIso || null;
+      var baseList = (existing && Array.isArray(existing.constraintsList)) ? existing.constraintsList.slice()
+        : (Array.isArray(dd.constraintsList) ? dd.constraintsList.slice() : []);
       if (sf.hasComplaints === true && sf.constraint && sf.constraint.bodyRegion) {
-        var existing = Array.isArray(dd.constraintsList) ? dd.constraintsList : [];
-        patch.constraintsList = existing.concat([M.normalizeConstraint({
-          bodyRegion: sf.constraint.bodyRegion,
-          side: sf.constraint.side || '',
-          intensity: sf.constraint.intensity,
-          status: 'active',
-          notes: '' + T('ob.aus_dem_einrichtungs_sicherheitscheck') + ''
-        }, nowIso)]);
+        var cNew = { bodyRegion: sf.constraint.bodyRegion, side: sf.constraint.side || '', intensity: sf.constraint.intensity, status: 'active' };
+        var idx = -1;
+        baseList.forEach(function (c, i) { if (idx < 0 && c && ((sf.constraintId && c.id === sf.constraintId) || (!sf.constraintId && c.bodyRegion === cNew.bodyRegion && (c.status || 'active') === 'active'))) idx = i; });
+        if (idx >= 0) baseList[idx] = M.normalizeConstraint(Object.assign({}, baseList[idx], cNew), nowIso);
+        else baseList.push(M.normalizeConstraint(Object.assign({ notes: '' + T('ob.aus_dem_einrichtungs_sicherheitscheck') + '' }, cNew), nowIso));
+        patch.constraintsList = baseList;
+      } else if (sf.hasComplaints === false && baseList.some(function (c) { return c && (c.status || 'active') === 'active'; })) {
+        /* „Aktuell keine Beschwerden" → bisher aktive Eintraege gelten als abgeklungen (Historie bleibt). */
+        patch.constraintsList = baseList.map(function (c) { return (c && (c.status || 'active') === 'active') ? M.normalizeConstraint(Object.assign({}, c, { status: 'resolved' }), nowIso) : c; });
       }
     }
     return patch;
@@ -1575,7 +1638,9 @@
       value: prim ? sl.bandForSessions(prim.sessionsPerWeek) : null,
       onChange: function (bandId) {
         if (!prim) return;
-        S.draft.draftData.sports = sl.setSessionsPerWeek(S.draft.draftData.sports, prim.sportId, sl.sessionsForBand(bandId));
+        var _cur = primaryEntry(S.draft.draftData.sports);   // R4: genauen Wert im selben Band behalten
+        S.draft.draftData.sports = sl.setSessionsPerWeek(S.draft.draftData.sports, prim.sportId,
+          (typeof sl.sessionsForBandKeeping === 'function') ? sl.sessionsForBandKeeping(bandId, _cur && _cur.sessionsPerWeek) : sl.sessionsForBand(bandId));
         persist();
         if (S.trainingSubmitted) updateTrainingErrors();
       }
@@ -1648,7 +1713,7 @@
     renderGoalsStep: renderGoalsStep, renderAvailabilityStep: renderAvailabilityStep, renderSafetyStep: renderSafetyStep, renderBodyStep: renderBodyStep, renderSummaryStep: renderSummaryStep, finishOnboarding: finishOnboarding,
     // M4: testbare Abschluss-Bausteine (interne API für Tests; kein UI-Vertrag).
     _m4: { buildCompletionPatch: buildCompletionPatch, completeOnboardingFlow: completeOnboardingFlow },
-    _reset: function () { S.draft = null; S.el = null; S.busy = false; S.lastNav = 0; S.corruptNote = false; S.previousFocus = null; S.profileSubmitted = false; S.birthMode = null; S.heightDirty = false; S.weightDirty = false; S.reviewError = ''; S.sportsSubmitted = false; S.trainingSubmitted = false; S.goalsSubmitted = false; S.availabilitySubmitted = false; S.safetySubmitted = false; S.bodySubmitted = false; }
+    _reset: function () { if (S.el) { try { S.el.remove(); } catch (e) {} } S.draft = null; S.el = null; S.edit = false; S.seed = null; S.busy = false; S.lastNav = 0; S.corruptNote = false; S.previousFocus = null; S.profileSubmitted = false; S.birthMode = null; S.heightDirty = false; S.weightDirty = false; S.reviewError = ''; S.sportsSubmitted = false; S.trainingSubmitted = false; S.goalsSubmitted = false; S.availabilitySubmitted = false; S.safetySubmitted = false; S.bodySubmitted = false; }
   };
 
   // EINZIGER produktiver Onboarding-Einstieg. Öffnet ausschließlich v2. KEIN Legacy-Fallback.
