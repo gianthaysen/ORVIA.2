@@ -537,6 +537,8 @@
     'ob.weiblich': 'Weiblich',
     'ob.weiter': 'Weiter',
     'ob.weiteres_ziel': ' weiteres Ziel',
+    'ob.weitere_ziele': ' weitere Ziele',
+    'ob.aenderungen_speichern': 'Änderungen speichern',
     'ob.welche_koerperregion_ist_betroffen': 'Welche Körperregion ist betroffen?',
     'ob.welche_sportarten_machst_du': 'Welche Sportarten machst du?',
     'ob.wettkampf': 'Wettkampf',

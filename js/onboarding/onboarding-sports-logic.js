@@ -21,6 +21,9 @@
     for (var i = 0; i < SESSION_BANDS.length; i++) if (SESSION_BANDS[i].id === bandId) return SESSION_BANDS[i].value;
     return null;
   }
+  /* R4 (2026-10-29): Band antippen, in dem der genaue Wert schon liegt → genauer Wert bleibt
+     (3× bleibt 3×, statt auf den oberen Bandwert 4 zu springen). */
+  function sessionsForBandKeeping(bandId, current) { return (bandForSessions(current) === bandId) ? current : sessionsForBand(bandId); }
   function bandForSessions(n) {
     if (typeof n !== 'number' || !isFinite(n) || n < 1) return null;
     if (n <= 2) return '1-2';
@@ -266,8 +269,20 @@
     list.forEach(function (v, i) {
       var id = canonId(typeof v === 'string' ? v : (v && v.sportId));
       if (!id || seen[id]) return; seen[id] = true;
-      sel.sports.push({ sportId: id, role: i === 0 ? 'primary' : 'secondary', enabled: true, visible: true, planningEnabled: true, priority: null });
+      /* R2 (2026-10-29): bestehende Angaben je Sportart mitnehmen (vorher nur die ID → Rolle,
+         Planung, Niveau, Haeufigkeit und Dauer gingen beim Bearbeiten verloren). Alte reine
+         ID-/Label-Listen: erste = Hauptsportart. */
+      var o = (v && typeof v === 'object') ? v : {};
+      var role = o.role === 'supplemental' ? 'secondary' : (SPORT_ROLES.indexOf(o.role) >= 0 ? o.role : (i === 0 ? 'primary' : 'secondary'));
+      sel.sports.push({ sportId: id, role: role, enabled: true,
+        visible: o.activeInApp != null ? !!o.activeInApp : true,
+        planningEnabled: o.includeInPlan != null ? !!o.includeInPlan : true,
+        priority: null, level: o.level != null ? o.level : null,
+        sessionsPerWeek: o.sessionsPerWeek != null ? o.sessionsPerWeek : null,
+        typicalDuration: o.typicalDuration != null ? o.typicalDuration : null });
     });
+    /* Keine Hauptsportart im Bestand (z. B. alles „supplemental") → die erste wird es, wie bisher. */
+    if (sel.sports.length && !sel.sports.some(function (e) { return e.role === 'primary'; })) sel.sports[0].role = 'primary';
     return normalizeSportsSelection(sel);
   }
 
@@ -304,7 +319,7 @@
 
   var api = {
     SPORT_CATALOG: SPORT_CATALOG, SPORT_ROLES: SPORT_ROLES, CATALOG_BY_ID: CATALOG_BY_ID, isKnownSport: isKnownSport,
-    TRAINING_LEVELS: TRAINING_LEVELS, SESSION_BANDS: SESSION_BANDS, sessionsForBand: sessionsForBand, bandForSessions: bandForSessions,
+    TRAINING_LEVELS: TRAINING_LEVELS, SESSION_BANDS: SESSION_BANDS, sessionsForBand: sessionsForBand, sessionsForBandKeeping: sessionsForBandKeeping, bandForSessions: bandForSessions,
     DURATION_BANDS: DURATION_BANDS, durationForBand: durationForBand, bandForDuration: bandForDuration, setTypicalDuration: setTypicalDuration,
     setTrainingLevel: setTrainingLevel, setSessionsPerWeek: setSessionsPerWeek, validateTrainingLevel: validateTrainingLevel, trainingLevelComplete: trainingLevelComplete,
     emptySportsSelection: emptySportsSelection, normalizeSportEntry: normalizeSportEntry, normalizeSportsSelection: normalizeSportsSelection,

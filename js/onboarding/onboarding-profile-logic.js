@@ -115,7 +115,11 @@
   // Kontrollierte Übernahme aus bestehendem Profil (O.profile). Verwirft Unbekanntes, rät Gender nicht.
   function profileSeedFromExisting(src) {
     src = src || {};
-    var sex = (SEX.indexOf(src.sex) >= 0) ? src.sex : (SEX.indexOf(src.gender) >= 0 ? src.gender : '');
+    /* R5 (2026-10-29): DB-/Editor-Codes (m/f/w/d) auf die Onboarding-Werte abbilden — vorher
+       erschien ein gespeichertes „f" beim Bearbeiten als „Keine Angabe". Unbekanntes wird nicht geraten. */
+    var SEX_IN = { m: 'male', f: 'female', w: 'female', d: 'diverse', male: 'male', female: 'female', diverse: 'diverse', weiblich: 'female', 'männlich': 'male', divers: 'diverse', prefer_not_to_say: 'prefer_not_to_say' };
+    var _sx = function (v) { return (typeof v === 'string' && SEX_IN[v.trim().toLowerCase()]) || ''; };
+    var sex = _sx(src.sex) || _sx(src.gender);
     return normalizeProfile({
       displayName: (typeof src.name === 'string') ? src.name : (typeof src.displayName === 'string' ? src.displayName : ''),
       birthDate: (typeof src.birthDate === 'string') ? src.birthDate : '',
