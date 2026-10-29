@@ -60,7 +60,12 @@ sec('D · B-04: letzte Laufzeit im Koerperdaten-Schritt → personalBests');
   /* buildCompletionPatch herausschneiden (reine Funktion) */
   const i0 = uiSrc.indexOf('  function buildCompletionPatch('); let d = 0, st0 = false, i1 = -1;
   for (let j = i0; j < uiSrc.length; j++) { const ch = uiSrc[j]; if (ch === '{') { d++; st0 = true; } else if (ch === '}') { d--; if (st0 && d === 0) { i1 = j + 1; break; } } }
-  const bcp = new Function('T', uiSrc.slice(i0, i1) + '\nreturn buildCompletionPatch;')(k => k);   /* B-13: T injiziert */
+  /* K2 (2026-10-29): buildCompletionPatch liest Zeiten ueber die gemeinsame Lesart
+     (_readTime → performance-input.parseUserTime) und die Distanz ueber _pbKm. Beide
+     werden hier aus dem ECHTEN Modul injiziert, nicht nachgebaut. */
+  const PI = require(join(APP, 'js/engine/performance-input.js'));
+  const PB_KM = { '3 km': 3, '5 km': 5, '10 km': 10, 'Halbmarathon': 21.0975, 'Marathon': 42.195 };
+  const bcp = new Function('T', '_readTime', '_pbKm', uiSrc.slice(i0, i1) + '\nreturn buildCompletionPatch;')(k => k, (t, km) => PI.parseUserTime(t, km), l => PB_KM[l] || null);   /* B-13: T injiziert */
   const base = { profile: { displayName: 'G' }, sports: { sports: [{ sportId: 'running', role: 'primary' }] }, goals: [], availability: {} };
   const p1 = bcp(Object.assign({}, base, { performance: { distance: 'Halbmarathon', timeText: '1:58:00', context: 'race', measuredAt: '2026-08-30' } }), PMod, '2026-09-11T10:00:00Z', { performance: { personalBests: [{ id: 'old', sportId: 'running', distance: '10 km', timeSeconds: 2700 }] } });
   ok('D1 gueltige Zeit + Distanz → neuer Eintrag, alter bleibt', p1.performance && p1.performance.personalBests.length === 2 && p1.performance.personalBests[1].timeSeconds === 7080 && p1.performance.personalBests[1].distance === 'Halbmarathon' && p1.performance.personalBests[0].id === 'old');

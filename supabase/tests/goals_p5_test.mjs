@@ -54,7 +54,8 @@ function modelSandbox() {
   ok('W1 Zeitfeld für zeitbasierte Kategorien', /gw_tgt_time/.test(src) && /goalMetricTypeFor/.test(src));
   ok('W2 customCategory-Feld bei custom', /gw_customcat/.test(src));
   ok('W3 Motivation-Feld vorhanden', /gw_motiv/.test(src));
-  ok('W4 Collect parst Zeit über parseDuration', /parseDuration\(tt\.value\)/.test(src));
+  /* K2 (2026-10-29): gemeinsame Lesart statt parseDuration ("42" waren 42 s, "1:50" 1 min 50 s). */
+  ok('W4 Collect parst Zeit über die gemeinsame Lesart (parseUserTime mit Zieldistanz)', /PIw\.parseUserTime\(tt\.value,kmW\)/.test(src));
   ok('W5 patch trägt metricType/customCategory/motivation', /metricType:d\.metricType/.test(src) && /customCategory:d\.customCategory/.test(src));
 }
 

@@ -55,8 +55,13 @@ const failR = (c, m) => ({ success: false, data: null, error: { code: c, message
 O.repoBase = { online: () => ONLINE };
 O.sb = {};
 O.user = { id: 'user-A' };
+/* K1 (2026-10-28): echte Profil→Zeilen-Umwandlung aus profileRepository.js holen; der
+   Offline-Pfad von profile-store nutzt sie (vorher handgebaute Zeile ohne recovery/preferences). */
+O.repos = {}; load('js/repos/profileRepository.js');
+const REAL_TO_ROW = O.repos.profile.toRow;
 O.repos = {
   profile: {
+    toRow: REAL_TO_ROW,
     get: async () => ONLINE ? okR(SERVER_PROFILE ? { ...SERVER_PROFILE } : null) : Object.assign(failR('offline', 'Offline.'), { offline: true, sync_status: 'pending' }),
     save: async (p) => {
       if (SAVE_MODE === 'fail') return failR('save_failed', 'x');

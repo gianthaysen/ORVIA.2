@@ -177,7 +177,7 @@ ok('4.6 Migration 0029 vorhanden (Spalten + Längen-Guards, Anzeige-Handle ohne 
    && /char_length\(bio\) <= 160/.test(RSB('migrations/0029_profile_handle_bio.sql')));
 const repo = R('js/repos/profileRepository.js'), store = R('js/profile-store.js');
 ok('4.6 Repository + Store mappen handle/bio (Sync-Kanal, 0016-Muster)',
-   /handle: profile\.handle \?\? null/.test(repo) && /'handle', 'bio'/.test(store) && /row\.handle !== undefined/.test(store));
+   /handle: (profile\.handle \?\? null|_txt\(profile\.handle\))/.test(repo) && /'handle', 'bio'/.test(store) && /row\.handle !== undefined/.test(store));
 ok('4.6 Editor: Felder in Persönliche Grunddaten, Handle normalisiert (max 30, [a-z0-9._]), Bio max 160',
    /key:'handle'/.test(prof) && /key:'bio'/.test(prof) && /slice\(0,30\)/.test(prof) && /slice\(0,160\)/.test(prof) && /replace\(\/\[\^a-z0-9\._\]\/g,''\)/.test(prof));
 ok('4.6 Profilkopf rendert echte Werte; leer bleibt ehrlich (kein Fake-Handle)',

@@ -32,7 +32,7 @@
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
 
-  var VERSION = 'performance-input@1';
+  var VERSION = 'performance-input@2';   /* @2 (K2, 2026-10-29): parseUserTime/normalizeTimeText; validateRace liest „42,39" als 42:39 */
 
   var EV = O.evidence || (typeof require === 'function' ? (function () {
     try { return require('./evidence.js'); } catch (e) { return null; } })() : null);
@@ -120,6 +120,59 @@
       alternatives: { 'm:s': asMinSec, 'h:m': asHourMin } };
   }
 
+  /* ============================================================
+     K2 (2026-10-29) · EINE Lesart für Zeit-EINGABEN der Nutzer (Onboarding, Ziele,
+     Bestzeiten, Laufdauer). Vorher gab es vier Parser mit widersprüchlichen Regeln
+     („42" = 42 s im Onboarding, 42 min im Lauf-Log; „1:50" = 1 min 50 im Ziel-Sheet).
+     Auf dem iPhone fehlte zudem der Doppelpunkt (inputmode=numeric).
+
+     normalizeTimeText: Komma, Punkt, Leerzeichen, Apostroph gelten als Trenner,
+       wenn danach GENAU zwei Ziffern folgen („42,39" → 42:39, „1.50.00" → 1:50:00).
+       „42,5" bleibt eine Dezimalzahl (42,5 Minuten).
+     parseUserTime(raw, km): leer → ok/null · Zahl ohne Trenner = Minuten ·
+       Lesart über readTime (Pace 2–15 min/km) · unplausibel oder mehrdeutig →
+       verständliche Fehlermeldung statt geratenem Wert. Rückgabe in SEKUNDEN.
+     ============================================================ */
+  function normalizeTimeText(raw) {
+    if (raw == null) return '';
+    var s = String(raw).trim().replace(/[′″'"]/g, ' ').replace(/\s+/g, ' ');
+    var prev;
+    do { prev = s; s = s.replace(/(\d)\s*[,. ]\s*(\d{2})(?=$|\s*[,.: ])/, '$1:$2'); } while (s !== prev);
+    return s.replace(/\s*:\s*/g, ':');
+  }
+  var GOAL_KM = { run_5k: 5, run_10k: 10, half_marathon: 21.0975, halfmarathon: 21.0975, marathon: 42.195, fast5k: 5, fast10k: 10, rowing2k: 2 };
+  function kmForGoal(category) { var k = GOAL_KM[String(category || '').toLowerCase()]; return k || null; }
+  function _fmtMin(min) {
+    var t = Math.round(min * 60), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), x = t % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(x).padStart(2, '0');
+  }
+  var TIME_MSG = {
+    not_a_time: 'Bitte als Zeit eingeben, z. B. 24:30 oder 24,30 (Minuten:Sekunden) bzw. 1:50:00.',
+    implausible_pace: 'Das passt nicht zu dieser Distanz. Gemeint z. B. 42:39 (Minuten:Sekunden) oder 1:50:00 (Stunden)?',
+    ambiguous: 'Nicht eindeutig – bitte mit Stunden angeben, z. B. 0:45:00 oder 1:15:00.',
+    missing_module: 'Die Zeit konnte nicht geprüft werden. Bitte die Seite neu laden.'
+  };
+  function parseUserTime(raw, km) {
+    var txt = normalizeTimeText(raw);
+    if (txt === '') return { ok: true, seconds: null, empty: true };
+    var r = readTime(txt, km > 0 ? km : null);
+    if (!r.ok) {
+      var why = r.reason === 'implausible_pace' ? 'implausible_pace' : 'not_a_time';
+      return { ok: false, seconds: null, reason: why, error: TIME_MSG[why], alternatives: r.alternatives || null };
+    }
+    if (r.ambiguous) {
+      return { ok: false, seconds: null, reason: 'ambiguous', error: TIME_MSG.ambiguous,
+        alternatives: r.alternatives ? { 'm:s': _fmtMin(r.alternatives['m:s']), 'h:m': _fmtMin(r.alternatives['h:m']) } : null };
+    }
+    if (km > 0) {
+      var pace = r.minutes / km;
+      if (pace < LIMITS.paceMinPerKm[0] || pace > LIMITS.paceMinPerKm[1]) {
+        return { ok: false, seconds: null, reason: 'implausible_pace', error: TIME_MSG.implausible_pace };
+      }
+    }
+    return { ok: true, seconds: Math.round(r.minutes * 60), reading: r.reading, display: _fmtMin(r.minutes) };
+  }
+
   function _dateProblem(date, today) {
     if (!date) return null;                      // kein Datum ist erlaubt — es senkt nur die Frische
     var d = Date.parse(String(date).slice(0, 10) + 'T12:00:00Z');
@@ -152,7 +205,8 @@
     if (km == null) needs.push({ field: 'distance', hint: 'Distanz fehlt (z. B. „10 km" oder „HM").' });
     var e = _range('distance', km, LIMITS.distanceKm); if (e) errors.push(e);
 
-    var t = readTime(i.time != null && i.time !== '' ? i.time : i.timeSeconds != null ? i.timeSeconds / 60 : null, km);
+    /* K2: Trenner „42,39" → 42:39 vor dem Lesen (Zahlen bleiben unberührt). */
+    var t = readTime(i.time != null && i.time !== '' ? (typeof i.time === 'string' ? normalizeTimeText(i.time) : i.time) : i.timeSeconds != null ? i.timeSeconds / 60 : null, km);
     if (!t.ok && t.reason === 'empty') needs.push({ field: 'time', hint: 'Zeit fehlt.' });
     else if (!t.ok) errors.push({ field: 'time', reason: t.reason, detail: t.detail || null, alternatives: t.alternatives || null });
 
@@ -382,6 +436,7 @@
   var api = {
     VERSION: VERSION, LIMITS: LIMITS, VALUE_FIELDS: VALUE_FIELDS,
     readTime: readTime, distanceKm: distanceKm,
+    normalizeTimeText: normalizeTimeText, parseUserTime: parseUserTime, kmForGoal: kmForGoal, TIME_MSG: TIME_MSG,
     validateRace: validateRace, validateTest: validateTest, validateValue: validateValue,
     protocolsFor: protocolsFor, protocolById: protocolById,
     coverage: coverage

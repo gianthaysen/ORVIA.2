@@ -36,8 +36,8 @@
     "contentHash": "1f899988"
   },
   "perfInput": {
-    "version": "performance-input@1",
-    "contentHash": "9e70fe42"
+    "version": "performance-input@2",
+    "contentHash": "319a5c72"
   },
   "debrief": {
     "version": "session-debrief@3",
