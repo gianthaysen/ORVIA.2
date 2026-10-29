@@ -2278,6 +2278,18 @@ details.acc .acc-body{margin-top:14px}
 .ob3-choicegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 @media (max-width:340px){ .ob3-choicegrid{grid-template-columns:1fr} }
 .ob3-choicegrid .pf-choice{min-height:52px}
+/* Sofortmassnahme Wortbruch (2026-10-29): vorher brach overflow-wrap:anywhere Woerter an
+   JEDER Stelle („Laufe-n", „Halbmarat-hon"), weil zwei Spalten + Icon + reservierte
+   Haekchenflaeche dem Text nur ~70 px liessen. Jetzt: Umbruch nur an Silbengrenzen
+   (lang="de"), Karten MIT Beschreibung einspaltig, Karten OHNE Beschreibung mit Icon
+   ueber dem Namen; das Haekchen ist ein Eckabzeichen und kostet keine Textbreite. */
+.ob3-choicegrid .pf-choice-label,.ob3-choicegrid .pf-choice-desc{overflow-wrap:normal;word-break:normal;-webkit-hyphens:auto;hyphens:auto}
+.ob3-choicegrid .pf-choice{position:relative}
+.ob3-choicegrid .pf-choice-check{position:absolute;top:8px;right:8px;width:20px;height:20px;font-size:12px}
+.ob3-choicegrid:has(.pf-choice-desc){grid-template-columns:1fr}
+.ob3-choicegrid:has(.pf-choice-desc) .pf-choice{padding-right:40px}
+.ob3-choicegrid:not(:has(.pf-choice-desc)) .pf-choice{flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;padding:12px 30px 12px 14px}
+.ob3-choicegrid:not(:has(.pf-choice-desc)) .pf-choice-label{font-size:15px}
 .ob3-stack{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 /* M6 (A4): gruppierte Zielauswahl + Detailfelder */
 .ob3-goalgroup-label{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin:16px 0 2px}
