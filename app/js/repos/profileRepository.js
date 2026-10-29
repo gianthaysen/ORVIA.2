@@ -30,6 +30,14 @@
     return (dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d) ? m[0] : null;
   }
   function _obj(v) { return (v && typeof v === 'object') ? v : null; }
+  /* K1b (2026-10-29): DREI Schreibweisen fuer das Geschlecht im Code — Onboarding 'female'/
+     'male'/'diverse', Profil-Editor 'w'/'m'/'d', DB-Constraint up_ranges nur 'm'/'f'/'d'/''.
+     'w' oder 'female' liessen den GESAMTEN Upsert scheitern (Name, Datum, Regeneration …).
+     Hier, an der DB-Grenze, auf die DB-Codes abbilden; Unbekanntes → null statt Totalausfall. */
+  var SEX_DB = { m: 'm', male: 'm', 'männlich': 'm', maennlich: 'm', mann: 'm',
+                 f: 'f', w: 'f', female: 'f', weiblich: 'f', frau: 'f',
+                 d: 'd', diverse: 'd', divers: 'd' };
+  function _sex(v) { var t = _txt(v); if (t == null) return null; var k = SEX_DB[t.toLowerCase()]; return k || null; }
   function toRow(profile) {
     profile = profile || {};
     var birth = _date(profile.birthDate);
@@ -37,7 +45,7 @@
       name: _txt(profile.name),
       birth_date: birth,
       age_estimate: birth ? null : _int(profile.ageEstimate),
-      sex: _txt(profile.sex),
+      sex: _sex(profile.sex),
       height_cm: _num(profile.heightCm),
       weight_kg: _num(profile.weightKg),
       hf_max: _int(profile.hfMaxMeasured),

@@ -45,13 +45,16 @@ function psql(sql) {
 /* echte Tabellendefinition aus 0002 (create table … ;) + spätere add-column-Zeilen */
 const m0002 = fs.readFileSync(path.join(MIG, fs.readdirSync(MIG).find(f => f.startsWith('0002_'))), 'utf8');
 const ct = m0002.match(/create table if not exists public\.user_profiles \([\s\S]*?\n\);/);
+/* K1b: die echte Werte-Regel up_ranges aus 0002 (u. a. sex in m/f/d/'') */
+const upRanges = (m0002.match(/alter table public\.user_profiles add constraint up_ranges check \([\s\S]*?\n  \);/) || [null])[0];
 const adds = fs.readdirSync(MIG).filter(f => /^(0013|0016|0018|0029)_/.test(f))
   .flatMap(f => fs.readFileSync(path.join(MIG, f), 'utf8').split('\n').filter(l => /^alter table public\.user_profiles add column if not exists/.test(l)));
 ok('Setup: echte user_profiles-Definition + Spaltenergänzungen gefunden', !!ct && adds.length >= 6, adds.length + ' Spalten');
 const setup = psql(`create schema auth; create table auth.users (id uuid primary key);
 insert into auth.users values ('11111111-1111-1111-1111-111111111111');
 ${ct[0]}
-${adds.join('\n')}`);
+${adds.join('\n')}
+${upRanges || ''}`);
 ok('Setup: Tabelle angelegt', setup.ok, setup.err.slice(-200));
 
 const lit = v => v === null || v === undefined ? 'null' : (typeof v === 'object' ? "'" + JSON.stringify(v).replace(/'/g, "''") + "'::jsonb" : "'" + String(v).replace(/'/g, "''") + "'");
@@ -72,6 +75,19 @@ ok('D2 dieselbe Eingabe über toRow → gespeichert', d2.ok, d2.err.slice(-160))
 ok('D2b Name und Regeneration stehen in der Tabelle', psql(`select name || '|' || (recovery->>'sleepQuality') from public.user_profiles`).out === 'Lena|3');
 const d3 = psql(upsertSql(Object.assign({ user_id: U }, toRow(Object.assign({}, eingabe, { name: 'Lena M.', weightKg: '61,5' })))));
 ok('D3 Update mit leerem Datum über toRow gelingt (Name + Gewicht aktualisiert)', d3.ok && psql(`select name || '|' || weight_kg from public.user_profiles`).out === 'Lena M.|61.5', d3.err.slice(-160));
+
+ok('S0 echte Werte-Regel up_ranges aus 0002 geladen', !!upRanges);
+/* K1b · Geschlecht */
+const X = '22222222-2222-2222-2222-222222222222';
+psql(`insert into auth.users values ('${X}');`);
+const w = psql(upsertSql({ user_id: X, name: 'Lena', birth_date: '1998-04-17', sex: 'w' }));
+ok('X1 Editor-Wert „w" → Postgres lehnt den ganzen Upsert ab (der Live-Fehler mit Datum)', !w.ok && /up_ranges/.test(w.err), w.err.split('\n')[0]);
+const fe = psql(upsertSql({ user_id: X, name: 'Lena', sex: 'female' }));
+ok('X2 Onboarding-Wert „female" → ebenfalls abgelehnt', !fe.ok && /up_ranges/.test(fe.err));
+const ok1 = psql(upsertSql(Object.assign({ user_id: X }, toRow({ name: 'Lena', birthDate: '1998-04-17', sex: 'w' }))));
+ok('X3 dieselbe Eingabe über toRow → gespeichert, sex = f', ok1.ok && psql(`select sex || '|' || birth_date from public.user_profiles where user_id='${X}'`).out === 'f|1998-04-17', ok1.err.slice(-160));
+const ok2 = psql(upsertSql(Object.assign({ user_id: X }, toRow({ name: 'Lena', sex: 'female' }))));
+ok('X4 „female" über toRow → gespeichert als f', ok2.ok && psql(`select sex from public.user_profiles where user_id='${X}'`).out === 'f');
 
 console.log('\n' + '═'.repeat(62) + '\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

@@ -1037,8 +1037,9 @@ var SECTION_DEFS={
     /* 0029 (Phase 4 / P2-5): Handle + Bio — vorher hart '—'/Platzhalter im Profilkopf. */
     {key:'handle',label:'' + T('pf.handle_anzeigename_optional') + '',type:'text'},
     {key:'bio',label:'' + T('pf.bio_max_160_zeichen_optional') + '',type:'longtext'},
-    {key:'birthDate',label:'' + T('pf.geburtsdatum') + '',type:'date'},{key:'sex',label:'Geschlecht',type:'select',optionPairs:[['m','' + T('pf.maennlich') + ''],['w','' + T('pf.weiblich') + ''],['d','' + T('pf.divers') + ''],['','' + T('pf.keine_angabe') + '']]}],
-    read:function(p){return {name:p.name||'',location:p.location||'',handle:p.handle||'',bio:p.bio||'',birthDate:p.birthDate||'',sex:p.sex||''};},
+    {key:'birthDate',label:'' + T('pf.geburtsdatum') + '',type:'date'},{key:'sex',label:'Geschlecht',type:'select',optionPairs:[['m','' + T('pf.maennlich') + ''],['f','' + T('pf.weiblich') + ''],['d','' + T('pf.divers') + ''],['','' + T('pf.keine_angabe') + '']]}],
+    /* K1b (2026-10-29): Editor nutzt die DB-Codes m/f/d; Altwerte ('w', Onboarding 'female' …) werden zur Anzeige abgebildet, damit die Auswahl stimmt. */
+    read:function(p){var _sx={w:'f',female:'f',male:'m',diverse:'d'}[p.sex]||p.sex||'';return {name:p.name||'',location:p.location||'',handle:p.handle||'',bio:p.bio||'',birthDate:p.birthDate||'',sex:(['m','f','d'].indexOf(_sx)>=0?_sx:'')};},
     write:function(p,d){p.name=d.name;p.location=d.location;
       /* Handle-Normalisierung (Anzeige-Pseudonym, KEIN Eindeutigkeitssystem — 0029):
          fuehrendes @ ab, lowercase, nur [a-z0-9._], max. 30. Leer = bewusst kein Handle. */

@@ -48,7 +48,7 @@ const voll = { name: ' Lena ', birthDate: '1998-04-17', ageEstimate: 27, sex: 'w
   handle: 'lena', bio: 'Läuft.', constraintsAcknowledgedAt: '2026-10-28T10:00:00Z' };
 const snap = JSON.stringify(voll);
 r = toRow(voll);
-ok('T3 gültige Werte bleiben erhalten (Name getrimmt)', r.name === 'Lena' && r.birth_date === '1998-04-17' && r.sex === 'w' && r.location === 'Hamburg' && r.handle === 'lena' && r.bio === 'Läuft.');
+ok('T3 gültige Werte bleiben erhalten (Name getrimmt; Editor-„w" → DB-Code f)', r.name === 'Lena' && r.birth_date === '1998-04-17' && r.sex === 'f' && r.location === 'Hamburg' && r.handle === 'lena' && r.bio === 'Läuft.');
 ok('T4 Zahlen aus Text/Komma → Zahl', r.height_cm === 168 && r.weight_kg === 61.5 && r.resting_hr === 52 && r.hf_max === 192 && r.sleep_goal_h === 8);
 ok('T5 age_estimate nur ohne Geburtsdatum', r.age_estimate === null && toRow({ ageEstimate: '27' }).age_estimate === 27);
 ok('T6 recovery/preferences als Objekt durchgereicht', r.recovery && r.recovery.sleepQuality === 3 && r.preferences.riskTolerance === 'balanced');
@@ -57,6 +57,13 @@ ok('T8 nicht mutierend', JSON.stringify(voll) === snap);
 ok('T9 ungültige Daten → null (31.02., Freitext)', toRow({ birthDate: '2001-02-31' }).birth_date === null && toRow({ birthDate: 'gestern' }).birth_date === null);
 ok('T10 Zahl-Müll → null statt Fehler', toRow({ heightCm: 'abc', hfMaxMeasured: 'x' }).height_cm === null && toRow({ hfMaxMeasured: 'x' }).hf_max === null);
 ok('T11 recovery als Nicht-Objekt → null', toRow({ recovery: '' }).recovery === null);
+
+/* ---------- X · Geschlecht: drei Schreibweisen → DB-Codes (K1b) ---------- */
+ok('X1 Editor „w" → f, Onboarding „female" → f, „male" → m, „diverse" → d', toRow({ sex: 'w' }).sex === 'f' && toRow({ sex: 'female' }).sex === 'f' && toRow({ sex: 'male' }).sex === 'm' && toRow({ sex: 'diverse' }).sex === 'd');
+ok('X2 DB-Codes bleiben (m/f/d)', toRow({ sex: 'm' }).sex === 'm' && toRow({ sex: 'f' }).sex === 'f' && toRow({ sex: 'd' }).sex === 'd');
+ok('X3 „prefer_not_to_say"/Unbekanntes → null statt Totalausfall', toRow({ sex: 'prefer_not_to_say' }).sex === null && toRow({ sex: 'xyz' }).sex === null);
+const pfSrc = fs.readFileSync(new URL(_APPREL + 'js/profile.js', import.meta.url), 'utf8');
+ok('X4 Profil-Editor bietet „weiblich" als f an (nicht mehr w)', /\['f','' \+ T\('pf\.weiblich'\)/.test(pfSrc) && !/\['w','' \+ T\('pf\.weiblich'\)/.test(pfSrc));
 
 /* ---------- S · save() nutzt toRow ---------- */
 let gesendet = null;
