@@ -4329,7 +4329,7 @@ const C = 'orvia-v8-458';   /* CACHE-INTEGRITAET (2026-10-16) · eingefuehrt mit
    Stelle. Neu: supabase/tests/run-all.mjs wertet den Exit-Code aus statt Text zu durchsuchen.
    Zuvor v8-251: Wochenplan-Projektion (Phase 8.1/8.2). */
 /* v8-450 · Inhaltskennung der ausgelieferten Dateien — NICHT von Hand aendern: node app/tools/gen-sw-rev.mjs */
-const REV = '441daac866c5';
+const REV = '47081383bcb7';
 const CACHE = C + '-' + REV;
 try { console.log('[ORVIA SW]', CACHE); } catch (e) {}
 const ASSETS = ['./','./index.html','./styles.css','./manifest.webmanifest',

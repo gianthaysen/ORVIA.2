@@ -145,10 +145,13 @@ const dayIso = (offsetDays, hh) => { const d = new Date(); d.setDate(d.getDate()
   const y = new Date(Date.now() - 864e5);
   const ykUtc = y.getUTCFullYear() + '-' + String(y.getUTCMonth() + 1).padStart(2, '0') + '-' + String(y.getUTCDate()).padStart(2, '0');
   sbV.localStorage.setItem('orvia_activities_u1', JSON.stringify([
-    act({ clientRecordId: 'tz1', sourceRecordId: 'tz1', startedAt: ykUtc + 'T22:30:00.000Z', durationSeconds: 3600, summary: { rpe: 8 } })
+    /* Fix 2026-10-29: 22:30Z ist nur im SOMMER (UTC+2) in Wien schon der Folgetag; im Winter
+       (UTC+1) ist es 23:30 desselben Tages — der Test wurde mit der Zeitumstellung am 25.10. rot,
+       obwohl der Code korrekt rechnet. 23:30Z ist in BEIDEN Jahreszeiten der Folgetag. */
+    act({ clientRecordId: 'tz1', sourceRecordId: 'tz1', startedAt: ykUtc + 'T23:30:00.000Z', durationSeconds: 3600, summary: { rpe: 8 } })
   ]));
   const rV = sbV.ORVIA.trainingInputResolver.collectRaw().recentLoad;
-  ok('T6 Wien-Zuordnung: 22:30Z von „gestern (UTC)" ⇒ heutiger Trainingstag (hardYesterday=false, Last gezählt)',
+  ok('T6 Wien-Zuordnung: 23:30Z von „gestern (UTC)" ⇒ heutiger Trainingstag (hardYesterday=false, Last gezählt)',
     rV.hardYesterday === false && rV.acute7 === 480, JSON.stringify(rV));
 }
 
