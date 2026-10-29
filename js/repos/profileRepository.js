@@ -6,7 +6,59 @@
   if (!O.repoBase) { console.error('profileRepository: repoBase fehlt (Script-Reihenfolge prüfen)'); return; }
   const B = O.repoBase;
 
+  /* ============================================================
+     K1 (2026-10-28) · Profil → user_profiles-Zeile, EINE Umwandlung für Online UND Offline.
+     BEFUND: Der Editor „Persönliche Grunddaten" speichert ein leeres Geburtsdatum als ''
+     (profile.js SECTION_DEFS.personal.write). `'' ?? null` bleibt '' → Postgres lehnt ''
+     für die date-Spalte birth_date ab → der GESAMTE Upsert scheitert (Name, Ort, Körper,
+     Regeneration, Präferenzen). Lokal stand trotzdem „Gespeichert"; beim nächsten Start
+     überschrieb die Tabelle („Tabelle gewinnt") alles mit dem alten Stand.
+     Live belegt am Konto der Testerin: user_profiles 19 min älter als der Blob, Name leer.
+     REGEL: leer/whitespace/ungültig → null. Gültige Werte bleiben exakt erhalten.
+     Rein, nicht mutierend; der lokale PROFILE-Blob bleibt unverändert. */
+  function _txt(v) { if (v == null) return null; var t = String(v).trim(); return t === '' ? null : t; }
+  function _num(v) {
+    if (v == null || v === '') return null;
+    var n = typeof v === 'number' ? v : Number(String(v).trim().replace(',', '.'));
+    return (typeof n === 'number' && isFinite(n)) ? n : null;
+  }
+  function _int(v) { var n = _num(v); return n == null ? null : Math.round(n); }
+  function _date(v) {
+    var t = _txt(v); if (t == null) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t); if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3], dt = new Date(Date.UTC(y, mo - 1, d));
+    return (dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d) ? m[0] : null;
+  }
+  function _obj(v) { return (v && typeof v === 'object') ? v : null; }
+  function toRow(profile) {
+    profile = profile || {};
+    var birth = _date(profile.birthDate);
+    var row = {
+      name: _txt(profile.name),
+      birth_date: birth,
+      age_estimate: birth ? null : _int(profile.ageEstimate),
+      sex: _txt(profile.sex),
+      height_cm: _num(profile.heightCm),
+      weight_kg: _num(profile.weightKg),
+      hf_max: _int(profile.hfMaxMeasured),
+      resting_hr: _int(profile.restingHrMeasured),
+      sleep_goal_h: _num(profile.sleepGoalH),
+      timezone: _txt(profile.timezone),
+      location: _txt(profile.location),
+      avatar_path: _txt(profile.avatarPath),
+      recovery: _obj(profile.recovery),
+      preferences: _obj(profile.preferences),
+      handle: _txt(profile.handle),
+      bio: _txt(profile.bio)
+    };
+    /* P9: 0013-Spalte nur senden, wenn belegt — kompatibel mit Instanzen ohne 0013. */
+    var ack = _txt(profile.constraintsAcknowledgedAt);
+    if (ack != null) row.constraints_acknowledged_at = ack;
+    return row;
+  }
+
   O.repos.profile = {
+    toRow: toRow,
     async get() {
       const g = B.requireAuth(); if (g) return g;
       if (!B.online()) return B.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
@@ -22,35 +74,7 @@
     // birth_date primär; age_estimate nur ohne Geburtsdatum. hf_max/resting_hr/sleep_goal_h/timezone
     // bleiben NULL, wenn nicht gesetzt — keine globalen Defaults als Nutzerdaten.
     async save(profile) {
-      profile = profile || {};
-      const extra = {};
-      // P9: 0013-Spalte nur senden, wenn belegt — kompatibel mit Instanzen ohne 0013.
-      if (profile.constraintsAcknowledgedAt != null) extra.constraints_acknowledged_at = profile.constraintsAcknowledgedAt;
-      return B.upsert('user_profiles', Object.assign(extra, {
-        name: profile.name ?? null,
-        birth_date: profile.birthDate ?? null,
-        age_estimate: profile.birthDate ? null : (profile.ageEstimate ?? null),
-        sex: profile.sex ?? null,
-        height_cm: profile.heightCm ?? null,
-        weight_kg: profile.weightKg ?? null,
-        hf_max: profile.hfMaxMeasured ?? null,
-        resting_hr: profile.restingHrMeasured ?? null,
-        sleep_goal_h: profile.sleepGoalH ?? null,
-        timezone: profile.timezone ?? null,
-        /* 0016 (Athletenprofil-Sync): Ort + Avatar-Storage-Pfad hatten vorher KEINEN
-           Sync-Kanal (Geräte-Divergenz-Incident 2026-07-15). Migration 0016 MUSS vor
-           diesem JS-Stand ausgeführt sein. null ist gültig (Feld gelöscht). */
-        location: profile.location ?? null,
-        avatar_path: profile.avatarPath ?? null,
-        /* 0018: Regeneration & Alltag + Trainingspräferenzen — vorher Blob-only und damit
-           auf anderen Geräten unsichtbar. Migration 0018 MUSS vor diesem JS-Stand laufen. */
-        recovery: profile.recovery ?? null,
-        preferences: profile.preferences ?? null,
-        /* 0029 (Phase 4 / P2-5): Anzeige-Handle + Bio — vorher hart '—'/Platzhalter in der
-           UI ohne Datenmodell. Migration 0029 MUSS vor diesem JS-Stand laufen. */
-        handle: profile.handle ?? null,
-        bio: profile.bio ?? null
-      }), 'user_id');
+      return B.upsert('user_profiles', toRow(profile), 'user_id');
     }
   };
 })();

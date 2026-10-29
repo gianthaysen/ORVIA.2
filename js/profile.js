@@ -877,8 +877,8 @@ function _gwStepHTML(key){var M=pmModel();var d=window._gw.draft;
     // Zeitfeld — „Sub 10" ist damit strukturiert (Sekunden) statt Freitext speicherbar.
     var isTime=(M.goalMetricTypeFor&&M.goalMetricTypeFor(d.category)==='time')||d.metricType==='time';
     var valueFields=isTime
-      ?('<div class="row2"><div class="gm-field"><label>' + T('pf.aktuelle_zeit_optional') + '</label><input id="gw_cur_time" value="'+escH(d.currentValue!=null?M.formatDuration(d.currentValue):'')+'" placeholder="' + T('pf.z_b_1_58_30') + '"></div>'+
-        '<div class="gm-field"><label>' + T('pf.zielzeit_') + '</label><input id="gw_tgt_time" value="'+escH(d.targetValue!=null?M.formatDuration(d.targetValue):'')+'" placeholder="' + T('pf.z_b_1_50_00') + '"></div></div>'+
+      ?('<div class="row2"><div class="gm-field"><label>' + T('pf.aktuelle_zeit_optional') + '</label><input id="gw_cur_time" inputmode="decimal" autocomplete="off" value="'+escH(d.currentValue!=null?M.formatDuration(d.currentValue):'')+'" placeholder="' + T('pf.z_b_1_58_30') + '"></div>'+
+        '<div class="gm-field"><label>' + T('pf.zielzeit_') + '</label><input id="gw_tgt_time" inputmode="decimal" autocomplete="off" value="'+escH(d.targetValue!=null?M.formatDuration(d.targetValue):'')+'" placeholder="' + T('pf.z_b_1_50_00') + '"></div></div>'+
         '<span class="ob2-err" id="gw_time_err" role="alert"></span>')
       :('<div class="row2"><div class="gm-field"><label>' + T('pf.aktuell_optional') + '</label><input id="gw_cur" value="'+escH(d.currentValue!=null?d.currentValue:'')+'"></div>'+
         '<div class="gm-field"><label>' + T('pf.ziel_optional') + '</label><input id="gw_tgt" value="'+escH(d.targetValue!=null?d.targetValue:'')+'"></div></div>'+
@@ -922,8 +922,12 @@ function _gwCollect(){var d=window._gw.draft;var st=GW_STEPS[window._gw.step].ke
   else if(st==='metrics'){var hz=_segVal('gw_hz');if(hz!=null&&hz!=='')d.timeHorizon=hz;var dt=val('gw_date');d.targetDate=dt||null;
     // P5: Zeitfeld (Sekunden) hat Vorrang, sonst Freiwert+Einheit wie bisher.
     var M2=pmModel();var tt=document.getElementById('gw_tgt_time');
-    if(tt){var tSec=M2.parseDuration(tt.value);var cEl=document.getElementById('gw_cur_time');var cSec=cEl?M2.parseDuration(cEl.value):null;
-      if(tt.value&&tSec==null){var te=document.getElementById('gw_time_err');if(te)te.textContent='' + T('pf.bitte_eine_gueltige_zeit_eingeben') + '';}
+    /* K2 (2026-10-29): gemeinsame Lesart (performance-input.parseUserTime) mit Distanz des Ziels. */
+    if(tt){var PIw=(window.ORVIA||{}).performanceInput;var kmW=(PIw&&PIw.kmForGoal)?PIw.kmForGoal(d.category):null;
+      var rT=(PIw&&PIw.parseUserTime)?PIw.parseUserTime(tt.value,kmW):{ok:false,seconds:null};var cEl=document.getElementById('gw_cur_time');
+      var rC=(cEl&&PIw&&PIw.parseUserTime)?PIw.parseUserTime(cEl.value,kmW):{ok:true,seconds:null};
+      var tSec=rT.ok?rT.seconds:null;var cSec=rC.ok?rC.seconds:null;
+      if((tt.value&&!rT.ok)||(cEl&&cEl.value&&!rC.ok)){var te=document.getElementById('gw_time_err');if(te)te.textContent=(!rT.ok&&rT.error)||(!rC.ok&&rC.error)||('' + T('pf.bitte_eine_gueltige_zeit_eingeben') + '');}
       d.targetValue=tSec;d.currentValue=cSec;d.unit='s';d.metricType='time';}
     else{d.currentValue=_gwNum('gw_cur');d.targetValue=_gwNum('gw_tgt');var u=val('gw_unit');d.unit=(u||'').trim()||null;}}
   else if(st==='role'){var r=_segVal('gw_role');if(r!=null&&r!=='')d.role=r;}}

@@ -450,7 +450,7 @@
     var cats = (M && M.GOAL_CATEGORIES && M.GOAL_CATEGORIES[m.group]) || [];
     var mt = metricTypeFor(m.category);
     var valField = mt === 'time'
-      ? '<div class="gm-field"><label>' + esc(T('pv.zielzeit')) + '</label><input id="pvg_time" inputmode="numeric" placeholder="1:50:00" value="' + esc(m.targetValue != null && m.metricType === 'time' ? fmtSec(m.targetValue) : '') + '" onchange="ORVIA.screens.profileV14.sheetRealism()"></div>'
+      ? '<div class="gm-field"><label>' + esc(T('pv.zielzeit')) + '</label><input id="pvg_time" inputmode="decimal" autocomplete="off" placeholder="1:50:00" value="' + esc(m.targetValue != null && m.metricType === 'time' ? fmtSec(m.targetValue) : '') + '" onchange="ORVIA.screens.profileV14.sheetRealism()"></div>'
       : (mt ? '<div class="gm-field"><label>' + esc(T('pv.zielwert')) + (m.unit ? ' (' + esc(m.unit) + ')' : '') + '</label><input id="pvg_val" inputmode="decimal" value="' + esc(m.targetValue != null ? m.targetValue : '') + '"></div>' : '<p class="muted pv-sheet-note">' + esc(T('pv.kein_zielwert_noetig')) + '</p>');
     return '<div class="pv-sheet">' +
       '<p class="muted pv-sheet-note">' + esc(T('pv.sheet_intro')) + '</p>' +
@@ -465,19 +465,22 @@
       '<button type="button" class="pv-more-btn" onclick="ORVIA.screens.profileV14.sheetMore()">' + esc(T('pv.mehr_optionen')) + '</button>' +
       '</div>';
   }
+  var _sheetTimeErr = null;   /* K2: konkrete Meldung der Zeit-Lesart fuer sheetValidate */
   function sheetCollect() {
     var m = _sheet; if (!m) return null;
     var doc = root.document, t = doc.getElementById('pvg_title'), dt = doc.getElementById('pvg_date'), tm = doc.getElementById('pvg_time'), va = doc.getElementById('pvg_val');
     if (t) m.title = String(t.value || '').trim();
     if (dt) m.targetDate = String(dt.value || '').trim() || '';
     var mt = metricTypeFor(m.category); m.metricType = mt;
-    if (tm) { var raw = String(tm.value || '').trim(); if (!raw) { m.targetValue = null; m.unit = 's'; } else { var sec = null; try { sec = O.profileModel.parseDuration(raw); } catch (e) {} m.targetValue = sec != null && sec > 0 ? sec : NaN; m.unit = 's'; } }
+    /* K2 (2026-10-29): gemeinsame Lesart (performance-input.parseUserTime); vorher las
+       parseDuration 1:50 als 1 min 50 s und 42 als 42 s. */
+    if (tm) { var raw = String(tm.value || '').trim(); if (!raw) { m.targetValue = null; m.unit = 's'; } else { var PI = O.performanceInput; var rt = (PI && PI.parseUserTime) ? PI.parseUserTime(raw, PI.kmForGoal(m.category)) : { ok: false }; m.targetValue = (rt.ok && rt.seconds > 0) ? rt.seconds : NaN; m.unit = 's'; _sheetTimeErr = rt.ok ? null : (rt.error || null); } }
     else if (va) { var v = String(va.value || '').replace(',', '.').trim(); m.targetValue = v === '' ? null : (isNaN(+v) ? NaN : +v); }
     return m;
   }
   function sheetValidate(m) {
     if (!m.category) return T('pv.err_kategorie');
-    if (typeof m.targetValue === 'number' && isNaN(m.targetValue)) return metricTypeFor(m.category) === 'time' ? T('pv.err_zeit') : T('pv.err_wert');
+    if (typeof m.targetValue === 'number' && isNaN(m.targetValue)) return metricTypeFor(m.category) === 'time' ? (_sheetTimeErr || T('pv.err_zeit')) : T('pv.err_wert');
     if (m.targetDate && !/^\d{4}-\d{2}-\d{2}$/.test(m.targetDate)) return T('pv.err_datum');
     return null;
   }

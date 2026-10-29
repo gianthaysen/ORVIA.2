@@ -1424,6 +1424,13 @@
   var SECTION_META_SCHEMA_VERSION = 1;
 
   function _validIso(v) { return (typeof v === 'string' && !isNaN(Date.parse(v))) ? v : null; }
+  /* Fix (2026-10-29): Zeitpunkt als ISO-Text ODER Date akzeptieren. Vorher wurde ein
+     Date-Objekt (so übergibt es profile-center) still durch die echte Uhr ersetzt —
+     die injizierte Zeit wirkte nicht, Tests mit fester Uhr wurden datumsabhängig rot. */
+  function _nowIso(now) {
+    if (now instanceof Date && !isNaN(now.getTime())) return now.toISOString();
+    return _validIso(now);
+  }
   function _normalizeMetaEntry(e) {
     e = (e && typeof e === 'object' && !Array.isArray(e)) ? e : {};
     return {
@@ -1454,7 +1461,7 @@
     ensureSectionMeta(profile);
     var list = Array.isArray(sections) ? sections : (sections != null ? [sections] : []);
     var src = SECTION_META_SOURCES.indexOf(source) >= 0 ? source : 'unknown';
-    var iso = _validIso(now) || nowISO();
+    var iso = _nowIso(now) || nowISO();
     var touched = [];
     list.forEach(function (id) {
       if (!_isSectionId(id)) return;
@@ -1652,7 +1659,7 @@
     if (!iso) return 'unknown';
     var cfg = FRESHNESS_CONFIG.sections[sectionId] || { stable: true };
     if (cfg.stable) return 'current';
-    var ref = _validIso(now) ? Date.parse(now) : Date.parse(nowISO());
+    var ref = Date.parse(_nowIso(now) || nowISO());
     var days = (ref - Date.parse(iso)) / 86400000;
     if (cfg.staleAfterDays != null && days >= cfg.staleAfterDays) return 'stale';
     if (cfg.reviewAfterDays != null && days >= cfg.reviewAfterDays) return 'review_recommended';
@@ -1663,7 +1670,7 @@
      _sectionMeta liest): aktives Ziel mit überschrittenem targetDate → Review nötig. */
   function goalDateNeedsReview(profile, now) {
     var goals = (profile && Array.isArray(profile.goals)) ? profile.goals : [];
-    var ref = _validIso(now) ? Date.parse(now) : Date.parse(nowISO());
+    var ref = Date.parse(_nowIso(now) || nowISO());
     return goals.some(function (g) {
       if (!g || (g.status && g.status !== 'active')) return false;
       var t = _validIso(g.targetDate); return t !== null && Date.parse(t) < ref;

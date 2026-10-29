@@ -2159,7 +2159,7 @@ function renderPostBlocks(){var _pb=document.getElementById('postBlocks');if(!_p
 function blockRun(d){return `<div class="sescard"><div class="seshead">${ic('run')}Laufen</div>
   ${chips('' + _uiT('ui.typ') + '','l_sub',['Walk-Run','Easy Z2','Tempo','Intervalle','Long Run','Wettkampf'],d.sub?[d.sub]:[])}
   <div class="row2"><div class="field"><label>Distanz (km)</label><input type="number" inputmode="decimal" id="l_dist" value="${d.dist??''}" placeholder="5" oninput="updRun()"></div>
-  <div class="field"><label>Dauer (mm:ss)</label><input type="text" inputmode="numeric" id="l_dur" value="${d.dur!=null?fmtDurInput(d.dur):''}" placeholder="36:07" oninput="updRun()"></div></div>
+  <div class="field"><label>Dauer (mm:ss)</label><input type="text" inputmode="decimal" autocomplete="off" id="l_dur" value="${d.dur!=null?fmtDurInput(d.dur):''}" placeholder="36:07" oninput="updRun()"></div></div>
   <div class="calc" id="l_calc"></div>
   <div class="row2" style="margin-top:14px"><div class="field"><label>Ø Herzfrequenz</label><input type="number" inputmode="numeric" id="l_hr" value="${d.hr??''}" placeholder="150"></div>
   <div class="field"><label>Höhenmeter</label><input type="number" inputmode="numeric" id="l_elev" value="${d.elev??''}" placeholder="opt."></div></div>
@@ -2778,7 +2778,10 @@ function blockMob(d){return `<div class="sescard"><div class="seshead">${ic('str
   <div class="field"><label>Dauer (min)</label><input type="number" inputmode="numeric" id="mo_dur" value="${d.dur??''}" placeholder="15"></div>
   ${slider('mo_knee','' + _uiT('ui.knie_post') + '',0,10,d.knee??0,'kein','max')}
   <div class="field" style="margin-bottom:0"><label>Notiz</label><input type="text" id="mo_note" value="${esc(d.note)}" placeholder="links extra..."></div></div>`;}
+/* K2 (2026-10-29): „36,07"/„36.07"/„36 07" = 36:07 (iPhone-Zifferntastatur hat keinen Doppelpunkt);
+   „36,5" bleibt 36,5 min. Gleiche Trennerregel wie performance-input.normalizeTimeText. */
 function durMin(id,lo,hi){var s=(v(id)||'').trim();if(!s)return null;var m;
+  try{var PIn=(window.ORVIA||{}).performanceInput;if(PIn&&PIn.normalizeTimeText)s=PIn.normalizeTimeText(s);}catch(_){}
   if(s.indexOf(':')>=0){var p=s.split(':');var mm=parseInt(p[0],10),ss=parseInt(p[1],10);if(isNaN(mm)||isNaN(ss)||ss<0||ss>=60)return null;m=mm+ss/60;}
   else{m=parseFloat(s.replace(',','.'));if(isNaN(m))return null;}
   if(lo!=null)m=Math.max(lo,Math.min(hi,m));return m;}
@@ -14984,7 +14987,7 @@ function gmProfPerformance(){
   h+='<div class="sectlabel">' + _uiT('ui.ergebnis_eintragen') + '</div>';
   h+='<div class="perf-form">'+
     '<label>' + _uiT('ui.distanz_') + '<input id="gmPerfDist" type="text" inputmode="decimal" placeholder="' + _uiT('ui.10_km_hm_marathon') + '"></label>'+
-    '<label>' + _uiT('ui.zeit') + '<input id="gmPerfTime" type="text" inputmode="numeric" placeholder="' + _uiT('ui.48_30_oder_1_50') + '"></label>'+
+    '<label>' + _uiT('ui.zeit') + '<input id="gmPerfTime" type="text" inputmode="decimal" autocomplete="off" placeholder="' + _uiT('ui.48_30_oder_1_50') + '"></label>'+
     '<label>' + _uiT('ui.kontext') + '<select id="gmPerfCtx"><option value="Wettkampf">Wettkampf</option><option value="Test">' + _uiT('ui.test_trainingsbestzeit') + '</option></select></label>'+
     '<label>' + _uiT('ui.datum_') + '<input id="gmPerfDate" type="date"></label>'+
     '<button class="mini-btn primary" onclick="gmPerfSaveRace()">' + _uiT('ui.eintragen') + '</button>'+

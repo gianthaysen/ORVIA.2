@@ -397,6 +397,19 @@
       if (g.targetValue != null) dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });
       return true;
     }
+    if (metrik === 'time') {
+      /* K2: Zielzeit ueber die gemeinsame Lesart — „1:50" beim Halbmarathon = 1 h 50,
+         „42,39" = 42:39. Unplausibles wird benannt, nicht gespeichert. */
+      var PIg = (root.ORVIA || {}).performanceInput;
+      var rt = _readTime(roh, PIg && PIg.kmForGoal ? PIg.kmForGoal(g.category) : null);
+      if (!rt.ok || !(rt.seconds > 0)) {
+        dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: null });
+        S.goalValueErr = rt.error || ('' + T('ob.bitte_als_zeit_angeben_zum') + '');
+        return false;
+      }
+      dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: rt.seconds, unit: f.unit, metricType: metrik });
+      return true;
+    }
     dd.goals = M.updateGoal(curGoals(), g.id, { targetValue: roh, unit: f.unit, metricType: metrik });
     /* Geprueft wird das ERGEBNIS der Normalisierung, nicht die Eingabe: bleibt der
        Wert eine Zeichenkette, hat das Modell ihn nicht verstanden. */
@@ -723,17 +736,26 @@
       var dEl = doc.getElementById('pf-pbDate'); perf.measuredAt = (dEl && dEl.value) ? dEl.value : (perf.measuredAt || null);
     }
   }
-  var PB_DISTANCES = [['5 km', 5], ['10 km', 10], ['' + T('ob.halbmarathon') + '', 21.0975], ['' + T('ob.marathon') + '', 42.195]];
+  /* K2 (2026-10-29): 3 km fuer Einsteiger (Prognosemodelle ab ~3 km brauchbar; kuerzer zu ungenau). */
+  var PB_DISTANCES = [['3 km', 3], ['5 km', 5], ['10 km', 10], ['' + T('ob.halbmarathon') + '', 21.0975], ['' + T('ob.marathon') + '', 42.195]];
+  function _pbKm(label) { for (var i = 0; i < PB_DISTANCES.length; i++) if (PB_DISTANCES[i][0] === label) return PB_DISTANCES[i][1]; return null; }
+  /* K2: EINE Lesart fuer Zeiteingaben (performance-input.parseUserTime). Fehlt das Modul,
+     wird NICHT still auf den alten Parser zurueckgefallen (fail closed). */
+  function _readTime(txt, km) {
+    var PI = (root.ORVIA || {}).performanceInput;
+    if (!PI || typeof PI.parseUserTime !== 'function') return { ok: false, seconds: null, error: '' + T('ob.bitte_eine_gueltige_zeit_eingeben') + '' };
+    return PI.parseUserTime(txt, km);
+  }
   function _pbRelevant() {
     try { var pe = primaryEntry(S.draft.draftData.sports); var id = pe && String(pe.sportId || '').toLowerCase(); return id === 'running' || id === 'triathlon'; } catch (e) { return false; }
   }
   function _pbBlockHTML(perf) {
     perf = perf || {};
     return '<div class="ob2-field ob3-pb"><span class="ob3-grouplabel" id="lbl-pb">' + T('ob.letzte_laufzeit_optional') + '</span>' +
-      '<p class="ob2-desc" style="margin-top:2px">' + T('ob.ein_wettkampf_oder_ein_test') + '</p>' +
+      '<p class="ob2-desc" style="margin-top:2px">' + T('ob.ein_wettkampf_oder_ein_test') + ' ' + T('ob.pb_noch_keine_zeit') + '</p>' +
       '<div class="ob2-chips" id="ob3-pb-dist" role="group" aria-labelledby="lbl-pb">' + PB_DISTANCES.map(function (d) {
         return '<button type="button" class="ob2-chip' + (perf.distance === d[0] ? ' on' : '') + '" data-pbd="' + esc(d[0]) + '" aria-pressed="' + (perf.distance === d[0] ? 'true' : 'false') + '">' + esc(d[0]) + '</button>'; }).join('') + '</div>' +
-      field('' + T('ob.zeit_z_b_24_30') + '', 'pf-pbTime', '<input id="pf-pbTime" type="text" inputmode="numeric" placeholder="' + T('ob.24_30') + '" value="' + esc(perf.timeText || '') + '' + T('ob.aria_describedby_err_pbtime') + '', 'pbTime', {}) +
+      field('' + T('ob.zeit_z_b_24_30') + '', 'pf-pbTime', '<input id="pf-pbTime" type="text" inputmode="decimal" autocomplete="off" placeholder="' + T('ob.24_30') + '" value="' + esc(perf.timeText || '') + '' + T('ob.aria_describedby_err_pbtime') + '', 'pbTime', {}) +
       '<div class="ob2-chips" id="ob3-pb-ctx" role="group" aria-label="Kontext">' + [['race', '' + T('ob.wettkampf') + ''], ['training', '' + T('ob.training') + '']].map(function (c) {
         return '<button type="button" class="ob2-chip' + ((perf.context || 'race') === c[0] ? ' on' : '') + '" data-pbc="' + c[0] + '" aria-pressed="' + ((perf.context || 'race') === c[0] ? 'true' : 'false') + '">' + c[1] + '</button>'; }).join('') + '</div>' +
       field('' + T('ob.datum') + '', 'pf-pbDate', '<input id="pf-pbDate" type="date" value="' + esc(perf.measuredAt || '') + '">', 'pbDate', {}) +
@@ -753,10 +775,10 @@
   /* Bestzeit-Eingabe pruefen: leer = ok (optional); Zeit ohne Distanz oder unlesbare Zeit = Fehler. */
   function _pbValidate(perf) {
     if (!perf || !(perf.timeText || '').trim()) return { ok: true, secs: null };
-    var M = PM(); var secs = (M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
-    if (!(secs > 0)) return { ok: false, error: '' + T('ob.bitte_eine_gueltige_zeit_eingeben') + '' };
     if (!perf.distance) return { ok: false, error: '' + T('ob.bitte_die_distanz_waehlen') + '' };
-    return { ok: true, secs: secs };
+    var r = _readTime(perf.timeText, _pbKm(perf.distance));
+    if (!r.ok || !(r.seconds > 0)) return { ok: false, error: r.error || ('' + T('ob.bitte_eine_gueltige_zeit_eingeben') + '') };
+    return { ok: true, secs: r.seconds };
   }
   function renderBodyStep() {
     mountShell();
@@ -933,7 +955,8 @@
        neuer Eintrag nur bei gueltiger Zeit + Distanz — nichts wird erfunden). */
     try {
       var perf = dd.performance || null;
-      var secs = (perf && perf.timeText && M && M.parseDuration) ? M.parseDuration(perf.timeText) : null;
+      var _pr = (perf && perf.timeText && perf.distance) ? _readTime(perf.timeText, _pbKm(perf.distance)) : null;
+      var secs = (_pr && _pr.ok) ? _pr.seconds : null;   /* K2: dieselbe Lesart wie die Pruefung */
       if (perf && secs > 0 && perf.distance) {
         var ex = (existing && existing.performance && typeof existing.performance === 'object') ? existing.performance : {};
         var pbs = Array.isArray(ex.personalBests) ? ex.personalBests.slice() : [];

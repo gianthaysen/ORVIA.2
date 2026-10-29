@@ -169,16 +169,10 @@
 
     // Offline → IndexedDB-Queue (bleibt dem aktuellen Nutzer zugeordnet).
     if (!O.offlineQueue) return res(false, null, { message: 'Offline-Queue nicht verfügbar' }, 'indexeddb', 'failed');
-    const row = {
-      user_id: O.user.id, name: profilePayload.name, birth_date: profilePayload.birthDate,
-      age_estimate: profilePayload.birthDate ? null : profilePayload.ageEstimate, sex: profilePayload.sex,
-      height_cm: profilePayload.heightCm, weight_kg: profilePayload.weightKg,
-      hf_max: profilePayload.hfMaxMeasured, resting_hr: profilePayload.restingHrMeasured,
-      sleep_goal_h: profilePayload.sleepGoalH, timezone: profilePayload.timezone,
-      location: profilePayload.location, avatar_path: profilePayload.avatarPath,   // 0016
-      handle: profilePayload.handle, bio: profilePayload.bio                       // 0029
-    };
-    if (profilePayload.constraintsAcknowledgedAt != null) row.constraints_acknowledged_at = profilePayload.constraintsAcknowledgedAt;   // P9 (0013)
+    /* K1 (2026-10-28): dieselbe Umwandlung wie online (profileRepository.toRow) — leer → null.
+       Vorher fehlten hier recovery/preferences: offline geänderte „Regeneration & Alltag"/
+       Präferenzen wurden nie synchronisiert. */
+    const row = Object.assign({ user_id: O.user.id }, O.repos.profile.toRow(profilePayload));
     try {
       const q = await O.offlineQueue.enqueue('user_profiles', row, 'user_id');
       if (q && q.success === false) { _reportSync({ success: false }); return res(false, null, q.error || { message: 'Queue-Schreiben fehlgeschlagen' }, 'indexeddb', 'failed'); }
@@ -337,6 +331,17 @@
     _applySportsRows(cloudRows, cloudTs || localTs);
     return res(true, cloudRows, null, 'supabase', 'synced');
   }
+  /* K1 (2026-10-28): Der Editor meldet „Gespeichert", sobald LOKAL gespeichert ist. Scheitert
+     die Cloud-Speicherung, war das bisher nur am Sync-Badge erkennbar — beim nächsten Start
+     überschrieb der alte Serverstand die Eingaben. Jetzt sagt die App es ausdrücklich. */
+  function _persistNotify() {
+    return persist().then(function (r) {
+      if (r && r.success === false && r.source !== 'empty' && typeof toast === 'function') {
+        toast('Lokal gespeichert – Cloud-Speicherung fehlgeschlagen. Bitte erneut speichern.');
+      }
+      return r;
+    }, function () { return null; });
+  }
   // Editor-Saves (offizieller Schreibpfad updateSection→_profileSave) automatisch cloud-persistieren.
   try {
     if (typeof window !== 'undefined' && window.addEventListener) {
@@ -349,9 +354,9 @@
           if (cs.indexOf('sports') >= 0) persistSports();
           if (cs.indexOf('availability') >= 0) persistAvailability();       // P9
           if (cs.indexOf('goals') >= 0) persistGoals();                     // P9
-          if (cs.indexOf('constraints') >= 0) { persistConstraintsCloud(); persist(); }   // P9 (Liste + Acknowledge-Feld)
-          if (cs.indexOf('personal') >= 0 || cs.indexOf('body') >= 0) persist();          // P9: MAPPED-Autopush
-          if (cs.indexOf('recovery') >= 0 || cs.indexOf('preferences') >= 0) persist();   // 0018: strukturierte Sektionen
+          if (cs.indexOf('constraints') >= 0) { persistConstraintsCloud(); _persistNotify(); }   // P9 (Liste + Acknowledge-Feld)
+          if (cs.indexOf('personal') >= 0 || cs.indexOf('body') >= 0) _persistNotify();          // P9: MAPPED-Autopush
+          if (cs.indexOf('recovery') >= 0 || cs.indexOf('preferences') >= 0) _persistNotify();   // 0018: strukturierte Sektionen
         } catch (e) {}
       });
     }
