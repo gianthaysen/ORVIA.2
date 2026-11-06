@@ -5870,3 +5870,17 @@ html[data-swipe-dir="prev"] [id^="tab-"]:not(.hide){animation:tabInPrev .34s cub
 .shs-more > div + div{margin-top:8px}
 .shs-more .shs-priv{margin-top:2px}
 .shs-more summary:focus-visible{outline:2px solid var(--shs-gold);outline-offset:2px;border-radius:8px}
+
+/* ============================================================
+   v8-462 · Schmale Bildschirme (320–374 px) — gemessen im Layout-Durchlauf 05.11.:
+   lange deutsche Titel liefen in die Wertspalte („Trainingserinnerungen" über
+   „Noch nicht verfügbar"), die Profilstärke-Zeilen wurden zu schmal, „PLANERFÜLLUNG"
+   ragte aus der Kachel. Lange Wörter trennen, Wertspalte schmaler.
+   ============================================================ */
+.setting-copy b,.setting-copy span,.prow .p-t,.prow .p-d{overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
+@media (max-width:374px){
+  .setting-value{max-width:86px;font-size:11px;line-height:1.25;-webkit-hyphens:auto;hyphens:auto}
+  .prow{gap:10px;padding:13px 12px}
+  .prow .p-v{max-width:32%;font-size:11.5px;white-space:normal;-webkit-hyphens:auto;hyphens:auto}
+  .kpi-row>.kpi span{-webkit-hyphens:auto;hyphens:auto;letter-spacing:.03em}
+}

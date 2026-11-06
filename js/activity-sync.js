@@ -72,6 +72,7 @@
           if (a.source === 'orvia_workout') {
             if (!a.workoutSessionId) { skipped++; continue; }       // nur echte Server-Session-uuid pushen
             r = await repo.upsertFromSession(a.workoutSessionId, a.summary || {}, a.metrics || {}, a.clientRecordId || null);
+            if (r && r.success && a.sportId === 'gym') _autolinkSoon();   // v8-462: Uhr-Aufzeichnung ggf. nachtraeglich koppeln
             /* v8-423/424: Workout eines ANDEREN Geraets (fremde client_record_id ⇒
                activity_identity_conflict). Jenes Geraet bleibt Quelle fuer Inhalt und
                Summary; von hier werden nur die lokal gefuehrten Zuordnungsfelder
@@ -140,6 +141,27 @@
     } finally { _pulling = false; }
   }
 
+  /* v8-462 (0054): Kraft-Kopplung nachholen. Der Garmin-Worker koppelt nur beim Import der
+     Uhr-Aufzeichnung; lag sie VOR dem Workout in der Cloud, blieben beide getrennt. Nach jedem
+     hochgeladenen Kraft-Workout (entprellt) fragt die App den Server, der nach der Regel aus 0048
+     koppelt (≤ 20 min Startabstand, Ueberlappung) und vom Nutzer geloeste Paare in Ruhe laesst.
+     Wurde gekoppelt, wird die Liste frisch geholt. Fehler (z. B. 0054 fehlt) sind folgenlos. */
+  var _autolinkTimer = null;
+  function _autolinkSoon() {
+    if (_autolinkTimer) return;
+    try {
+      _autolinkTimer = setTimeout(async function () {
+        _autolinkTimer = null;
+        var repo = O.repos && O.repos.activity;
+        if (!repo || !repo.autolinkRecent || !online()) return;
+        try {
+          var r = await repo.autolinkRecent(48);
+          if (r && r.success && Array.isArray(r.data) && r.data.length) await pullServerActivities({ force: true });
+        } catch (e) {}
+      }, 1500);
+    } catch (e) { _autolinkTimer = null; }
+  }
+
   // Auto-Trigger: online-Event + verzögerter Start-Flush (nach Auth), wenn ein Nutzer vorhanden ist.
   function _autoFlush() { try { if (O.user && O.user.id) { flushPendingActivities(); pullServerActivities(); } } catch (e) {} }
   if (typeof window !== 'undefined' && window.addEventListener) {
@@ -148,6 +170,6 @@
     try { setTimeout(_autoFlush, 1500); } catch (e) {}          // App-Start nach Auth-Init (defensiv)
   }
 
-  O.activitySync = { flushPendingActivities: flushPendingActivities, pullServerActivities: pullServerActivities, _autoFlush: _autoFlush, _backoffReset: function () { _backoff = {}; } };
+  O.activitySync = { flushPendingActivities: flushPendingActivities, pullServerActivities: pullServerActivities, _autoFlush: _autoFlush, _autolinkSoon: _autolinkSoon, _backoffReset: function () { _backoff = {}; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = O.activitySync;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

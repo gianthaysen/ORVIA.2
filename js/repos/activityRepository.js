@@ -173,6 +173,21 @@
     } catch (e) { return b.fail('exception', String(e && e.message || e)); }
   }
 
+  /* v8-462 (0054): freie Kraft-Aufzeichnungen der letzten `hours` an passende Workouts koppeln.
+     Zweiter Versuch fuer den Fall, dass die Uhr-Aufzeichnung VOR dem Workout in der Cloud lag
+     (der Worker koppelt nur beim Import). Vom Nutzer geloeste Kopplungen bleiben geloest
+     (link_opt_out, serverseitig). Ohne 0054 liefert der RPC einen Fehler → still ignoriert. */
+  async function autolinkRecent(hours) {
+    const b = B(); if (!b) return { success: false, data: null, error: { code: 'no_base', message: 'repoBase fehlt' }, source: 'empty', sync_status: 'failed' };
+    const guard = b.requireAuth(); if (guard) return guard;
+    if (!b.online()) return b.fail('offline', 'Offline.', { offline: true, source: 'indexeddb', sync_status: 'pending' });
+    try {
+      const { data, error } = await b.sb().rpc('orvia_autolink_recent', { p_hours: hours || 48, p_tolerance_min: 20 });
+      if (error) return b.fail('rpc_failed', error.message);
+      return b.ok(Array.isArray(data) ? data : []);
+    } catch (e) { return b.fail('exception', String(e && e.message || e)); }
+  }
+
   O.repos = O.repos || {};
-  O.repos.activity = { upsertFromSession, updateFields, upsertManual, list, getById, fetchExt, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate };
+  O.repos.activity = { upsertFromSession, updateFields, upsertManual, list, getById, fetchExt, deleteActivity, deleteWorkout, linkRecording, unlinkRecording, linkCandidate, autolinkRecent };
 })();

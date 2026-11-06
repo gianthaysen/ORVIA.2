@@ -794,7 +794,7 @@
       field('' + T('ob.zeit_z_b_24_30') + '', 'pf-pbTime', '<input id="pf-pbTime" type="text" inputmode="decimal" autocomplete="off" placeholder="' + T('ob.24_30') + '" value="' + esc(perf.timeText || '') + '' + T('ob.aria_describedby_err_pbtime') + '', 'pbTime', {}) +
       '<div class="ob2-chips" id="ob3-pb-ctx" role="group" aria-label="Kontext">' + [['race', '' + T('ob.wettkampf') + ''], ['training', '' + T('ob.training') + '']].map(function (c) {
         return '<button type="button" class="ob2-chip' + ((perf.context || 'race') === c[0] ? ' on' : '') + '" data-pbc="' + c[0] + '" aria-pressed="' + ((perf.context || 'race') === c[0] ? 'true' : 'false') + '">' + c[1] + '</button>'; }).join('') + '</div>' +
-      field('' + T('ob.datum') + '', 'pf-pbDate', '<input id="pf-pbDate" type="date" value="' + esc(perf.measuredAt || '') + '">', 'pbDate', {}) +
+      field('' + T('ob.datum') + '', 'pf-pbDate', '<input id="pf-pbDate" type="date" aria-describedby="hint-pbDate" value="' + esc(perf.measuredAt || '') + '">', 'pbDate', {}, T('ob.pb_datum_hint')) +   /* v8-462: ohne Datum bleibt die Zeit nur informativ (Feldvertrag-Test) */
     '</div>';
   }
   function _bindPbBlock(card) {

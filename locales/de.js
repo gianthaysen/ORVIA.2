@@ -557,6 +557,7 @@
     'ob.wird_gespeichert': 'Wird gespeichert …',
     'ob.zeit_z_b_24_30': 'Zeit (z. B. 24:30, 24,30 oder 1:58:00)',
     'ob.pb_noch_keine_zeit': 'Noch keine Zeit? Einfach leer lassen.',
+    'ob.pb_datum_hint': 'Mit Datum nutzt ORVIA die Zeit für deine Pace-Zonen – ohne Datum bleibt sie ein Richtwert.',
     'ob.ziel_ftp_watt': 'Ziel-FTP (Watt)',
     'ob.ziel_vo_max_ml_kg': 'Ziel-VO₂max (ml/kg/min)',
     'ob.zielauswahl_nicht_verfuegbar': 'Zielauswahl nicht verfügbar',
@@ -3886,6 +3887,8 @@
     'tour.done_d': 'Jede Einheit eine Antwort, jedes Ziel ein Vertrag, jede Zahl ein Grund. Diesen Rundgang kannst du jederzeit neu starten — <b>Profil → Hilfe & über ORVIA</b>.',
     'ui.rundgang_starten': 'Rundgang durch die App',
     'ui.rundgang_sub': 'Erklärt die wichtigsten Stellen an deinen echten Werten',
+    'ui.einrichtung_erneut': 'Einrichtung erneut durchlaufen',
+    'ui.einrichtung_erneut_sub': 'Alle Schritte mit deinen gespeicherten Angaben – nur Geändertes wird übernommen',
     /* v8-418: manuelle Plan-Verknuepfung */
     'ui.link_cand_title': 'Passende Aktivität verknüpfen',
     'ui.link_cand_hint': 'ORVIA verknüpft nie automatisch nur über Tag und Sportart. Diese Aktivität passt zu Tag und Sportart — bestätige, wenn sie diese Einheit war.',

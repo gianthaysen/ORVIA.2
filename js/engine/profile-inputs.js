@@ -11,7 +11,10 @@
 (function (root) {
   root.ORVIA = root.ORVIA || {};
   var O = root.ORVIA;
-  var VERSION = 'profile-inputs@1';
+  var VERSION = 'profile-inputs@2';
+  /* v8-462: Anzeige des Trainingsniveaus auf Deutsch (vorher Rohwert „intermediate").
+     Gleiche Wörter wie in der Einrichtung (locales ob.anfaenger … ob.wettkampforientiert). */
+  var LEVEL_DE = { beginner: 'Anfänger', intermediate: 'Fortgeschritten', advanced: 'Erfahren', competitive: 'Wettkampforientiert' };
 
   /* Register. state(ctx) → { state:'present'|'estimated'|'missing', value:String|null }.
      ctx = { p, planInput, perf, primary, availableDays, sections:{constraints:{complete}} } */
@@ -30,7 +33,7 @@
       state: function (c) { var d = c.availableDays; if (d == null || d < 1) return { state: 'missing', value: null }; return { state: d >= 3 ? 'present' : 'estimated', value: d + ' Tage', hint: d < 3 ? 'wenige Tage — der Plan bleibt dünn' : null }; } },
     { id: 'level_volume', impact: 'high', sectionId: 'sports', icon: 'run',
       label: 'Trainingsniveau und Einheiten pro Woche', readers: 'Ausgangsvolumen, Progression, Plan-Varianten',
-      state: function (c) { var s = c.primary; if (!s) return { state: 'missing', value: null }; var lvl = s.level || null, spw = s.sessionsPerWeek; if (!lvl && spw == null) return { state: 'missing', value: null }; if (!lvl || spw == null) return { state: 'estimated', value: (lvl || '—') + ' · ' + (spw != null ? spw + '/Woche' : '—'), hint: 'eine der beiden Angaben fehlt' }; return { state: 'present', value: lvl + ' · ' + spw + '/Woche' }; } },
+      state: function (c) { var s = c.primary; if (!s) return { state: 'missing', value: null }; var lvl = s.level || null, spw = s.sessionsPerWeek; if (!lvl && spw == null) return { state: 'missing', value: null }; if (!lvl || spw == null) return { state: 'estimated', value: (lvl ? (LEVEL_DE[lvl] || lvl) : '—') + ' · ' + (spw != null ? spw + '/Woche' : '—'), hint: 'eine der beiden Angaben fehlt' }; return { state: 'present', value: (LEVEL_DE[lvl] || lvl) + ' · ' + spw + '/Woche' }; } },
     { id: 'hfmax', impact: 'high', sectionId: 'body', icon: 'heart',
       label: 'Maximale Herzfrequenz', readers: 'HF-Zonen, Belastung (TRIMP), Erholungsbewertung',
       state: function (c) { var p = c.p || {}; if (p.hfMax) return { state: 'present', value: p.hfMax + ' bpm' }; if (p.age) return { state: 'estimated', value: Math.round(208 - 0.7 * p.age) + ' bpm (Tanaka)', hint: 'aus dem Alter geschätzt — nur eintragen, wenn gemessen' }; return { state: 'missing', value: null, hint: 'ohne Alter keine Schätzung' }; } },
