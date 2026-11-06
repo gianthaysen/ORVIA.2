@@ -59,5 +59,8 @@ ok('W6 R6: Beschwerde nur bei Aenderung, Basis = Profil-Liste', /curSig !== seed
 ok('W7 R7: verwaiste Dialoge werden vor dem Oeffnen entfernt', /querySelectorAll\('\.ob2-bg'\)/.test(ui));
 ok('W8 R8: „Änderungen speichern" + Plural „weitere Ziele"', /'ob\.aenderungen_speichern': 'Änderungen speichern'/.test(de) && /'ob\.weitere_ziele': ' weitere Ziele'/.test(de) && /T\(S\.edit \? 'ob\.aenderungen_speichern'/.test(ui) && !/T\('ob\.weiteres_ziel'\) \+ '' \+ \(/.test(ui));
 
+const uiMain = src('js/ui.js');
+ok('W9 Hilfe-Seite: „Einrichtung erneut durchlaufen" → einziger Bearbeiten-Einstieg', /gmPRow\('pen','' \+ _uiT\('ui\.einrichtung_erneut'\)/.test(uiMain) && /function gmRerunSetup\(\)\{[\s\S]{0,300}ORVIA\.openProfileEditor\(\)/.test(uiMain) && /'ui\.einrichtung_erneut': 'Einrichtung erneut durchlaufen'/.test(de));
+ok('W10 Bestzeit-Datum: Hinweis, dass nur eine datierte Zeit die Zonen steuert', /T\('ob\.pb_datum_hint'\)/.test(ui) && /'ob\.pb_datum_hint': 'Mit Datum nutzt ORVIA/.test(de));
 console.log('\n' + '═'.repeat(62) + '\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

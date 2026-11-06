@@ -80,3 +80,41 @@ def test_autolink_never_raises(monkeypatch, fake_db):
     monkeypatch.setattr(fake_db, "select", boom)
     g = _g("g9", "2026-06-23 14:02:00", 10)
     assert asyncio.run(autolink_recording(fake_db, U, g)) is None
+
+
+# ---------- v8-462 · zweiter Versuch (Migration 0054) ----------
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from orvia_worker.activity_link import retry_recent_links  # noqa: E402
+
+
+def _ago(minutes):
+    return (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+
+
+def test_retry_links_recording_that_arrived_before_workout(fake_db):
+    # Uhr-Aufzeichnung wurde importiert, als das Workout noch NICHT in der Cloud war.
+    g = _g("g1", _ago(70), 65, linked_activity_id=None, link_opt_out=False)
+    fake_db.tables["activities"] = [g]
+    assert asyncio.run(autolink_recording(fake_db, U, g)) is None          # Import-Zeitpunkt: kein Partner
+    fake_db.tables["activities"].append(_w("w1", _ago(68), 64))            # Workout kommt spaeter an
+    assert asyncio.run(retry_recent_links(fake_db, U)) == 1
+    rows = {r["id"]: r for r in fake_db.tables["activities"]}
+    assert rows["g1"]["linked_activity_id"] == "w1"
+    assert asyncio.run(retry_recent_links(fake_db, U)) == 0                # idempotent
+
+
+def test_retry_respects_user_unlink_and_window(fake_db):
+    fake_db.tables["activities"] = [
+        _w("w1", _ago(68), 64), _g("g1", _ago(70), 65, linked_activity_id=None, link_opt_out=True),   # vom Nutzer geloest
+        _w("w2", _ago(60 * 72), 60), _g("g2", _ago(60 * 72 + 2), 60, linked_activity_id=None, link_opt_out=False),  # aelter als 48 h
+    ]
+    assert asyncio.run(retry_recent_links(fake_db, U)) == 0
+    assert all(r.get("linked_activity_id") is None for r in fake_db.tables["activities"] if r["source"] == "garmin")
+
+
+def test_retry_never_raises_without_0054(monkeypatch, fake_db):
+    async def boom(*a, **k):
+        raise RuntimeError('column activities.link_opt_out does not exist')
+    monkeypatch.setattr(fake_db, "select", boom)
+    assert asyncio.run(retry_recent_links(fake_db, U)) == 0

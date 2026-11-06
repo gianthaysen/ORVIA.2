@@ -4293,7 +4293,10 @@ function unitPace(kind){
   var zone=z.find(function(x){return x.k===key;});return zone?Calc.fmtPace(zone.lo)+'–'+Calc.fmtPace(zone.hi)+'/km':null;
 }
 function unitHF(kind){
-  var hm=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.hfMax)||((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.age)?Math.round(208-0.7*PROFILE.age):190);
+  /* v8-462: ohne HFmax und ohne Alter KEINE HF-Zone mehr (vorher erfundene 190 bpm; calc._hrMax
+     hat denselben Grundsatz: null = unbekannt). Aufrufer blenden die Zeile dann aus. */
+  var hm=(typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.hfMax)||((typeof PROFILE!=='undefined'&&PROFILE&&PROFILE.age)?Math.round(208-0.7*PROFILE.age):null);
+  if(!hm)return null;
   var r={interval:[0.88,0.95],easy:[0.61,0.72],long:[0.65,0.75],tempo:[0.82,0.88],bike:[0.61,0.72]}[kind];if(!r)return null;
   return Math.round(r[0]*hm)+'–'+Math.round(r[1]*hm)+' bpm';
 }
@@ -12897,7 +12900,7 @@ function gmProfSettings(){
     gmPRow('db','' + _uiT('ui.daten_verwalten') + '','' + _uiT('ui.export_sicherung_loeschen') + '','',"gmOpenProfPage('data')")+
     gmPRow('shield','' + _uiT('ui.konto_amp_sicherheit') + '','' + _uiT('ui.e_mail_passwort_geraete') + '','',"gmOpenProfPage('account')")+
     gmPRow('info','' + _uiT('ui.hilfe_amp_ueber_orvia') + '','' + _uiT('ui.support_dokumentation_version_build_und') + '','',"gmOpenProfPage('about')")+'</div>'+
-    '<div class="danger-link" role="button" tabindex="0" onclick="orviaLogout&&orviaLogout()" onkeydown="if(event.key===\'Enter\')orviaLogout&&orviaLogout()">Abmelden</div>';
+    '<div class="danger-link" role="button" tabindex="0" onclick="gmAuthCall(&quot;orviaLogout&quot;)" onkeydown="if(event.key===\'Enter\')gmAuthCall(&quot;orviaLogout&quot;)">Abmelden</div>';
 }
 function gmRerenderAppearance(){
   if(_gmProfRoute!=='appearance')return;
@@ -13475,14 +13478,14 @@ function gmProfData(){
        Tabellen, maschinenlesbar) — schliesst die Art.-20-Lücke des lokalen Exports. */
     gmPRow('db','' + _uiT('ui.cloud_export_vollstaendig') + '','' + _uiT('ui.alle_cloud_tabellen_als_json') + '','Export','exportCloudData&&exportCloudData()')+
     gmPRow('copy','' + _uiT('ui.lokale_sicherung') + '','' + _uiT('ui.letzte_sicherung') + ''+gmEsc(lb),'','',false)+
-    gmPRow('x','' + _uiT('ui.alle_daten_loeschen') + '','' + _uiT('ui.nur_mit_erneuter_bestaetigung') + '','','orviaDeleteAccount&&orviaDeleteAccount()')+'</div>';
+    gmPRow('x','' + _uiT('ui.alle_daten_loeschen') + '','' + _uiT('ui.nur_mit_erneuter_bestaetigung') + '','','gmAuthCall(&quot;orviaDeleteAccount&quot;)')+'</div>';
 }
 function gmProfAccount(){
   var email='—';try{email=(window.ORVIA&&ORVIA.user&&ORVIA.user.email)?ORVIA.user.email:'—';}catch(_){ }
   return gmPPageHead('' + _uiT('ui.konto_sicherheit') + '','' + _uiT('ui.persoenliche_zugangsdaten') + '')+
     '<div class="setting-title">' + _uiT('ui.konfiguration') + '</div><div class="setting-group">'+
     gmPRow('heart',gmEsc(gmProfName()||'—'),gmEsc(email),'','',false)+
-    gmPRow('lock','' + _uiT('ui.passwort_amp_anmeldung') + '','' + _uiT('ui.ueber_den_bestehenden_auth_flow') + '','—','orviaChangePassword&&orviaChangePassword()')+
+    gmPRow('lock','' + _uiT('ui.passwort_amp_anmeldung') + '','' + _uiT('ui.ueber_den_bestehenden_auth_flow') + '','—','gmAuthCall(&quot;orviaChangePassword&quot;)')+
     gmPRow('shield','' + _uiT('ui.angemeldete_geraete') + '','' + _uiT('ui.keine_kanonische_geraeteliste') + '','—','',true)+'</div>';
 }
 function gmOrviaBuildLabel(){
@@ -13501,7 +13504,25 @@ function gmProfAbout(){
        Einstieg (Profil → Hilfe), nie automatisch (M9). Ohne Modul bleibt die Zeile inaktiv. */
     ((window.ORVIA&&ORVIA.tour&&ORVIA.tour.start)
       ?gmPRow('book','' + _uiT('ui.rundgang_starten') + '','' + _uiT('ui.rundgang_sub') + '','','gmStartTour()')
-      :gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true))+'</div>';
+      :gmPRow('book','' + _uiT('ui.hilfe_amp_support') + '','' + _uiT('ui.dokumentation_folgt') + ''+GM_NA,'—','',true))+
+    /* v8-462: Einrichtung erneut durchlaufen — oeffnet den Bearbeiten-Modus (seit v8-461 verlustfrei:
+       frischer Entwurf aus dem Profil, nur Geaendertes wird gespeichert). Ohne Modul keine Zeile. */
+    ((window.ORVIA&&typeof ORVIA.openProfileEditor==='function')
+      ?gmPRow('pen','' + _uiT('ui.einrichtung_erneut') + '','' + _uiT('ui.einrichtung_erneut_sub') + '','','gmRerunSetup()')
+      :'')+'</div>';
+}
+function gmRerunSetup(){
+  try{if(typeof closeProfile==='function')closeProfile();}catch(_){ }
+  try{if(typeof gmCloseProfPage==='function')gmCloseProfPage();}catch(_){ }
+  try{if(window.ORVIA&&typeof ORVIA.openProfileEditor==='function')ORVIA.openProfileEditor();}catch(_){ }
+}
+/* v8-462: Konto-Aktionen (Abmelden, Passwort, Daten loeschen) gehoeren auth.js. Fehlt das Modul
+   (z. B. Supabase-Bibliothek nicht geladen), warf `orviaLogout&&orviaLogout()` einen
+   ReferenceError — der Knopf tat sichtbar nichts. Jetzt: klare Meldung statt stillem Fehler. */
+function gmAuthCall(name){
+  var fn=window[name];
+  if(typeof fn==='function'){try{return fn();}catch(e){try{console.error('[ORVIA auth]',name,e&&e.message);}catch(_){ }}}
+  try{toast(_uiT('ui.cloud_modul_nicht_geladen'));}catch(_){ }
 }
 function gmStartTour(){
   try{if(typeof closeProfile==='function')closeProfile();}catch(_){ }

@@ -95,6 +95,9 @@ class FakeDb:
                 elif op == "not.is" and v == "null":
                     if value is None:
                         return False
+                elif op == "is" and v in ("true", "false"):
+                    if value is not (v == "true"):
+                        return False
                 else:
                     raise AssertionError(f"FakeDb: Operator {op} nicht unterstützt")
             elif cond is None:

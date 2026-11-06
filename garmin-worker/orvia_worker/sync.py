@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from .activity_link import LINKABLE_SPORTS, autolink_recording
+from .activity_link import LINKABLE_SPORTS, autolink_recording, retry_recent_links
 from .capabilities import derive_capability
 from .providers.base import (
     AuthError,
@@ -470,6 +470,10 @@ async def sync_user(
                 linked_to = await autolink_recording(db, user_id, row)
                 if linked_to:
                     linked_count += 1
+        # v8-462 (0054): zweiter Versuch fuer frueher importierte, noch freie Kraft-Aufzeichnungen
+        # (Workout kam erst nach dem Import in die Cloud). Wirft nie.
+        relinked = await retry_recent_links(db, user_id)
+        linked_count += relinked
         result["steps"]["activities"] = f"ok:{new_count}/{len(acts)}" + (f" linked:{linked_count}" if linked_count else "")
         # v8-447 · Herkunft (Garmin-Typ, Ortszeit, Rohfelder) fuer schon importierte
         # Aktivitaeten nachtragen. Aus dem Listenabruf von eben — kein weiterer Abruf.

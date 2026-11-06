@@ -115,6 +115,17 @@ ok('C3 „Keine Beschwerden" → Knie-Eintrag abgeklungen, nicht geloescht, nich
 ok('C4 geaenderte Antwort → Bestaetigung neu gestempelt', nachC.constraintsAcknowledgedAt && nachC.constraintsAcknowledgedAt !== vorher.constraintsAcknowledgedAt);
 ok('C5 alles andere identisch', d.length === 0, d.join(' | '));
 
+/* ---------- H · Einstieg „Einrichtung erneut durchlaufen" (Profil → Hilfe & über ORVIA) ---------- */
+await clearDraft(); vorher = await seedProfile(true);
+const h = await page.evaluate(() => { const html = typeof gmProfAbout === 'function' ? gmProfAbout() : ''; return { row: /gmRerunSetup\(\)/.test(html) && /Einrichtung erneut durchlaufen/.test(html) }; });
+ok('H1 Zeile „Einrichtung erneut durchlaufen" steht auf der Hilfe-Seite', h.row);
+await page.evaluate(() => gmRerunSetup()); await page.waitForTimeout(500);
+const h2 = await page.evaluate(() => { const S = window.ORVIA.onboardingV2._state; return { edit: S.edit === true, step: S.draft && S.draft.currentStep, layers: document.querySelectorAll('.ob2-bg').length }; });
+ok('H2 … oeffnet den verlustfreien Bearbeiten-Modus ab Schritt 1, ein Dialog', h2.edit && h2.step === 'profile' && h2.layers === 1, JSON.stringify(h2));
+await click('ob2-later'); await page.waitForTimeout(300);
+d = diff(vorher, await after());
+ok('H3 Abbrechen („Später") veraendert das Profil nicht', d.length === 0, d.join(' | '));
+
 ok('E1 keine Seitenfehler', errs.length === 0, errs.slice(0, 3).join(' | '));
 await browser.close(); server.close();
 console.log('\n' + '═'.repeat(62) + '\nErgebnis: ' + pass + ' bestanden, ' + fail + ' fehlgeschlagen');

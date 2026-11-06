@@ -137,3 +137,41 @@ async def autolink_recording(db, user_id: str, recording: dict, tolerance_min: i
     except Exception:  # noqa: BLE001 — bewusst: Kopplung ist Bonus, nie Abbruchgrund
         logger.warning("autolink_recording fehlgeschlagen (Aktivitaet %s)", recording.get("id") if recording else None)
         return None
+
+
+RETRY_HOURS_DEFAULT = 48
+
+
+async def retry_recent_links(db, user_id: str, hours: int = RETRY_HOURS_DEFAULT, tolerance_min: int = TOLERANCE_MIN_DEFAULT) -> int:
+    """v8-462 · Zweiter Versuch je Sync (Migration 0054).
+
+    autolink_recording laeuft nur beim Import der Aufzeichnung. Lag das ORVIA-Workout
+    in diesem Moment noch nicht in der Cloud, blieb die Aufzeichnung dauerhaft
+    ungekoppelt. Hier werden freie Kraft-Aufzeichnungen der letzten `hours` erneut
+    geprueft. Vom Nutzer geloeste Kopplungen (link_opt_out = true) bleiben unberuehrt.
+    Ohne Spalte link_opt_out (0054 fehlt) schlaegt die Abfrage fehl → 0, Sync laeuft weiter.
+    Liefert die Zahl neu gekoppelter Aufzeichnungen. Wirft nie.
+    """
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        recs = await db.select(
+            "activities",
+            {
+                "user_id": user_id,
+                "source": "garmin",
+                "sport_id": ("in", "(" + ",".join(LINKABLE_SPORTS) + ")") if len(LINKABLE_SPORTS) > 1 else LINKABLE_SPORTS[0],
+                "linked_activity_id": None,
+                "link_opt_out": ("is", "false"),
+                "started_at": ("gte", since),
+            },
+            columns="id,user_id,source,sport_id,started_at,ended_at,duration_seconds,linked_activity_id",
+            limit=20,
+        )
+    except Exception:  # noqa: BLE001 — z. B. 0054 noch nicht eingespielt
+        logger.info("retry_recent_links uebersprungen (Abfrage nicht moeglich)")
+        return 0
+    linked = 0
+    for rec in recs or []:
+        if await autolink_recording(db, user_id, rec, tolerance_min):
+            linked += 1
+    return linked
